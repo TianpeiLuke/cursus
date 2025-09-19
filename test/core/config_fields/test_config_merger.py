@@ -342,6 +342,10 @@ class TestConfigMerger:
             "metadata": {
                 "created_at": "2025-07-17T00:00:00",
                 "config_types": {"TestConfig1": "TypeA", "TestConfig2": "TypeB"},
+                "field_sources": {
+                    "shared_field": ["TestConfig1", "TestConfig2"],
+                    "specific_field": ["TestConfig1"]
+                },
             },
             "configuration": {
                 "shared": {
@@ -365,6 +369,13 @@ class TestConfigMerger:
         assert "configuration" in saved_data
         assert "created_at" in saved_data["metadata"]
         assert "config_types" in saved_data["metadata"]
+        assert "field_sources" in saved_data["metadata"]
+
+        # Verify field_sources structure
+        field_sources = saved_data["metadata"]["field_sources"]
+        assert isinstance(field_sources, dict)
+        assert "shared_field" in field_sources
+        assert isinstance(field_sources["shared_field"], list)
 
         # Verify configuration has simplified structure
         config = saved_data["configuration"]
@@ -506,3 +517,182 @@ class TestConfigMerger:
             ConfigMerger.merge_with_direction(
                 source, target, MergeDirection.ERROR_ON_CONFLICT
             )
+
+    @mock.patch("cursus.core.config_fields.config_merger.ConfigFieldCategorizer")
+    def test_field_sources_generation_and_inclusion_in_metadata(self, mock_categorizer_class):
+        """Test that field_sources are generated from categorizer and included in metadata."""
+        # Setup mock categorizer
+        mock_categorizer = mock.MagicMock()
+        mock_categorizer_class.return_value = mock_categorizer
+        
+        # Mock the get_field_sources method to return test data
+        test_field_sources = {
+            "shared_field": ["Config1", "Config2", "Config3"],
+            "specific_field_1": ["Config1"],
+            "specific_field_2": ["Config2"],
+            "hyperparameters": ["Config3"]
+        }
+        mock_categorizer.get_field_sources.return_value = test_field_sources
+        
+        # Mock the get_categorized_fields method
+        mock_categorizer.get_categorized_fields.return_value = {
+            "shared": {"shared_field": "shared_value"},
+            "specific": {
+                "Config1": {"specific_field_1": "value1"},
+                "Config2": {"specific_field_2": "value2"},
+                "Config3": {"hyperparameters": {"param": "value"}}
+            }
+        }
+        
+        # Create merger with simple test objects
+        test_configs = [object(), object(), object()]  # Simple objects for testing
+        merger = ConfigMerger(test_configs, MockProcessingBase)
+        
+        # Mock the _generate_step_name method to return predictable names
+        def mock_generate_step_name(config):
+            if hasattr(config, '__class__'):
+                return config.__class__.__name__
+            return "MockConfig"
+        merger._generate_step_name = mock.MagicMock(side_effect=mock_generate_step_name)
+        
+        # Save to file
+        merger.save(self.output_file)
+        
+        # Verify get_field_sources was called
+        mock_categorizer.get_field_sources.assert_called_once()
+        
+        # Load and verify the saved file contains field_sources
+        with open(self.output_file, "r") as f:
+            saved_data = json.load(f)
+        
+        # Verify field_sources is in metadata
+        assert "metadata" in saved_data
+        assert "field_sources" in saved_data["metadata"]
+        
+        # Verify field_sources content matches what we mocked
+        field_sources = saved_data["metadata"]["field_sources"]
+        assert field_sources == test_field_sources
+        
+        # Verify structure of field_sources
+        assert isinstance(field_sources, dict)
+        assert len(field_sources) == 4
+        
+        # Verify shared field has multiple sources
+        assert "shared_field" in field_sources
+        assert len(field_sources["shared_field"]) == 3
+        assert set(field_sources["shared_field"]) == {"Config1", "Config2", "Config3"}
+        
+        # Verify specific fields have single sources
+        assert "specific_field_1" in field_sources
+        assert field_sources["specific_field_1"] == ["Config1"]
+        
+        assert "specific_field_2" in field_sources
+        assert field_sources["specific_field_2"] == ["Config2"]
+        
+        # Verify special field (hyperparameters) has single source
+        assert "hyperparameters" in field_sources
+        assert field_sources["hyperparameters"] == ["Config3"]
+
+    @mock.patch("cursus.core.config_fields.config_merger.ConfigFieldCategorizer")
+    def test_field_sources_inverted_index_correctness(self, mock_categorizer_class):
+        """Test that field_sources provides correct inverted index mapping."""
+        # Setup mock categorizer
+        mock_categorizer = mock.MagicMock()
+        mock_categorizer_class.return_value = mock_categorizer
+        
+        # Create test field sources that represent a realistic scenario
+        test_field_sources = {
+            # Fields that appear in multiple configs (should be shared)
+            "bucket": ["BaseConfig", "ProcessingConfig", "TrainingConfig"],
+            "region": ["BaseConfig", "ProcessingConfig", "TrainingConfig"],
+            "author": ["BaseConfig", "ProcessingConfig"],
+            
+            # Fields that appear in only one config (should be specific)
+            "processing_instance_type": ["ProcessingConfig"],
+            "training_instance_type": ["TrainingConfig"],
+            "hyperparameters": ["TrainingConfig"],
+            
+            # Field that appears in two configs but with different values (should be specific)
+            "instance_count": ["ProcessingConfig", "TrainingConfig"]
+        }
+        mock_categorizer.get_field_sources.return_value = test_field_sources
+        
+        # Mock categorized fields to match the field sources
+        mock_categorizer.get_categorized_fields.return_value = {
+            "shared": {
+                "bucket": "test-bucket",
+                "region": "us-east-1"
+            },
+            "specific": {
+                "BaseConfig": {"author": "test-user"},
+                "ProcessingConfig": {
+                    "processing_instance_type": "ml.m5.large",
+                    "instance_count": 1
+                },
+                "TrainingConfig": {
+                    "training_instance_type": "ml.m5.xlarge",
+                    "hyperparameters": {"param": "value"},
+                    "instance_count": 2
+                }
+            }
+        }
+        
+        # Create merger
+        test_configs = [object(), object(), object()]
+        merger = ConfigMerger(test_configs, MockProcessingBase)
+        
+        # Mock step name generation
+        def mock_generate_step_name_2(config):
+            # Return different names for different objects
+            return f"Config{id(config) % 1000}"
+        merger._generate_step_name = mock.MagicMock(side_effect=mock_generate_step_name_2)
+        
+        # Save to file
+        merger.save(self.output_file)
+        
+        # Load and verify
+        with open(self.output_file, "r") as f:
+            saved_data = json.load(f)
+        
+        field_sources = saved_data["metadata"]["field_sources"]
+        shared_fields = saved_data["configuration"]["shared"]
+        specific_configs = saved_data["configuration"]["specific"]
+        
+        # Test 1: Verify fields that appear in all configs are in shared section
+        for field_name in ["bucket", "region"]:
+            assert field_name in shared_fields, f"Field {field_name} should be in shared section"
+            assert field_name in field_sources, f"Field {field_name} should be in field_sources"
+            assert len(field_sources[field_name]) >= 2, f"Field {field_name} should have multiple sources"
+        
+        # Test 2: Verify fields that appear in only one config are in specific sections
+        assert "processing_instance_type" in field_sources
+        assert field_sources["processing_instance_type"] == ["ProcessingConfig"]
+        assert "processing_instance_type" in specific_configs["ProcessingConfig"]
+        
+        assert "training_instance_type" in field_sources
+        assert field_sources["training_instance_type"] == ["TrainingConfig"]
+        assert "training_instance_type" in specific_configs["TrainingConfig"]
+        
+        # Test 3: Verify special fields (hyperparameters) are handled correctly
+        assert "hyperparameters" in field_sources
+        assert field_sources["hyperparameters"] == ["TrainingConfig"]
+        assert "hyperparameters" in specific_configs["TrainingConfig"]
+        
+        # Test 4: Verify fields with different values across configs
+        assert "instance_count" in field_sources
+        assert set(field_sources["instance_count"]) == {"ProcessingConfig", "TrainingConfig"}
+        # This field should be in specific sections due to different values
+        assert "instance_count" in specific_configs["ProcessingConfig"]
+        assert "instance_count" in specific_configs["TrainingConfig"]
+        
+        # Test 5: Verify inverted index completeness
+        # Every field in configuration should be in field_sources
+        all_config_fields = set(shared_fields.keys())
+        for step_config in specific_configs.values():
+            all_config_fields.update(step_config.keys())
+        
+        # Remove metadata fields
+        all_config_fields = {f for f in all_config_fields if not f.startswith("__")}
+        
+        field_sources_fields = set(field_sources.keys())
+        assert all_config_fields.issubset(field_sources_fields), f"Missing fields in field_sources: {all_config_fields - field_sources_fields}"

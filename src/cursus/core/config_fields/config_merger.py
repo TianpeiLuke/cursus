@@ -259,9 +259,13 @@ class ConfigMerger:
             class_name = cfg.__class__.__name__
             config_types[step_name] = class_name
 
+        # Get field sources (inverted index) from categorizer
+        field_sources = self.categorizer.get_field_sources()
+
         metadata = {
             "created_at": datetime.now().isoformat(),
             "config_types": config_types,
+            "field_sources": field_sources,
         }
 
         # Create the output structure with the simplified format

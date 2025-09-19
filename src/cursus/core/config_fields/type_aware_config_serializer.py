@@ -36,7 +36,6 @@ class TypeAwareConfigSerializer:
 
     # Constants for metadata fields - following Single Source of Truth principle
     MODEL_TYPE_FIELD = "__model_type__"
-    MODEL_MODULE_FIELD = "__model_module__"
     TYPE_INFO_FIELD = "__type_info__"
 
     def __init__(
@@ -119,7 +118,6 @@ class TypeAwareConfigSerializer:
                 # Always add type metadata for Pydantic models
                 result = {
                     self.MODEL_TYPE_FIELD: cls_name,
-                    self.MODEL_MODULE_FIELD: module_name,
                 }
 
                 # Use a simple circular reference detection for serialization
@@ -137,7 +135,6 @@ class TypeAwareConfigSerializer:
                     # Return a minimal representation with type info but no fields
                     return {
                         self.MODEL_TYPE_FIELD: cls_name,
-                        self.MODEL_MODULE_FIELD: module_name,
                         "_circular_ref": True,
                         "_ref_message": "Circular reference detected - fields omitted",
                     }
@@ -194,7 +191,6 @@ class TypeAwareConfigSerializer:
                 # Return a dict with error info but preserve type information
                 return {
                     self.MODEL_TYPE_FIELD: cls_name,
-                    self.MODEL_MODULE_FIELD: module_name,
                     "_error": str(e),
                     "_serialization_error": True,
                 }
@@ -388,10 +384,6 @@ class TypeAwareConfigSerializer:
                             circular_ref_dict[self.MODEL_TYPE_FIELD] = field_data[
                                 self.MODEL_TYPE_FIELD
                             ]
-                        if self.MODEL_MODULE_FIELD in field_data:
-                            circular_ref_dict[self.MODEL_MODULE_FIELD] = field_data[
-                                self.MODEL_MODULE_FIELD
-                            ]
                         circular_ref_dict["_is_circular_reference_stub"] = True
 
                         # Try to extract additional fields if available
@@ -506,7 +498,6 @@ class TypeAwareConfigSerializer:
 
         # Check for type metadata - implementing Explicit Over Implicit
         type_name = field_data.get(self.MODEL_TYPE_FIELD)
-        module_name = field_data.get(self.MODEL_MODULE_FIELD)
 
         if not type_name:
             # No type information, use the expected_type if applicable
@@ -519,7 +510,7 @@ class TypeAwareConfigSerializer:
                 filtered_data = {
                     k: v
                     for k, v in field_data.items()
-                    if k not in (self.MODEL_TYPE_FIELD, self.MODEL_MODULE_FIELD)
+                    if k not in (self.MODEL_TYPE_FIELD,)
                 }
 
                 # Recursively deserialize nested fields
@@ -536,7 +527,7 @@ class TypeAwareConfigSerializer:
             return field_data
 
         # Get the actual class to use - implementing Single Source of Truth
-        actual_class = self._get_class_by_name(type_name, module_name)
+        actual_class = self._get_class_by_name(type_name)
 
         # If we couldn't find the class, log warning and use expected_type
         if not actual_class:
@@ -551,14 +542,14 @@ class TypeAwareConfigSerializer:
             return {
                 k: self.deserialize(v)
                 for k, v in field_data.items()
-                if k not in (self.MODEL_TYPE_FIELD, self.MODEL_MODULE_FIELD)
+                if k not in (self.MODEL_TYPE_FIELD,)
             }
 
         # Remove metadata fields
         filtered_data = {
             k: v
             for k, v in field_data.items()
-            if k not in (self.MODEL_TYPE_FIELD, self.MODEL_MODULE_FIELD)
+            if k not in (self.MODEL_TYPE_FIELD,)
         }
 
         # Recursively deserialize nested models
@@ -762,7 +753,6 @@ def serialize_config(config: Any) -> Dict[str, Any]:
 
         return {
             "__model_type__": model_type,
-            "__model_module__": model_module,
             "_metadata": {
                 "step_name": step_name,
                 "config_type": model_type,

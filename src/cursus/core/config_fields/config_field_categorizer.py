@@ -438,6 +438,23 @@ class ConfigFieldCategorizer:
         """
         return self.categorization
 
+    def get_field_sources(self) -> Dict[str, List[str]]:
+        """
+        Get the field sources mapping (inverted index).
+        
+        This creates an inverted index that maps each field name to the list
+        of step names that contain that field.
+        
+        Returns:
+            dict: Mapping of field_name -> list of step names
+        """
+        # Convert defaultdict to regular dict for JSON serialization
+        field_sources = {}
+        for field_name, step_list in self.field_info["sources"].items():
+            field_sources[field_name] = list(step_list)  # Ensure it's a list
+        
+        return field_sources
+
     def print_categorization_stats(self) -> None:
         """
         Print statistics about field categorization for the simplified structure.

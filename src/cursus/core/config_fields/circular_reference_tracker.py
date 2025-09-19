@@ -88,6 +88,47 @@ class SimplifiedCircularReferenceTracker:
         self.visited.clear()
         self.processing_stack.clear()
     
+    def _get_module_from_step_catalog(self, type_name: str) -> str:
+        """
+        Get module name from step catalog system.
+        
+        Args:
+            type_name: The model type name (e.g., "XGBoostTrainingConfig")
+            
+        Returns:
+            str: Module name or "unknown" if not found
+        """
+        try:
+            # Try to import the step catalog registry
+            from ...registry.step_names import CONFIG_STEP_REGISTRY, get_step_names
+            
+            # First try to find the config class in the registry
+            if type_name in CONFIG_STEP_REGISTRY:
+                step_name = CONFIG_STEP_REGISTRY[type_name]
+                step_info = get_step_names().get(step_name, {})
+                
+                # If we have step info, we can infer the module structure
+                if step_info:
+                    # Most config classes follow the pattern: cursus.steps.configs.config_*
+                    return f"cursus.steps.configs.config_{step_name.lower()}"
+            
+            # Fallback: try to import the class directly to get its module
+            try:
+                from ...steps.configs.utils import build_complete_config_classes
+                config_classes = build_complete_config_classes()
+                
+                if type_name in config_classes:
+                    config_class = config_classes[type_name]
+                    return getattr(config_class, '__module__', 'unknown')
+            except ImportError:
+                pass
+                
+        except ImportError:
+            # Step catalog not available, fall back to unknown
+            pass
+        
+        return "unknown"
+
     def _format_simple_cycle_error(self, obj_data: Any, field_name: Optional[str]) -> str:
         """
         Format a simple error message for circular reference.
@@ -102,7 +143,7 @@ class SimplifiedCircularReferenceTracker:
         # Get object details
         if isinstance(obj_data, dict):
             type_name = obj_data.get("__model_type__", "unknown")
-            module_name = obj_data.get("__model_module__", "unknown")
+            module_name = self._get_module_from_step_catalog(type_name)
         else:
             type_name = type(obj_data).__name__
             module_name = getattr(type(obj_data), '__module__', 'unknown')

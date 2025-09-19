@@ -549,8 +549,8 @@ def deserialize_config(
 
     This function deserializes a dictionary into a configuration object based on
     type information embedded in the dictionary. If the dictionary contains the
-    __model_type__ and __model_module__ fields, it will attempt to reconstruct
-    the original object type.
+    __model_type__ field, it will attempt to reconstruct
+    the original object type using the step catalog system.
 
     Args:
         data: The serialized dictionary
