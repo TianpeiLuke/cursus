@@ -99,7 +99,9 @@ class UnifiedConfigManager:
         if self._step_catalog is None:
             try:
                 from ...step_catalog import StepCatalog
-                self._step_catalog = StepCatalog(self.workspace_root or Path.cwd())
+                # Use new dual search space API
+                workspace_dirs = [self.workspace_root] if self.workspace_root else []
+                self._step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
             except ImportError:
                 logger.warning("Step catalog not available, using fallback")
                 self._step_catalog = None
@@ -126,7 +128,8 @@ class UnifiedConfigManager:
                 # Fallback to direct import
                 from ...step_catalog.config_discovery import ConfigAutoDiscovery
                 workspace_root = self.workspace_root or Path.cwd()
-                config_discovery = ConfigAutoDiscovery(workspace_root)
+                workspace_dirs = [workspace_root] if self.workspace_root else []
+                config_discovery = ConfigAutoDiscovery(workspace_root, workspace_dirs)
                 discovered_classes = config_discovery.build_complete_config_classes(project_id)
                 logger.info(f"Discovered {len(discovered_classes)} config classes via ConfigAutoDiscovery")
                 return discovered_classes

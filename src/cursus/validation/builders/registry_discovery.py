@@ -103,9 +103,9 @@ class RegistryStepDiscovery:
             from ...step_catalog import StepCatalog
             from pathlib import Path
             
-            # Initialize step catalog
+            # Initialize step catalog with new dual search space API
             workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
+            catalog = StepCatalog(workspace_dirs=[workspace_root])
             
             # Use catalog's get_builder_class_path method
             builder_path = catalog.get_builder_class_path(step_name)
@@ -143,9 +143,9 @@ class RegistryStepDiscovery:
             from ...step_catalog import StepCatalog
             from pathlib import Path
             
-            # Initialize step catalog
+            # Initialize step catalog with new dual search space API
             workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
+            catalog = StepCatalog(workspace_dirs=[workspace_root])
             
             # Use catalog's load_builder_class method
             builder_class = catalog.load_builder_class(step_name)

@@ -511,8 +511,8 @@ def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str,
         # Get workspace root (assuming we're in src/cursus/steps/configs/)
         workspace_root = Path(__file__).parent.parent.parent.parent.parent
         
-        # Create step catalog instance
-        catalog = StepCatalog(workspace_root)
+        # Create step catalog instance with new dual search space API
+        catalog = StepCatalog(workspace_dirs=[workspace_root])
         
         # Use step catalog's enhanced discovery with workspace awareness
         discovered_classes = catalog.build_complete_config_classes(project_id)

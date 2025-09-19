@@ -10,7 +10,7 @@ import ast
 import importlib
 import logging
 from pathlib import Path
-from typing import Dict, Type, Optional, Any
+from typing import Dict, Type, Optional, Any, List, Union
 
 logger = logging.getLogger(__name__)
 
@@ -18,19 +18,21 @@ logger = logging.getLogger(__name__)
 class ConfigAutoDiscovery:
     """Simple configuration class auto-discovery."""
     
-    def __init__(self, workspace_root: Path):
+    def __init__(self, package_root: Path, workspace_dirs: List[Path]):
         """
-        Initialize config auto-discovery.
+        Initialize config auto-discovery with dual search space support.
         
         Args:
-            workspace_root: Root directory of the workspace
+            package_root: Root of the cursus package
+            workspace_dirs: List of workspace directories to search
         """
-        self.workspace_root = workspace_root
+        self.package_root = package_root
+        self.workspace_dirs = workspace_dirs
         self.logger = logging.getLogger(__name__)
     
     def discover_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
         """
-        Auto-discover configuration classes from core and workspace directories.
+        Auto-discover configuration classes from package and workspace directories.
         
         Args:
             project_id: Optional project ID for workspace-specific discovery
@@ -40,8 +42,8 @@ class ConfigAutoDiscovery:
         """
         discovered_classes = {}
         
-        # Always scan core configs
-        core_config_dir = self.workspace_root / "src" / "cursus" / "steps" / "configs"
+        # Always scan package core configs
+        core_config_dir = self.package_root / "steps" / "configs"
         if core_config_dir.exists():
             try:
                 core_classes = self._scan_config_directory(core_config_dir)
@@ -50,27 +52,21 @@ class ConfigAutoDiscovery:
             except Exception as e:
                 self.logger.error(f"Error scanning core config directory: {e}")
         
-        # Scan workspace configs if project_id provided
-        if project_id:
-            workspace_config_dir = (
-                self.workspace_root / "development" / "projects" / project_id / 
-                "src" / "cursus_dev" / "steps" / "configs"
-            )
-            if workspace_config_dir.exists():
+        # Scan workspace configs if workspace directories provided
+        if self.workspace_dirs:
+            for workspace_dir in self.workspace_dirs:
                 try:
-                    workspace_classes = self._scan_config_directory(workspace_config_dir)
+                    workspace_classes = self._discover_workspace_configs(workspace_dir, project_id)
                     # Workspace configs override core configs with same names
                     discovered_classes.update(workspace_classes)
-                    self.logger.info(f"Discovered {len(workspace_classes)} workspace config classes for project {project_id}")
                 except Exception as e:
-                    self.logger.error(f"Error scanning workspace config directory: {e}")
+                    self.logger.error(f"Error scanning workspace config directory {workspace_dir}: {e}")
         
         return discovered_classes
     
     def discover_hyperparameter_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
         """
-        Auto-discover hyperparameter classes from core and workspace directories.
-        Workspace-aware design supports hyperparams in multiple locations.
+        Auto-discover hyperparameter classes from package and workspace directories.
         
         Args:
             project_id: Optional project ID for workspace-specific discovery
@@ -80,8 +76,8 @@ class ConfigAutoDiscovery:
         """
         discovered_classes = {}
         
-        # Always scan core hyperparams
-        core_hyperparams_dir = self.workspace_root / "src" / "cursus" / "steps" / "hyperparams"
+        # Always scan package core hyperparams
+        core_hyperparams_dir = self.package_root / "steps" / "hyperparams"
         if core_hyperparams_dir.exists():
             try:
                 core_classes = self._scan_hyperparams_directory(core_hyperparams_dir)
@@ -98,49 +94,15 @@ class ConfigAutoDiscovery:
         except ImportError as e:
             self.logger.warning(f"Could not import ModelHyperparameters base class: {e}")
         
-        # Workspace-aware discovery: scan multiple potential locations
-        if project_id:
-            # Standard workspace location
-            workspace_hyperparams_dir = (
-                self.workspace_root / "development" / "projects" / project_id / 
-                "src" / "cursus_dev" / "steps" / "hyperparams"
-            )
-            if workspace_hyperparams_dir.exists():
+        # Scan workspace hyperparams if workspace directories provided
+        if self.workspace_dirs:
+            for workspace_dir in self.workspace_dirs:
                 try:
-                    workspace_classes = self._scan_hyperparams_directory(workspace_hyperparams_dir)
+                    workspace_classes = self._discover_workspace_hyperparams(workspace_dir, project_id)
+                    # Workspace hyperparams override core hyperparams with same names
                     discovered_classes.update(workspace_classes)
-                    self.logger.info(f"Discovered {len(workspace_classes)} workspace hyperparameter classes for project {project_id}")
                 except Exception as e:
-                    self.logger.error(f"Error scanning workspace hyperparams directory: {e}")
-            
-            # Alternative workspace locations (workspace-aware design)
-            alternative_locations = [
-                self.workspace_root / "development" / "projects" / project_id / "hyperparams",
-                self.workspace_root / "development" / project_id / "hyperparams",
-                self.workspace_root / "workspaces" / project_id / "hyperparams",
-                self.workspace_root / "workspaces" / project_id / "src" / "hyperparams",
-            ]
-            
-            for alt_dir in alternative_locations:
-                if alt_dir.exists():
-                    try:
-                        alt_classes = self._scan_hyperparams_directory(alt_dir)
-                        if alt_classes:
-                            discovered_classes.update(alt_classes)
-                            self.logger.info(f"Discovered {len(alt_classes)} hyperparameter classes in {alt_dir}")
-                    except Exception as e:
-                        self.logger.warning(f"Error scanning alternative hyperparams directory {alt_dir}: {e}")
-        
-        # Also scan for hyperparams in development folder root (workspace-aware)
-        dev_hyperparams_dir = self.workspace_root / "development" / "hyperparams"
-        if dev_hyperparams_dir.exists():
-            try:
-                dev_classes = self._scan_hyperparams_directory(dev_hyperparams_dir)
-                if dev_classes:
-                    discovered_classes.update(dev_classes)
-                    self.logger.info(f"Discovered {len(dev_classes)} development hyperparameter classes")
-            except Exception as e:
-                self.logger.warning(f"Error scanning development hyperparams directory: {e}")
+                    self.logger.error(f"Error scanning workspace hyperparams directory {workspace_dir}: {e}")
         
         return discovered_classes
 
@@ -273,7 +235,57 @@ class ConfigAutoDiscovery:
             return True
         
         return False
-    
+
+    def _discover_workspace_configs(self, workspace_dir: Path, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Discover config classes in a workspace directory."""
+        discovered = {}
+        projects_dir = workspace_dir / "development" / "projects"
+        
+        if not projects_dir.exists():
+            return discovered
+        
+        if project_id:
+            # Search specific project
+            project_dir = projects_dir / project_id
+            if project_dir.exists():
+                config_dir = project_dir / "src" / "cursus_dev" / "steps" / "configs"
+                if config_dir.exists():
+                    discovered.update(self._scan_config_directory(config_dir))
+        else:
+            # Search all projects
+            for project_dir in projects_dir.iterdir():
+                if project_dir.is_dir():
+                    config_dir = project_dir / "src" / "cursus_dev" / "steps" / "configs"
+                    if config_dir.exists():
+                        discovered.update(self._scan_config_directory(config_dir))
+        
+        return discovered
+
+    def _discover_workspace_hyperparams(self, workspace_dir: Path, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """Discover hyperparameter classes in a workspace directory."""
+        discovered = {}
+        projects_dir = workspace_dir / "development" / "projects"
+        
+        if not projects_dir.exists():
+            return discovered
+        
+        if project_id:
+            # Search specific project
+            project_dir = projects_dir / project_id
+            if project_dir.exists():
+                hyperparams_dir = project_dir / "src" / "cursus_dev" / "steps" / "hyperparams"
+                if hyperparams_dir.exists():
+                    discovered.update(self._scan_hyperparams_directory(hyperparams_dir))
+        else:
+            # Search all projects
+            for project_dir in projects_dir.iterdir():
+                if project_dir.is_dir():
+                    hyperparams_dir = project_dir / "src" / "cursus_dev" / "steps" / "hyperparams"
+                    if hyperparams_dir.exists():
+                        discovered.update(self._scan_hyperparams_directory(hyperparams_dir))
+        
+        return discovered
+
     def _file_to_module_path(self, file_path: Path) -> str:
         """
         Convert file path to Python module path.

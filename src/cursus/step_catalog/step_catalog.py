@@ -10,7 +10,7 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Type, Any
+from typing import Dict, List, Optional, Type, Any, Union
 
 from .models import StepInfo, FileMetadata, StepSearchResult
 from .config_discovery import ConfigAutoDiscovery
@@ -26,19 +26,41 @@ class StepCatalog:
     while maintaining simple, efficient O(1) lookups through dictionary-based indexing.
     """
     
-    def __init__(self, workspace_root: Optional[Path] = None):
+    def __init__(self, workspace_dirs: Optional[Union[Path, List[Path]]] = None):
         """
-        Initialize the unified step catalog.
+        Initialize the unified step catalog with optional workspace directories.
         
         Args:
-            workspace_root: Root directory of the workspace. Defaults to src/cursus/steps
+            workspace_dirs: Optional workspace directory(ies) for workspace-aware discovery.
+                           Can be a single Path or list of Paths.
+                           Each should contain development/projects/ structure.
+                           If None, only discovers package components.
+        
+        Examples:
+            # Package-only discovery (works in all deployment scenarios)
+            catalog = StepCatalog()
+            
+            # Single workspace directory
+            catalog = StepCatalog(workspace_dirs=Path("/path/to/workspace"))
+            
+            # Multiple workspace directories
+            catalog = StepCatalog(workspace_dirs=[
+                Path("/workspace1"), Path("/workspace2")
+            ])
         """
-        if workspace_root is None:
-            # Default to src/cursus/steps relative to this module's location
-            catalog_dir = Path(__file__).parent  # src/cursus/step_catalog/
-            workspace_root = catalog_dir.parent / 'steps'  # src/cursus/steps
-        self.workspace_root = workspace_root
-        self.config_discovery = ConfigAutoDiscovery(workspace_root)
+        # Find package root using relative path (deployment agnostic)
+        self.package_root = self._find_package_root()
+        
+        # Normalize workspace_dirs to list
+        if workspace_dirs is None:
+            self.workspace_dirs = []
+        elif isinstance(workspace_dirs, Path):
+            self.workspace_dirs = [workspace_dirs]
+        else:
+            self.workspace_dirs = list(workspace_dirs)
+        
+        # Initialize config discovery with both search spaces
+        self.config_discovery = ConfigAutoDiscovery(self.package_root, self.workspace_dirs)
         self.logger = logging.getLogger(__name__)
         
         # Simple in-memory indexes (US4: Efficient Scaling)
@@ -450,6 +472,29 @@ class StepCatalog:
         """
         return self.get_step_info(node_name)
     
+    def _find_package_root(self) -> Path:
+        """
+        Find cursus package root using relative path navigation.
+        
+        Works in all deployment scenarios:
+        - PyPI: site-packages/cursus/
+        - Source: src/cursus/
+        - Submodule: parent_package/cursus/
+        """
+        # From cursus/step_catalog/step_catalog.py, navigate to cursus package root
+        current_file = Path(__file__)
+        
+        # Navigate up to find cursus package root
+        current_dir = current_file.parent
+        while current_dir.name != 'cursus' and current_dir.parent != current_dir:
+            current_dir = current_dir.parent
+        
+        if current_dir.name == 'cursus':
+            return current_dir
+        else:
+            # Fallback: assume we're in cursus package structure
+            return current_file.parent.parent  # step_catalog -> cursus
+
     # Private methods for simple implementation
     def _ensure_index_built(self) -> None:
         """Build index on first access (lazy loading)."""
@@ -458,54 +503,19 @@ class StepCatalog:
             self._index_built = True
     
     def _build_index(self) -> None:
-        """Simple index building using directory traversal."""
+        """Build index using simplified dual-space discovery."""
         start_time = time.time()
         
         try:
-            # Load registry data first
-            try:
-                from ..registry.step_names import get_step_names
-                
-                step_names_dict = get_step_names()
-                for step_name, registry_data in step_names_dict.items():
-                    step_info = StepInfo(
-                        step_name=step_name,
-                        workspace_id="core",
-                        registry_data=registry_data,
-                        file_components={}
-                    )
-                    self._step_index[step_name] = step_info
-                    self._workspace_steps.setdefault("core", []).append(step_name)
-                
-                self.logger.debug(f"Loaded {len(step_names_dict)} steps from registry")
-                
-            except ImportError as e:
-                self.logger.warning(f"Could not import STEP_NAMES registry: {e}")
+            # Load registry data (existing functionality)
+            self._load_registry_data()
             
-            # Discover file components across workspaces
-            try:
-                if isinstance(self.workspace_root, (str, Path)):
-                    workspace_root_path = Path(self.workspace_root)
-                else:
-                    # Handle case where workspace_root might be something else (like dict)
-                    self.logger.warning(f"Unexpected workspace_root type: {type(self.workspace_root)}, using current directory")
-                    workspace_root_path = Path('.')
-                    
-                core_steps_dir = workspace_root_path / "src" / "cursus" / "steps"
-                if core_steps_dir.exists():
-                    self._discover_workspace_components("core", core_steps_dir)
-                    
-                # Discover developer workspaces
-                dev_projects_dir = workspace_root_path / "development" / "projects"
-                if dev_projects_dir.exists():
-                    for project_dir in dev_projects_dir.iterdir():
-                        if project_dir.is_dir():
-                            workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
-                            if workspace_steps_dir.exists():
-                                self._discover_workspace_components(project_dir.name, workspace_steps_dir)
-            except Exception as e:
-                self.logger.error(f"Error during workspace component discovery: {e}")
-                # Continue with empty workspace discovery
+            # Discover package components (always available)
+            self._discover_package_components()
+            
+            # Discover workspace components (if workspace_dirs provided)
+            if self.workspace_dirs:
+                self._discover_workspace_components()
             
             # Record successful build
             build_time = time.time() - start_time
@@ -517,12 +527,66 @@ class StepCatalog:
         except Exception as e:
             build_time = time.time() - start_time
             self.logger.error(f"Index build failed after {build_time:.3f}s: {e}")
-            # Graceful degradation - use empty index
+            # Graceful degradation
             self._step_index = {}
             self._component_index = {}
             self._workspace_steps = {}
-    
-    def _discover_workspace_components(self, workspace_id: str, steps_dir: Path) -> None:
+
+    def _load_registry_data(self) -> None:
+        """Load registry data first."""
+        try:
+            from ..registry.step_names import get_step_names
+            
+            step_names_dict = get_step_names()
+            for step_name, registry_data in step_names_dict.items():
+                step_info = StepInfo(
+                    step_name=step_name,
+                    workspace_id="core",
+                    registry_data=registry_data,
+                    file_components={}
+                )
+                self._step_index[step_name] = step_info
+                self._workspace_steps.setdefault("core", []).append(step_name)
+            
+            self.logger.debug(f"Loaded {len(step_names_dict)} steps from registry")
+            
+        except ImportError as e:
+            self.logger.warning(f"Could not import STEP_NAMES registry: {e}")
+
+    def _discover_package_components(self) -> None:
+        """Discover components within the cursus package."""
+        try:
+            # Package components are always at package_root/steps/
+            core_steps_dir = self.package_root / "steps"
+            if core_steps_dir.exists():
+                self._discover_workspace_components_in_dir("core", core_steps_dir)
+        except Exception as e:
+            self.logger.error(f"Error discovering package components: {e}")
+
+    def _discover_workspace_components(self) -> None:
+        """Discover components in user-provided workspace directories."""
+        for workspace_dir in self.workspace_dirs:
+            try:
+                workspace_path = Path(workspace_dir)
+                if not workspace_path.exists():
+                    self.logger.warning(f"Workspace directory does not exist: {workspace_path}")
+                    continue
+                
+                # Look for development/projects/ structure
+                dev_projects_dir = workspace_path / "development" / "projects"
+                if dev_projects_dir.exists():
+                    for project_dir in dev_projects_dir.iterdir():
+                        if project_dir.is_dir():
+                            workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
+                            if workspace_steps_dir.exists():
+                                self._discover_workspace_components_in_dir(project_dir.name, workspace_steps_dir)
+                else:
+                    self.logger.warning(f"Workspace directory missing development/projects structure: {workspace_path}")
+                    
+            except Exception as e:
+                self.logger.error(f"Error discovering workspace components in {workspace_dir}: {e}")
+
+    def _discover_workspace_components_in_dir(self, workspace_id: str, steps_dir: Path) -> None:
         """
         Discover components in a workspace directory.
         
@@ -563,6 +627,7 @@ class StepCatalog:
             except Exception as e:
                 self.logger.error(f"Error scanning component directory {component_dir}: {e}")
                 continue
+    
     
     def _add_component_to_index(self, step_name: str, py_file: Path, component_type: str, workspace_id: str) -> None:
         """

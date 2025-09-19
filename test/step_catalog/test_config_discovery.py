@@ -41,14 +41,15 @@ class TestConfigAutoDiscovery:
     def config_discovery(self, temp_workspace):
         """Create ConfigAutoDiscovery instance with temporary workspace."""
         workspace_root, _, _ = temp_workspace
-        return ConfigAutoDiscovery(workspace_root)
+        return ConfigAutoDiscovery(workspace_root, [workspace_root])
     
     def test_init(self, temp_workspace):
         """Test ConfigAutoDiscovery initialization."""
         workspace_root, _, _ = temp_workspace
-        discovery = ConfigAutoDiscovery(workspace_root)
+        discovery = ConfigAutoDiscovery(workspace_root, [workspace_root])
         
-        assert discovery.workspace_root == workspace_root
+        assert discovery.package_root == workspace_root
+        assert discovery.workspace_dirs == [workspace_root]
         assert discovery.logger is not None
     
     def test_discover_config_classes_empty_directories(self, config_discovery):
@@ -128,16 +129,20 @@ class TestConfig(BaseModel):
         with patch.object(config_discovery, 'discover_config_classes') as mock_discover:
             mock_discover.return_value = {"AutoConfig": Mock}
             
-            # Mock the import inside the method
-            with patch('cursus.core.config_fields.config_class_store.ConfigClassStore', mock_store_class):
-                result = config_discovery.build_complete_config_classes()
+            with patch.object(config_discovery, 'discover_hyperparameter_classes') as mock_discover_hyper:
+                mock_discover_hyper.return_value = {"AutoHyperparams": Mock}
                 
-                # Should include both manual and auto-discovered configs
-                assert "ManualConfig" in result
-                assert "AutoConfig" in result
-                
-                # Should register auto-discovered config
-                mock_store_class.register.assert_called_once()
+                # Mock the import inside the method - use the correct path
+                with patch('cursus.step_catalog.config_discovery.ConfigClassStore', mock_store_class):
+                    result = config_discovery.build_complete_config_classes()
+                    
+                    # Should include both manual and auto-discovered configs
+                    assert "ManualConfig" in result
+                    assert "AutoConfig" in result
+                    assert "AutoHyperparams" in result
+                    
+                    # Should register auto-discovered config
+                    mock_store_class.register.assert_called_once()
     
     def test_build_complete_config_classes_import_error(self, config_discovery):
         """Test build_complete_config_classes fallback when ConfigClassStore import fails."""
@@ -352,7 +357,7 @@ class TestConfigAutoDiscoveryIntegration:
     
     def test_real_config_class_detection(self):
         """Test with real config class examples."""
-        discovery = ConfigAutoDiscovery(Path("."))
+        discovery = ConfigAutoDiscovery(Path("."), [])
         
         # Test BaseModel inheritance detection
         basemodel_code = """
@@ -380,7 +385,7 @@ class ProcessingConfig:
     
     def test_module_path_conversion_realistic(self):
         """Test module path conversion with realistic paths."""
-        discovery = ConfigAutoDiscovery(Path("/workspace"))
+        discovery = ConfigAutoDiscovery(Path("/workspace"), [])
         
         # Test typical cursus config path
         cursus_path = Path("/workspace/src/cursus/steps/configs/config_training_step.py")
@@ -396,10 +401,10 @@ class ProcessingConfig:
         """Test complete config discovery workflow simulation."""
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
-            discovery = ConfigAutoDiscovery(workspace_root)
+            discovery = ConfigAutoDiscovery(workspace_root, [])
             
             # Create realistic directory structure
-            core_config_dir = workspace_root / "src" / "cursus" / "steps" / "configs"
+            core_config_dir = workspace_root / "steps" / "configs"
             core_config_dir.mkdir(parents=True)
             
             # Create realistic config file

@@ -30,11 +30,12 @@ class TestStepCatalogInitialization:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield Path(temp_dir)
     
-    def test_init(self, temp_workspace):
-        """Test StepCatalog initialization."""
-        catalog = StepCatalog(temp_workspace)
+    def test_init_package_only(self, temp_workspace):
+        """Test StepCatalog initialization with package-only discovery."""
+        catalog = StepCatalog()
         
-        assert catalog.workspace_root == temp_workspace
+        assert catalog.package_root.name == "cursus"
+        assert catalog.workspace_dirs == []
         assert isinstance(catalog.config_discovery, ConfigAutoDiscovery)
         assert catalog.logger is not None
         assert catalog._step_index == {}
@@ -42,6 +43,28 @@ class TestStepCatalogInitialization:
         assert catalog._workspace_steps == {}
         assert catalog._index_built == False
         assert isinstance(catalog.metrics, dict)
+    
+    def test_init_with_workspace_dirs(self, temp_workspace):
+        """Test StepCatalog initialization with workspace directories."""
+        catalog = StepCatalog(workspace_dirs=temp_workspace)
+        
+        assert catalog.package_root.name == "cursus"
+        assert catalog.workspace_dirs == [temp_workspace]
+        assert isinstance(catalog.config_discovery, ConfigAutoDiscovery)
+        assert catalog.logger is not None
+        assert catalog._step_index == {}
+        assert catalog._component_index == {}
+        assert catalog._workspace_steps == {}
+        assert catalog._index_built == False
+        assert isinstance(catalog.metrics, dict)
+    
+    def test_init_with_multiple_workspace_dirs(self, temp_workspace):
+        """Test StepCatalog initialization with multiple workspace directories."""
+        workspace_dirs = [temp_workspace, temp_workspace / "other"]
+        catalog = StepCatalog(workspace_dirs=workspace_dirs)
+        
+        assert catalog.package_root.name == "cursus"
+        assert catalog.workspace_dirs == workspace_dirs
     
     def test_metrics_initialization(self, temp_workspace):
         """Test metrics are properly initialized."""
@@ -653,7 +676,7 @@ class TestFactoryFunction:
             catalog = create_step_catalog(workspace_root, use_unified=True)
             
             assert isinstance(catalog, StepCatalog)
-            assert catalog.workspace_root == workspace_root
+            assert workspace_root in catalog.workspace_dirs
     
     def test_create_step_catalog_with_feature_flag(self):
         """Test create_step_catalog with feature flag."""
@@ -701,28 +724,29 @@ class TestIntegrationScenarios:
             test_script = scripts_dir / "data_preprocessing.py"
             test_script.write_text("# Test script")
             
-            # Initialize catalog
-            catalog = StepCatalog(workspace_root)
-            
-            # Mock registry to avoid import issues
-            mock_registry = {"data_preprocessing": {"config_class": "DataPreprocessingConfig"}}
-            
-            with patch('cursus.registry.step_names.STEP_NAMES', mock_registry):
-                # Test the complete workflow
-                step_info = catalog.get_step_info("data_preprocessing")
+            # Initialize catalog with workspace directories
+            with patch.object(StepCatalog, '_find_package_root', return_value=workspace_root / "src" / "cursus"):
+                catalog = StepCatalog(workspace_dirs=workspace_root)
                 
-                assert step_info is not None
-                assert step_info.step_name == "data_preprocessing"
-                assert step_info.workspace_id == "core"
+                # Mock registry to avoid import issues
+                mock_registry = {"data_preprocessing": {"config_class": "DataPreprocessingConfig"}}
                 
-                # Test search
-                search_results = catalog.search_steps("preprocessing")
-                assert len(search_results) > 0
-                
-                # Test metrics
-                metrics = catalog.get_metrics_report()
-                assert metrics['total_queries'] > 0
-                assert metrics['success_rate'] > 0
+                with patch('cursus.registry.step_names.STEP_NAMES', mock_registry):
+                    # Test the complete workflow
+                    step_info = catalog.get_step_info("data_preprocessing")
+                    
+                    assert step_info is not None
+                    assert step_info.step_name == "data_preprocessing"
+                    assert step_info.workspace_id == "core"
+                    
+                    # Test search
+                    search_results = catalog.search_steps("preprocessing")
+                    assert len(search_results) > 0
+                    
+                    # Test metrics
+                    metrics = catalog.get_metrics_report()
+                    assert metrics['total_queries'] > 0
+                    assert metrics['success_rate'] > 0
     
     def test_multi_workspace_realistic_scenario(self):
         """Test realistic multi-workspace scenario."""

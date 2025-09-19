@@ -242,9 +242,9 @@ class StepBuilderRegistry:
             from ..step_catalog import StepCatalog
             from pathlib import Path
             
-            # Initialize step catalog for discovery
+            # Initialize step catalog for discovery with new dual search space API
             workspace_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_root)
+            catalog = StepCatalog(workspace_dirs=[workspace_root])
             
             # Get all available steps from catalog
             available_steps = catalog.list_available_steps()

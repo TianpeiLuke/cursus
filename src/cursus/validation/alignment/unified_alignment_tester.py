@@ -694,9 +694,9 @@ class UnifiedAlignmentTester:
         from ...step_catalog import StepCatalog
         from pathlib import Path
         
-        # Initialize step catalog
+        # Initialize step catalog with new dual search space API
         workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-        return StepCatalog(workspace_root)
+        return StepCatalog(workspace_dirs=[workspace_root])
 
     def _discover_scripts_with_catalog(self, catalog) -> List[str]:
         """Discover scripts using step catalog."""
