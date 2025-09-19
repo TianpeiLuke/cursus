@@ -27,39 +27,103 @@ This checklist tracks the systematic update of all files that import the step ca
 
 **Migration Pattern**: `StepCatalog(workspace_root)` → `StepCatalog(workspace_dirs=[workspace_root])`
 
+## ⚠️ **CRITICAL PORTABILITY REMINDER**
+
+**🚨 EVERY FILE UPDATE MUST CHECK FOR PORTABILITY ISSUES! 🚨**
+
+During integration updates, we discovered **5 critical portability issues** that would have broken PyPI and submodule deployments. **Every file in this checklist must be audited for:**
+
+### **Common Portability Anti-Patterns to Fix:**
+
+1. **❌ Hardcoded Path Calculations**
+   ```python
+   # BROKEN: Will fail in PyPI/submodule deployments
+   workspace_root = Path(__file__).parent.parent.parent.parent
+   catalog = StepCatalog(workspace_dirs=[workspace_root])
+   ```
+
+2. **✅ Portable Solutions**
+   ```python
+   # PORTABLE: Package-only discovery (most common need)
+   catalog = StepCatalog(workspace_dirs=None)
+   
+   # OR: Workspace-aware discovery (when workspace is actually needed)
+   catalog = StepCatalog(workspace_dirs=[provided_workspace_root])
+   ```
+
+3. **❌ Conceptual Confusion: package_root vs workspace_dirs**
+   ```python
+   # BROKEN: Using workspace_root as package_root
+   config_discovery = ConfigAutoDiscovery(workspace_root, workspace_dirs)
+   ```
+
+4. **✅ Conceptual Clarity**
+   ```python
+   # CORRECT: Proper separation of concerns
+   temp_catalog = StepCatalog(workspace_dirs=None)
+   package_root = temp_catalog.package_root  # Cursus package location
+   workspace_dirs = [workspace_root] if workspace_root else []  # User workspaces
+   config_discovery = ConfigAutoDiscovery(package_root, workspace_dirs)
+   ```
+
+### **Deployment Compatibility Check:**
+- ✅ **Development/Source**: Must work when run from source
+- ✅ **PyPI Installation**: Must work when installed via `pip install cursus`
+- ✅ **Submodule Integration**: Must work when cursus is a git submodule
+
+### **Files Already Fixed (5/5 Critical Portability Issues):**
+1. `src/cursus/registry/builder_registry.py` - Fixed hardcoded path
+2. `src/cursus/steps/configs/utils.py` - Fixed hardcoded path + ConfigAutoDiscovery
+3. `src/cursus/core/config_fields/unified_config_manager.py` - Fixed conceptual confusion
+4. `src/cursus/validation/builders/registry_discovery.py` - Fixed hardcoded paths (2 methods)
+5. `src/cursus/validation/alignment/unified_alignment_tester.py` - Fixed hardcoded path
+
+**⚠️ EVERY REMAINING FILE MUST BE CHECKED FOR THESE SAME ISSUES! ⚠️**
+
 ## Core Systems (High Priority) - Complete Replacement
 
 ### ✅ UPDATED - Core Config Fields Integration
 - [x] **`src/cursus/core/config_fields/unified_config_manager.py`**
   - [x] Updated StepCatalog initialization: `StepCatalog(workspace_dirs=[workspace_root])`
-  - [x] Updated ConfigAutoDiscovery fallback: `ConfigAutoDiscovery(workspace_root, workspace_dirs)`
+  - [x] Fixed ConfigAutoDiscovery fallback: Corrected package_root vs workspace_dirs confusion
+  - [x] Enhanced: Uses StepCatalog's package root detection to avoid code duplication
   - [x] Verified: Lazy loading with dual search space API
   - [x] Verified: Fallback handling preserved
+  - [x] Fixed: Conceptual separation between package_root and workspace_dirs
 
 ### ✅ UPDATED - Step Configuration Utilities
 - [x] **`src/cursus/steps/configs/utils.py`**
-  - [x] Updated StepCatalog initialization: `StepCatalog(workspace_dirs=[workspace_root])`
+  - [x] Updated StepCatalog initialization: `StepCatalog(workspace_dirs=None)` (PORTABLE)
+  - [x] Fixed: Removed hardcoded path calculation in build_complete_config_classes
+  - [x] Enhanced: ConfigAutoDiscovery fallback also made portable
   - [x] Verified: Enhanced discovery maintained
   - [x] Verified: Project-specific loading preserved
+  - [x] Enhanced: Now works in PyPI, source, and submodule deployment scenarios
 
 ### ✅ UPDATED - Registry System Integration
 - [x] **`src/cursus/registry/builder_registry.py`**
-  - [x] Updated StepCatalog initialization: `StepCatalog(workspace_dirs=[workspace_root])`
+  - [x] Updated StepCatalog initialization: `StepCatalog(workspace_dirs=None)` (PORTABLE)
+  - [x] Fixed: Removed hardcoded path calculation for universal deployment compatibility
   - [x] Verified: Builder discovery maintained
   - [x] Verified: Auto-discovery functionality preserved
+  - [x] Enhanced: Now works in PyPI, source, and submodule deployment scenarios
 
 ### ✅ UPDATED - Validation System Integration
 - [x] **`src/cursus/validation/alignment/unified_alignment_tester.py`**
-  - [x] Updated StepCatalog initialization: `StepCatalog(workspace_dirs=[workspace_root])`
+  - [x] Fixed StepCatalog initialization (_get_step_catalog): `StepCatalog(workspace_dirs=None)` (PORTABLE)
+  - [x] Fixed: Removed hardcoded path calculation for universal deployment compatibility
   - [x] Verified: Script discovery maintained
   - [x] Verified: Alignment testing functionality preserved
+  - [x] Enhanced: Now works in PyPI, source, and submodule deployment scenarios
 
 ### ✅ UPDATED - Registry Discovery System
 - [x] **`src/cursus/validation/builders/registry_discovery.py`**
-  - [x] Updated StepCatalog initialization (get_builder_class_path): `StepCatalog(workspace_dirs=[workspace_root])`
-  - [x] Updated StepCatalog initialization (load_builder_class): `StepCatalog(workspace_dirs=[workspace_root])`
+  - [x] Fixed StepCatalog initialization (get_builder_class_path): `StepCatalog(workspace_dirs=None)` (PORTABLE)
+  - [x] Fixed StepCatalog initialization (load_builder_class): `StepCatalog(workspace_dirs=None)` (PORTABLE)
+  - [x] Fixed: Removed hardcoded path calculations for universal deployment compatibility
   - [x] Verified: Builder class path discovery maintained
   - [x] Verified: Builder class loading functionality preserved
+  - [x] Enhanced: Now works in PyPI, source, and submodule deployment scenarios
 
 ## Validation Systems (Medium Priority) - Significant Simplification
 

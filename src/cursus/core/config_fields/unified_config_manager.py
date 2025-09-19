@@ -127,9 +127,18 @@ class UnifiedConfigManager:
             else:
                 # Fallback to direct import
                 from ...step_catalog.config_discovery import ConfigAutoDiscovery
-                workspace_root = self.workspace_root or Path.cwd()
-                workspace_dirs = [workspace_root] if self.workspace_root else []
-                config_discovery = ConfigAutoDiscovery(workspace_root, workspace_dirs)
+                from ...step_catalog import StepCatalog
+                
+                # ✅ CORRECT: Use StepCatalog's package root detection
+                # Reuse existing _find_package_root logic from StepCatalog
+                temp_catalog = StepCatalog(workspace_dirs=None)
+                package_root = temp_catalog.package_root
+                
+                workspace_dirs = [self.workspace_root] if self.workspace_root else []
+                config_discovery = ConfigAutoDiscovery(
+                    package_root=package_root,    # Cursus package location (from StepCatalog)
+                    workspace_dirs=workspace_dirs # User workspace directories
+                )
                 discovered_classes = config_discovery.build_complete_config_classes(project_id)
                 logger.info(f"Discovered {len(discovered_classes)} config classes via ConfigAutoDiscovery")
                 return discovered_classes

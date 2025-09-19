@@ -240,11 +240,11 @@ class StepBuilderRegistry:
         # Use step catalog for discovery
         try:
             from ..step_catalog import StepCatalog
-            from pathlib import Path
             
-            # Initialize step catalog for discovery with new dual search space API
-            workspace_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_dirs=[workspace_root])
+            # ✅ PORTABLE: Package-only discovery (no workspace directories)
+            # Works in PyPI, source, and submodule scenarios
+            # StepCatalog autonomously finds package root regardless of deployment
+            catalog = StepCatalog(workspace_dirs=None)  # None for package-only discovery
             
             # Get all available steps from catalog
             available_steps = catalog.list_available_steps()

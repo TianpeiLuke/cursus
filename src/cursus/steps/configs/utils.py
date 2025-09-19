@@ -493,6 +493,7 @@ def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str,
     the unified step catalog system's ConfigAutoDiscovery.
     
     REFACTORED: Now uses step catalog integration with multiple fallback strategies.
+    PORTABLE: Works across all deployment scenarios (PyPI, source, submodule).
     
     Success Rate: 83% failure → 100% success
     Deployment: Works in all environments (dev, Lambda, Docker, PyPI)
@@ -508,11 +509,10 @@ def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str,
         # Primary approach: Use step catalog's unified discovery
         from ...step_catalog import StepCatalog
         
-        # Get workspace root (assuming we're in src/cursus/steps/configs/)
-        workspace_root = Path(__file__).parent.parent.parent.parent.parent
-        
-        # Create step catalog instance with new dual search space API
-        catalog = StepCatalog(workspace_dirs=[workspace_root])
+        # ✅ PORTABLE: Package-only discovery for config classes
+        # Works in PyPI, source, and submodule scenarios
+        # StepCatalog autonomously finds package root regardless of deployment
+        catalog = StepCatalog(workspace_dirs=None)  # None for package-only discovery
         
         # Use step catalog's enhanced discovery with workspace awareness
         discovered_classes = catalog.build_complete_config_classes(project_id)
@@ -533,9 +533,9 @@ def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str,
         try:
             from ...step_catalog.config_discovery import ConfigAutoDiscovery
             
-            # Get workspace root
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent
-            config_discovery = ConfigAutoDiscovery(workspace_root)
+            # ✅ PORTABLE: Let ConfigAutoDiscovery handle package root detection
+            # No hardcoded paths - works in all deployment scenarios
+            config_discovery = ConfigAutoDiscovery()  # Uses autonomous package root detection
             discovered_classes = config_discovery.build_complete_config_classes(project_id)
             
             logger.info(f"Successfully discovered {len(discovered_classes)} config classes using ConfigAutoDiscovery")

@@ -101,11 +101,11 @@ class RegistryStepDiscovery:
         # Use step catalog for discovery
         try:
             from ...step_catalog import StepCatalog
-            from pathlib import Path
             
-            # Initialize step catalog with new dual search space API
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_dirs=[workspace_root])
+            # ✅ PORTABLE: Package-only discovery for builder class paths
+            # Works in PyPI, source, and submodule scenarios
+            # StepCatalog autonomously finds package root regardless of deployment
+            catalog = StepCatalog(workspace_dirs=None)  # None for package-only discovery
             
             # Use catalog's get_builder_class_path method
             builder_path = catalog.get_builder_class_path(step_name)
@@ -141,11 +141,11 @@ class RegistryStepDiscovery:
         # Use step catalog for loading
         try:
             from ...step_catalog import StepCatalog
-            from pathlib import Path
             
-            # Initialize step catalog with new dual search space API
-            workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-            catalog = StepCatalog(workspace_dirs=[workspace_root])
+            # ✅ PORTABLE: Package-only discovery for builder class loading
+            # Works in PyPI, source, and submodule scenarios
+            # StepCatalog autonomously finds package root regardless of deployment
+            catalog = StepCatalog(workspace_dirs=None)  # None for package-only discovery
             
             # Use catalog's load_builder_class method
             builder_class = catalog.load_builder_class(step_name)

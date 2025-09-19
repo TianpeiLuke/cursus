@@ -692,11 +692,11 @@ class UnifiedAlignmentTester:
     def _get_step_catalog(self):
         """Get step catalog instance with unified initialization logic."""
         from ...step_catalog import StepCatalog
-        from pathlib import Path
         
-        # Initialize step catalog with new dual search space API
-        workspace_root = Path(__file__).parent.parent.parent.parent.parent  # Go up to project root
-        return StepCatalog(workspace_dirs=[workspace_root])
+        # ✅ PORTABLE: Package-only discovery for script discovery
+        # Works in PyPI, source, and submodule scenarios
+        # StepCatalog autonomously finds package root regardless of deployment
+        return StepCatalog(workspace_dirs=None)  # None for package-only discovery
 
     def _discover_scripts_with_catalog(self, catalog) -> List[str]:
         """Discover scripts using step catalog."""
