@@ -1,0 +1,2716 @@
+{
+  "configuration": {
+    "shared": {
+      "author": "lukexie",
+      "aws_region": "us-east-1",
+      "bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
+      "current_date": "2025-07-25",
+      "framework_version": "1.7-1",
+      "model_class": "xgboost",
+      "pipeline_description": "AtoZ xgboost Model NA",
+      "pipeline_name": "lukexie-AtoZ-xgboost-NA",
+      "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.0.0",
+      "pipeline_version": "1.0.0",
+      "py_version": "py3",
+      "region": "NA",
+      "role": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+      "service_name": "AtoZ",
+      "source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda"
+    },
+    "specific": {
+      "Base": {
+        "__model_module__": "src.pipeline_steps.config_base",
+        "__model_type__": "BasePipelineConfig"
+      },
+      "CradleDataLoading_calibration": {
+        "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+        "__model_type__": "CradleDataLoadConfig",
+        "cradle_job_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "CradleJobSpecificationConfig",
+          "cluster_type": "MEDIUM",
+          "cradle_account": "Buyer-Abuse-RnD-Dev",
+          "extra_spark_job_arguments": "",
+          "job_retry_count": 4
+        },
+        "data_sources_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "DataSourcesSpecificationConfig",
+          "data_sources": {
+            "__type_info__": "list",
+            "value": [
+              {
+                "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                "__model_type__": "DataSourceConfig",
+                "data_source_name": "RAW_MDS_NA",
+                "data_source_type": "MDS",
+                "mds_data_source_properties": {
+                  "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                  "__model_type__": "MdsDataSourceConfig",
+                  "org_id": 0,
+                  "output_schema": [
+                    {
+                      "field_name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_pendingClaimCount",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claim_reason",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_allClaimCount365day",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_returned",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_delivered",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_status",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_lifetimeClaimCount",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "shipments_status",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "objectId",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "PAYMETH",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimAmount_value",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "transactionDate",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_returning",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "COMP_DAYOB",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+                      "field_type": "STRING"
+                    }
+                  ],
+                  "region": "NA",
+                  "service_name": "AtoZ",
+                  "use_hourly_edx_data_set": false
+                }
+              },
+              {
+                "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                "__model_type__": "DataSourceConfig",
+                "data_source_name": "TAGS",
+                "data_source_type": "EDX",
+                "edx_data_source_properties": {
+                  "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                  "__model_type__": "EdxDataSourceConfig",
+                  "edx_dataset": "atoz-tag",
+                  "edx_manifest_key": "[\"24292902\",2025-04-17T00:00:00Z,2025-04-28T00:00:00Z,\"NA\"]",
+                  "edx_provider": "trms-abuse-analytics",
+                  "edx_subject": "qingyuye-notr-exp",
+                  "schema_overrides": [
+                    {
+                      "field_name": "order_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "marketplace_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "tag_date",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "is_abuse",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "abuse_type",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "concession_type",
+                      "field_type": "STRING"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "end_date": "2025-04-28T00:00:00",
+          "start_date": "2025-04-17T00:00:00"
+        },
+        "job_type": "calibration",
+        "output_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "OutputSpecificationConfig",
+          "include_header_in_s3_output": true,
+          "job_type": "calibration",
+          "keep_dot_in_output_schema": false,
+          "output_file_count": 0,
+          "output_format": "PARQUET",
+          "output_save_mode": "ERRORIFEXISTS",
+          "output_schema": [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "COMP_DAYOB",
+            "PAYMETH",
+            "abuse_type",
+            "claimAmount_value",
+            "claim_reason",
+            "claimantInfo_allClaimCount365day",
+            "claimantInfo_lifetimeClaimCount",
+            "claimantInfo_pendingClaimCount",
+            "claimantInfo_status",
+            "concession_type",
+            "is_abuse",
+            "marketplace_id",
+            "objectId",
+            "order_id",
+            "shipments_status",
+            "tag_date",
+            "transactionDate"
+          ],
+          "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.0.0"
+        },
+        "transform_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "TransformSpecificationConfig",
+          "job_split_options": {
+            "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+            "__model_type__": "JobSplitOptionsConfig",
+            "days_per_split": 7,
+            "split_job": false
+          },
+          "transform_sql": "\nSELECT\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_solicit_count_last_365_days,\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_warn_count_last_365_days,\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_solicit_count_last_365_days,\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_warn_count_last_365_days,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_buyer_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_seller_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_diff_topic_si,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_notr_topic_si,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_return_keywords_si,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_buyer_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_seller_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_topic_count,\n    Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_order_count_last_365_days,\n    Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_amount_last_365_days,\n    Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_count_last_365_days,\n    Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_order_count_last_365_days,\n    Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_amount_last_365_days,\n    Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_count_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_amount_si_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_order_count_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_amount_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_count_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_amount_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_count_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_amount_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_count_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_amount_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_order_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_amount_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_order_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_amount_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_diff_refunds_si_365_days,\n    Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_notr_refunds_si_365_days,\n    Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_order_count_last_365_days,\n    Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_amount_last_365_days,\n    Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_count_last_365_days,\n    Abuse__DOT__mfn_refunds_si_by_customer_marketplace__DOT__n_mfn_refund_amount_si_last_365_days,\n    Abuse__DOT__order_to_execution_time_from_eventvariables__DOT__n_order_to_execution,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_available_for_pickup,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_delivered,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_partial_delivered,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returned,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returning,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_undeliverable,\n    COMP_DAYOB,\n    PAYMETH,\n    abuse_type,\n    claimAmount_value,\n    claim_reason,\n    claimantInfo_allClaimCount365day,\n    claimantInfo_lifetimeClaimCount,\n    claimantInfo_pendingClaimCount,\n    claimantInfo_status,\n    concession_type,\n    is_abuse,\n    marketplace_id,\n    objectId,\n    order_id,\n    shipments_status,\n    tag_date,\n    transactionDate\nFROM (\n    SELECT\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_solicit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_warn_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_solicit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_warn_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_buyer_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_seller_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_diff_topic_si,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_notr_topic_si,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_return_keywords_si,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_buyer_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_seller_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_topic_count,\n        RAW_MDS_NA.Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_amount_si_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_diff_refunds_si_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_notr_refunds_si_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_si_by_customer_marketplace__DOT__n_mfn_refund_amount_si_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__order_to_execution_time_from_eventvariables__DOT__n_order_to_execution,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_available_for_pickup,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_delivered,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_partial_delivered,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returned,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returning,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_undeliverable,\n        RAW_MDS_NA.COMP_DAYOB,\n        RAW_MDS_NA.PAYMETH,\n        RAW_MDS_NA.claimAmount_value,\n        RAW_MDS_NA.claim_reason,\n        RAW_MDS_NA.claimantInfo_allClaimCount365day,\n        RAW_MDS_NA.claimantInfo_lifetimeClaimCount,\n        RAW_MDS_NA.claimantInfo_pendingClaimCount,\n        RAW_MDS_NA.claimantInfo_status,\n        RAW_MDS_NA.objectId,\n        RAW_MDS_NA.shipments_status,\n        RAW_MDS_NA.transactionDate,\n        TAGS.abuse_type,\n        TAGS.concession_type,\n        TAGS.is_abuse,\n        TAGS.marketplace_id,\n        TAGS.order_id,\n        TAGS.tag_date,\n        ROW_NUMBER() OVER (PARTITION BY RAW_MDS_NA.objectId, TAGS.order_id ORDER BY RAW_MDS_NA.transactionDate DESC) as row_num\n    FROM RAW_MDS_NA\n    JOIN TAGS ON RAW_MDS_NA.objectId = TAGS.order_id\n)\nWHERE row_num = 1\n"
+        }
+      },
+      "CradleDataLoading_training": {
+        "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+        "__model_type__": "CradleDataLoadConfig",
+        "cradle_job_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "CradleJobSpecificationConfig",
+          "cluster_type": "MEDIUM",
+          "cradle_account": "Buyer-Abuse-RnD-Dev",
+          "extra_spark_job_arguments": "",
+          "job_retry_count": 4
+        },
+        "data_sources_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "DataSourcesSpecificationConfig",
+          "data_sources": {
+            "__type_info__": "list",
+            "value": [
+              {
+                "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                "__model_type__": "DataSourceConfig",
+                "data_source_name": "RAW_MDS_NA",
+                "data_source_type": "MDS",
+                "mds_data_source_properties": {
+                  "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                  "__model_type__": "MdsDataSourceConfig",
+                  "org_id": 0,
+                  "output_schema": [
+                    {
+                      "field_name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_pendingClaimCount",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claim_reason",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_allClaimCount365day",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_returned",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_delivered",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_status",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimantInfo_lifetimeClaimCount",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "shipments_status",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "objectId",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "PAYMETH",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "claimAmount_value",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "transactionDate",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.shiptrack_flag_by_order.n_any_returning",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "COMP_DAYOB",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+                      "field_type": "STRING"
+                    }
+                  ],
+                  "region": "NA",
+                  "service_name": "AtoZ",
+                  "use_hourly_edx_data_set": false
+                }
+              },
+              {
+                "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                "__model_type__": "DataSourceConfig",
+                "data_source_name": "TAGS",
+                "data_source_type": "EDX",
+                "edx_data_source_properties": {
+                  "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+                  "__model_type__": "EdxDataSourceConfig",
+                  "edx_dataset": "atoz-tag",
+                  "edx_manifest_key": "[\"24292902\",2025-01-01T00:00:00Z,2025-04-17T00:00:00Z,\"NA\"]",
+                  "edx_provider": "trms-abuse-analytics",
+                  "edx_subject": "qingyuye-notr-exp",
+                  "schema_overrides": [
+                    {
+                      "field_name": "order_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "marketplace_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "tag_date",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "is_abuse",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "abuse_type",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "concession_type",
+                      "field_type": "STRING"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "end_date": "2025-04-17T00:00:00",
+          "start_date": "2025-01-01T00:00:00"
+        },
+        "job_type": "training",
+        "output_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "OutputSpecificationConfig",
+          "include_header_in_s3_output": true,
+          "job_type": "training",
+          "keep_dot_in_output_schema": false,
+          "output_file_count": 0,
+          "output_format": "PARQUET",
+          "output_save_mode": "ERRORIFEXISTS",
+          "output_schema": [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "COMP_DAYOB",
+            "PAYMETH",
+            "abuse_type",
+            "claimAmount_value",
+            "claim_reason",
+            "claimantInfo_allClaimCount365day",
+            "claimantInfo_lifetimeClaimCount",
+            "claimantInfo_pendingClaimCount",
+            "claimantInfo_status",
+            "concession_type",
+            "is_abuse",
+            "marketplace_id",
+            "objectId",
+            "order_id",
+            "shipments_status",
+            "tag_date",
+            "transactionDate"
+          ],
+          "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.0.0"
+        },
+        "transform_spec": {
+          "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+          "__model_type__": "TransformSpecificationConfig",
+          "job_split_options": {
+            "__model_module__": "src.pipeline_steps.config_data_load_step_cradle",
+            "__model_type__": "JobSplitOptionsConfig",
+            "days_per_split": 7,
+            "split_job": false
+          },
+          "transform_sql": "\nSELECT\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_solicit_count_last_365_days,\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_warn_count_last_365_days,\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_solicit_count_last_365_days,\n    Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_warn_count_last_365_days,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_buyer_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_seller_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_diff_topic_si,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_notr_topic_si,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_return_keywords_si,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_order_message_time_gap,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_buyer_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_seller_message_count,\n    Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_topic_count,\n    Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_order_count_last_365_days,\n    Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_amount_last_365_days,\n    Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_count_last_365_days,\n    Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_order_count_last_365_days,\n    Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_amount_last_365_days,\n    Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_count_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_amount_si_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_order_count_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_amount_last_365_days,\n    Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_count_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_amount_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_count_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_amount_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_count_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_amount_last_365_days,\n    Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_order_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_amount_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_order_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_amount_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_count_last_365_days,\n    Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_diff_refunds_si_365_days,\n    Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_notr_refunds_si_365_days,\n    Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_order_count_last_365_days,\n    Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_amount_last_365_days,\n    Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_count_last_365_days,\n    Abuse__DOT__mfn_refunds_si_by_customer_marketplace__DOT__n_mfn_refund_amount_si_last_365_days,\n    Abuse__DOT__order_to_execution_time_from_eventvariables__DOT__n_order_to_execution,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_available_for_pickup,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_delivered,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_partial_delivered,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returned,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returning,\n    Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_undeliverable,\n    COMP_DAYOB,\n    PAYMETH,\n    abuse_type,\n    claimAmount_value,\n    claim_reason,\n    claimantInfo_allClaimCount365day,\n    claimantInfo_lifetimeClaimCount,\n    claimantInfo_pendingClaimCount,\n    claimantInfo_status,\n    concession_type,\n    is_abuse,\n    marketplace_id,\n    objectId,\n    order_id,\n    shipments_status,\n    tag_date,\n    transactionDate\nFROM (\n    SELECT\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_solicit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_claims_warn_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_solicit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__abuse_fap_action_by_customer_inline_transform_na__DOT__n_concession_warn_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_buyer_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_max_seller_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_diff_topic_si,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_notr_topic_si,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_message_count_with_return_keywords_si,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_buyer_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_min_seller_order_message_time_gap,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_buyer_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_seller_message_count,\n        RAW_MDS_NA.Abuse__DOT__bsm_stats_for_evaluated_mfn_concessions_by_customer_na__DOT__n_total_topic_count,\n        RAW_MDS_NA.Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_afn_orders_by_customer_marketplace__DOT__n_afn_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__completed_mfn_orders_by_customer_marketplace__DOT__n_mfn_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_amount_si_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__dnr_by_customer_marketplace__DOT__n_dnr_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_claims_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_diff_claims_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_a2z_claims_by_customer_na__DOT__n_mfn_notr_claims_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_diff_refunds_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_by_customer_marketplace__DOT__n_mfn_notr_refunds_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_diff_refunds_si_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_categorized_refunds_si_by_customer_marketplace__DOT__n_mfn_notr_refunds_si_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_order_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_amount_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_by_customer_marketplace__DOT__n_mfn_refund_unit_count_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__mfn_refunds_si_by_customer_marketplace__DOT__n_mfn_refund_amount_si_last_365_days,\n        RAW_MDS_NA.Abuse__DOT__order_to_execution_time_from_eventvariables__DOT__n_order_to_execution,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_available_for_pickup,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_delivered,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_partial_delivered,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returned,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_returning,\n        RAW_MDS_NA.Abuse__DOT__shiptrack_flag_by_order__DOT__n_any_undeliverable,\n        RAW_MDS_NA.COMP_DAYOB,\n        RAW_MDS_NA.PAYMETH,\n        RAW_MDS_NA.claimAmount_value,\n        RAW_MDS_NA.claim_reason,\n        RAW_MDS_NA.claimantInfo_allClaimCount365day,\n        RAW_MDS_NA.claimantInfo_lifetimeClaimCount,\n        RAW_MDS_NA.claimantInfo_pendingClaimCount,\n        RAW_MDS_NA.claimantInfo_status,\n        RAW_MDS_NA.objectId,\n        RAW_MDS_NA.shipments_status,\n        RAW_MDS_NA.transactionDate,\n        TAGS.abuse_type,\n        TAGS.concession_type,\n        TAGS.is_abuse,\n        TAGS.marketplace_id,\n        TAGS.order_id,\n        TAGS.tag_date,\n        ROW_NUMBER() OVER (PARTITION BY RAW_MDS_NA.objectId, TAGS.order_id ORDER BY RAW_MDS_NA.transactionDate DESC) as row_num\n    FROM RAW_MDS_NA\n    JOIN TAGS ON RAW_MDS_NA.objectId = TAGS.order_id\n)\nWHERE row_num = 1\n"
+        }
+      },
+      "ModelCalibration": {
+        "__model_module__": "src.pipeline_steps.config_model_calibration_step",
+        "__model_type__": "ModelCalibrationConfig",
+        "calibration_method": "gam",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "error_threshold": 0.05,
+        "gam_splines": 10,
+        "is_binary": true,
+        "label_field": "is_abuse",
+        "monotonic_constraint": true,
+        "multiclass_categories": [
+          0,
+          1
+        ],
+        "num_classes": 2,
+        "processing_entry_point": "model_calibration.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_volume_size": 500,
+        "score_field": "prob_class_1",
+        "score_field_prefix": "prob_class_",
+        "script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/model_calibration.py",
+        "use_large_processing_instance": false
+      },
+      "Package": {
+        "__model_module__": "src.pipeline_steps.config_package_step",
+        "__model_type__": "PackageConfig",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_entry_point": "mims_package.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/mims_package.py",
+        "use_large_processing_instance": false
+      },
+      "Payload": {
+        "__model_module__": "src.pipeline_steps.config_payload_step",
+        "__model_type__": "PayloadConfig",
+        "default_numeric_value": 0.0,
+        "default_text_value": "DEFAULT_TEXT",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "expected_tps": 2,
+        "framework": "xgboost",
+        "max_acceptable_error_rate": 0.2,
+        "max_latency_in_millisecond": 800,
+        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "model_registration_domain": "AtoZ",
+        "model_registration_objective": "AtoZ_Claims_SM_Model_NA",
+        "processing_entry_point": "mims_payload.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/mims_payload.py",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_input_variable_list": [
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "NUMERIC"
+          ],
+          [
+            "COMP_DAYOB",
+            "NUMERIC"
+          ],
+          [
+            "claimAmount_value",
+            "NUMERIC"
+          ],
+          [
+            "claimantInfo_allClaimCount365day",
+            "NUMERIC"
+          ],
+          [
+            "claimantInfo_lifetimeClaimCount",
+            "NUMERIC"
+          ],
+          [
+            "claimantInfo_pendingClaimCount",
+            "NUMERIC"
+          ],
+          [
+            "PAYMETH",
+            "TEXT"
+          ],
+          [
+            "claim_reason",
+            "TEXT"
+          ],
+          [
+            "claimantInfo_status",
+            "TEXT"
+          ],
+          [
+            "shipments_status",
+            "TEXT"
+          ]
+        ],
+        "source_model_inference_output_variable_list": {
+          "calibrated-score": "NUMERIC",
+          "custom-output-label": "TEXT",
+          "legacy-score": "NUMERIC"
+        },
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "use_large_processing_instance": false
+      },
+      "Processing": {
+        "__model_module__": "src.pipeline_steps.config_processing_step_base",
+        "__model_type__": "ProcessingStepConfigBase",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_volume_size": 500,
+        "use_large_processing_instance": false
+      },
+      "Registration": {
+        "__model_module__": "src.pipeline_steps.config_registration_step",
+        "__model_type__": "RegistrationConfig",
+        "framework": "xgboost",
+        "inference_entry_point": "inference_xgb.py",
+        "inference_instance_type": "ml.m5.large",
+        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "model_registration_domain": "AtoZ",
+        "model_registration_objective": "AtoZ_Claims_SM_Model_NA",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_input_variable_list": [
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "NUMERIC"
+          ],
+          [
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "NUMERIC"
+          ],
+          [
+            "COMP_DAYOB",
+            "NUMERIC"
+          ],
+          [
+            "claimAmount_value",
+            "NUMERIC"
+          ],
+          [
+            "claimantInfo_allClaimCount365day",
+            "NUMERIC"
+          ],
+          [
+            "claimantInfo_lifetimeClaimCount",
+            "NUMERIC"
+          ],
+          [
+            "claimantInfo_pendingClaimCount",
+            "NUMERIC"
+          ],
+          [
+            "PAYMETH",
+            "TEXT"
+          ],
+          [
+            "claim_reason",
+            "TEXT"
+          ],
+          [
+            "claimantInfo_status",
+            "TEXT"
+          ],
+          [
+            "shipments_status",
+            "TEXT"
+          ]
+        ],
+        "source_model_inference_output_variable_list": {
+          "calibrated-score": "NUMERIC",
+          "custom-output-label": "TEXT",
+          "legacy-score": "NUMERIC"
+        },
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "variable_schema": {
+          "input": {
+            "variables": [
+              {
+                "name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.shiptrack_flag_by_order.n_any_delivered",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.shiptrack_flag_by_order.n_any_returning",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "Abuse.shiptrack_flag_by_order.n_any_returned",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "COMP_DAYOB",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "claimAmount_value",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "claimantInfo_allClaimCount365day",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "claimantInfo_lifetimeClaimCount",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "claimantInfo_pendingClaimCount",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "PAYMETH",
+                "type": "TEXT"
+              },
+              {
+                "name": "claim_reason",
+                "type": "TEXT"
+              },
+              {
+                "name": "claimantInfo_status",
+                "type": "TEXT"
+              },
+              {
+                "name": "shipments_status",
+                "type": "TEXT"
+              }
+            ]
+          },
+          "output": {
+            "variables": [
+              {
+                "name": "legacy-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "calibrated-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "custom-output-label",
+                "type": "TEXT"
+              }
+            ]
+          }
+        }
+      },
+      "TabularPreprocessing_calibration": {
+        "__model_module__": "src.pipeline_steps.config_tabular_preprocessing_step",
+        "__model_type__": "TabularPreprocessingConfig",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/tabular_preprocess.py",
+        "job_type": "calibration",
+        "label_name": "is_abuse",
+        "processing_entry_point": "tabular_preprocess.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/tabular_preprocess.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": false
+      },
+      "TabularPreprocessing_training": {
+        "__model_module__": "src.pipeline_steps.config_tabular_preprocessing_step",
+        "__model_type__": "TabularPreprocessingConfig",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/tabular_preprocess.py",
+        "job_type": "training",
+        "label_name": "is_abuse",
+        "processing_entry_point": "tabular_preprocess.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/pipeline_scripts/tabular_preprocess.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      },
+      "XGBoostModelEval_calibration": {
+        "__model_module__": "src.pipeline_steps.config_model_eval_step_xgboost",
+        "__model_type__": "XGBoostModelEvalConfig",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda",
+        "eval_metric_choices": [
+          "auc",
+          "average_precision",
+          "f1_score"
+        ],
+        "hyperparameters": {
+          "__model_module__": "src.pipeline_steps.hyperparameters_xgboost",
+          "__model_type__": "XGBoostModelHyperparameters",
+          "alpha_xgb": 0.0,
+          "batch_size": 2,
+          "booster": "gbtree",
+          "cat_field_list": [
+            "PAYMETH",
+            "claim_reason",
+            "claimantInfo_status",
+            "shipments_status"
+          ],
+          "categorical_features_to_encode": [],
+          "class_weights": [
+            1.0,
+            1.0
+          ],
+          "colsample_bylevel": 1.0,
+          "colsample_bynode": 1.0,
+          "colsample_bytree": 1.0,
+          "device": -1,
+          "eta": 0.3,
+          "full_field_list": [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "COMP_DAYOB",
+            "PAYMETH",
+            "claimAmount_value",
+            "claim_reason",
+            "claimantInfo_allClaimCount365day",
+            "claimantInfo_lifetimeClaimCount",
+            "claimantInfo_pendingClaimCount",
+            "claimantInfo_status",
+            "shipments_status",
+            "order_id",
+            "marketplace_id",
+            "is_abuse"
+          ],
+          "gamma": 0.0,
+          "header": 0,
+          "id_name": "order_id",
+          "label_name": "is_abuse",
+          "lambda_xgb": 1.0,
+          "lr": 3e-05,
+          "max_delta_step": 0.0,
+          "max_depth": 6,
+          "max_epochs": 3,
+          "metric_choices": [
+            "f1_score",
+            "auroc"
+          ],
+          "min_child_weight": 1.0,
+          "model_class": "base_model",
+          "multiclass_categories": [
+            0,
+            1
+          ],
+          "num_round": 300,
+          "optimizer": "SGD",
+          "scale_pos_weight": 1.0,
+          "subsample": 1.0,
+          "tab_field_list": [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "COMP_DAYOB",
+            "claimAmount_value",
+            "claimantInfo_allClaimCount365day",
+            "claimantInfo_lifetimeClaimCount",
+            "claimantInfo_pendingClaimCount"
+          ],
+          "tree_method": "auto"
+        },
+        "job_type": "calibration",
+        "processing_entry_point": "model_eval_xgb.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/MODS_BSM/dockers/xgboost_pda/model_eval_xgb.py",
+        "use_large_processing_instance": true,
+        "xgboost_framework_version": "1.7-1"
+      },
+      "XGBoostTraining": {
+        "__model_module__": "src.pipeline_steps.config_training_step_xgboost",
+        "__model_type__": "XGBoostTrainingConfig",
+        "hyperparameter_file": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.0.0/hyperparameters/NA_hyperparameters.json",
+        "hyperparameters": {
+          "__model_module__": "src.pipeline_steps.hyperparameters_xgboost",
+          "__model_type__": "XGBoostModelHyperparameters",
+          "alpha_xgb": 0.0,
+          "batch_size": 2,
+          "booster": "gbtree",
+          "cat_field_list": [
+            "PAYMETH",
+            "claim_reason",
+            "claimantInfo_status",
+            "shipments_status"
+          ],
+          "categorical_features_to_encode": [],
+          "class_weights": [
+            1.0,
+            1.0
+          ],
+          "colsample_bylevel": 1.0,
+          "colsample_bynode": 1.0,
+          "colsample_bytree": 1.0,
+          "device": -1,
+          "eta": 0.3,
+          "full_field_list": [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "COMP_DAYOB",
+            "PAYMETH",
+            "claimAmount_value",
+            "claim_reason",
+            "claimantInfo_allClaimCount365day",
+            "claimantInfo_lifetimeClaimCount",
+            "claimantInfo_pendingClaimCount",
+            "claimantInfo_status",
+            "shipments_status",
+            "order_id",
+            "marketplace_id",
+            "is_abuse"
+          ],
+          "gamma": 0.0,
+          "header": 0,
+          "id_name": "order_id",
+          "label_name": "is_abuse",
+          "lambda_xgb": 1.0,
+          "lr": 3e-05,
+          "max_delta_step": 0.0,
+          "max_depth": 6,
+          "max_epochs": 3,
+          "metric_choices": [
+            "f1_score",
+            "auroc"
+          ],
+          "min_child_weight": 1.0,
+          "model_class": "base_model",
+          "multiclass_categories": [
+            0,
+            1
+          ],
+          "num_round": 300,
+          "optimizer": "SGD",
+          "scale_pos_weight": 1.0,
+          "subsample": 1.0,
+          "tab_field_list": [
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_solicit_count_last_365_days",
+            "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_concession_warn_count_last_365_days",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_max_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_diff_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_notr_topic_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_message_count_with_return_keywords_si",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_buyer_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_min_seller_order_message_time_gap",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_buyer_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_seller_message_count",
+            "Abuse.bsm_stats_for_evaluated_mfn_concessions_by_customer_na.n_total_topic_count",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_order_count_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_amount_last_365_days",
+            "Abuse.completed_afn_orders_by_customer_marketplace.n_afn_unit_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_order_count_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_amount_last_365_days",
+            "Abuse.completed_mfn_orders_by_customer_marketplace.n_mfn_unit_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_amount_si_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_order_count_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_amount_last_365_days",
+            "Abuse.dnr_by_customer_marketplace.n_dnr_unit_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_diff_claims_count_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_amount_last_365_days",
+            "Abuse.mfn_a2z_claims_by_customer_na.n_mfn_notr_claims_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_diff_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_order_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_amount_last_365_days",
+            "Abuse.mfn_categorized_refunds_by_customer_marketplace.n_mfn_notr_refunds_unit_count_last_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_diff_refunds_si_365_days",
+            "Abuse.mfn_categorized_refunds_si_by_customer_marketplace.n_mfn_notr_refunds_si_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_order_count_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_amount_last_365_days",
+            "Abuse.mfn_refunds_by_customer_marketplace.n_mfn_refund_unit_count_last_365_days",
+            "Abuse.mfn_refunds_si_by_customer_marketplace.n_mfn_refund_amount_si_last_365_days",
+            "Abuse.order_to_execution_time_from_eventvariables.n_order_to_execution",
+            "Abuse.shiptrack_flag_by_order.n_any_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_available_for_pickup",
+            "Abuse.shiptrack_flag_by_order.n_any_partial_delivered",
+            "Abuse.shiptrack_flag_by_order.n_any_undeliverable",
+            "Abuse.shiptrack_flag_by_order.n_any_returning",
+            "Abuse.shiptrack_flag_by_order.n_any_returned",
+            "COMP_DAYOB",
+            "claimAmount_value",
+            "claimantInfo_allClaimCount365day",
+            "claimantInfo_lifetimeClaimCount",
+            "claimantInfo_pendingClaimCount"
+          ],
+          "tree_method": "auto"
+        },
+        "training_entry_point": "train_xgb.py",
+        "training_instance_count": 1,
+        "training_instance_type": "ml.m5.12xlarge",
+        "training_volume_size": 800
+      }
+    }
+  },
+  "metadata": {
+    "config_types": {
+      "Base": "BasePipelineConfig",
+      "CradleDataLoading_calibration": "CradleDataLoadConfig",
+      "CradleDataLoading_training": "CradleDataLoadConfig",
+      "ModelCalibration": "ModelCalibrationConfig",
+      "Package": "PackageConfig",
+      "Payload": "PayloadConfig",
+      "Processing": "ProcessingStepConfigBase",
+      "Registration": "RegistrationConfig",
+      "TabularPreprocessing_calibration": "TabularPreprocessingConfig",
+      "TabularPreprocessing_training": "TabularPreprocessingConfig",
+      "XGBoostModelEval_calibration": "XGBoostModelEvalConfig",
+      "XGBoostTraining": "XGBoostTrainingConfig"
+    },
+    "created_at": "2025-08-06T15:49:46.576083",
+    "field_sources": {
+      "author": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "aws_region": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "bucket": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "calibration_method": [
+        "ModelCalibration"
+      ],
+      "cradle_job_spec": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "current_date": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "data_sources_spec": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "default_numeric_value": [
+        "Payload"
+      ],
+      "default_text_value": [
+        "Payload"
+      ],
+      "effective_instance_type": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "effective_source_dir": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "error_threshold": [
+        "ModelCalibration"
+      ],
+      "eval_metric_choices": [
+        "XGBoostModelEval_calibration"
+      ],
+      "expected_tps": [
+        "Payload"
+      ],
+      "framework": [
+        "Registration",
+        "Payload"
+      ],
+      "framework_version": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "full_script_path": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "gam_splines": [
+        "ModelCalibration"
+      ],
+      "hyperparameter_file": [
+        "XGBoostTraining"
+      ],
+      "hyperparameters": [
+        "XGBoostTraining",
+        "XGBoostModelEval_calibration"
+      ],
+      "inference_entry_point": [
+        "Registration"
+      ],
+      "inference_instance_type": [
+        "Registration"
+      ],
+      "is_binary": [
+        "ModelCalibration"
+      ],
+      "job_type": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostModelEval_calibration"
+      ],
+      "label_field": [
+        "ModelCalibration"
+      ],
+      "label_name": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "max_acceptable_error_rate": [
+        "Payload"
+      ],
+      "max_latency_in_millisecond": [
+        "Payload"
+      ],
+      "model_class": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "model_owner": [
+        "Registration",
+        "Payload"
+      ],
+      "model_registration_domain": [
+        "Registration",
+        "Payload"
+      ],
+      "model_registration_objective": [
+        "Registration",
+        "Payload"
+      ],
+      "monotonic_constraint": [
+        "ModelCalibration"
+      ],
+      "multiclass_categories": [
+        "ModelCalibration"
+      ],
+      "num_classes": [
+        "ModelCalibration"
+      ],
+      "output_spec": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "pipeline_description": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "pipeline_name": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "pipeline_s3_loc": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "pipeline_version": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "processing_entry_point": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "processing_framework_version": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "processing_instance_count": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "processing_instance_type_large": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "processing_instance_type_small": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "processing_source_dir": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "processing_volume_size": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "py_version": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "region": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "role": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "score_field": [
+        "ModelCalibration"
+      ],
+      "score_field_prefix": [
+        "ModelCalibration"
+      ],
+      "script_path": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "service_name": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "source_dir": [
+        "Base",
+        "Processing",
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "XGBoostTraining",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Registration",
+        "Payload"
+      ],
+      "source_model_inference_content_types": [
+        "Registration",
+        "Payload"
+      ],
+      "source_model_inference_input_variable_list": [
+        "Registration",
+        "Payload"
+      ],
+      "source_model_inference_output_variable_list": [
+        "Registration",
+        "Payload"
+      ],
+      "source_model_inference_response_types": [
+        "Registration",
+        "Payload"
+      ],
+      "test_val_ratio": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "train_ratio": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "training_entry_point": [
+        "XGBoostTraining"
+      ],
+      "training_instance_count": [
+        "XGBoostTraining"
+      ],
+      "training_instance_type": [
+        "XGBoostTraining"
+      ],
+      "training_volume_size": [
+        "XGBoostTraining"
+      ],
+      "transform_spec": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "use_large_processing_instance": [
+        "Processing",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "ModelCalibration",
+        "XGBoostModelEval_calibration",
+        "Package",
+        "Payload"
+      ],
+      "variable_schema": [
+        "Registration"
+      ],
+      "xgboost_framework_version": [
+        "XGBoostModelEval_calibration"
+      ]
+    }
+  }
+}
