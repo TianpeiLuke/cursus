@@ -318,9 +318,17 @@ class PipelineAssembler:
             from sagemaker.workflow.functions import Join
             outputs[logical_name] = Join(on="/", values=[base_s3_loc, step_type, logical_name])
 
-            # Add debug log
+            # Add debug log with type-safe handling
+            output_value = outputs[logical_name]
+            if hasattr(output_value, 'expr'):
+                # It's a ParameterString/Join object
+                output_repr = output_value.expr
+            else:
+                # It's a regular string
+                output_repr = str(output_value)
+
             logger.debug(
-                f"Generated output for {step_name}.{logical_name}: {outputs[logical_name]}"
+                f"Generated output for {step_name}.{logical_name}: {output_repr}"
             )
 
         return outputs
