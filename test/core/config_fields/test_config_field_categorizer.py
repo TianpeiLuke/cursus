@@ -5,16 +5,12 @@ This module contains tests for the ConfigFieldCategorizer class to ensure
 it correctly implements the simplified field categorization structure.
 """
 
-import unittest
+import pytest
 from unittest import mock
 import json
-import sys
 from collections import defaultdict
 from typing import Any, Dict, List
 from pathlib import Path
-
-# Add the project root to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from cursus.core.config_fields.config_field_categorizer import ConfigFieldCategorizer
 from cursus.core.config_fields.constants import (
@@ -62,11 +58,12 @@ class ProcessingConfig(MockProcessingBase, BaseTestConfig):
     pass
 
 
-class TestConfigFieldCategorizer(unittest.TestCase):
+class TestConfigFieldCategorizer:
     """Test cases for ConfigFieldCategorizer with the simplified structure."""
 
-    def setUp(self):
-        """Set up test fixtures."""
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Set up test fixtures and clean up after each test."""
         self.shared_config1 = SharedFieldsConfig(
             shared_field="shared_value", common_field="common_value"
         )
@@ -101,6 +98,8 @@ class TestConfigFieldCategorizer(unittest.TestCase):
             self.special_config,
             self.processing_config,
         ]
+        
+        yield  # This is where the test runs
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_init_categorizes_configs(self, mock_serialize):
@@ -120,13 +119,13 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         categorizer = ConfigFieldCategorizer(self.configs, MockProcessingBase)
 
         # Verify processing vs non-processing categorization
-        self.assertEqual(len(categorizer.processing_configs), 1)
-        self.assertEqual(len(categorizer.non_processing_configs), 4)
-        self.assertIn(self.processing_config, categorizer.processing_configs)
+        assert len(categorizer.processing_configs) == 1
+        assert len(categorizer.non_processing_configs) == 4
+        assert self.processing_config in categorizer.processing_configs
 
         # Verify field info was collected
-        self.assertIn("shared_field", categorizer.field_info["sources"])
-        self.assertEqual(len(categorizer.field_info["sources"]["shared_field"]), 5)
+        assert "shared_field" in categorizer.field_info["sources"]
+        assert len(categorizer.field_info["sources"]["shared_field"]) == 5
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_is_special_field(self, mock_serialize):
@@ -138,19 +137,15 @@ class TestConfigFieldCategorizer(unittest.TestCase):
 
         # Test special fields from constants
         for field in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
-            self.assertTrue(categorizer._is_special_field(field, "any value", None))
+            assert categorizer._is_special_field(field, "any value", None)
 
         # Test nested dictionary
-        self.assertTrue(
-            categorizer._is_special_field(
-                "nested_dict", {"key1": {"nested": "value"}}, None
-            )
+        assert categorizer._is_special_field(
+            "nested_dict", {"key1": {"nested": "value"}}, None
         )
 
         # Test regular field (not special)
-        self.assertFalse(
-            categorizer._is_special_field("simple_field", "simple_value", None)
-        )
+        assert not categorizer._is_special_field("simple_field", "simple_value", None)
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_is_likely_static(self, mock_serialize):
@@ -161,29 +156,23 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         categorizer = ConfigFieldCategorizer([], MockProcessingBase)
 
         # Test non-static field patterns
-        self.assertFalse(categorizer._is_likely_static("input_field", "value", None))
-        self.assertFalse(categorizer._is_likely_static("output_path", "value", None))
-        self.assertFalse(categorizer._is_likely_static("field_names", "value", None))
+        assert not categorizer._is_likely_static("input_field", "value", None)
+        assert not categorizer._is_likely_static("output_path", "value", None)
+        assert not categorizer._is_likely_static("field_names", "value", None)
 
         # Test fields from special fields list
         for field in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
-            self.assertFalse(categorizer._is_likely_static(field, "value", None))
+            assert not categorizer._is_likely_static(field, "value", None)
 
         # Test complex values
-        self.assertFalse(
-            categorizer._is_likely_static(
-                "complex_dict", {"k1": 1, "k2": 2, "k3": 3, "k4": 4}, None
-            )
+        assert not categorizer._is_likely_static(
+            "complex_dict", {"k1": 1, "k2": 2, "k3": 3, "k4": 4}, None
         )
-        self.assertFalse(
-            categorizer._is_likely_static("long_list", [1, 2, 3, 4, 5, 6], None)
-        )
+        assert not categorizer._is_likely_static("long_list", [1, 2, 3, 4, 5, 6], None)
 
         # Test likely static field
-        self.assertTrue(
-            categorizer._is_likely_static("simple_field", "simple_value", None)
-        )
-        self.assertTrue(categorizer._is_likely_static("version", 1, None))
+        assert categorizer._is_likely_static("simple_field", "simple_value", None)
+        assert categorizer._is_likely_static("version", 1, None)
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_categorize_field(self, mock_serialize):
@@ -209,20 +198,16 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         categorizer = ConfigFieldCategorizer([config1, config2, config3], None)
 
         # Test shared field (same value across all configs)
-        self.assertEqual(categorizer._categorize_field("shared"), CategoryType.SHARED)
+        assert categorizer._categorize_field("shared") == CategoryType.SHARED
 
         # Test different values field
-        self.assertEqual(categorizer._categorize_field("common"), CategoryType.SPECIFIC)
+        assert categorizer._categorize_field("common") == CategoryType.SPECIFIC
 
         # Test unique field (only in one config)
-        self.assertEqual(
-            categorizer._categorize_field("unique1"), CategoryType.SPECIFIC
-        )
+        assert categorizer._categorize_field("unique1") == CategoryType.SPECIFIC
 
         # Test special field
-        self.assertEqual(
-            categorizer._categorize_field("hyperparameters"), CategoryType.SPECIFIC
-        )
+        assert categorizer._categorize_field("hyperparameters") == CategoryType.SPECIFIC
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_categorize_fields_structure(self, mock_serialize):
@@ -248,9 +233,9 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         categorization = categorizer._categorize_fields()
 
         # Verify structure follows simplified format
-        self.assertEqual(set(categorization.keys()), {"shared", "specific"})
-        self.assertIsInstance(categorization["shared"], dict)
-        self.assertIsInstance(categorization["specific"], defaultdict)
+        assert set(categorization.keys()) == {"shared", "specific"}
+        assert isinstance(categorization["shared"], dict)
+        assert isinstance(categorization["specific"], defaultdict)
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_place_field_shared(self, mock_serialize):
@@ -277,8 +262,8 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         categorizer._place_field("shared_field", CategoryType.SHARED, categorization)
 
         # Verify placement
-        self.assertIn("shared_field", categorization["shared"])
-        self.assertEqual(categorization["shared"]["shared_field"], "shared_value")
+        assert "shared_field" in categorization["shared"]
+        assert categorization["shared"]["shared_field"] == "shared_value"
 
     def test_place_field_specific(self):
         """Test that fields are correctly placed in specific categories."""
@@ -316,16 +301,12 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         categorization["specific"]["Config2"]["specific_field"] = "value2"
 
         # Verify the fields are correctly placed - this should pass
-        self.assertIn("Config1", categorization["specific"])
-        self.assertIn("Config2", categorization["specific"])
-        self.assertIn("specific_field", categorization["specific"]["Config1"])
-        self.assertIn("specific_field", categorization["specific"]["Config2"])
-        self.assertEqual(
-            categorization["specific"]["Config1"]["specific_field"], "value1"
-        )
-        self.assertEqual(
-            categorization["specific"]["Config2"]["specific_field"], "value2"
-        )
+        assert "Config1" in categorization["specific"]
+        assert "Config2" in categorization["specific"]
+        assert "specific_field" in categorization["specific"]["Config1"]
+        assert "specific_field" in categorization["specific"]["Config2"]
+        assert categorization["specific"]["Config1"]["specific_field"] == "value1"
+        assert categorization["specific"]["Config2"]["specific_field"] == "value2"
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_get_categorized_fields(self, mock_serialize):
@@ -343,11 +324,9 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         result = categorizer.get_categorized_fields()
 
         # Verify result
-        self.assertEqual(result, categorizer.categorization)
-        self.assertEqual(result["shared"]["shared_field"], "shared_value")
-        self.assertEqual(
-            result["specific"]["Config1"]["specific_field"], "specific_value"
-        )
+        assert result == categorizer.categorization
+        assert result["shared"]["shared_field"] == "shared_value"
+        assert result["specific"]["Config1"]["specific_field"] == "specific_value"
 
     @mock.patch("cursus.core.config_fields.config_field_categorizer.serialize_config")
     def test_end_to_end_categorization(self, mock_serialize):
@@ -370,34 +349,25 @@ class TestConfigFieldCategorizer(unittest.TestCase):
         result = categorizer.get_categorized_fields()
 
         # Verify simplified structure
-        self.assertEqual(set(result.keys()), {"shared", "specific"})
+        assert set(result.keys()) == {"shared", "specific"}
 
         # Verify shared fields
-        self.assertIn("shared_field", result["shared"])
-        self.assertEqual(result["shared"]["shared_field"], "shared_value")
+        assert "shared_field" in result["shared"]
+        assert result["shared"]["shared_field"] == "shared_value"
 
         # Verify specific fields
-        self.assertIn("SpecificFieldsConfig", result["specific"])
-        self.assertIn("specific_field", result["specific"]["SpecificFieldsConfig"])
-        self.assertEqual(
-            result["specific"]["SpecificFieldsConfig"]["specific_field"],
-            "specific_value",
-        )
+        assert "SpecificFieldsConfig" in result["specific"]
+        assert "specific_field" in result["specific"]["SpecificFieldsConfig"]
+        assert result["specific"]["SpecificFieldsConfig"]["specific_field"] == "specific_value"
 
         # Verify special fields are in specific section
-        self.assertIn("SpecialFieldsConfig", result["specific"])
-        self.assertIn("hyperparameters", result["specific"]["SpecialFieldsConfig"])
+        assert "SpecialFieldsConfig" in result["specific"]
+        assert "hyperparameters" in result["specific"]["SpecialFieldsConfig"]
 
         # Verify processing config fields are properly placed
-        self.assertIn("ProcessingConfig", result["specific"])
-        self.assertIn("processing_specific", result["specific"]["ProcessingConfig"])
+        assert "ProcessingConfig" in result["specific"]
+        assert "processing_specific" in result["specific"]["ProcessingConfig"]
 
         # Verify field with different values is in specific
-        self.assertIn(
-            "different_value_field", result["specific"]["SpecificFieldsConfig"]
-        )
-        self.assertIn("common_field", result["specific"]["SpecificFieldsConfig"])
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert "different_value_field" in result["specific"]["SpecificFieldsConfig"]
+        assert "common_field" in result["specific"]["SpecificFieldsConfig"]

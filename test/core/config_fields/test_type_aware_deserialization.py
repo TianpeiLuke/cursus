@@ -1,18 +1,27 @@
-import unittest
+"""
+Tests for the type-aware model serialization and deserialization.
+This tests the ability to correctly serialize and deserialize derived model classes.
+"""
+
 import json
 import os
-from pathlib import Path
 import tempfile
-import sys
-from typing import Any, Dict, List, Optional, Union, Set
+from typing import Any, Dict, List, Optional
+from pathlib import Path
 
 import pytest
 from unittest.mock import patch, MagicMock, Mock
 
-# Import utilities for config serialization
-from cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
-from cursus.core.config_fields.type_aware_config_serializer import serialize_config
-from cursus.core.config_fields.config_class_store import ConfigClassStore
+# Import from the main package API
+from cursus.core.config_fields import (
+    ConfigClassStore,
+    merge_and_save_configs,
+    load_configs,
+    serialize_config,
+    deserialize_config,
+)
+from cursus.core.config_fields.config_merger import ConfigMerger
+from cursus.core.config_fields.type_aware_config_serializer import TypeAwareConfigSerializer
 
 from pydantic import BaseModel
 
@@ -20,13 +29,11 @@ from pydantic import BaseModel
 # Mock the pipeline dependencies that are not available
 class BasePipelineConfig(BaseModel):
     """Mock base pipeline config for testing."""
-
     pass
 
 
 class ModelHyperparameters(BaseModel):
     """Mock model hyperparameters for testing."""
-
     full_field_list: List[str] = []
     cat_field_list: List[str] = []
     tab_field_list: List[str] = []
@@ -60,17 +67,9 @@ def build_complete_config_classes():
     }
 
 
-# Import config_merger for saving configs
-from cursus.core.config_fields.config_merger import ConfigMerger
-from cursus.core.config_fields.type_aware_config_serializer import (
-    TypeAwareConfigSerializer,
-)
-
-
 # Define simple test config classes for serialization testing
 class TestBaseConfig(BasePipelineConfig):
     """Simple test config class that inherits from BasePipelineConfig."""
-
     pipeline_name: str
     pipeline_description: str
     pipeline_version: str
@@ -104,7 +103,6 @@ class TestBaseConfig(BasePipelineConfig):
 # Test config with specific job types, similar to Tabular preprocessing step
 class TestProcessingConfig(TestBaseConfig):
     """Processing-specific config for testing."""
-
     input_path: str = "default_input_path"
     output_path: str = "default_output_path"
     # Add job_type field explicitly matching the tabular preprocessing step
@@ -133,7 +131,6 @@ class TestProcessingConfig(TestBaseConfig):
 # Test config with training-specific fields
 class TestTrainingConfig(TestBaseConfig):
     """Training-specific config for testing."""
-
     training_data_path: str = "default_training_data_path"
     validation_data_path: Optional[str] = None
     epochs: int = 10
@@ -150,14 +147,12 @@ class TestTrainingConfig(TestBaseConfig):
         return errors
 
 
-class TestTypeAwareDeserialization(unittest.TestCase):
-    """
-    Tests for the type-aware model serialization and deserialization.
-    This tests the ability to correctly serialize and deserialize derived model classes.
-    """
+class TestTypeAwareDeserialization:
+    """Tests for the type-aware model serialization and deserialization."""
 
-    def setUp(self):
-        """Set up test fixtures."""
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Set up test fixtures and clean up after each test."""
         # Define paths
         self.repo_root = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "../../..")
@@ -168,14 +163,8 @@ class TestTypeAwareDeserialization(unittest.TestCase):
         )
 
         # Check that required directories and files exist
-        self.assertTrue(
-            os.path.exists(self.model_path),
-            f"Test model file missing: {self.model_path}",
-        )
-        self.assertTrue(
-            os.path.exists(self.pipeline_scripts_path),
-            f"Required directory not found: {self.pipeline_scripts_path}",
-        )
+        assert os.path.exists(self.model_path), f"Test model file missing: {self.model_path}"
+        assert os.path.exists(self.pipeline_scripts_path), f"Required directory not found: {self.pipeline_scripts_path}"
 
         # Create a base hyperparameters object
         self.base_hyperparams = ModelHyperparameters(
@@ -191,7 +180,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
 
         # Skip BSM tests if the class is not available
         if not BSM_AVAILABLE:
-            self.skipTest("BSMModelHyperparameters not available")
+            pytest.skip("BSMModelHyperparameters not available")
 
         # Create a derived BSM hyperparameters object with additional fields
         self.bsm_hyperparams = BSMModelHyperparameters(
@@ -269,15 +258,11 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                 "TestTrainingConfig": TestTrainingConfig,
             }
         )
+        
+        yield  # This is where the test runs
 
     def test_type_preservation(self):
         """Test that derived class types are preserved during serialization and deserialization."""
-        # Use the serializer directly to test round-trip serialization
-        from cursus.core.config_fields.type_aware_config_serializer import (
-            TypeAwareConfigSerializer,
-            deserialize_config,
-        )
-
         # Create serializer with complete config classes
         config_classes = build_complete_config_classes()
         serializer = TypeAwareConfigSerializer(config_classes=config_classes)
@@ -285,58 +270,44 @@ class TestTypeAwareDeserialization(unittest.TestCase):
         # Test BSM hyperparameters serialization and deserialization
         serialized_bsm = serializer.serialize(self.bsm_hyperparams)
         print("BSM serialized:", serialized_bsm)
-        self.assertIn("__model_type__", serialized_bsm)
-        self.assertEqual(serialized_bsm["__model_type__"], "BSMModelHyperparameters")
+        assert "__model_type__" in serialized_bsm
+        assert serialized_bsm["__model_type__"] == "BSMModelHyperparameters"
 
         # Deserialize back
         deserialized_bsm = serializer.deserialize(serialized_bsm)
-        self.assertIsInstance(deserialized_bsm, BSMModelHyperparameters)
-        self.assertTrue(hasattr(deserialized_bsm, "lr_decay"))
-        self.assertEqual(deserialized_bsm.lr_decay, 0.05)
+        assert isinstance(deserialized_bsm, BSMModelHyperparameters)
+        assert hasattr(deserialized_bsm, "lr_decay")
+        assert deserialized_bsm.lr_decay == 0.05
 
         # Test BSM-specific fields
-        self.assertTrue(hasattr(deserialized_bsm, "text_name"))
-        self.assertEqual(deserialized_bsm.text_name, "dialogue")
+        assert hasattr(deserialized_bsm, "text_name")
+        assert deserialized_bsm.text_name == "dialogue"
 
         # Test that base hyperparameters class doesn't have BSM-specific fields
         serialized_base = serializer.serialize(self.base_hyperparams)
         deserialized_base = serializer.deserialize(serialized_base)
-        self.assertIsInstance(deserialized_base, ModelHyperparameters)
-        self.assertFalse(hasattr(deserialized_base, "lr_decay"))
+        assert isinstance(deserialized_base, ModelHyperparameters)
+        assert not hasattr(deserialized_base, "lr_decay")
 
     def test_type_metadata_in_serialized_output(self):
         """Test that type metadata is included in the serialized output."""
         # Create a serializer and use it directly
-        from cursus.core.config_fields.type_aware_config_serializer import (
-            TypeAwareConfigSerializer,
-        )
-
         serializer = TypeAwareConfigSerializer()
 
         # Serialize a BSM hyperparameters object
         serialized = serializer.serialize(self.bsm_hyperparams)
 
         # Verify type metadata fields are present
-        self.assertIn("__model_type__", serialized, "Type metadata field missing")
-        self.assertEqual(
-            serialized["__model_type__"],
-            "BSMModelHyperparameters",
-            "Type metadata has incorrect value",
-        )
+        assert "__model_type__" in serialized, "Type metadata field missing"
+        assert serialized["__model_type__"] == "BSMModelHyperparameters", "Type metadata has incorrect value"
 
-        self.assertIn("__model_module__", serialized, "Module metadata field missing")
+        assert "__model_module__" in serialized, "Module metadata field missing"
         # Since we're using mock classes, just check that module metadata is present
-        self.assertIsNotNone(
-            serialized["__model_module__"], "Module metadata should not be None"
-        )
+        assert serialized["__model_module__"] is not None, "Module metadata should not be None"
 
         # Verify BSM-specific fields are present
-        self.assertIn(
-            "lr_decay", serialized, "BSM-specific field missing in serialized output"
-        )
-        self.assertEqual(
-            serialized["lr_decay"], 0.05, "BSM-specific field has incorrect value"
-        )
+        assert "lr_decay" in serialized, "BSM-specific field missing in serialized output"
+        assert serialized["lr_decay"] == 0.05, "BSM-specific field has incorrect value"
 
     def test_config_types_format(self):
         """Test that config_types uses step names as keys when saved to file."""
@@ -380,22 +351,18 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                     saved_data = json.load(f)
 
                 # Verify the structure of config_types
-                self.assertIn("metadata", saved_data)
-                self.assertIn("config_types", saved_data["metadata"])
+                assert "metadata" in saved_data
+                assert "config_types" in saved_data["metadata"]
 
                 config_types = saved_data["metadata"]["config_types"]
 
                 # Keys should be step names with job types, not class names
-                self.assertIn("TestTrainingConfig_training", config_types)
-                self.assertIn("TestTrainingConfig_evaluation", config_types)
+                assert "TestTrainingConfig_training" in config_types
+                assert "TestTrainingConfig_evaluation" in config_types
 
                 # Values should be class names
-                self.assertEqual(
-                    config_types["TestTrainingConfig_training"], "TestTrainingConfig"
-                )
-                self.assertEqual(
-                    config_types["TestTrainingConfig_evaluation"], "TestTrainingConfig"
-                )
+                assert config_types["TestTrainingConfig_training"] == "TestTrainingConfig"
+                assert config_types["TestTrainingConfig_evaluation"] == "TestTrainingConfig"
 
                 # Load the configs back with our custom registry
                 serializer = TypeAwareConfigSerializer(config_classes=config_classes)
@@ -405,16 +372,12 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                 specific = loaded_data["configuration"]["specific"]
 
                 # Verify the structure
-                self.assertIn("TestTrainingConfig_training", specific)
-                self.assertIn("TestTrainingConfig_evaluation", specific)
+                assert "TestTrainingConfig_training" in specific
+                assert "TestTrainingConfig_evaluation" in specific
 
                 # Verify the loaded data has the correct job types
-                self.assertEqual(
-                    specific["TestTrainingConfig_training"]["job_type"], "training"
-                )
-                self.assertEqual(
-                    specific["TestTrainingConfig_evaluation"]["job_type"], "evaluation"
-                )
+                assert specific["TestTrainingConfig_training"]["job_type"] == "training"
+                assert specific["TestTrainingConfig_evaluation"]["job_type"] == "evaluation"
 
             finally:
                 # Clean up the temporary file
@@ -422,11 +385,6 @@ class TestTypeAwareDeserialization(unittest.TestCase):
 
     def test_custom_config_with_hyperparameters(self):
         """Test serialization of custom config classes with different hyperparameters types."""
-        # Create a serializer with our test classes
-        from cursus.core.config_fields.type_aware_config_serializer import (
-            TypeAwareConfigSerializer,
-        )
-
         # Add our custom classes to the registry
         config_classes = build_complete_config_classes()
         config_classes.update(
@@ -458,49 +416,49 @@ class TestTypeAwareDeserialization(unittest.TestCase):
 
         # Test serialization of basic config
         serialized_basic = serializer.serialize(basic_config)
-        self.assertIn("hyperparameters", serialized_basic)
+        assert "hyperparameters" in serialized_basic
         # The hyperparameters should be serialized as a nested object with its own type metadata
         hyperparams = serialized_basic["hyperparameters"]
-        self.assertIn("full_field_list", hyperparams)
-        self.assertEqual(hyperparams["full_field_list"], ["field1", "field2", "field3"])
+        assert "full_field_list" in hyperparams
+        assert hyperparams["full_field_list"] == ["field1", "field2", "field3"]
 
         # Test serialization of BSM config
         serialized_bsm = serializer.serialize(bsm_config)
-        self.assertIn("hyperparameters", serialized_bsm)
+        assert "hyperparameters" in serialized_bsm
 
         # The hyperparameters should be serialized as a nested object
         hyperparams = serialized_bsm["hyperparameters"]
-        self.assertIn("full_field_list", hyperparams)
-        self.assertEqual(hyperparams["full_field_list"], ["field1", "field2", "field3"])
+        assert "full_field_list" in hyperparams
+        assert hyperparams["full_field_list"] == ["field1", "field2", "field3"]
 
         # BSM-specific fields should be present in the hyperparameters
         # Note: The actual implementation may not include __model_type__ in nested hyperparameters
         # but should include the BSM-specific fields if the object was properly serialized
         if "lr_decay" in hyperparams:
-            self.assertEqual(hyperparams["lr_decay"], 0.05)
+            assert hyperparams["lr_decay"] == 0.05
 
         # Test round-trip serialization/deserialization
         deserialized_basic = serializer.deserialize(serialized_basic)
-        self.assertIsInstance(deserialized_basic, TestTrainingConfig)
-        self.assertIsInstance(deserialized_basic.hyperparameters, ModelHyperparameters)
-        self.assertFalse(hasattr(deserialized_basic.hyperparameters, "lr_decay"))
+        assert isinstance(deserialized_basic, TestTrainingConfig)
+        assert isinstance(deserialized_basic.hyperparameters, ModelHyperparameters)
+        assert not hasattr(deserialized_basic.hyperparameters, "lr_decay")
 
         deserialized_bsm = serializer.deserialize(serialized_bsm)
-        self.assertIsInstance(deserialized_bsm, TestTrainingConfig)
+        assert isinstance(deserialized_bsm, TestTrainingConfig)
 
         # The actual implementation may deserialize nested hyperparameters as the base class
         # if the type information is not properly preserved in nested objects
         # Just verify that the hyperparameters object has the expected fields
-        self.assertTrue(hasattr(deserialized_bsm, "hyperparameters"))
+        assert hasattr(deserialized_bsm, "hyperparameters")
         hyperparams = deserialized_bsm.hyperparameters
 
         # Verify base fields are present
-        self.assertTrue(hasattr(hyperparams, "full_field_list"))
-        self.assertEqual(hyperparams.full_field_list, ["field1", "field2", "field3"])
+        assert hasattr(hyperparams, "full_field_list")
+        assert hyperparams.full_field_list == ["field1", "field2", "field3"]
 
         # Check if BSM-specific fields are present (they may or may not be depending on implementation)
         if hasattr(hyperparams, "lr_decay"):
-            self.assertEqual(hyperparams.lr_decay, 0.05)
+            assert hyperparams.lr_decay == 0.05
 
     def test_config_types_format_with_custom_configs(self):
         """Test that config_types uses step names as keys when using custom configs."""
@@ -547,8 +505,6 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                 )
 
                 # Save configs to temporary file
-                from cursus.core.config_fields.config_merger import ConfigMerger
-
                 merger = ConfigMerger(
                     [processing_config, training_config, override_config]
                 )
@@ -559,48 +515,31 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                     saved_data = json.load(f)
 
                 # Verify config_types structure
-                self.assertIn("metadata", saved_data)
-                self.assertIn("config_types", saved_data["metadata"])
+                assert "metadata" in saved_data
+                assert "config_types" in saved_data["metadata"]
 
                 config_types = saved_data["metadata"]["config_types"]
                 print("Generated config_types:", config_types)
 
                 # Keys should be step names (with job_type variants)
-                self.assertIn("TestProcessingConfig_processing", config_types)
-                self.assertIn("TestTrainingConfig_training", config_types)
-                self.assertIn(
-                    "CustomStepName", config_types
-                )  # Using step_name_override
+                assert "TestProcessingConfig_processing" in config_types
+                assert "TestTrainingConfig_training" in config_types
+                assert "CustomStepName" in config_types  # Using step_name_override
 
                 # Values should be class names
-                self.assertEqual(
-                    config_types["TestProcessingConfig_processing"],
-                    "TestProcessingConfig",
-                )
-                self.assertEqual(
-                    config_types["TestTrainingConfig_training"], "TestTrainingConfig"
-                )
-                self.assertEqual(config_types["CustomStepName"], "TestProcessingConfig")
+                assert config_types["TestProcessingConfig_processing"] == "TestProcessingConfig"
+                assert config_types["TestTrainingConfig_training"] == "TestTrainingConfig"
+                assert config_types["CustomStepName"] == "TestProcessingConfig"
 
             finally:
                 # Clean up
                 os.unlink(tmp.name)
 
     def test_multiple_config_scenarios(self):
-        """Test serialization and deserialization with multiple config scenarios.
-
-        This test covers:
-        1. Multiple different types of configs
-        2. Two same class of configs with different job_type
-        3. Multiple configs, one has a complex field as hyperparameters
-        4. Multiple different types of configs, but some fields rely on default values
-        """
+        """Test serialization and deserialization with multiple config scenarios."""
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             try:
                 # Create test configs for different scenarios
-
-                # Scenario 1: Different types of configs (Processing vs Training)
-                # Scenario 3: One config with complex BSM hyperparameters
                 configs = [
                     # Processing config with basic hyperparameters
                     TestProcessingConfig(
@@ -626,7 +565,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                     ),
                 ]
 
-                # Scenario 2: Same class with different job_type
+                # Same class with different job_type
                 configs.append(
                     TestProcessingConfig(
                         pipeline_name="processing-pipeline-raw",
@@ -638,7 +577,7 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                     )
                 )
 
-                # Scenario 4: Config with fields using default values
+                # Config with fields using default values
                 configs.append(
                     TestProcessingConfig(
                         pipeline_name="processing-pipeline-defaults",
@@ -659,53 +598,38 @@ class TestTypeAwareDeserialization(unittest.TestCase):
                     saved_data = json.load(f)
 
                 # Verify the structure of config_types
-                self.assertIn("metadata", saved_data)
-                self.assertIn("config_types", saved_data["metadata"])
+                assert "metadata" in saved_data
+                assert "config_types" in saved_data["metadata"]
 
                 config_types = saved_data["metadata"]["config_types"]
                 print("Generated config_types for multiple scenarios:", config_types)
 
                 # Verify step names are correctly generated with job_types
-                self.assertIn("TestProcessingConfig_processing", config_types)
-                self.assertIn("TestProcessingConfig_raw", config_types)
-                self.assertIn(
-                    "TestProcessingConfig_tabular", config_types
-                )  # Using default job_type
-                self.assertIn("TestTrainingConfig_training", config_types)
+                assert "TestProcessingConfig_processing" in config_types
+                assert "TestProcessingConfig_raw" in config_types
+                assert "TestProcessingConfig_tabular" in config_types  # Using default job_type
+                assert "TestTrainingConfig_training" in config_types
 
                 # Verify class names are preserved
-                self.assertEqual(
-                    config_types["TestProcessingConfig_processing"],
-                    "TestProcessingConfig",
-                )
-                self.assertEqual(
-                    config_types["TestProcessingConfig_raw"], "TestProcessingConfig"
-                )
-                self.assertEqual(
-                    config_types["TestProcessingConfig_tabular"], "TestProcessingConfig"
-                )
-                self.assertEqual(
-                    config_types["TestTrainingConfig_training"], "TestTrainingConfig"
-                )
+                assert config_types["TestProcessingConfig_processing"] == "TestProcessingConfig"
+                assert config_types["TestProcessingConfig_raw"] == "TestProcessingConfig"
+                assert config_types["TestProcessingConfig_tabular"] == "TestProcessingConfig"
+                assert config_types["TestTrainingConfig_training"] == "TestTrainingConfig"
 
                 # Verify configuration structure
-                self.assertIn("configuration", saved_data)
-                self.assertIn("shared", saved_data["configuration"])
-                self.assertIn("specific", saved_data["configuration"])
+                assert "configuration" in saved_data
+                assert "shared" in saved_data["configuration"]
+                assert "specific" in saved_data["configuration"]
 
                 # Check for fields using default values in the tabular processing config
                 specific = saved_data["configuration"]["specific"]
-                self.assertIn("TestProcessingConfig_tabular", specific)
+                assert "TestProcessingConfig_tabular" in specific
                 defaults_config = specific["TestProcessingConfig_tabular"]
 
                 # Verify default fields are present
-                self.assertEqual(defaults_config.get("job_type"), "tabular")
-                self.assertEqual(
-                    defaults_config.get("input_path"), "default_input_path"
-                )
-                self.assertEqual(
-                    defaults_config.get("output_path"), "default_output_path"
-                )
+                assert defaults_config.get("job_type") == "tabular"
+                assert defaults_config.get("input_path") == "default_input_path"
+                assert defaults_config.get("output_path") == "default_output_path"
 
             finally:
                 # Clean up
@@ -713,11 +637,6 @@ class TestTypeAwareDeserialization(unittest.TestCase):
 
     def test_fallback_behavior(self):
         """Test the fallback behavior when a derived class is not available."""
-        # Use the serializer directly to test fallback behavior
-        from cursus.core.config_fields.type_aware_config_serializer import (
-            TypeAwareConfigSerializer,
-        )
-
         # Create serializer with limited config classes (no BSMModelHyperparameters)
         limited_config_classes = {
             "BasePipelineConfig": BasePipelineConfig,
@@ -733,23 +652,17 @@ class TestTypeAwareDeserialization(unittest.TestCase):
 
         # Test direct serialization and deserialization of BSM hyperparameters
         serialized_bsm = serializer.serialize(self.bsm_hyperparams)
-        self.assertIn("__model_type__", serialized_bsm)
-        self.assertEqual(serialized_bsm["__model_type__"], "BSMModelHyperparameters")
+        assert "__model_type__" in serialized_bsm
+        assert serialized_bsm["__model_type__"] == "BSMModelHyperparameters"
 
         # Deserialize with limited class registry - should still work but may not fallback as expected
         deserialized_bsm = serializer.deserialize(serialized_bsm)
 
         # The actual implementation may still create the BSM instance if the class is available in the module
         # Just verify that the deserialization worked and base fields are present
-        self.assertTrue(hasattr(deserialized_bsm, "full_field_list"))
-        self.assertListEqual(
-            deserialized_bsm.full_field_list, ["field1", "field2", "field3"]
-        )
+        assert hasattr(deserialized_bsm, "full_field_list")
+        assert deserialized_bsm.full_field_list == ["field1", "field2", "field3"]
 
         # Verify BSM-specific fields are also present (since the class was found)
-        self.assertTrue(hasattr(deserialized_bsm, "lr_decay"))
-        self.assertEqual(deserialized_bsm.lr_decay, 0.05)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert hasattr(deserialized_bsm, "lr_decay")
+        assert deserialized_bsm.lr_decay == 0.05

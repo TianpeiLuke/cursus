@@ -7,13 +7,8 @@ critical gap identified in the test coverage analysis.
 """
 
 import pytest
-import sys
-from pathlib import Path
 from enum import Enum
 from typing import Set, Dict, Any
-
-# Add the project root to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from cursus.core.config_fields.constants import (
     SPECIAL_FIELDS_TO_KEEP_SPECIFIC,

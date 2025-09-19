@@ -5,19 +5,15 @@ This module contains tests for the ConfigMerger class to ensure
 it correctly implements the simplified field merger structure.
 """
 
-import unittest
+import pytest
 from unittest import mock
 import json
 import os
-import sys
 import tempfile
 from collections import defaultdict
 from typing import Any, Dict, List
 from pathlib import Path
 from datetime import datetime
-
-# Add the project root to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from cursus.core.config_fields.config_merger import ConfigMerger
 from cursus.core.config_fields.constants import (
@@ -68,11 +64,12 @@ class ProcessingConfig(MockProcessingBase, TestConfig):
     pass
 
 
-class TestConfigMerger(unittest.TestCase):
+class TestConfigMerger:
     """Test cases for ConfigMerger with the simplified structure."""
 
-    def setUp(self):
-        """Set up test fixtures."""
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Set up test fixtures and clean up after each test."""
         self.shared_config1 = SharedFieldsConfig(
             shared_field="shared_value", common_field="common_value"
         )
@@ -111,9 +108,10 @@ class TestConfigMerger(unittest.TestCase):
         # Create a temporary directory for file operations
         self.temp_dir = tempfile.TemporaryDirectory()
         self.output_file = os.path.join(self.temp_dir.name, "test_config.json")
-
-    def tearDown(self):
-        """Clean up test fixtures."""
+        
+        yield  # This is where the test runs
+        
+        # Clean up test fixtures
         self.temp_dir.cleanup()
 
     def test_init_creates_categorizer(self):
@@ -136,7 +134,7 @@ class TestConfigMerger(unittest.TestCase):
             mock_categorizer_class.assert_called_once_with(
                 test_configs, MockProcessingBase
             )
-            self.assertEqual(merger.categorizer, mock_categorizer)
+            assert merger.categorizer == mock_categorizer
 
     def test_merge_returns_simplified_structure(self):
         """Test that merge returns the simplified structure."""
@@ -162,12 +160,12 @@ class TestConfigMerger(unittest.TestCase):
         result = merger.merge()
 
         # Verify structure follows simplified format
-        self.assertEqual(set(result.keys()), {"shared", "specific"})
-        self.assertIn("shared_field", result["shared"])
-        self.assertIn("Config1", result["specific"])
-        self.assertIn("Config2", result["specific"])
-        self.assertIn("specific_field", result["specific"]["Config1"])
-        self.assertIn("another_field", result["specific"]["Config2"])
+        assert set(result.keys()) == {"shared", "specific"}
+        assert "shared_field" in result["shared"]
+        assert "Config1" in result["specific"]
+        assert "Config2" in result["specific"]
+        assert "specific_field" in result["specific"]["Config1"]
+        assert "another_field" in result["specific"]["Config2"]
 
     @mock.patch("cursus.core.config_fields.config_merger.ConfigFieldCategorizer")
     def test_verify_merged_output_checks_structure(self, mock_categorizer_class):
@@ -294,13 +292,11 @@ class TestConfigMerger(unittest.TestCase):
         merger = ConfigMerger([test_config1, test_config2])
 
         # Verify step name generation
-        self.assertEqual("CustomStepName", merger._generate_step_name(test_config1))
+        assert "CustomStepName" == merger._generate_step_name(test_config1)
 
         # The fallback implementation keeps the full class name
         # Combined with job_type "training", it becomes "TestConfig_training"
-        self.assertEqual(
-            "TestConfig_training", merger._generate_step_name(test_config2)
-        )
+        assert "TestConfig_training" == merger._generate_step_name(test_config2)
 
         # Create a minimal test file
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -320,18 +316,18 @@ class TestConfigMerger(unittest.TestCase):
                 saved_data = json.load(f)
 
             # Verify config_types format
-            self.assertIn("metadata", saved_data)
-            self.assertIn("config_types", saved_data["metadata"])
+            assert "metadata" in saved_data
+            assert "config_types" in saved_data["metadata"]
 
             config_types = saved_data["metadata"]["config_types"]
 
             # Keys should be step names
-            self.assertIn("CustomStepName", config_types)  # Using step_name_override
-            self.assertIn("TestConfig_training", config_types)  # Using job_type
+            assert "CustomStepName" in config_types  # Using step_name_override
+            assert "TestConfig_training" in config_types  # Using job_type
 
             # Values should be class names
-            self.assertEqual("TestConfig", config_types["CustomStepName"])
-            self.assertEqual("TestConfig", config_types["TestConfig_training"])
+            assert "TestConfig" == config_types["CustomStepName"]
+            assert "TestConfig" == config_types["TestConfig_training"]
 
             # Remove the temp file
             os.unlink(tmp.name)
@@ -365,17 +361,17 @@ class TestConfigMerger(unittest.TestCase):
             saved_data = json.load(f)
 
         # Verify structure
-        self.assertIn("metadata", saved_data)
-        self.assertIn("configuration", saved_data)
-        self.assertIn("created_at", saved_data["metadata"])
-        self.assertIn("config_types", saved_data["metadata"])
+        assert "metadata" in saved_data
+        assert "configuration" in saved_data
+        assert "created_at" in saved_data["metadata"]
+        assert "config_types" in saved_data["metadata"]
 
         # Verify configuration has simplified structure
         config = saved_data["configuration"]
-        self.assertEqual(set(config.keys()), {"shared", "specific"})
-        self.assertIn("shared_field", config["shared"])
-        self.assertIn("TestConfig1", config["specific"])
-        self.assertIn("specific_field", config["specific"]["TestConfig1"])
+        assert set(config.keys()) == {"shared", "specific"}
+        assert "shared_field" in config["shared"]
+        assert "TestConfig1" in config["specific"]
+        assert "specific_field" in config["specific"]["TestConfig1"]
 
     @mock.patch(
         "cursus.core.config_fields.type_aware_config_serializer.TypeAwareConfigSerializer"
@@ -409,12 +405,12 @@ class TestConfigMerger(unittest.TestCase):
         result = ConfigMerger.load(self.output_file)
 
         # Verify result has simplified structure
-        self.assertEqual(set(result.keys()), {"shared", "specific"})
-        self.assertIn("shared_field", result["shared"])
-        self.assertIn("Config1", result["specific"])
-        self.assertIn("Config2", result["specific"])
-        self.assertIn("specific_field", result["specific"]["Config1"])
-        self.assertIn("other_field", result["specific"]["Config2"])
+        assert set(result.keys()) == {"shared", "specific"}
+        assert "shared_field" in result["shared"]
+        assert "Config1" in result["specific"]
+        assert "Config2" in result["specific"]
+        assert "specific_field" in result["specific"]["Config1"]
+        assert "other_field" in result["specific"]["Config2"]
 
     @mock.patch(
         "cursus.core.config_fields.type_aware_config_serializer.TypeAwareConfigSerializer"
@@ -451,16 +447,16 @@ class TestConfigMerger(unittest.TestCase):
         result = ConfigMerger.load(self.output_file)
 
         # Verify result has simplified structure
-        self.assertEqual(set(result.keys()), {"shared", "specific"})
+        assert set(result.keys()) == {"shared", "specific"}
 
         # Verify fields are in the correct place
-        self.assertIn("shared_field", result["shared"])
+        assert "shared_field" in result["shared"]
 
         # Verify specific fields are preserved
-        self.assertIn("Config1", result["specific"])
-        self.assertIn("ProcConfig1", result["specific"])
-        self.assertIn("specific_field", result["specific"]["Config1"])
-        self.assertIn("proc_specific", result["specific"]["ProcConfig1"])
+        assert "Config1" in result["specific"]
+        assert "ProcConfig1" in result["specific"]
+        assert "specific_field" in result["specific"]["Config1"]
+        assert "proc_specific" in result["specific"]["ProcConfig1"]
 
     def test_merge_with_direction(self):
         """Test the merge_with_direction utility method."""
@@ -487,42 +483,26 @@ class TestConfigMerger(unittest.TestCase):
         result = ConfigMerger.merge_with_direction(
             source, target, MergeDirection.PREFER_SOURCE
         )
-        self.assertEqual(result["common_key"], "source_value")  # Source value preferred
-        self.assertEqual(result["source_only"], "source_value")  # Source only key added
-        self.assertEqual(result["target_only"], "target_value")  # Target only key kept
-        self.assertEqual(
-            result["nested"]["common_nested"], "source_value"
-        )  # Nested source value preferred
-        self.assertEqual(
-            result["nested"]["source_nested"], "source_value"
-        )  # Nested source only key added
-        self.assertEqual(
-            result["nested"]["target_nested"], "target_value"
-        )  # Nested target only key kept
+        assert result["common_key"] == "source_value"  # Source value preferred
+        assert result["source_only"] == "source_value"  # Source only key added
+        assert result["target_only"] == "target_value"  # Target only key kept
+        assert result["nested"]["common_nested"] == "source_value"  # Nested source value preferred
+        assert result["nested"]["source_nested"] == "source_value"  # Nested source only key added
+        assert result["nested"]["target_nested"] == "target_value"  # Nested target only key kept
 
         # Test with PREFER_TARGET
         result = ConfigMerger.merge_with_direction(
             source, target, MergeDirection.PREFER_TARGET
         )
-        self.assertEqual(result["common_key"], "target_value")  # Target value preferred
-        self.assertEqual(result["source_only"], "source_value")  # Source only key added
-        self.assertEqual(result["target_only"], "target_value")  # Target only key kept
-        self.assertEqual(
-            result["nested"]["common_nested"], "target_value"
-        )  # Nested target value preferred
-        self.assertEqual(
-            result["nested"]["source_nested"], "source_value"
-        )  # Nested source only key added
-        self.assertEqual(
-            result["nested"]["target_nested"], "target_value"
-        )  # Nested target only key kept
+        assert result["common_key"] == "target_value"  # Target value preferred
+        assert result["source_only"] == "source_value"  # Source only key added
+        assert result["target_only"] == "target_value"  # Target only key kept
+        assert result["nested"]["common_nested"] == "target_value"  # Nested target value preferred
+        assert result["nested"]["source_nested"] == "source_value"  # Nested source only key added
+        assert result["nested"]["target_nested"] == "target_value"  # Nested target only key kept
 
         # Test with ERROR_ON_CONFLICT
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             ConfigMerger.merge_with_direction(
                 source, target, MergeDirection.ERROR_ON_CONFLICT
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

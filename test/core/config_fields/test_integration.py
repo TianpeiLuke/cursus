@@ -7,20 +7,20 @@ saving, loading, and deserializing them.
 """
 
 import os
-import sys
 import json
-import unittest
+import pytest
 import tempfile
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-# Add the project root to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-
-from cursus.core.config_fields.config_class_store import ConfigClassStore
-from cursus.core.config_fields.config_merger import merge_and_save_configs, load_configs
-from cursus.core.config_fields.type_aware_config_serializer import serialize_config
-from cursus.core.config_fields.type_aware_config_serializer import deserialize_config
+# Import from the main package API
+from cursus.core.config_fields import (
+    ConfigClassStore,
+    merge_and_save_configs,
+    load_configs,
+    serialize_config,
+    deserialize_config,
+)
 
 # Define test configuration classes
 from pydantic import BaseModel, Field
@@ -89,11 +89,12 @@ class EvaluationConfig(BaseConfig):
     complex_dict: Dict[str, Any] = None
 
 
-class IntegrationTest(unittest.TestCase):
+class TestIntegration:
     """Integration tests for the config field manager."""
 
-    def setUp(self):
-        """Set up test fixtures."""
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Set up test fixtures and clean up after each test."""
         # Create test configs
         self.processing_config = ProcessingConfig(
             step_name_override="processing_step",
@@ -134,9 +135,10 @@ class IntegrationTest(unittest.TestCase):
         # Create a temporary directory for output files
         self.temp_dir = tempfile.TemporaryDirectory()
         self.output_file = os.path.join(self.temp_dir.name, "configs.json")
-
-    def tearDown(self):
-        """Clean up test fixtures."""
+        
+        yield  # This is where the test runs
+        
+        # Clean up after each test
         self.temp_dir.cleanup()
 
     def test_end_to_end_workflow(self):
@@ -152,25 +154,25 @@ class IntegrationTest(unittest.TestCase):
         merged = merge_and_save_configs(config_list, self.output_file)
 
         # Step 3: Verify the output file exists
-        self.assertTrue(os.path.exists(self.output_file))
+        assert os.path.exists(self.output_file)
 
         # Step 4: Load the output file as JSON to verify structure
         with open(self.output_file, "r") as f:
             data = json.load(f)
 
         # Check structure
-        self.assertIn("metadata", data)
-        self.assertIn("created_at", data["metadata"])
-        self.assertIn("config_types", data["metadata"])
-        self.assertIn("configuration", data)
-        self.assertIn("shared", data["configuration"])
-        self.assertIn("specific", data["configuration"])
+        assert "metadata" in data
+        assert "created_at" in data["metadata"]
+        assert "config_types" in data["metadata"]
+        assert "configuration" in data
+        assert "shared" in data["configuration"]
+        assert "specific" in data["configuration"]
 
         # Check shared fields
-        self.assertIn("bucket", data["configuration"]["shared"])
-        self.assertEqual(data["configuration"]["shared"]["bucket"], "test-bucket")
-        self.assertIn("author", data["configuration"]["shared"])
-        self.assertEqual(data["configuration"]["shared"]["author"], "Test Author")
+        assert "bucket" in data["configuration"]["shared"]
+        assert data["configuration"]["shared"]["bucket"] == "test-bucket"
+        assert "author" in data["configuration"]["shared"]
+        assert data["configuration"]["shared"]["author"] == "Test Author"
 
         # Find processing step - looking for ProcessingConfig
         # With the updated step name generation, it might be "ProcessingConfig" or "processing_step"
@@ -179,15 +181,14 @@ class IntegrationTest(unittest.TestCase):
             for key in data["configuration"]["specific"]
             if "ProcessingConfig" in key or "processing_step" in key
         ]
-        self.assertTrue(
-            len(processing_keys) > 0, "No processing config found in output"
-        )
+        assert len(processing_keys) > 0, "No processing config found in output"
+        
         proc_specific = data["configuration"]["specific"][processing_keys[0]]
-        self.assertIn("job_type", proc_specific)
-        self.assertEqual(proc_specific["job_type"], "processing")
-        self.assertIn("processing_field", proc_specific)
-        self.assertIn("input_path", proc_specific)
-        self.assertIn("output_path", proc_specific)
+        assert "job_type" in proc_specific
+        assert proc_specific["job_type"] == "processing"
+        assert "processing_field" in proc_specific
+        assert "input_path" in proc_specific
+        assert "output_path" in proc_specific
 
         # Find training step - might be under "TrainingConfig" or "training_step"
         training_keys = [
@@ -195,14 +196,15 @@ class IntegrationTest(unittest.TestCase):
             for key in data["configuration"]["specific"]
             if "TrainingConfig" in key or "training_step" in key
         ]
-        self.assertTrue(len(training_keys) > 0, "No training config found in output")
+        assert len(training_keys) > 0, "No training config found in output"
+        
         train_specific = data["configuration"]["specific"][training_keys[0]]
-        self.assertIn("job_type", train_specific)
-        self.assertEqual(train_specific["job_type"], "training")
-        self.assertIn("training_field", train_specific)
-        self.assertIn("model_path", train_specific)
-        self.assertIn("hyperparameters", train_specific)
-        self.assertEqual(train_specific["hyperparameters"]["learning_rate"], 0.05)
+        assert "job_type" in train_specific
+        assert train_specific["job_type"] == "training"
+        assert "training_field" in train_specific
+        assert "model_path" in train_specific
+        assert "hyperparameters" in train_specific
+        assert train_specific["hyperparameters"]["learning_rate"] == 0.05
 
         # Find evaluation step - might be under "EvaluationConfig" or "evaluation_step"
         eval_keys = [
@@ -210,25 +212,26 @@ class IntegrationTest(unittest.TestCase):
             for key in data["configuration"]["specific"]
             if "EvaluationConfig" in key or "evaluation_step" in key
         ]
-        self.assertTrue(len(eval_keys) > 0, "No evaluation config found in output")
+        assert len(eval_keys) > 0, "No evaluation config found in output"
+        
         eval_specific = data["configuration"]["specific"][eval_keys[0]]
-        self.assertIn("job_type", eval_specific)
-        self.assertEqual(eval_specific["job_type"], "evaluation")
-        self.assertIn("evaluation_field", eval_specific)
-        self.assertIn("model_path", eval_specific)
-        self.assertIn("metrics", eval_specific)
-        self.assertIn("nested_config", eval_specific)
+        assert "job_type" in eval_specific
+        assert eval_specific["job_type"] == "evaluation"
+        assert "evaluation_field" in eval_specific
+        assert "model_path" in eval_specific
+        assert "metrics" in eval_specific
+        assert "nested_config" in eval_specific
 
         # Step 5: Load configs from file
         loaded_configs = load_configs(self.output_file)
 
         # Step 6: Verify loaded configs
-        self.assertIn("shared", loaded_configs)
-        self.assertIn("specific", loaded_configs)
+        assert "shared" in loaded_configs
+        assert "specific" in loaded_configs
 
         # Check loaded shared fields
-        self.assertIn("bucket", loaded_configs["shared"])
-        self.assertEqual(loaded_configs["shared"]["bucket"], "test-bucket")
+        assert "bucket" in loaded_configs["shared"]
+        assert loaded_configs["shared"]["bucket"] == "test-bucket"
 
         # Check loaded specific fields for each step using actual keys
         processing_keys = [
@@ -236,14 +239,11 @@ class IntegrationTest(unittest.TestCase):
             for key in loaded_configs["specific"]
             if "Processing" in key or "processing_step" in key
         ]
-        self.assertTrue(
-            len(processing_keys) > 0, "No processing config found in loaded output"
-        )
+        assert len(processing_keys) > 0, "No processing config found in loaded output"
+        
         processing_key = processing_keys[0]
-        self.assertIn("job_type", loaded_configs["specific"][processing_key])
-        self.assertEqual(
-            loaded_configs["specific"][processing_key]["job_type"], "processing"
-        )
+        assert "job_type" in loaded_configs["specific"][processing_key]
+        assert loaded_configs["specific"][processing_key]["job_type"] == "processing"
 
         training_keys = [
             key
@@ -251,32 +251,22 @@ class IntegrationTest(unittest.TestCase):
             if ("Training" in key or "training_step" in key)
             and not "training_step_" in key
         ]
-        self.assertTrue(
-            len(training_keys) > 0, "No training config found in loaded output"
-        )
+        assert len(training_keys) > 0, "No training config found in loaded output"
+        
         training_key = training_keys[0]
-        self.assertIn("hyperparameters", loaded_configs["specific"][training_key])
-        self.assertEqual(
-            loaded_configs["specific"][training_key]["hyperparameters"][
-                "learning_rate"
-            ],
-            0.05,
-        )
+        assert "hyperparameters" in loaded_configs["specific"][training_key]
+        assert loaded_configs["specific"][training_key]["hyperparameters"]["learning_rate"] == 0.05
 
         eval_keys = [
             key
             for key in loaded_configs["specific"]
             if "Evaluation" in key or "evaluation_step" in key
         ]
-        self.assertTrue(
-            len(eval_keys) > 0, "No evaluation config found in loaded output"
-        )
+        assert len(eval_keys) > 0, "No evaluation config found in loaded output"
+        
         eval_key = eval_keys[0]
-        self.assertIn("metrics", loaded_configs["specific"][eval_key])
-        self.assertListEqual(
-            loaded_configs["specific"][eval_key]["metrics"],
-            ["accuracy", "precision", "recall"],
-        )
+        assert "metrics" in loaded_configs["specific"][eval_key]
+        assert loaded_configs["specific"][eval_key]["metrics"] == ["accuracy", "precision", "recall"]
 
     def test_job_type_variants(self):
         """Test job type variant handling in step name generation."""
@@ -317,13 +307,8 @@ class IntegrationTest(unittest.TestCase):
                 print(f"Found calibration config in step: {step_name}")
 
         # The job type variants should be reflected in the step names
-        self.assertTrue(
-            found_training_in_name, "Training job type variant not found in step names"
-        )
-        self.assertTrue(
-            found_calibration_in_name,
-            "Calibration job type variant not found in step names",
-        )
+        assert found_training_in_name, "Training job type variant not found in step names"
+        assert found_calibration_in_name, "Calibration job type variant not found in step names"
 
         # Step 5: Verify that we have configs with the correct job types
         # The job type should be reflected in the step name
@@ -331,16 +316,11 @@ class IntegrationTest(unittest.TestCase):
         calibration_found = False
 
         for step_name, step_config in specific_steps.items():
-            print(
-                f"Checking step {step_name} with job_type={step_config.get('job_type')}"
-            )
+            print(f"Checking step {step_name} with job_type={step_config.get('job_type')}")
             # Check just the job_type values - that's what's important here
             if step_config.get("job_type") == "training":
                 training_found = True
-                self.assertTrue(
-                    "training" in step_name.lower(),
-                    f"Step name {step_name} should contain 'training'",
-                )
+                assert "training" in step_name.lower(), f"Step name {step_name} should contain 'training'"
                 print(f"Found training in step name {step_name}")
 
             if step_config.get("job_type") == "calibration":
@@ -349,8 +329,8 @@ class IntegrationTest(unittest.TestCase):
                 # Just verify we found a step with the right job_type
                 print(f"Found calibration job_type in step {step_name}")
 
-        self.assertTrue(training_found, "Training job type not found in any step")
-        self.assertTrue(calibration_found, "Calibration job type not found in any step")
+        assert training_found, "Training job type not found in any step"
+        assert calibration_found, "Calibration job type not found in any step"
 
     def test_serialize_deserialize_with_nesting(self):
         """Test serialization and deserialization of configs with nested objects."""
@@ -367,19 +347,17 @@ class IntegrationTest(unittest.TestCase):
         serialized = serialize_config(complex_config)
 
         # Check nested config structure
-        self.assertIn("nested_config", serialized)
-        self.assertIsInstance(serialized["nested_config"], dict)
-        self.assertIn("nested_field", serialized["nested_config"])
-        self.assertEqual(serialized["nested_config"]["nested_field"], "custom_value")
+        assert "nested_config" in serialized
+        assert isinstance(serialized["nested_config"], dict)
+        assert "nested_field" in serialized["nested_config"]
+        assert serialized["nested_config"]["nested_field"] == "custom_value"
 
         # Check complex nesting
-        self.assertIn("complex_dict", serialized)
-        self.assertIn("level1", serialized["complex_dict"])
-        self.assertIn("level2", serialized["complex_dict"]["level1"])
-        self.assertIn("level3", serialized["complex_dict"]["level1"]["level2"])
-        self.assertEqual(
-            serialized["complex_dict"]["level1"]["level2"]["level3"], [1, 2, 3]
-        )
+        assert "complex_dict" in serialized
+        assert "level1" in serialized["complex_dict"]
+        assert "level2" in serialized["complex_dict"]["level1"]
+        assert "level3" in serialized["complex_dict"]["level1"]["level2"]
+        assert serialized["complex_dict"]["level1"]["level2"]["level3"] == [1, 2, 3]
 
         # Print the serialized and deserialized data for debugging
         print("\nSerialized data:", serialized)
@@ -391,37 +369,27 @@ class IntegrationTest(unittest.TestCase):
         # Check if it's a dictionary or a class instance
         if isinstance(deserialized, dict):
             # If it's a dictionary, check fields directly
-            self.assertEqual(deserialized["job_type"], "evaluation")
-            self.assertEqual(deserialized["evaluation_field"], "evaluation_value")
+            assert deserialized["job_type"] == "evaluation"
+            assert deserialized["evaluation_field"] == "evaluation_value"
 
             # Check nested object
-            self.assertIn("nested_config", deserialized)
-            self.assertIsInstance(deserialized["nested_config"], dict)
-            self.assertEqual(
-                deserialized["nested_config"]["nested_field"], "custom_value"
-            )
+            assert "nested_config" in deserialized
+            assert isinstance(deserialized["nested_config"], dict)
+            assert deserialized["nested_config"]["nested_field"] == "custom_value"
 
             # Check complex nesting is preserved
-            self.assertIn("complex_dict", deserialized)
-            self.assertEqual(
-                deserialized["complex_dict"]["level1"]["level2"]["level3"], [1, 2, 3]
-            )
+            assert "complex_dict" in deserialized
+            assert deserialized["complex_dict"]["level1"]["level2"]["level3"] == [1, 2, 3]
         else:
             # If it's a class instance, check attributes
-            self.assertEqual(deserialized.job_type, "evaluation")
-            self.assertEqual(deserialized.evaluation_field, "evaluation_value")
+            assert deserialized.job_type == "evaluation"
+            assert deserialized.evaluation_field == "evaluation_value"
 
             # Check nested object
-            self.assertTrue(hasattr(deserialized, "nested_config"))
-            self.assertIsInstance(deserialized.nested_config, dict)
-            self.assertEqual(deserialized.nested_config["nested_field"], "custom_value")
+            assert hasattr(deserialized, "nested_config")
+            assert isinstance(deserialized.nested_config, dict)
+            assert deserialized.nested_config["nested_field"] == "custom_value"
 
             # Check complex nesting is preserved
-            self.assertTrue(hasattr(deserialized, "complex_dict"))
-            self.assertEqual(
-                deserialized.complex_dict["level1"]["level2"]["level3"], [1, 2, 3]
-            )
-
-
-if __name__ == "__main__":
-    unittest.main()
+            assert hasattr(deserialized, "complex_dict")
+            assert deserialized.complex_dict["level1"]["level2"]["level3"] == [1, 2, 3]

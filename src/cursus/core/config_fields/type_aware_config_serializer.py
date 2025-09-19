@@ -15,7 +15,13 @@ from typing import Any, Dict, Optional, Type, List, Set, Union, Tuple
 
 from pydantic import BaseModel
 
-from .config_class_store import build_complete_config_classes
+# Import build_complete_config_classes from utils instead
+try:
+    from ...steps.configs.utils import build_complete_config_classes
+except ImportError:
+    # Fallback if utils not available
+    def build_complete_config_classes():
+        return {}
 from .constants import SerializationMode, TYPE_MAPPING
 from .circular_reference_tracker import CircularReferenceTracker
 
