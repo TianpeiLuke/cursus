@@ -26,6 +26,35 @@ from ...core.compiler.dag_compiler import PipelineDAGCompiler
 from ..shared_dags.enhanced_metadata import EnhancedDAGMetadata
 from .catalog_registry import CatalogRegistry
 
+# Import constants from core library (with fallback)
+try:
+    from mods_workflow_core.utils.constants import (
+        PIPELINE_EXECUTION_TEMP_DIR,
+        KMS_ENCRYPTION_KEY_PARAM,
+        PROCESSING_JOB_SHARED_NETWORK_CONFIG,
+        SECURITY_GROUP_ID,
+        VPC_SUBNET,
+    )
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "Could not import constants from mods_workflow_core, using local definitions"
+    )
+    # Define pipeline parameters locally if import fails
+    from sagemaker.workflow.parameters import ParameterString
+    from sagemaker.network import NetworkConfig
+    PIPELINE_EXECUTION_TEMP_DIR = ParameterString(name="EXECUTION_S3_PREFIX")
+    KMS_ENCRYPTION_KEY_PARAM = ParameterString(name="KMS_ENCRYPTION_KEY_PARAM")
+    SECURITY_GROUP_ID = ParameterString(name="SECURITY_GROUP_ID")
+    VPC_SUBNET = ParameterString(name="VPC_SUBNET")
+    # Also create the network config
+    PROCESSING_JOB_SHARED_NETWORK_CONFIG = NetworkConfig(
+        enable_network_isolation=False,
+        security_group_ids=[SECURITY_GROUP_ID],
+        subnets=[VPC_SUBNET],
+        encrypt_inter_container_traffic=True,
+    )
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,6 +69,7 @@ class BasePipeline(ABC):
     - Pipeline DAG generation
     - Pipeline metadata and registry management
     - Execution document handling
+    - Pipeline parameters support for runtime configuration
     
     Subclasses must implement:
     - create_dag(): Create the pipeline DAG
@@ -53,6 +83,7 @@ class BasePipeline(ABC):
         execution_role: Optional[str] = None,
         enable_mods: bool = True,
         validate: bool = True,
+        pipeline_parameters: Optional[list] = None,
         **kwargs
     ):
         """
@@ -64,6 +95,7 @@ class BasePipeline(ABC):
             execution_role: IAM role for pipeline execution
             enable_mods: Whether to enable MODS features (default: True)
             validate: Whether to validate the DAG before compilation
+            pipeline_parameters: Custom pipeline parameters (optional)
             **kwargs: Additional arguments for template constructor
         """
         # Set defaults if not provided
@@ -81,6 +113,17 @@ class BasePipeline(ABC):
         self.enable_mods = enable_mods
         self.validate = validate
         self.template_kwargs = kwargs
+
+        # Set up pipeline parameters - use provided parameters or create default list
+        if pipeline_parameters is None:
+            self.pipeline_parameters = [
+                PIPELINE_EXECUTION_TEMP_DIR,
+                KMS_ENCRYPTION_KEY_PARAM,
+                SECURITY_GROUP_ID,
+                VPC_SUBNET,
+            ]
+        else:
+            self.pipeline_parameters = pipeline_parameters
 
         # Load configuration from file if provided and exists
         self.config = {}
@@ -132,20 +175,21 @@ class BasePipeline(ABC):
 
     def _initialize_compiler(self) -> PipelineDAGCompiler:
         """
-        Initialize the DAG compiler.
+        Initialize the DAG compiler with pipeline parameters.
         
         Returns:
             PipelineDAGCompiler: The compiler instance
         """
-        # Create standard compiler
+        # Create compiler with pipeline parameters
         dag_compiler = PipelineDAGCompiler(
             config_path=self.config_path,
             sagemaker_session=self.sagemaker_session,
             role=self.execution_role,
+            pipeline_parameters=self.pipeline_parameters,
             **self.template_kwargs
         )
 
-        logger.info("Initialized DAG compiler")
+        logger.info(f"Initialized DAG compiler with {len(self.pipeline_parameters)} pipeline parameters")
         return dag_compiler
 
     def generate_pipeline(self) -> Pipeline:
@@ -378,3 +422,73 @@ class BasePipeline(ABC):
             "edge_count": len(self.dag.edges),
             "is_valid": len(self.dag.nodes) > 0,
         }
+
+    def get_pipeline_parameters(self) -> list:
+        """
+        Get the current pipeline parameters.
+        
+        Returns:
+            list: Current pipeline parameters
+        """
+        return self.pipeline_parameters.copy()
+
+    def set_pipeline_parameters(self, pipeline_parameters: list) -> None:
+        """
+        Set custom pipeline parameters and reinitialize the compiler.
+        
+        Args:
+            pipeline_parameters: List of pipeline parameters to use
+        """
+        self.pipeline_parameters = pipeline_parameters
+        # Reinitialize compiler with new parameters
+        self.dag_compiler = self._initialize_compiler()
+        logger.info(f"Updated pipeline parameters and reinitialized compiler with {len(pipeline_parameters)} parameters")
+
+    @staticmethod
+    def create_pipeline_parameters(execution_s3_prefix: Optional[str] = None) -> list:
+        """
+        Create a list of pipeline parameters with optional custom execution prefix.
+        
+        This is a helper method for external systems to easily create pipeline parameters
+        with a custom PIPELINE_EXECUTION_TEMP_DIR value.
+        
+        Args:
+            execution_s3_prefix: Custom S3 prefix for pipeline execution (optional)
+            
+        Returns:
+            list: List of pipeline parameters
+            
+        Example:
+            # Create parameters with custom execution prefix
+            params = BasePipeline.create_pipeline_parameters("s3://my-bucket/custom-path")
+            
+            # Use in pipeline initialization
+            pipeline = XGBoostE2EComprehensivePipeline(
+                config_path="config.json",
+                pipeline_parameters=params
+            )
+        """
+        from sagemaker.workflow.parameters import ParameterString
+        
+        # Create custom execution parameter if provided
+        if execution_s3_prefix:
+            custom_execution_param = ParameterString(
+                name="EXECUTION_S3_PREFIX", 
+                default_value=execution_s3_prefix
+            )
+            pipeline_parameters = [
+                custom_execution_param,
+                KMS_ENCRYPTION_KEY_PARAM,
+                SECURITY_GROUP_ID,
+                VPC_SUBNET,
+            ]
+        else:
+            # Use default parameters
+            pipeline_parameters = [
+                PIPELINE_EXECUTION_TEMP_DIR,
+                KMS_ENCRYPTION_KEY_PARAM,
+                SECURITY_GROUP_ID,
+                VPC_SUBNET,
+            ]
+        
+        return pipeline_parameters
