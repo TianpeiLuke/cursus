@@ -180,15 +180,6 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
                 f"error_threshold must be between 0 and 1, got {self.config.error_threshold}"
             )
 
-        # Check if script exists if notebook_root is provided
-        if self.notebook_root:
-            script_dir = Path(self.notebook_root) / self.config.processing_source_dir
-            script_path = script_dir / self.config.processing_entry_point
-            if not script_path.exists() and not self._is_pipeline_variable(script_path):
-                self.log_warning(
-                    f"Script not found at {script_path}. It should exist before pipeline execution."
-                )
-
         self.log_info("ModelCalibrationConfig validation succeeded.")
 
     def _is_pipeline_variable(self, value: Any) -> bool:
@@ -204,99 +195,6 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             hasattr(value, "expr") and callable(getattr(value, "expr", None))
         )
 
-    def _normalize_s3_uri(
-        self, uri: Union[str, PipelineVariable]
-    ) -> Union[str, PipelineVariable]:
-        """Normalize S3 URI, handling PipelineVariable objects.
-
-        This method handles both regular strings and PipelineVariable objects,
-        providing a consistent interface for S3 URI handling throughout the builder.
-
-        Args:
-            uri: The S3 URI or PipelineVariable to normalize
-
-        Returns:
-            Union[str, PipelineVariable]: The normalized URI
-
-        Raises:
-            TypeError: If uri is not a string or PipelineVariable
-        """
-        # Handle Pipeline step references with Get key
-        if isinstance(uri, dict) and "Get" in uri:
-            return uri
-
-        # Handle PipelineVariable objects
-        if self._is_pipeline_variable(uri):
-            return uri
-
-        if not isinstance(uri, str):
-            raise TypeError(f"Expected string or PipelineVariable, got {type(uri)}")
-
-        # Normalize string URI
-        return uri
-
-    def _get_s3_directory_path(
-        self, s3_uri: Union[str, PipelineVariable, dict]
-    ) -> Union[str, PipelineVariable, dict]:
-        """Ensure S3 URI is a directory path (ends with '/').
-
-        This method is important for ensuring consistent directory path handling
-        when working with S3 URIs in the pipeline.
-
-        Args:
-            s3_uri: The S3 URI to process
-
-        Returns:
-            Union[str, PipelineVariable, dict]: The normalized URI with trailing slash
-        """
-        # Handle Pipeline step references with Get key
-        if isinstance(s3_uri, dict) and "Get" in s3_uri:
-            return s3_uri
-
-        # Handle PipelineVariable objects
-        if self._is_pipeline_variable(s3_uri):
-            # We can't modify PipelineVariable directly, so return as is
-            # The processing logic should handle directory paths appropriately
-            return s3_uri
-
-        # Normalize string URI
-        normalized_uri = str(s3_uri)
-        if not normalized_uri.endswith("/"):
-            normalized_uri += "/"
-
-        return normalized_uri
-
-    def _validate_s3_uri(
-        self, uri: Union[str, PipelineVariable, dict]
-    ) -> Union[str, PipelineVariable, dict]:
-        """Validate that a given URI is a valid S3 URI.
-
-        This method ensures that S3 URIs are properly formatted to prevent errors
-        during pipeline execution.
-
-        Args:
-            uri: The URI to validate
-
-        Returns:
-            Union[str, PipelineVariable, dict]: The validated URI
-
-        Raises:
-            ValueError: If URI doesn't start with s3:// and is not a PipelineVariable or Get reference
-        """
-        # Handle Pipeline step references with Get key
-        if isinstance(uri, dict) and "Get" in uri:
-            return uri
-
-        # Handle PipelineVariable objects
-        if self._is_pipeline_variable(uri):
-            return uri
-
-        # Validate string URI
-        normalized_uri = str(uri)
-        if not normalized_uri.startswith("s3://"):
-            raise ValueError(f"Invalid S3 URI: {uri}. Must start with 's3://'")
-
-        return uri
 
     def _detect_circular_references(
         self, var: Any, visited: Optional[Set] = None

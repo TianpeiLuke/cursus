@@ -390,9 +390,6 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             primary_output_path = Join(on="/", values=[base_output_path, "pytorch_training"])
             self.log_info("Using generated base output path: %s", primary_output_path)
 
-        # Remove trailing slash if present for consistency with S3 path handling
-        if primary_output_path.endswith("/"):
-            primary_output_path = primary_output_path[:-1]
 
         # Get base job name for logging purposes
         base_job_name = self._generate_job_name()
