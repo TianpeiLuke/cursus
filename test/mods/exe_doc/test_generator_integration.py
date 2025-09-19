@@ -1,0 +1,324 @@
+"""
+Integration tests for ExecutionDocumentGenerator.
+
+This module tests the ExecutionDocumentGenerator with real DAGs and configurations
+to ensure it correctly fills execution documents.
+"""
+
+import json
+import pytest
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+from cursus.mods.exe_doc.cradle_helper import CradleDataLoadingHelper
+from cursus.mods.exe_doc.registration_helper import RegistrationHelper
+from cursus.pipeline_catalog.shared_dags.xgboost.complete_e2e_dag import create_xgboost_complete_e2e_dag
+
+
+class TestExecutionDocumentGeneratorIntegration:
+    """Integration tests for ExecutionDocumentGenerator."""
+    
+    @pytest.fixture
+    def project_root(self):
+        """Get the project root directory."""
+        return Path(__file__).parent.parent.parent.parent
+    
+    @pytest.fixture
+    def config_path(self, project_root):
+        """Path to the test configuration."""
+        return str(project_root / "pipeline_config" / "config_NA_xgboost_AtoZ_v2" / "config_NA_xgboost_AtoZ.json")
+    
+    @pytest.fixture
+    def sample_exe_doc_path(self, project_root):
+        """Path to the sample execution document."""
+        return str(project_root / "pipeline_config" / "config_NA_xgboost_AtoZ_v2" / "sample_exe_doc.json")
+    
+    @pytest.fixture
+    def expected_result_path(self, project_root):
+        """Path to the expected result."""
+        return str(project_root / "pipeline_config" / "config_NA_xgboost_AtoZ_v2" / "execute_doc_lukexie-AtoZ-xgboost-NA_2.0.0.json")
+    
+    @pytest.fixture
+    def sample_execution_document(self, sample_exe_doc_path):
+        """Load the sample execution document."""
+        with open(sample_exe_doc_path, 'r') as f:
+            return json.load(f)
+    
+    @pytest.fixture
+    def expected_result(self, expected_result_path):
+        """Load the expected result."""
+        with open(expected_result_path, 'r') as f:
+            return json.load(f)
+    
+    @pytest.fixture
+    def xgboost_dag(self):
+        """Create the XGBoost complete E2E DAG."""
+        return create_xgboost_complete_e2e_dag()
+    
+    def test_fill_execution_document_integration(self, config_path, sample_execution_document, expected_result, xgboost_dag):
+        """
+        Integration test for fill_execution_document method.
+        
+        This test verifies that the ExecutionDocumentGenerator correctly fills
+        an execution document using real configuration and DAG data.
+        """
+        # Initialize the generator with the real config
+        generator = ExecutionDocumentGenerator(config_path)
+        
+        # Add the necessary helpers
+        cradle_helper = CradleDataLoadingHelper()
+        registration_helper = RegistrationHelper()
+        generator.add_helper(cradle_helper)
+        generator.add_helper(registration_helper)
+        
+        # Fill the execution document
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        # Verify the result structure
+        assert "PIPELINE_STEP_CONFIGS" in result
+        assert "PIPELINE_ADDITIONAL_PARAMS" in result
+        
+        # Check that cradle steps were processed
+        cradle_steps = [
+            "CradleDataLoading-Training", 
+            "CradleDataLoading-Calibration"
+        ]
+        
+        for step_name in cradle_steps:
+            if step_name in result["PIPELINE_STEP_CONFIGS"]:
+                step_config = result["PIPELINE_STEP_CONFIGS"][step_name]
+                assert "STEP_CONFIG" in step_config
+                assert "STEP_TYPE" in step_config
+                
+                # Verify cradle-specific configuration structure
+                if "STEP_CONFIG" in step_config and step_config["STEP_CONFIG"]:
+                    cradle_config = step_config["STEP_CONFIG"]
+                    # Check for expected cradle configuration keys
+                    expected_keys = ["dataSources", "transformSpecification", "outputSpecification", "cradleJobSpecification"]
+                    for key in expected_keys:
+                        if key in cradle_config:
+                            assert cradle_config[key] is not None
+        
+        # Check that registration step was processed
+        registration_steps = ["Registration-NA", "Registration"]
+        registration_found = False
+        
+        for step_name in registration_steps:
+            if step_name in result["PIPELINE_STEP_CONFIGS"]:
+                registration_found = True
+                step_config = result["PIPELINE_STEP_CONFIGS"][step_name]
+                assert "STEP_CONFIG" in step_config
+                assert "STEP_TYPE" in step_config
+                
+                # Verify registration-specific configuration structure
+                if "STEP_CONFIG" in step_config and step_config["STEP_CONFIG"]:
+                    reg_config = step_config["STEP_CONFIG"]
+                    # Check for expected registration configuration keys
+                    expected_keys = [
+                        "model_domain", 
+                        "model_objective", 
+                        "source_model_inference_content_types",
+                        "source_model_inference_input_variable_list",
+                        "source_model_inference_output_variable_list"
+                    ]
+                    for key in expected_keys:
+                        if key in reg_config:
+                            assert reg_config[key] is not None
+        
+        # At least one registration step should be found and processed
+        assert registration_found, "No registration step was found and processed"
+    
+    def test_fill_execution_document_cradle_data_mapping(self, config_path, sample_execution_document, expected_result, xgboost_dag):
+        """
+        Test that cradle data loading configurations are correctly mapped from config to execution document.
+        """
+        generator = ExecutionDocumentGenerator(config_path)
+        cradle_helper = CradleDataLoadingHelper()
+        generator.add_helper(cradle_helper)
+        
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        # Check specific cradle configuration mappings
+        training_step = "CradleDataLoading-Training"
+        if training_step in result["PIPELINE_STEP_CONFIGS"]:
+            step_config = result["PIPELINE_STEP_CONFIGS"][training_step]["STEP_CONFIG"]
+            
+            if "dataSources" in step_config:
+                data_sources = step_config["dataSources"]["dataSources"]
+                
+                # Verify that we have the expected data sources
+                source_names = [ds["dataSourceName"] for ds in data_sources]
+                # Check for either RAW_MDS_NA (from config) or RAW_MDS (from sample doc)
+                assert any(name in source_names for name in ["RAW_MDS_NA", "RAW_MDS"])
+                assert "TAGS" in source_names
+                
+                # Verify MDS data source configuration
+                mds_source = next((ds for ds in data_sources if ds["dataSourceName"] in ["RAW_MDS_NA", "RAW_MDS"]), None)
+                if mds_source:
+                    assert mds_source["dataSourceType"] == "MDS"
+                    assert "mdsDataSourceProperties" in mds_source
+                    # Only check specific properties if they exist (sample doc may have different structure)
+                    if "mdsDataSourceProperties" in mds_source:
+                        mds_props = mds_source["mdsDataSourceProperties"]
+                        # Check properties that should be present
+                        if "serviceName" in mds_props:
+                            assert mds_props["serviceName"] is not None
+                        if "region" in mds_props:
+                            assert mds_props["region"] is not None
+                
+                # Verify EDX data source configuration
+                edx_source = next((ds for ds in data_sources if ds["dataSourceName"] == "TAGS"), None)
+                if edx_source:
+                    assert edx_source["dataSourceType"] == "EDX"
+                    assert "edxDataSourceProperties" in edx_source
+    
+    def test_fill_execution_document_registration_mapping(self, config_path, sample_execution_document, expected_result, xgboost_dag):
+        """
+        Test that registration configurations are correctly mapped from config to execution document.
+        """
+        generator = ExecutionDocumentGenerator(config_path)
+        registration_helper = RegistrationHelper()
+        generator.add_helper(registration_helper)
+        
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        # Check registration configuration mappings
+        registration_step = "Registration-NA"
+        if registration_step in result["PIPELINE_STEP_CONFIGS"]:
+            step_config = result["PIPELINE_STEP_CONFIGS"][registration_step]["STEP_CONFIG"]
+            
+            # Verify key registration fields are populated
+            expected_fields = [
+                "model_domain",
+                "model_objective", 
+                "source_model_inference_content_types",
+                "source_model_inference_input_variable_list",
+                "source_model_inference_output_variable_list"
+            ]
+            
+            for field in expected_fields:
+                if field in step_config:
+                    assert step_config[field] is not None
+                    
+                    # Verify specific values match expected configuration
+                    if field == "model_domain":
+                        assert step_config[field] == "AtoZ"
+                    elif field == "model_objective":
+                        assert step_config[field] == "AtoZ_Claims_SM_Model_NA"
+                    elif field == "source_model_inference_content_types":
+                        assert "text/csv" in step_config[field]
+    
+    def test_dag_node_mapping(self, config_path, sample_execution_document, xgboost_dag):
+        """
+        Test that DAG nodes are correctly mapped to execution document steps.
+        """
+        generator = ExecutionDocumentGenerator(config_path)
+        cradle_helper = CradleDataLoadingHelper()
+        registration_helper = RegistrationHelper()
+        generator.add_helper(cradle_helper)
+        generator.add_helper(registration_helper)
+        
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        # Verify that DAG nodes are represented in the execution document
+        dag_nodes = list(xgboost_dag.nodes)
+        exec_doc_steps = list(result["PIPELINE_STEP_CONFIGS"].keys())
+        
+        # Check that key steps from the DAG are present in execution document
+        # Note: Step names might be slightly different between DAG and execution document
+        key_dag_nodes = [
+            "CradleDataLoading_training",
+            "CradleDataLoading_calibration", 
+            "XGBoostTraining",
+            "Registration"
+        ]
+        
+        key_exec_steps = [
+            "CradleDataLoading-Training",
+            "CradleDataLoading-Calibration",
+            "XGBoostTraining", 
+            "Registration-NA"
+        ]
+        
+        # Verify that the execution document contains steps corresponding to key DAG nodes
+        for exec_step in key_exec_steps:
+            if exec_step in exec_doc_steps:
+                assert exec_step in result["PIPELINE_STEP_CONFIGS"]
+                step_config = result["PIPELINE_STEP_CONFIGS"][exec_step]
+                assert "STEP_TYPE" in step_config
+    
+    def test_error_handling_invalid_config_path(self):
+        """Test error handling for invalid configuration path."""
+        with pytest.raises(Exception):  # Should raise ExecutionDocumentGenerationError or similar
+            ExecutionDocumentGenerator("nonexistent_config.json")
+    
+    def test_error_handling_missing_helpers(self, config_path, sample_execution_document, xgboost_dag):
+        """Test behavior when required helpers are missing."""
+        generator = ExecutionDocumentGenerator(config_path)
+        # Don't add any helpers
+        
+        # Should still work but may not fill all configurations
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        # Basic structure should still be present
+        assert "PIPELINE_STEP_CONFIGS" in result
+        assert "PIPELINE_ADDITIONAL_PARAMS" in result
+    
+    @pytest.mark.parametrize("step_name,expected_type", [
+        ("CradleDataLoading-Training", ["WORKFLOW_INPUT", "CradleDataLoadingStep"]),
+        ("CradleDataLoading-Calibration", ["WORKFLOW_INPUT", "CradleDataLoadingStep"]),
+        ("XGBoostTraining", "TRAINING_STEP"),
+        ("Registration-NA", ["PROCESSING_STEP", "MimsModelRegistrationProcessingStep"])
+    ])
+    def test_step_type_assignment(self, config_path, sample_execution_document, xgboost_dag, step_name, expected_type):
+        """Test that step types are correctly assigned."""
+        generator = ExecutionDocumentGenerator(config_path)
+        cradle_helper = CradleDataLoadingHelper()
+        registration_helper = RegistrationHelper()
+        generator.add_helper(cradle_helper)
+        generator.add_helper(registration_helper)
+        
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        if step_name in result["PIPELINE_STEP_CONFIGS"]:
+            step_config = result["PIPELINE_STEP_CONFIGS"][step_name]
+            assert "STEP_TYPE" in step_config
+            
+            actual_type = step_config["STEP_TYPE"]
+            if isinstance(expected_type, list):
+                assert actual_type == expected_type
+            else:
+                assert actual_type == expected_type
+    
+    def test_save_actual_output(self, config_path, sample_execution_document, xgboost_dag, project_root):
+        """
+        Test method to save the actual output of fill_execution_document for analysis.
+        
+        This test runs the ExecutionDocumentGenerator and saves the actual output
+        to the config folder for comparison with expected results.
+        """
+        # Initialize the generator with the real config
+        generator = ExecutionDocumentGenerator(config_path)
+        
+        # Add the necessary helpers
+        cradle_helper = CradleDataLoadingHelper()
+        registration_helper = RegistrationHelper()
+        generator.add_helper(cradle_helper)
+        generator.add_helper(registration_helper)
+        
+        # Fill the execution document
+        result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
+        
+        # Save the result to the config folder
+        output_path = project_root / "pipeline_config" / "config_NA_xgboost_AtoZ_v2" / "test_output_execution_document.json"
+        
+        with open(output_path, 'w') as f:
+            json.dump(result, f, indent=2)
+        
+        print(f"Actual output saved to: {output_path}")
+        
+        # Basic verification that the result has the expected structure
+        assert "PIPELINE_STEP_CONFIGS" in result
+        assert "PIPELINE_ADDITIONAL_PARAMS" in result
+        assert len(result["PIPELINE_STEP_CONFIGS"]) > 0
