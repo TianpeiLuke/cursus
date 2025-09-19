@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-09-18
+
+### Enhanced
+- **Pipeline Execution System** - Major improvements to pipeline execution and portability
+  - **Temporary Directory Management** - Enhanced temporary directory parameter passing from DAG compiler to assembler
+  - **Portability Enhancements** - Improved portability with better parameter passing throughout the pipeline execution chain
+  - **Pipeline Template Base** - Enhanced pipeline template base with improved parameter handling and execution context
+  - **Dynamic Template System** - Streamlined dynamic template system with better integration and reduced complexity
+
+- **Step Builder Architecture** - Significant improvements to step builder system
+  - **Floating S3 Support** - Refactored XGBoost training and dummy training steps to support floating S3 configurations
+  - **Risk Table Mapping Refactoring** - Major refactoring of risk table mapping to remove hyperparameter saving and improve Join compatibility
+  - **Model Calibration Cleanup** - Removed deprecated model calibration step builder and cleaned up unused code
+  - **Training Step Improvements** - Enhanced PyTorch and XGBoost training steps with better parameter handling
+
+- **Pipeline Catalog System** - Major updates to pipeline catalog infrastructure
+  - **Core Pipeline Enhancements** - Significant improvements to base pipeline functionality with 117+ lines of new features
+  - **Pipeline Catalog Core** - Added new pipeline catalog core infrastructure for better pipeline management
+  - **Test Infrastructure** - Recreated comprehensive pytest framework for pipeline catalog testing
+  - **Catalog Organization** - Improved pipeline catalog organization and structure
+
+### Added
+- **Join Operation Support** - Enhanced support for Join operations in pipeline execution
+  - **String Handling** - Fixed bug to support Join operations with string parameters in log.debug statements
+  - **F-String Compatibility** - Removed f-string usage to ensure compatibility with Join operations
+  - **Pipeline Assembler Integration** - Enhanced pipeline assembler with better Join operation support
+
+- **Comprehensive Test Suite** - Expanded testing infrastructure for new features
+  - **Pipeline Execution Tests** - New comprehensive tests for pipeline execution with temporary directory integration
+  - **Template Base Tests** - Enhanced tests for pipeline template base functionality
+  - **Builder Base Tests** - New tests for builder base functionality and parameter handling
+  - **DAG Compiler Tests** - Enhanced DAG compiler tests with better coverage
+
+- **Documentation Updates** - Comprehensive documentation improvements
+  - **Implementation Plans** - Updated hyperparameters source directory refactor implementation plans
+  - **Progress Tracking** - Enhanced progress tracking in implementation plans
+  - **Tutorial Updates** - Updated documentation, tutorials, and prompts for better user experience
+
+### Fixed
+- **Pipeline Execution Issues** - Critical fixes to pipeline execution system
+  - **Join Operation Compatibility** - Fixed compatibility issues with Join operations in various step builders
+  - **String Parameter Handling** - Improved string parameter handling in log.debug and other operations
+  - **Temporary Directory Integration** - Fixed temporary directory parameter passing throughout the execution chain
+
+- **Step Builder Fixes** - Comprehensive fixes to step builder implementations
+  - **Risk Table Mapping** - Fixed risk table mapping step to remove unnecessary hyperparameter saving
+  - **Training Step Alignment** - Fixed alignment issues in PyTorch and XGBoost training steps
+  - **Model Step Configuration** - Improved model step configuration handling and parameter validation
+
+- **Code Quality Improvements** - Major code quality enhancements
+  - **Code Cleanup** - Removed deprecated and unused code, including model calibration step builder
+  - **Import Optimization** - Improved import statements and module organization
+  - **Parameter Validation** - Enhanced parameter validation and error handling throughout the system
+
+### Technical Details
+- **Pipeline Architecture** - Enhanced pipeline execution architecture with better portability and parameter passing
+- **Step Builder System** - Improved step builder system with floating S3 support and better Join compatibility
+- **Pipeline Catalog** - New pipeline catalog core infrastructure with comprehensive testing framework
+- **Execution Context** - Enhanced execution context management with temporary directory support
+
+### Quality Assurance
+- **Comprehensive Testing** - Extensive testing of new pipeline execution features and improvements
+- **Integration Validation** - Thorough validation of integration between different system components
+- **Performance Testing** - Performance validation of enhanced pipeline execution system
+- **Compatibility Testing** - Comprehensive compatibility testing for Join operations and string handling
+
+### Performance Improvements
+- **Execution Speed** - Improved pipeline execution speed with optimized parameter passing
+- **Memory Management** - Better memory management in pipeline execution with enhanced cleanup
+- **Resource Utilization** - Optimized resource utilization in step builders and pipeline assembly
+- **Code Efficiency** - Improved code efficiency through cleanup and refactoring efforts
+
 ## [1.3.0] - 2025-09-18
 
 ### Added
