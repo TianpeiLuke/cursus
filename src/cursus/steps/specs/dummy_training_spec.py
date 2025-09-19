@@ -24,45 +24,10 @@ def _get_dummy_training_contract():
 
 DUMMY_TRAINING_SPEC = StepSpecification(
     step_type=get_spec_step_type("DummyTraining"),
-    node_type=NodeType.INTERNAL,
+    node_type=NodeType.SOURCE,  # Changed from INTERNAL to SOURCE
     script_contract=_get_dummy_training_contract(),
     dependencies=[
-        DependencySpec(
-            logical_name="pretrained_model_path",
-            dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=False,  # Optional - step can upload local model file if not provided
-            compatible_sources=[
-                "ProcessingStep",
-                "XGBoostTraining",
-                "PytorchTraining",
-                "TabularPreprocessing",
-            ],
-            semantic_keywords=[
-                "model",
-                "pretrained",
-                "artifact",
-                "weights",
-                "training_output",
-                "model_data",
-            ],
-            data_type="S3Uri",
-            description="Optional pretrained model path. If not provided, step uploads local model file from config.",
-        ),
-        DependencySpec(
-            logical_name="hyperparameters_s3_uri",
-            dependency_type=DependencyType.HYPERPARAMETERS,
-            required=False,  # Optional - step can generate hyperparameters from config if not provided
-            compatible_sources=["HyperparameterPrep", "ProcessingStep"],
-            semantic_keywords=[
-                "config",
-                "params",
-                "hyperparameters",
-                "settings",
-                "hyperparams",
-            ],
-            data_type="S3Uri",
-            description="Optional hyperparameters file. If not provided, step generates hyperparameters from config.",
-        ),
+        # Remove all dependencies - SOURCE node needs no external inputs
     ],
     outputs=[
         OutputSpec(
@@ -70,7 +35,7 @@ DUMMY_TRAINING_SPEC = StepSpecification(
             output_type=DependencyType.MODEL_ARTIFACTS,  # Using MODEL_ARTIFACTS for packaging compatibility
             property_path="properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="S3 path to model artifacts with integrated hyperparameters",
+            description="S3 path to model artifacts with integrated hyperparameters (from source directory)",
             aliases=["ModelOutputPath", "ModelArtifacts", "model_data", "output_path"],
         )
     ],

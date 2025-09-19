@@ -133,8 +133,8 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         Returns:
             An instance of sagemaker.xgboost.XGBoost.
         """
-        # Note: We don't pass hyperparameters directly here because they are passed
-        # through the "config" input channel instead
+        # Note: Hyperparameters are now embedded in the source directory
+        # and loaded by the training script from /opt/ml/code/hyperparams/
 
         return XGBoost(
             entry_point=self.config.training_entry_point,
@@ -197,7 +197,7 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         Get inputs for the step using specification and contract.
 
         This method creates TrainingInput objects for each dependency defined in the specification.
-        Special handling is implemented for hyperparameters_s3_uri to always use internally generated ones.
+        After refactor: Only handles data inputs, hyperparameters are embedded in source directory.
 
         Args:
             inputs: Input data sources keyed by logical name
@@ -215,90 +215,17 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
             raise ValueError("Script contract is required for input mapping")
 
         training_inputs = {}
-        matched_inputs = set()  # Track which inputs we've handled
-
-        # SPECIAL CASE: Always generate hyperparameters internally first
-        hyperparameters_key = "hyperparameters_s3_uri"
-
-        # Generate hyperparameters file regardless of whether inputs contains it
-        internal_hyperparameters_s3_uri = self._prepare_hyperparameters_file()
-        self.log_info(
-            "[TRAINING INPUT OVERRIDE] Generated hyperparameters internally at: %s",
-            internal_hyperparameters_s3_uri,
-        )
-        self.log_info(
-            "[TRAINING INPUT OVERRIDE] This will be used regardless of any dependency-provided values"
-        )
-
-        # Get container path from contract for the hyperparameters
-        hyperparams_container_path = None
-        if hyperparameters_key in self.contract.expected_input_paths:
-            hyperparams_container_path = self.contract.expected_input_paths[
-                hyperparameters_key
-            ]
-
-            # Extract the channel name from the container path
-            # For '/opt/ml/input/data/config/hyperparameters.json', the channel name would be 'config'
-            parts = hyperparams_container_path.split("/")
-            if (
-                len(parts) > 4
-                and parts[1] == "opt"
-                and parts[2] == "ml"
-                and parts[3] == "input"
-                and parts[4] == "data"
-            ):
-                channel_name = parts[5]  # This would be 'config'
-                # Property references are now handled by PipelineAssembler
-                training_inputs[channel_name] = TrainingInput(
-                    s3_data=internal_hyperparameters_s3_uri
-                )
-                self.log_info(
-                    "Created %s channel from internally generated hyperparameters: %s",
-                    channel_name,
-                    internal_hyperparameters_s3_uri,
-                )
-        else:
-            # Fallback to 'config' if not in contract
-            training_inputs["config"] = TrainingInput(
-                s3_data=internal_hyperparameters_s3_uri
-            )
-            self.log_info(
-                "Created config channel from internally generated hyperparameters: %s",
-                internal_hyperparameters_s3_uri,
-            )
-
-        matched_inputs.add(hyperparameters_key)
-
-        # Create a copy of the inputs dictionary
-        working_inputs = inputs.copy()
-
-        # Remove our special case from the inputs dictionary
-        if hyperparameters_key in working_inputs:
-            external_path = working_inputs[hyperparameters_key]
-            self.log_info(
-                "[TRAINING INPUT OVERRIDE] Ignoring dependency-provided hyperparameters: %s",
-                external_path,
-            )
-            self.log_info(
-                "[TRAINING INPUT OVERRIDE] Using internal hyperparameters instead: %s",
-                internal_hyperparameters_s3_uri,
-            )
-            del working_inputs[hyperparameters_key]
 
         # Process each dependency in the specification
         for _, dependency_spec in self.spec.dependencies.items():
             logical_name = dependency_spec.logical_name
 
-            # Skip inputs we've already handled
-            if logical_name in matched_inputs:
-                continue
-
             # Skip if optional and not provided
-            if not dependency_spec.required and logical_name not in working_inputs:
+            if not dependency_spec.required and logical_name not in inputs:
                 continue
 
             # Make sure required inputs are present
-            if dependency_spec.required and logical_name not in working_inputs:
+            if dependency_spec.required and logical_name not in inputs:
                 raise ValueError(f"Required input '{logical_name}' not provided")
 
             # Get container path from contract
@@ -309,12 +236,11 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
                 # SPECIAL HANDLING FOR input_path
                 # For '/opt/ml/input/data', we need to create train/val/test channels
                 if logical_name == "input_path":
-                    base_path = working_inputs[logical_name]
+                    base_path = inputs[logical_name]
 
                     # Create separate channels for each data split using helper method
                     data_channels = self._create_data_channels_from_source(base_path)
                     training_inputs.update(data_channels)
-                    # Safe logging that handles Pipeline variables using the standard pattern
                     self.log_info(
                         "Created data channels from %s: %s", logical_name, base_path
                     )
@@ -330,29 +256,25 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
                     ):
                         if len(parts) > 5:
                             channel_name = parts[5]  # Extract channel name from path
-                            # Input data is used directly - property references are handled by PipelineAssembler
                             training_inputs[channel_name] = TrainingInput(
-                                s3_data=working_inputs[logical_name]
+                                s3_data=inputs[logical_name]
                             )
-                            # Safe logging that handles Pipeline variables using the standard pattern
                             self.log_info(
                                 "Created %s channel from %s: %s",
                                 channel_name,
                                 logical_name,
-                                working_inputs[logical_name],
+                                inputs[logical_name],
                             )
                         else:
                             # If no specific channel in path, use logical name as channel
-                            # Input data is used directly - property references are handled by PipelineAssembler
                             training_inputs[logical_name] = TrainingInput(
-                                s3_data=working_inputs[logical_name]
+                                s3_data=inputs[logical_name]
                             )
-                            # Safe logging that handles Pipeline variables using the standard pattern
                             self.log_info(
                                 "Created %s channel from %s: %s",
                                 logical_name,
                                 logical_name,
-                                working_inputs[logical_name],
+                                inputs[logical_name],
                             )
             else:
                 raise ValueError(f"No container path found for input: {logical_name}")
@@ -431,112 +353,13 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
 
         return primary_output_path
 
-    def _prepare_hyperparameters_file(self) -> str:
-        """
-        Serializes the hyperparameters to JSON, uploads it to S3, and
-        returns that full S3 URI. This eliminates the need for a separate
-        HyperparameterPrepStep in the pipeline.
-        
-        This method is optimized for AWS Lambda execution with proper error handling,
-        resource management, and disk space considerations.
-        
-        Returns:
-            S3 URI or Join object that will resolve to the hyperparameters file location
-            
-        Raises:
-            ValueError: If hyperparameters serialization fails
-            Exception: If S3 upload fails after retries
-        """
-        # Start with model_dump() to get proper JSON types
-        try:
-            hyperparams_dict = self.config.hyperparameters.model_dump()
-        except Exception as e:
-            raise ValueError(f"Failed to serialize hyperparameters: {e}") from e
-
-        # Add derived properties manually
-        hyperparams_dict["is_binary"] = self.config.hyperparameters.is_binary
-        hyperparams_dict["num_classes"] = self.config.hyperparameters.num_classes
-        hyperparams_dict["input_tab_dim"] = self.config.hyperparameters.input_tab_dim
-        hyperparams_dict["objective"] = self.config.hyperparameters.objective
-        hyperparams_dict["eval_metric"] = self.config.hyperparameters.eval_metric
-
-        # Ensure class_weights matches num_classes
-        if (
-            "class_weights" not in hyperparams_dict
-            or len(hyperparams_dict["class_weights"]) != hyperparams_dict["num_classes"]
-        ):
-            hyperparams_dict["class_weights"] = [1.0] * hyperparams_dict["num_classes"]
-
-        # Use Lambda-friendly temporary directory with unique naming
-        import uuid
-        unique_id = str(uuid.uuid4())[:8]  # Short unique identifier
-        local_dir = Path(tempfile.gettempdir()) / f"hyperparams_{unique_id}"
-        local_file = local_dir / "hyperparameters.json"
-
-        try:
-            # Create directory and ensure it exists
-            local_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Write JSON locally with error handling
-            try:
-                with open(local_file, "w", encoding='utf-8') as f:
-                    json.dump(hyperparams_dict, f, indent=2, ensure_ascii=False)
-                self.log_info("Created hyperparameters JSON file at %s (size: %d bytes)", 
-                             local_file, local_file.stat().st_size)
-            except (IOError, OSError) as e:
-                raise ValueError(f"Failed to write hyperparameters file: {e}") from e
-
-            # Construct target S3 URI using base output path and Join for parameter compatibility
-            # Always use the unified system path for consistency and portability
-            from sagemaker.workflow.functions import Join
-            base_output_path = self._get_base_output_path()
-            target_s3_uri = Join(on="/", values=[base_output_path, "training_config", "hyperparameters.json"])
-            self.log_info("Using unified system hyperparameters path: %s", target_s3_uri)
-
-            # Upload the file with enhanced error handling for Lambda environment
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    self.log_info("Uploading hyperparameters from %s to %s (attempt %d/%d)", 
-                                 local_file, target_s3_uri, attempt + 1, max_retries)
-                    
-                    S3Uploader.upload(
-                        str(local_file), 
-                        target_s3_uri, 
-                        sagemaker_session=self.session
-                    )
-                    
-                    self.log_info("Hyperparameters successfully uploaded to %s", target_s3_uri)
-                    return target_s3_uri
-                    
-                except Exception as e:
-                    if attempt == max_retries - 1:  # Last attempt
-                        self.log_error("Failed to upload hyperparameters after %d attempts: %s", max_retries, e)
-                        raise Exception(f"S3 upload failed after {max_retries} attempts: {e}") from e
-                    else:
-                        self.log_warning("Upload attempt %d failed, retrying: %s", attempt + 1, e)
-                        import time
-                        time.sleep(2 ** attempt)  # Exponential backoff
-
-        except Exception as e:
-            self.log_error("Error in _prepare_hyperparameters_file: %s", e)
-            raise
-        finally:
-            # Robust cleanup - ensure temporary files are removed even if upload fails
-            try:
-                if local_dir.exists():
-                    shutil.rmtree(local_dir, ignore_errors=True)
-                    self.log_debug("Cleaned up temporary directory: %s", local_dir)
-            except Exception as cleanup_error:
-                self.log_warning("Failed to clean up temporary directory %s: %s", local_dir, cleanup_error)
-                # Don't raise cleanup errors - they shouldn't fail the main operation
 
     def create_step(self, **kwargs) -> TrainingStep:
         """
         Creates a SageMaker TrainingStep for the pipeline.
 
         This method creates the XGBoost estimator, sets up training inputs from the input data,
-        uploads hyperparameters, and creates the SageMaker TrainingStep.
+        and creates the SageMaker TrainingStep. Hyperparameters are embedded in the source directory.
 
         Args:
             **kwargs: Keyword arguments for configuring the step, including:
@@ -580,7 +403,7 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
             inputs["input_path"] = input_path
 
         # Get training inputs using specification-driven method
-        # Note: _get_inputs now handles generating hyperparameters internally
+        # Note: Hyperparameters are now embedded in source directory
         training_inputs = self._get_inputs(inputs)
 
         # Make sure we have the inputs we need

@@ -63,7 +63,7 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
                 "hyperparams",
             ],
             data_type="S3Uri",
-            description="Hyperparameters configuration file (optional, can be generated internally)",
+            description="S3 URI containing hyperparameters configuration file (optional - falls back to source directory)",
         ),
     ],
     outputs=[

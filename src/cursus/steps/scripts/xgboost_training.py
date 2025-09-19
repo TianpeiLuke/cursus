@@ -554,7 +554,7 @@ def main(
     Args:
         input_paths: Dictionary of input paths with logical names
             - "input_path": Directory containing train/val/test data
-            - "hyperparameters_s3_uri": Path to hyperparameters.json file
+            - "hyperparameters_s3_uri": Path to hyperparameters directory (now points to /opt/ml/code/hyperparams)
         output_paths: Dictionary of output paths with logical names
             - "model_output": Directory to save model artifacts
             - "evaluation_output": Directory to save evaluation outputs
@@ -576,8 +576,8 @@ def main(
             if not hparam_path.endswith("hyperparameters.json"):
                 hparam_path = os.path.join(hparam_path, "hyperparameters.json")
         else:
-            # Fallback to default location within input_path
-            hparam_path = os.path.join(data_dir, "config", "hyperparameters.json")
+            # Fallback to source directory if not provided
+            hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
 
         logger.info("Starting XGBoost training process...")
         logger.info(f"Loading configuration from {hparam_path}")
@@ -674,7 +674,7 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/input/data/config",
+        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path
     }
 
     # Define input and output paths using contract logical names

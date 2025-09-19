@@ -33,6 +33,33 @@ from ...api.dag.base_dag import PipelineDAG
 logger = logging.getLogger(__name__)
 
 
+def safe_value_for_logging(value: Any) -> str:
+    """
+    Safely format a value for logging, handling Pipeline variables appropriately.
+
+    Args:
+        value: Any value that might be a Pipeline variable
+
+    Returns:
+        A string representation safe for logging
+    """
+    # Check if it's a Pipeline variable or has the expr attribute
+    if hasattr(value, "expr"):
+        return f"[Pipeline Variable: {value.__class__.__name__}]"
+
+    # Handle collections containing Pipeline variables
+    if isinstance(value, dict):
+        return "{...}"  # Avoid iterating through dict values which might contain Pipeline variables
+    if isinstance(value, (list, tuple, set)):
+        return f"[{type(value).__name__} with {len(value)} items]"
+
+    # For simple values, return the string representation
+    try:
+        return str(value)
+    except Exception:
+        return f"[Object of type: {type(value).__name__}]"
+
+
 class PipelineAssembler:
     """
     Assembles pipeline steps using a DAG and step builders with specification-based dependency resolution.
@@ -318,17 +345,9 @@ class PipelineAssembler:
             from sagemaker.workflow.functions import Join
             outputs[logical_name] = Join(on="/", values=[base_s3_loc, step_type, logical_name])
 
-            # Add debug log with type-safe handling
-            output_value = outputs[logical_name]
-            if hasattr(output_value, 'expr'):
-                # It's a ParameterString/Join object
-                output_repr = output_value.expr
-            else:
-                # It's a regular string
-                output_repr = str(output_value)
-
+            # Add debug log with type-safe handling using safe_value_for_logging
             logger.debug(
-                f"Generated output for {step_name}.{logical_name}: {output_repr}"
+                f"Generated output for {step_name}.{logical_name}: {safe_value_for_logging(outputs[logical_name])}"
             )
 
         return outputs

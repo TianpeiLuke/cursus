@@ -11,18 +11,16 @@ from ...core.base.contract_base import ScriptContract
 DUMMY_TRAINING_CONTRACT = ScriptContract(
     entry_point="dummy_training.py",
     expected_input_paths={
-        "pretrained_model_path": "/opt/ml/processing/input/model/model.tar.gz",
-        "hyperparameters_s3_uri": "/opt/ml/processing/input/config/hyperparameters.json",
+        # Empty - SOURCE node reads from source directory only
     },
     expected_output_paths={
         "model_input": "/opt/ml/processing/output/model"  # Matches specification logical name
     },
     expected_arguments={
-        # No expected arguments - using standard paths from contract
+        # No expected arguments - using hard-coded source directory paths
     },
     required_env_vars=[],
     optional_env_vars={},
     framework_requirements={"boto3": ">=1.26.0", "pathlib": ">=1.0.0"},
-    description="Contract for dummy training step that processes a pretrained model.tar.gz by unpacking it, "
-    "adding a hyperparameters.json file inside, and repacking it for downstream steps",
+    description="Contract for dummy training SOURCE step that packages model.tar.gz and hyperparameters.json from source directory",
 )

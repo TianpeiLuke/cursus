@@ -75,165 +75,27 @@ class DummyTrainingStepBuilder(StepBuilderBase):
     def validate_configuration(self):
         """
         Validate the provided configuration.
-
-        Raises:
-            ValueError: If pretrained_model_path is not provided
-            FileNotFoundError: If the pretrained model file doesn't exist
+        
+        For SOURCE nodes, we rely on the base class validation which already
+        handles source directory validation and other required attributes.
         """
-        self.log_info("Validating DummyTrainingConfig...")
+        self.log_info("Validating DummyTraining SOURCE configuration...")
+        
+        # The base class (ProcessingStepConfigBase) already validates:
+        # - processing_framework_version
+        # - processing_instance_count  
+        # - processing_volume_size
+        # - processing_entry_point (if provided)
+        # - effective_source_dir existence
+        
+        # For SOURCE nodes, we just need to ensure we have an entry point
+        if not self.config.processing_entry_point:
+            raise ValueError("DummyTraining SOURCE node requires processing_entry_point")
+        
+        self.log_info("DummyTraining SOURCE configuration validation succeeded.")
 
-        # Check for required local file
-        if not self.config.pretrained_model_path:
-            raise ValueError("pretrained_model_path is required in DummyTrainingConfig")
-
-        # Check if file exists (if path is concrete and not a variable)
-        if not hasattr(self.config.pretrained_model_path, "expr"):
-            model_path = Path(self.config.pretrained_model_path)
-            if not model_path.exists():
-                raise FileNotFoundError(f"Pretrained model not found at {model_path}")
-
-            # Additional validation: check file extension
-            if not model_path.suffix == ".tar.gz" and not str(model_path).endswith(
-                ".tar.gz"
-            ):
-                self.log_warning(
-                    f"Model file {model_path} does not have .tar.gz extension"
-                )
-
-        # Check for hyperparameters
-        if (
-            not hasattr(self.config, "hyperparameters")
-            or not self.config.hyperparameters
-        ):
-            raise ValueError(
-                "Model hyperparameters are required in DummyTrainingConfig"
-            )
-
-        self.log_info("DummyTrainingConfig validation succeeded.")
-
-
-
-
-    def _upload_model_to_s3(self) -> str:
-        """
-        Upload the pretrained model to S3.
-
-        Returns:
-            S3 URI where the model was uploaded
-
-        Raises:
-            Exception: If upload fails
-        """
-        self.log_info(
-            f"Uploading pretrained model from {self.config.pretrained_model_path}"
-        )
-
-        # Construct target S3 URI using base output path and Join for parameter compatibility
-        from sagemaker.workflow.functions import Join
-        base_output_path = self._get_base_output_path()
-        target_s3_uri = Join(on="/", values=[base_output_path, "dummy_training", "input", "model.tar.gz"])
-
-        try:
-            # Upload the file - S3Uploader handles Join objects properly
-            S3Uploader.upload(
-                self.config.pretrained_model_path,
-                target_s3_uri,
-                sagemaker_session=self.session,
-            )
-
-            self.log_info(f"Uploaded model to {target_s3_uri}")
-            return target_s3_uri
-        except Exception as e:
-            self.log_error(f"Failed to upload model to S3: {e}")
-            import traceback
-
-            self.log_error(traceback.format_exc())
-            raise
-
-    def _prepare_hyperparameters_file(self) -> str:
-        """
-        Serializes the hyperparameters to JSON, uploads it to S3, and
-        returns that full S3 URI.
-
-        This method is optimized for AWS Lambda execution with proper error handling,
-        resource management, and disk space considerations.
-
-        Returns:
-            S3 URI or Join object that will resolve to the hyperparameters file location
-
-        Raises:
-            ValueError: If hyperparameters serialization fails
-            Exception: If S3 upload fails after retries
-        """
-        # Serialize hyperparameters with error handling
-        try:
-            hyperparams_dict = self.config.hyperparameters.model_dump()
-        except Exception as e:
-            raise ValueError(f"Failed to serialize hyperparameters: {e}") from e
-
-        # Use Lambda-friendly temporary directory with unique naming
-        import uuid
-        unique_id = str(uuid.uuid4())[:8]  # Short unique identifier
-        local_dir = Path(tempfile.gettempdir()) / f"hyperparams_{unique_id}"
-        local_file = local_dir / "hyperparameters.json"
-
-        try:
-            # Create directory and ensure it exists
-            local_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Write JSON locally with error handling
-            try:
-                with open(local_file, "w", encoding='utf-8') as f:
-                    json.dump(hyperparams_dict, f, indent=2, ensure_ascii=False)
-                self.log_info("Created hyperparameters JSON file at %s (size: %d bytes)", 
-                             local_file, local_file.stat().st_size)
-            except (IOError, OSError) as e:
-                raise ValueError(f"Failed to write hyperparameters file: {e}") from e
-
-            # Construct target S3 URI using base output path and Join for parameter compatibility
-            # Always use the unified system path for consistency and portability
-            from sagemaker.workflow.functions import Join
-            base_output_path = self._get_base_output_path()
-            target_s3_uri = Join(on="/", values=[base_output_path, "training_config", "hyperparameters.json"])
-            self.log_info("Using unified system hyperparameters path: %s", target_s3_uri)
-
-            # Upload the file with enhanced error handling for Lambda environment
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    self.log_info("Uploading hyperparameters from %s to %s (attempt %d/%d)", 
-                                 local_file, target_s3_uri, attempt + 1, max_retries)
-                    
-                    S3Uploader.upload(
-                        str(local_file), 
-                        target_s3_uri, 
-                        sagemaker_session=self.session
-                    )
-                    
-                    self.log_info("Hyperparameters successfully uploaded to %s", target_s3_uri)
-                    return target_s3_uri
-                    
-                except Exception as e:
-                    if attempt == max_retries - 1:  # Last attempt
-                        self.log_error("Failed to upload hyperparameters after %d attempts: %s", max_retries, e)
-                        raise Exception(f"S3 upload failed after {max_retries} attempts: {e}") from e
-                    else:
-                        self.log_warning("Upload attempt %d failed, retrying: %s", attempt + 1, e)
-                        import time
-                        time.sleep(2 ** attempt)  # Exponential backoff
-
-        except Exception as e:
-            self.log_error("Error in _prepare_hyperparameters_file: %s", e)
-            raise
-        finally:
-            # Robust cleanup - ensure temporary files are removed even if upload fails
-            try:
-                if local_dir.exists():
-                    shutil.rmtree(local_dir, ignore_errors=True)
-                    self.log_debug("Cleaned up temporary directory: %s", local_dir)
-            except Exception as cleanup_error:
-                self.log_warning("Failed to clean up temporary directory %s: %s", local_dir, cleanup_error)
-                # Don't raise cleanup errors - they shouldn't fail the main operation
+    # Removed _upload_model_to_s3 and _prepare_hyperparameters_file methods
+    # SOURCE node gets model and hyperparameters from source directory
 
     def _get_processor(self):
         """
@@ -270,86 +132,15 @@ class DummyTrainingStepBuilder(StepBuilderBase):
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """
-        Get inputs for the processor using the specification and contract.
-
-        Args:
-            inputs: Dictionary of input sources keyed by logical name
-
+        Get inputs for the processor.
+        
+        For SOURCE nodes, return empty list since all data comes from source directory.
+        
         Returns:
-            List of ProcessingInput objects for the processor
-
-        Raises:
-            ValueError: If no specification or contract is available
+            Empty list - SOURCE node has no external inputs
         """
-        if not self.spec:
-            raise ValueError("Step specification is required")
-
-        if not self.contract:
-            raise ValueError("Script contract is required for input mapping")
-
-        processing_inputs = []
-
-        # Use either the uploaded model or one provided through dependencies
-        model_s3_uri = inputs.get("pretrained_model_path")
-        if not model_s3_uri:
-            # Upload the local model file if no S3 path is provided
-            model_s3_uri = self._upload_model_to_s3()
-
-        # Handle PipelineVariable objects
-        if hasattr(model_s3_uri, "expr"):
-            self.log_info(
-                f"Processing PipelineVariable for model_s3_uri: {model_s3_uri.expr}"
-            )
-
-        # Get container path from contract for model
-        model_container_path = self.contract.expected_input_paths.get(
-            "pretrained_model_path"
-        )
-        if not model_container_path:
-            raise ValueError(
-                "Script contract missing required input path: pretrained_model_path"
-            )
-
-        # Add model input
-        processing_inputs.append(
-            ProcessingInput(
-                source=model_s3_uri,
-                destination=os.path.dirname(model_container_path),
-                input_name="model",
-            )
-        )
-
-        # Handle hyperparameters - either use the provided one or generate a new one
-        hyperparams_s3_uri = inputs.get("hyperparameters_s3_uri")
-        if not hyperparams_s3_uri:
-            # Generate hyperparameters JSON and upload to S3
-            hyperparams_s3_uri = self._prepare_hyperparameters_file()
-
-        # Handle PipelineVariable objects
-        if hasattr(hyperparams_s3_uri, "expr"):
-            self.log_info(
-                f"Processing PipelineVariable for hyperparams_s3_uri: {hyperparams_s3_uri.expr}"
-            )
-
-        # Get container path from contract for hyperparameters
-        hyperparams_container_path = self.contract.expected_input_paths.get(
-            "hyperparameters_s3_uri"
-        )
-        if not hyperparams_container_path:
-            raise ValueError(
-                "Script contract missing required input path: hyperparameters_s3_uri"
-            )
-
-        # Add hyperparameters input
-        processing_inputs.append(
-            ProcessingInput(
-                source=hyperparams_s3_uri,
-                destination=os.path.dirname(hyperparams_container_path),
-                input_name="config",
-            )
-        )
-
-        return processing_inputs
+        self.log_info("DummyTraining is a SOURCE node - no external inputs required")
+        return []
 
     def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
         """
@@ -410,21 +201,20 @@ class DummyTrainingStepBuilder(StepBuilderBase):
 
     def create_step(self, **kwargs) -> ProcessingStep:
         """
-        Create the processing step.
-
+        Create the processing step following the pattern from XGBoostModelEvalStepBuilder.
+        
+        This implementation uses processor.run() with both code and source_dir parameters,
+        which is the correct pattern for ProcessingSteps that need source directory access.
+        
         Args:
             **kwargs: Additional keyword arguments for step creation including:
-                     - inputs: Dictionary of input sources keyed by logical name
+                     - inputs: Dictionary of input sources keyed by logical name (will be empty for SOURCE node)
                      - outputs: Dictionary of output destinations keyed by logical name
                      - dependencies: List of steps this step depends on
                      - enable_caching: Whether to enable caching for this step
 
         Returns:
             ProcessingStep: The configured processing step
-
-        Raises:
-            ValueError: If inputs cannot be extracted
-            Exception: If step creation fails
         """
         try:
             # Extract parameters
@@ -433,27 +223,13 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             dependencies = kwargs.get("dependencies", [])
             enable_caching = kwargs.get("enable_caching", True)
 
-            # Handle inputs
+            # Handle inputs (should be empty for SOURCE node)
             inputs = {}
-
-            # If dependencies are provided, extract inputs from them
-            if dependencies:
-                try:
-                    extracted_inputs = self.extract_inputs_from_dependencies(
-                        dependencies
-                    )
-                    inputs.update(extracted_inputs)
-                except Exception as e:
-                    self.log_warning(
-                        "Failed to extract inputs from dependencies: %s", e
-                    )
-
-            # Add explicitly provided inputs (overriding any extracted ones)
-            inputs.update(inputs_raw)
+            inputs.update(inputs_raw)  # Should be empty but include for consistency
 
             # Create processor and get inputs/outputs
             processor = self._get_processor()
-            processing_inputs = self._get_inputs(inputs)
+            processing_inputs = self._get_inputs(inputs)  # Returns empty list for SOURCE node
             processing_outputs = self._get_outputs(outputs)
 
             # Get step name using standardized method with auto-detection
@@ -462,26 +238,35 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             # Get job arguments from contract
             script_args = self._get_job_arguments()
 
-            # Create the step using direct ProcessingStep instantiation
-            step = ProcessingStep(
-                name=step_name,
-                processor=processor,
+            # CRITICAL: Follow XGBoostModelEvalStepBuilder pattern for source directory
+            # Use processor.run() with both code and source_dir parameters
+            script_path = self.config.get_script_path()  # Entry point only
+            source_dir = self.config.get_effective_source_dir()  # Source directory path (processing_source_dir or source_dir)
+
+            # Create step arguments using processor.run()
+            step_args = processor.run(
+                code=script_path,
+                source_dir=source_dir,  # This ensures source directory is available in container
                 inputs=processing_inputs,
                 outputs=processing_outputs,
-                code=self.config.get_script_path(),
-                job_arguments=script_args,
+                arguments=script_args,
+            )
+
+            # Create and return the step using step_args
+            processing_step = ProcessingStep(
+                name=step_name,
+                step_args=step_args,
                 depends_on=dependencies,
                 cache_config=self._get_cache_config(enable_caching),
             )
 
             # Store specification in step for future reference
-            setattr(step, "_spec", self.spec)
+            setattr(processing_step, "_spec", self.spec)
 
-            return step
+            return processing_step
 
         except Exception as e:
             self.log_error(f"Error creating DummyTraining step: {e}")
             import traceback
-
             self.log_error(traceback.format_exc())
             raise ValueError(f"Failed to create DummyTraining step: {str(e)}") from e
