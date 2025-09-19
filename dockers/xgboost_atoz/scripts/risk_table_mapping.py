@@ -22,7 +22,7 @@ from typing import Dict, List, Tuple, Any, Optional, Callable
 
 # Default paths (will be overridden by parameters in main function)
 DEFAULT_INPUT_DIR = "/opt/ml/processing/input/data"
-DEFAULT_CONFIG_DIR = "/opt/ml/processing/input/config"
+DEFAULT_CONFIG_DIR = "/opt/ml/code/hyperparams"  # Source directory path
 DEFAULT_OUTPUT_DIR = "/opt/ml/processing/output"
 DEFAULT_RISK_TABLE_DIR = "/opt/ml/processing/input/risk_tables"
 
@@ -529,22 +529,27 @@ def main(
                 f"Expected risk table path: {Path(risk_table_input_dir) / RISK_TABLE_FILENAME}"
             )
 
-        # Load hyperparameters
-        hyperparams_path = os.path.join(config_dir, HYPERPARAMS_FILENAME)
-        logger.info(f"Loading hyperparameters from {hyperparams_path}")
-
-        if os.path.exists(hyperparams_path):
-            hyperparams = load_json_config(hyperparams_path)
+        # Load hyperparameters with source directory fallback (same pattern as XGBoost)
+        # Use provided hyperparameters path, with source directory fallback
+        if "hyperparameters_s3_uri" in input_paths:
+            hparam_path = input_paths["hyperparameters_s3_uri"]
+            if not hparam_path.endswith("hyperparameters.json"):
+                hparam_path = os.path.join(hparam_path, "hyperparameters.json")
         else:
-            logger.warning(
-                f"Hyperparameters file not found at {hyperparams_path}, using defaults"
+            # Fallback to source directory if not provided
+            hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
+
+        logger.info(f"Loading hyperparameters from {hparam_path}")
+
+        if os.path.exists(hparam_path):
+            hyperparams = load_json_config(hparam_path)
+        else:
+            # FAIL with clear error instead of using arbitrary defaults
+            raise FileNotFoundError(
+                f"Hyperparameters file not found at {hparam_path}. "
+                f"Risk table mapping requires hyperparameters to be provided either via "
+                f"input channel or in source directory at /opt/ml/code/hyperparams/hyperparameters.json"
             )
-            hyperparams = {
-                "cat_field_list": [],
-                "label_name": "target",
-                "smooth_factor": 0.01,
-                "count_threshold": 5,
-            }
 
         # Execute the internal main logic
         return internal_main(
