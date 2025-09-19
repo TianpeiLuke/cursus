@@ -225,6 +225,27 @@ The sophisticated config field management system is completely disconnected from
 - **Duplicated effort**: Step catalog has `ConfigAutoDiscovery` but config field management doesn't use it
 - **Missed opportunities**: Can't leverage step catalog's workspace awareness and caching
 
+#### **4. Redundant Data Structure Proliferation**
+
+Based on **[Config Field Management System Analysis](../4_analysis/config_field_management_system_analysis.md)**, the system maintains three separate data structures that create massive redundancy:
+
+##### **ConfigClassStore Redundancy (85% Redundant)**
+- **Duplicates Step Catalog Functionality**: Manual registration when step catalog provides automatic discovery
+- **No Workspace Awareness**: Lacks project-specific config discovery capabilities
+- **Code Impact**: ~200 lines of redundant registration and storage logic
+
+##### **TierRegistry Redundancy (90% Redundant)**
+- **Duplicates Config Class Information**: External storage of data already available in config classes via `categorize_fields()` methods
+- **Synchronization Issues**: Risk of registry becoming out of sync with actual config class definitions
+- **Code Impact**: ~150 lines of redundant tier mapping and storage logic
+
+##### **CircularReferenceTracker Over-Engineering (95% Redundant)**
+- **Over-Engineered for Use Case**: 600+ lines handling theoretical circular reference problems that rarely occur in configuration objects
+- **Three-Tier Architecture Makes It Unnecessary**: Tier dependency hierarchy prevents most circular references by design
+- **Code Impact**: ~600 lines of complex circular reference handling (30% of entire system)
+
+**Total Data Structure Redundancy**: 950 lines (47% of system complexity) across these three components that could be reduced to ~120 lines with integrated step catalog approach.
+
 ## Step Catalog ConfigAutoDiscovery Solution
 
 ### **Modern Discovery Architecture**
@@ -330,32 +351,36 @@ def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dic
 
 ### **Integration Architecture Overview**
 
-The refactoring strategy integrates step catalog's robust discovery with the existing sophisticated config field management:
+The refactoring strategy integrates step catalog's robust discovery with simplified config field management, following code redundancy evaluation principles to achieve 15-25% target redundancy:
 
 ```
-UNIFIED CONFIG FIELD MANAGEMENT ARCHITECTURE
+OPTIMIZED CONFIG FIELD MANAGEMENT ARCHITECTURE
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    PUBLIC API LAYER                             │
 │  merge_and_save_configs() │ load_configs() │ serialize_config() │
+│  (PRESERVED: Same signatures, enhanced capabilities)            │
 └─────────────────────────────────────────────────────────────────┘
                                     │
 ┌─────────────────────────────────────────────────────────────────┐
-│                 CONFIG FIELD MANAGEMENT LAYER                   │
-│  ConfigMerger │ ConfigFieldCategorizer │ TypeAwareSerializer   │
+│            SIMPLIFIED CONFIG FIELD MANAGEMENT LAYER             │
+│  ConfigMerger │ TierAwareFieldCategorizer │ MinimalSerializer  │
+│  (OPTIMIZED: Reduced complexity, maintained functionality)      │
 └─────────────────────────────────────────────────────────────────┘
                                     │
 ┌─────────────────────────────────────────────────────────────────┐
 │                 UNIFIED DISCOVERY LAYER                         │
 │  StepCatalog.build_complete_config_classes()                   │
-│  ConfigAutoDiscovery (AST-based, workspace-aware)              │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-┌─────────────────────────────────────────────────────────────────┐
-│                    STORAGE LAYER                                │
-│  ConfigClassStore │ TierRegistry │ CircularReferenceTracker    │
+│  ConfigAutoDiscovery (AST-based, deployment-agnostic)          │
+│  (INTEGRATED: All storage functionality moved to step catalog)  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Storage Layer Eliminated**: The separate storage layer is no longer needed because:
+- **ConfigClassStore** → Replaced by step catalog's automatic discovery
+- **TierRegistry** → Replaced by config classes' own `categorize_fields()` methods  
+- **CircularReferenceTracker** → Simplified to minimal tracking within serializers
+- **All storage functionality** now integrated directly into the step catalog and config classes themselves
 
 ### **Phase 1: Discovery Layer Integration**
 
@@ -532,6 +557,85 @@ class OptimizedTypeAwareConfigSerializer:
         # Handle None and primitives (no type metadata needed)
         if obj is None or isinstance(obj, (str, int, float, bool)):
             return obj
+        
+        # Handle lists and dicts with minimal metadata
+        if isinstance(obj, (list, tuple)):
+            return [self.serialize(item) for item in obj]
+        
+        if isinstance(obj, dict):
+            return {key: self.serialize(value) for key, value in obj.items()}
+        
+        # Handle Pydantic models with essential metadata only
+        if hasattr(obj, 'model_dump'):
+            obj_id = id(obj)
+            if obj_id in self.simple_circular_tracker:
+                return {"__circular_ref__": True, "__model_type__": obj.__class__.__name__}
+            
+            self.simple_circular_tracker.add(obj_id)
+            try:
+                result = {
+                    "__model_type__": obj.__class__.__name__,
+                    # ELIMINATED: No __model_module__ needed with step catalog
+                    **obj.model_dump()
+                }
+                return result
+            finally:
+                self.simple_circular_tracker.remove(obj_id)
+        
+        # Fallback: string representation
+        return str(obj)
+```
+
+**Simplified Serialization Benefits**:
+- **Reduced Complexity**: ~300 lines of complex type preservation logic simplified
+- **Maintained Format**: Exact same JSON output structure preserved
+- **Deployment Agnostic**: No hardcoded module paths, works in any environment
+- **Performance Improvement**: Faster serialization through reduced metadata processing
+
+### **Phase 2: Enhanced Integration with Config Field Management**
+
+#### **Data Structure Integration Strategy**
+
+**Current Fragmented Approach (950 lines)**:
+```python
+# THREE SEPARATE SYSTEMS requiring coordination
+config_classes = ConfigClassStore.get_all_classes()           # 200 lines
+tier_info = TierRegistry.get_tier_info(class_name)           # 150 lines  
+circular_tracker = CircularReferenceTracker()                # 600 lines
+
+# Manual coordination required
+for config in configs:
+    ConfigClassStore.register(config.__class__)              # Manual registration
+    tier_info = config.categorize_fields()                   # Available but not used
+    TierRegistry.register_tier_info(config.__class__.__name__, tier_info)  # Redundant
+```
+
+**Unified Integration Approach (120 lines)**:
+```python
+# SINGLE INTEGRATED SYSTEM leveraging step catalog and three-tier architecture
+class UnifiedConfigManager:
+    def __init__(self, step_catalog):
+        self.step_catalog = step_catalog
+        self.simple_circular_tracker = set()  # Minimal tracking
+    
+    def get_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        # Use step catalog as single source of truth (replaces ConfigClassStore)
+        return self.step_catalog.build_complete_config_classes(project_id)
+    
+    def get_field_tiers(self, config_instance) -> Dict[str, List[str]]:
+        # Use config's own categorize_fields() method (replaces TierRegistry)
+        return config_instance.categorize_fields()
+    
+    def serialize_with_tier_awareness(self, obj) -> Any:
+        # Simple tier-aware serialization (replaces CircularReferenceTracker)
+        return self._tier_aware_serialize(obj)
+```
+
+**Integration Benefits**:
+- **87% Code Reduction**: 950 lines → 120 lines across three components
+- **Single Source of Truth**: Step catalog provides authoritative config discovery
+- **Self-Contained Information**: Config classes manage their own tier data
+- **Architectural Prevention**: Three-tier design prevents circular reference complexity
 
 #### **Workspace-Aware Config Field Categorizer**
 
@@ -827,11 +931,19 @@ def load_configs(
 
 #### **After Refactoring**
 - **Config Discovery Success Rate**: 100% (18/18 classes + hyperparameters)
+- **Data Structure Redundancy**: 87% reduction (950 lines → 120 lines in ConfigClassStore, TierRegistry, CircularReferenceTracker)
 - **Discovery Method**: AST parsing + intelligent imports + step catalog integration
 - **Error Handling**: Graceful degradation with comprehensive logging
 - **Workspace Support**: Full workspace-aware discovery with project-specific configs
 - **Hyperparameter Support**: Complete hyperparameter class discovery
-- **Performance**: O(1) cached lookups after initial AST scan
+- **Performance**: O(1) cached lookups after initial AST scan + eliminated registry coordination overhead
+
+#### **Specific Data Structure Improvements**
+- **ConfigClassStore Elimination**: Manual registration → Automatic step catalog discovery
+- **TierRegistry Elimination**: External storage → Config class self-contained methods
+- **CircularReferenceTracker Simplification**: 600+ lines → ~70 lines through tier-based prevention
+- **System Coordination**: 3 separate systems → 1 unified manager
+- **Maintenance Overhead**: 3 components to maintain → 1 integrated component
 
 ### **Qualitative Improvements**
 
@@ -852,22 +964,24 @@ def load_configs(
 
 ### **Phased Migration Approach**
 
-#### **Phase 1: Drop-in Replacement (Week 1)**
-- Replace `build_complete_config_classes()` with step catalog integration
-- Maintain exact same function signature for backward compatibility
-- Add comprehensive logging and multiple fallback strategies
+#### **Phase 1: Discovery Layer Integration (Week 1)**
+- Replace broken `build_complete_config_classes()` with step catalog integration
+- Fix `load_configs()` module path issues with step catalog
+- Implement simplified serialization while maintaining output format
 - Test with ExecutionDocumentGenerator to verify fix
 
-#### **Phase 2: Enhanced Integration (Week 2)**
-- Add optional `project_id` parameter for workspace-aware discovery
-- Integrate step catalog with `ConfigFieldCategorizer` and `ConfigMerger`
-- Enhance public API functions with optional step catalog parameters
-- Maintain full backward compatibility with existing code
+#### **Phase 2: Data Structure Simplification and Integration (Week 2)**
+- **Eliminate ConfigClassStore**: Replace manual registration with step catalog automatic discovery
+- **Eliminate TierRegistry**: Replace external storage with config class self-contained methods
+- **Simplify CircularReferenceTracker**: Reduce 600+ lines to ~70 lines through tier-based prevention
+- **Implement UnifiedConfigManager**: Single integrated component replacing three separate systems
+- **Achieve 87% code reduction**: 950 lines → 120 lines across the three components
 
-#### **Phase 3: Advanced Features (Week 3)**
-- Enable workspace-aware field categorization
-- Add framework-specific field handling using step catalog framework detection
-- Enhance metadata with step catalog information
+#### **Phase 3: Enhanced Public API and Advanced Features (Week 3)**
+- Add optional `project_id` parameter for workspace-aware discovery
+- Integrate step catalog with enhanced `ConfigFieldCategorizer` and `ConfigMerger`
+- Enable workspace-aware field categorization and framework-specific handling
+- Enhance public API functions with step catalog integration
 - Performance optimization and comprehensive testing
 
 ### **Backward Compatibility Strategy**
