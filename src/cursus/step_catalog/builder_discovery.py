@@ -392,9 +392,7 @@ class BuilderAutoDiscovery:
     
     def _load_class_from_file(self, file_path: Path, class_name: str) -> Optional[Type]:
         """
-        Load class using file system path (deployment-agnostic).
-        
-        This avoids importlib.import_module which has deployment portability issues.
+        Load class using proper module imports to handle relative imports correctly.
         
         Args:
             file_path: Path to the Python file
@@ -404,24 +402,61 @@ class BuilderAutoDiscovery:
             Class type or None if loading fails
         """
         try:
-            # Use importlib.util for file-based loading
-            spec = importlib.util.spec_from_file_location("dynamic_builder_module", file_path)
-            if spec is None or spec.loader is None:
-                self.logger.warning(f"Could not create spec for {file_path}")
+            # Convert file path to module path
+            module_path = self._file_to_module_path(file_path)
+            if not module_path:
+                self.logger.warning(f"Could not determine module path for {file_path}")
                 return None
             
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+            # Import the module using proper module path
+            import importlib
+            module = importlib.import_module(module_path)
             
             # Get the class from the module
             if hasattr(module, class_name):
                 return getattr(module, class_name)
             else:
-                self.logger.warning(f"Class {class_name} not found in {file_path}")
+                self.logger.warning(f"Class {class_name} not found in module {module_path}")
                 return None
                 
         except Exception as e:
-            self.logger.warning(f"Error loading class {class_name} from {file_path}: {e}")
+            self.logger.warning(f"Error loading class {class_name} from {file_path} (module: {module_path}): {e}")
+            return None
+    
+    def _file_to_module_path(self, file_path: Path) -> Optional[str]:
+        """
+        Convert file path to Python module path.
+        
+        Args:
+            file_path: Path to the Python file
+            
+        Returns:
+            Module path string (e.g., 'cursus.steps.builders.builder_xgboost_training_step')
+        """
+        try:
+            # Get the path relative to the package root
+            try:
+                relative_path = file_path.relative_to(self.package_root)
+            except ValueError:
+                # File is not under package root, might be in workspace
+                self.logger.debug(f"File {file_path} not under package root {self.package_root}")
+                return None
+            
+            # Convert path to module format
+            parts = list(relative_path.parts)
+            
+            # Remove .py extension from the last part
+            if parts[-1].endswith('.py'):
+                parts[-1] = parts[-1][:-3]
+            
+            # Create module path with cursus prefix
+            module_path = 'cursus.' + '.'.join(parts)
+            
+            self.logger.debug(f"Converted {file_path} to module path: {module_path}")
+            return module_path
+            
+        except Exception as e:
+            self.logger.warning(f"Error converting file path {file_path} to module path: {e}")
             return None
     
     def get_builder_info(self, step_name: str) -> Optional[Dict[str, Any]]:

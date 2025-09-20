@@ -12,14 +12,14 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 # Import the integrated systems
-from src.cursus.validation.alignment.orchestration.validation_orchestrator import ValidationOrchestrator
-from src.cursus.workspace.validation.cross_workspace_validator import CrossWorkspaceValidator
-from src.cursus.validation.alignment.discovery.contract_discovery import ContractDiscoveryEngine
-from src.cursus.workspace.core.discovery import WorkspaceDiscoveryManager
+from cursus.validation.alignment.orchestration.validation_orchestrator import ValidationOrchestrator
+from cursus.workspace.validation.cross_workspace_validator import CrossWorkspaceValidator
+from cursus.validation.alignment.discovery.contract_discovery import ContractDiscoveryEngine
+from cursus.workspace.core.discovery import WorkspaceDiscoveryManager
 
 # Import StepCatalog for testing
-from src.cursus.step_catalog.step_catalog import StepCatalog
-from src.cursus.step_catalog.models import StepInfo, FileMetadata
+from cursus.step_catalog.step_catalog import StepCatalog
+from cursus.step_catalog.models import StepInfo, FileMetadata
 
 
 class TestValidationOrchestratorIntegration:

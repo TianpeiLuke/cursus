@@ -214,40 +214,34 @@ class TestBuilder:
     
     def test_load_class_from_file_success(self, builder_discovery, tmp_path):
         """Test loading class from file with proper mocking."""
-        # Create test file
-        test_file = tmp_path / "test_module.py"
+        # Create test file under package root to simulate proper module structure
+        test_file = builder_discovery.package_root / "steps" / "builders" / "test_module.py"
+        test_file.parent.mkdir(parents=True, exist_ok=True)
         test_file.write_text("""
 class TestClass:
     def __init__(self):
         self.name = "test"
 """)
         
-        # Mock the importlib functions to simulate successful loading
-        with patch('importlib.util.spec_from_file_location') as mock_spec_from_file:
-            with patch('importlib.util.module_from_spec') as mock_module_from_spec:
-                # Create mock spec and module
-                mock_spec_obj = Mock()
-                mock_module = Mock()
-                mock_class = Mock()
-                mock_class.__name__ = 'TestClass'
-                
-                # Set up the mocks
-                mock_spec_from_file.return_value = mock_spec_obj
-                mock_module_from_spec.return_value = mock_module
-                mock_spec_obj.loader = Mock()
-                
-                # Set up module to have the class
-                setattr(mock_module, 'TestClass', mock_class)
-                
-                result = builder_discovery._load_class_from_file(str(test_file), 'TestClass')
-                
-                # Verify the mocks were called (file path is converted to string)
-                mock_spec_from_file.assert_called_once_with("dynamic_builder_module", str(test_file))
-                mock_module_from_spec.assert_called_once_with(mock_spec_obj)
-                mock_spec_obj.loader.exec_module.assert_called_once_with(mock_module)
-                
-                # Should return the mock class
-                assert result == mock_class
+        # Mock the importlib.import_module function to simulate successful loading
+        with patch('importlib.import_module') as mock_import_module:
+            # Create mock module and class
+            mock_module = Mock()
+            mock_class = Mock()
+            mock_class.__name__ = 'TestClass'
+            
+            # Set up the mocks
+            mock_import_module.return_value = mock_module
+            setattr(mock_module, 'TestClass', mock_class)
+            
+            result = builder_discovery._load_class_from_file(test_file, 'TestClass')
+            
+            # Verify the mock was called with the correct module path
+            expected_module_path = 'cursus.steps.builders.test_module'
+            mock_import_module.assert_called_once_with(expected_module_path)
+            
+            # Should return the mock class
+            assert result == mock_class
     
     def test_load_class_from_file_not_found(self, builder_discovery):
         """Test loading class from non-existent file."""
