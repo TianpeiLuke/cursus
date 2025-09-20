@@ -96,7 +96,7 @@ def load_mods_pipeline(pipeline_id: str) -> Any:
         else:
             # Try to load as a module (for backward compatibility)
             module = importlib.import_module(
-                f"cursus.pipeline_catalog.mods_pipelines.{pipeline_id}"
+                f".{pipeline_id}", package=__name__
             )
             register_mods_pipeline(pipeline_id, module)
             return module
