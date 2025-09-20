@@ -31,10 +31,8 @@ class TestExecutionDocumentGenerator:
     """Tests for ExecutionDocumentGenerator class."""
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_init_success(self, mock_build_classes, mock_load_configs):
+    def test_init_success(self, mock_load_configs):
         """Test successful initialization."""
-        mock_build_classes.return_value = {}
         mock_load_configs.return_value = {"config1": Mock()}
         
         generator = ExecutionDocumentGenerator("test_config.json")
@@ -43,13 +41,11 @@ class TestExecutionDocumentGenerator:
         assert generator.sagemaker_session is None
         assert generator.role is None
         assert len(generator.configs) == 1
-        assert len(generator.helpers) == 0
+        assert len(generator.helpers) == 2  # cradle_helper and registration_helper
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_init_with_optional_params(self, mock_build_classes, mock_load_configs):
+    def test_init_with_optional_params(self, mock_load_configs):
         """Test initialization with optional parameters."""
-        mock_build_classes.return_value = {}
         mock_load_configs.return_value = {}
         mock_session = Mock()
         mock_resolver = Mock()
@@ -66,81 +62,61 @@ class TestExecutionDocumentGenerator:
         assert generator.config_resolver == mock_resolver
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_init_config_loading_failure(self, mock_build_classes, mock_load_configs):
+    def test_init_config_loading_failure(self, mock_load_configs):
         """Test initialization failure when config loading fails."""
-        mock_build_classes.return_value = {}
         mock_load_configs.side_effect = Exception("Config loading failed")
         
         with pytest.raises(ExecutionDocumentGenerationError, match="Configuration loading failed"):
             ExecutionDocumentGenerator("test_config.json")
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_init_fallback_to_import_all_config_classes(self, mock_build_classes, mock_load_configs):
-        """Test initialization fallback when build_complete_config_classes returns insufficient classes."""
-        # Mock build_complete_config_classes to return insufficient classes (triggers fallback)
-        mock_build_classes.return_value = {"OnlyOneClass": Mock}  # Less than 3 classes
-        mock_load_configs.return_value = {"config1": Mock()}
-        
-        with patch.object(ExecutionDocumentGenerator, '_import_all_config_classes') as mock_import_all:
-            mock_import_all.return_value = {
-                "BasePipelineConfig": Mock,
-                "ProcessingStepConfigBase": Mock,
-                "CradleDataLoadConfig": Mock,
-                "RegistrationConfig": Mock
-            }
-            
-            generator = ExecutionDocumentGenerator("test_config.json")
-            
-            # Verify fallback was triggered
-            mock_import_all.assert_called_once()
-            mock_load_configs.assert_called_once()
-            
-            # Verify the fallback config classes were used
-            call_args = mock_load_configs.call_args
-            assert call_args[0][0] == "test_config.json"  # config_path
-            assert len(call_args[0][1]) == 4  # complete_classes from _import_all_config_classes
-    
-    @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_init_no_fallback_when_sufficient_classes(self, mock_build_classes, mock_load_configs):
-        """Test initialization does NOT trigger fallback when build_complete_config_classes returns sufficient classes."""
-        # Mock build_complete_config_classes to return sufficient classes (no fallback needed)
-        mock_build_classes.return_value = {
-            "BasePipelineConfig": Mock,
-            "ProcessingStepConfigBase": Mock,
-            "CradleDataLoadConfig": Mock,
-            "RegistrationConfig": Mock
-        }
-        mock_load_configs.return_value = {"config1": Mock()}
-        
-        with patch.object(ExecutionDocumentGenerator, '_import_all_config_classes') as mock_import_all:
-            generator = ExecutionDocumentGenerator("test_config.json")
-            
-            # Verify fallback was NOT triggered
-            mock_import_all.assert_not_called()
-            mock_load_configs.assert_called_once()
-            
-            # Verify the original config classes were used
-            call_args = mock_load_configs.call_args
-            assert call_args[0][0] == "test_config.json"  # config_path
-            assert len(call_args[0][1]) == 4  # complete_classes from build_complete_config_classes
-    
-    @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_add_helper(self, mock_build_classes, mock_load_configs):
-        """Test adding helpers to generator."""
-        mock_build_classes.return_value = {}
-        mock_load_configs.return_value = {}
+    def test_identify_relevant_steps(self, mock_load_configs):
+        """Test _identify_relevant_steps method."""
+        mock_config = Mock()
+        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
-        helper = MockHelper()
         
-        generator.add_helper(helper)
+        # Mock config resolver to return config for step1 only
+        def mock_resolve_config(step_name, configs):
+            if step_name == "step1":
+                return mock_config
+            return None
         
-        assert len(generator.helpers) == 1
-        assert generator.helpers[0] == helper
+        generator.config_resolver.resolve_config_for_step = Mock(side_effect=mock_resolve_config)
+        
+        # Create mock DAG
+        dag = Mock()
+        dag.nodes = ["step1", "step2"]
+        
+        relevant_steps = generator._identify_relevant_steps(dag)
+        
+        # Only step1 should be relevant (has cradle config)
+        assert "step1" in relevant_steps
+        assert len(relevant_steps) == 1
+    
+    @patch('cursus.steps.configs.utils.load_configs')
+    def test_filter_steps_by_helper(self, mock_load_configs):
+        """Test _filter_steps_by_helper method."""
+        mock_config = Mock()
+        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_load_configs.return_value = {"step1": mock_config}
+        
+        generator = ExecutionDocumentGenerator("test_config.json")
+        generator.config_resolver.resolve_config_for_step = Mock(return_value=mock_config)
+        
+        # Mock the cradle helper to handle cradle configs
+        generator.cradle_helper.can_handle_step = Mock(return_value=True)
+        generator.registration_helper.can_handle_step = Mock(return_value=False)
+        
+        # Test with cradle helper
+        filtered_steps = generator._filter_steps_by_helper(["step1"], generator.cradle_helper)
+        assert "step1" in filtered_steps
+        
+        # Test with registration helper (should not match cradle config)
+        filtered_steps = generator._filter_steps_by_helper(["step1"], generator.registration_helper)
+        assert len(filtered_steps) == 0
     
     @patch('cursus.steps.configs.utils.load_configs')
     @patch('cursus.steps.configs.utils.build_complete_config_classes')
@@ -160,30 +136,18 @@ class TestExecutionDocumentGenerator:
         assert result == invalid_doc  # Document returned unchanged
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_fill_execution_document_success(self, mock_build_classes, mock_load_configs):
+    def test_fill_execution_document_success(self, mock_load_configs):
         """Test successful execution document filling."""
         # Setup mocks
-        mock_build_classes.return_value = {}
         mock_config = Mock()
         mock_config.__class__.__name__ = "CradleDataLoadConfig"
         mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
         
-        # Create a mock helper that matches the expected class name
-        class MockCradleHelper(ExecutionDocumentHelper):
-            def __init__(self):
-                self.__class__.__name__ = "CradleDataLoadingHelper"
-            
-            def can_handle_step(self, step_name: str, config) -> bool:
-                return "cradle" in type(config).__name__.lower()
-            
-            def extract_step_config(self, step_name: str, config) -> dict:
-                return {"mock_config": f"config_for_{step_name}"}
-        
-        helper = MockCradleHelper()
-        generator.add_helper(helper)
+        # Mock the cradle helper to handle the config
+        generator.cradle_helper.can_handle_step = Mock(return_value=True)
+        generator.cradle_helper.extract_step_config = Mock(return_value={"mock_config": "config_for_step1"})
         
         # Setup DAG
         dag = Mock()
@@ -266,15 +230,14 @@ class TestExecutionDocumentGenerator:
         assert generator._names_match("step1", "completely_different") is False
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_is_execution_doc_relevant_with_helper(self, mock_build_classes, mock_load_configs):
+    def test_is_execution_doc_relevant_with_helper(self, mock_load_configs):
         """Test _is_execution_doc_relevant with helper."""
-        mock_build_classes.return_value = {}
         mock_load_configs.return_value = {}
         
         generator = ExecutionDocumentGenerator("test_config.json")
-        helper = MockHelper(can_handle_types=["TestConfig"])
-        generator.add_helper(helper)
+        
+        # Mock the cradle helper to handle TestConfig
+        generator.cradle_helper.can_handle_step = Mock(return_value=True)
         
         config = Mock()
         config.__class__.__name__ = "TestConfig"
@@ -299,29 +262,55 @@ class TestExecutionDocumentGenerator:
         assert generator._is_execution_doc_relevant(config) is False
     
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_collect_step_configurations_config_not_found(self, mock_build_classes, mock_load_configs):
-        """Test _collect_step_configurations when config not found."""
-        mock_build_classes.return_value = {}
+    def test_optimized_architecture_flow(self, mock_load_configs):
+        """Test the optimized architecture flow with early exit."""
         mock_load_configs.return_value = {}
         
         generator = ExecutionDocumentGenerator("test_config.json")
+        
+        # Mock DAG with no relevant steps
+        dag = Mock()
+        dag.nodes = ["irrelevant_step"]
+        
+        # Mock _get_config_for_step to return None (no config found)
         generator._get_config_for_step = Mock(return_value=None)
         
-        with pytest.raises(ConfigurationNotFoundError, match="Configuration not found for step: step1"):
-            generator._collect_step_configurations(["step1"])
-    
+        execution_doc = {
+            "PIPELINE_STEP_CONFIGS": {}
+        }
+        
+        result = generator.fill_execution_document(dag, execution_doc)
+        
+        # Should return unchanged document due to early exit
+        assert result == execution_doc
+        
     @patch('cursus.steps.configs.utils.load_configs')
-    @patch('cursus.steps.configs.utils.build_complete_config_classes')
-    def test_collect_step_configurations_no_helper(self, mock_build_classes, mock_load_configs):
-        """Test _collect_step_configurations when no helper found."""
-        mock_build_classes.return_value = {}
-        mock_load_configs.return_value = {}
+    def test_conditional_helper_processing(self, mock_load_configs):
+        """Test that helpers are only called when relevant steps exist."""
+        mock_config = Mock()
+        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
-        mock_config = Mock()
-        mock_config.__class__.__name__ = "TestConfig"
-        generator._get_config_for_step = Mock(return_value=mock_config)
+        generator.config_resolver.resolve_config_for_step = Mock(return_value=mock_config)
         
-        with pytest.raises(UnsupportedStepTypeError, match="No helper found for step: step1"):
-            generator._collect_step_configurations(["step1"])
+        # Mock the helpers to handle the config properly
+        generator.cradle_helper.can_handle_step = Mock(return_value=True)
+        generator.registration_helper.can_handle_step = Mock(return_value=False)
+        
+        # Mock the helper-specific methods
+        generator._fill_cradle_configurations = Mock()
+        generator._fill_registration_configurations = Mock()
+        
+        dag = Mock()
+        dag.nodes = ["step1"]  # Only cradle step
+        
+        execution_doc = {
+            "PIPELINE_STEP_CONFIGS": {"step1": {}}
+        }
+        
+        generator.fill_execution_document(dag, execution_doc)
+        
+        # Only cradle helper should be called
+        generator._fill_cradle_configurations.assert_called_once()
+        generator._fill_registration_configurations.assert_not_called()

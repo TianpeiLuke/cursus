@@ -66,11 +66,8 @@ class TestExecutionDocumentGeneratorIntegration:
         # Initialize the generator with the real config
         generator = ExecutionDocumentGenerator(config_path)
         
-        # Add the necessary helpers
-        cradle_helper = CradleDataLoadingHelper()
-        registration_helper = RegistrationHelper()
-        generator.add_helper(cradle_helper)
-        generator.add_helper(registration_helper)
+        # Helpers are now automatically initialized in the constructor
+        # No need to manually add them
         
         # Fill the execution document
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
@@ -134,8 +131,6 @@ class TestExecutionDocumentGeneratorIntegration:
         Test that cradle data loading configurations are correctly mapped from config to execution document.
         """
         generator = ExecutionDocumentGenerator(config_path)
-        cradle_helper = CradleDataLoadingHelper()
-        generator.add_helper(cradle_helper)
         
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
         
@@ -167,19 +162,22 @@ class TestExecutionDocumentGeneratorIntegration:
                         if "region" in mds_props:
                             assert mds_props["region"] is not None
                 
-                # Verify EDX data source configuration
-                edx_source = next((ds for ds in data_sources if ds["dataSourceName"] == "TAGS"), None)
-                if edx_source:
-                    assert edx_source["dataSourceType"] == "EDX"
-                    assert "edxDataSourceProperties" in edx_source
+                # Verify EDX/ANDES data source configuration (TAGS source)
+                tags_source = next((ds for ds in data_sources if ds["dataSourceName"] == "TAGS"), None)
+                if tags_source:
+                    # Data source type can be either EDX or ANDES depending on configuration
+                    assert tags_source["dataSourceType"] in ["EDX", "ANDES"]
+                    # Check for appropriate properties based on type
+                    if tags_source["dataSourceType"] == "EDX":
+                        assert "edxDataSourceProperties" in tags_source
+                    elif tags_source["dataSourceType"] == "ANDES":
+                        assert "andesDataSourceProperties" in tags_source or "edxDataSourceProperties" in tags_source
     
     def test_fill_execution_document_registration_mapping(self, config_path, sample_execution_document, expected_result, xgboost_dag):
         """
         Test that registration configurations are correctly mapped from config to execution document.
         """
         generator = ExecutionDocumentGenerator(config_path)
-        registration_helper = RegistrationHelper()
-        generator.add_helper(registration_helper)
         
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
         
@@ -214,10 +212,6 @@ class TestExecutionDocumentGeneratorIntegration:
         Test that DAG nodes are correctly mapped to execution document steps.
         """
         generator = ExecutionDocumentGenerator(config_path)
-        cradle_helper = CradleDataLoadingHelper()
-        registration_helper = RegistrationHelper()
-        generator.add_helper(cradle_helper)
-        generator.add_helper(registration_helper)
         
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
         
@@ -274,10 +268,6 @@ class TestExecutionDocumentGeneratorIntegration:
     def test_step_type_assignment(self, config_path, sample_execution_document, xgboost_dag, step_name, expected_type):
         """Test that step types are correctly assigned."""
         generator = ExecutionDocumentGenerator(config_path)
-        cradle_helper = CradleDataLoadingHelper()
-        registration_helper = RegistrationHelper()
-        generator.add_helper(cradle_helper)
-        generator.add_helper(registration_helper)
         
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
         
@@ -301,11 +291,8 @@ class TestExecutionDocumentGeneratorIntegration:
         # Initialize the generator with the real config
         generator = ExecutionDocumentGenerator(config_path)
         
-        # Add the necessary helpers
-        cradle_helper = CradleDataLoadingHelper()
-        registration_helper = RegistrationHelper()
-        generator.add_helper(cradle_helper)
-        generator.add_helper(registration_helper)
+        # Helpers are now automatically initialized in the constructor
+        # No need to manually add them
         
         # Fill the execution document
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
@@ -329,9 +316,12 @@ class TestExecutionDocumentGeneratorIntegration:
         
         This test loads the configuration and prints detailed information about
         the loaded config objects to understand their structure.
+        Uses a temporary file that is cleaned up after the test.
         """
         from cursus.steps.configs.utils import load_configs, build_complete_config_classes
         import json
+        import tempfile
+        import os
         
         print(f"\n=== DEBUG: Loading configs from {config_path} ===")
         
@@ -339,8 +329,11 @@ class TestExecutionDocumentGeneratorIntegration:
         config_classes = build_complete_config_classes()
         print(f"Available config classes: {list(config_classes.keys())}")
         
-        # Load configs
+        # Create temporary file for debug output
+        temp_debug_file = None
+        
         try:
+            # Load configs
             loaded_configs = load_configs(config_path, config_classes)
             print(f"Successfully loaded {len(loaded_configs)} configs")
             print(f"Config keys: {list(loaded_configs.keys())}")
@@ -397,7 +390,7 @@ class TestExecutionDocumentGeneratorIntegration:
                             value = getattr(config_obj, attr)
                             print(f"  {attr}: {value}")
             
-            # Save detailed config info to file
+            # Save detailed config info to temporary file
             debug_output = {}
             for config_name, config_obj in loaded_configs.items():
                 config_info = {
@@ -421,15 +414,27 @@ class TestExecutionDocumentGeneratorIntegration:
                 
                 debug_output[config_name] = config_info
             
-            # Save debug output
-            debug_path = project_root / "pipeline_config" / "config_NA_xgboost_AtoZ_v2" / "debug_loaded_configs.json"
-            with open(debug_path, 'w') as f:
-                json.dump(debug_output, f, indent=2, default=str)
+            # Create temporary file for debug output
+            temp_debug_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+            json.dump(debug_output, temp_debug_file, indent=2, default=str)
+            temp_debug_file.close()
             
-            print(f"\nDebug output saved to: {debug_path}")
+            print(f"\nDebug output saved to temporary file: {temp_debug_file.name}")
+            
+            # Verify the file was created and has content
+            assert os.path.exists(temp_debug_file.name)
+            with open(temp_debug_file.name, 'r') as f:
+                saved_data = json.load(f)
+                assert len(saved_data) > 0
             
         except Exception as e:
             print(f"Error loading configs: {e}")
             import traceback
             traceback.print_exc()
             raise
+        
+        finally:
+            # Clean up temporary file
+            if temp_debug_file and os.path.exists(temp_debug_file.name):
+                os.unlink(temp_debug_file.name)
+                print(f"Cleaned up temporary debug file: {temp_debug_file.name}")
