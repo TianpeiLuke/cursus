@@ -19,5 +19,5 @@ in the adapter with appropriate warnings, as they require contract file parsing
 beyond the scope of the unified catalog's discovery responsibilities.
 """
 
-from ...step_catalog.adapters.contract_discovery import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
-from ...step_catalog.adapters.contract_discovery import ContractDiscoveryResult
+from ...step_catalog.contract_discovery import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
+from ...step_catalog.contract_discovery import ContractDiscoveryResult

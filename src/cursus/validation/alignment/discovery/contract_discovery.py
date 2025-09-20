@@ -15,4 +15,4 @@ Migration Benefits:
 - Eliminated code redundancy
 """
 
-from ....step_catalog.adapters.contract_discovery import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
+from ....step_catalog.contract_discovery import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine

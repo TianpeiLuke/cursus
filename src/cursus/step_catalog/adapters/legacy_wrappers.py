@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any, Union
 
 from ..step_catalog import StepCatalog
-from .contract_discovery import ContractDiscoveryEngineAdapter, ContractDiscoveryManagerAdapter
+from ..contract_discovery import ContractDiscoveryEngineAdapter, ContractDiscoveryManagerAdapter
 from .file_resolver import FlexibleFileResolverAdapter, HybridFileResolverAdapter
 from .workspace_discovery import WorkspaceDiscoveryManagerAdapter
 from .config_class_detector import ConfigClassDetectorAdapter, ConfigClassStoreAdapter

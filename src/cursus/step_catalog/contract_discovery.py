@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 
-from ..step_catalog import StepCatalog
+from .step_catalog import StepCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -245,18 +245,15 @@ class ContractDiscoveryManagerAdapter:
             return None
     
     def _try_direct_import(self, step_name: str, canonical_name: Optional[str] = None) -> ContractDiscoveryResult:
-        """Try direct import as fallback."""
+        """Try direct import as fallback with proper package vs workspace handling."""
         try:
             import importlib
             
-            module_patterns = [
-                f"cursus.steps.contracts.{step_name}_contract",
-                f"cursus_dev.steps.contracts.{step_name}_contract",
-            ]
-            
-            for module_pattern in module_patterns:
-                try:
-                    module = importlib.import_module(module_pattern)
+            # First try package contracts using relative imports
+            try:
+                relative_module_path = self._contract_to_relative_module_path(step_name, is_package=True)
+                if relative_module_path:
+                    module = importlib.import_module(relative_module_path, package=__package__)
                     contract_name = f"{step_name.upper()}_CONTRACT"
                     
                     if hasattr(module, contract_name):
@@ -264,11 +261,22 @@ class ContractDiscoveryManagerAdapter:
                         return ContractDiscoveryResult(
                             contract=contract,
                             contract_name=contract_name,
-                            discovery_method="direct_import",
+                            discovery_method="package_relative_import",
                             error_message=None
                         )
-                except ImportError:
-                    continue
+            except ImportError as e:
+                self.logger.debug(f"Package contract import failed for {step_name}: {e}")
+            
+            # Then try workspace contracts using workspace-based imports
+            if hasattr(self.catalog, 'workspace_dirs') and self.catalog.workspace_dirs:
+                for workspace_dir in self.catalog.workspace_dirs:
+                    try:
+                        contract_result = self._try_workspace_contract_import(step_name, workspace_dir)
+                        if contract_result.success:
+                            return contract_result
+                    except Exception as e:
+                        self.logger.debug(f"Workspace contract import failed for {step_name} in {workspace_dir}: {e}")
+                        continue
             
             return ContractDiscoveryResult(
                 contract=None,
@@ -284,6 +292,132 @@ class ContractDiscoveryManagerAdapter:
                 discovery_method="error",
                 error_message=str(e)
             )
+    
+    def _contract_to_relative_module_path(self, step_name: str, is_package: bool = True) -> Optional[str]:
+        """
+        Convert step name to relative module path for contract import.
+        
+        Similar to _file_to_relative_module_path in config_discovery.py but for contracts.
+        
+        Args:
+            step_name: Name of the step
+            is_package: True for package contracts, False for workspace contracts
+            
+        Returns:
+            Relative module path string or None if conversion fails
+        """
+        try:
+            if is_package:
+                # For package contracts: cursus.steps.contracts.{step_name}_contract
+                # From step_catalog/adapters, we need to go up 3 levels: adapters -> step_catalog -> cursus
+                # Then down to steps.contracts.{step_name}_contract
+                relative_module_path = f"...steps.contracts.{step_name}_contract"
+                self.logger.debug(f"Package contract relative path for {step_name}: {relative_module_path}")
+                return relative_module_path
+            else:
+                # For workspace contracts, we'll use file-based loading instead
+                # since workspace structure varies
+                return None
+                
+        except Exception as e:
+            self.logger.warning(f"Error converting step {step_name} to relative module path: {e}")
+            return None
+    
+    def _try_workspace_contract_import(self, step_name: str, workspace_dir: Path) -> ContractDiscoveryResult:
+        """
+        Try to import contract from workspace using workspace-based discovery.
+        
+        Args:
+            step_name: Name of the step
+            workspace_dir: Workspace directory to search in
+            
+        Returns:
+            ContractDiscoveryResult with contract information
+        """
+        try:
+            # Look for contract files in workspace projects
+            projects_dir = workspace_dir / "development" / "projects"
+            if not projects_dir.exists():
+                return ContractDiscoveryResult(
+                    contract=None,
+                    contract_name="not_found",
+                    discovery_method="workspace_not_found",
+                    error_message=f"No projects directory in workspace {workspace_dir}"
+                )
+            
+            # Search all projects for the contract
+            for project_dir in projects_dir.iterdir():
+                if not project_dir.is_dir():
+                    continue
+                
+                contract_file = project_dir / "src" / "cursus_dev" / "steps" / "contracts" / f"{step_name}_contract.py"
+                if contract_file.exists():
+                    try:
+                        # Load contract using file-based import
+                        contract = self._load_contract_from_workspace_file(contract_file, step_name)
+                        if contract:
+                            return ContractDiscoveryResult(
+                                contract=contract,
+                                contract_name=f"{step_name.upper()}_CONTRACT",
+                                discovery_method="workspace_file_import",
+                                error_message=None
+                            )
+                    except Exception as e:
+                        self.logger.warning(f"Failed to load workspace contract from {contract_file}: {e}")
+                        continue
+            
+            return ContractDiscoveryResult(
+                contract=None,
+                contract_name="not_found",
+                discovery_method="workspace_not_found",
+                error_message=f"No workspace contract found for {step_name}"
+            )
+            
+        except Exception as e:
+            return ContractDiscoveryResult(
+                contract=None,
+                contract_name="error",
+                discovery_method="workspace_error",
+                error_message=str(e)
+            )
+    
+    def _load_contract_from_workspace_file(self, contract_file: Path, step_name: str) -> Optional[Any]:
+        """
+        Load contract from workspace file using file-based import.
+        
+        Args:
+            contract_file: Path to the contract file
+            step_name: Name of the step
+            
+        Returns:
+            Contract object or None if loading fails
+        """
+        try:
+            import importlib.util
+            
+            # Load module from file
+            spec = importlib.util.spec_from_file_location("workspace_contract_module", contract_file)
+            if spec is None or spec.loader is None:
+                return None
+                
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Look for contract object
+            contract_name = f"{step_name.upper()}_CONTRACT"
+            if hasattr(module, contract_name):
+                return getattr(module, contract_name)
+            
+            # Fallback: look for any contract-like object
+            for attr_name in dir(module):
+                if attr_name.endswith('_CONTRACT') or attr_name.endswith('Contract'):
+                    return getattr(module, attr_name)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to load workspace contract from {contract_file}: {e}")
+            return None
     
     # Contract analysis methods (business logic - cannot be replaced by step catalog)
     def get_contract_input_paths(self, contract: Any, step_name: str) -> Dict[str, str]:

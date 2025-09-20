@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from cursus.step_catalog.adapters.contract_discovery import (
+from cursus.step_catalog.contract_discovery import (
     ContractDiscoveryEngineAdapter,
     ContractDiscoveryManagerAdapter,
 )

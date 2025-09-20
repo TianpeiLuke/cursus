@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 
-from cursus.step_catalog.adapters.contract_discovery import ContractDiscoveryEngineAdapter
+from cursus.step_catalog.contract_discovery import ContractDiscoveryEngineAdapter
 
 
 @pytest.fixture

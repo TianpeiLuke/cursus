@@ -15,16 +15,6 @@ import threading
 from contextlib import contextmanager
 from functools import lru_cache
 
-# Add cursus parent to sys.path for reliable imports
-current_file = Path(__file__).resolve()
-current_path = current_file
-while current_path.parent != current_path:
-    if current_path.name == 'cursus':
-        cursus_parent = str(current_path.parent)
-        if cursus_parent not in sys.path:
-            sys.path.insert(0, cursus_parent)
-        break
-    current_path = current_path.parent
 
 from .models import (
     StepDefinition,
@@ -161,9 +151,9 @@ class UnifiedRegistryManager:
         # Try using step catalog for workspace discovery (only if workspaces_root is provided)
         if self.workspaces_root:
             try:
-                # Use lazy import to avoid circular dependency
+                # Use lazy import to avoid circular dependency with relative import
                 import importlib
-                step_catalog_module = importlib.import_module('cursus.step_catalog.step_catalog')
+                step_catalog_module = importlib.import_module('...step_catalog.step_catalog', package=__package__)
                 StepCatalog = step_catalog_module.StepCatalog
                 
                 # PORTABLE: Use workspace-aware discovery with user-provided workspace root

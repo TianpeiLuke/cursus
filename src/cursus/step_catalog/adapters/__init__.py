@@ -13,7 +13,7 @@ The adapters are organized by functionality:
 """
 
 # Contract discovery adapters
-from .contract_discovery import (
+from ..contract_discovery import (
     ContractDiscoveryResult,
     ContractDiscoveryEngineAdapter,
     ContractDiscoveryManagerAdapter,
