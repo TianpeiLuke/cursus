@@ -213,7 +213,7 @@ class TestBuilder:
                 assert result is None
     
     def test_load_class_from_file_success(self, builder_discovery, tmp_path):
-        """Test loading class from file with proper mocking."""
+        """Test loading class from file with improved relative import pattern."""
         # Create test file under package root to simulate proper module structure
         test_file = builder_discovery.package_root / "steps" / "builders" / "test_module.py"
         test_file.parent.mkdir(parents=True, exist_ok=True)
@@ -236,9 +236,10 @@ class TestClass:
             
             result = builder_discovery._load_class_from_file(test_file, 'TestClass')
             
-            # Verify the mock was called with the correct module path
-            expected_module_path = 'cursus.steps.builders.test_module'
-            mock_import_module.assert_called_once_with(expected_module_path)
+            # Verify the mock was called with the new relative import pattern
+            expected_relative_module_path = '..steps.builders.test_module'
+            expected_package = 'cursus.step_catalog'
+            mock_import_module.assert_called_once_with(expected_relative_module_path, package=expected_package)
             
             # Should return the mock class
             assert result == mock_class

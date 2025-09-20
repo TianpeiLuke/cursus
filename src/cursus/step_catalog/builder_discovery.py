@@ -392,7 +392,10 @@ class BuilderAutoDiscovery:
     
     def _load_class_from_file(self, file_path: Path, class_name: str) -> Optional[Type]:
         """
-        Load class using proper module imports to handle relative imports correctly.
+        Load class using relative imports with package parameter (deployment-agnostic).
+        
+        This approach uses importlib.import_module with relative paths and package parameter,
+        which is cleaner than sys.path manipulation and works across all deployment scenarios.
         
         Args:
             file_path: Path to the Python file
@@ -402,30 +405,70 @@ class BuilderAutoDiscovery:
             Class type or None if loading fails
         """
         try:
-            # Convert file path to module path
-            module_path = self._file_to_module_path(file_path)
-            if not module_path:
-                self.logger.warning(f"Could not determine module path for {file_path}")
+            # Convert file path to relative module path
+            relative_module_path = self._file_to_relative_module_path(file_path)
+            if not relative_module_path:
+                self.logger.warning(f"Could not determine relative module path for {file_path}")
                 return None
             
-            # Import the module using proper module path
+            # Import the module using relative import with package parameter
             import importlib
-            module = importlib.import_module(module_path)
+            module = importlib.import_module(relative_module_path, package=__package__)
             
             # Get the class from the module
             if hasattr(module, class_name):
                 return getattr(module, class_name)
             else:
-                self.logger.warning(f"Class {class_name} not found in module {module_path}")
+                self.logger.warning(f"Class {class_name} not found in module {relative_module_path}")
                 return None
                 
         except Exception as e:
-            self.logger.warning(f"Error loading class {class_name} from {file_path} (module: {module_path}): {e}")
+            self.logger.warning(f"Error loading class {class_name} from {file_path} (relative module: {relative_module_path}): {e}")
+            return None
+    
+    def _file_to_relative_module_path(self, file_path: Path) -> Optional[str]:
+        """
+        Convert file path to relative module path for use with importlib.import_module.
+        
+        This creates relative import paths like "..steps.builders.builder_xgboost_training_step"
+        that work with the package parameter in importlib.import_module.
+        
+        Args:
+            file_path: Path to the Python file
+            
+        Returns:
+            Relative module path string (e.g., '..steps.builders.builder_xgboost_training_step')
+        """
+        try:
+            # Get the path relative to the package root
+            try:
+                relative_path = file_path.relative_to(self.package_root)
+            except ValueError:
+                # File is not under package root, might be in workspace
+                self.logger.debug(f"File {file_path} not under package root {self.package_root}")
+                return None
+            
+            # Convert path to module format
+            parts = list(relative_path.parts)
+            
+            # Remove .py extension from the last part
+            if parts[-1].endswith('.py'):
+                parts[-1] = parts[-1][:-3]
+            
+            # Create relative module path with .. prefix for relative import
+            # This works with importlib.import_module(relative_path, package=__package__)
+            relative_module_path = '..' + '.'.join(parts)
+            
+            self.logger.debug(f"Converted {file_path} to relative module path: {relative_module_path}")
+            return relative_module_path
+            
+        except Exception as e:
+            self.logger.warning(f"Error converting file path {file_path} to relative module path: {e}")
             return None
     
     def _file_to_module_path(self, file_path: Path) -> Optional[str]:
         """
-        Convert file path to Python module path.
+        Convert file path to Python module path (legacy method for compatibility).
         
         Args:
             file_path: Path to the Python file

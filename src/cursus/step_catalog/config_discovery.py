@@ -9,21 +9,8 @@ Extended to include hyperparameter class discovery.
 import ast
 import importlib
 import logging
-import sys
 from pathlib import Path
 from typing import Dict, Type, Optional, Any, List, Union
-
-# Add cursus parent to sys.path for reliable imports
-# This is because importlib cannot resolve path within system path inserted
-current_file = Path(__file__).resolve()
-current_path = current_file
-while current_path.parent != current_path:
-    if current_path.name == 'cursus':
-        cursus_parent = str(current_path.parent)
-        if cursus_parent not in sys.path:
-            sys.path.insert(0, cursus_parent)
-        break
-    current_path = current_path.parent
 
 logger = logging.getLogger(__name__)
 
@@ -180,12 +167,15 @@ class ConfigAutoDiscovery:
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef) and self._is_config_class(node):
                             try:
-                                # Import the class
-                                module_path = self._file_to_module_path(py_file)
-                                module = importlib.import_module(module_path)
-                                class_type = getattr(module, node.name)
-                                config_classes[node.name] = class_type
-                                self.logger.debug(f"Found config class: {node.name} in {py_file}")
+                                # Import the class using relative import pattern
+                                relative_module_path = self._file_to_relative_module_path(py_file)
+                                if relative_module_path:
+                                    module = importlib.import_module(relative_module_path, package=__package__)
+                                    class_type = getattr(module, node.name)
+                                    config_classes[node.name] = class_type
+                                    self.logger.debug(f"Found config class: {node.name} in {py_file}")
+                                else:
+                                    self.logger.warning(f"Could not determine relative module path for {py_file}")
                             except Exception as e:
                                 self.logger.warning(f"Error importing config class {node.name} from {py_file}: {e}")
                                 continue
@@ -274,9 +264,49 @@ class ConfigAutoDiscovery:
         
         return discovered
 
+    def _file_to_relative_module_path(self, file_path: Path) -> Optional[str]:
+        """
+        Convert file path to relative module path for use with importlib.import_module.
+        
+        This creates relative import paths like "..steps.configs.config_name"
+        that work with the package parameter in importlib.import_module.
+        
+        Args:
+            file_path: Path to the Python file
+            
+        Returns:
+            Relative module path string or None if conversion fails
+        """
+        try:
+            # Get the path relative to the package root
+            try:
+                relative_path = file_path.relative_to(self.package_root)
+            except ValueError:
+                # File is not under package root, might be in workspace
+                self.logger.debug(f"File {file_path} not under package root {self.package_root}")
+                return None
+            
+            # Convert path to module format
+            parts = list(relative_path.parts)
+            
+            # Remove .py extension from the last part
+            if parts[-1].endswith('.py'):
+                parts[-1] = parts[-1][:-3]
+            
+            # Create relative module path with .. prefix for relative import
+            # This works with importlib.import_module(relative_path, package=__package__)
+            relative_module_path = '..' + '.'.join(parts)
+            
+            self.logger.debug(f"Converted {file_path} to relative module path: {relative_module_path}")
+            return relative_module_path
+            
+        except Exception as e:
+            self.logger.warning(f"Error converting file path {file_path} to relative module path: {e}")
+            return None
+    
     def _file_to_module_path(self, file_path: Path) -> str:
         """
-        Convert file path to Python module path.
+        Convert file path to Python module path (legacy method for compatibility).
         
         Args:
             file_path: Path to the Python file
@@ -328,12 +358,15 @@ class ConfigAutoDiscovery:
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef) and self._is_hyperparameter_class(node):
                             try:
-                                # Import the class
-                                module_path = self._file_to_module_path(py_file)
-                                module = importlib.import_module(module_path)
-                                class_type = getattr(module, node.name)
-                                hyperparam_classes[node.name] = class_type
-                                self.logger.debug(f"Found hyperparameter class: {node.name} in {py_file}")
+                                # Import the class using relative import pattern
+                                relative_module_path = self._file_to_relative_module_path(py_file)
+                                if relative_module_path:
+                                    module = importlib.import_module(relative_module_path, package=__package__)
+                                    class_type = getattr(module, node.name)
+                                    hyperparam_classes[node.name] = class_type
+                                    self.logger.debug(f"Found hyperparameter class: {node.name} in {py_file}")
+                                else:
+                                    self.logger.warning(f"Could not determine relative module path for {py_file}")
                             except Exception as e:
                                 self.logger.warning(f"Error importing hyperparameter class {node.name} from {py_file}: {e}")
                                 continue
