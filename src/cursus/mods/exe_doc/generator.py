@@ -55,11 +55,21 @@ class ExecutionDocumentGenerator:
         self.config_resolver = config_resolver or StepConfigResolver()
         self.logger = logging.getLogger(__name__)
         
-        # Load configurations
+        # Initialize helpers directly - no loose coupling
+        from .cradle_helper import CradleDataLoadingHelper
+        from .registration_helper import RegistrationHelper
+        
+        self.cradle_helper = CradleDataLoadingHelper()
+        self.registration_helper = RegistrationHelper()
+        
+        # Load configurations using simplified approach
         self.configs = self._load_configs()
         
-        # Initialize helpers (will be populated in subsequent phases)
-        self.helpers: List[ExecutionDocumentHelper] = []
+        # Keep helpers list for backward compatibility
+        self.helpers: List[ExecutionDocumentHelper] = [
+            self.cradle_helper,
+            self.registration_helper
+        ]
         
         self.logger.info(f"Initialized ExecutionDocumentGenerator with {len(self.configs)} configurations")
     
@@ -69,12 +79,10 @@ class ExecutionDocumentGenerator:
         """
         Fill in the execution document with pipeline metadata.
         
-        This method populates the execution document with:
-        1. Cradle data loading requests (if present in the pipeline)
-        2. Registration configurations (if present in the pipeline)
-        
-        This is ported from DynamicPipelineTemplate.fill_execution_document() to maintain
-        exact logic equivalence.
+        This method uses an optimized approach:
+        1. First identify which steps need execution document processing
+        2. Filter steps by helper type
+        3. Only call helper-specific methods if relevant steps exist
         
         Args:
             dag: PipelineDAG defining the pipeline structure
@@ -89,20 +97,35 @@ class ExecutionDocumentGenerator:
         self.logger.info(f"Starting execution document generation for DAG with {len(dag.nodes)} nodes")
         
         try:
-            # Validate input execution document structure (EXACT COPY from original logic)
+            # Validate input execution document structure
             if "PIPELINE_STEP_CONFIGS" not in execution_document:
                 self.logger.warning(
                     "Execution document missing 'PIPELINE_STEP_CONFIGS' key"
                 )
                 return execution_document
 
+            # Step 1: Identify which steps need execution document processing
+            relevant_steps = self._identify_relevant_steps(dag)
+            
+            if not relevant_steps:
+                self.logger.info("No steps require execution document processing")
+                return execution_document
+            
+            self.logger.info(f"Found {len(relevant_steps)} relevant steps: {relevant_steps}")
+            
             pipeline_configs = execution_document["PIPELINE_STEP_CONFIGS"]
 
-            # 1. Handle Cradle data loading requests (EXACT COPY from original)
-            self._fill_cradle_configurations(dag, pipeline_configs)
+            # Step 2: Process cradle steps if any
+            cradle_steps = self._filter_steps_by_helper(relevant_steps, self.cradle_helper)
+            if cradle_steps:
+                self.logger.info(f"Processing {len(cradle_steps)} cradle steps: {cradle_steps}")
+                self._fill_cradle_configurations(dag, pipeline_configs)
 
-            # 2. Handle Registration configurations (EXACT COPY from original)
-            self._fill_registration_configurations(dag, pipeline_configs)
+            # Step 3: Process registration steps if any
+            registration_steps = self._filter_steps_by_helper(relevant_steps, self.registration_helper)
+            if registration_steps:
+                self.logger.info(f"Processing {len(registration_steps)} registration steps: {registration_steps}")
+                self._fill_registration_configurations(dag, pipeline_configs)
 
             self.logger.info("Successfully generated execution document")
             return execution_document
@@ -111,19 +134,9 @@ class ExecutionDocumentGenerator:
             self.logger.error(f"Failed to generate execution document: {e}")
             raise ExecutionDocumentGenerationError(f"Execution document generation failed: {e}") from e
     
-    def add_helper(self, helper: ExecutionDocumentHelper) -> None:
-        """
-        Add a helper to the generator.
-        
-        Args:
-            helper: ExecutionDocumentHelper instance to add
-        """
-        self.helpers.append(helper)
-        self.logger.info(f"Added helper: {helper.__class__.__name__}")
-    
     def _load_configs(self) -> Dict[str, BasePipelineConfig]:
         """
-        Load configurations using existing utilities.
+        Load configurations using simplified approach.
         
         Returns:
             Dictionary mapping config names to config instances
@@ -132,21 +145,10 @@ class ExecutionDocumentGenerator:
             ExecutionDocumentGenerationError: If config loading fails
         """
         try:
-            from ...steps.configs.utils import load_configs, build_complete_config_classes
+            from ...steps.configs.utils import load_configs
             
-            # Build complete config classes - this will import and register all classes
-            # from the step and hyperparameter registries
-            complete_classes = build_complete_config_classes()
-            
-            # Check if complete_classes is empty or insufficient
-            if not complete_classes or len(complete_classes) < 3:  # Should have at least base classes
-                self.logger.warning(f"build_complete_config_classes returned only {len(complete_classes)} classes, importing all configs directly")
-                complete_classes = self._import_all_config_classes()
-            
-            self.logger.info(f"Using {len(complete_classes)} config classes for loading")
-            
-            # Load configs using the complete class registry
-            configs = load_configs(self.config_path, complete_classes)
+            # Simple config loading - let load_configs handle class discovery
+            configs = load_configs(self.config_path)
             
             self.logger.info(f"Loaded {len(configs)} configurations from {self.config_path}")
             return configs
@@ -154,80 +156,6 @@ class ExecutionDocumentGenerator:
         except Exception as e:
             self.logger.error(f"Failed to load configurations: {e}")
             raise ExecutionDocumentGenerationError(f"Configuration loading failed: {e}") from e
-    
-    def _import_all_config_classes(self) -> Dict[str, type]:
-        """
-        Import and register all config classes directly as a fallback.
-        Uses the registry to get the correct config class names.
-        
-        Returns:
-            Dictionary mapping class names to class types
-        """
-        from ...core.config_fields import ConfigClassStore
-        from ...registry.step_names import CONFIG_STEP_REGISTRY
-        from ...registry import HYPERPARAMETER_REGISTRY
-        
-        config_classes = {}
-        
-        # Import base classes using class names as keys (required by load_configs)
-        try:
-            from ...core.base.config_base import BasePipelineConfig
-            config_classes["BasePipelineConfig"] = BasePipelineConfig
-            ConfigClassStore.register(BasePipelineConfig)
-            
-            from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
-            config_classes["ProcessingStepConfigBase"] = ProcessingStepConfigBase
-            ConfigClassStore.register(ProcessingStepConfigBase)
-            
-            self.logger.debug("Imported base config classes")
-        except ImportError as e:
-            self.logger.warning(f"Could not import base config classes: {e}")
-        
-        # Import step config classes from CONFIG_STEP_REGISTRY
-        # CONFIG_STEP_REGISTRY maps config_class_name -> step_name, but we want step_name -> class
-        for config_class_name, step_name in CONFIG_STEP_REGISTRY.items():
-            try:
-                # Generate module name from step name (convert PascalCase to snake_case)
-                module_name = f"config_{self._pascal_to_snake(step_name)}"
-                
-                # Import using relative import
-                try:
-                    module = __import__(f"...steps.configs.{module_name}", 
-                                      globals(), locals(), [config_class_name], 1)
-                    if hasattr(module, config_class_name):
-                        cls = getattr(module, config_class_name)
-                        # Use class name as key, class as value (required by load_configs)
-                        config_classes[config_class_name] = cls
-                        ConfigClassStore.register(cls)
-                        self.logger.debug(f"Imported {config_class_name} from {module_name}")
-                    else:
-                        self.logger.debug(f"Module {module_name} does not have class {config_class_name}")
-                except ImportError as e:
-                    self.logger.debug(f"Could not import {config_class_name} from {module_name}: {e}")
-                
-            except Exception as e:
-                self.logger.debug(f"Error importing {config_class_name}: {e}")
-        
-        # Note: Hyperparameter classes are not relevant for execution document generation
-        # They are handled separately in the hyperparameter management system
-        
-        self.logger.info(f"Imported {len(config_classes)} config classes directly")
-        return config_classes
-    
-    def _pascal_to_snake(self, pascal_str: str) -> str:
-        """
-        Convert PascalCase to snake_case.
-        
-        Args:
-            pascal_str: String in PascalCase
-            
-        Returns:
-            String in snake_case
-        """
-        import re
-        # Insert underscore before uppercase letters (except the first one)
-        snake_str = re.sub('([a-z0-9])([A-Z])', r'\1_\2', pascal_str)
-        return snake_str.lower()
     
     def _get_config_for_step(self, step_name: str) -> Optional[BasePipelineConfig]:
         """
@@ -323,95 +251,26 @@ class ExecutionDocumentGenerator:
         return ("cradle" in config_type_name or 
                 "registration" in config_type_name)
     
-    def _collect_step_configurations(self, step_names: List[str]) -> Dict[str, Dict[str, Any]]:
+    def _filter_steps_by_helper(self, step_names: List[str], helper: ExecutionDocumentHelper) -> List[str]:
         """
-        Collect execution document configurations for relevant steps.
+        Filter steps that can be handled by a specific helper.
         
         Args:
-            step_names: List of step names to process
+            step_names: List of step names to filter
+            helper: Helper to check against
             
         Returns:
-            Dictionary mapping step names to their execution document configurations
-            
-        Raises:
-            ConfigurationNotFoundError: If configuration cannot be found for a step
-            UnsupportedStepTypeError: If step type is not supported
+            List of step names that can be handled by the helper
         """
-        step_configs = {}
-        
+        filtered_steps = []
         for step_name in step_names:
             config = self._get_config_for_step(step_name)
-            if not config:
-                raise ConfigurationNotFoundError(f"Configuration not found for step: {step_name}")
-            
-            helper = self._find_helper_for_config(config)
-            if not helper:
-                raise UnsupportedStepTypeError(f"No helper found for step: {step_name} (config type: {type(config).__name__})")
-            
-            try:
-                step_config = helper.extract_step_config(step_name, config)
-                step_configs[step_name] = step_config
-                self.logger.debug(f"Extracted config for step {step_name}")
-            except Exception as e:
-                self.logger.error(f"Failed to extract config for step {step_name}: {e}")
-                raise ExecutionDocumentGenerationError(f"Config extraction failed for step {step_name}: {e}") from e
+            if config and helper.can_handle_step(step_name, config):
+                filtered_steps.append(step_name)
+                self.logger.debug(f"Helper {helper.__class__.__name__} can handle step: {step_name}")
         
-        return step_configs
+        return filtered_steps
     
-    def _find_helper_for_config(self, config: BasePipelineConfig) -> Optional[ExecutionDocumentHelper]:
-        """
-        Find the appropriate helper for a configuration.
-        
-        Args:
-            config: Configuration to find helper for
-            
-        Returns:
-            Helper that can handle the configuration, or None if not found
-        """
-        for helper in self.helpers:
-            if helper.can_handle_step("", config):  # Step name not needed for this check
-                return helper
-        
-        return None
-    
-    def _fill_document(self, 
-                      execution_document: Dict[str, Any], 
-                      step_configs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Fill execution document with collected step configurations.
-        
-        Args:
-            execution_document: Template execution document
-            step_configs: Collected step configurations
-            
-        Returns:
-            Filled execution document
-        """
-        # Create a copy to avoid modifying the original
-        import copy
-        filled_document = copy.deepcopy(execution_document)
-        
-        if "PIPELINE_STEP_CONFIGS" not in filled_document:
-            filled_document["PIPELINE_STEP_CONFIGS"] = {}
-        
-        pipeline_configs = filled_document["PIPELINE_STEP_CONFIGS"]
-        
-        for step_name, step_config in step_configs.items():
-            if step_name not in pipeline_configs:
-                pipeline_configs[step_name] = {}
-            
-            # Set the step configuration
-            pipeline_configs[step_name]["STEP_CONFIG"] = step_config
-            
-            # Add STEP_TYPE if not present
-            if "STEP_TYPE" not in pipeline_configs[step_name]:
-                config = self._get_config_for_step(step_name)
-                if config:
-                    pipeline_configs[step_name]["STEP_TYPE"] = determine_step_type(step_name, config)
-            
-            self.logger.debug(f"Filled execution document for step: {step_name}")
-        
-        return filled_document
     
     def _fill_cradle_configurations(self, dag: PipelineDAG, pipeline_configs: Dict[str, Any]) -> None:
         """

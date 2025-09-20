@@ -10,6 +10,13 @@ from typing import Dict, List, Any, Optional
 
 from .base import ExecutionDocumentHelper, ExecutionDocumentGenerationError
 
+# Import RegistrationConfig directly for proper type checking
+try:
+    from ...steps.configs.config_registration_step import RegistrationConfig
+    REGISTRATION_CONFIG_AVAILABLE = True
+except ImportError:
+    REGISTRATION_CONFIG_AVAILABLE = False
+
 # Import SageMaker utilities for image URI retrieval
 try:
     from sagemaker.image_uris import retrieve as retrieve_image_uri
@@ -48,7 +55,12 @@ class RegistrationHelper(ExecutionDocumentHelper):
         Returns:
             True if this helper can handle the configuration, False otherwise
         """
-        # Check if config is a registration configuration
+        # Use direct isinstance check if RegistrationConfig is available
+        if REGISTRATION_CONFIG_AVAILABLE:
+            if isinstance(config, RegistrationConfig):
+                return True
+        
+        # Fallback to string matching if import failed
         config_type_name = type(config).__name__.lower()
         
         # Check by config type name

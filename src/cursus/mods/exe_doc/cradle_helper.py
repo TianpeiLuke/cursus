@@ -10,6 +10,13 @@ from typing import Dict, List, Any, Optional
 
 from .base import ExecutionDocumentHelper, ExecutionDocumentGenerationError
 
+# Import CradleDataLoadConfig directly for proper type checking
+try:
+    from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+    CRADLE_CONFIG_AVAILABLE = True
+except ImportError:
+    CRADLE_CONFIG_AVAILABLE = False
+
 # Import Cradle models for request building
 try:
     from com.amazon.secureaisandboxproxyservice.models.field import Field
@@ -91,7 +98,11 @@ class CradleDataLoadingHelper(ExecutionDocumentHelper):
         Returns:
             True if this helper can handle the configuration, False otherwise
         """
-        # Check if config is a Cradle data loading configuration
+        # Use direct isinstance check if CradleDataLoadConfig is available
+        if CRADLE_CONFIG_AVAILABLE:
+            return isinstance(config, CradleDataLoadConfig)
+        
+        # Fallback to string matching if import failed
         config_type_name = type(config).__name__.lower()
         return ("cradle" in config_type_name and 
                 "data" in config_type_name and 
