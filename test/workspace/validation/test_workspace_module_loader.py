@@ -209,32 +209,33 @@ class SharedBuilder:
             # Should return empty list in single workspace mode
             assert added_paths == []
 
-    @patch("importlib.import_module")
-    def test_load_builder_class_success(self, mock_import, temp_workspace):
+    def test_load_builder_class_success(self, temp_workspace):
         """Test successful builder class loading."""
         temp_dir, workspace_root, original_sys_path = temp_workspace
-
-        # Mock module with builder class
-        mock_module = MagicMock()
-        mock_builder_class = MagicMock()
-        mock_module.TestStepBuilder = mock_builder_class
-        mock_import.return_value = mock_module
 
         loader = WorkspaceModuleLoader(
             workspace_root=workspace_root, developer_id="developer_1"
         )
 
-        result = loader.load_builder_class("test_step")
+        # Mock the StepCatalog at the step_catalog module level
+        with patch('cursus.step_catalog.StepCatalog') as mock_step_catalog_class:
+            mock_catalog_instance = MagicMock()
+            mock_builder_class = MagicMock()
+            mock_builder_class.__name__ = "TestStepBuilder"  # Add __name__ attribute
+            mock_catalog_instance.load_builder_class.return_value = mock_builder_class
+            mock_step_catalog_class.return_value = mock_catalog_instance
 
-        assert result == mock_builder_class
-        assert mock_import.called
+            result = loader.load_builder_class("test_step")
 
-    @patch("importlib.import_module")
-    def test_load_builder_class_not_found(self, mock_import, temp_workspace):
+            assert result == mock_builder_class
+            assert mock_catalog_instance.load_builder_class.called
+
+    @patch("cursus.step_catalog.StepCatalog.load_builder_class")
+    def test_load_builder_class_not_found(self, mock_load_builder, temp_workspace):
         """Test builder class loading when class not found."""
         temp_dir, workspace_root, original_sys_path = temp_workspace
 
-        mock_import.side_effect = ImportError("Module not found")
+        mock_load_builder.return_value = None
 
         loader = WorkspaceModuleLoader(
             workspace_root=workspace_root, developer_id="developer_1"
@@ -244,16 +245,14 @@ class SharedBuilder:
 
         assert result is None
 
-    @patch("importlib.import_module")
-    def test_load_contract_class_success(self, mock_import, temp_workspace):
+    @patch("cursus.step_catalog.StepCatalog.load_contract_class")
+    def test_load_contract_class_success(self, mock_load_contract, temp_workspace):
         """Test successful contract class loading."""
         temp_dir, workspace_root, original_sys_path = temp_workspace
 
-        # Mock module with contract class
-        mock_module = MagicMock()
+        # Mock StepCatalog's load_contract_class method
         mock_contract_class = MagicMock()
-        mock_module.TestStepContract = mock_contract_class
-        mock_import.return_value = mock_module
+        mock_load_contract.return_value = mock_contract_class
 
         loader = WorkspaceModuleLoader(
             workspace_root=workspace_root, developer_id="developer_1"
@@ -262,7 +261,7 @@ class SharedBuilder:
         result = loader.load_contract_class("test_step")
 
         assert result == mock_contract_class
-        assert mock_import.called
+        assert mock_load_contract.called
 
     def test_module_caching(self, temp_workspace):
         """Test module caching functionality."""
@@ -274,23 +273,26 @@ class SharedBuilder:
             cache_modules=True,
         )
 
-        with patch("importlib.import_module") as mock_import:
-            mock_module = MagicMock()
+        # Mock the StepCatalog at the step_catalog module level
+        with patch('cursus.step_catalog.StepCatalog') as mock_step_catalog_class:
+            mock_catalog_instance = MagicMock()
             mock_builder_class = MagicMock()
-            mock_module.TestStepBuilder = mock_builder_class
-            mock_import.return_value = mock_module
+            mock_builder_class.__name__ = "TestStepBuilder"  # Add __name__ attribute
+            mock_catalog_instance.load_builder_class.return_value = mock_builder_class
+            mock_step_catalog_class.return_value = mock_catalog_instance
 
-            # First call should import module
+            # First call should load via StepCatalog
             result1 = loader.load_builder_class("test_step")
             assert result1 == mock_builder_class
-            assert mock_import.call_count == 1
+            assert mock_catalog_instance.load_builder_class.call_count == 1
 
             # Second call should use cache
             result2 = loader.load_builder_class("test_step")
             assert result2 == mock_builder_class
-            assert mock_import.call_count == 1  # Should not increase
+            assert mock_catalog_instance.load_builder_class.call_count == 1  # Should not increase
 
-    def test_module_caching_disabled(self, temp_workspace):
+    @patch("cursus.step_catalog.StepCatalog.load_builder_class")
+    def test_module_caching_disabled(self, mock_load_builder, temp_workspace):
         """Test behavior when module caching is disabled."""
         temp_dir, workspace_root, original_sys_path = temp_workspace
 
@@ -300,17 +302,14 @@ class SharedBuilder:
             cache_modules=False,
         )
 
-        with patch("importlib.import_module") as mock_import:
-            mock_module = MagicMock()
-            mock_builder_class = MagicMock()
-            mock_module.TestStepBuilder = mock_builder_class
-            mock_import.return_value = mock_module
+        mock_builder_class = MagicMock()
+        mock_load_builder.return_value = mock_builder_class
 
-            # Both calls should import module
-            result1 = loader.load_builder_class("test_step")
-            result2 = loader.load_builder_class("test_step")
+        # Both calls should load via StepCatalog (no caching)
+        result1 = loader.load_builder_class("test_step")
+        result2 = loader.load_builder_class("test_step")
 
-            assert mock_import.call_count == 2
+        assert mock_load_builder.call_count == 2
 
     @patch("importlib.util.spec_from_file_location")
     @patch("importlib.util.module_from_spec")
@@ -514,24 +513,21 @@ class SharedBuilder:
             assert hasattr(mock_module, "CreateModelContract")
 
     def test_module_pattern_search(self, temp_workspace):
-        """Test different module path patterns are tried."""
+        """Test that StepCatalog discovery is used for module loading."""
         temp_dir, workspace_root, original_sys_path = temp_workspace
 
         loader = WorkspaceModuleLoader(
             workspace_root=workspace_root, developer_id="developer_1"
         )
 
-        with patch("importlib.import_module") as mock_import:
-            # First few patterns fail, last one succeeds
-            mock_import.side_effect = [
-                ImportError("Not found"),
-                ImportError("Not found"),
-                ImportError("Not found"),
-                MagicMock(),  # Success on 4th try
-            ]
+        # Mock the StepCatalog to return None (not found)
+        with patch('cursus.step_catalog.StepCatalog') as mock_step_catalog_class:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.load_builder_class.return_value = None
+            mock_step_catalog_class.return_value = mock_catalog_instance
 
             result = loader.load_builder_class("test_step")
 
-            # Should have tried multiple patterns
-            assert mock_import.call_count == 4
-            assert result is not None
+            # Should have used StepCatalog discovery
+            assert result is None
+            assert mock_catalog_instance.load_builder_class.called

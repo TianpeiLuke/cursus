@@ -205,7 +205,7 @@ class UniversalStepBuilderTestBase(ABC):
             shutil.copy2(mock_model_file, local_path)
 
             # If the local_path is a tar file, create a proper tar structure
-            if local_path.endswith(".tar.gz") or "tar_file" in local_path:
+            if str(local_path).endswith(".tar.gz") or "tar_file" in str(local_path):
                 # Create a temporary directory for tar contents
                 tar_extract_dir = os.path.dirname(local_path)
                 model_dir = os.path.join(tar_extract_dir, "model")
@@ -233,7 +233,7 @@ class UniversalStepBuilderTestBase(ABC):
 
         def mock_tarfile_open(name, mode="r", **kwargs):
             # If it's our mock tar file, return a mock that can extract properly
-            if name and (name.endswith(".tar.gz") or "tar_file" in str(name)):
+            if name and (str(name).endswith(".tar.gz") or "tar_file" in str(name)):
                 mock_tar = MagicMock()
 
                 # Mock extractall to create expected files - handle filter parameter for newer Python versions

@@ -78,14 +78,15 @@ class TestModernizedContractDiscoveryManager:
 
     def test_discover_contract_using_step_catalog(self, discovery_manager):
         """Test contract discovery using step catalog (modernized approach)"""
-        # Mock step catalog to return step info
+        # Mock step catalog to return a contract directly
+        mock_contract = Mock()
         mock_step_info = Mock()
         mock_step_info.file_components = {
             'contract': Mock(path=Path('/mock/contract/path.py'))
         }
         
-        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
-            with patch.object(discovery_manager, '_load_contract_from_path', return_value=Mock()):
+        with patch.object(discovery_manager.catalog, 'load_contract_class', return_value=mock_contract):
+            with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
                 result = discovery_manager.discover_contract("test_script")
 
                 # The adapter may return a string path instead of a result object
@@ -96,37 +97,29 @@ class TestModernizedContractDiscoveryManager:
                 else:
                     # If it returns a result object, check its attributes
                     assert result.success is True
-                    assert result.discovery_method == "step_catalog"
-                    assert result.contract_name == "TEST_SCRIPT_CONTRACT"
+                    assert result.discovery_method == "step_catalog_load_contract_class"
+                    assert result.contract_name == "test_script_CONTRACT"
 
     def test_discover_contract_fallback_to_direct_import(self, discovery_manager):
         """Test fallback to direct import when step catalog doesn't find contract"""
         # Mock step catalog to return None (not found)
-        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=None):
-            with patch.object(discovery_manager, '_try_direct_import') as mock_import:
-                mock_import.return_value = ContractDiscoveryResult(
-                    contract=Mock(),
-                    contract_name="TEST_SCRIPT_CONTRACT",
-                    discovery_method="direct_import",
-                    error_message=None
-                )
-                
-                result = discovery_manager.discover_contract("test_script")
+        with patch.object(discovery_manager.catalog, 'load_contract_class', return_value=None):
+            result = discovery_manager.discover_contract("test_script")
 
-                assert result.success is True
-                assert result.discovery_method == "direct_import"
-                mock_import.assert_called_once_with("test_script", None)
+            # Should return None when contract is not found
+            assert result is None
 
     def test_discover_contract_caching(self, discovery_manager):
         """Test that contract discovery results are cached"""
-        # First call
+        # Mock step catalog to return a contract
+        mock_contract = Mock()
         mock_step_info = Mock()
         mock_step_info.file_components = {
             'contract': Mock(path=Path('/mock/contract/path.py'))
         }
         
-        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info) as mock_get_step:
-            with patch.object(discovery_manager, '_load_contract_from_path', return_value=Mock()):
+        with patch.object(discovery_manager.catalog, 'load_contract_class', return_value=mock_contract) as mock_load:
+            with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
                 result1 = discovery_manager.discover_contract("test_script")
                 result2 = discovery_manager.discover_contract("test_script")
 
@@ -134,8 +127,8 @@ class TestModernizedContractDiscoveryManager:
                 # The actual caching behavior may vary, so just verify both calls succeed
                 assert result1 is not None
                 assert result2 is not None
-                # Step catalog should only be called once due to caching
-                mock_get_step.assert_called_once()
+                # Step catalog load_contract_class should only be called once due to caching
+                mock_load.assert_called_once()
 
     def test_contract_input_paths_adaptation(self, discovery_manager, temp_dir):
         """Test contract input paths with SageMaker path adaptation"""
@@ -272,8 +265,8 @@ class TestModernizedContractDiscoveryIntegration:
             'contract': Mock(path=Path('/mock/contract/tabular_preprocessing_contract.py'))
         }
         
-        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
-            with patch.object(discovery_manager, '_load_contract_from_path', return_value=mock_contract):
+        with patch.object(discovery_manager.catalog, 'load_contract_class', return_value=mock_contract):
+            with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
                 # Discover contract using step catalog
                 result = discovery_manager.discover_contract("tabular_preprocessing")
 
@@ -285,7 +278,7 @@ class TestModernizedContractDiscoveryIntegration:
                 else:
                     # If it returns a result object, check its attributes
                     assert result.success is True
-                    assert result.discovery_method == "step_catalog"
+                    assert result.discovery_method == "step_catalog_load_contract_class"
                     assert result.contract == mock_contract
 
                 # Test path adaptation
@@ -341,8 +334,8 @@ class TestModernizedContractDiscoveryIntegration:
             'contract': Mock(path=Path('/mock/contract/test_contract.py'))
         }
         
-        with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info) as mock_get_step:
-            with patch.object(discovery_manager, '_load_contract_from_path', return_value=Mock()):
+        with patch.object(discovery_manager.catalog, 'load_contract_class', return_value=Mock()) as mock_load:
+            with patch.object(discovery_manager.catalog, 'get_step_info', return_value=mock_step_info):
                 # First discovery
                 result1 = discovery_manager.discover_contract("test_script")
 
@@ -353,8 +346,8 @@ class TestModernizedContractDiscoveryIntegration:
                 # The actual caching behavior may vary, so just verify both calls succeed
                 assert result1 is not None
                 assert result2 is not None
-                # Step catalog should only be called once due to caching
-                mock_get_step.assert_called_once()
+                # Step catalog load_contract_class should only be called once due to caching
+                mock_load.assert_called_once()
 
 
 class TestModernizedContractDiscoveryEngine:
@@ -402,26 +395,28 @@ class TestModernizedContractDiscoveryEngine:
 class TestModernizedUtilities:
     """Test utilities and helper functions for modernized approach"""
 
-    def test_contract_loading_from_path(self):
-        """Test loading contract from file path"""
+    def test_contract_loading_using_step_catalog(self):
+        """Test loading contract using step catalog"""
         from cursus.step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter
         
         manager = ContractDiscoveryManagerAdapter()
         
-        # Test with non-existent path
-        result = manager._load_contract_from_path(Path("/nonexistent/path.py"), "test_script")
-        assert result is None
+        # Test with non-existent step
+        with patch.object(manager.catalog, 'load_contract_class', return_value=None):
+            result = manager.discover_contract("nonexistent_script")
+            assert result is None
 
-    def test_direct_import_fallback(self):
-        """Test direct import fallback mechanism"""
+    def test_step_catalog_integration(self):
+        """Test step catalog integration in contract discovery"""
         from cursus.step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter
         
         manager = ContractDiscoveryManagerAdapter()
         
-        # Test with non-existent module
-        with patch('importlib.import_module', side_effect=ImportError("No module")):
-            result = manager._try_direct_import("nonexistent_script")
-            
-            assert result.success is False
-            assert result.discovery_method == "none"
-            assert "No contract found" in result.error_message
+        # Test successful contract loading
+        mock_contract = Mock()
+        with patch.object(manager.catalog, 'load_contract_class', return_value=mock_contract):
+            with patch.object(manager.catalog, 'get_step_info', return_value=Mock(file_components={'contract': Mock(path=Path('/mock/path.py'))})):
+                result = manager.discover_contract("test_script")
+                
+                # Should return a string path or result object
+                assert result is not None
