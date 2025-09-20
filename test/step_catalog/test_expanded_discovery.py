@@ -28,7 +28,7 @@ class TestExpandedDiscoveryMethods:
     @pytest.fixture
     def catalog_with_test_data(self, mock_workspace_root):
         """Create a catalog with test data."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         
         # Mock some test data
         test_step_info = StepInfo(
@@ -73,7 +73,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_discover_contracts_with_scripts_empty(self, mock_workspace_root):
         """Test discovery when no steps have both contracts and scripts."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         catalog._step_index = {}
         catalog._index_built = True
         
@@ -99,7 +99,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_detect_framework_from_step_name(self, mock_workspace_root):
         """Test framework detection from step name patterns."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         
         # Create test step with pytorch in name
         pytorch_step = StepInfo(
@@ -117,7 +117,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_detect_framework_not_found(self, mock_workspace_root):
         """Test framework detection when step not found."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         catalog._step_index = {}
         catalog._index_built = True
         
@@ -162,7 +162,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_get_builder_class_path_from_file(self, mock_workspace_root):
         """Test getting builder class path from file components."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         
         # Create test step with builder file
         test_step = StepInfo(
@@ -186,7 +186,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_get_builder_class_path_not_found(self, mock_workspace_root):
         """Test getting builder class path when step not found."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         catalog._step_index = {}
         catalog._index_built = True
         
@@ -217,7 +217,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_load_builder_class_not_found(self, mock_workspace_root):
         """Test loading builder class when path not found."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         catalog._step_index = {}
         catalog._index_built = True
         
@@ -236,7 +236,7 @@ class TestExpandedDiscoveryMethods:
     
     def test_error_handling_in_discovery_methods(self, mock_workspace_root):
         """Test error handling in discovery methods."""
-        catalog = StepCatalog(mock_workspace_root)
+        catalog = StepCatalog(workspace_dirs=[mock_workspace_root])
         
         # Force an error by not building index and making _ensure_index_built fail
         with patch.object(catalog, '_ensure_index_built', side_effect=Exception("Test error")):

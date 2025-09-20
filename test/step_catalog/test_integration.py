@@ -44,7 +44,8 @@ class TestModuleIntegration:
             catalog = create_step_catalog(workspace_root, use_unified=True)
             
             assert isinstance(catalog, StepCatalog)
-            assert catalog.workspace_root == workspace_root
+            # Updated for new dual search space API
+            assert catalog.workspace_dirs == [workspace_root]
     
     def test_factory_function_with_feature_flags(self):
         """Test factory function with different feature flag configurations."""
@@ -132,61 +133,63 @@ class DataPreprocessingConfig(BaseModel):
     
     def test_complete_discovery_workflow(self, realistic_workspace):
         """Test complete step discovery workflow."""
-        catalog = create_step_catalog(realistic_workspace, use_unified=True)
-        
-        # Mock registry to avoid import issues
-        mock_registry = {
-            "data_preprocessing": {
-                "config_class": "DataPreprocessingConfig",
-                "description": "Preprocesses data for training"
-            },
-            "model_training": {
-                "config_class": "ModelTrainingConfig", 
-                "description": "Trains ML models"
+        # Mock package root to point to our test workspace
+        with patch.object(StepCatalog, '_find_package_root', return_value=realistic_workspace / "src" / "cursus"):
+            catalog = create_step_catalog(realistic_workspace, use_unified=True)
+            
+            # Mock registry to avoid import issues
+            mock_registry = {
+                "data_preprocessing": {
+                    "config_class": "DataPreprocessingConfig",
+                    "description": "Preprocesses data for training"
+                },
+                "model_training": {
+                    "config_class": "ModelTrainingConfig", 
+                    "description": "Trains ML models"
+                }
             }
-        }
-        
-        with patch('cursus.registry.step_names.STEP_NAMES', mock_registry):
-            # Test US1: Query by Step Name
-            step_info = catalog.get_step_info("data_preprocessing")
-            assert step_info is not None
-            assert step_info.step_name == "data_preprocessing"
-            assert step_info.workspace_id == "core"
-            assert "script" in step_info.file_components
-            assert "contract" in step_info.file_components
             
-            # Test US2: Reverse Lookup
-            script_path = realistic_workspace / "src" / "cursus" / "steps" / "scripts" / "data_preprocessing.py"
-            found_step = catalog.find_step_by_component(str(script_path))
-            assert found_step == "data_preprocessing"
-            
-            # Test US3: Multi-Workspace Discovery
-            all_steps = catalog.list_available_steps()
-            assert "data_preprocessing" in all_steps
-            assert "model_training" in all_steps
-            assert "custom_preprocessing" in all_steps
-            
-            core_steps = catalog.list_available_steps(workspace_id="core")
-            workspace_steps = catalog.list_available_steps(workspace_id="alpha")
-            
-            assert "data_preprocessing" in core_steps
-            assert "model_training" in core_steps
-            assert "custom_preprocessing" in workspace_steps
-            
-            # Test US4: Search
-            search_results = catalog.search_steps("preprocessing")
-            assert len(search_results) >= 2  # Should find both preprocessing steps
-            
-            step_names = [r.step_name for r in search_results]
-            assert "data_preprocessing" in step_names
-            assert "custom_preprocessing" in step_names
-            
-            # Test US5: Config Discovery
-            with patch.object(catalog.config_discovery, 'discover_config_classes') as mock_discover:
-                mock_discover.return_value = {"DataPreprocessingConfig": Mock}
+            with patch('cursus.registry.step_names.get_step_names', return_value=mock_registry):
+                # Test US1: Query by Step Name
+                step_info = catalog.get_step_info("data_preprocessing")
+                assert step_info is not None
+                assert step_info.step_name == "data_preprocessing"
+                assert step_info.workspace_id == "core"
+                assert "script" in step_info.file_components
+                assert "contract" in step_info.file_components
                 
-                config_classes = catalog.discover_config_classes()
-                assert "DataPreprocessingConfig" in config_classes
+                # Test US2: Reverse Lookup
+                script_path = realistic_workspace / "src" / "cursus" / "steps" / "scripts" / "data_preprocessing.py"
+                found_step = catalog.find_step_by_component(str(script_path))
+                assert found_step == "data_preprocessing"
+                
+                # Test US3: Multi-Workspace Discovery
+                all_steps = catalog.list_available_steps()
+                assert "data_preprocessing" in all_steps
+                assert "model_training" in all_steps
+                assert "custom_preprocessing" in all_steps
+                
+                core_steps = catalog.list_available_steps(workspace_id="core")
+                workspace_steps = catalog.list_available_steps(workspace_id="alpha")
+                
+                assert "data_preprocessing" in core_steps
+                assert "model_training" in core_steps
+                assert "custom_preprocessing" in workspace_steps
+                
+                # Test US4: Search
+                search_results = catalog.search_steps("preprocessing")
+                assert len(search_results) >= 2  # Should find both preprocessing steps
+                
+                step_names = [r.step_name for r in search_results]
+                assert "data_preprocessing" in step_names
+                assert "custom_preprocessing" in step_names
+                
+                # Test US5: Config Discovery
+                with patch.object(catalog.config_discovery, 'discover_config_classes') as mock_discover:
+                    mock_discover.return_value = {"DataPreprocessingConfig": Mock}
+                    
+                    config_classes = catalog.discover_config_classes()
+                    assert "DataPreprocessingConfig" in config_classes
     
     def test_performance_and_metrics(self, realistic_workspace):
         """Test performance characteristics and metrics collection."""

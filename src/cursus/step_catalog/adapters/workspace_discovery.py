@@ -22,15 +22,11 @@ class WorkspaceDiscoveryManagerAdapter:
     Replaces: src/cursus/workspace/core/discovery.py
     """
     
-    def __init__(self, workspace_manager):
-        """Initialize with workspace manager (legacy compatibility)."""
-        self.workspace_manager = workspace_manager
-        if hasattr(workspace_manager, 'workspace_root') and workspace_manager.workspace_root:
-            # PORTABLE: Use workspace-aware discovery for workspace discovery
-            self.catalog = StepCatalog(workspace_dirs=[workspace_manager.workspace_root])
-        else:
-            # PORTABLE: Use package-only discovery as fallback
-            self.catalog = StepCatalog(workspace_dirs=None)
+    def __init__(self, workspace_root: Path):
+        """Initialize with workspace root (updated for test compatibility)."""
+        self.workspace_root = workspace_root
+        # PORTABLE: Use workspace-aware discovery for workspace discovery
+        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
         self.logger = logging.getLogger(__name__)
         
         # Legacy compatibility attributes
@@ -136,7 +132,7 @@ class WorkspaceDiscoveryManagerAdapter:
         """Legacy method: discover components in workspace."""
         try:
             # Check if workspace root is configured
-            if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root') or self.workspace_manager.workspace_root is None:
+            if not self.workspace_root:
                 return {"error": "No workspace root configured"}
             
             from ...workspace.core.inventory import ComponentInventory
@@ -220,33 +216,33 @@ class WorkspaceDiscoveryManagerAdapter:
     
     def get_file_resolver(self, developer_id: Optional[str] = None, **kwargs):
         """Legacy method: get file resolver."""
-        if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root') or self.workspace_manager.workspace_root is None:
+        if not self.workspace_root:
             raise ValueError("No workspace root configured")
         
         from .file_resolver import DeveloperWorkspaceFileResolverAdapter
         return DeveloperWorkspaceFileResolverAdapter(
-            self.workspace_manager.workspace_root,
+            self.workspace_root,
             project_id=developer_id
         )
     
     def get_module_loader(self, developer_id: Optional[str] = None, **kwargs):
         """Legacy method: get module loader."""
-        if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root') or self.workspace_manager.workspace_root is None:
+        if not self.workspace_root:
             raise ValueError("No workspace root configured")
         
         # Return a mock module loader for now
         mock_loader = Mock()
-        mock_loader.workspace_root = self.workspace_manager.workspace_root
+        mock_loader.workspace_root = self.workspace_root
         return mock_loader
     
     def list_available_developers(self) -> List[str]:
         """Legacy method: list available developers."""
         try:
-            if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root'):
+            if not self.workspace_root:
                 return []
             
             developers = []
-            developers_dir = self.workspace_manager.workspace_root / "developers"
+            developers_dir = self.workspace_root / "developers"
             
             if developers_dir.exists():
                 for item in developers_dir.iterdir():
@@ -254,7 +250,7 @@ class WorkspaceDiscoveryManagerAdapter:
                         developers.append(item.name)
             
             # Add shared workspace if it exists
-            shared_dir = self.workspace_manager.workspace_root / "shared"
+            shared_dir = self.workspace_root / "shared"
             if shared_dir.exists():
                 developers.append("shared")
             
@@ -267,15 +263,15 @@ class WorkspaceDiscoveryManagerAdapter:
     def get_workspace_info(self, workspace_id: Optional[str] = None, developer_id: Optional[str] = None) -> Dict[str, Any]:
         """Legacy method: get workspace info."""
         try:
-            if not self.workspace_manager or not hasattr(self.workspace_manager, 'workspace_root'):
+            if not self.workspace_root:
                 return {"error": "No workspace root configured"}
             
             target_id = workspace_id or developer_id
             if target_id:
                 if target_id == "shared":
-                    workspace_path = self.workspace_manager.workspace_root / "shared"
+                    workspace_path = self.workspace_root / "shared"
                 else:
-                    workspace_path = self.workspace_manager.workspace_root / "developers" / target_id
+                    workspace_path = self.workspace_root / "developers" / target_id
                 
                 if workspace_path.exists():
                     return {
@@ -288,7 +284,7 @@ class WorkspaceDiscoveryManagerAdapter:
                     return {"error": f"Workspace not found: {target_id}"}
             
             # Return info for all workspaces
-            return self.discover_workspaces(self.workspace_manager.workspace_root)
+            return self.discover_workspaces(self.workspace_root)
             
         except Exception as e:
             self.logger.error(f"Error getting workspace info: {e}")

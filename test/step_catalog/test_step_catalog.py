@@ -68,7 +68,7 @@ class TestStepCatalogInitialization:
     
     def test_metrics_initialization(self, temp_workspace):
         """Test metrics are properly initialized."""
-        catalog = StepCatalog(temp_workspace)
+        catalog = StepCatalog(workspace_dirs=[temp_workspace])
         
         expected_metrics = {
             'queries': 0,
@@ -88,7 +88,7 @@ class TestUS1QueryByStepName:
     def catalog_with_mock_index(self):
         """Create catalog with mocked index for testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            catalog = StepCatalog(Path(temp_dir))
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
             
             # Mock the index with test data
             from datetime import datetime
@@ -167,7 +167,7 @@ class TestUS2ReverseLookup:
     def catalog_with_components(self):
         """Create catalog with component index for testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            catalog = StepCatalog(Path(temp_dir))
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
             
             # Mock component index
             catalog._component_index = {
@@ -206,7 +206,7 @@ class TestUS3MultiWorkspaceDiscovery:
     def catalog_with_workspaces(self):
         """Create catalog with multi-workspace data."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            catalog = StepCatalog(Path(temp_dir))
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
             
             # Mock multi-workspace index
             catalog._step_index = {
@@ -277,7 +277,7 @@ class TestUS4EfficientScaling:
     def catalog_with_search_data(self):
         """Create catalog with data for search testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            catalog = StepCatalog(Path(temp_dir))
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
             
             # Create proper FileMetadata objects
             script_metadata = FileMetadata(
@@ -437,7 +437,7 @@ class TestAdditionalUtilityMethods:
     def catalog_with_variants(self):
         """Create catalog with job type variants."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            catalog = StepCatalog(Path(temp_dir))
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
             
             catalog._step_index = {
                 "data_loading": StepInfo(step_name="data_loading", workspace_id="core"),
@@ -503,7 +503,7 @@ class TestIndexBuilding:
         """Create catalog for index building tests."""
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)
-            catalog = StepCatalog(workspace_root)
+            catalog = StepCatalog(workspace_dirs=[workspace_root])
             
             # Create directory structure
             core_steps_dir = workspace_root / "src" / "cursus" / "steps"
@@ -545,8 +545,8 @@ class TestIndexBuilding:
             "test_step": {"config_class": "TestConfig", "description": "Test step"}
         }
         
-        # Mock the import path where STEP_NAMES is imported
-        with patch('cursus.registry.step_names.STEP_NAMES', mock_step_names):
+        # Mock the registry import that's used in _load_registry_data
+        with patch('cursus.registry.step_names.get_step_names', return_value=mock_step_names):
             catalog._build_index()
             
             assert "test_step" in catalog._step_index
@@ -766,12 +766,14 @@ class TestIntegrationScenarios:
             workspace_scripts.mkdir(parents=True)
             (workspace_scripts / "custom_step.py").write_text("# Custom step")
             
-            catalog = StepCatalog(workspace_root)
-            
-            # Mock registry
-            with patch('cursus.registry.step_names.STEP_NAMES', {}):
-                # Force index build
-                catalog._build_index()
+            # Mock package root to prevent finding real cursus package
+            with patch.object(StepCatalog, '_find_package_root', return_value=workspace_root / "src" / "cursus"):
+                catalog = StepCatalog(workspace_root)
+                
+                # Mock the _load_registry_data method to prevent loading real registry data
+                with patch.object(catalog, '_load_registry_data'):
+                    # Force index build
+                    catalog._build_index()
                 
                 # Should discover both core and workspace steps
                 all_steps = catalog.list_available_steps()
