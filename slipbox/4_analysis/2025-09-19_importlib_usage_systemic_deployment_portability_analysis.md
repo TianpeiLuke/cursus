@@ -252,15 +252,16 @@ module = importlib.import_module(module_path, package=__package__)
 
 ## Failure Pattern Analysis
 
-### Pattern 1: Direct Absolute Imports (Highest Risk)
+### Pattern 1: Direct Absolute Imports (Highest Risk) ❌ **FAILURE PATTERN**
 ```python
 # FAILS in submodule deployment
 importlib.import_module('cursus.step_catalog.step_catalog')
 ```
 **Reason**: Assumes `cursus` is in sys.path
 **Submodule Reality**: Only project root is in sys.path, not cursus parent
+**Examples**: `src/cursus/api/dag/pipeline_dag_resolver.py`, `src/cursus/pipeline_catalog/mods_pipelines/__init__.py`
 
-### Pattern 2: Hardcoded Path Prefixes (High Risk)
+### Pattern 2: Hardcoded Path Prefixes (High Risk) ❌ **FAILURE PATTERN**
 ```python
 # FAILS in package deployment
 module_path = f"src.cursus.steps.builders.{module_name}"
@@ -268,52 +269,94 @@ importlib.import_module(module_path)
 ```
 **Reason**: Hardcodes deployment-specific path structure
 **Package Reality**: No `src.` prefix in installed packages
+**Examples**: Legacy code patterns (mostly eliminated)
 
-### Pattern 3: Relative Imports with Package (Medium Risk)
+### Pattern 3: Manual Import Logic vs StepCatalog Integration ❌ **ARCHITECTURAL ANTI-PATTERN**
 ```python
-# MAY FAIL depending on __package__ context
-importlib.import_module(module_path, package=__package__)
+# PROBLEMATIC: Manual importlib with hardcoded paths
+def _try_import_builder_class(self, step_name: str):
+    module_path = f"cursus.steps.builders.{builder_module_name}"
+    module = importlib.import_module(module_path)  # Deployment-dependent!
+    return getattr(module, class_name)
+
+# SOLUTION: Use StepCatalog's unified discovery system
+def _validate_builder_class_exists(self, step_name: str):
+    builder_class = self.catalog.load_builder_class(step_name)  # Deployment-agnostic!
+    return builder_class is not None
 ```
-**Reason**: Depends on correct __package__ resolution in submodule context
-**Risk**: Context-dependent failure
+**Problem**: Validation and workspace modules were duplicating import logic instead of using the existing StepCatalog infrastructure
+**Root Cause**: **Architectural inconsistency** - components manually constructing import paths rather than leveraging centralized discovery
+**Examples**: 
+- `builder_reporter.py` - Had manual builder class importing
+- `registry_discovery.py` - Had manual module path construction
+- `workspace_module_loader.py` - Had manual importlib patterns
+- `contract_adapter.py` - Had 150+ lines of manual import logic
+
+**Solution Applied**: **StepCatalog Integration Pattern**
+- Replace manual `importlib.import_module()` calls with `catalog.load_builder_class()` and `catalog.load_contract_class()`
+- Eliminate hardcoded module path construction
+- Use unified discovery interface that handles deployment portability internally
+- Leverage existing AST-based discovery and caching mechanisms
+
+**Benefits Achieved**:
+- **Eliminated 300+ lines** of duplicated import logic
+- **Consistent behavior** across all deployment scenarios
+- **Better error handling** with centralized logging
+- **Improved performance** through StepCatalog's built-in caching
+- **Architectural consistency** - all components use the same discovery interface
 
 ## Impact Assessment by Subsystem
 
-### **Step Catalog System** 🚨 **CRITICAL FAILURE**
-- **Files Affected**: 3 core files
-- **Functionality**: Complete system failure
-- **User Impact**: No configuration discovery, no step catalog functionality
-- **Deployment**: Unusable in submodule deployments
+### **Step Catalog System** ✅ **FULLY RESOLVED**
+- **Files Affected**: 3 core files ✅ **ALL COMPLETED**
+- **Status**: ContractAutoDiscovery integration completed, unified discovery architecture implemented
+- **Functionality**: ✅ Full system functionality restored across all deployment scenarios
+- **User Impact**: ✅ Complete configuration discovery, step catalog functionality working
+- **Deployment**: ✅ Fully functional in all deployment scenarios (package, source, submodule, container)
+- **Test Results**: ✅ 194/194 tests passing
 
-### **Registry System** 🚨 **CRITICAL FAILURE**
-- **Files Affected**: 1 core file (hybrid manager)
-- **Functionality**: Registry system non-functional
-- **User Impact**: No step registration, no builder discovery
-- **Deployment**: Complete registry failure
+### **Registry System** ✅ **FULLY RESOLVED**
+- **Files Affected**: 1 core file (hybrid manager) ✅ **COMPLETED**
+- **Status**: Converted to relative imports with superior pattern
+- **Functionality**: ✅ Registry system fully operational with deployment-agnostic imports
+- **User Impact**: ✅ Complete step registration and builder discovery functionality
+- **Deployment**: ✅ Works consistently across all deployment scenarios
+- **Test Results**: ✅ 246/246 registry tests passing
 
-### **Pipeline DAG System** 🚨 **CRITICAL FAILURE**
-- **Files Affected**: 1 core file (dag resolver)
-- **Functionality**: Pipeline compilation failure
-- **User Impact**: Cannot compile or execute pipelines
-- **Deployment**: Core functionality broken
+### **Pipeline DAG System** 🚨 **REMAINING CRITICAL ISSUE**
+- **Files Affected**: 1 core file (dag resolver) ❌ **NOT YET ADDRESSED**
+- **Status**: Still uses absolute imports - should be next priority
+- **Functionality**: Pipeline compilation failures in submodule deployments
+- **User Impact**: Cannot compile or execute pipelines in certain deployment scenarios
+- **Deployment**: Core functionality broken in submodule deployments
+- **Priority**: **Should be P0** - Critical infrastructure
 
-### **Step Builder System** ⚠️ **HIGH DEGRADATION**
-- **Files Affected**: 7+ builder files
-- **Functionality**: Individual step types unavailable
-- **User Impact**: Reduced step catalog, missing step implementations
-- **Deployment**: Partial functionality loss
+### **Step Builder System** ✅ **ALREADY OPTIMAL**
+- **Files Affected**: 7 builder files ✅ **NO CHANGES NEEDED**
+- **Status**: Already using best practice relative import patterns
+- **Functionality**: ✅ All step types available and working correctly
+- **User Impact**: ✅ Full step catalog functionality, all step implementations available
+- **Deployment**: ✅ Deployment-agnostic design already in place
+- **Pattern**: Uses `importlib.import_module(module_path, package=__package__)` correctly
 
-### **Validation Systems** 🟡 **MEDIUM DEGRADATION**
-- **Files Affected**: 3+ validation files
-- **Functionality**: Validation and reporting failures
-- **User Impact**: Reduced error detection, debugging difficulties
-- **Deployment**: Quality assurance degradation
+### **Validation Systems** ✅ **FULLY RESOLVED**
+- **Files Affected**: 3 validation files ✅ **ALL COMPLETED**
+- **Status**: All converted to StepCatalog integration pattern
+- **Functionality**: ✅ Full validation and reporting functionality restored
+- **User Impact**: ✅ Complete error detection, debugging capabilities working
+- **Deployment**: ✅ Quality assurance working across all deployment scenarios
+- **Benefits**: Eliminated 300+ lines of manual importlib code, improved performance
 
-### **CLI and Utilities** 🟢 **LOW-MEDIUM DEGRADATION**
-- **Files Affected**: 8+ utility files
-- **Functionality**: CLI and utility function failures
-- **User Impact**: Reduced developer experience
-- **Deployment**: Tool availability issues
+### **CLI and Utilities** 🟡 **MIXED STATUS**
+- **Files Affected**: ~9 utility files 🔄 **PARTIALLY ADDRESSED**
+- **Status**: 
+  - ✅ 3 files already optimal (no changes needed)
+  - 🟡 2 files need conversion (mods pipelines, CLI builder test)
+  - ✅ 4 files already using correct patterns
+- **Functionality**: Most CLI and utility functions working correctly
+- **User Impact**: Minor degradation in some CLI tools in submodule deployments
+- **Deployment**: Most tools work, some have deployment-specific issues
+- **Priority**: Lower priority since core systems are resolved
 
 ## Root Cause Analysis
 

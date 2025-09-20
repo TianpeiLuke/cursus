@@ -289,7 +289,7 @@ class PipelineDAGResolver:
         self, canonical_name: str
     ) -> Optional[StepSpecification]:
         """
-        Get step specification from canonical name using dynamic import.
+        Get step specification using StepCatalog's unified discovery system.
 
         Args:
             canonical_name: Canonical name of the step
@@ -298,42 +298,22 @@ class PipelineDAGResolver:
             StepSpecification instance if found, None otherwise
         """
         try:
-            # Get spec type from canonical name
-            spec_type = get_spec_step_type(canonical_name)
-            if not spec_type:
-                logger.debug(f"No spec type found for canonical name: {canonical_name}")
+            # Use StepCatalog for unified specification discovery
+            from ...step_catalog import StepCatalog
+            
+            # Use package-only discovery for deployment portability
+            catalog = StepCatalog(workspace_dirs=None)
+            spec_instance = catalog.load_spec_class(canonical_name)
+            
+            if spec_instance:
+                logger.debug(f"Successfully loaded specification for {canonical_name} via StepCatalog")
+                return spec_instance
+            else:
+                logger.debug(f"No specification found for canonical name: {canonical_name}")
                 return None
 
-            # Build module path using naming convention
-            # Convert spec_type to module name (e.g., "XGBoostTrainingSpec" -> "xgboost_training_spec")
-            module_name = self._spec_type_to_module_name(spec_type)
-            module_path = f"cursus.steps.specs.{module_name}"
-
-            # Dynamic import
-            spec_module = importlib.import_module(module_path)
-
-            # Get specification instance
-            # Look for function that returns the spec (common pattern)
-            spec_getter_name = f"get_{module_name}"
-            if hasattr(spec_module, spec_getter_name):
-                spec_getter = getattr(spec_module, spec_getter_name)
-                return spec_getter()
-
-            # Look for direct spec class instance
-            if hasattr(spec_module, spec_type):
-                spec_class = getattr(spec_module, spec_type)
-                return spec_class()
-
-            # Look for common spec variable names
-            for var_name in ["SPEC", "spec", f"{canonical_name.upper()}_SPEC"]:
-                if hasattr(spec_module, var_name):
-                    return getattr(spec_module, var_name)
-
-            logger.debug(f"No specification instance found in module: {module_path}")
-            return None
-
         except ImportError as e:
-            logger.debug(f"Could not import spec module for {canonical_name}: {e}")
+            logger.debug(f"StepCatalog not available for spec loading: {e}")
             return None
         except Exception as e:
             logger.warning(f"Error getting specification for {canonical_name}: {e}")

@@ -30,6 +30,11 @@ try:
 except ImportError:
     ContractAutoDiscovery = None
 
+try:
+    from .spec_discovery import SpecAutoDiscovery
+except ImportError:
+    SpecAutoDiscovery = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,6 +78,7 @@ class StepCatalog:
         self.config_discovery = self._initialize_config_discovery()
         self.builder_discovery = self._initialize_builder_discovery()
         self.contract_discovery = self._initialize_contract_discovery()
+        self.spec_discovery = self._initialize_spec_discovery()
         self.logger = logging.getLogger(__name__)
         
         # Simple in-memory indexes (US4: Efficient Scaling)
@@ -461,6 +467,35 @@ class StepCatalog:
             self.logger.error(f"Error loading contract for {step_name}: {e}")
             return None
     
+    def load_spec_class(self, step_name: str) -> Optional[Any]:
+        """
+        Load specification instance for a step using SpecAutoDiscovery component.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Specification instance or None if not found/loadable
+        """
+        try:
+            # Use the initialized spec discovery component
+            if self.spec_discovery:
+                spec_instance = self.spec_discovery.load_spec_class(step_name)
+                
+                if spec_instance:
+                    self.logger.debug(f"Successfully loaded specification for {step_name}")
+                    return spec_instance
+                else:
+                    self.logger.warning(f"No specification found for step: {step_name}")
+                    return None
+            else:
+                self.logger.warning(f"SpecAutoDiscovery not available, cannot load specification for {step_name}")
+                return None
+            
+        except Exception as e:
+            self.logger.error(f"Error loading specification for {step_name}: {e}")
+            return None
+    
     # Additional utility methods for job type variants
     def get_job_type_variants(self, base_step_name: str) -> List[str]:
         """
@@ -562,6 +597,22 @@ class StepCatalog:
             return ContractAutoDiscovery(self.package_root, self.workspace_dirs)
         except Exception as e:
             self.logger.error(f"Error initializing ContractAutoDiscovery: {e}")
+            return None
+    
+    def _initialize_spec_discovery(self) -> Optional['SpecAutoDiscovery']:
+        """
+        Initialize SpecAutoDiscovery component with proper error handling.
+        
+        Returns:
+            SpecAutoDiscovery instance or None if initialization fails
+        """
+        try:
+            if SpecAutoDiscovery is None:
+                self.logger.warning("SpecAutoDiscovery not available due to import failure")
+                return None
+            return SpecAutoDiscovery(self.package_root, self.workspace_dirs)
+        except Exception as e:
+            self.logger.error(f"Error initializing SpecAutoDiscovery: {e}")
             return None
     
     def _find_package_root(self) -> Path:
