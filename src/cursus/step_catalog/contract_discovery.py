@@ -74,20 +74,36 @@ class ContractAutoDiscovery:
             Contract object or None if not found/loadable
         """
         try:
-            # First try direct import using relative imports
+            # Strategy 1: Try direct import using the step name as-is
             contract = self._try_direct_import(step_name)
             if contract:
                 self.logger.debug(f"Successfully loaded contract for {step_name} via direct import")
                 return contract
             
-            # Then try workspace-based discovery if workspace directories provided
+            # Strategy 2: Try with PascalCase to snake_case conversion
+            snake_case_name = self._pascal_to_snake_case(step_name)
+            if snake_case_name != step_name:
+                contract = self._try_direct_import(snake_case_name)
+                if contract:
+                    self.logger.debug(f"Successfully loaded contract for {step_name} via snake_case conversion ({snake_case_name})")
+                    return contract
+            
+            # Strategy 3: Try workspace-based discovery if workspace directories provided
             if self.workspace_dirs:
                 for workspace_dir in self.workspace_dirs:
                     try:
+                        # Try original name
                         contract = self._try_workspace_contract_import(step_name, workspace_dir)
                         if contract:
                             self.logger.debug(f"Successfully loaded contract for {step_name} from workspace {workspace_dir}")
                             return contract
+                        
+                        # Try snake_case name
+                        if snake_case_name != step_name:
+                            contract = self._try_workspace_contract_import(snake_case_name, workspace_dir)
+                            if contract:
+                                self.logger.debug(f"Successfully loaded contract for {step_name} from workspace {workspace_dir} via snake_case")
+                                return contract
                     except Exception as e:
                         self.logger.debug(f"Workspace contract import failed for {step_name} in {workspace_dir}: {e}")
                         continue
@@ -98,6 +114,21 @@ class ContractAutoDiscovery:
         except Exception as e:
             self.logger.error(f"Error loading contract for {step_name}: {e}")
             return None
+    
+    def _pascal_to_snake_case(self, name: str) -> str:
+        """
+        Convert PascalCase to snake_case.
+        
+        Args:
+            name: PascalCase string
+            
+        Returns:
+            snake_case string
+        """
+        import re
+        # Insert underscore before uppercase letters that follow lowercase letters or digits
+        snake_case = re.sub('([a-z0-9])([A-Z])', r'\1_\2', name)
+        return snake_case.lower()
     
     def _scan_contract_directory(self, contract_dir: Path) -> Dict[str, Type]:
         """
@@ -248,7 +279,7 @@ class ContractAutoDiscovery:
     
     def _try_direct_import(self, step_name: str) -> Optional[Any]:
         """
-        Try direct import of contract using relative imports.
+        Try direct import of contract using relative imports with automatic discovery.
         
         Args:
             step_name: Name of the step
@@ -258,18 +289,18 @@ class ContractAutoDiscovery:
         """
         try:
             # Try package contracts using relative imports
-            relative_module_path = f"...steps.contracts.{step_name}_contract"
+            # Use ..steps.contracts instead of ...steps.contracts to avoid "beyond top-level package" error
+            relative_module_path = f"..steps.contracts.{step_name}_contract"
             module = importlib.import_module(relative_module_path, package=__package__)
             
-            # Look for contract object
-            contract_name = f"{step_name.upper()}_CONTRACT"
-            if hasattr(module, contract_name):
-                return getattr(module, contract_name)
+            # Strategy 1: Automatically discover all contract objects in the module
+            contract_objects = self._discover_contract_objects_in_module(module)
             
-            # Fallback: look for any contract-like object
-            for attr_name in dir(module):
-                if attr_name.endswith('_CONTRACT') or attr_name.endswith('Contract'):
-                    return getattr(module, attr_name)
+            if contract_objects:
+                # Return the first contract object found
+                contract_name, contract_obj = contract_objects[0]
+                self.logger.debug(f"Auto-discovered contract: {contract_name}")
+                return contract_obj
             
             return None
             
@@ -279,6 +310,71 @@ class ContractAutoDiscovery:
         except Exception as e:
             self.logger.warning(f"Error in direct contract import for {step_name}: {e}")
             return None
+    
+    def _discover_contract_objects_in_module(self, module) -> List[tuple]:
+        """
+        Automatically discover all contract objects in a module.
+        
+        Args:
+            module: Imported module to scan
+            
+        Returns:
+            List of (name, object) tuples for contract objects found
+        """
+        contract_objects = []
+        
+        try:
+            # Get all attributes in the module
+            for attr_name in dir(module):
+                # Skip private attributes and imports
+                if attr_name.startswith('_'):
+                    continue
+                
+                attr_value = getattr(module, attr_name)
+                
+                # Skip imported classes and functions
+                if isinstance(attr_value, (type, type(lambda: None))):
+                    continue
+                
+                # Check if it's a contract object
+                if self._is_contract_object(attr_name, attr_value):
+                    contract_objects.append((attr_name, attr_value))
+                    self.logger.debug(f"Found contract object: {attr_name} of type {type(attr_value)}")
+        
+        except Exception as e:
+            self.logger.warning(f"Error discovering contract objects in module: {e}")
+        
+        return contract_objects
+    
+    def _is_contract_object(self, name: str, obj: Any) -> bool:
+        """
+        Check if an object is a contract object.
+        
+        Args:
+            name: Name of the object
+            obj: Object to check
+            
+        Returns:
+            True if the object appears to be a contract
+        """
+        # Check naming patterns
+        if name.endswith('_CONTRACT') or name.endswith('Contract'):
+            return True
+        
+        # Check if object has contract-like attributes
+        if hasattr(obj, 'expected_input_paths') and hasattr(obj, 'expected_output_paths'):
+            return True
+        
+        # Check if object has entry_point attribute (common in contracts)
+        if hasattr(obj, 'entry_point'):
+            return True
+        
+        # Check object type name
+        obj_type_name = type(obj).__name__
+        if 'Contract' in obj_type_name:
+            return True
+        
+        return False
     
     def _try_workspace_contract_import(self, step_name: str, workspace_dir: Path) -> Optional[Any]:
         """

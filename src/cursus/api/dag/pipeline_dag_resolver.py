@@ -36,32 +36,39 @@ class PipelineExecutionPlan(BaseModel):
 
 
 class PipelineDAGResolver:
-    """Resolves pipeline DAG into executable plan with optional step config resolution."""
+    """Enhanced resolver with StepCatalog integration for reliable, deployment-agnostic DAG resolution."""
 
     def __init__(
         self,
         dag: PipelineDAG,
+        workspace_dirs: Optional[List[Path]] = None,
         config_path: Optional[str] = None,
         available_configs: Optional[Dict[str, BasePipelineConfig]] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        validate_on_init: bool = True,
     ):
         """
-        Initialize with a Pipeline DAG and optional configuration support.
-
+        Initialize with enhanced StepCatalog integration.
+        
         Args:
             dag: PipelineDAG instance defining pipeline structure
+            workspace_dirs: Optional workspace directories for workspace-aware discovery
             config_path: Path to configuration file (optional)
             available_configs: Pre-loaded configuration instances (optional)
             metadata: Configuration metadata for enhanced resolution (optional)
+            validate_on_init: Early DAG validation with step existence checking
         """
         self.dag = dag
         self.graph = self._build_networkx_graph()
+        
+        # NEW: Initialize StepCatalog with workspace support
+        self.step_catalog = self._initialize_step_catalog(workspace_dirs)
+        
+        # Configuration resolution (enhanced with catalog integration)
         self.config_path = config_path
         self.available_configs = available_configs or {}
         self.metadata = metadata
-        self.config_resolver = (
-            StepConfigResolver() if (config_path or available_configs) else None
-        )
+        self.config_resolver = self._initialize_config_resolver()
 
         # Load configs from file if path provided
         if config_path and not available_configs:
@@ -73,6 +80,39 @@ class PipelineDAGResolver:
             except Exception as e:
                 logger.warning(f"Failed to load configs from {config_path}: {e}")
                 self.available_configs = {}
+        
+        # Enhanced validation during initialization
+        if validate_on_init:
+            self._validate_dag_with_catalog()
+
+    def _initialize_step_catalog(self, workspace_dirs: Optional[List[Path]]):
+        """Initialize StepCatalog with workspace support."""
+        try:
+            from ...step_catalog import StepCatalog
+            return StepCatalog(workspace_dirs=workspace_dirs)
+        except ImportError as e:
+            logger.warning(f"StepCatalog not available: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to initialize StepCatalog: {e}")
+            return None
+
+    def _initialize_config_resolver(self):
+        """Initialize configuration resolver with enhanced StepCatalog integration."""
+        return (
+            StepConfigResolver() if (self.config_path or self.available_configs) else None
+        )
+
+    def _validate_dag_with_catalog(self):
+        """Perform early DAG validation using StepCatalog."""
+        if not self.step_catalog:
+            logger.debug("StepCatalog not available, skipping enhanced validation")
+            return
+        
+        validation_issues = self.validate_dag_integrity()
+        if validation_issues:
+            logger.warning(f"DAG validation issues detected: {validation_issues}")
+            # Don't raise exception during initialization, just log warnings
 
     def _build_networkx_graph(self) -> nx.DiGraph:
         """Convert pipeline DAG to NetworkX graph."""
@@ -182,78 +222,37 @@ class PipelineDAGResolver:
 
     def _discover_step_contract(self, step_name: str) -> Optional[ScriptContract]:
         """
-        Dynamically discover step contract using step catalog with fallback.
-
-        Args:
-            step_name: Name of the step to discover contract for
-
-        Returns:
-            ScriptContract if found, None otherwise
+        REFACTORED: Simplified contract discovery using StepCatalog.
+        
+        IMPROVEMENTS:
+        - Single discovery path through StepCatalog
+        - Eliminates manual importlib usage
+        - Better error handling and logging
+        - Workspace-aware discovery
         """
-        # Try using step catalog first for enhanced discovery
         try:
-            return self._discover_step_contract_with_catalog(step_name)
-        except ImportError:
-            logger.debug("Step catalog not available, using legacy discovery")
+            # Use StepCatalog's unified contract discovery
+            if self.step_catalog:
+                contract = self.step_catalog.load_contract_class(step_name)
+                
+                if contract:
+                    logger.debug(f"Successfully loaded contract for {step_name} via StepCatalog")
+                    return contract
+                else:
+                    logger.debug(f"No contract found for step: {step_name}")
+                    return None
+            else:
+                # Fallback to legacy discovery if StepCatalog not available
+                logger.debug("StepCatalog not available, using legacy contract discovery")
+                return self._discover_step_contract_legacy(step_name)
+                
         except Exception as e:
-            logger.warning(f"Step catalog contract discovery failed: {e}, falling back to legacy")
-
-        # FALLBACK METHOD: Legacy contract discovery
-        return self._discover_step_contract_legacy(step_name)
-
-    def _discover_step_contract_with_catalog(self, step_name: str) -> Optional[ScriptContract]:
-        """Discover step contract using step catalog."""
-        from ...step_catalog import StepCatalog
-        
-        # PORTABLE: Use package-only discovery for contract discovery
-        try:
-            catalog = StepCatalog(workspace_dirs=None)
-        except Exception:
-            # If step catalog initialization fails, fall back to legacy
+            logger.warning(f"Error loading contract for {step_name}: {e}")
+            # Fallback to legacy discovery on any error
             return self._discover_step_contract_legacy(step_name)
-        
-        # Get step info from catalog
-        step_info = catalog.get_step_info(step_name)
-        if not step_info:
-            logger.debug(f"No step info found in catalog for: {step_name}")
-            return None
-        
-        # Check if step has contract component
-        contract_metadata = step_info.file_components.get('contract')
-        if not contract_metadata:
-            logger.debug(f"No contract component found for step: {step_name}")
-            return None
-        
-        # Try to load contract from file path
-        try:
-            contract_path = contract_metadata.path
-            # Use dynamic import to load contract
-            spec = importlib.util.spec_from_file_location("contract_module", contract_path)
-            if spec and spec.loader:
-                contract_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(contract_module)
-                
-                # Look for contract class or instance
-                for attr_name in dir(contract_module):
-                    attr = getattr(contract_module, attr_name)
-                    if isinstance(attr, ScriptContract):
-                        logger.debug(f"Found contract instance for step {step_name} via catalog")
-                        return attr
-                    elif (isinstance(attr, type) and 
-                          issubclass(attr, ScriptContract) and 
-                          attr != ScriptContract):
-                        logger.debug(f"Found contract class for step {step_name} via catalog")
-                        return attr()
-                
-                logger.debug(f"No contract found in module for step: {step_name}")
-                return None
-                
-        except Exception as e:
-            logger.warning(f"Failed to load contract from catalog path for {step_name}: {e}")
-            return None
 
     def _discover_step_contract_legacy(self, step_name: str) -> Optional[ScriptContract]:
-        """Legacy step contract discovery method."""
+        """Legacy step contract discovery method (fallback only)."""
         try:
             # Convert step name to canonical name
             canonical_name = get_canonical_name_from_file_name(step_name)
@@ -319,25 +318,9 @@ class PipelineDAGResolver:
             logger.warning(f"Error getting specification for {canonical_name}: {e}")
             return None
 
-    def _spec_type_to_module_name(self, spec_type: str) -> str:
-        """
-        Convert spec type to module name using naming convention.
-
-        Args:
-            spec_type: Spec type (e.g., "XGBoostTrainingSpec")
-
-        Returns:
-            Module name (e.g., "xgboost_training_spec")
-        """
-        # Remove "Spec" suffix if present
-        if spec_type.endswith("Spec"):
-            spec_type = spec_type[:-4]
-
-        # Convert CamelCase to snake_case
-        import re
-
-        module_name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", spec_type).lower()
-        return f"{module_name}_spec"
+    # REMOVED: _spec_type_to_module_name() - No longer needed with StepCatalog integration
+    # This method has been eliminated as part of the refactoring to use StepCatalog's
+    # unified discovery system, which handles naming conventions internally.
 
     def _find_compatible_output(
         self, input_channel: str, input_path: str, output_channels: Dict[str, str]
@@ -435,7 +418,42 @@ class PipelineDAGResolver:
         return list(self.graph.successors(step_name))
 
     def validate_dag_integrity(self) -> Dict[str, List[str]]:
-        """Validate DAG integrity and return issues if found."""
+        """
+        REFACTORED: Comprehensive DAG validation using StepCatalog.
+        
+        IMPROVEMENTS:
+        - Step existence validation using catalog
+        - Component availability checking (builders, contracts, specs, configs)
+        - Workspace compatibility validation
+        - Enhanced error messages with suggestions
+        """
+        issues = {}
+        
+        # Traditional validation (cycles, dangling dependencies, isolated nodes)
+        issues.update(self._validate_graph_structure())
+        
+        # NEW: StepCatalog-based validation
+        if self.step_catalog:
+            step_validation_issues = self._validate_steps_with_catalog()
+            if step_validation_issues:
+                issues.update(step_validation_issues)
+            
+            # NEW: Component availability validation
+            component_issues = self._validate_component_availability()
+            if component_issues:
+                issues.update(component_issues)
+            
+            # NEW: Workspace compatibility validation
+            workspace_issues = self._validate_workspace_compatibility()
+            if workspace_issues:
+                issues.update(workspace_issues)
+        else:
+            logger.debug("StepCatalog not available, using basic validation only")
+        
+        return issues
+
+    def _validate_graph_structure(self) -> Dict[str, List[str]]:
+        """Validate basic graph structure (cycles, dangling dependencies, isolated nodes)."""
         issues = {}
 
         # Check for cycles
@@ -475,11 +493,102 @@ class PipelineDAGResolver:
 
         return issues
 
+    def _validate_steps_with_catalog(self) -> Dict[str, List[str]]:
+        """Validate all DAG nodes exist in StepCatalog."""
+        issues = {}
+        missing_steps = []
+        
+        for step_name in self.dag.nodes:
+            step_info = self.step_catalog.get_step_info(step_name)
+            if not step_info:
+                missing_steps.append(step_name)
+        
+        if missing_steps:
+            available_steps = self.step_catalog.list_available_steps()
+            issues["missing_steps"] = [
+                f"Step '{step}' not found in catalog. Available steps: {available_steps[:10]}..."
+                for step in missing_steps
+            ]
+        
+        return issues
+
+    def _validate_component_availability(self) -> Dict[str, List[str]]:
+        """Validate component availability for each step."""
+        issues = {}
+        component_issues = []
+        
+        for step_name in self.dag.nodes:
+            step_info = self.step_catalog.get_step_info(step_name)
+            if step_info:
+                # Check component availability
+                missing_components = []
+                
+                # Check builder availability
+                if not step_info.file_components.get('builder'):
+                    builder_class = self.step_catalog.load_builder_class(step_name)
+                    if not builder_class:
+                        missing_components.append('builder')
+                
+                # Check contract availability
+                if not step_info.file_components.get('contract'):
+                    contract = self.step_catalog.load_contract_class(step_name)
+                    if not contract:
+                        missing_components.append('contract')
+                
+                # Check spec availability
+                if not step_info.file_components.get('spec'):
+                    spec = self.step_catalog.load_spec_class(step_name)
+                    if not spec:
+                        missing_components.append('spec')
+                
+                if missing_components:
+                    component_issues.append(
+                        f"Step '{step_name}' missing components: {missing_components}"
+                    )
+        
+        if component_issues:
+            issues["missing_components"] = component_issues
+        
+        return issues
+
+    def _validate_workspace_compatibility(self) -> Dict[str, List[str]]:
+        """Validate workspace compatibility for steps."""
+        issues = {}
+        workspace_issues = []
+        
+        # Check if steps come from different workspaces and might have conflicts
+        step_workspaces = {}
+        for step_name in self.dag.nodes:
+            step_info = self.step_catalog.get_step_info(step_name)
+            if step_info:
+                workspace_id = step_info.workspace_id
+                if workspace_id not in step_workspaces:
+                    step_workspaces[workspace_id] = []
+                step_workspaces[workspace_id].append(step_name)
+        
+        # Report multi-workspace usage (informational)
+        if len(step_workspaces) > 1:
+            workspace_summary = {
+                ws_id: len(steps) for ws_id, steps in step_workspaces.items()
+            }
+            workspace_issues.append(
+                f"DAG uses steps from multiple workspaces: {workspace_summary}. "
+                f"Ensure workspace compatibility."
+            )
+        
+        if workspace_issues:
+            issues["workspace_compatibility"] = workspace_issues
+        
+        return issues
+
     def _load_configs_from_file(
         self, config_path: str
     ) -> Dict[str, BasePipelineConfig]:
         """
-        Load configurations from file using the same pattern as DynamicPipelineTemplate.
+        Load configurations from file using StepCatalog-enhanced discovery.
+
+        This method loads a JSON configuration file and uses the StepCatalog system
+        to properly instantiate configuration classes based on the step definitions.
 
         Args:
             config_path: Path to configuration file
@@ -492,33 +601,206 @@ class PipelineDAGResolver:
         """
         try:
             import json
+            from pathlib import Path
 
             # Load the JSON configuration file
-            with open(config_path, "r") as f:
+            config_file = Path(config_path)
+            if not config_file.exists():
+                raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+            with open(config_file, "r") as f:
                 config_data = json.load(f)
+
+            logger.info(f"Loading configurations from {config_path}")
+            logger.debug(f"Configuration file structure: {list(config_data.keys())}")
 
             # Extract metadata if available
             if "metadata" in config_data:
                 self.metadata = config_data["metadata"]
                 logger.debug("Loaded metadata from configuration file")
 
-            # Use the base template's config loading mechanism
-            # This is a simplified version - in practice, you might want to use
-            # the full DynamicPipelineTemplate approach for config class detection
+            # Use StepCatalog to discover and instantiate configuration classes
             configs = {}
+            
+            # Process each configuration section
+            for config_key, config_values in config_data.items():
+                if config_key == "metadata":
+                    continue  # Skip metadata section
+                
+                try:
+                    # Try to find the corresponding step and config class using StepCatalog
+                    config_instance = self._instantiate_config_from_catalog(
+                        config_key, config_values
+                    )
+                    
+                    if config_instance:
+                        configs[config_key] = config_instance
+                        logger.debug(f"Successfully loaded config for: {config_key}")
+                    else:
+                        logger.warning(f"Could not instantiate config for: {config_key}")
+                        
+                except Exception as e:
+                    logger.warning(f"Error loading config for {config_key}: {e}")
+                    continue
 
-            # For now, return empty dict and log that this needs full implementation
-            logger.warning(
-                "Config loading from file needs full implementation with config class detection"
-            )
-            logger.info(f"Configuration file structure: {list(config_data.keys())}")
-
+            logger.info(f"Successfully loaded {len(configs)} configurations from file")
             return configs
 
         except Exception as e:
-            raise ConfigurationError(
-                f"Failed to load configurations from {config_path}: {e}"
-            )
+            try:
+                from ...core.compiler.exceptions import ConfigurationError
+                raise ConfigurationError(f"Failed to load configurations from {config_path}: {e}")
+            except ImportError:
+                # Fallback if ConfigurationError is not available
+                raise ValueError(f"Failed to load configurations from {config_path}: {e}")
+
+    def _instantiate_config_from_catalog(
+        self, config_key: str, config_values: dict
+    ) -> Optional[BasePipelineConfig]:
+        """
+        Instantiate a configuration class using StepCatalog discovery.
+
+        Args:
+            config_key: Configuration key from the JSON file
+            config_values: Configuration values dictionary
+
+        Returns:
+            Instantiated configuration instance or None
+        """
+        if not self.step_catalog:
+            logger.debug("StepCatalog not available for config instantiation")
+            return None
+
+        try:
+            # Strategy 1: Direct step name lookup
+            step_info = self.step_catalog.get_step_info(config_key)
+            if step_info and step_info.config_class:
+                config_class = self._get_config_class_by_name(step_info.config_class)
+                if config_class:
+                    return self._create_config_instance(config_class, config_values)
+
+            # Strategy 2: Search by config class name pattern
+            # Try variations of the config key
+            config_class_candidates = [
+                f"{config_key}Config",
+                f"{config_key}StepConfig", 
+                config_key,
+            ]
+            
+            for candidate in config_class_candidates:
+                config_class = self._get_config_class_by_name(candidate)
+                if config_class:
+                    return self._create_config_instance(config_class, config_values)
+
+            # Strategy 3: Search through all available steps for matching config class
+            available_steps = self.step_catalog.list_available_steps()
+            for step_name in available_steps:
+                step_info = self.step_catalog.get_step_info(step_name)
+                if step_info and step_info.config_class:
+                    # Check if config class name matches any of our candidates
+                    if step_info.config_class in config_class_candidates:
+                        config_class = self._get_config_class_by_name(step_info.config_class)
+                        if config_class:
+                            return self._create_config_instance(config_class, config_values)
+
+            logger.debug(f"No matching config class found for: {config_key}")
+            return None
+
+        except Exception as e:
+            logger.warning(f"Error instantiating config for {config_key}: {e}")
+            return None
+
+    def _get_config_class_by_name(self, class_name: str) -> Optional[type]:
+        """
+        Get configuration class by name using dynamic import.
+
+        Args:
+            class_name: Name of the configuration class
+
+        Returns:
+            Configuration class or None
+        """
+        try:
+            # Try to import from common config locations
+            config_locations = [
+                f"...steps.configs.config_{self._class_name_to_module(class_name)}",
+                f"...core.base.config_base",
+                f"...steps.configs",
+            ]
+
+            for location in config_locations:
+                try:
+                    module = importlib.import_module(location, package=__package__)
+                    if hasattr(module, class_name):
+                        config_class = getattr(module, class_name)
+                        if issubclass(config_class, BasePipelineConfig):
+                            return config_class
+                except (ImportError, AttributeError):
+                    continue
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"Error getting config class {class_name}: {e}")
+            return None
+
+    def _class_name_to_module(self, class_name: str) -> str:
+        """
+        Convert class name to module name.
+
+        Args:
+            class_name: Configuration class name (e.g., "XGBoostTrainingConfig")
+
+        Returns:
+            Module name (e.g., "xgboost_training")
+        """
+        # Remove "Config" suffix
+        if class_name.endswith("Config"):
+            class_name = class_name[:-6]
+        
+        # Remove "Step" suffix if present
+        if class_name.endswith("Step"):
+            class_name = class_name[:-4]
+
+        # Convert CamelCase to snake_case
+        import re
+        module_name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", class_name).lower()
+        return module_name
+
+    def _create_config_instance(
+        self, config_class: type, config_values: dict
+    ) -> Optional[BasePipelineConfig]:
+        """
+        Create configuration instance from class and values.
+
+        Args:
+            config_class: Configuration class
+            config_values: Configuration values dictionary
+
+        Returns:
+            Configuration instance or None
+        """
+        try:
+            # Try to instantiate the config class with the provided values
+            if hasattr(config_class, "from_dict"):
+                # Use from_dict method if available
+                return config_class.from_dict(config_values)
+            else:
+                # Try direct instantiation with keyword arguments
+                return config_class(**config_values)
+
+        except Exception as e:
+            logger.warning(f"Error creating config instance for {config_class.__name__}: {e}")
+            try:
+                # Fallback: try with empty initialization and set attributes
+                instance = config_class()
+                for key, value in config_values.items():
+                    if hasattr(instance, key):
+                        setattr(instance, key, value)
+                return instance
+            except Exception as fallback_error:
+                logger.warning(f"Fallback config creation also failed: {fallback_error}")
+                return None
 
     def get_config_resolution_preview(self) -> Optional[Dict[str, Any]]:
         """
