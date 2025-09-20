@@ -68,6 +68,9 @@ class StepCatalog:
                 Path("/workspace1"), Path("/workspace2")
             ])
         """
+        # Initialize logger first (needed by discovery components)
+        self.logger = logging.getLogger(__name__)
+        
         # Find package root using relative path (deployment agnostic)
         self.package_root = self._find_package_root()
         
@@ -79,7 +82,6 @@ class StepCatalog:
         self.builder_discovery = self._initialize_builder_discovery()
         self.contract_discovery = self._initialize_contract_discovery()
         self.spec_discovery = self._initialize_spec_discovery()
-        self.logger = logging.getLogger(__name__)
         
         # Simple in-memory indexes (US4: Efficient Scaling)
         self._step_index: Dict[str, StepInfo] = {}
