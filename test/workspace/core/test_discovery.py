@@ -40,17 +40,21 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_discovery_manager_initialization(self):
         """Test WorkspaceDiscoveryManager initialization."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API - uses workspace_root instead of workspace_manager
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
-        self.assertIs(discovery_manager.workspace_manager, self.mock_workspace_manager)
+        # The adapter has different attributes than the old manager
         self.assertIsInstance(discovery_manager._component_cache, dict)
         self.assertIsInstance(discovery_manager._dependency_cache, dict)
         self.assertIsInstance(discovery_manager._cache_timestamp, dict)
         self.assertEqual(discovery_manager.cache_expiry, 300)
+        # The adapter has a catalog instead of workspace_manager
+        self.assertIsNotNone(discovery_manager.catalog)
 
     def test_discover_workspaces_empty(self):
         """Test workspace discovery with empty workspace root."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         result = discovery_manager.discover_workspaces(self.temp_workspace)
 
@@ -61,7 +65,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_discover_workspaces_with_content(self):
         """Test workspace discovery with workspace content."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create developer workspace with components
         developers_dir = self.temp_workspace / "developers"
@@ -88,7 +93,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_discover_components_empty(self):
         """Test component discovery with empty workspaces."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         result = discovery_manager.discover_components()
 
@@ -100,7 +106,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_discover_components_with_workspace_ids(self):
         """Test component discovery with specific workspace IDs."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create developer workspace
         developers_dir = self.temp_workspace / "developers"
@@ -116,7 +123,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_discover_components_with_developer_id(self):
         """Test component discovery with specific developer ID."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         result = discovery_manager.discover_components(developer_id="developer_1")
 
@@ -125,7 +133,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_resolve_cross_workspace_dependencies_simple(self):
         """Test resolving cross-workspace dependencies."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         pipeline_definition = {
             "steps": [
@@ -152,7 +161,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_resolve_cross_workspace_dependencies_circular(self):
         """Test resolving cross-workspace dependencies with circular dependency."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         pipeline_definition = {
             "steps": [
@@ -184,7 +194,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_get_file_resolver(self):
         """Test getting file resolver."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create proper workspace structure
         developers_dir = self.temp_workspace / "developers"
@@ -212,7 +223,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_get_module_loader(self):
         """Test getting module loader."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create proper workspace structure
         developers_dir = self.temp_workspace / "developers"
@@ -227,7 +239,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_list_available_developers(self):
         """Test listing available developers."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create developer workspaces
         developers_dir = self.temp_workspace / "developers"
@@ -251,7 +264,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_get_workspace_info_specific(self):
         """Test getting workspace info for specific workspace."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create developer workspace
         developers_dir = self.temp_workspace / "developers"
@@ -268,7 +282,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_get_workspace_info_all(self):
         """Test getting workspace info for all workspaces."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Create developer workspace
         developers_dir = self.temp_workspace / "developers"
@@ -283,7 +298,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_refresh_cache(self):
         """Test refreshing discovery cache."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Add test data to caches
         discovery_manager._component_cache["test"] = ComponentInventory()
@@ -300,7 +316,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_get_discovery_summary(self):
         """Test getting discovery summary."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Add test data
         discovery_manager._component_cache["developer_1"] = ComponentInventory()
@@ -316,7 +333,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_get_statistics(self):
         """Test getting discovery statistics."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         stats = discovery_manager.get_statistics()
 
@@ -389,7 +407,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_cache_validation(self):
         """Test cache validation logic."""
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API
+        discovery_manager = WorkspaceDiscoveryManager(self.temp_workspace)
 
         # Test invalid cache (not present)
         self.assertFalse(discovery_manager._is_cache_valid("nonexistent"))
@@ -408,8 +427,8 @@ class TestWorkspaceDiscoveryManager(unittest.TestCase):
 
     def test_error_handling_no_workspace_root(self):
         """Test error handling when no workspace root is configured."""
-        self.mock_workspace_manager.workspace_root = None
-        discovery_manager = WorkspaceDiscoveryManager(self.mock_workspace_manager)
+        # Updated for new adapter API - test with None workspace_root
+        discovery_manager = WorkspaceDiscoveryManager(None)
 
         with self.assertRaises(ValueError):
             discovery_manager.get_file_resolver("developer_1")

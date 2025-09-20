@@ -314,7 +314,14 @@ class TestContractDiscoveryEngine:
     def test_nonexistent_directory_handling_modern(self, engine):
         """Modern replacement for nonexistent directory tests."""
         # Test with empty workspace (modern equivalent of nonexistent directory)
-        empty_workspace = engine.catalog.workspace_root / "nonexistent"
+        # StepCatalog now uses workspace_dirs instead of workspace_root
+        if engine.catalog.workspace_dirs:
+            empty_workspace = engine.catalog.workspace_dirs[0] / "nonexistent"
+        else:
+            # If no workspace dirs, create a temp directory
+            import tempfile
+            empty_workspace = Path(tempfile.mkdtemp()) / "nonexistent"
+        
         empty_engine = ContractDiscoveryEngineAdapter(empty_workspace)
         
         contracts = empty_engine.discover_all_contracts()
