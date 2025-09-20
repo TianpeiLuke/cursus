@@ -13,7 +13,17 @@ from pathlib import Path
 from typing import Dict, List, Optional, Type, Any, Union
 
 from .models import StepInfo, FileMetadata, StepSearchResult
-from .config_discovery import ConfigAutoDiscovery
+
+# Type hints for discovery components - both handled symmetrically
+try:
+    from .config_discovery import ConfigAutoDiscovery
+except ImportError:
+    ConfigAutoDiscovery = None
+
+try:
+    from .builder_discovery import BuilderAutoDiscovery
+except ImportError:
+    BuilderAutoDiscovery = None
 
 logger = logging.getLogger(__name__)
 
@@ -52,15 +62,11 @@ class StepCatalog:
         self.package_root = self._find_package_root()
         
         # Normalize workspace_dirs to list
-        if workspace_dirs is None:
-            self.workspace_dirs = []
-        elif isinstance(workspace_dirs, Path):
-            self.workspace_dirs = [workspace_dirs]
-        else:
-            self.workspace_dirs = list(workspace_dirs)
+        self.workspace_dirs = self._normalize_workspace_dirs(workspace_dirs)
         
-        # Initialize config discovery with both search spaces
-        self.config_discovery = ConfigAutoDiscovery(self.package_root, self.workspace_dirs)
+        # Initialize specialized discovery components (consistent architecture)
+        self.config_discovery = self._initialize_config_discovery()
+        self.builder_discovery = self._initialize_builder_discovery()
         self.logger = logging.getLogger(__name__)
         
         # Simple in-memory indexes (US4: Efficient Scaling)
@@ -227,7 +233,11 @@ class StepCatalog:
         Returns:
             Dictionary mapping class names to class types
         """
-        return self.config_discovery.discover_config_classes(project_id)
+        if self.config_discovery:
+            return self.config_discovery.discover_config_classes(project_id)
+        else:
+            self.logger.warning("ConfigAutoDiscovery not available, returning empty config classes")
+            return {}
     
     def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
         """
@@ -241,7 +251,11 @@ class StepCatalog:
         Returns:
             Complete dictionary of config classes (manual + auto-discovered)
         """
-        return self.config_discovery.build_complete_config_classes(project_id)
+        if self.config_discovery:
+            return self.config_discovery.build_complete_config_classes(project_id)
+        else:
+            self.logger.warning("ConfigAutoDiscovery not available, returning empty config classes")
+            return {}
     
     # EXPANDED DISCOVERY & DETECTION METHODS (Pure Discovery - No Business Logic)
     def discover_contracts_with_scripts(self) -> List[str]:
@@ -348,7 +362,7 @@ class StepCatalog:
     
     def get_builder_class_path(self, step_name: str) -> Optional[str]:
         """
-        RESOLUTION: Get builder class path for a step.
+        Get builder class path for a step using BuilderAutoDiscovery component.
         
         Args:
             step_name: Name of the step
@@ -357,19 +371,25 @@ class StepCatalog:
             Path to builder class or None if not found
         """
         try:
-            step_info = self.get_step_info(step_name)
-            if not step_info:
-                return None
+            # Use the initialized builder discovery component
+            if self.builder_discovery:
+                builder_info = self.builder_discovery.get_builder_info(step_name)
+                if builder_info:
+                    file_path = builder_info.get('file_path')
+                    if file_path and file_path != "Unknown":
+                        return str(file_path)
             
-            # Check registry data first
-            if 'builder_step_name' in step_info.registry_data:
+            # Fallback to registry-based path construction (legacy compatibility)
+            step_info = self.get_step_info(step_name)
+            if step_info and 'builder_step_name' in step_info.registry_data:
                 builder_name = step_info.registry_data['builder_step_name']
                 return f"cursus.steps.builders.{builder_name.lower()}.{builder_name}"
             
-            # Check file components
-            builder_metadata = step_info.file_components.get('builder')
-            if builder_metadata:
-                return str(builder_metadata.path)
+            # Check file components as final fallback
+            if step_info:
+                builder_metadata = step_info.file_components.get('builder')
+                if builder_metadata:
+                    return str(builder_metadata.path)
             
             return None
             
@@ -379,7 +399,7 @@ class StepCatalog:
     
     def load_builder_class(self, step_name: str) -> Optional[Type]:
         """
-        RESOLUTION: Load builder class for a step.
+        Load builder class for a step using BuilderAutoDiscovery component.
         
         Args:
             step_name: Name of the step
@@ -388,50 +408,22 @@ class StepCatalog:
             Builder class type or None if not found/loadable
         """
         try:
-            if step_name in self._builder_class_cache:
-                return self._builder_class_cache[step_name]
-            
-            step_info = self.get_step_info(step_name)
-            if not step_info:
-                self.logger.warning(f"Failed to load builder class for {step_name}: Step not found in catalog")
-                return None
-            
-            # Get builder class name from registry data
-            builder_class_name = step_info.registry_data.get('builder_step_name')
-            if not builder_class_name:
-                self.logger.warning(f"Failed to load builder class for {step_name}: No builder_step_name in registry")
-                return None
-            
-            # Convert step name to module name using consistent naming convention
-            import re
-            import importlib
-            
-            # Convert CamelCase to snake_case for module name
-            words = re.findall(r'[A-Z][a-z]*', step_name)
-            snake_case_parts = [word.lower() for word in words]
-            module_name = f"builder_{'_'.join(snake_case_parts)}_step"
-            
-            # Try to import the builder module
-            try:
-                # Use absolute import path
-                module_path = f"cursus.steps.builders.{module_name}"
-                module = importlib.import_module(module_path)
+            # Use the initialized builder discovery component
+            if self.builder_discovery:
+                builder_class = self.builder_discovery.load_builder_class(step_name)
                 
-                # Get the builder class from the module
-                if hasattr(module, builder_class_name):
-                    builder_class = getattr(module, builder_class_name)
-                    self._builder_class_cache[step_name] = builder_class
+                if builder_class:
+                    self.logger.debug(f"Successfully loaded builder class for {step_name}: {builder_class.__name__}")
                     return builder_class
                 else:
-                    self.logger.warning(f"Failed to load builder class for {step_name}: Class {builder_class_name} not found in module {module_path}")
+                    self.logger.warning(f"No builder class found for step: {step_name}")
                     return None
-                    
-            except ImportError as e:
-                self.logger.warning(f"Failed to load builder class for {step_name}: Could not import module {module_path}: {e}")
+            else:
+                self.logger.warning(f"BuilderAutoDiscovery not available, cannot load builder for {step_name}")
                 return None
             
         except Exception as e:
-            self.logger.warning(f"Failed to load builder class for {step_name}: {e}")
+            self.logger.error(f"Error loading builder class for {step_name}: {e}")
             return None
     
     # Additional utility methods for job type variants
@@ -471,6 +463,55 @@ class StepCatalog:
             StepInfo for the node, or None if not found
         """
         return self.get_step_info(node_name)
+    
+    def _normalize_workspace_dirs(self, workspace_dirs: Optional[Union[Path, List[Path]]]) -> List[Path]:
+        """
+        Normalize workspace_dirs to a consistent list format.
+        
+        Args:
+            workspace_dirs: Optional workspace directory(ies)
+            
+        Returns:
+            List of Path objects
+        """
+        if workspace_dirs is None:
+            return []
+        elif isinstance(workspace_dirs, Path):
+            return [workspace_dirs]
+        else:
+            return list(workspace_dirs)
+    
+    def _initialize_config_discovery(self) -> Optional['ConfigAutoDiscovery']:
+        """
+        Initialize ConfigAutoDiscovery component with proper error handling.
+        
+        Returns:
+            ConfigAutoDiscovery instance or None if initialization fails
+        """
+        try:
+            if ConfigAutoDiscovery is None:
+                self.logger.warning("ConfigAutoDiscovery not available due to import failure")
+                return None
+            return ConfigAutoDiscovery(self.package_root, self.workspace_dirs)
+        except Exception as e:
+            self.logger.error(f"Error initializing ConfigAutoDiscovery: {e}")
+            return None
+    
+    def _initialize_builder_discovery(self) -> Optional['BuilderAutoDiscovery']:
+        """
+        Initialize BuilderAutoDiscovery component with proper error handling.
+        
+        Returns:
+            BuilderAutoDiscovery instance or None if initialization fails
+        """
+        try:
+            if BuilderAutoDiscovery is None:
+                self.logger.warning("BuilderAutoDiscovery not available due to import failure")
+                return None
+            return BuilderAutoDiscovery(self.package_root, self.workspace_dirs)
+        except Exception as e:
+            self.logger.error(f"Error initializing BuilderAutoDiscovery: {e}")
+            return None
     
     def _find_package_root(self) -> Path:
         """

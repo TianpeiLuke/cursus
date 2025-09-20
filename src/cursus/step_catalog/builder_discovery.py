@@ -1,0 +1,493 @@
+"""
+Builder class auto-discovery with workspace support.
+
+This module provides AST-based builder class discovery that mirrors the ConfigAutoDiscovery
+architecture for consistency. It handles deployment portability internally and supports
+both package and workspace builder discovery.
+"""
+
+import ast
+import logging
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Type, Any
+import importlib.util
+
+logger = logging.getLogger(__name__)
+
+
+class BuilderAutoDiscovery:
+    """
+    AST-based builder class discovery with workspace support.
+    
+    Mirrors ConfigAutoDiscovery architecture for consistency and handles
+    deployment portability internally.
+    """
+    
+    def __init__(self, package_root: Path, workspace_dirs: Optional[List[Path]] = None):
+        """
+        Initialize builder discovery with package and workspace search spaces.
+        
+        Args:
+            package_root: Root directory of the cursus package
+            workspace_dirs: Optional list of workspace directories to search
+        """
+        # Handle sys.path setup internally for deployment portability
+        self._ensure_cursus_importable()
+        
+        self.package_root = package_root
+        self.workspace_dirs = workspace_dirs or []
+        self.logger = logging.getLogger(__name__)
+        
+        # Caches for performance
+        self._builder_cache: Dict[str, Type] = {}
+        self._builder_paths: Dict[str, Path] = {}
+        self._discovery_complete = False
+        
+        # Discovery results
+        self._package_builders: Dict[str, Type] = {}
+        self._workspace_builders: Dict[str, Dict[str, Type]] = {}  # workspace_id -> builders
+        
+        # Registry integration
+        self._registry_info: Dict[str, Dict[str, Any]] = {}
+        self._load_registry_info()
+    
+    def _ensure_cursus_importable(self):
+        """
+        Internal sys.path setup for deployment portability.
+        
+        This handles the importlib deployment issue internally so consumers
+        don't need to worry about it.
+        """
+        current_file = Path(__file__).resolve()
+        current_path = current_file
+        while current_path.parent != current_path:
+            if current_path.name == 'cursus':
+                cursus_parent = str(current_path.parent)
+                if cursus_parent not in sys.path:
+                    sys.path.insert(0, cursus_parent)
+                    self.logger.debug(f"Added cursus parent to sys.path: {cursus_parent}")
+                break
+            current_path = current_path.parent
+    
+    def _load_registry_info(self):
+        """
+        Load registry information from cursus/registry/step_names.py.
+        
+        This provides authoritative information about step names, builder classes,
+        and other metadata that can guide the discovery process.
+        """
+        try:
+            from ..registry.step_names import get_step_names
+            
+            step_names_dict = get_step_names()
+            for step_name, step_info in step_names_dict.items():
+                self._registry_info[step_name] = step_info
+            
+            self.logger.debug(f"Loaded registry info for {len(self._registry_info)} steps")
+            
+        except ImportError as e:
+            self.logger.warning(f"Could not import registry step_names: {e}")
+            self._registry_info = {}
+        except Exception as e:
+            self.logger.error(f"Error loading registry info: {e}")
+            self._registry_info = {}
+    
+    def _get_registry_builder_info(self, step_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get builder information from registry for a step.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Dictionary with builder information from registry or None
+        """
+        if step_name in self._registry_info:
+            step_info = self._registry_info[step_name]
+            return {
+                "builder_step_name": step_info.get("builder_step_name"),
+                "sagemaker_step_type": step_info.get("sagemaker_step_type"),
+                "step_type": step_info.get("step_type"),
+                "module_path": step_info.get("module_path"),
+                "class_name": step_info.get("class_name")
+            }
+        return None
+    
+    def discover_builder_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
+        """
+        Discover all builder classes from package and workspaces.
+        
+        Args:
+            project_id: Optional project ID for workspace-specific discovery
+            
+        Returns:
+            Dictionary mapping step names to builder class types
+        """
+        if not self._discovery_complete:
+            self._run_discovery()
+        
+        # Combine package and workspace builders
+        all_builders = {}
+        
+        # Add package builders
+        all_builders.update(self._package_builders)
+        
+        # Add workspace builders (workspace overrides package)
+        if project_id and project_id in self._workspace_builders:
+            all_builders.update(self._workspace_builders[project_id])
+        else:
+            # Add all workspace builders if no specific project
+            for workspace_builders in self._workspace_builders.values():
+                all_builders.update(workspace_builders)
+        
+        self.logger.info(f"Discovered {len(all_builders)} builder classes")
+        return all_builders
+    
+    def load_builder_class(self, step_name: str) -> Optional[Type]:
+        """
+        Load builder class for a specific step with workspace-aware discovery.
+        
+        Args:
+            step_name: Name of the step to load builder for
+            
+        Returns:
+            Builder class type or None if not found
+        """
+        # Check cache first
+        if step_name in self._builder_cache:
+            return self._builder_cache[step_name]
+        
+        # Ensure discovery is complete
+        if not self._discovery_complete:
+            self._run_discovery()
+        
+        # Try workspace builders first (higher priority)
+        for workspace_id, workspace_builders in self._workspace_builders.items():
+            if step_name in workspace_builders:
+                builder_class = workspace_builders[step_name]
+                self._builder_cache[step_name] = builder_class
+                self.logger.debug(f"Loaded builder for {step_name} from workspace {workspace_id}")
+                return builder_class
+        
+        # Try package builders
+        if step_name in self._package_builders:
+            builder_class = self._package_builders[step_name]
+            self._builder_cache[step_name] = builder_class
+            self.logger.debug(f"Loaded builder for {step_name} from package")
+            return builder_class
+        
+        # Not found
+        self.logger.warning(f"No builder class found for step: {step_name}")
+        return None
+    
+    def _run_discovery(self):
+        """Run the complete discovery process."""
+        try:
+            # Discover package builders
+            self._discover_package_builders()
+            
+            # Discover workspace builders
+            self._discover_workspace_builders()
+            
+            self._discovery_complete = True
+            
+            total_builders = len(self._package_builders) + sum(
+                len(builders) for builders in self._workspace_builders.values()
+            )
+            self.logger.info(f"Builder discovery complete: {total_builders} builders found")
+            
+        except Exception as e:
+            self.logger.error(f"Error during builder discovery: {e}")
+            # Graceful degradation
+            self._package_builders = {}
+            self._workspace_builders = {}
+    
+    def _discover_package_builders(self):
+        """Discover builders in the cursus package."""
+        package_builders_dir = self.package_root / "steps" / "builders"
+        if package_builders_dir.exists():
+            self._package_builders = self._scan_builder_directory(
+                package_builders_dir, "package"
+            )
+            self.logger.debug(f"Found {len(self._package_builders)} package builders")
+    
+    def _discover_workspace_builders(self):
+        """Discover builders in workspace directories."""
+        for workspace_dir in self.workspace_dirs:
+            try:
+                workspace_path = Path(workspace_dir)
+                if not workspace_path.exists():
+                    self.logger.warning(f"Workspace directory does not exist: {workspace_path}")
+                    continue
+                
+                # Look for development/projects/ structure
+                dev_projects_dir = workspace_path / "development" / "projects"
+                if dev_projects_dir.exists():
+                    for project_dir in dev_projects_dir.iterdir():
+                        if project_dir.is_dir():
+                            workspace_builders_dir = project_dir / "src" / "cursus_dev" / "steps" / "builders"
+                            if workspace_builders_dir.exists():
+                                project_builders = self._scan_builder_directory(
+                                    workspace_builders_dir, project_dir.name
+                                )
+                                if project_builders:
+                                    self._workspace_builders[project_dir.name] = project_builders
+                                    self.logger.debug(f"Found {len(project_builders)} builders in workspace {project_dir.name}")
+                else:
+                    self.logger.warning(f"Workspace directory missing development/projects structure: {workspace_path}")
+                    
+            except Exception as e:
+                self.logger.error(f"Error discovering workspace builders in {workspace_dir}: {e}")
+    
+    def _scan_builder_directory(self, builders_dir: Path, workspace_id: str) -> Dict[str, Type]:
+        """
+        Scan directory for builder files using AST analysis.
+        
+        Args:
+            builders_dir: Directory containing builder files
+            workspace_id: ID of the workspace (for logging)
+            
+        Returns:
+            Dictionary mapping step names to builder classes
+        """
+        builders = {}
+        
+        if not builders_dir.exists():
+            return builders
+        
+        try:
+            for py_file in builders_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                try:
+                    # Extract builder info using AST
+                    builder_info = self._extract_builder_from_ast(py_file)
+                    if builder_info:
+                        step_name, builder_class = builder_info
+                        builders[step_name] = builder_class
+                        self._builder_paths[step_name] = py_file
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error processing builder file {py_file}: {e}")
+                    continue
+                    
+        except Exception as e:
+            self.logger.error(f"Error scanning builder directory {builders_dir}: {e}")
+        
+        return builders
+    
+    def _extract_builder_from_ast(self, file_path: Path) -> Optional[tuple]:
+        """
+        Extract builder class from Python file using AST analysis.
+        
+        Args:
+            file_path: Path to the Python file
+            
+        Returns:
+            Tuple of (step_name, builder_class) or None if not found
+        """
+        try:
+            # Read and parse the file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            tree = ast.parse(content)
+            
+            # Find classes that inherit from StepBuilderBase
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    # Check if class inherits from StepBuilderBase
+                    if self._inherits_from_step_builder_base(node):
+                        # Extract step name from file name or class name
+                        step_name = self._extract_step_name_from_builder_file(file_path, node.name)
+                        if step_name:
+                            # Load the actual class
+                            builder_class = self._load_class_from_file(file_path, node.name)
+                            if builder_class:
+                                return (step_name, builder_class)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.warning(f"Error extracting builder from {file_path}: {e}")
+            return None
+    
+    def _inherits_from_step_builder_base(self, class_node: ast.ClassDef) -> bool:
+        """
+        Check if a class inherits from StepBuilderBase.
+        
+        Args:
+            class_node: AST class definition node
+            
+        Returns:
+            True if class inherits from StepBuilderBase
+        """
+        for base in class_node.bases:
+            if isinstance(base, ast.Name) and base.id == 'StepBuilderBase':
+                return True
+            elif isinstance(base, ast.Attribute):
+                # Handle qualified names like module.StepBuilderBase
+                if base.attr == 'StepBuilderBase':
+                    return True
+        return False
+    
+    def _extract_step_name_from_builder_file(self, file_path: Path, class_name: str) -> Optional[str]:
+        """
+        Extract step name from builder file name and class name using registry information.
+        
+        Args:
+            file_path: Path to the builder file
+            class_name: Name of the builder class
+            
+        Returns:
+            Step name or None if not extractable
+        """
+        # First, try to find step name from registry by matching builder class name
+        for step_name, step_info in self._registry_info.items():
+            builder_step_name = step_info.get("builder_step_name")
+            if builder_step_name and builder_step_name == class_name:
+                self.logger.debug(f"Found step name {step_name} for builder {class_name} via registry")
+                return step_name
+        
+        # Try to extract from file name (e.g., builder_xgboost_training_step.py)
+        file_name = file_path.stem
+        if file_name.startswith("builder_") and file_name.endswith("_step"):
+            # Remove builder_ prefix and _step suffix
+            step_name_parts = file_name[8:-5].split("_")  # Remove "builder_" and "_step"
+            # Convert to CamelCase
+            step_name = "".join(word.capitalize() for word in step_name_parts)
+            
+            # Validate against registry if possible
+            if step_name in self._registry_info:
+                return step_name
+            
+            # Try variations if exact match not found
+            for registered_step in self._registry_info.keys():
+                if registered_step.lower() == step_name.lower():
+                    return registered_step
+            
+            return step_name
+        
+        # Try to extract from class name (e.g., XGBoostTrainingStepBuilder)
+        if class_name.endswith("StepBuilder"):
+            step_name = class_name[:-11]  # Remove "StepBuilder"
+        elif class_name.endswith("Builder"):
+            step_name = class_name[:-7]  # Remove "Builder"
+        else:
+            step_name = class_name
+        
+        # Validate against registry
+        if step_name in self._registry_info:
+            return step_name
+        
+        # Try case-insensitive match
+        for registered_step in self._registry_info.keys():
+            if registered_step.lower() == step_name.lower():
+                return registered_step
+        
+        # Fallback: use extracted name as-is
+        return step_name
+    
+    def _load_class_from_file(self, file_path: Path, class_name: str) -> Optional[Type]:
+        """
+        Load class using file system path (deployment-agnostic).
+        
+        This avoids importlib.import_module which has deployment portability issues.
+        
+        Args:
+            file_path: Path to the Python file
+            class_name: Name of the class to load
+            
+        Returns:
+            Class type or None if loading fails
+        """
+        try:
+            # Use importlib.util for file-based loading
+            spec = importlib.util.spec_from_file_location("dynamic_builder_module", file_path)
+            if spec is None or spec.loader is None:
+                self.logger.warning(f"Could not create spec for {file_path}")
+                return None
+            
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Get the class from the module
+            if hasattr(module, class_name):
+                return getattr(module, class_name)
+            else:
+                self.logger.warning(f"Class {class_name} not found in {file_path}")
+                return None
+                
+        except Exception as e:
+            self.logger.warning(f"Error loading class {class_name} from {file_path}: {e}")
+            return None
+    
+    def get_builder_info(self, step_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get information about a builder.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Dictionary with builder information or None if not found
+        """
+        builder_class = self.load_builder_class(step_name)
+        if not builder_class:
+            return None
+        
+        return {
+            "step_name": step_name,
+            "builder_class": builder_class.__name__,
+            "module": builder_class.__module__,
+            "file_path": str(self._builder_paths.get(step_name, "Unknown")),
+            "workspace_id": self._get_workspace_for_step(step_name)
+        }
+    
+    def _get_workspace_for_step(self, step_name: str) -> str:
+        """Get workspace ID for a step."""
+        for workspace_id, workspace_builders in self._workspace_builders.items():
+            if step_name in workspace_builders:
+                return workspace_id
+        return "package"
+    
+    def list_available_builders(self) -> List[str]:
+        """
+        List all available builder step names.
+        
+        Returns:
+            List of step names that have builders
+        """
+        if not self._discovery_complete:
+            self._run_discovery()
+        
+        all_steps = set(self._package_builders.keys())
+        for workspace_builders in self._workspace_builders.values():
+            all_steps.update(workspace_builders.keys())
+        
+        return sorted(list(all_steps))
+    
+    def get_discovery_stats(self) -> Dict[str, Any]:
+        """
+        Get discovery statistics.
+        
+        Returns:
+            Dictionary with discovery statistics
+        """
+        if not self._discovery_complete:
+            self._run_discovery()
+        
+        return {
+            "package_builders": len(self._package_builders),
+            "workspace_builders": {
+                workspace_id: len(builders) 
+                for workspace_id, builders in self._workspace_builders.items()
+            },
+            "total_builders": len(self._package_builders) + sum(
+                len(builders) for builders in self._workspace_builders.values()
+            ),
+            "cached_builders": len(self._builder_cache),
+            "discovery_complete": self._discovery_complete
+        }

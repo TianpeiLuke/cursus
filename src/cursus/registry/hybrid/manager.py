@@ -8,11 +8,23 @@ into one unified manager that handles all registry operations efficiently.
 
 import os
 import logging
+import sys
 from typing import Dict, List, Optional, Union, Any, Type
 from pathlib import Path
 import threading
 from contextlib import contextmanager
 from functools import lru_cache
+
+# Add cursus parent to sys.path for reliable imports
+current_file = Path(__file__).resolve()
+current_path = current_file
+while current_path.parent != current_path:
+    if current_path.name == 'cursus':
+        cursus_parent = str(current_path.parent)
+        if cursus_parent not in sys.path:
+            sys.path.insert(0, cursus_parent)
+        break
+    current_path = current_path.parent
 
 from .models import (
     StepDefinition,

@@ -9,8 +9,21 @@ Extended to include hyperparameter class discovery.
 import ast
 import importlib
 import logging
+import sys
 from pathlib import Path
 from typing import Dict, Type, Optional, Any, List, Union
+
+# Add cursus parent to sys.path for reliable imports
+# This is because importlib cannot resolve path within system path inserted
+current_file = Path(__file__).resolve()
+current_path = current_file
+while current_path.parent != current_path:
+    if current_path.name == 'cursus':
+        cursus_parent = str(current_path.parent)
+        if cursus_parent not in sys.path:
+            sys.path.insert(0, cursus_parent)
+        break
+    current_path = current_path.parent
 
 logger = logging.getLogger(__name__)
 
