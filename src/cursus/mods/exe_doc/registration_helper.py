@@ -73,6 +73,31 @@ class RegistrationHelper(ExecutionDocumentHelper):
             
         return False
     
+    def get_execution_step_name(self, step_name: str, config) -> str:
+        """
+        Get execution document step name following step builder naming convention.
+        
+        Transforms step names from DAG format to execution document format:
+        - "Registration" -> "Registration-NA" (adds region suffix)
+        
+        This follows the same logic as RegistrationStepBuilder.create_step():
+        step_name = self._get_step_name() + "-" + self.config.region
+        
+        Args:
+            step_name: Original step name from DAG (e.g., "Registration")
+            config: Configuration object containing region
+            
+        Returns:
+            Execution document step name (e.g., "Registration-NA")
+        """
+        # Check if config has region attribute
+        if hasattr(config, 'region') and config.region:
+            # Apply step builder transformation: step_name + "-" + region
+            return f"{step_name}-{config.region}"
+        
+        # If no region, return step_name as-is
+        return step_name
+    
     def extract_step_config(self, step_name: str, config, all_configs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Extract execution document configuration from registration step config.

@@ -108,6 +108,42 @@ class CradleDataLoadingHelper(ExecutionDocumentHelper):
                 "data" in config_type_name and 
                 "load" in config_type_name)
     
+    def get_execution_step_name(self, step_name: str, config) -> str:
+        """
+        Get execution document step name following step builder naming convention.
+        
+        Transforms step names from DAG format to execution document format:
+        - "CradleDataLoading_training" -> "CradleDataLoading-Training"
+        - "CradleDataLoading_calibration" -> "CradleDataLoading-Calibration"
+        
+        This follows the same logic as CradleDataLoadingStepBuilder._get_step_name():
+        1. Extract base name by removing job_type suffix
+        2. Add hyphen separator and capitalize job_type
+        
+        Args:
+            step_name: Original step name from DAG (e.g., "CradleDataLoading_training")
+            config: Configuration object containing job_type
+            
+        Returns:
+            Execution document step name (e.g., "CradleDataLoading-Training")
+        """
+        # Check if config has job_type attribute
+        if hasattr(config, 'job_type') and config.job_type:
+            job_type = config.job_type.lower()
+            
+            # Remove job_type suffix from step_name if present
+            suffix_to_remove = f"_{job_type}"
+            if step_name.endswith(suffix_to_remove):
+                base_name = step_name[:-len(suffix_to_remove)]
+            else:
+                base_name = step_name
+            
+            # Apply step builder transformation: base_name + "-" + capitalized_job_type
+            return f"{base_name}-{config.job_type.capitalize()}"
+        
+        # If no job_type, return step_name as-is
+        return step_name
+    
     def extract_step_config(self, step_name: str, config) -> Dict[str, Any]:
         """
         Extract execution document configuration from Cradle data loading step config.

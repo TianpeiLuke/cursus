@@ -307,19 +307,22 @@ class ExecutionDocumentGenerator:
         
         # Extract configurations for each cradle step
         for step_name in cradle_steps:
-            if step_name not in pipeline_configs:
-                self.logger.warning(
-                    f"Cradle step '{step_name}' not found in execution document"
-                )
-                continue
-            
             config = self._get_config_for_step(step_name)
             if config:
+                # Get execution document step name using helper
+                exec_step_name = cradle_helper.get_execution_step_name(step_name, config)
+                
+                if exec_step_name not in pipeline_configs:
+                    self.logger.warning(
+                        f"Cradle step '{exec_step_name}' not found in execution document"
+                    )
+                    continue
+                
                 try:
                     # Extract step configuration using the cradle helper
                     step_config = cradle_helper.extract_step_config(step_name, config)
-                    pipeline_configs[step_name]["STEP_CONFIG"] = step_config
-                    self.logger.info(f"Updated execution config for Cradle step: {step_name}")
+                    pipeline_configs[exec_step_name]["STEP_CONFIG"] = step_config
+                    self.logger.info(f"Updated execution config for Cradle step: {exec_step_name}")
                 except Exception as e:
                     self.logger.warning(f"Failed to extract cradle config for step {step_name}: {e}")
     
@@ -405,17 +408,20 @@ class ExecutionDocumentGenerator:
                 if step_name not in search_patterns:
                     search_patterns.append(step_name)
 
-        # Process each potential registration step (EXACT COPY from original)
+        # Process each potential registration step using execution step name transformation
         registration_step_found = False
         for pattern in search_patterns:
-            if pattern in pipeline_configs:
+            # Get execution document step name using helper
+            exec_step_name = registration_helper.get_execution_step_name(pattern, registration_cfg)
+            
+            if exec_step_name in pipeline_configs:
                 # If no STEP_CONFIG, at least ensure it exists
-                if "STEP_CONFIG" not in pipeline_configs[pattern]:
-                    pipeline_configs[pattern]["STEP_CONFIG"] = {}
+                if "STEP_CONFIG" not in pipeline_configs[exec_step_name]:
+                    pipeline_configs[exec_step_name]["STEP_CONFIG"] = {}
 
                 # Add STEP_TYPE if missing (MODS requirement)
-                if "STEP_TYPE" not in pipeline_configs[pattern]:
-                    pipeline_configs[pattern]["STEP_TYPE"] = [
+                if "STEP_TYPE" not in pipeline_configs[exec_step_name]:
+                    pipeline_configs[exec_step_name]["STEP_TYPE"] = [
                         "PROCESSING_STEP",
                         "ModelRegistration",
                     ]
@@ -428,9 +434,9 @@ class ExecutionDocumentGenerator:
                     )
                     
                     if exec_config:
-                        pipeline_configs[pattern]["STEP_CONFIG"] = exec_config
+                        pipeline_configs[exec_step_name]["STEP_CONFIG"] = exec_config
                         self.logger.info(
-                            f"Created execution config for registration step: {pattern}"
+                            f"Created execution config for registration step: {exec_step_name}"
                         )
                         registration_step_found = True
 
