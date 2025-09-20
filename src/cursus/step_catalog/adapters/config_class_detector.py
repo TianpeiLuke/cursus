@@ -75,15 +75,9 @@ class ConfigClassDetectorAdapter:
             logger = logging.getLogger(__name__)
             logger.error(f"Error detecting config classes via step catalog: {e}")
             
-            # Fallback to ConfigClassStore if available
-            try:
-                from ...core.config_fields.config_class_store import ConfigClassStore
-                fallback_classes = ConfigClassStore.get_all_classes()
-                logger.info(f"Fallback: Using {len(fallback_classes)} classes from ConfigClassStore")
-                return fallback_classes
-            except ImportError:
-                logger.warning("ConfigClassStore not available, returning empty dict")
-                return {}
+            # No fallback needed - return empty dict if step catalog fails
+            logger.warning("Step catalog discovery failed, returning empty dict")
+            return {}
     
     @staticmethod
     def _extract_class_names(config_data: Dict[str, Any], logger) -> set:

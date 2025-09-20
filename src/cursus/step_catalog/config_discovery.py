@@ -86,13 +86,15 @@ class ConfigAutoDiscovery:
             except Exception as e:
                 self.logger.error(f"Error scanning core hyperparams directory: {e}")
         
-        # Also include the base ModelHyperparameters class from core/base
-        try:
-            from ..core.base.hyperparameters_base import ModelHyperparameters
-            discovered_classes["ModelHyperparameters"] = ModelHyperparameters
-            self.logger.debug("Added ModelHyperparameters base class")
-        except ImportError as e:
-            self.logger.warning(f"Could not import ModelHyperparameters base class: {e}")
+        # Also scan core/base directory for base hyperparameter classes (deployment-agnostic)
+        core_base_dir = self.package_root / "core" / "base"
+        if core_base_dir.exists():
+            try:
+                base_classes = self._scan_hyperparams_directory(core_base_dir)
+                discovered_classes.update(base_classes)
+                self.logger.info(f"Discovered {len(base_classes)} base hyperparameter classes from core/base")
+            except Exception as e:
+                self.logger.error(f"Error scanning core/base directory: {e}")
         
         # Scan workspace hyperparams if workspace directories provided
         if self.workspace_dirs:
@@ -108,61 +110,34 @@ class ConfigAutoDiscovery:
 
     def build_complete_config_classes(self, project_id: Optional[str] = None) -> Dict[str, Type]:
         """
-        Build complete mapping integrating manual registration with auto-discovery.
-        Now includes both config and hyperparameter classes for comprehensive discovery.
+        Build complete mapping using pure auto-discovery.
+        Includes both config and hyperparameter classes for comprehensive discovery.
         
-        This addresses the TODO in the existing build_complete_config_classes() function
-        by providing auto-discovery capability while maintaining backward compatibility.
+        ConfigClassStore was removed as part of the unified step catalog refactoring.
+        This method now uses pure AST-based auto-discovery which is deployment-agnostic
+        and works in all environments (installed, submodule, Lambda, Docker, etc.).
         
         Args:
             project_id: Optional project ID for workspace-specific discovery
             
         Returns:
-            Complete dictionary of config and hyperparameter classes (manual + auto-discovered)
+            Complete dictionary of config and hyperparameter classes (auto-discovered)
         """
-        try:
-            from ..core.config_fields.config_class_store import ConfigClassStore
-            
-            # Start with manually registered classes (highest priority)
-            config_classes = ConfigClassStore.get_all_classes()
-            self.logger.debug(f"Found {len(config_classes)} manually registered config classes")
-            
-            # Add auto-discovered config classes (manual registration takes precedence)
-            discovered_config_classes = self.discover_config_classes(project_id)
-            config_added_count = 0
-            
-            for class_name, class_type in discovered_config_classes.items():
-                if class_name not in config_classes:
-                    config_classes[class_name] = class_type
-                    # Also register in store for consistency
-                    try:
-                        ConfigClassStore.register(class_type)
-                        config_added_count += 1
-                    except Exception as e:
-                        self.logger.warning(f"Failed to register auto-discovered config class {class_name}: {e}")
-            
-            # Add auto-discovered hyperparameter classes
-            discovered_hyperparam_classes = self.discover_hyperparameter_classes(project_id)
-            hyperparam_added_count = 0
-            
-            for class_name, class_type in discovered_hyperparam_classes.items():
-                if class_name not in config_classes:
-                    config_classes[class_name] = class_type
-                    hyperparam_added_count += 1
-                    self.logger.debug(f"Added hyperparameter class: {class_name}")
-            
-            total_added = config_added_count + hyperparam_added_count
-            self.logger.info(f"Built complete config classes: {len(config_classes)} total "
-                           f"({config_added_count} config + {hyperparam_added_count} hyperparameter auto-discovered)")
-            return config_classes
-            
-        except ImportError as e:
-            self.logger.error(f"Failed to import ConfigClassStore: {e}")
-            # Fallback to just auto-discovery (both config and hyperparameter)
-            config_classes = self.discover_config_classes(project_id)
-            hyperparam_classes = self.discover_hyperparameter_classes(project_id)
-            config_classes.update(hyperparam_classes)
-            return config_classes
+        config_classes = {}
+        
+        # Auto-discovered config classes
+        discovered_config_classes = self.discover_config_classes(project_id)
+        config_classes.update(discovered_config_classes)
+        config_added_count = len(discovered_config_classes)
+        
+        # Auto-discovered hyperparameter classes
+        discovered_hyperparam_classes = self.discover_hyperparameter_classes(project_id)
+        config_classes.update(discovered_hyperparam_classes)
+        hyperparam_added_count = len(discovered_hyperparam_classes)
+        
+        self.logger.info(f"Built complete config classes: {len(config_classes)} total "
+                       f"({config_added_count} config + {hyperparam_added_count} hyperparameter auto-discovered)")
+        return config_classes
     
     def _scan_config_directory(self, config_dir: Path) -> Dict[str, Type]:
         """
