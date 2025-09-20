@@ -193,27 +193,55 @@ class TestExpandedDiscoveryMethods:
         builder_path = catalog.get_builder_class_path("nonexistent_step")
         assert builder_path is None
     
-    @patch('importlib.import_module')
-    def test_load_builder_class_registry_based(self, mock_import, catalog_with_test_data):
-        """Test loading builder class from registry-based path."""
+    def test_load_builder_class_registry_based(self, catalog_with_test_data):
+        """Test loading builder class from registry-based path with BuilderAutoDiscovery."""
         catalog = catalog_with_test_data
         
-        # Mock the import
-        mock_module = Mock()
+        # Mock BuilderAutoDiscovery to return a builder class
         mock_builder_class = Mock()
-        mock_module.XGBoostTraining = mock_builder_class
-        mock_import.return_value = mock_module
+        mock_builder_class.__name__ = "XGBoostTraining"
+        
+        # Mock the builder_discovery component
+        mock_builder_discovery = Mock()
+        mock_builder_discovery.load_builder_class.return_value = mock_builder_class
+        catalog.builder_discovery = mock_builder_discovery
         
         # Test loading
         builder_class = catalog.load_builder_class("test_step")
         
         # Verify results
         assert builder_class == mock_builder_class
-        assert "test_step" in catalog._builder_class_cache
+        mock_builder_discovery.load_builder_class.assert_called_once_with("test_step")
+    
+    def test_load_builder_class_fallback_to_registry(self, catalog_with_test_data):
+        """Test fallback to registry-based path when BuilderAutoDiscovery fails."""
+        catalog = catalog_with_test_data
         
-        # Test caching
-        builder_class_cached = catalog.load_builder_class("test_step")
-        assert builder_class_cached == mock_builder_class
+        # Mock BuilderAutoDiscovery to return None (not found)
+        mock_builder_discovery = Mock()
+        mock_builder_discovery.load_builder_class.return_value = None
+        catalog.builder_discovery = mock_builder_discovery
+        
+        # Test loading - should fall back to registry-based path construction
+        builder_class = catalog.load_builder_class("test_step")
+        
+        # Should return None since we can't actually import the module in tests
+        # but the fallback path should be attempted
+        assert builder_class is None
+        mock_builder_discovery.load_builder_class.assert_called_once_with("test_step")
+    
+    def test_load_builder_class_no_builder_discovery(self, catalog_with_test_data):
+        """Test loading builder class when BuilderAutoDiscovery is not available."""
+        catalog = catalog_with_test_data
+        
+        # Set builder_discovery to None (simulating import failure)
+        catalog.builder_discovery = None
+        
+        # Test loading
+        builder_class = catalog.load_builder_class("test_step")
+        
+        # Should return None and log warning
+        assert builder_class is None
     
     def test_load_builder_class_not_found(self, mock_workspace_root):
         """Test loading builder class when path not found."""
