@@ -222,41 +222,27 @@ class WorkspaceModuleLoader:
         builder_module_name: Optional[str],
         builder_class_name: Optional[str],
     ) -> Optional[Type]:
-        """Implementation of builder class loading."""
-        # Determine module and class names
-        if not builder_module_name:
-            builder_module_name = f"{step_name}_builder"
-
-        if not builder_class_name:
-            # Convert step_name to class name (e.g., "create_model" -> "CreateModelBuilder")
-            class_name_parts = step_name.split("_")
-            builder_class_name = (
-                "".join(word.capitalize() for word in class_name_parts) + "Builder"
-            )
-
-        # Try different module path patterns
-        module_patterns = [
-            f"cursus_dev.steps.builders.{builder_module_name}",
-            f"steps.builders.{builder_module_name}",
-            f"builders.{builder_module_name}",
-            builder_module_name,
-        ]
-
-        for module_pattern in module_patterns:
-            try:
-                module = importlib.import_module(module_pattern)
-                if hasattr(module, builder_class_name):
-                    builder_class = getattr(module, builder_class_name)
-                    logger.debug(
-                        f"Loaded builder class {builder_class_name} "
-                        f"from {module_pattern}"
-                    )
-                    return builder_class
-            except ImportError as e:
-                logger.debug(f"Failed to import {module_pattern}: {e}")
-                continue
-
-        return None
+        """Implementation using StepCatalog for builder loading."""
+        try:
+            from ...step_catalog import StepCatalog
+            
+            # Use workspace-aware StepCatalog discovery
+            workspace_dirs = [self.workspace_root] if self.workspace_root else None
+            catalog = StepCatalog(workspace_dirs=workspace_dirs)
+            
+            # Try to load the builder using StepCatalog
+            builder_class = catalog.load_builder_class(step_name)
+            
+            if builder_class:
+                logger.debug(f"Loaded builder class {builder_class.__name__} for {step_name} via StepCatalog")
+                return builder_class
+            else:
+                logger.debug(f"No builder class found for step: {step_name}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"StepCatalog builder loading failed for '{step_name}': {e}")
+            return None
 
     def load_contract_class(
         self,
@@ -307,41 +293,27 @@ class WorkspaceModuleLoader:
         contract_module_name: Optional[str],
         contract_class_name: Optional[str],
     ) -> Optional[Type]:
-        """Implementation of contract class loading."""
-        # Determine module and class names
-        if not contract_module_name:
-            contract_module_name = f"{step_name}_contract"
-
-        if not contract_class_name:
-            # Convert step_name to class name (e.g., "create_model" -> "CreateModelContract")
-            class_name_parts = step_name.split("_")
-            contract_class_name = (
-                "".join(word.capitalize() for word in class_name_parts) + "Contract"
-            )
-
-        # Try different module path patterns
-        module_patterns = [
-            f"cursus_dev.steps.contracts.{contract_module_name}",
-            f"steps.contracts.{contract_module_name}",
-            f"contracts.{contract_module_name}",
-            contract_module_name,
-        ]
-
-        for module_pattern in module_patterns:
-            try:
-                module = importlib.import_module(module_pattern)
-                if hasattr(module, contract_class_name):
-                    contract_class = getattr(module, contract_class_name)
-                    logger.debug(
-                        f"Loaded contract class {contract_class_name} "
-                        f"from {module_pattern}"
-                    )
-                    return contract_class
-            except ImportError as e:
-                logger.debug(f"Failed to import {module_pattern}: {e}")
-                continue
-
-        return None
+        """Implementation using StepCatalog for contract loading."""
+        try:
+            from ...step_catalog import StepCatalog
+            
+            # Use workspace-aware StepCatalog discovery
+            workspace_dirs = [self.workspace_root] if self.workspace_root else None
+            catalog = StepCatalog(workspace_dirs=workspace_dirs)
+            
+            # Try to load the contract using StepCatalog
+            contract = catalog.load_contract_class(step_name)
+            
+            if contract:
+                logger.debug(f"Loaded contract for {step_name} via StepCatalog")
+                return contract
+            else:
+                logger.debug(f"No contract found for step: {step_name}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"StepCatalog contract loading failed for '{step_name}': {e}")
+            return None
 
     def load_module_from_file(
         self, file_path: Union[str, Path], module_name: Optional[str] = None

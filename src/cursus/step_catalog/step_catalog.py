@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Type, Any, Union
 
 from .models import StepInfo, FileMetadata, StepSearchResult
 
-# Type hints for discovery components - both handled symmetrically
+# Type hints for discovery components - all handled symmetrically
 try:
     from .config_discovery import ConfigAutoDiscovery
 except ImportError:
@@ -24,6 +24,11 @@ try:
     from .builder_discovery import BuilderAutoDiscovery
 except ImportError:
     BuilderAutoDiscovery = None
+
+try:
+    from .contract_discovery import ContractAutoDiscovery
+except ImportError:
+    ContractAutoDiscovery = None
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +72,7 @@ class StepCatalog:
         # Initialize specialized discovery components (consistent architecture)
         self.config_discovery = self._initialize_config_discovery()
         self.builder_discovery = self._initialize_builder_discovery()
+        self.contract_discovery = self._initialize_contract_discovery()
         self.logger = logging.getLogger(__name__)
         
         # Simple in-memory indexes (US4: Efficient Scaling)
@@ -426,6 +432,35 @@ class StepCatalog:
             self.logger.error(f"Error loading builder class for {step_name}: {e}")
             return None
     
+    def load_contract_class(self, step_name: str) -> Optional[Any]:
+        """
+        Load contract class for a step using ContractAutoDiscovery component.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Contract object or None if not found/loadable
+        """
+        try:
+            # Use the initialized contract discovery component
+            if self.contract_discovery:
+                contract = self.contract_discovery.load_contract_class(step_name)
+                
+                if contract:
+                    self.logger.debug(f"Successfully loaded contract for {step_name}")
+                    return contract
+                else:
+                    self.logger.warning(f"No contract found for step: {step_name}")
+                    return None
+            else:
+                self.logger.warning(f"ContractAutoDiscovery not available, cannot load contract for {step_name}")
+                return None
+            
+        except Exception as e:
+            self.logger.error(f"Error loading contract for {step_name}: {e}")
+            return None
+    
     # Additional utility methods for job type variants
     def get_job_type_variants(self, base_step_name: str) -> List[str]:
         """
@@ -511,6 +546,22 @@ class StepCatalog:
             return BuilderAutoDiscovery(self.package_root, self.workspace_dirs)
         except Exception as e:
             self.logger.error(f"Error initializing BuilderAutoDiscovery: {e}")
+            return None
+    
+    def _initialize_contract_discovery(self) -> Optional['ContractAutoDiscovery']:
+        """
+        Initialize ContractAutoDiscovery component with proper error handling.
+        
+        Returns:
+            ContractAutoDiscovery instance or None if initialization fails
+        """
+        try:
+            if ContractAutoDiscovery is None:
+                self.logger.warning("ContractAutoDiscovery not available due to import failure")
+                return None
+            return ContractAutoDiscovery(self.package_root, self.workspace_dirs)
+        except Exception as e:
+            self.logger.error(f"Error initializing ContractAutoDiscovery: {e}")
             return None
     
     def _find_package_root(self) -> Path:

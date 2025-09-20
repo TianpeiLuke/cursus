@@ -368,7 +368,7 @@ class TestModernizedContractDiscoveryEngine:
 
     def test_discover_contracts_with_scripts_using_step_catalog(self, temp_dir):
         """Test discovering contracts with scripts using step catalog"""
-        from cursus.step_catalog.contract_discovery import ContractDiscoveryEngineAdapter
+        from cursus.step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter
         
         engine = ContractDiscoveryEngineAdapter(Path(temp_dir))
         
@@ -386,7 +386,7 @@ class TestModernizedContractDiscoveryEngine:
 
     def test_discover_contracts_with_scripts_error_handling(self, temp_dir):
         """Test error handling in contract discovery"""
-        from cursus.step_catalog.contract_discovery import ContractDiscoveryEngineAdapter
+        from cursus.step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter
         
         engine = ContractDiscoveryEngineAdapter(Path(temp_dir))
         
@@ -404,7 +404,7 @@ class TestModernizedUtilities:
 
     def test_contract_loading_from_path(self):
         """Test loading contract from file path"""
-        from cursus.step_catalog.contract_discovery import ContractDiscoveryManagerAdapter
+        from cursus.step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter
         
         manager = ContractDiscoveryManagerAdapter()
         
@@ -414,7 +414,7 @@ class TestModernizedUtilities:
 
     def test_direct_import_fallback(self):
         """Test direct import fallback mechanism"""
-        from cursus.step_catalog.contract_discovery import ContractDiscoveryManagerAdapter
+        from cursus.step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter
         
         manager = ContractDiscoveryManagerAdapter()
         

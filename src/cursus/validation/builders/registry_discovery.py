@@ -253,26 +253,25 @@ class RegistryStepDiscovery:
                 step_name
             )
 
-            # Check if module exists
+            # Use StepCatalog for validation instead of manual importlib
             try:
-                module = importlib.import_module(module_path)
-                result["module_exists"] = True
-
-                # Check if class exists
-                if hasattr(module, class_name):
+                from ...step_catalog import StepCatalog
+                
+                catalog = StepCatalog(workspace_dirs=None)  # Package-only discovery
+                builder_class = catalog.load_builder_class(step_name)
+                
+                if builder_class is not None:
+                    # Success - StepCatalog found and loaded the builder
+                    result["module_exists"] = True
                     result["class_exists"] = True
-
-                    # Try to load the class
-                    builder_class = getattr(module, class_name)
                     result["loadable"] = True
                     result["builder_class"] = builder_class
                 else:
-                    result["error"] = (
-                        f"Class '{class_name}' not found in module '{module_path}'"
-                    )
-
-            except ImportError as e:
-                result["error"] = f"Could not import module '{module_path}': {e}"
+                    # StepCatalog returned None - step exists in registry but builder not loadable
+                    result["error"] = f"StepCatalog could not load builder for '{step_name}' (builder may not exist or have import issues)"
+                    
+            except Exception as e:
+                result["error"] = f"StepCatalog validation failed for '{step_name}': {e}"
 
         except (KeyError, ValueError) as e:
             result["error"] = str(e)

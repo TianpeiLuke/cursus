@@ -931,46 +931,22 @@ class BuilderTestReporter:
         return step_name
 
     def _load_builder_class(self, step_name: str) -> Optional[Type[StepBuilderBase]]:
-        """Load a builder class by step name."""
-        step_info = STEP_NAMES.get(step_name, {})
-        builder_class_name = step_info.get("builder_step_name")
-
-        if not builder_class_name:
-            return None
-
-        # Try to import the builder class
+        """Load a builder class by step name using StepCatalog discovery."""
         try:
-            import importlib
-
-            # Map step names to actual module names based on existing files
-            module_mapping = {
-                "TabularPreprocessing": "builder_tabular_preprocessing_step",
-                "RiskTableMapping": "builder_risk_table_mapping_step",
-                "CurrencyConversion": "builder_currency_conversion_step",
-                "DummyTraining": "builder_dummy_training_step",
-                "XGBoostModelEval": "builder_xgboost_model_eval_step",
-                "ModelCalibration": "builder_model_calibration_step",
-                "Package": "builder_package_step",
-                "Payload": "builder_payload_step",
-                "PyTorchTraining": "builder_pytorch_training_step",
-                "XGBoostTraining": "builder_xgboost_training_step",
-                "PyTorchModel": "builder_pytorch_model_step",
-                "XGBoostModel": "builder_xgboost_model_step",
-                "BatchTransform": "builder_batch_transform_step",
-                "CradleDataLoading": "builder_cradle_data_loading_step",
-                "Registration": "builder_registration_step",
-            }
-
-            module_name = module_mapping.get(step_name)
-            if not module_name:
-                # Fallback to generic naming
-                module_name = f"builder_{step_name.lower()}_step"
-
-            module_path = f"src.cursus.steps.builders.{module_name}"
-            module = importlib.import_module(module_path)
-            return getattr(module, builder_class_name)
-        except (ImportError, AttributeError) as e:
-            print(f"Failed to load {step_name} builder from {module_path}: {e}")
+            # Use StepCatalog's built-in builder discovery mechanism
+            if not hasattr(self, '_step_catalog'):
+                from ...step_catalog.step_catalog import StepCatalog
+                self._step_catalog = StepCatalog()
+            
+            builder_class = self._step_catalog.load_builder_class(step_name)
+            if builder_class:
+                return builder_class
+            else:
+                print(f"No builder class found for step: {step_name}")
+                return None
+                
+        except Exception as e:
+            print(f"Failed to load {step_name} builder using StepCatalog: {e}")
             return None
 
     def _generate_step_type_summary(

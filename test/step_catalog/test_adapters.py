@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from cursus.step_catalog.contract_discovery import (
+from cursus.step_catalog.adapters.contract_adapter import (
     ContractDiscoveryEngineAdapter,
     ContractDiscoveryManagerAdapter,
 )
@@ -121,11 +121,16 @@ class TestContractDiscoveryManagerAdapter:
         """Test discovering contract for specific step."""
         adapter = ContractDiscoveryManagerAdapter(mock_workspace_root)
         
+        # Mock both get_step_info and load_contract_class to match new architecture
         adapter.catalog.get_step_info = Mock(return_value=mock_step_info)
+        adapter.catalog.load_contract_class = Mock(return_value=None)  # No actual contract loaded in test
         
         result = adapter.discover_contract("test_step")
         
-        assert result == str(mock_step_info.file_components["contract"].path)
+        # With our new architecture, if no contract is loaded, it returns None
+        # But the method should still try to get step info for backward compatibility path
+        assert result is None
+        adapter.catalog.load_contract_class.assert_called_once_with("test_step")
     
     def test_discover_contract_not_found(self, mock_workspace_root):
         """Test discovering contract when step not found."""
