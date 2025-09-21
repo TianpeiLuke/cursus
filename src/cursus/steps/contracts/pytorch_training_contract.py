@@ -8,15 +8,14 @@ text and tabular data training using Lightning framework.
 from .training_script_contract import TrainingScriptContract
 
 PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
-    entry_point="train.py",
+    entry_point="pytorch_training.py",
     expected_input_paths={
-        "input_path": "/opt/ml/input/data"
-        # Note: "/opt/ml/input/config/hyperparameters.json" is automatically provided by SageMaker
-        # when hyperparameters are passed to the PyTorch estimator, so not included as an expected input path
+        "input_path": "/opt/ml/input/data",
+        "hyperparameters_s3_uri": "/opt/ml/input/config",
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
-        "data_output": "/opt/ml/output/data",
+        "evaluation_output": "/opt/ml/output/data",
     },
     expected_arguments={
         # No expected arguments - using standard paths from contract
@@ -64,12 +63,18 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     - /opt/ml/input/config/hyperparameters.json: Model configuration and hyperparameters
     
     Output Structure:
-    - /opt/ml/model/model.pth: Trained PyTorch model
-    - /opt/ml/model/model_artifacts.pth: Model artifacts (config, embeddings, vocab)
-    - /opt/ml/model/model.onnx: ONNX exported model
-    - /opt/ml/output/data/predict_results.pth: Prediction results
-    - /opt/ml/output/data/tensorboard_eval/: TensorBoard evaluation logs
+    - /opt/ml/model: Model artifacts directory
+      - /opt/ml/model/model.pth: Trained PyTorch model
+      - /opt/ml/model/model_artifacts.pth: Model artifacts (config, embeddings, vocab)
+      - /opt/ml/model/model.onnx: ONNX exported model
+    - /opt/ml/output/data: Evaluation results directory
+      - /opt/ml/output/data/predict_results.pth: Prediction results
+      - /opt/ml/output/data/tensorboard_eval/: TensorBoard evaluation logs
     - /opt/ml/checkpoints/: Training checkpoints
+    
+    Contract aligned with step specification:
+    - Inputs: input_path (required), hyperparameters_s3_uri (optional)
+    - Outputs: model_output (primary), evaluation_output (secondary)
     
     Environment Variables:
     - SM_CHECKPOINT_DIR: SageMaker checkpoint directory (optional)

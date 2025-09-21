@@ -5,6 +5,7 @@ import sys
 import traceback
 import ast
 import logging
+import argparse
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -27,21 +28,21 @@ from transformers import AutoTokenizer, AutoModel
 import warnings
 
 warnings.filterwarnings("ignore")
-from processing.processors import (
+from ...processing.processors import (
     Processor,
 )
-from processing.bsm_processor import (
+from ...processing.bsm_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.bert_tokenize_processor import TokenizationProcessor
-from processing.categorical_label_processor import CategoricalLabelProcessor
-from processing.multiclass_label_processor import MultiClassLabelProcessor
-from processing.bsm_datasets import BSMDataset
-from processing.bsm_dataloader import build_collate_batch
+from ...processing.bert_tokenize_processor import TokenizationProcessor
+from ...processing.categorical_label_processor import CategoricalLabelProcessor
+from ...processing.multiclass_label_processor import MultiClassLabelProcessor
+from ...processing.bsm_datasets import BSMDataset
+from ...processing.bsm_dataloader import build_collate_batch
 from lightning_models.pl_tab_ae import TabAE
 from lightning_models.pl_text_cnn import TextCNN
 from lightning_models.pl_multimodal_cnn import MultimodalCNN
@@ -654,7 +655,48 @@ def evaluate_and_log_results(
 
 
 # ----------------- Main Function ---------------------------
-def main(config: Config):
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace,
+) -> None:
+    """
+    Main function to execute the PyTorch training logic.
+
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments
+    """
+    # Load hyperparameters from the standardized path structure
+    hparam_file = input_paths.get("hyperparameters_s3_uri", hparam_path)
+    if not hparam_file.endswith("hyperparameters.json"):
+        hparam_file = os.path.join(hparam_file, "hyperparameters.json")
+    
+    hyperparameters = load_parse_hyperparameters(hparam_file)
+    hyperparameters = sanitize_config(hyperparameters)
+    
+    try:
+        config = Config(**hyperparameters)  # Validate config
+    except ValidationError as e:
+        logger.error(f"Configuration Error: {e}")
+        raise
+    
+    # Update paths from input parameters
+    global model_path, output_path
+    if "model_output" in output_paths:
+        model_path = output_paths["model_output"]
+        config.model_path = model_path
+    if "evaluation_output" in output_paths:
+        output_path = output_paths["evaluation_output"]
+    
+    log_once(logger, "Final Hyperparameters:")
+    log_once(logger, json.dumps(config.model_dump(), indent=4))
+    log_once(logger, "================================================")
+    log_once(logger, "Starting the training process.")
+    
     device = setup_training_environment(config)
     datasets, tokenizer, config = load_and_preprocess_data(config)
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
@@ -700,31 +742,63 @@ def main(config: Config):
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
     evaluate_and_log_results(model, val_dataloader, test_dataloader, config, trainer)
-    sys.exit(0)
 
 
 # ----------------- Entrypoint ---------------------------
 if __name__ == "__main__":
-    hyperparameters = load_parse_hyperparameters(hparam_path)
-    hyperparameters = sanitize_config(hyperparameters)
+    logger.info("Script starting...")
+
+    # Container path constants
+    CONTAINER_PATHS = {
+        "INPUT_DATA": "/opt/ml/input/data",
+        "MODEL_DIR": "/opt/ml/model",
+        "OUTPUT_DATA": "/opt/ml/output/data",
+        "CONFIG_DIR": "/opt/ml/input/config",  # Source directory path
+    }
+
+    # Define input and output paths using contract logical names
+    # Use container defaults (no CLI arguments per contract)
+    input_paths = {
+        "input_path": CONTAINER_PATHS["INPUT_DATA"],
+        "hyperparameters_s3_uri": CONTAINER_PATHS["CONFIG_DIR"],
+    }
+
+    output_paths = {
+        "model_output": CONTAINER_PATHS["MODEL_DIR"],
+        "evaluation_output": CONTAINER_PATHS["OUTPUT_DATA"],
+    }
+
+    # Collect environment variables (none currently used, but following the pattern)
+    environ_vars = {
+        # Add any environment variables the script needs here
+        # Example: "LOG_LEVEL": os.environ.get("LOG_LEVEL", "INFO")
+    }
+
+    # Create empty args namespace to maintain function signature
+    args = argparse.Namespace()
+
     try:
-        config = Config(**hyperparameters)  # Validate config
-    except ValidationError as e:
-        logger.error(f"Configuration Error: {e}")
-        sys.exit(1)  # Exit with error code
-    print("Sanitized config:")
-    for k, v in config.model_dump().items():
-        print(f"{k}: {v} ({type(v)})")
-    log_once(logger, "Final Hyperparameters:")
-    log_once(logger, json.dumps(config.model_dump(), indent=4))
-    log_once(logger, "================================================")
-    log_once(logger, "Starting the training process.")
-    try:
-        main(config)
+        logger.info(f"Starting main process with paths:")
+        logger.info(f"  Data directory: {input_paths['input_path']}")
+        logger.info(f"  Config directory: {input_paths['hyperparameters_s3_uri']}")
+        logger.info(f"  Model directory: {output_paths['model_output']}")
+        logger.info(f"  Output directory: {output_paths['evaluation_output']}")
+
+        # Call the refactored main function
+        main(input_paths, output_paths, environ_vars, args)
+
+        logger.info("PyTorch training script completed successfully")
+        sys.exit(0)
     except Exception as e:
-        trc = traceback.format_exc()
-        failure_file = os.path.join(output_path, "failure")
-        with open(failure_file, "w") as f:
-            f.write("Exception during training: " + str(e) + "\n" + trc)
-        logger.error("Exception during training: " + str(e) + "\n" + trc)
-        sys.exit(255)
+        logger.error(f"Exception during training: {str(e)}")
+        logger.error(traceback.format_exc())
+        
+        # Write failure file for compatibility
+        failure_file = os.path.join(output_paths["evaluation_output"], "failure")
+        try:
+            with open(failure_file, "w") as f:
+                f.write("Exception during training: " + str(e) + "\n" + traceback.format_exc())
+        except Exception:
+            pass  # Don't fail if we can't write the failure file
+        
+        sys.exit(1)

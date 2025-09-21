@@ -49,9 +49,28 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Training dataset S3 location with train/val/test subdirectories",
-        )
-        # Note: Removed "config" dependency as PyTorch estimator accepts hyperparameters directly
-        # and doesn't need an external hyperparameters file - this is handled internally
+        ),
+        DependencySpec(
+            logical_name="hyperparameters_s3_uri",
+            dependency_type=DependencyType.HYPERPARAMETERS,
+            required=False,
+            compatible_sources=[
+                "HyperparameterPrep",
+                "ProcessingStep",
+                "ConfigGeneration",
+                "HyperparameterTuning",
+            ],
+            semantic_keywords=[
+                "config",
+                "params",
+                "hyperparameters",
+                "settings",
+                "hyperparams",
+                "configuration",
+            ],
+            data_type="S3Uri",
+            description="S3 URI containing hyperparameters configuration directory (optional)",
+        ),
     ],
     outputs=[
         OutputSpec(
@@ -63,7 +82,7 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
             aliases=["ModelArtifacts", "model_data", "output_path", "model_input"],
         ),
         OutputSpec(
-            logical_name="data_output",
+            logical_name="evaluation_output",
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.OutputDataConfig.S3OutputPath",
             data_type="S3Uri",
@@ -74,6 +93,7 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
                 "validation_output",
                 "test_output",
                 "prediction_results",
+                "data_output",  # Keep as alias for backward compatibility
             ],
         ),
     ],
