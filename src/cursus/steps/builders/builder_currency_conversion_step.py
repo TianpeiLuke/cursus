@@ -406,7 +406,11 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
         step_name = self._get_step_name()
 
         # Get script path from contract or config
-        script_path = self.config.get_script_path()
+        # Get script path from config - use portable path with fallback
+        script_path = self.config.get_portable_script_path() or self.config.get_script_path()
+        self.log_info("Using script path: %s (portable: %s)", 
+                     script_path, 
+                     "yes" if self.config.get_portable_script_path() else "no")
 
         # Create step
         step = ProcessingStep(

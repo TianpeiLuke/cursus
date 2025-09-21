@@ -353,12 +353,18 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
         # IMPORTANT: Using processing_entry_point directly rather than get_script_path()
         # This is intentional - XGBoostModelEvalConfig.get_script_path() is designed to
         # return only the entry point without combining it with source directory
-        script_path = self.config.processing_entry_point
-        source_dir = self.config.processing_source_dir
+        # Use portable paths with fallback for universal deployment compatibility
+        # For processor.run(), code parameter should be just the entry point filename
+        entry_point = self.config.processing_entry_point  # Entry point only
+        source_dir = self.config.portable_processing_source_dir or self.config.processing_source_dir
+        self.log_info("Using entry point: %s", entry_point)
+        self.log_info("Using source directory: %s (portable: %s)", 
+                     source_dir, 
+                     "yes" if self.config.portable_processing_source_dir else "no")
 
         # Create step arguments
         step_args = processor.run(
-            code=script_path,
+            code=entry_point,
             source_dir=source_dir,
             inputs=proc_inputs,
             outputs=proc_outputs,

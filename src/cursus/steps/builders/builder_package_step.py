@@ -196,13 +196,18 @@ class PackageStepBuilder(StepBuilderBase):
         # SPECIAL CASE: Always handle inference_scripts_input from local path
         # This will take precedence over any dependency-resolved value
         inference_scripts_key = "inference_scripts_input"
-        inference_scripts_path = self.config.source_dir
+        # Use portable path with fallback for universal deployment compatibility
+        inference_scripts_path = self.config.portable_source_dir or self.config.source_dir
         if not inference_scripts_path:
             inference_scripts_path = (
                 str(self.notebook_root / "inference")
                 if self.notebook_root
                 else "inference"
             )
+        
+        self.log_info("Using inference scripts path: %s (portable: %s)", 
+                     inference_scripts_path, 
+                     "yes" if self.config.portable_source_dir else "no")
 
         self.log_info(
             "[PACKAGING INPUT OVERRIDE] Using local inference scripts path from configuration: %s",
@@ -407,10 +412,13 @@ class PackageStepBuilder(StepBuilderBase):
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
 
-        # Get full script path from config or contract
-        script_path = self.config.get_script_path()
+        # Get full script path from config or contract - use portable path with fallback
+        script_path = self.config.get_portable_script_path() or self.config.get_script_path()
         if not script_path and self.contract:
             script_path = self.contract.entry_point
+        self.log_info("Using script path: %s (portable: %s)", 
+                     script_path, 
+                     "yes" if self.config.get_portable_script_path() else "no")
 
         # Create step
         step = ProcessingStep(

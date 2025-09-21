@@ -484,10 +484,13 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
 
-        # Get full script path from config or contract
-        script_path = self.config.get_script_path()
+        # Get full script path from config or contract - use portable path with fallback
+        script_path = self.config.get_portable_script_path() or self.config.get_script_path()
         if not script_path and self.contract:
             script_path = self.contract.entry_point
+        self.log_info("Using script path: %s (portable: %s)", 
+                     script_path, 
+                     "yes" if self.config.get_portable_script_path() else "no")
 
         # Create step
         step = ProcessingStep(

@@ -193,9 +193,15 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
                     if not key.startswith("_"):
                         hyperparameters[key] = value
 
+        # Use portable path with fallback for universal deployment compatibility
+        source_dir = self.config.portable_source_dir or self.config.source_dir
+        self.log_info("Using source directory: %s (portable: %s)", 
+                     source_dir, 
+                     "yes" if self.config.portable_source_dir else "no")
+        
         return PyTorch(
             entry_point=self.config.training_entry_point,
-            source_dir=self.config.source_dir,
+            source_dir=source_dir,
             framework_version=self.config.framework_version,
             py_version=self.config.py_version,
             role=self.role,
