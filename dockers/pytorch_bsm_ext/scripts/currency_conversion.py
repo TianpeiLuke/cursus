@@ -2,6 +2,8 @@
 import os
 import json
 import argparse
+import sys
+import traceback
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Union, Optional
 import pandas as pd
@@ -141,35 +143,51 @@ def process_currency_conversion(
 
 
 def main(
-    args: argparse.Namespace,
-    currency_vars: List[str],
-    currency_dict: Dict[str, float],
-    marketplace_info: Dict[str, Any],
-):
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace,
+) -> Dict[str, pd.DataFrame]:
     """
     Main function to execute the currency conversion logic.
     Refactored for improved testability.
+
+    Args:
+        input_paths: Dictionary of input paths
+        output_paths: Dictionary of output paths
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments
+
+    Returns:
+        Dictionary of processed DataFrames by split name
     """
-    job_type = args.job_type
-    mode = args.mode
-    input_base = Path("/opt/ml/processing/input/data")
-    output_base = Path("/opt/ml/processing/output")
+    job_type = job_args.job_type
+    mode = job_args.mode
+
+    # Parse input parameters from environment variables
+    currency_vars = json.loads(environ_vars.get("CURRENCY_CONVERSION_VARS", "[]"))
+    currency_dict = json.loads(environ_vars.get("CURRENCY_CONVERSION_DICT", "{}"))
+    marketplace_info = json.loads(environ_vars.get("MARKETPLACE_INFO", "{}"))
+
+    # Extract paths from parameters
+    input_base = Path(input_paths.get("data_input", "/opt/ml/processing/input/data"))
+    output_base = Path(output_paths.get("data_output", "/opt/ml/processing/output"))
     output_base.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Running currency conversion in mode={mode}, job_type={job_type}")
 
     def apply_conversion(df: pd.DataFrame) -> pd.DataFrame:
-        if args.enable_conversion:
+        if job_args.enable_conversion:
             return process_currency_conversion(
                 df=df,
-                marketplace_id_col=args.marketplace_id_col,
+                marketplace_id_col=job_args.marketplace_id_col,
                 currency_conversion_vars=currency_vars,
                 currency_conversion_dict=currency_dict,
                 marketplace_info=marketplace_info,
-                currency_col=args.currency_col,
-                default_currency=args.default_currency,
-                skip_invalid_currencies=args.skip_invalid_currencies,
-                n_workers=args.n_workers,
+                currency_col=job_args.currency_col,
+                default_currency=job_args.default_currency,
+                skip_invalid_currencies=job_args.skip_invalid_currencies,
+                n_workers=job_args.n_workers,
             )
         else:
             logger.info("Conversion disabled—returning original DataFrame")
@@ -187,17 +205,18 @@ def main(
         df_conv = apply_conversion(df_all)
 
         # re-split
+        label_field = environ_vars.get("LABEL_FIELD", "label")
         train_df, holdout_df = train_test_split(
             df_conv,
-            train_size=args.train_ratio,
+            train_size=job_args.train_ratio,
             random_state=42,
-            stratify=df_conv[os.environ["LABEL_FIELD"]],
+            stratify=df_conv[label_field],
         )
         test_df, val_df = train_test_split(
             holdout_df,
-            test_size=args.test_val_ratio,
+            test_size=job_args.test_val_ratio,
             random_state=42,
-            stratify=holdout_df[os.environ["LABEL_FIELD"]],
+            stratify=holdout_df[label_field],
         )
 
         for split_name, split_df in [
@@ -259,48 +278,74 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--job-type",
-        type=str,
-        required=True,
-        choices=["training", "validation", "testing", "calibration"],
-        help="One of ['training','validation','testing','calibration']",
-    )
-    parser.add_argument(
-        "--mode",
-        type=str,
-        choices=["per_split", "split_after_conversion"],
-        default="per_split",
-        help=(
-            "per_split: apply conversion separately on each existing split folder; "
-            "split_after_conversion: combine all data, convert, then re-split"
-        ),
-    )
-    parser.add_argument(
-        "--train-ratio", type=float, default=float(os.environ.get("TRAIN_RATIO", 0.7))
-    )
-    parser.add_argument(
-        "--test-val-ratio",
-        type=float,
-        default=float(os.environ.get("TEST_VAL_RATIO", 0.5)),
-    )
-    parser.add_argument("--n-workers", type=int, default=50)
-    parser.add_argument("--marketplace-id-col", required=True)
-    parser.add_argument("--currency-col", default=None)
-    parser.add_argument("--default-currency", default="USD")
-    parser.add_argument("--skip-invalid-currencies", action="store_true")
-    parser.add_argument(
-        "--enable-conversion", type=lambda x: x.lower() == "true", default=True
-    )
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--job-type",
+            type=str,
+            required=True,
+            choices=["training", "validation", "testing", "calibration"],
+            help="One of ['training','validation','testing','calibration']",
+        )
+        parser.add_argument(
+            "--mode",
+            type=str,
+            choices=["per_split", "split_after_conversion"],
+            default="per_split",
+            help=(
+                "per_split: apply conversion separately on each existing split folder; "
+                "split_after_conversion: combine all data, convert, then re-split"
+            ),
+        )
+        parser.add_argument(
+            "--train-ratio",
+            type=float,
+            default=float(os.environ.get("TRAIN_RATIO", 0.7)),
+        )
+        parser.add_argument(
+            "--test-val-ratio",
+            type=float,
+            default=float(os.environ.get("TEST_VAL_RATIO", 0.5)),
+        )
+        parser.add_argument("--n-workers", type=int, default=50)
+        parser.add_argument("--marketplace-id-col", required=True)
+        parser.add_argument("--currency-col", default=None)
+        parser.add_argument("--default-currency", default="USD")
+        parser.add_argument("--skip-invalid-currencies", action="store_true")
+        parser.add_argument(
+            "--enable-conversion", type=lambda x: x.lower() == "true", default=True
+        )
+        args = parser.parse_args()
 
-    # load JSON env vars
-    currency_vars = json.loads(os.environ["CURRENCY_CONVERSION_VARS"])
-    currency_dict = json.loads(os.environ["CURRENCY_CONVERSION_DICT"])
-    marketplace_info = json.loads(os.environ["MARKETPLACE_INFO"])
+        # Standard SageMaker paths
+        INPUT_PATH = "/opt/ml/processing/input/data"
+        OUTPUT_PATH = "/opt/ml/processing/output"
 
-    logging.basicConfig(level=logging.INFO)
+        # Set up path dictionaries
+        input_paths = {"data_input": INPUT_PATH}
 
-    # Execute the main logic by calling the new main function
-    main(args, currency_vars, currency_dict, marketplace_info)
+        output_paths = {"data_output": OUTPUT_PATH}
+
+        # Environment variables dictionary
+        environ_vars = {
+            "CURRENCY_CONVERSION_VARS": os.environ.get(
+                "CURRENCY_CONVERSION_VARS", "[]"
+            ),
+            "CURRENCY_CONVERSION_DICT": os.environ.get(
+                "CURRENCY_CONVERSION_DICT", "{}"
+            ),
+            "MARKETPLACE_INFO": os.environ.get("MARKETPLACE_INFO", "{}"),
+            "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),
+            "TRAIN_RATIO": os.environ.get("TRAIN_RATIO", "0.7"),
+            "TEST_VAL_RATIO": os.environ.get("TEST_VAL_RATIO", "0.5"),
+        }
+
+        # Execute the main function with standardized inputs
+        result = main(input_paths, output_paths, environ_vars, args)
+
+        logger.info("Currency conversion completed successfully")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Error in currency conversion script: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)

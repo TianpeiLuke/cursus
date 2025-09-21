@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-MIMS Payload Generation Processing Script for PyTorch BSM
+MIMS Payload Generation Processing Script
 
 This script reads field information from hyperparameters extracted from model.tar.gz,
 extracts configuration from environment variables,
@@ -11,9 +11,12 @@ import logging
 import os
 import tarfile
 import tempfile
+import argparse
+import sys
+import traceback
 from pathlib import Path
 from enum import Enum
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
@@ -25,11 +28,10 @@ ENV_DEFAULT_NUMERIC_VALUE = "DEFAULT_NUMERIC_VALUE"
 ENV_DEFAULT_TEXT_VALUE = "DEFAULT_TEXT_VALUE"
 ENV_SPECIAL_FIELD_PREFIX = "SPECIAL_FIELD_"
 
-# Fixed input/output directories
-INPUT_MODEL_DIR = "/opt/ml/processing/input/model"
-OUTPUT_DIR = Path("/opt/ml/processing/output")
-WORKING_DIRECTORY = Path("/tmp/mims_payload_work")
-PAYLOAD_SAMPLE_DIR = WORKING_DIRECTORY / "payload_sample"
+# Default paths (will be overridden by parameters in main function)
+DEFAULT_MODEL_DIR = "/opt/ml/processing/input/model"
+DEFAULT_OUTPUT_DIR = "/opt/ml/processing/output"
+DEFAULT_WORKING_DIRECTORY = "/tmp/mims_payload_work"
 
 
 class VariableType(str, Enum):
@@ -39,7 +41,7 @@ class VariableType(str, Enum):
     TEXT = "TEXT"
 
 
-def ensure_directory(directory_path):
+def ensure_directory(directory_path) -> bool:
     """Ensure a directory exists, creating it if necessary."""
     try:
         if isinstance(directory_path, str):
@@ -94,16 +96,17 @@ def create_model_variable_list(
     return model_var_list
 
 
-def extract_hyperparameters_from_tarball() -> Dict:
+def extract_hyperparameters_from_tarball(
+    input_model_dir: Path, working_directory: Path
+) -> Dict:
     """Extract and load hyperparameters from model artifacts"""
     # The builder step has been updated to use the directory as destination, not model.tar.gz
     # But we'll keep the name for backward compatibility and handle both cases
-    input_model_path = Path(INPUT_MODEL_DIR) / "model.tar.gz"
-    input_model_dir = Path(INPUT_MODEL_DIR)
+    input_model_path = input_model_dir / "model.tar.gz"
     logger.info(f"Looking for hyperparameters in model artifacts")
 
     # Create temporary directory for extraction
-    ensure_directory(WORKING_DIRECTORY)
+    ensure_directory(working_directory)
 
     hyperparams_path = None
 
@@ -129,8 +132,8 @@ def extract_hyperparameters_from_tarball() -> Dict:
                     # Don't raise error here, continue checking other locations
                 else:
                     # Extract only the hyperparameters file
-                    tar.extract(hyperparams_info, WORKING_DIRECTORY)
-                    hyperparams_path = WORKING_DIRECTORY / "hyperparameters.json"
+                    tar.extract(hyperparams_info, working_directory)
+                    hyperparams_path = working_directory / "hyperparameters.json"
         except Exception as e:
             logger.warning(f"Error processing model.tar.gz as tarfile: {e}")
             # Continue to other methods
@@ -184,40 +187,40 @@ def extract_hyperparameters_from_tarball() -> Dict:
         hyperparams = json.load(f)
 
     # Copy to working directory if not already there
-    if not str(hyperparams_path).startswith(str(WORKING_DIRECTORY)):
+    if not str(hyperparams_path).startswith(str(working_directory)):
         import shutil
 
-        dest_path = WORKING_DIRECTORY / "hyperparameters.json"
+        dest_path = working_directory / "hyperparameters.json"
         shutil.copy2(hyperparams_path, dest_path)
 
     logger.info(f"Successfully loaded hyperparameters: {list(hyperparams.keys())}")
     return hyperparams
 
 
-def get_environment_content_types() -> List[str]:
+def get_environment_content_types(environ_vars: Dict[str, str]) -> List[str]:
     """Get content types from environment variables."""
-    content_types_str = os.environ.get(ENV_CONTENT_TYPES, "application/json")
+    content_types_str = environ_vars.get(ENV_CONTENT_TYPES, "application/json")
     return [ct.strip() for ct in content_types_str.split(",")]
 
 
-def get_environment_default_numeric_value() -> float:
+def get_environment_default_numeric_value(environ_vars: Dict[str, str]) -> float:
     """Get default numeric value from environment variables."""
     try:
-        return float(os.environ.get(ENV_DEFAULT_NUMERIC_VALUE, "0.0"))
+        return float(environ_vars.get(ENV_DEFAULT_NUMERIC_VALUE, "0.0"))
     except ValueError:
         logger.warning(f"Invalid {ENV_DEFAULT_NUMERIC_VALUE}, using default 0.0")
         return 0.0
 
 
-def get_environment_default_text_value() -> str:
+def get_environment_default_text_value(environ_vars: Dict[str, str]) -> str:
     """Get default text value from environment variables."""
-    return os.environ.get(ENV_DEFAULT_TEXT_VALUE, "DEFAULT_TEXT")
+    return environ_vars.get(ENV_DEFAULT_TEXT_VALUE, "DEFAULT_TEXT")
 
 
-def get_environment_special_fields() -> Dict[str, str]:
+def get_environment_special_fields(environ_vars: Dict[str, str]) -> Dict[str, str]:
     """Get special field values from environment variables."""
     special_fields = {}
-    for env_var, env_value in os.environ.items():
+    for env_var, env_value in environ_vars.items():
         if env_var.startswith(ENV_SPECIAL_FIELD_PREFIX):
             field_name = env_var[len(ENV_SPECIAL_FIELD_PREFIX) :].lower()
             special_fields[field_name] = env_value
@@ -432,18 +435,20 @@ def save_payloads(
     return file_paths
 
 
-def create_payload_archive(payload_files: List[str]) -> str:
+def create_payload_archive(payload_files: List[str], output_dir: Path = None) -> str:
     """
     Create a tar.gz archive containing only payload files (not metadata).
 
     Args:
         payload_files: List of paths to payload files
+        output_dir: Output directory path (defaults to DEFAULT_OUTPUT_DIR)
 
     Returns:
         Path to the created archive
     """
     # Create archive in the output directory
-    archive_path = Path(OUTPUT_DIR) / "payload.tar.gz"
+    output_dir = output_dir or Path(DEFAULT_OUTPUT_DIR)
+    archive_path = output_dir / "payload.tar.gz"
 
     # Ensure parent directory exists (but not the actual archive path)
     ensure_directory(archive_path.parent)
@@ -488,66 +493,149 @@ def create_payload_archive(payload_files: List[str]) -> str:
         raise
 
 
-def main():
-    """Main entry point for the script."""
-    # Extract hyperparameters from model tarball
-    hyperparams = extract_hyperparameters_from_tarball()
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: Optional[argparse.Namespace] = None,
+) -> str:
+    """
+    Main entry point for the MIMS payload generation script.
 
-    # Extract field information from hyperparameters
-    full_field_list = hyperparams.get("full_field_list", [])
-    tab_field_list = hyperparams.get("tab_field_list", [])
-    cat_field_list = hyperparams.get("cat_field_list", [])
-    label_name = hyperparams.get("label_name", "label")
-    id_name = hyperparams.get("id_name", "id")
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments (optional)
 
-    # Create variable list
-    adjusted_full_field_list = tab_field_list + cat_field_list
-    var_type_list = create_model_variable_list(
-        adjusted_full_field_list, tab_field_list, cat_field_list, label_name, id_name
-    )
+    Returns:
+        Path to the generated payload archive file
+    """
+    try:
+        # Extract paths from input parameters - required keys must be present
+        if "model_input" not in input_paths:
+            raise ValueError("Missing required input path: model_input")
+        if "output_dir" not in output_paths:
+            raise ValueError("Missing required output path: output_dir")
 
-    # Get parameters from environment variables
-    content_types = get_environment_content_types()
-    default_numeric_value = get_environment_default_numeric_value()
-    default_text_value = get_environment_default_text_value()
-    special_field_values = get_environment_special_fields()
+        # Set up paths
+        model_dir = Path(input_paths["model_input"])
+        output_dir = Path(output_paths["output_dir"])
+        working_directory = Path(
+            environ_vars.get("WORKING_DIRECTORY", DEFAULT_WORKING_DIRECTORY)
+        )
+        payload_sample_dir = working_directory / "payload_sample"
 
-    # Extract pipeline name and version from hyperparams
-    pipeline_name = hyperparams.get("pipeline_name", "default_pipeline")
-    pipeline_version = hyperparams.get("pipeline_version", "1.0.0")
-    model_objective = hyperparams.get("model_registration_objective", None)
+        logger.info(f"\nUsing paths:")
+        logger.info(f"  Model input directory: {model_dir}")
+        logger.info(f"  Output directory: {output_dir}")
+        logger.info(f"  Working directory: {working_directory}")
+        logger.info(f"  Payload sample directory: {payload_sample_dir}")
 
-    # Ensure working and output directories exist
-    ensure_directory(WORKING_DIRECTORY)
-    ensure_directory(OUTPUT_DIR)
-    ensure_directory(PAYLOAD_SAMPLE_DIR)
+        # Extract hyperparameters from model tarball
+        hyperparams = extract_hyperparameters_from_tarball(model_dir, working_directory)
 
-    # Generate and save payloads to the sample directory
-    payload_file_paths = save_payloads(
-        PAYLOAD_SAMPLE_DIR,
-        var_type_list,
-        content_types,
-        default_numeric_value,
-        default_text_value,
-        special_field_values,
-    )
+        # Extract field information from hyperparameters
+        full_field_list = hyperparams.get("full_field_list", [])
+        tab_field_list = hyperparams.get("tab_field_list", [])
+        cat_field_list = hyperparams.get("cat_field_list", [])
+        label_name = hyperparams.get("label_name", "label")
+        id_name = hyperparams.get("id_name", "id")
 
-    # Create tar.gz archive of only payload files (not metadata)
-    archive_path = create_payload_archive(payload_file_paths)
+        # Create variable list
+        adjusted_full_field_list = tab_field_list + cat_field_list
+        var_type_list = create_model_variable_list(
+            adjusted_full_field_list,
+            tab_field_list,
+            cat_field_list,
+            label_name,
+            id_name,
+        )
 
-    # Log summary information about the payload generation
-    logger.info(f"MIMS payload generation complete.")
-    logger.info(f"Number of payload samples generated: {len(payload_file_paths)}")
-    logger.info(f"Content types: {content_types}")
-    logger.info(f"Payload files saved to: {PAYLOAD_SAMPLE_DIR}")
-    logger.info(f"Payload archive saved to: {archive_path}")
+        # Get parameters from environment variables
+        content_types = get_environment_content_types(environ_vars)
+        default_numeric_value = get_environment_default_numeric_value(environ_vars)
+        default_text_value = get_environment_default_text_value(environ_vars)
+        special_field_values = get_environment_special_fields(environ_vars)
 
-    # Print information about input fields for better debugging
-    logger.info(f"Input field information:")
-    logger.info(f"  Total fields: {len(var_type_list)}")
-    for field_name, field_type in var_type_list:
-        logger.info(f"  - {field_name}: {field_type}")
+        # Extract pipeline name and version from hyperparams
+        pipeline_name = hyperparams.get("pipeline_name", "default_pipeline")
+        pipeline_version = hyperparams.get("pipeline_version", "1.0.0")
+        model_objective = hyperparams.get("model_objective", None)
+
+        # Ensure working and output directories exist
+        ensure_directory(working_directory)
+        ensure_directory(output_dir)
+        ensure_directory(payload_sample_dir)
+
+        # Generate and save payloads to the sample directory
+        payload_file_paths = save_payloads(
+            payload_sample_dir,
+            var_type_list,
+            content_types,
+            default_numeric_value,
+            default_text_value,
+            special_field_values,
+        )
+
+        # Create tar.gz archive of only payload files (not metadata)
+        archive_path = create_payload_archive(payload_file_paths, output_dir)
+
+        # Log summary information about the payload generation
+        logger.info(f"MIMS payload generation complete.")
+        logger.info(f"Number of payload samples generated: {len(payload_file_paths)}")
+        logger.info(f"Content types: {content_types}")
+        logger.info(f"Payload files saved to: {payload_sample_dir}")
+        logger.info(f"Payload archive saved to: {archive_path}")
+
+        # Print information about input fields for better debugging
+        logger.info(f"Input field information:")
+        logger.info(f"  Total fields: {len(var_type_list)}")
+        for field_name, field_type in var_type_list:
+            logger.info(f"  - {field_name}: {field_type}")
+
+        return archive_path
+
+    except Exception as e:
+        logger.error(f"Error in payload generation: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Standard SageMaker paths
+        input_paths = {"model_input": DEFAULT_MODEL_DIR}
+
+        output_paths = {"output_dir": DEFAULT_OUTPUT_DIR}
+
+        # Environment variables dictionary
+        environ_vars = {}
+        for env_var in [
+            ENV_CONTENT_TYPES,
+            ENV_DEFAULT_NUMERIC_VALUE,
+            ENV_DEFAULT_TEXT_VALUE,
+        ]:
+            if env_var in os.environ:
+                environ_vars[env_var] = os.environ[env_var]
+
+        # Also add special field variables
+        for env_var, env_value in os.environ.items():
+            if env_var.startswith(ENV_SPECIAL_FIELD_PREFIX):
+                environ_vars[env_var] = env_value
+
+        # Set working directory
+        environ_vars["WORKING_DIRECTORY"] = DEFAULT_WORKING_DIRECTORY
+
+        # No command line arguments needed for this script
+        args = None
+
+        # Execute the main function
+        result = main(input_paths, output_paths, environ_vars, args)
+
+        logger.info(f"Payload generation completed successfully. Output at: {result}")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Error in payload generation script: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
