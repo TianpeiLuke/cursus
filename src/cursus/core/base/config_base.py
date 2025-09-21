@@ -20,6 +20,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 import logging
+import inspect
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -99,6 +100,9 @@ class BasePipelineConfig(BaseModel):
     _pipeline_name: Optional[str] = PrivateAttr(default=None)
     _pipeline_description: Optional[str] = PrivateAttr(default=None)
     _pipeline_s3_loc: Optional[str] = PrivateAttr(default=None)
+    
+    # NEW: Portable path fields (Tier 3) - for configuration portability
+    _portable_source_dir: Optional[str] = PrivateAttr(default=None)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -145,6 +149,96 @@ class BasePipelineConfig(BaseModel):
             )
         return self._pipeline_s3_loc
 
+    # NEW: Portable path property for step builders to use
+    @property
+    def portable_source_dir(self) -> Optional[str]:
+        """Get source directory as relative path for portability."""
+        if self.source_dir is None:
+            return None
+            
+        if self._portable_source_dir is None:
+            self._portable_source_dir = self._convert_to_relative_path(self.source_dir)
+        
+        return self._portable_source_dir
+    
+    # NEW: Path conversion method with step builder-relative approach
+    def _convert_to_relative_path(self, path: str) -> str:
+        """Convert absolute path to relative path based on config/builder relationship."""
+        if not path or not Path(path).is_absolute():
+            return path  # Already relative, keep as-is
+        
+        try:
+            # Directory structure analysis:
+            # Config location: src/cursus/steps/configs/config_*.py
+            # Builder location: src/cursus/steps/builders/builder_*.py
+            # Target: Make path relative to builders directory
+            
+            config_file = Path(inspect.getfile(self.__class__))
+            config_dir = config_file.parent      # .../steps/configs/
+            steps_dir = config_dir.parent        # .../steps/
+            builders_dir = steps_dir / "builders" # .../steps/builders/
+            
+            # Convert absolute path to be relative from builders directory
+            abs_path = Path(path)
+            
+            # Try direct relative_to first
+            try:
+                relative_path = abs_path.relative_to(builders_dir)
+                return str(relative_path)
+            except ValueError:
+                # If direct relative_to fails, use common parent approach
+                return self._convert_via_common_parent(path)
+            
+        except Exception:
+            # Fallback to common parent approach
+            return self._convert_via_common_parent(path)
+    
+    # NEW: Fallback conversion method
+    def _convert_via_common_parent(self, path: str) -> str:
+        """Fallback conversion using common parent directory."""
+        try:
+            config_file = Path(inspect.getfile(self.__class__))
+            config_dir = config_file.parent
+            abs_path = Path(path)
+            
+            # Find common parent and create relative path
+            common_parent = self._find_common_parent(abs_path, config_dir)
+            if common_parent:
+                config_to_common = config_dir.relative_to(common_parent)
+                common_to_target = abs_path.relative_to(common_parent)
+                
+                up_levels = len(config_to_common.parts)
+                relative_parts = ['..'] * up_levels + list(common_to_target.parts)
+                
+                return str(Path(*relative_parts))
+        
+        except Exception:
+            pass
+        
+        # Final fallback: return original path
+        return path
+    
+    # NEW: Helper method to find common parent
+    def _find_common_parent(self, path1: Path, path2: Path) -> Optional[Path]:
+        """Find common parent directory of two paths."""
+        try:
+            parts1 = path1.parts
+            parts2 = path2.parts
+            
+            common_parts = []
+            for p1, p2 in zip(parts1, parts2):
+                if p1 == p2:
+                    common_parts.append(p1)
+                else:
+                    break
+            
+            if common_parts:
+                return Path(*common_parts)
+        except Exception:
+            pass
+        
+        return None
+
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """Override model_dump to include derived properties."""
@@ -154,6 +248,11 @@ class BasePipelineConfig(BaseModel):
         data["pipeline_name"] = self.pipeline_name
         data["pipeline_description"] = self.pipeline_description
         data["pipeline_s3_loc"] = self.pipeline_s3_loc
+        
+        # Add portable path as additional field - keep original source_dir intact
+        if self.portable_source_dir is not None:
+            data["portable_source_dir"] = self.portable_source_dir
+        
         return data
 
     def __str__(self) -> str:

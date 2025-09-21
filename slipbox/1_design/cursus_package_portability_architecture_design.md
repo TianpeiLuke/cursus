@@ -693,6 +693,74 @@ def load_configs(
     return ConfigMerger.load(input_file, config_classes)
 ```
 
+#### **Configuration Portability Path Resolution**
+
+The configuration portability system addresses the critical issue where saved configuration JSON files contain hardcoded absolute paths that become invalid across different deployment environments. This system integrates with the unified discovery architecture to provide automatic path conversion and universal configuration sharing.
+
+**Problem**: Configuration files contain non-portable absolute paths:
+```json
+{
+  "source_dir": "/home/ec2-user/SageMaker/Cursus/dockers/xgboost_atoz",
+  "processing_source_dir": "/home/ec2-user/SageMaker/Cursus/dockers/xgboost_atoz/scripts"
+}
+```
+
+**Solution**: Step builder-relative path resolution with automatic conversion:
+```python
+class BasePipelineConfig(BaseModel):
+    # Existing field - UNCHANGED
+    source_dir: Optional[str] = Field(default=None)
+    
+    # NEW: Portable path property
+    @property
+    def portable_source_dir(self) -> Optional[str]:
+        """Convert absolute to relative path using step builder location as reference."""
+        if self.source_dir and self._portable_source_dir is None:
+            self._portable_source_dir = self._convert_to_relative_path(self.source_dir)
+        return self._portable_source_dir
+    
+    def _convert_to_relative_path(self, path: str) -> str:
+        """Convert absolute path to relative from step builders directory."""
+        config_file = Path(inspect.getfile(self.__class__))
+        builders_dir = config_file.parent.parent / "builders"  # ../builders/
+        return str(Path(path).relative_to(builders_dir))
+```
+
+**Step Builder Integration**: Minimal single-line changes with automatic fallbacks:
+```python
+# Training/Model Step Builders
+def _create_estimator(self) -> XGBoost:
+    return XGBoost(
+        source_dir=self.config.portable_source_dir or self.config.source_dir,  # ← Single change
+        # ... other parameters
+    )
+
+# Processing Step Builders  
+def create_step(self, **kwargs) -> ProcessingStep:
+    script_path = self.config.get_portable_script_path() or self.config.get_script_path()  # ← Single change
+    return ProcessingStep(code=script_path)
+```
+
+**Enhanced Configuration Format**: Preserves original paths while adding portable alternatives:
+```json
+{
+  "source_dir": "/home/ec2-user/SageMaker/Cursus/dockers/xgboost_atoz",
+  "portable_source_dir": "../../dockers/xgboost_atoz",
+  "metadata": {
+    "portable_format_version": "2.0",
+    "path_resolution_method": "step_builder_relative"
+  }
+}
+```
+
+**Benefits**:
+- **Universal Deployment**: Same config files work across PyPI, Docker, Lambda, development environments
+- **Zero Breaking Changes**: All existing code continues working without modification
+- **Automatic Fallbacks**: Graceful degradation to absolute paths if conversion fails
+- **Seamless Sharing**: Developers can share configurations without manual path adjustments
+
+**Implementation Status**: Detailed in [Config Portability Path Resolution Implementation Plan](../2_project_planning/2025-09-20_config_portability_path_resolution_implementation_plan.md) with 4-phase roadmap covering 15 step builders requiring single-line updates.
+
 #### **Legacy System Compatibility**
 
 The architecture maintains complete backward compatibility through adapter patterns that preserve existing APIs while leveraging the new unified systems:
