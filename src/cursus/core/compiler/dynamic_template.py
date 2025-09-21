@@ -97,7 +97,6 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             config_path=config_path,
             sagemaker_session=kwargs.get("sagemaker_session"),
             role=kwargs.get("role"),
-            notebook_root=kwargs.get("notebook_root"),
             registry_manager=kwargs.get("registry_manager"),
             dependency_resolver=kwargs.get("dependency_resolver"),
             pipeline_parameters=pipeline_parameters,  # Pass directly to parent

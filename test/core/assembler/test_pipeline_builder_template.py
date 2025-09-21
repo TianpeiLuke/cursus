@@ -401,26 +401,6 @@ class TestPipelineTemplateBase:
     # generator = ExecutionDocumentGenerator(config_path=config_path)
     # filled_doc = generator.fill_execution_document(dag, execution_doc)
 
-    def test_initialization_with_notebook_root(self, setup_mocks):
-        """Test initialization with custom notebook_root."""
-        mocks = setup_mocks
-
-        custom_root = Path("/custom/notebook/root")
-        template = ConcretePipelineTemplate(
-            config_path="test_config.json", notebook_root=custom_root
-        )
-
-        # Verify notebook_root was set
-        assert template.notebook_root == custom_root
-
-    def test_initialization_default_notebook_root(self, setup_mocks):
-        """Test initialization with default notebook_root."""
-        mocks = setup_mocks
-
-        template = ConcretePipelineTemplate(config_path="test_config.json")
-
-        # Verify default notebook_root was set to current working directory
-        assert template.notebook_root == Path.cwd()
 
     def test_config_loading_error_handling(self, setup_mocks):
         """Test error handling when config file loading fails."""

@@ -48,7 +48,6 @@ class MockStepBuilder(StepBuilderBase):
         config,
         sagemaker_session=None,
         role=None,
-        notebook_root=None,
         registry_manager=None,
         dependency_resolver=None,
     ):
@@ -91,7 +90,6 @@ class MockStepBuilder(StepBuilderBase):
             spec=self.spec,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
@@ -158,10 +156,6 @@ class TestPipelineAssembler:
         """IAM role."""
         return "arn:aws:iam::123456789012:role/SageMakerRole"
 
-    @pytest.fixture
-    def notebook_root(self):
-        """Notebook root path."""
-        return Path("/test/notebook")
 
     @pytest.fixture
     def mock_registry_manager(self):
@@ -185,7 +179,6 @@ class TestPipelineAssembler:
         step_builder_map,
         mock_session,
         role,
-        notebook_root,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -196,7 +189,6 @@ class TestPipelineAssembler:
             step_builder_map=step_builder_map,
             sagemaker_session=mock_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -207,7 +199,6 @@ class TestPipelineAssembler:
         assert assembler.step_builder_map == step_builder_map
         assert assembler.sagemaker_session == mock_session
         assert assembler.role == role
-        assert assembler.notebook_root == notebook_root
         assert len(assembler.step_builders) == 3
 
         # Verify step builders were created

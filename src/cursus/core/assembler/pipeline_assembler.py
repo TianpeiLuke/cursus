@@ -91,7 +91,6 @@ class PipelineAssembler:
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         pipeline_parameters: Optional[List[ParameterString]] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None,
     ):
@@ -105,7 +104,6 @@ class PipelineAssembler:
             sagemaker_session: SageMaker session to use for creating the pipeline
             role: IAM role to use for the pipeline
             pipeline_parameters: List of pipeline parameters
-            notebook_root: Root directory of the notebook environment
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
         """
@@ -114,7 +112,6 @@ class PipelineAssembler:
         self.step_builder_map = step_builder_map
         self.sagemaker_session = sagemaker_session
         self.role = role
-        self.notebook_root = notebook_root or Path.cwd()
         self.pipeline_parameters = pipeline_parameters or []
 
         # Store or create dependency components
@@ -203,7 +200,6 @@ class PipelineAssembler:
                     config=config,
                     sagemaker_session=self.sagemaker_session,
                     role=self.role,
-                    notebook_root=self.notebook_root,
                     registry_manager=self._registry_manager,  # Pass component
                     dependency_resolver=self._dependency_resolver,  # Pass component
                 )

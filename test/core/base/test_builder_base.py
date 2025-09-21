@@ -61,9 +61,6 @@ class TestStepBuilderBase:
     def role(self):
         return "arn:aws:iam::123456789012:role/TestRole"
 
-    @pytest.fixture
-    def notebook_root(self):
-        return Path("/test/notebook")
 
     @pytest.fixture
     def mock_registry_manager(self):
@@ -77,19 +74,17 @@ class TestStepBuilderBase:
     def mock_spec(self):
         return Mock()
 
-    def test_init_with_required_params(self, config, mock_session, role, notebook_root):
+    def test_init_with_required_params(self, config, mock_session, role):
         """Test initialization with required parameters."""
         builder = ConcreteStepBuilder(
             config=config,
             sagemaker_session=mock_session,
             role=role,
-            notebook_root=notebook_root,
         )
 
         assert builder.config == config
         assert builder.session == mock_session
         assert builder.role == role
-        assert builder.notebook_root == notebook_root
         assert builder.aws_region == "us-east-1"  # NA maps to us-east-1
 
     def test_init_with_optional_params(
@@ -97,7 +92,6 @@ class TestStepBuilderBase:
         config,
         mock_session,
         role,
-        notebook_root,
         mock_registry_manager,
         mock_dependency_resolver,
         mock_spec,
@@ -108,7 +102,6 @@ class TestStepBuilderBase:
             spec=mock_spec,
             sagemaker_session=mock_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )

@@ -92,10 +92,6 @@ class TestPipelineTemplateBase:
         """IAM role."""
         return "arn:aws:iam::123456789012:role/TestRole"
 
-    @pytest.fixture
-    def notebook_root(self):
-        """Notebook root path."""
-        return Path("/test/notebook")
 
     @pytest.fixture
     def mock_registry_manager(self):
@@ -108,7 +104,7 @@ class TestPipelineTemplateBase:
         return Mock()
 
     def test_init_without_pipeline_parameters(
-        self, config_path, mock_session, role, notebook_root, 
+        self, config_path, mock_session, role, 
         mock_registry_manager, mock_dependency_resolver
     ):
         """Test initialization without pipeline parameters."""
@@ -128,7 +124,6 @@ class TestPipelineTemplateBase:
                 config_path=config_path,
                 sagemaker_session=mock_session,
                 role=role,
-                notebook_root=notebook_root,
                 registry_manager=mock_registry_manager,
                 dependency_resolver=mock_dependency_resolver,
             )
@@ -137,7 +132,7 @@ class TestPipelineTemplateBase:
             assert template._stored_pipeline_parameters is None
 
     def test_init_with_pipeline_parameters(
-        self, config_path, mock_session, role, notebook_root,
+        self, config_path, mock_session, role,
         mock_registry_manager, mock_dependency_resolver
     ):
         """Test initialization with pipeline parameters."""
@@ -163,7 +158,6 @@ class TestPipelineTemplateBase:
                 pipeline_parameters=custom_params,
                 sagemaker_session=mock_session,
                 role=role,
-                notebook_root=notebook_root,
                 registry_manager=mock_registry_manager,
                 dependency_resolver=mock_dependency_resolver,
             )

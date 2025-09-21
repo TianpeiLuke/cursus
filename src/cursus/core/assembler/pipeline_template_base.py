@@ -61,7 +61,6 @@ class PipelineTemplateBase(ABC):
         config_path: str,
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
@@ -73,7 +72,6 @@ class PipelineTemplateBase(ABC):
             config_path: Path to configuration file
             sagemaker_session: SageMaker session
             role: IAM role
-            notebook_root: Root directory of notebook
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
             pipeline_parameters: Pipeline parameters from DAGCompiler (optional)
@@ -81,7 +79,6 @@ class PipelineTemplateBase(ABC):
         self.config_path = config_path
         self.session = sagemaker_session
         self.role = role
-        self.notebook_root = notebook_root or Path.cwd()
 
         # Store pipeline parameters for template
         self._stored_pipeline_parameters: Optional[List[Union[str, ParameterString]]] = pipeline_parameters
@@ -315,7 +312,6 @@ class PipelineTemplateBase(ABC):
             sagemaker_session=self.session,
             role=self.role,
             pipeline_parameters=self._get_pipeline_parameters(),
-            notebook_root=self.notebook_root,
             registry_manager=self._registry_manager,
             dependency_resolver=self._dependency_resolver,
         )
