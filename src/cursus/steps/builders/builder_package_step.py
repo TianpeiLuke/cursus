@@ -38,7 +38,6 @@ class PackageStepBuilder(StepBuilderBase):
         config: PackageConfig,
         sagemaker_session=None,
         role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional["RegistryManager"] = None,
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
@@ -49,8 +48,6 @@ class PackageStepBuilder(StepBuilderBase):
             config: A PackageConfig instance containing all necessary settings.
             sagemaker_session: The SageMaker session object to manage interactions with AWS.
             role: The IAM role ARN to be used by the SageMaker Processing Job.
-            notebook_root: The root directory of the notebook environment, used for resolving
-                         local paths if necessary.
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
         """
@@ -65,7 +62,6 @@ class PackageStepBuilder(StepBuilderBase):
             spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
@@ -199,11 +195,8 @@ class PackageStepBuilder(StepBuilderBase):
         # Use portable path with fallback for universal deployment compatibility
         inference_scripts_path = self.config.portable_source_dir or self.config.source_dir
         if not inference_scripts_path:
-            inference_scripts_path = (
-                str(self.notebook_root / "inference")
-                if self.notebook_root
-                else "inference"
-            )
+            # Simple relative path fallback - portable across environments
+            inference_scripts_path = "inference"
         
         self.log_info("Using inference scripts path: %s (portable: %s)", 
                      inference_scripts_path, 

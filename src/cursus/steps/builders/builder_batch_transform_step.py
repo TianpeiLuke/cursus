@@ -48,7 +48,6 @@ class BatchTransformStepBuilder(StepBuilderBase):
         config: BatchTransformStepConfig,
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional["RegistryManager"] = None,
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
@@ -59,7 +58,6 @@ class BatchTransformStepBuilder(StepBuilderBase):
             config: Configuration for the step
             sagemaker_session: SageMaker session
             role: IAM role
-            notebook_root: Root directory of notebook
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
 
@@ -132,7 +130,6 @@ class BatchTransformStepBuilder(StepBuilderBase):
             spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )

@@ -277,7 +277,6 @@ class StepBuilderBase(ABC):
         spec: Optional[StepSpecification] = None,  # New parameter
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None,
     ):
@@ -289,7 +288,6 @@ class StepBuilderBase(ABC):
             spec: Optional step specification for specification-driven implementation
             sagemaker_session: SageMaker session
             role: IAM role
-            notebook_root: Root directory of notebook
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
         """
@@ -297,7 +295,6 @@ class StepBuilderBase(ABC):
         self.spec = spec  # Store the specification
         self.session = sagemaker_session
         self.role = role
-        self.notebook_root = notebook_root or Path.cwd()
         self._registry_manager = registry_manager
         self._dependency_resolver = dependency_resolver
         self.execution_prefix: Optional[Union[str, Any]] = None  # Initialize execution prefix for PIPELINE_EXECUTION_TEMP_DIR support

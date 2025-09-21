@@ -39,7 +39,6 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         config: DummyTrainingConfig,
         sagemaker_session=None,
         role=None,
-        notebook_root=None,
         registry_manager=None,
         dependency_resolver=None,
     ):
@@ -49,7 +48,6 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             config: Configuration for the DummyTraining step
             sagemaker_session: SageMaker session to use
             role: IAM role for SageMaker execution
-            notebook_root: Root directory for notebook execution
             registry_manager: Registry manager for dependency injection
             dependency_resolver: Dependency resolver for dependency injection
 
@@ -66,7 +64,6 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             spec=DUMMY_TRAINING_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )

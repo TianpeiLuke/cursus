@@ -56,7 +56,6 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         config,
         sagemaker_session=None,
         role=None,
-        notebook_root=None,
         registry_manager=None,
         dependency_resolver=None,
     ):
@@ -66,7 +65,6 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             config: Configuration object for this step
             sagemaker_session: SageMaker session
             role: IAM role for SageMaker execution
-            notebook_root: Root directory for notebooks
             registry_manager: Registry manager for steps
             dependency_resolver: Resolver for step dependencies
 
@@ -119,7 +117,6 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )

@@ -38,7 +38,6 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
         config: XGBoostModelEvalConfig,
         sagemaker_session=None,
         role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional["RegistryManager"] = None,
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
@@ -49,8 +48,6 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
             config: A XGBoostModelEvalConfig instance containing all necessary settings.
             sagemaker_session: The SageMaker session object to manage interactions with AWS.
             role: The IAM role ARN to be used by the SageMaker Processing Job.
-            notebook_root: The root directory of the notebook environment, used for resolving
-                         local paths if necessary.
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
         """
@@ -67,7 +64,6 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
             spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
