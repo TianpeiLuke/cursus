@@ -39,7 +39,6 @@ class YourStepBuilder(StepBuilderBase):
         spec: Optional[StepSpecification] = None,
         sagemaker_session: Optional[PipelineSession] = None, 
         role: Optional[str] = None, 
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None
     ):
@@ -60,7 +59,6 @@ class YourStepBuilder(StepBuilderBase):
             spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver
         )

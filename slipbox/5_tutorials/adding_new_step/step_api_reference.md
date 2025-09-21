@@ -376,7 +376,6 @@ class YourStepBuilder(StepBuilderBase):
         config: YourStepConfig,
         sagemaker_session=None,
         role: Optional[str] = None,
-        notebook_root: Optional[Path] = None,
         registry_manager: Optional["RegistryManager"] = None,
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None
     ):
@@ -386,7 +385,6 @@ class YourStepBuilder(StepBuilderBase):
             spec=YOUR_STEP_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver
         )

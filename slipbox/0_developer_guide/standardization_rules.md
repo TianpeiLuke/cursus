@@ -149,13 +149,12 @@ Example:
 class YourStepBuilder(StepBuilderBase):
     """Builder for your processing step."""
     
-    def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None):
+    def __init__(self, config, sagemaker_session=None, role=None):
         super().__init__(
             config=config,
             spec=YOUR_STEP_SPEC,
             sagemaker_session=sagemaker_session,
-            role=role,
-            notebook_root=notebook_root
+            role=role
         )
         self.config = config
     

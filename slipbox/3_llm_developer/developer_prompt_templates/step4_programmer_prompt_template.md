@@ -458,7 +458,7 @@ class XGBoostModelStepBuilder(StepBuilderBase):
 
 #### 2. **Job Type Handling Patterns**
 ```python
-def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None, 
+def __init__(self, config, sagemaker_session=None, role=None, 
              registry_manager=None, dependency_resolver=None):
     """Initialize with specification based on job type."""
     
@@ -480,7 +480,7 @@ def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None
         raise ValueError(f"No specification found for job type: {job_type}")
         
     super().__init__(config=config, spec=spec, sagemaker_session=sagemaker_session,
-                     role=role, notebook_root=notebook_root,
+                     role=role,
                      registry_manager=registry_manager,
                      dependency_resolver=dependency_resolver)
 ```
@@ -941,7 +941,7 @@ from cursus.registry.builder_registry import register_builder
 class [StepName]StepBuilder(StepBuilderBase):
     """Builder for [StepName] step with portable path support."""
     
-    def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None, 
+    def __init__(self, config, sagemaker_session=None, role=None, 
                  registry_manager=None, dependency_resolver=None):
         """Initialize with portable path support."""
         super().__init__(
@@ -949,7 +949,6 @@ class [StepName]StepBuilder(StepBuilderBase):
             spec=STEP_SPEC,  # Always pass the specification
             sagemaker_session=sagemaker_session,
             role=role,
-            notebook_root=notebook_root,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver
         )
@@ -1432,8 +1431,7 @@ Ensure your step builder implementation includes these essential methods:
 ### 1. Base Methods
 
 ```python
-def __init__(self, config: CustomConfig, sagemaker_session=None, role=None, 
-             notebook_root=None, registry_manager=None, dependency_resolver=None):
+def __init__(self, config: CustomConfig, sagemaker_session=None, role=None, registry_manager=None, dependency_resolver=None):
     """Initialize the step builder with configuration and dependencies."""
     if not isinstance(config, CustomConfig):
         raise ValueError("Builder requires a CustomConfig instance.")
@@ -1443,7 +1441,6 @@ def __init__(self, config: CustomConfig, sagemaker_session=None, role=None,
         spec=CUSTOM_SPEC,  # Always pass the specification
         sagemaker_session=sagemaker_session,
         role=role,
-        notebook_root=notebook_root,
         registry_manager=registry_manager,
         dependency_resolver=dependency_resolver
     )
