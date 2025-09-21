@@ -539,6 +539,12 @@ def create_step(self, **kwargs) -> ProcessingStep:
     proc_outputs = self._get_outputs(outputs)
     job_args = self._get_job_arguments()
     
+    # Get script path from contract or config - use portable path with fallback
+    script_path = self.config.get_portable_script_path() or self.config.get_script_path()
+    self.log_info("Using script path: %s (portable: %s)", 
+                 script_path, 
+                 "yes" if self.config.get_portable_script_path() else "no")
+    
     return ProcessingStep(
         name=self._get_step_name(),
         processor=processor,
@@ -550,14 +556,21 @@ def create_step(self, **kwargs) -> ProcessingStep:
         cache_config=self._get_cache_config(enable_caching)
     )
 ```
+```
 
 **Training Steps:**
 ```python
 def _create_estimator(self, output_path=None) -> XGBoost:
     """Create and configure the XGBoost estimator."""
+    # Use portable path with fallback for universal deployment compatibility
+    source_dir = self.config.portable_source_dir or self.config.source_dir
+    self.log_info("Using source directory: %s (portable: %s)", 
+                 source_dir, 
+                 "yes" if self.config.portable_source_dir else "no")
+    
     return XGBoost(
         entry_point=self.config.training_entry_point,
-        source_dir=self.config.source_dir,
+        source_dir=source_dir,
         framework_version=self.config.framework_version,
         py_version=self.config.py_version,
         role=self.role,
@@ -670,27 +683,20 @@ def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, TrainingInput]:
         
     training_inputs = {}
     
-    # SPECIAL CASE: Always generate hyperparameters internally first
-    hyperparameters_key = "hyperparameters_s3_uri"
-    internal_hyperparameters_s3_uri = self._prepare_hyperparameters_file()
-    
-    # Get container path and create channel
-    if hyperparameters_key in self.contract.expected_input_paths:
-        container_path = self.contract.expected_input_paths[hyperparameters_key]
-        # Extract channel name from container path
-        parts = container_path.split('/')
-        if len(parts) > 5 and parts[5]:
-            channel_name = parts[5]  # e.g., 'config' from '/opt/ml/input/data/config/hyperparameters.json'
-            training_inputs[channel_name] = TrainingInput(s3_data=internal_hyperparameters_s3_uri)
-    
-    # Process other dependencies
+    # Process each dependency in the specification
     for _, dependency_spec in self.spec.dependencies.items():
         logical_name = dependency_spec.logical_name
         
-        if logical_name == hyperparameters_key:
-            continue  # Already handled
+        # Skip if optional and not provided
+        if not dependency_spec.required and logical_name not in inputs:
+            continue
             
-        if logical_name in inputs:
+        # Make sure required inputs are present
+        if dependency_spec.required and logical_name not in inputs:
+            raise ValueError(f"Required input '{logical_name}' not provided")
+        
+        # Get container path from contract
+        if logical_name in self.contract.expected_input_paths:
             container_path = self.contract.expected_input_paths[logical_name]
             
             # SPECIAL HANDLING FOR input_path - create train/val/test channels
@@ -704,6 +710,11 @@ def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, TrainingInput]:
                 if len(parts) > 5:
                     channel_name = parts[5]
                     training_inputs[channel_name] = TrainingInput(s3_data=inputs[logical_name])
+                else:
+                    # If no specific channel in path, use logical name as channel
+                    training_inputs[logical_name] = TrainingInput(s3_data=inputs[logical_name])
+        else:
+            raise ValueError(f"No container path found for input: {logical_name}")
                     
     return training_inputs
 ```
@@ -763,24 +774,84 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
 **Training Steps - _get_outputs:**
 ```python
 def _get_outputs(self, outputs: Dict[str, Any]) -> str:
-    """Get output path for model artifacts and evaluation results."""
-    if not self.spec or not self.contract:
-        raise ValueError("Step specification and contract are required")
-        
-    # Check if any output path is explicitly provided
+    """
+    Get outputs for the step using specification and contract.
+
+    For training steps, this returns the output path where model artifacts and evaluation results will be stored.
+    SageMaker uses this single output_path parameter for both:
+    - model.tar.gz (from /opt/ml/model/)
+    - output.tar.gz (from /opt/ml/output/data/)
+
+    Args:
+        outputs: Output destinations keyed by logical name
+
+    Returns:
+        Output path for model artifacts and evaluation results
+
+    Raises:
+        ValueError: If no specification or contract is available
+    """
+    if not self.spec:
+        raise ValueError("Step specification is required")
+
+    if not self.contract:
+        raise ValueError("Script contract is required for output mapping")
+
+    # First, check if any output path is explicitly provided in the outputs dictionary
     primary_output_path = None
-    output_logical_names = [spec.logical_name for _, spec in self.spec.outputs.items()]
-    
+
+    # Check if model_output or evaluation_output are in the outputs dictionary
+    output_logical_names = [
+        spec.logical_name for _, spec in self.spec.outputs.items()
+    ]
+
     for logical_name in output_logical_names:
         if logical_name in outputs:
             primary_output_path = outputs[logical_name]
+            self.log_info(
+                "Using provided output path from '%s': %s",
+                logical_name,
+                primary_output_path,
+            )
             break
-            
+
     # If no output path was provided, generate a default one
     if primary_output_path is None:
-        primary_output_path = f"{self.config.pipeline_s3_loc}/xgboost_training/"
-        
-    return primary_output_path.rstrip('/')
+        # Generate a clean path using base output path and Join for parameter compatibility
+        from sagemaker.workflow.functions import Join
+        base_output_path = self._get_base_output_path()
+        primary_output_path = Join(on="/", values=[base_output_path, "xgboost_training"])
+        self.log_info("Using generated base output path: %s", primary_output_path)
+
+    # Remove trailing slash if present for consistency with S3 path handling
+    if primary_output_path.endswith("/"):
+        primary_output_path = primary_output_path[:-1]
+
+    # Get base job name for logging purposes
+    base_job_name = self._generate_job_name()
+
+    # Log how SageMaker will structure outputs under this path
+    self.log_info(
+        "SageMaker will organize outputs using base job name: %s", base_job_name
+    )
+    self.log_info("Full job name will be: %s-[timestamp]", base_job_name)
+    self.log_info(
+        "Output path structure will be: %s/%s-[timestamp]/",
+        primary_output_path,
+        base_job_name,
+    )
+    self.log_info(
+        "  - Model artifacts will be in: %s/%s-[timestamp]/output/model.tar.gz",
+        primary_output_path,
+        base_job_name,
+    )
+    self.log_info(
+        "  - Evaluation results will be in: %s/%s-[timestamp]/output/output.tar.gz",
+        primary_output_path,
+        base_job_name,
+    )
+
+    return primary_output_path
 ```
 
 #### 7. **Dependency Extraction Patterns**
