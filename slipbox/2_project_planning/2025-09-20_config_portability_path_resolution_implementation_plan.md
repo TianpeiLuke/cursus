@@ -82,10 +82,10 @@ This implementation plan provides a detailed roadmap for implementing the **Conf
 
 ### **Solution Architecture** (from Design Document)
 
-#### **Step Builder-Relative Path Resolution**
-- **Reference Point**: Use step builder file location as path resolution anchor
-- **Automatic Conversion**: Config classes automatically convert absolute to relative paths
-- **Runtime Resolution**: Step builders resolve relative paths to correct absolute paths
+#### **Runtime-Aware Path Resolution**
+- **Reference Point**: Use current working directory (runtime execution context) as path resolution anchor
+- **Automatic Conversion**: Config classes automatically convert absolute to relative paths based on where they are instantiated
+- **SageMaker Compatibility**: Paths resolve correctly from where SageMaker validates them (current working directory)
 - **Universal Compatibility**: Works across all deployment environments
 
 #### **Zero-Impact Enhancement Strategy**
@@ -137,32 +137,31 @@ class BasePipelineConfig(BaseModel):
         
         return self._portable_source_dir
     
-    # NEW: Path conversion method with step builder-relative approach
+    # NEW: Path conversion method with runtime-aware approach
     def _convert_to_relative_path(self, path: str) -> str:
-        """Convert absolute path to relative path based on config/builder relationship."""
+        """Convert absolute path to relative path based on runtime instantiation location."""
         if not path or not Path(path).is_absolute():
             return path  # Already relative, keep as-is
         
         try:
-            # Directory structure analysis:
-            # Config location: src/cursus/steps/configs/config_*.py
-            # Builder location: src/cursus/steps/builders/builder_*.py
-            # Target: Make path relative to builders directory
-            
-            config_file = Path(inspect.getfile(self.__class__))
-            config_dir = config_file.parent      # .../steps/configs/
-            steps_dir = config_dir.parent        # .../steps/
-            builders_dir = steps_dir / "builders" # .../steps/builders/
-            
-            # Convert absolute path to be relative from builders directory
             abs_path = Path(path)
-            relative_path = abs_path.relative_to(builders_dir)
             
-            return str(relative_path)
+            # Use current working directory as reference point
+            # This is where the config is being instantiated (e.g., demo/ directory)
+            # and also where SageMaker will resolve relative paths from
+            runtime_location = Path.cwd()
             
-        except (ValueError, OSError):
-            # Fallback to common parent approach
-            return self._convert_via_common_parent(path)
+            # Try direct relative_to first
+            try:
+                relative_path = abs_path.relative_to(runtime_location)
+                return str(relative_path)
+            except ValueError:
+                # If direct relative_to fails, use common parent approach
+                return self._convert_via_common_parent(path, runtime_location)
+            
+        except Exception:
+            # Final fallback: return original path
+            return path
     
     # NEW: Fallback conversion method
     def _convert_via_common_parent(self, path: str) -> str:
@@ -1187,17 +1186,75 @@ def _convert_to_relative_path(self, path: str) -> str:
 - **Test Suites**: Comprehensive validation for rollback verification
 - **Documentation**: Rollback procedures and troubleshooting guides
 
+## Lessons Learned (Critical Implementation Insights)
+
+### **CRITICAL LESSON: SageMaker Path Resolution Context**
+
+**❌ INITIAL MISTAKE**: We initially designed the system to calculate relative paths from the **config class location** (`src/cursus/steps/configs/`), thinking that step builders would resolve paths from their own location.
+
+**✅ CORRECT UNDERSTANDING**: SageMaker's `ProcessingStep(code=script_path)` **always resolves relative paths from the current working directory** (`os.getcwd()`) where the Python process is running, **NOT** from where config classes or step builders are located.
+
+**Key Evidence from Testing**:
+```
+Generated path: ../../../../dockers/xgboost_atoz/scripts/tabular_preprocessing.py
+From demo/: /Users/tianpeixie/github_workspace/cursus/demo/../../../../dockers/... 
+  Resolves to: /Users/dockers/xgboost_atoz/scripts/tabular_preprocessing.py ❌ (doesn't exist)
+
+Correct path: ../dockers/xgboost_atoz/scripts/tabular_preprocessing.py  
+From demo/: /Users/tianpeixie/github_workspace/cursus/demo/../dockers/...
+  Resolves to: /Users/tianpeixie/github_workspace/cursus/dockers/xgboost_atoz/scripts/tabular_preprocessing.py ✅ (exists!)
+```
+
+### **Key Insights for Future Development**
+
+1. **Runtime Context Matters**: Always consider **where the code will be executed**, not where it's defined
+2. **SageMaker SDK Behavior**: SageMaker resolves paths from current working directory, not from code location
+3. **Test Path Resolution**: Always test path resolution from the actual execution context
+4. **Execution vs Definition**: The location where classes are defined is irrelevant to path resolution
+
+### **Corrected Implementation Strategy**
+
+**❌ Wrong Approach (Original)**:
+```python
+# Calculate relative to config class location
+config_file = Path(inspect.getfile(self.__class__))
+builders_dir = config_file.parent.parent / "builders"
+relative_path = abs_path.relative_to(builders_dir)  # Wrong reference point
+```
+
+**✅ Correct Approach (Implemented)**:
+```python
+# Calculate relative to runtime execution context
+runtime_location = Path.cwd()  # Where notebook/script runs
+relative_path = abs_path.relative_to(runtime_location)  # Correct reference point
+```
+
+### **Testing Methodology Learned**
+
+1. **Test from actual execution context**: Run tests from `demo/` directory, not from project root
+2. **Verify SageMaker path resolution**: Test that SageMaker can actually find the files
+3. **Test multiple execution contexts**: Verify paths work from different working directories
+4. **End-to-end validation**: Test complete pipeline creation, not just path generation
+
+### **Documentation Reminder**
+
+This lesson learned section serves as a permanent reminder that:
+- **Path resolution context is critical** - always consider where paths will be resolved
+- **Framework behavior matters** - understand how external tools (like SageMaker) handle paths
+- **Testing must match reality** - test from actual execution contexts, not development convenience
+
 ## Conclusion
 
 This implementation plan provides a comprehensive roadmap for implementing the Configuration Portability Path Resolution System to achieve universal deployment portability while maintaining complete backward compatibility. The phased approach ensures minimal risk while delivering immediate value through enhanced configuration sharing capabilities.
 
-The key innovation of using step builder file locations as the reference point for path resolution eliminates the need for complex workspace configuration while providing automatic portability across all deployment environments. This foundation enables seamless configuration sharing, CI/CD integration, and universal deployment success.
+**CORRECTED KEY INNOVATION**: Using the **runtime execution context** (current working directory) as the reference point for path resolution ensures compatibility with SageMaker's path resolution behavior while providing automatic portability across all deployment environments. This foundation enables seamless configuration sharing, CI/CD integration, and universal deployment success.
 
 **Final Deliverables**:
 - **Universal Configuration Portability**: Same config files work across all environments
 - **Zero Breaking Changes**: All existing code continues working without modification
 - **Enhanced Developer Experience**: Transparent operation with improved capabilities
 - **Production-Ready System**: Robust error handling, monitoring, and documentation
+- **Correct Path Resolution**: Paths resolve correctly from actual execution context
 
 ## References
 

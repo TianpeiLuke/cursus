@@ -165,53 +165,52 @@ class BasePipelineConfig(BaseModel, ABC):
         
         return self._portable_source_dir
     
-    # NEW: Path conversion method with step builder-relative approach
+    # NEW: Path conversion method with runtime-aware approach
     def _convert_to_relative_path(self, path: str) -> str:
-        """Convert absolute path to relative path based on config/builder relationship."""
+        """Convert absolute path to relative path based on runtime instantiation location."""
         if not path or not Path(path).is_absolute():
             return path  # Already relative, keep as-is
         
         try:
-            # Directory structure analysis:
-            # Config location: src/cursus/steps/configs/config_*.py
-            # Builder location: src/cursus/steps/builders/builder_*.py
-            # Target: Make path relative to builders directory
-            
-            config_file = Path(inspect.getfile(self.__class__))
-            config_dir = config_file.parent      # .../steps/configs/
-            steps_dir = config_dir.parent        # .../steps/
-            builders_dir = steps_dir / "builders" # .../steps/builders/
-            
-            # Convert absolute path to be relative from builders directory
             abs_path = Path(path)
+            
+            # Use current working directory as reference point
+            # This is where the config is being instantiated (e.g., demo/ directory)
+            # and also where SageMaker will resolve relative paths from
+            runtime_location = Path.cwd()
             
             # Try direct relative_to first
             try:
-                relative_path = abs_path.relative_to(builders_dir)
+                relative_path = abs_path.relative_to(runtime_location)
                 return str(relative_path)
             except ValueError:
                 # If direct relative_to fails, use common parent approach
-                return self._convert_via_common_parent(path)
+                return self._convert_via_common_parent(path, runtime_location)
             
         except Exception:
-            # Fallback to common parent approach
-            return self._convert_via_common_parent(path)
+            # Final fallback: return original path
+            return path
     
     # NEW: Fallback conversion method
-    def _convert_via_common_parent(self, path: str) -> str:
+    def _convert_via_common_parent(self, path: str, reference_location: Optional[Path] = None) -> str:
         """Fallback conversion using common parent directory."""
         try:
-            config_file = Path(inspect.getfile(self.__class__))
-            config_dir = config_file.parent
             abs_path = Path(path)
             
+            # Use provided reference location or fall back to config file location
+            if reference_location is not None:
+                ref_dir = reference_location
+            else:
+                config_file = Path(inspect.getfile(self.__class__))
+                ref_dir = config_file.parent
+            
             # Find common parent and create relative path
-            common_parent = self._find_common_parent(abs_path, config_dir)
+            common_parent = self._find_common_parent(abs_path, ref_dir)
             if common_parent:
-                config_to_common = config_dir.relative_to(common_parent)
+                ref_to_common = ref_dir.relative_to(common_parent)
                 common_to_target = abs_path.relative_to(common_parent)
                 
-                up_levels = len(config_to_common.parts)
+                up_levels = len(ref_to_common.parts)
                 relative_parts = ['..'] * up_levels + list(common_to_target.parts)
                 
                 return str(Path(*relative_parts))

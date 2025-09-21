@@ -192,13 +192,15 @@ class BasePipelineConfig(BaseModel):
         
         return self._portable_source_dir
     
-    # NEW: Path conversion method
+    # NEW: Path conversion method with runtime-aware approach
     def _convert_to_relative_path(self, path: str) -> str:
         """
-        Convert absolute path to relative path based on config/builder relationship.
+        Convert absolute path to relative path based on runtime instantiation location.
         
         This method converts absolute filesystem paths (like source_dir, processing_source_dir)
         from their absolute form to relative paths that work across different deployment environments.
+        The key insight is that SageMaker resolves relative paths from the current working directory
+        where the Python process is running, not from where config classes are defined.
         
         Args:
             path (str): The absolute filesystem path to convert. This is typically:
@@ -207,47 +209,48 @@ class BasePipelineConfig(BaseModel):
                        - Any other absolute path pointing to cursus resources
         
         Returns:
-            str: Relative path from the step builder's perspective. Examples:
-                 - "../../dockers/xgboost_atoz" (for source_dir)
-                 - "../../dockers/xgboost_atoz/scripts" (for processing_source_dir)
+            str: Relative path from the runtime execution context. Examples:
+                 - "../dockers/xgboost_atoz" (when running from demo/ directory)
+                 - "dockers/xgboost_atoz" (when running from project root)
         
         Path Resolution Strategy:
-            1. Determines the config file location using inspect.getfile()
-            2. Calculates the builders directory (sibling to configs directory)
-            3. Converts the absolute path to be relative from the builders directory
-            4. This ensures step builders can resolve paths correctly at runtime
+            1. Uses current working directory (Path.cwd()) as reference point
+            2. This matches where SageMaker ProcessingStep validates paths
+            3. Converts the absolute path to be relative from current working directory
+            4. This ensures SageMaker can resolve paths correctly at runtime
         
         Example Conversion:
             Input:  "/home/user/cursus/dockers/xgboost_atoz"
-            Config: "/home/user/cursus/src/cursus/steps/configs/config_xgboost.py"
-            Builder: "/home/user/cursus/src/cursus/steps/builders/builder_xgboost.py"
-            Output: "../../dockers/xgboost_atoz" (relative to builder location)
+            CWD:    "/home/user/cursus/demo" (where notebook runs)
+            Output: "../dockers/xgboost_atoz" (relative to current working directory)
+            
+        SageMaker Resolution:
+            ProcessingStep(code="../dockers/xgboost_atoz/scripts/script.py")
+            Resolves to: /home/user/cursus/demo/../dockers/xgboost_atoz/scripts/script.py
+            Which equals: /home/user/cursus/dockers/xgboost_atoz/scripts/script.py ✅
         """
         if not path or not Path(path).is_absolute():
             return path  # Already relative, keep as-is
         
         try:
-            # Directory structure analysis:
-            # Config location: src/cursus/steps/configs/config_*.py
-            # Builder location: src/cursus/steps/builders/builder_*.py
-            # Target: Make path relative to builders directory for step builder usage
-            
-            config_file = Path(inspect.getfile(self.__class__))
-            config_dir = config_file.parent      # .../steps/configs/
-            steps_dir = config_dir.parent        # .../steps/
-            builders_dir = steps_dir / "builders" # .../steps/builders/
-            
-            # Convert the absolute resource path to be relative from builders directory
-            # This allows step builders to resolve the path correctly at runtime
             abs_path = Path(path)
-            relative_path = abs_path.relative_to(builders_dir)
             
-            return str(relative_path)
+            # Use current working directory as reference point
+            # This is where the config is being instantiated (e.g., demo/ directory)
+            # and also where SageMaker will resolve relative paths from
+            runtime_location = Path.cwd()
             
-        except (ValueError, OSError):
-            # If direct conversion fails (e.g., paths don't share common structure),
-            # try the common parent approach as fallback
-            return self._convert_via_common_parent(path)
+            # Try direct relative_to first
+            try:
+                relative_path = abs_path.relative_to(runtime_location)
+                return str(relative_path)
+            except ValueError:
+                # If direct relative_to fails, use common parent approach
+                return self._convert_via_common_parent(path, runtime_location)
+            
+        except Exception:
+            # Final fallback: return original path
+            return path
     
     # NEW: Fallback conversion method
     def _convert_via_common_parent(self, path: str) -> str:
@@ -1052,13 +1055,85 @@ class TestCrossEnvironmentPortability(unittest.TestCase):
         pass
 ```
 
+## Lessons Learned (Critical Design Insights)
+
+### **CRITICAL LESSON: SageMaker Path Resolution Context**
+
+**❌ INITIAL DESIGN MISTAKE**: The original design assumed that relative paths should be calculated from the **step builder file location** (`src/cursus/steps/builders/`), thinking that SageMaker would resolve paths from where the step builder code is located.
+
+**✅ CORRECT UNDERSTANDING**: SageMaker's `ProcessingStep(code=script_path)` and other SageMaker components **always resolve relative paths from the current working directory** (`os.getcwd()`) where the Python process is running, **NOT** from where step builder classes are defined.
+
+**Key Evidence from Implementation Testing**:
+```
+Original Design (Wrong):
+Generated path: ../../../../dockers/xgboost_atoz/scripts/tabular_preprocessing.py
+From demo/: /Users/tianpeixie/github_workspace/cursus/demo/../../../../dockers/... 
+  Resolves to: /Users/dockers/xgboost_atoz/scripts/tabular_preprocessing.py ❌ (doesn't exist)
+
+Corrected Design (Right):
+Generated path: ../dockers/xgboost_atoz/scripts/tabular_preprocessing.py  
+From demo/: /Users/tianpeixie/github_workspace/cursus/demo/../dockers/...
+  Resolves to: /Users/tianpeixie/github_workspace/cursus/dockers/xgboost_atoz/scripts/tabular_preprocessing.py ✅ (exists!)
+```
+
+### **Fundamental Design Principle Correction**
+
+**❌ Wrong Design Assumption**:
+- "Relative paths should be calculated from where the code is defined (step builder location)"
+- "SageMaker will resolve paths relative to the step builder file location"
+
+**✅ Correct Design Principle**:
+- "Relative paths must be calculated from where the code will be **executed** (runtime context)"
+- "SageMaker resolves paths from the current working directory of the Python process"
+
+### **Architectural Implications**
+
+1. **Runtime Context is King**: The execution environment (where notebooks run) determines path resolution, not the code definition location
+2. **Framework Behavior Matters**: External frameworks like SageMaker have their own path resolution rules that must be respected
+3. **Testing Must Match Reality**: Design validation must test from actual execution contexts, not development convenience locations
+
+### **Corrected Design Strategy**
+
+**❌ Original Design (Step Builder-Relative)**:
+```python
+# Calculate relative to step builder file location
+config_file = Path(inspect.getfile(self.__class__))
+builders_dir = config_file.parent.parent / "builders"
+relative_path = abs_path.relative_to(builders_dir)  # Wrong reference point
+```
+
+**✅ Corrected Design (Runtime-Aware)**:
+```python
+# Calculate relative to runtime execution context
+runtime_location = Path.cwd()  # Where notebook/script runs
+relative_path = abs_path.relative_to(runtime_location)  # Correct reference point
+```
+
+### **Design Validation Methodology**
+
+The key lesson is that design validation must include:
+
+1. **End-to-End Testing**: Test complete workflows from actual execution contexts
+2. **Framework Integration Testing**: Verify that external frameworks (SageMaker) can resolve paths correctly
+3. **Multi-Context Validation**: Test from different working directories to ensure portability
+4. **Real-World Simulation**: Use actual demo notebooks and execution patterns for validation
+
+### **Documentation Reminder for Future Designs**
+
+This lesson learned section serves as a permanent reminder for future architectural decisions:
+
+- **Always consider the execution context**, not just the definition context
+- **Understand external framework behaviors** before designing integration points
+- **Test designs from real usage patterns**, not development convenience patterns
+- **Path resolution is environment-dependent** - design accordingly
+
 ## Conclusion
 
-The Configuration Portability Path Resolution Design provides a comprehensive solution to the critical portability issues in the cursus configuration system. By implementing workspace-aware relative path resolution, the system achieves:
+The Configuration Portability Path Resolution Design provides a comprehensive solution to the critical portability issues in the cursus configuration system. By implementing **runtime-aware relative path resolution**, the system achieves:
 
 ### **Technical Excellence**
 - **Universal Portability**: Configurations work across all deployment environments
-- **Intelligent Resolution**: Automatic path discovery and resolution
+- **Intelligent Resolution**: Automatic path discovery and resolution based on execution context
 - **Backward Compatibility**: Existing configurations continue to work
 - **Performance Optimization**: Cached path resolution for efficiency
 
@@ -1072,27 +1147,27 @@ The Configuration Portability Path Resolution Design provides a comprehensive so
 The design transforms cursus from a deployment-fragile system into a truly portable framework, enabling the universal machine learning pipeline orchestration vision. This foundation supports continued innovation while maintaining the reliability and usability that developers require.
 
 ### **Implementation Roadmap**
-1. **Phase 1**: Enhanced configuration classes with step builder-relative path resolution
+1. **Phase 1**: Enhanced configuration classes with runtime-aware path resolution
 2. **Phase 2**: Integration with step catalog and automatic path discovery
 3. **Phase 3**: Step builder integration and automatic path conversion
 4. **Phase 4**: Migration utilities and comprehensive testing
 5. **Phase 5**: Documentation and developer training
 
-### **Key Innovation: Step Builder-Relative Approach**
-The core innovation of this design is using the **step builder file location** as the reference point for path resolution. This approach:
+### **Key Innovation: Runtime-Aware Approach (CORRECTED)**
+The core innovation of this design is using the **runtime execution context** (current working directory) as the reference point for path resolution. This approach:
 
-- **Eliminates Configuration Complexity**: No need to configure workspace contexts
-- **Provides Automatic Portability**: Paths are automatically portable across all environments
-- **Maintains Intuitive Behavior**: Relative paths work as developers expect them to
+- **Matches SageMaker Behavior**: Aligns with how SageMaker actually resolves relative paths
+- **Provides True Portability**: Paths work correctly across all deployment environments
+- **Maintains Intuitive Behavior**: Relative paths work as developers and frameworks expect
 - **Enables Seamless Sharing**: Configuration files work immediately on any system
 
-**Example Workflow**:
+**Corrected Example Workflow**:
 1. Developer creates config with absolute path: `/home/user/cursus/dockers/xgboost_atoz`
-2. System automatically converts to relative path: `../../dockers/xgboost_atoz` (relative to step builder)
+2. System automatically converts to relative path: `../dockers/xgboost_atoz` (relative to execution context)
 3. Config saved with relative path works on any system where cursus is installed
-4. Step builder automatically resolves relative path to correct absolute path at runtime
+4. SageMaker resolves relative path correctly from the current working directory at runtime
 
-This design positions cursus as a leading portable machine learning framework capable of seamless operation across any environment while maintaining the simplicity and power that makes it effective for ML pipeline development.
+This **corrected** design positions cursus as a leading portable machine learning framework capable of seamless operation across any environment while maintaining compatibility with external frameworks and the simplicity that makes it effective for ML pipeline development.
 
 ## References
 
