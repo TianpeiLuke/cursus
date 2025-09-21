@@ -238,8 +238,8 @@ class TestPipelineDAGResolverEnhanced:
     def test_enhanced_data_flow_map_with_contracts(self):
         """Test enhanced data flow map creation with contracts using real registry steps and contracts."""
         # Import real contracts from the codebase
-        from cursus.steps.contracts.tabular_preprocess_contract import (
-            TABULAR_PREPROCESS_CONTRACT,
+        from cursus.steps.contracts.tabular_preprocessing_contract import (
+            TABULAR_PREPROCESSING_CONTRACT,
         )
         from cursus.steps.contracts.xgboost_training_contract import (
             XGBOOST_TRAIN_CONTRACT,
@@ -251,7 +251,7 @@ class TestPipelineDAGResolverEnhanced:
         # Mock contract discovery using real contracts
         def mock_discover_contract(step_name):
             contracts = {
-                "TabularPreprocessing": TABULAR_PREPROCESS_CONTRACT,
+                "TabularPreprocessing": TABULAR_PREPROCESSING_CONTRACT,
                 "XGBoostTraining": XGBOOST_TRAIN_CONTRACT,
                 "XGBoostModelEval": XGBOOST_MODEL_EVAL_CONTRACT,
             }

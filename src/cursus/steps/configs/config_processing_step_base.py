@@ -182,23 +182,13 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     @field_validator("processing_source_dir")
     @classmethod
     def validate_processing_source_dir(cls, v: Optional[str]) -> Optional[str]:
-        """Validate processing source directory if provided."""
+        """Validate processing source directory format (S3 paths only)."""
         if v is not None:
             if v.startswith("s3://"):
                 if not v.replace("s3://", "").strip("/"):
                     raise ValueError(f"Invalid S3 path format: {v}")
-            else:
-                path = Path(v)
-                if not path.exists():
-                    logger.warning(f"Processing source directory does not exist: {v}")
-                    raise ValueError(f"Processing source directory does not exist: {v}")
-                if not path.is_dir():
-                    logger.warning(
-                        f"Processing source directory is not a directory: {v}"
-                    )
-                    raise ValueError(
-                        f"Processing source directory is not a directory: {v}"
-                    )
+            # Removed local path existence validation to improve configuration portability
+            # Path validation should happen at execution time in builders, not at config creation time
         return v
 
     @field_validator("processing_entry_point")
@@ -307,9 +297,9 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
     @model_validator(mode="after")
     def validate_entry_point_paths(self) -> "ProcessingStepConfigBase":
-        """Validate entry point exists in the effective source directory if both are provided."""
+        """Validate entry point configuration requirements (without file existence checks)."""
         if self.processing_entry_point is None:
-            logger.info(
+            logger.debug(
                 "No processing_entry_point provided in base config. Skipping path validation."
             )
             return self
@@ -323,25 +313,16 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                     "to locate local processing_entry_point."
                 )
         elif effective_source_dir.startswith("s3://"):
-            logger.info(
+            logger.debug(
                 f"Processing source directory ('{effective_source_dir}') is S3. "
                 f"Assuming processing_entry_point '{self.processing_entry_point}' exists within it."
             )
         else:
-            script_full_path = Path(effective_source_dir) / self.processing_entry_point
-            if not script_full_path.is_file():
-                logger.warning(
-                    f"Processing entry point script '{self.processing_entry_point}' "
-                    f"not found within effective source directory '{effective_source_dir}'. "
-                    f"Looked at: '{script_full_path}'."
-                )
-                raise FileNotFoundError(
-                    f"Processing entry point script '{self.processing_entry_point}' "
-                    f"not found within effective source directory '{effective_source_dir}'. "
-                    f"Looked at: '{script_full_path}'"
-                )
-            logger.info(
-                f"Validated processing_entry_point '{script_full_path}' exists."
+            # Removed file existence validation to improve configuration portability
+            # File validation should happen at execution time in builders, not at config creation time
+            logger.debug(
+                f"Processing entry point configured: '{self.processing_entry_point}' "
+                f"in source directory '{effective_source_dir}'"
             )
 
         return self

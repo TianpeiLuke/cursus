@@ -100,12 +100,15 @@ class PyTorchModelStepConfig(
             )
 
     def _validate_entry_point(self) -> None:
-        """Validate entry point script"""
-        if self.source_dir and not self.source_dir.startswith("s3://"):
-            entry_point_path = Path(self.source_dir) / self.entry_point
-            if not entry_point_path.exists():
+        """Validate entry point configuration (without file existence checks)"""
+        # Removed file existence validation to improve configuration portability
+        # File validation should happen at execution time in builders, not at config creation time
+        
+        # Only validate that source_dir is provided if entry_point is a relative path
+        if self.entry_point and not self.entry_point.startswith("s3://"):
+            if not self.source_dir:
                 raise ValueError(
-                    f"Inference entry point script not found: {entry_point_path}"
+                    "source_dir must be provided when entry_point is a relative path"
                 )
 
     @field_validator("inference_memory_limit")
@@ -142,3 +145,6 @@ class PyTorchModelStepConfig(
     def get_endpoint_name(self) -> str:
         """Generate endpoint name"""
         return f"{self.pipeline_name}-endpoint"
+
+    # Model creation steps don't need script paths - they use the default implementation
+    # from BasePipelineConfig which returns None/default_path

@@ -99,12 +99,15 @@ class XGBoostModelStepConfig(BasePipelineConfig):
             )
 
     def _validate_entry_point(self) -> None:
-        """Validate entry point script"""
-        if self.source_dir and not self.source_dir.startswith("s3://"):
-            entry_point_path = Path(self.source_dir) / self.entry_point
-            if not entry_point_path.exists():
+        """Validate entry point configuration (without file existence checks)"""
+        # Removed file existence validation to improve configuration portability
+        # File validation should happen at execution time in builders, not at config creation time
+        
+        # Only validate that source_dir is provided if entry_point is a relative path
+        if self.entry_point and not self.entry_point.startswith("s3://"):
+            if not self.source_dir:
                 raise ValueError(
-                    f"Inference entry point script not found: {entry_point_path}"
+                    "source_dir must be provided when entry_point is a relative path"
                 )
 
     def _validate_framework_version(self) -> None:

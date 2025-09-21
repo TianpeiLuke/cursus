@@ -17,9 +17,9 @@ from ...registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_tabular_preprocess_contract():
-    from ..contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+    from ..contracts.tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
 
-    return TABULAR_PREPROCESS_CONTRACT
+    return TABULAR_PREPROCESSING_CONTRACT
 
 
 # Tabular Preprocessing Step Specification

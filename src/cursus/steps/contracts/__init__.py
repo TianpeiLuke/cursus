@@ -20,7 +20,7 @@ from .mims_registration_contract import MIMS_REGISTRATION_CONTRACT
 from .model_calibration_contract import MODEL_CALIBRATION_CONTRACT
 from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 from .risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
-from .tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+from .tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
 
 # Training script contracts
 from .pytorch_training_contract import PYTORCH_TRAIN_CONTRACT
@@ -47,7 +47,7 @@ __all__ = [
     "MODEL_CALIBRATION_CONTRACT",
     "XGBOOST_MODEL_EVAL_CONTRACT",
     "RISK_TABLE_MAPPING_CONTRACT",
-    "TABULAR_PREPROCESS_CONTRACT",
+    "TABULAR_PREPROCESSING_CONTRACT",
     # Training contracts
     "PYTORCH_TRAIN_CONTRACT",
     "XGBOOST_TRAIN_CONTRACT",

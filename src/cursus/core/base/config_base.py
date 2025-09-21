@@ -21,6 +21,7 @@ import json
 from datetime import datetime
 import logging
 import inspect
+from abc import ABC, abstractmethod
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 # Step registry will be accessed via lazy loading when needed
 
 
-class BasePipelineConfig(BaseModel):
+class BasePipelineConfig(BaseModel, ABC):
     """Base configuration with shared pipeline attributes and self-contained derivation logic."""
 
     # Class variables using ClassVar for Pydantic
@@ -49,6 +50,9 @@ class BasePipelineConfig(BaseModel):
 
     # For internal caching (completely private)
     _cache: Dict[str, Any] = PrivateAttr(default_factory=dict)
+
+    # Step catalog instance for optimized component discovery (lazy-loaded)
+    _step_catalog: Optional[Any] = PrivateAttr(default=None)
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
@@ -316,18 +320,8 @@ class BasePipelineConfig(BaseModel):
             )
         return v
 
-    @field_validator("source_dir", check_fields=False)
-    @classmethod
-    def _validate_source_dir_exists(cls, v: Optional[str]) -> Optional[str]:
-        """Validate that source_dir exists if it's a local path."""
-        if v is not None and not v.startswith("s3://"):  # Only validate local paths
-            if not Path(v).exists():
-                logger.warning(f"Local source directory does not exist: {v}")
-                raise ValueError(f"Local source directory does not exist: {v}")
-            if not Path(v).is_dir():
-                logger.warning(f"Local source_dir is not a directory: {v}")
-                raise ValueError(f"Local source_dir is not a directory: {v}")
-        return v
+    # Removed source_dir validator to improve configuration portability
+    # Path validation should happen at execution time in builders, not at config creation time
 
     # Initialize derived fields at creation time to avoid potential validation loops
     @model_validator(mode="after")
@@ -350,21 +344,158 @@ class BasePipelineConfig(BaseModel):
 
         return self
 
+    @property
+    def step_catalog(self) -> Optional[Any]:
+        """
+        Lazy-loaded step catalog instance for optimized component discovery.
+        
+        Returns:
+            StepCatalog instance or None if initialization fails
+        """
+        if self._step_catalog is None:
+            try:
+                # Import StepCatalog with proper error handling
+                from ...step_catalog.step_catalog import StepCatalog
+                
+                # Initialize with workspace awareness if possible
+                workspace_dirs = self._detect_workspace_dirs()
+                self._step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
+                
+                logger.debug(f"Initialized StepCatalog with workspace_dirs: {workspace_dirs}")
+                
+            except ImportError as e:
+                logger.warning(f"StepCatalog not available: {e}")
+                self._step_catalog = None
+            except Exception as e:
+                logger.error(f"Error initializing StepCatalog: {e}")
+                self._step_catalog = None
+        
+        return self._step_catalog
+
+    def _detect_workspace_dirs(self) -> Optional[List[Path]]:
+        """
+        Detect workspace directories based on current configuration context.
+        
+        Returns:
+            List of workspace directories or None if not detected
+        """
+        try:
+            # Try to detect workspace from config file location
+            config_file = Path(inspect.getfile(self.__class__))
+            
+            # Check if we're in a workspace structure
+            current_dir = config_file.parent
+            while current_dir.parent != current_dir:
+                # Look for workspace indicators
+                if (current_dir / "development" / "projects").exists():
+                    logger.debug(f"Detected workspace directory: {current_dir}")
+                    return [current_dir]
+                current_dir = current_dir.parent
+            
+            # No workspace detected
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error detecting workspace directories: {e}")
+            return None
+
+    def _derive_step_name(self) -> str:
+        """
+        Get step name from configuration class using registry mapping.
+        
+        This method uses the step registry as the primary source of truth for step names,
+        falling back to derivation logic only when the class is not found in the registry.
+        This ensures compatibility with the step catalog system and avoids naming issues
+        like "XGBoostModelEval" being incorrectly converted to "x_g_boost_model_eval".
+        
+        Returns:
+            Step name from registry or derived name as fallback
+        """
+        class_name = self.__class__.__name__
+        
+        # Strategy 1: Use registry mapping first (most reliable)
+        try:
+            step_name = self.get_step_name(class_name)
+            if step_name != class_name:  # Found in registry
+                logger.debug(f"Found step name in registry: {class_name} → {step_name}")
+                
+                # Handle job_type variants if available
+                if hasattr(self, 'job_type') and self.job_type:
+                    step_name = f"{step_name}_{self.job_type.lower()}"
+                
+                return step_name
+        except Exception as e:
+            logger.debug(f"Registry lookup failed for {class_name}: {e}")
+        
+        # Strategy 2: Fallback to derivation (for classes not in registry)
+        logger.debug(f"Using derivation fallback for {class_name}")
+        
+        # Remove 'Config' suffix if present
+        if class_name.endswith('Config'):
+            step_name = class_name[:-6]  # Remove 'Config'
+        else:
+            step_name = class_name
+        
+        # Improved PascalCase to snake_case conversion that handles acronyms better
+        import re
+        # Handle consecutive uppercase letters (acronyms) first
+        step_name = re.sub('([A-Z]+)([A-Z][a-z])', r'\1_\2', step_name)
+        # Then handle normal PascalCase
+        step_name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', step_name)
+        step_name = step_name.lower()
+        
+        # Handle job_type variants if available
+        if hasattr(self, 'job_type') and self.job_type:
+            step_name = f"{step_name}_{self.job_type.lower()}"
+        
+        logger.debug(f"Derived step name: {class_name} → {step_name}")
+        return step_name
+
     def get_script_contract(self) -> Optional["ScriptContract"]:
         """
-        Get script contract for this configuration.
+        Get script contract for this configuration using optimized step catalog discovery.
 
-        This base implementation returns None. Derived classes should override
-        this method to return their specific script contract.
+        This optimized implementation uses the step catalog system for efficient contract
+        discovery with O(1) lookups and workspace awareness, falling back to legacy
+        methods for backward compatibility.
 
         Returns:
             Script contract instance or None if not available
         """
+        # Check cache first for performance
+        cache_key = "script_contract"
+        if cache_key in self._cache:
+            return cast(Optional["ScriptContract"], self._cache[cache_key])
+
         # Check for hardcoded script_contract first (for backward compatibility)
         if hasattr(self, "_script_contract"):
-            return cast(Optional["ScriptContract"], self._script_contract)
+            contract = cast(Optional["ScriptContract"], self._script_contract)
+            self._cache[cache_key] = contract
+            return contract
 
-        # Otherwise attempt to load based on class and job_type
+        # OPTIMIZATION: Use step catalog for efficient contract discovery
+        try:
+            step_catalog = self.step_catalog
+            if step_catalog:
+                step_name = self._derive_step_name()
+                
+                logger.debug(f"Attempting to load contract for step: {step_name}")
+                
+                # Use step catalog's optimized contract loading
+                contract = step_catalog.load_contract_class(step_name)
+                if contract:
+                    logger.debug(f"Successfully loaded contract via step catalog for {step_name}")
+                    self._cache[cache_key] = contract
+                    return cast(Optional["ScriptContract"], contract)
+                else:
+                    logger.debug(f"No contract found via step catalog for {step_name}")
+            else:
+                logger.debug("Step catalog not available, falling back to legacy method")
+        
+        except Exception as e:
+            logger.debug(f"Error using step catalog for contract discovery: {e}")
+
+        # FALLBACK: Legacy hardcoded import method for backward compatibility
         try:
             class_name = self.__class__.__name__.replace("Config", "")
 
@@ -376,7 +507,10 @@ class BasePipelineConfig(BaseModel):
                 try:
                     contract_module = __import__(module_name, fromlist=[""])
                     if hasattr(contract_module, contract_name):
-                        return cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
+                        contract = cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
+                        logger.debug(f"Successfully loaded contract via legacy method with job_type: {contract_name}")
+                        self._cache[cache_key] = contract
+                        return contract
                 except (ImportError, AttributeError):
                     pass
 
@@ -387,13 +521,19 @@ class BasePipelineConfig(BaseModel):
             try:
                 contract_module = __import__(module_name, fromlist=[""])
                 if hasattr(contract_module, contract_name):
-                    return cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
+                    contract = cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
+                    logger.debug(f"Successfully loaded contract via legacy method: {contract_name}")
+                    self._cache[cache_key] = contract
+                    return contract
             except (ImportError, AttributeError):
                 pass
 
         except Exception as e:
-            logger.debug(f"Error loading script contract: {e}")
+            logger.debug(f"Error in legacy contract loading: {e}")
 
+        # Cache the None result to avoid repeated failed lookups
+        self._cache[cache_key] = None
+        logger.debug(f"No contract found for configuration: {self.__class__.__name__}")
         return None
 
     @property
@@ -408,37 +548,48 @@ class BasePipelineConfig(BaseModel):
 
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
-        Get script path, preferring contract-defined path if available.
-
+        Get script path for this configuration.
+        
+        This method provides a default implementation that returns None, since not all
+        step types require scripts (e.g., Model creation steps don't need scripts).
+        
+        Derived classes that need script paths should override this method with their
+        specific requirements:
+        - Processing steps: Combine entry_point with source_dir
+        - Training steps: Use contract entry_point or combine with source_dir
+        - Model steps: May not need scripts at all
+        
         Args:
-            default_path: Default script path to use if not found in contract
-
+            default_path: Default script path to use if not found via other methods
+            
         Returns:
-            Script path
+            Script path, default_path, or None if not applicable for this step type
         """
-        # Try to get from contract
-        contract = self.get_script_contract()
-        if contract and hasattr(contract, "script_path"):
-            return cast(Optional[str], contract.script_path)
-
-        # Fall back to default or hardcoded path
-        if hasattr(self, "script_path"):
-            return cast(Optional[str], self.script_path)
-
+        # Default implementation returns None since not all step types need scripts
         return default_path
 
     @classmethod
     def get_step_name(cls, config_class_name: str) -> str:
-        """Get the step name for a configuration class."""
-        step_names = cls._get_step_registry()
-        return step_names.get(config_class_name, config_class_name)
+        """Get the step name for a configuration class using existing registry functions."""
+        try:
+            # Use the existing registry function with workspace awareness
+            from ...registry.step_names import get_config_step_registry
+            config_registry = get_config_step_registry()
+            return config_registry.get(config_class_name, config_class_name)
+        except ImportError:
+            logger.debug("Registry not available, returning class name")
+            return config_class_name
 
     @classmethod
     def get_config_class_name(cls, step_name: str) -> str:
-        """Get the configuration class name from a step name."""
-        step_names = cls._get_step_registry()
-        reverse_mapping = {v: k for k, v in step_names.items()}
-        return reverse_mapping.get(step_name, step_name)
+        """Get the configuration class name from a step name using existing registry functions."""
+        try:
+            # Use the existing registry function with workspace awareness
+            from ...registry.step_names import get_config_class_name
+            return get_config_class_name(step_name)
+        except ImportError:
+            logger.debug("Registry not available, returning step name")
+            return step_name
 
     @classmethod
     def _get_step_registry(

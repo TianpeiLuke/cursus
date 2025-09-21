@@ -17,7 +17,7 @@ import logging
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import contract
-from ..contracts.tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+from ..contracts.tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -183,7 +183,7 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         Returns:
             The tabular preprocessing script contract
         """
-        return TABULAR_PREPROCESS_CONTRACT
+        return TABULAR_PREPROCESSING_CONTRACT
 
     def get_script_path(self, default_path: str = None) -> str:
         """

@@ -219,13 +219,15 @@ class RegistrationConfig(BasePipelineConfig):
 
     @model_validator(mode="after")
     def validate_registration_configs(self) -> "RegistrationConfig":
-        """Validate registration-specific configurations"""
-        # Validate inference entry point
-        if self.source_dir and not self.source_dir.startswith("s3://"):
-            entry_point_path = Path(self.source_dir) / self.inference_entry_point
-            if not entry_point_path.exists():
+        """Validate registration-specific configurations (without file existence checks)"""
+        # Removed file existence validation to improve configuration portability
+        # File validation should happen at execution time in builders, not at config creation time
+        
+        # Only validate that source_dir is provided if inference_entry_point is a relative path
+        if self.inference_entry_point and not self.inference_entry_point.startswith("s3://"):
+            if not self.source_dir:
                 raise ValueError(
-                    f"Inference entry point script not found: {entry_point_path}"
+                    "source_dir must be provided when inference_entry_point is a relative path"
                 )
 
         return self
@@ -394,6 +396,20 @@ class RegistrationConfig(BasePipelineConfig):
     def get_variable_schema(self) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
         """Legacy method that forwards to the property"""
         return self.variable_schema
+
+    def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
+        """
+        Get script path for registration step.
+        
+        Returns:
+            Path to the inference entry point script or default_path if not available
+        """
+        if self.inference_entry_point and self.source_dir:
+            if self.source_dir.startswith("s3://"):
+                return f"{self.source_dir.rstrip('/')}/{self.inference_entry_point}"
+            else:
+                return str(Path(self.source_dir) / self.inference_entry_point)
+        return default_path
 
     # ===== Serialization =====
 

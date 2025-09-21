@@ -11,7 +11,7 @@ from pathlib import Path
 import logging
 
 from ...core.base.contract_base import ScriptContract, ValidationResult
-from .tabular_preprocess_contract import TABULAR_PREPROCESS_CONTRACT
+from .tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
 from .package_contract import PACKAGE_CONTRACT
 from .payload_contract import PAYLOAD_CONTRACT
 from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
@@ -48,14 +48,14 @@ class ScriptContractValidator:
 
     # Registry of all available contracts
     CONTRACTS = {
-        "tabular_preprocess.py": TABULAR_PREPROCESS_CONTRACT,
+        "tabular_preprocessing.py": TABULAR_PREPROCESSING_CONTRACT,
         "package.py": PACKAGE_CONTRACT,
         "payload.py": PAYLOAD_CONTRACT,
-        "model_evaluation_xgb.py": XGBOOST_MODEL_EVAL_CONTRACT,
+        "xgboost_model_evaluation.py": XGBOOST_MODEL_EVAL_CONTRACT,
         "currency_conversion.py": CURRENCY_CONVERSION_CONTRACT,
         "risk_table_mapping.py": RISK_TABLE_MAPPING_CONTRACT,
         "train.py": PYTORCH_TRAIN_CONTRACT,
-        "train_xgb.py": XGBOOST_TRAIN_CONTRACT,
+        "xgboost_training.py": XGBOOST_TRAIN_CONTRACT,
     }
 
     def __init__(self, scripts_directory: str = "src/pipeline_scripts"):
