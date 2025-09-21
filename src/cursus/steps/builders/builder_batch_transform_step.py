@@ -189,41 +189,75 @@ class BatchTransformStepBuilder(StepBuilderBase):
         """
         Create transform input using specification and provided inputs.
 
-        This method creates a TransformInput object based on the configuration
-        and input dependencies.
+        This method creates a TransformInput object based on the specification
+        dependencies and input data sources.
 
         Args:
             inputs: Input data sources keyed by logical name
 
         Returns:
-            TransformInput object
+            Tuple of (TransformInput object, model_name)
 
         Raises:
-            ValueError: If required inputs are missing
+            ValueError: If required inputs are missing or specification is not available
         """
-        # Process model_name input
+        if not self.spec:
+            raise ValueError("Step specification is required")
+
         model_name = None
-        if "model_name" in inputs:
-            model_name = inputs["model_name"]
-            self.log_info("Using model_name from dependencies: %s", model_name)
-
-        if not model_name:
-            raise ValueError("model_name is required but not provided in inputs")
-
-        # Process data input (must come from dependencies)
         input_data = None
 
-        # Check for processed_data or input_data in the inputs
-        if "processed_data" in inputs:
-            input_data = inputs["processed_data"]
-            self.log_info("Using processed_data from dependencies: %s", input_data)
-        elif "input_data" in inputs:  # backward compatibility
-            input_data = inputs["input_data"]
-            self.log_info("Using input_data from dependencies: %s", input_data)
+        # Process each dependency in the specification
+        for _, dependency_spec in self.spec.dependencies.items():
+            logical_name = dependency_spec.logical_name
+
+            # Skip if optional and not provided
+            if not dependency_spec.required and logical_name not in inputs:
+                self.log_info(
+                    "Optional input '%s' not provided, skipping", logical_name
+                )
+                continue
+
+            # Make sure required inputs are present
+            if dependency_spec.required and logical_name not in inputs:
+                raise ValueError(
+                    f"Required input '{logical_name}' not provided. "
+                    f"Expected from compatible sources: {dependency_spec.compatible_sources}"
+                )
+
+            # Handle specific dependency types based on logical name
+            if logical_name == "model_name":
+                model_name = inputs[logical_name]
+                self.log_info(
+                    "Using model_name from dependencies: %s (type: %s)",
+                    model_name,
+                    dependency_spec.dependency_type,
+                )
+            elif logical_name == "processed_data":
+                input_data = inputs[logical_name]
+                self.log_info(
+                    "Using processed_data from dependencies: %s (type: %s)",
+                    input_data,
+                    dependency_spec.dependency_type,
+                )
+            else:
+                # Log unexpected logical names for debugging
+                self.log_warning(
+                    "Unexpected logical name '%s' in specification dependencies",
+                    logical_name,
+                )
+
+        # Final validation - ensure we got the required inputs
+        if not model_name:
+            raise ValueError(
+                "model_name is required but not provided in inputs. "
+                "Check that a model step (PytorchModel, XgboostModel) is properly connected."
+            )
 
         if not input_data:
             raise ValueError(
-                "Input data source (processed_data) is required but not provided in inputs"
+                "processed_data is required but not provided in inputs. "
+                "Check that a preprocessing step (TabularPreprocessing) is properly connected."
             )
 
         # Create the transform input
@@ -238,46 +272,42 @@ class BatchTransformStepBuilder(StepBuilderBase):
 
         return transform_input, model_name
 
-    def _get_outputs(self, outputs: Dict[str, Any]) -> Dict[str, str]:
+    def _get_outputs(self, outputs: Dict[str, Any]) -> str:
         """
-        Process outputs based on specification using consistent folder structure.
-
-        For batch transform, this returns a dictionary of output information with
-        consistent path structure using the base output path and Join pattern.
+        Get the S3 output path for the transform job using specification.
+        
+        This path will be used by the Transformer and will be accessible via 
+        properties.TransformOutput.S3OutputPath at runtime.
 
         Args:
             outputs: Output destinations keyed by logical name
 
         Returns:
-            Dictionary of output information with consistent path structure
+            str: S3 URI where transform outputs will be stored
         """
-        result = {}
+        if not self.spec:
+            raise ValueError("Step specification is required")
 
-        # Get the base output path (using PIPELINE_EXECUTION_TEMP_DIR if available)
+        # Check for explicitly provided output path
+        for _, output_spec in self.spec.outputs.items():
+            logical_name = output_spec.logical_name
+            if logical_name in outputs:
+                self.log_info(
+                    "Using provided output path from '%s': %s", 
+                    logical_name, 
+                    outputs[logical_name]
+                )
+                return outputs[logical_name]
+
+        # Generate default output path using specification
         base_output_path = self._get_base_output_path()
-
-        # If we have a specification, include output information with consistent paths
-        if self.spec:
-            step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'batch_transform'
-            
-            for output_spec in self.spec.outputs.values():
-                logical_name = output_spec.logical_name
-                if logical_name in outputs:
-                    # If explicit output path provided, use it
-                    result[logical_name] = outputs[logical_name]
-                else:
-                    # Generate consistent output path using Join pattern
-                    from sagemaker.workflow.functions import Join
-                    consistent_path = Join(on="/", values=[base_output_path, step_type, logical_name])
-                    result[logical_name] = consistent_path
-                    self.log_info(
-                        "Generated consistent output path for '%s': %s",
-                        logical_name,
-                        consistent_path,
-                    )
-
-        self.log_info("Transform step will produce outputs: %s", list(result.keys()))
-        return result
+        step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'batch_transform'
+        
+        from sagemaker.workflow.functions import Join
+        output_path = Join(on="/", values=[base_output_path, step_type, self.config.job_type])
+        
+        self.log_info("Generated default output path: %s", output_path)
+        return output_path
 
     def create_step(self, **kwargs) -> TransformStep:
         """
@@ -317,11 +347,11 @@ class BatchTransformStepBuilder(StepBuilderBase):
         # Get transformer inputs and model name
         transform_input, model_name = self._get_inputs(inputs)
 
-        # Process outputs (mostly for logging in batch transform case)
-        self._get_outputs(outputs)
+        # Get output path using specification-driven method
+        output_path = self._get_outputs(outputs)
 
-        # Build the transformer
-        transformer = self._create_transformer(model_name)
+        # Build the transformer with the output path
+        transformer = self._create_transformer(model_name, output_path)
 
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
