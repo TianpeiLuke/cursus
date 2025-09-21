@@ -5,10 +5,6 @@ from datetime import datetime
 from enum import Enum
 
 import json
-import boto3
-import tarfile
-import tempfile
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -111,9 +107,6 @@ class PayloadConfig(ProcessingStepConfigBase):
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
 
-    # S3 path configuration using PrivateAttr (not a model field)
-    _sample_payload_s3_key = PrivateAttr(default=None)
-
     # Valid types for validation
     _VALID_TYPES: ClassVar[List[str]] = ["NUMERIC", "TEXT"]
 
@@ -132,11 +125,7 @@ class PayloadConfig(ProcessingStepConfigBase):
             return None
         return str(value)
 
-    # Property for read-only access to sample_payload_s3_key
-    @property
-    def sample_payload_s3_key(self) -> Optional[str]:
-        """Get the S3 key for sample payload file (read-only)"""
-        return self._sample_payload_s3_key
+    # Removed sample_payload_s3_key property - S3 path construction should happen in builders/scripts
 
     # Validators for inputs
 
@@ -237,9 +226,7 @@ class PayloadConfig(ProcessingStepConfigBase):
         # Call parent validator first
         super().initialize_derived_fields()
 
-        # Don't immediately initialize _sample_payload_s3_key
-        # It will be initialized on-demand by ensure_payload_path
-
+        # No additional derived fields to initialize for PayloadConfig
         return self
 
     @model_validator(mode="after")
@@ -291,239 +278,14 @@ class PayloadConfig(ProcessingStepConfigBase):
         """Get the effective source directory"""
         return self.processing_source_dir or self.source_dir
 
-    def ensure_payload_path(self) -> None:
-        """
-        Ensure S3 key for payload is set. Only called when needed.
+    # Removed ensure_payload_path() and get_full_payload_path() methods
+    # These are redundant and not portable - S3 path construction should happen in builders/scripts
 
-        This method generates the S3 key based on pipeline name, version,
-        and registration objective, then stores it in a private field.
-        """
-        # Early exit if already set to avoid unnecessary work
-        if self._sample_payload_s3_key:
-            return
+    # Removed get_field_default_value() method - this is processing logic that belongs in the script
+    # Config should only provide the default values, not compute them
 
-        # Generate path without using model validators
-        payload_file_name = f"payload_{self.pipeline_name}_{self.pipeline_version}"
-        if self.model_objective:
-            payload_file_name += f"_{self.model_objective}"
-        # Direct assignment to private field
-        self._sample_payload_s3_key = f"mods/payload/{payload_file_name}.tar.gz"
-
-    def get_full_payload_path(self) -> str:
-        """Get full S3 path for payload"""
-        # Ensure path is set before accessing
-        if not self._sample_payload_s3_key:
-            self.ensure_payload_path()
-        return f"s3://{self.bucket}/{self._sample_payload_s3_key}"
-
-    def get_field_default_value(self, field_name: str, var_type: str) -> str:
-        """Get default value for a field"""
-        var_type_upper = var_type.upper()
-        if var_type_upper == "TEXT":
-            if self.special_field_values and field_name in self.special_field_values:
-                template = self.special_field_values[field_name]
-                try:
-                    return template.format(
-                        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    )
-                except KeyError as e:
-                    raise ValueError(
-                        f"Invalid placeholder in template for field '{field_name}': {str(e)}"
-                    )
-            return self.default_text_value
-        elif var_type_upper == "NUMERIC":
-            return str(self.default_numeric_value)
-        else:
-            raise ValueError(f"Unknown variable type: {var_type}")
-
-    def generate_csv_payload(self) -> str:
-        """
-        Generate CSV format payload following the order in source_model_inference_input_variable_list.
-
-        Returns:
-            Comma-separated string of values
-        """
-        values = []
-        input_vars = self.source_model_inference_input_variable_list
-
-        if isinstance(input_vars, dict):
-            # Dictionary format
-            for field_name, var_type in input_vars.items():
-                values.append(self.get_field_default_value(field_name, var_type))
-        else:
-            # List format
-            for field_name, var_type in input_vars:
-                values.append(self.get_field_default_value(field_name, var_type))
-
-        return ",".join(values)
-
-    def generate_json_payload(self) -> str:
-        """
-        Generate JSON format payload using source_model_inference_input_variable_list.
-
-        Returns:
-            JSON string with field names and values
-        """
-        payload = {}
-        input_vars = self.source_model_inference_input_variable_list
-
-        if isinstance(input_vars, dict):
-            # Dictionary format
-            for field_name, var_type in input_vars.items():
-                payload[field_name] = self.get_field_default_value(field_name, var_type)
-        else:
-            # List format
-            for field_name, var_type in input_vars:
-                payload[field_name] = self.get_field_default_value(field_name, var_type)
-
-        return json.dumps(payload)
-
-    def generate_sample_payloads(self) -> List[Dict[str, Union[str, dict]]]:
-        """
-        Generate sample payloads for each content type.
-
-        Returns:
-            List of dictionaries containing content type and payload
-        """
-        payloads = []
-
-        for content_type in self.source_model_inference_content_types:
-            payload_info = {"content_type": content_type, "payload": None}
-
-            if content_type == "text/csv":
-                payload_info["payload"] = self.generate_csv_payload()
-            elif content_type == "application/json":
-                payload_info["payload"] = self.generate_json_payload()
-            else:
-                raise ValueError(f"Unsupported content type: {content_type}")
-
-            payloads.append(payload_info)
-
-        return payloads
-
-    def save_payloads(self, output_dir: Path) -> List[Path]:
-        """
-        Save payloads to files.
-
-        Args:
-            output_dir: Directory to save payload files
-
-        Returns:
-            List of paths to created payload files
-        """
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        file_paths = []
-        payloads = self.generate_sample_payloads()
-
-        for i, payload_info in enumerate(payloads):
-            content_type = payload_info["content_type"]
-            payload = payload_info["payload"]
-
-            # Determine file extension and name
-            ext = ".csv" if content_type == "text/csv" else ".json"
-            file_name = f"payload_{content_type.replace('/', '_')}_{i}{ext}"
-            file_path = output_dir / file_name
-
-            # Save payload
-            with open(file_path, "w") as f:
-                f.write(payload)
-
-            file_paths.append(file_path)
-            logger.info(f"Created payload file: {file_path}")
-
-        return file_paths
-
-    def upload_payloads_to_s3(self, payload_files: List[Path]) -> str:
-        """
-        Create tar.gz archive of payload files and upload to S3.
-
-        Args:
-            payload_files: List of payload file paths to upload
-
-        Returns:
-            S3 URI of uploaded archive
-
-        Raises:
-            ValueError: If no payload files provided or S3 upload fails
-        """
-        if not payload_files:
-            raise ValueError("No payload files provided for upload")
-
-        if not self.bucket:
-            raise ValueError("Bucket not specified in configuration")
-
-        # Ensure payload path is set
-        if not self._sample_payload_s3_key:
-            self.ensure_payload_path()
-
-        try:
-            # Create temporary directory for tar.gz creation
-            with tempfile.TemporaryDirectory() as temp_dir:
-                archive_path = Path(temp_dir) / "payload.tar.gz"
-
-                # Create tar.gz archive
-                with tarfile.open(archive_path, "w:gz") as tar:
-                    for file_path in payload_files:
-                        # Add file to archive with its basename as name
-                        tar.add(file_path, arcname=file_path.name)
-
-                # Use bucket and key from config
-                bucket = self.bucket
-                key = self._sample_payload_s3_key
-                s3_uri = f"s3://{bucket}/{key}"
-
-                logger.info(f"Uploading payloads archive to bucket: {bucket}")
-                logger.info(f"Using S3 key: {key}")
-
-                # Upload to S3
-                s3_client = boto3.client("s3")
-                s3_client.upload_file(
-                    str(archive_path),
-                    bucket,
-                    key,
-                    # ExtraArgs={'ServerSideEncryption': 'aws:kms'}
-                )
-
-                logger.info(f"Successfully uploaded payloads to: {s3_uri}")
-                return s3_uri
-
-        except Exception as e:
-            logger.error(f"Failed to upload payloads to S3: {str(e)}")
-            raise
-
-    def generate_and_upload_payloads(self) -> str:
-        """
-        Generate payloads, saveave them, and upload to S3.
-
-        Returns:
-            S3 URI of uploaded archive
-
-        Raises:
-            Exception: If any step fails
-        """
-        # Ensure S3 path is constructed
-        if not self._sample_payload_s3_key:
-            self.ensure_payload_path()
-            logger.info(f"Constructed S3 key: {self._sample_payload_s3_key}")
-
-        try:
-            # Create temporary directory for payload files
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Save payloads to temporary directory
-                logger.info("Generating and saving payload files...")
-                payload_files = self.save_payloads(Path(temp_dir))
-
-                # Upload to S3
-                logger.info("Uploading payloads to S3...")
-                s3_uri = self.upload_payloads_to_s3(payload_files)
-
-                return s3_uri
-
-        except Exception as e:
-            logger.error(f"Failed to generate and upload payloads: {str(e)}")
-            raise
+    # Removed payload generation and processing methods - these belong in the script, not config
+    # Config should only handle user input and configuration, not actual processing logic
 
     # Script and contract handling
 
@@ -536,44 +298,8 @@ class PayloadConfig(ProcessingStepConfigBase):
         """
         return PAYLOAD_CONTRACT
 
-    def get_script_path(self) -> str:
-        """
-        Get script path with priority order:
-        1. Use processing_entry_point if provided
-        2. Fall back to script_contract.entry_point if available
-
-        Always combines with effective source directory.
-
-        Returns:
-            Script path or None if no entry point can be determined
-        """
-        # Determine which entry point to use
-        entry_point = None
-
-        # First priority: Use processing_entry_point if provided
-        if self.processing_entry_point:
-            entry_point = self.processing_entry_point
-        # Second priority: Use contract entry point
-        else:
-            contract = self.get_script_contract()
-            if contract and hasattr(contract, "entry_point"):
-                entry_point = contract.entry_point
-
-        if not entry_point:
-            return None
-
-        # Get the effective source directory
-        effective_source_dir = self.get_effective_source_dir()
-        if not effective_source_dir:
-            return entry_point  # No source dir, just return entry point
-
-        # Combine source dir with entry point
-        if effective_source_dir.startswith("s3://"):
-            full_path = f"{effective_source_dir.rstrip('/')}/{entry_point}"
-        else:
-            full_path = str(Path(effective_source_dir) / entry_point)
-
-        return full_path
+    # Removed get_script_path() method - using inherited implementation from base config
+    # The base config's implementation handles script path resolution properly
 
     # Input/output variable helpers
 
@@ -624,7 +350,5 @@ class PayloadConfig(ProcessingStepConfigBase):
 
         return result
 
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        """Custom serialization - simplified for string types"""
-        data = super().model_dump(**kwargs)
-        return data
+    # Removed model_dump() method - it was redundant, just calling super().model_dump()
+    # Using inherited implementation from base config
