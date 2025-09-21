@@ -105,12 +105,13 @@ Based on the provided requirements, create a detailed plan for implementing a ne
 - [Workspace-Aware Multi-Developer Management Design](../../1_design/workspace_aware_multi_developer_management_design.md) - Multi-developer framework
 - [Agentic Workflow Design](../../1_design/agentic_workflow_design.md) - Complete system architecture for agentic workflows
 
-### Code Examples References
+### Code Examples References (Current Implementation)
 - Registry Examples: `src/cursus/registry/step_names_original.py` - Actual STEP_NAMES dictionary structure
-- Builder Examples: `src/cursus/steps/builders/` - Complete builder implementations by step type
-- Configuration Examples: `src/cursus/steps/configs/` - Configuration class implementations
+- Builder Examples: `src/cursus/steps/builders/` - Complete builder implementations by step type with portable path support
+- Configuration Examples: `src/cursus/steps/configs/` - Configuration class implementations with three-tier design and portable paths
 - Contract Examples: `src/cursus/steps/contracts/` - Script contract implementations
 - Specification Examples: `src/cursus/steps/specs/` - Step specification implementations
+- Current Implementation: All examples reflect the refactored system with automatic discovery and portable path support
 
 ## IMPORTANT: Domain Knowledge Acquisition
 

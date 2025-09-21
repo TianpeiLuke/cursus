@@ -53,10 +53,9 @@ By the end of this tutorial, you'll have created a complete XGBoost pipeline tha
 First, let's set up your environment and verify everything is working:
 
 ```python
-# Import core Cursus components
+# Import core Cursus components (updated imports)
 from cursus.core.compiler.dag_compiler import PipelineDAGCompiler
 from cursus.api.dag.base_dag import PipelineDAG
-from cursus.pipeline_catalog.pipelines.xgb_e2e_comprehensive import create_pipeline
 
 # Import SageMaker components
 from sagemaker import Session
@@ -90,21 +89,21 @@ import json
 from pathlib import Path
 from datetime import date
 
-# Import the configuration classes from Cursus
-from src.cursus.core.base.config_base import BasePipelineConfig
-from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
-from src.cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
-from src.cursus.steps.configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
-from src.cursus.steps.configs.config_xgboost_training_step import XGBoostTrainingConfig
-from src.cursus.steps.configs.config_model_calibration_step import ModelCalibrationConfig
-from src.cursus.steps.configs.config_xgboost_model_eval_step import XGBoostModelEvalConfig
-from src.cursus.steps.configs.config_package_step import PackageConfig
-from src.cursus.steps.configs.config_registration_step import RegistrationConfig
-from src.cursus.steps.configs.config_payload_step import PayloadConfig
+# Import the configuration classes from Cursus (updated imports)
+from cursus.core.base.config_base import BasePipelineConfig
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+from cursus.steps.configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
+from cursus.steps.configs.config_xgboost_training_step import XGBoostTrainingConfig
+from cursus.steps.configs.config_model_calibration_step import ModelCalibrationConfig
+from cursus.steps.configs.config_xgboost_model_eval_step import XGBoostModelEvalConfig
+from cursus.steps.configs.config_package_step import PackageConfig
+from cursus.steps.configs.config_registration_step import RegistrationConfig
+from cursus.steps.configs.config_payload_step import PayloadConfig
 
 # Import hyperparameters
-from src.cursus.core.base.hyperparameters_base import ModelHyperparameters
-from src.cursus.steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
+from cursus.core.base.hyperparameters_base import ModelHyperparameters
+from cursus.steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
 
 # Create configuration directory
 config_dir = Path("pipeline_configs")
@@ -306,7 +305,8 @@ print(f"✅ Created {len(config_list)} configuration objects")
 # Step 5: Merge and Save Configurations (following demo_config.ipynb pattern)
 print("\n📋 Step 5: Merging and saving configurations...")
 
-from src.cursus.steps.configs.utils import merge_and_save_configs
+# Updated import for current implementation
+from cursus.core.config_fields import merge_and_save_configs
 
 # Create config filename following the demo pattern
 MODEL_CLASS = 'xgboost'
@@ -317,12 +317,20 @@ config_filename = f'config_{region}_{MODEL_CLASS}_{service_name}.json'
 config_path = config_dir / config_filename
 
 # Merge and save all configurations into one JSON file
+# The system now automatically includes portable paths in the output
 merged_config = merge_and_save_configs(config_list, str(config_path))
 
 print(f"✅ Configuration saved to: {config_path}")
 print(f"📊 Pipeline will use bucket: {sagemaker_session.default_bucket()}")
 print(f"📅 Pipeline date: {current_date}")
 print(f"🔧 Total configurations: {len(config_list)}")
+
+# Show portable path features
+print(f"\n🔄 Portable Path Features:")
+print(f"   📁 Base source_dir: {base_config.source_dir}")
+print(f"   🔄 Portable source_dir: {base_config.portable_source_dir}")
+print(f"   📁 Processing source_dir: {processing_step_config.processing_source_dir}")
+print(f"   🔄 Portable processing source_dir: {processing_step_config.portable_processing_source_dir}")
 
 # Also save hyperparameters separately (following demo pattern)
 hyperparam_filename = f'hyperparameters_{region}_{MODEL_CLASS}.json'
@@ -332,6 +340,7 @@ with open(hyperparam_path, 'w') as f:
     json.dump(xgb_hyperparams.model_dump(), f, indent=2, sort_keys=True)
 
 print(f"💾 Hyperparameters saved to: {hyperparam_path}")
+print(f"💡 Configuration files now include portable paths for universal deployment!")
 ```
 
 ## Step 3: Create Your Pipeline DAG (5 minutes)
@@ -518,11 +527,20 @@ print(f"   🎯 Features: {len(feature_names)}")
 
 ## Step 6: Create Execution Parameters (3 minutes)
 
-Prepare the parameters needed to execute your pipeline, following the demo pattern:
+Prepare the parameters needed to execute your pipeline using the new separated execution document generation system:
 
 ```python
-# Get the pipeline template for execution document handling
-pipeline_template = dag_compiler.get_last_template()
+# NEW: Use the dedicated ExecutionDocumentGenerator (separated from pipeline generation)
+from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+
+# Create execution document generator - this is now separate from pipeline compilation
+exe_doc_generator = ExecutionDocumentGenerator(
+    config_path=str(config_path),
+    sagemaker_session=pipeline_session,
+    role=role
+)
+
+print("📋 Creating execution document using dedicated generator...")
 
 # Create default execution document - this follows the MODS pattern
 from mods_workflow_helper.sagemaker_pipeline_helper import SagemakerPipelineHelper
@@ -532,9 +550,9 @@ default_execution_doc = SagemakerPipelineHelper.get_pipeline_default_execution_d
 print("📋 Default execution document structure:")
 print(json.dumps(default_execution_doc, indent=2))
 
-# Fill in the execution document using the pipeline template
-# This automatically populates all required parameters
-execution_doc = pipeline_template.fill_execution_document(default_execution_doc)
+# NEW: Fill execution document using the dedicated generator with DAG
+# This automatically populates all required parameters using the DAG structure
+execution_doc = exe_doc_generator.fill_execution_document(dag, default_execution_doc)
 
 print("\n✅ Execution document filled with parameters:")
 print(json.dumps(execution_doc, indent=2))
@@ -545,6 +563,13 @@ with open(execution_doc_path, "w") as f:
     json.dump(execution_doc, f, indent=2)
 
 print(f"💾 Execution document saved to: {execution_doc_path}")
+
+# Show what the execution document generator processed
+print(f"\n🔍 Execution Document Generation Summary:")
+print(f"   📊 Configurations loaded: {len(exe_doc_generator.configs)}")
+print(f"   🔧 Helpers available: {len(exe_doc_generator.helpers)}")
+for helper in exe_doc_generator.helpers:
+    print(f"      - {helper.__class__.__name__}")
 
 # You can also customize specific parameters if needed
 custom_params = {
@@ -557,6 +582,12 @@ for key, value in custom_params.items():
     if key in execution_doc:
         execution_doc[key] = value
         print(f"📝 Updated {key}: {value}")
+
+print(f"\n💡 Key Benefits of Separated Execution Document Generation:")
+print(f"   🔄 Independent from pipeline compilation")
+print(f"   📊 Direct DAG-based parameter extraction")
+print(f"   🎯 Specialized helpers for different step types")
+print(f"   🔧 Automatic configuration resolution")
 ```
 
 ## Step 7: Deploy and Execute Your Pipeline (4 minutes)

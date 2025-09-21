@@ -273,20 +273,25 @@ FEATURE_SELECTION_SPEC = StepSpecification(
 
 ### Configuration API
 
-Configuration classes implement the three-tier design pattern for managing step parameters.
+Configuration classes implement the three-tier design pattern for managing step parameters with portable path support.
 
-#### BasePipelineConfig Class
+#### ProcessingStepConfigBase Class
 
 ```python
-from cursus.core.base.config_base import BasePipelineConfig
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 from pydantic import BaseModel, Field, field_validator, PrivateAttr
 
-class YourStepConfig(BasePipelineConfig):
+class YourStepConfig(ProcessingStepConfigBase):
     """
-    Configuration following three-tier design:
+    Configuration following three-tier design with portable path support:
     - Tier 1: Essential fields (required user inputs)
     - Tier 2: System fields (defaults, can be overridden)
     - Tier 3: Derived fields (computed from other fields)
+    
+    Inherits portable path capabilities:
+    - portable_processing_source_dir: Relative path to processing source directory
+    - portable_effective_source_dir: Effective source directory with portable paths
+    - get_portable_script_path(): Script path with portable path support
     """
 ```
 
@@ -483,7 +488,7 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
 **create_step()**
 ```python
 def create_step(self, **kwargs) -> ProcessingStep:
-    """Create the ProcessingStep."""
+    """Create the ProcessingStep with portable path support."""
     inputs_raw = kwargs.get('inputs', {})
     outputs = kwargs.get('outputs', {})
     dependencies = kwargs.get('dependencies', [])
@@ -501,13 +506,20 @@ def create_step(self, **kwargs) -> ProcessingStep:
     proc_inputs = self._get_inputs(inputs)
     proc_outputs = self._get_outputs(outputs)
     
+    # Get script path with portable path support
+    script_path = self.config.get_portable_script_path() or self.config.get_script_path()
+    
+    self.log_info("Using script path: %s (portable: %s)", 
+                 script_path, 
+                 "yes" if self.config.get_portable_script_path() else "no")
+    
     # Create step
     step = ProcessingStep(
         name=self._get_step_name(),
         processor=processor,
         inputs=proc_inputs,
         outputs=proc_outputs,
-        code=self.config.script_path,
+        code=script_path,
         depends_on=dependencies,
         cache_config=self._get_cache_config(enable_caching)
     )
@@ -586,10 +598,20 @@ dag.add_edge("YourStep", "TrainingStep")
 
 ```python
 from cursus.core.compiler.dag_compiler import PipelineDAGCompiler
+from sagemaker.workflow.parameters import ParameterString
 
-# Create compiler
+# Define pipeline parameters for runtime configuration
+pipeline_parameters = [
+    ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://your-bucket/temp"),
+    ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value=""),
+    ParameterString(name="SECURITY_GROUP_ID", default_value=""),
+    ParameterString(name="VPC_SUBNET", default_value=""),
+]
+
+# Create compiler with pipeline parameters
 compiler = PipelineDAGCompiler(
     config_path="config.json",
+    pipeline_parameters=pipeline_parameters,  # Enable runtime parameter injection
     sagemaker_session=pipeline_session,
     role=role
 )
@@ -597,7 +619,7 @@ compiler = PipelineDAGCompiler(
 # Validate DAG
 validation = compiler.validate_dag_compatibility(dag)
 
-# Compile pipeline
+# Compile pipeline with runtime parameter support
 pipeline, report = compiler.compile_with_report(dag=dag)
 ```
 
@@ -821,6 +843,12 @@ execution = pipeline.start()
 - **[Best Practices](../../0_developer_guide/best_practices.md)** - Development best practices
 - **[Common Pitfalls](../../0_developer_guide/common_pitfalls.md)** - Avoiding common mistakes
 - **[Standardization Rules](../../0_developer_guide/standardization_rules.md)** - Coding standards
+
+### Architecture and Design References
+- **[Unified Step Catalog System Design](../../1_design/unified_step_catalog_system_design.md)** - Core discovery system architecture
+- **[Cursus Package Portability Architecture Design](../../1_design/cursus_package_portability_architecture_design.md)** - Universal deployment compatibility and runtime parameter support
+- **[Config Portability Path Resolution Design](../../1_design/config_portability_path_resolution_design.md)** - Portable path resolution system design
+- **[Pipeline Execution Temp Dir Integration](../../1_design/pipeline_execution_temp_dir_integration.md)** - Runtime parameter flow architecture
 
 ### API References
 - **[Core API Reference](../../core/api_reference.md)** - Core component APIs

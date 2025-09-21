@@ -113,6 +113,186 @@ def aws_region(self) -> str:
     return self._aws_region
 ```
 
+### Implementing Portable Path Support (Tier 3 Enhancement)
+
+For configuration classes that handle file paths, implement portable path support as Tier 3 derived fields to enable universal deployment compatibility:
+
+```python
+import inspect
+from pathlib import Path
+
+class ProcessingStepConfigBase(BasePipelineConfig):
+    """Base configuration with portable path support."""
+    
+    # Tier 2: System fields for paths
+    source_dir: Optional[str] = Field(default=None, description="Source directory for scripts")
+    processing_source_dir: Optional[str] = Field(default=None, description="Processing-specific source directory")
+    processing_entry_point: str = Field(default="script.py", description="Processing script entry point")
+    
+    # Tier 3: Portable path derived fields (private with property access)
+    _portable_source_dir: Optional[str] = PrivateAttr(default=None)
+    _portable_processing_source_dir: Optional[str] = PrivateAttr(default=None)
+    _portable_script_path: Optional[str] = PrivateAttr(default=None)
+    
+    @property
+    def portable_source_dir(self) -> Optional[str]:
+        """Get source directory as relative path for portability."""
+        if self.source_dir is None:
+            return None
+            
+        if self._portable_source_dir is None:
+            self._portable_source_dir = self._convert_to_relative_path(self.source_dir)
+        
+        return self._portable_source_dir
+    
+    @property
+    def portable_processing_source_dir(self) -> Optional[str]:
+        """Get processing source directory as relative path for portability."""
+        if self.processing_source_dir is None:
+            return None
+            
+        if self._portable_processing_source_dir is None:
+            self._portable_processing_source_dir = self._convert_to_relative_path(self.processing_source_dir)
+        
+        return self._portable_processing_source_dir
+    
+    @property
+    def portable_effective_source_dir(self) -> Optional[str]:
+        """Get effective source directory as relative path for step builders to use."""
+        return self.portable_processing_source_dir or self.portable_source_dir
+    
+    def get_portable_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
+        """Get script path as relative path for portability."""
+        if self._portable_script_path is None:
+            # Get the absolute script path first
+            absolute_script_path = self.get_script_path(default_path)
+            if absolute_script_path:
+                self._portable_script_path = self._convert_to_relative_path(absolute_script_path)
+            else:
+                self._portable_script_path = None
+        
+        return self._portable_script_path
+    
+    def _convert_to_relative_path(self, path: str) -> str:
+        """Convert absolute path to relative path based on config/builder relationship."""
+        if not path or not Path(path).is_absolute():
+            return path  # Already relative, keep as-is
+        
+        try:
+            # Directory structure analysis:
+            # Config location: src/cursus/steps/configs/config_*.py
+            # Builder location: src/cursus/steps/builders/builder_*.py
+            # Target: Make path relative to builders directory
+            
+            config_file = Path(inspect.getfile(self.__class__))
+            config_dir = config_file.parent      # .../steps/configs/
+            steps_dir = config_dir.parent        # .../steps/
+            builders_dir = steps_dir / "builders" # .../steps/builders/
+            
+            # Convert absolute path to be relative from builders directory
+            abs_path = Path(path)
+            relative_path = abs_path.relative_to(builders_dir)
+            
+            return str(relative_path)
+            
+        except (ValueError, OSError):
+            # Fallback to common parent approach
+            return self._convert_via_common_parent(path)
+    
+    def _convert_via_common_parent(self, path: str) -> str:
+        """Fallback conversion using common parent directory."""
+        try:
+            config_file = Path(inspect.getfile(self.__class__))
+            config_dir = config_file.parent
+            abs_path = Path(path)
+            
+            # Find common parent and create relative path
+            common_parent = self._find_common_parent(abs_path, config_dir)
+            if common_parent:
+                config_to_common = config_dir.relative_to(common_parent)
+                common_to_target = abs_path.relative_to(common_parent)
+                
+                up_levels = len(config_to_common.parts)
+                relative_parts = ['..'] * up_levels + list(common_to_target.parts)
+                
+                return str(Path(*relative_parts))
+        
+        except (ValueError, OSError):
+            pass
+        
+        # Final fallback: return original path
+        return path
+    
+    def _find_common_parent(self, path1: Path, path2: Path) -> Optional[Path]:
+        """Find common parent directory of two paths."""
+        try:
+            parts1 = path1.parts
+            parts2 = path2.parts
+            
+            common_parts = []
+            for p1, p2 in zip(parts1, parts2):
+                if p1 == p2:
+                    common_parts.append(p1)
+                else:
+                    break
+            
+            if common_parts:
+                return Path(*common_parts)
+        except Exception:
+            pass
+        
+        return None
+
+    # Enhanced model_dump to include portable paths in serialization
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        """Override model_dump to include both original and portable paths."""
+        data = super().model_dump(**kwargs)
+        
+        # Add portable paths as additional fields - keep original paths intact
+        if self.portable_source_dir is not None:
+            data["portable_source_dir"] = self.portable_source_dir
+        
+        if self.portable_processing_source_dir is not None:
+            data["portable_processing_source_dir"] = self.portable_processing_source_dir
+        
+        portable_script = self.get_portable_script_path()
+        if portable_script is not None:
+            data["portable_script_path"] = portable_script
+        
+        return data
+```
+
+#### Key Benefits of Portable Path Support
+
+1. **Universal Deployment Compatibility**: Same configuration files work across development, PyPI, Docker, Lambda environments
+2. **Zero Breaking Changes**: Original absolute paths preserved, portable paths added as derived fields
+3. **Automatic Fallback**: Step builders use portable paths with automatic fallback to absolute paths
+4. **Enhanced Serialization**: Configuration files include both original and portable paths
+
+#### Usage in Step Builders
+
+Step builders can use portable paths with automatic fallback:
+
+```python
+# In step builder create_step() method
+def create_step(self, **kwargs) -> ProcessingStep:
+    # Use portable path with automatic fallback
+    script_path = self.config.get_portable_script_path() or self.config.get_script_path()
+    source_dir = self.config.portable_effective_source_dir or self.config.get_effective_source_dir()
+    
+    # Log which path type is being used
+    self.log_info("Using script path: %s (portable: %s)", 
+                 script_path, 
+                 "yes" if self.config.get_portable_script_path() else "no")
+    
+    return ProcessingStep(
+        name=step_name,
+        processor=processor,
+        code=script_path,
+        # ... other parameters
+    )
+```
+
 Key characteristics:
 - Private fields start with underscore `_`
 - Use `Field(default=None, exclude=True)` to exclude from serialization

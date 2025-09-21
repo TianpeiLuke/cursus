@@ -215,13 +215,13 @@ if __name__ == "__main__":
 
 ### Configuration Pattern Examples
 
-**Enhanced Configuration Template**:
+**Enhanced Configuration Template with Portable Path Support**:
 ```python
 """
-[StepName] Configuration with Three-Tier Field Categorization and Workspace Awareness
+[StepName] Configuration with Three-Tier Field Categorization and Portable Path Support
 
-This module implements the configuration class for [StepName] steps using a self-contained 
-design where each field is properly categorized according to the three-tier design:
+This module implements the configuration class for [StepName] steps using the refactored 
+design with automatic configuration discovery and portable path support:
 1. Essential User Inputs (Tier 1) - Required fields that must be provided by users
 2. System Fields (Tier 2) - Fields with reasonable defaults that can be overridden
 3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
@@ -232,26 +232,26 @@ from typing import Dict, Optional, Any, TYPE_CHECKING
 from pathlib import Path
 import logging
 
-# Workspace-aware imports
+# Current implementation imports (refactored system)
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    from cursus.core.base.contract_base import ScriptContract
 
-# Import appropriate base config class based on workspace type
-try:
-    # Shared workspace import
-    from .config_processing_step_base import ProcessingStepConfigBase
-except ImportError:
-    # Isolated workspace import with fallback
-    from src.cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+# Import appropriate base config class (current implementation)
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
-# Import contract (workspace-aware)
-from ..contracts.[name]_contract import [NAME]_CONTRACT
+# Import contract (current implementation)
+from cursus.steps.contracts.[name]_contract import [NAME]_CONTRACT
 
 logger = logging.getLogger(__name__)
 
 class [StepName]Config(ProcessingStepConfigBase):
     """
-    Configuration for the [StepName] step with three-tier field categorization and workspace awareness.
+    Configuration for the [StepName] step with three-tier field categorization and portable path support.
+    
+    Features:
+    - Automatic discovery through step catalog integration (no manual registration required)
+    - Portable path support for universal deployment compatibility
+    - Three-tier field categorization for better maintainability
     
     Fields are categorized into:
     - Tier 1: Essential User Inputs - Required from users
@@ -272,7 +272,6 @@ class [StepName]Config(ProcessingStepConfigBase):
     
     # ===== Derived Fields (Tier 3) =====
     _derived_value: Optional[str] = PrivateAttr(default=None)
-    _workspace_context: Optional[str] = PrivateAttr(default=None)
     
     @property
     def derived_value(self) -> str:
@@ -281,22 +280,29 @@ class [StepName]Config(ProcessingStepConfigBase):
             self._derived_value = f"{self.step_specific_param}_processed"
         return self._derived_value
     
-    @property
-    def workspace_context(self) -> str:
-        """Get workspace context for this configuration."""
-        if self._workspace_context is None:
-            # Detect workspace type
-            import os
-            current_path = Path.cwd()
-            if "development/projects" in str(current_path):
-                self._workspace_context = "isolated"
-            else:
-                self._workspace_context = "shared"
-        return self._workspace_context
+    # ===== Portable Path Support (Inherited from ProcessingStepConfigBase) =====
+    # The following properties are automatically available:
+    # - portable_source_dir: Portable version of source_dir
+    # - portable_processing_source_dir: Portable version of processing_source_dir
+    # - portable_effective_source_dir: Portable version of effective_source_dir
+    # - get_portable_script_path(): Get portable script path
     
     def get_script_contract(self) -> 'ScriptContract':
         """Get script contract for this configuration."""
         return [NAME]_CONTRACT
+    
+    # ===== Enhanced model_dump with Portable Paths =====
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        """Override model_dump to include portable paths for universal deployment."""
+        data = super().model_dump(**kwargs)
+        
+        # Add derived properties
+        data["derived_value"] = self.derived_value
+        
+        # Portable paths are automatically included by ProcessingStepConfigBase
+        # This ensures configuration files work across all deployment environments
+        
+        return data
 ```
 
 ## Knowledge Base - Design Pattern References
@@ -922,18 +928,40 @@ STEP_NAMES = {
 - `"Lambda"` - For utility steps (like hyperparameter preparation)
 - Custom types for special cases
 
-#### B. Builder Registration with Decorator
+#### B. Builder Registration with Decorator (Current Implementation)
 
 The step builder will be automatically registered using the `@register_builder()` decorator:
 
 ```python
 # In src/cursus/steps/builders/builder_[name]_step.py
-from ...core.registry.builder_registry import register_builder
+from cursus.steps.builders.base import StepBuilderBase
+from cursus.registry.builder_registry import register_builder
 
 @register_builder()  # Auto-detects step type from STEP_NAMES registry
 class [StepName]StepBuilder(StepBuilderBase):
-    """Builder for [StepName] step."""
-    pass
+    """Builder for [StepName] step with portable path support."""
+    
+    def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None, 
+                 registry_manager=None, dependency_resolver=None):
+        """Initialize with portable path support."""
+        super().__init__(
+            config=config,
+            spec=STEP_SPEC,  # Always pass the specification
+            sagemaker_session=sagemaker_session,
+            role=role,
+            notebook_root=notebook_root,
+            registry_manager=registry_manager,
+            dependency_resolver=dependency_resolver
+        )
+    
+    def create_step(self, **kwargs):
+        """Create step with portable path support."""
+        # Use portable paths from config
+        script_path = self.config.get_portable_script_path() or self.config.get_script_path()
+        source_dir = self.config.portable_source_dir or self.config.source_dir
+        
+        # Continue with step creation using portable paths...
+        pass
 ```
 
 ### 2. Script Contract Implementation

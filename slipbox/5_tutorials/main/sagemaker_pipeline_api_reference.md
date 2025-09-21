@@ -39,24 +39,37 @@ The main entry point for compiling DAGs into SageMaker pipelines.
 from cursus.core.compiler.dag_compiler import PipelineDAGCompiler
 ```
 
-**Constructor:**
+**Constructor (Current Implementation):**
 ```python
 def __init__(
     self,
     config_path: str,
-    sagemaker_session: PipelineSession,
-    role: str,
-    pipeline_name: Optional[str] = None,
-    pipeline_description: Optional[str] = None
+    sagemaker_session: Optional[PipelineSession] = None,
+    role: Optional[str] = None,
+    config_resolver: Optional[StepConfigResolver] = None,
+    builder_registry: Optional[StepBuilderRegistry] = None,
+    pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
+    **kwargs: Any,
 )
 ```
 
 **Parameters:**
 - `config_path`: Path to the pipeline configuration JSON file
-- `sagemaker_session`: SageMaker pipeline session for AWS operations
-- `role`: IAM role ARN for pipeline execution
-- `pipeline_name`: Optional custom pipeline name
-- `pipeline_description`: Optional pipeline description
+- `sagemaker_session`: Optional SageMaker pipeline session for AWS operations
+- `role`: Optional IAM role ARN for pipeline execution
+- `config_resolver`: Optional custom config resolver for step name resolution
+- `builder_registry`: Optional custom step builder registry
+- `pipeline_parameters`: Optional list of pipeline parameters (defaults to standard MODS parameters)
+- `**kwargs`: Additional arguments passed to the compiler
+
+**Default Pipeline Parameters:**
+```python
+# Default parameters automatically included:
+PIPELINE_EXECUTION_TEMP_DIR = ParameterString(name="PipelineExecutionTempDir")
+KMS_ENCRYPTION_KEY_PARAM = ParameterString(name="KmsEncryptionKey")
+SECURITY_GROUP_ID = ParameterString(name="SecurityGroupId")
+VPC_SUBNET = ParameterString(name="VpcSubnet")
+```
 
 **Example:**
 ```python
@@ -67,6 +80,19 @@ compiler = PipelineDAGCompiler(
     config_path="configs/pipeline_config.json",
     sagemaker_session=pipeline_session,
     role="arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+)
+
+# With custom pipeline parameters
+custom_params = [
+    ParameterString(name="CustomDataPath"),
+    ParameterString(name="ModelVersion")
+]
+
+compiler_with_params = PipelineDAGCompiler(
+    config_path="configs/pipeline_config.json",
+    sagemaker_session=pipeline_session,
+    role="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
+    pipeline_parameters=custom_params
 )
 ```
 
@@ -207,6 +233,141 @@ user_params = {
 execution_doc = compiler.create_execution_document(user_params)
 
 # Use with pipeline execution
+execution = pipeline.start(execution_input=execution_doc)
+```
+
+## Execution Document Generation (Separated Architecture)
+
+### ExecutionDocumentGenerator
+
+**NEW**: Standalone execution document generator, separated from pipeline compilation for specialized processing.
+
+```python
+from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+```
+
+**Constructor:**
+```python
+def __init__(
+    self,
+    config_path: str,
+    sagemaker_session: Optional[PipelineSession] = None,
+    role: Optional[str] = None,
+    config_resolver: Optional[StepConfigResolver] = None
+)
+```
+
+**Parameters:**
+- `config_path`: Path to configuration file
+- `sagemaker_session`: SageMaker session for AWS operations
+- `role`: IAM role for AWS operations
+- `config_resolver`: Custom config resolver for step name resolution
+
+**Key Features:**
+- **Independent Processing**: Operates separately from pipeline compilation
+- **DAG-Based Analysis**: Direct DAG-based parameter extraction
+- **Specialized Helpers**: CradleDataLoadingHelper and RegistrationHelper for different step types
+- **Automatic Resolution**: Intelligent step-to-config mapping with fallbacks
+
+### fill_execution_document()
+
+Main method for filling execution documents with pipeline metadata.
+
+```python
+def fill_execution_document(
+    self, 
+    dag: PipelineDAG, 
+    execution_document: Dict[str, Any]
+) -> Dict[str, Any]
+```
+
+**Parameters:**
+- `dag`: PipelineDAG defining the pipeline structure
+- `execution_document`: Execution document to fill
+
+**Returns:** Updated execution document with all required parameters
+
+**Example:**
+```python
+# Create execution document generator
+exe_doc_generator = ExecutionDocumentGenerator(
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    role=role
+)
+
+# Get default execution document from MODS helper
+from mods_workflow_helper.sagemaker_pipeline_helper import SagemakerPipelineHelper
+default_execution_doc = SagemakerPipelineHelper.get_pipeline_default_execution_document(pipeline)
+
+# Fill execution document using DAG structure
+execution_doc = exe_doc_generator.fill_execution_document(dag, default_execution_doc)
+
+print(f"Processed {len(exe_doc_generator.configs)} configurations")
+print(f"Available helpers: {[h.__class__.__name__ for h in exe_doc_generator.helpers]}")
+```
+
+### Execution Document Helpers
+
+#### CradleDataLoadingHelper
+Specialized helper for Cradle data loading step configurations.
+
+```python
+from cursus.mods.exe_doc.cradle_helper import CradleDataLoadingHelper
+
+helper = CradleDataLoadingHelper()
+
+# Check if helper can handle a step
+can_handle = helper.can_handle_step(step_name, config)
+
+# Extract step configuration
+step_config = helper.extract_step_config(step_name, config)
+
+# Get execution step name
+exec_step_name = helper.get_execution_step_name(step_name, config)
+```
+
+#### RegistrationHelper
+Specialized helper for model registration step configurations.
+
+```python
+from cursus.mods.exe_doc.registration_helper import RegistrationHelper
+
+helper = RegistrationHelper()
+
+# Create execution document config with related configs
+exec_config = helper.create_execution_doc_config_with_related_configs(
+    registration_cfg, payload_cfg, package_cfg
+)
+```
+
+### Benefits of Separated Architecture
+
+1. **Independent Operation**: Execution document generation doesn't require pipeline compilation
+2. **Specialized Processing**: Different helpers for different step types (Cradle, Registration, etc.)
+3. **Direct DAG Analysis**: Works directly with DAG structure for parameter extraction
+4. **Flexible Integration**: Can be used with any pipeline generation system
+5. **Enhanced Debugging**: Clear separation makes troubleshooting easier
+
+**Example Complete Workflow:**
+```python
+# Step 1: Create pipeline and DAG
+dag = create_xgboost_complete_e2e_dag()
+compiler = PipelineDAGCompiler(config_path="config.json", ...)
+pipeline, report = compiler.compile_with_report(dag)
+
+# Step 2: Create execution document generator (separate from compilation)
+exe_doc_generator = ExecutionDocumentGenerator(
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    role=role
+)
+
+# Step 3: Generate execution document using DAG
+default_doc = SagemakerPipelineHelper.get_pipeline_default_execution_document(pipeline)
+execution_doc = exe_doc_generator.fill_execution_document(dag, default_doc)
+
+# Step 4: Execute pipeline
 execution = pipeline.start(execution_input=execution_doc)
 ```
 

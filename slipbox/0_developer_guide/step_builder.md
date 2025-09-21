@@ -35,21 +35,25 @@ class YourStepBuilder(StepBuilderBase):
     
     def __init__(
         self, 
-        config, 
-        sagemaker_session=None, 
-        role=None, 
-        notebook_root=None,
-        registry_manager=None,
-        dependency_resolver=None
+        config: YourStepConfig, 
+        spec: Optional[StepSpecification] = None,
+        sagemaker_session: Optional[PipelineSession] = None, 
+        role: Optional[str] = None, 
+        notebook_root: Optional[Path] = None,
+        registry_manager: Optional[RegistryManager] = None,
+        dependency_resolver: Optional[UnifiedDependencyResolver] = None
     ):
-        # Get job type if available
-        job_type = getattr(config, 'job_type', None)
+        """Initialize the step builder with configuration and specification."""
+        if not isinstance(config, YourStepConfig):
+            raise ValueError("YourStepBuilder requires a YourStepConfig instance.")
         
-        # Get the appropriate specification based on job type
-        if job_type and hasattr(self, '_get_spec_for_job_type'):
-            spec = self._get_spec_for_job_type(job_type)
-        else:
-            spec = YOUR_STEP_SPEC
+        # Get the appropriate specification based on job type if not provided
+        if spec is None:
+            job_type = getattr(config, 'job_type', None)
+            if job_type and hasattr(self, '_get_spec_for_job_type'):
+                spec = self._get_spec_for_job_type(job_type)
+            else:
+                spec = YOUR_STEP_SPEC
         
         super().__init__(
             config=config,
@@ -61,12 +65,6 @@ class YourStepBuilder(StepBuilderBase):
             dependency_resolver=dependency_resolver
         )
         self.config: YourStepConfig = config
-        
-        # Register with UnifiedRegistryManager (automatic discovery handles this)
-        if registry_manager is None:
-            registry_manager = UnifiedRegistryManager()
-        # Registration is handled automatically by the hybrid registry system
-        # based on naming conventions and file location
     
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """Get inputs for the processor using the specification and contract."""
@@ -363,7 +361,7 @@ def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
     return self._get_spec_driven_processor_inputs(inputs)
 
 def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
-    """Get outputs for the processor using the specification and contract."""
+    """Get outputs for the step using specification and contract."""
     if not self.spec:
         raise ValueError("Step specification is required")
 
@@ -371,9 +369,6 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
         raise ValueError("Script contract is required for output mapping")
 
     processing_outputs = []
-
-    # Get the base output path (using PIPELINE_EXECUTION_TEMP_DIR if available)
-    base_output_path = self._get_base_output_path()
 
     # Process each output in the specification
     for _, output_spec in self.spec.outputs.items():
@@ -393,10 +388,10 @@ def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
         if logical_name in outputs:
             destination = outputs[logical_name]
         else:
-            # Generate destination from base path using Join instead of f-string
+            # Generate destination using base output path and Join for parameter compatibility
             from sagemaker.workflow.functions import Join
-            step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'processing'
-            destination = Join(on="/", values=[base_output_path, step_type, logical_name])
+            base_output_path = self._get_base_output_path()
+            destination = Join(on="/", values=[base_output_path, "your_step_type", self.config.job_type, logical_name])
             self.log_info(
                 "Using generated destination for '%s': %s",
                 logical_name,
@@ -520,10 +515,15 @@ def create_step(self, **kwargs) -> ProcessingStep:
     # Get step name using standardized method with auto-detection
     step_name = self._get_step_name()
     
-    # Get script path from config or contract
-    script_path = self.config.get_script_path()
+    # Get script path with portable path support and automatic fallback
+    script_path = self.config.get_portable_script_path() or self.config.get_script_path()
     if not script_path and self.contract:
         script_path = self.contract.entry_point
+    
+    # Log which path type is being used for debugging
+    self.log_info("Using script path: %s (portable: %s)", 
+                 script_path, 
+                 "yes" if self.config.get_portable_script_path() else "no")
     
     # Create the ProcessingStep using SageMaker SDK
     step = ProcessingStep(

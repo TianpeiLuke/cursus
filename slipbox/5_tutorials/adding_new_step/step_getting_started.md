@@ -786,21 +786,23 @@ We'll implement the three-tier configuration design with proper field categoriza
 Feature Selection Step Configuration
 
 This module implements the configuration class for SageMaker Processing steps
-for feature selection, following the current Cursus patterns.
+for feature selection, following the current Cursus patterns with portable path support.
 """
 
 from pydantic import Field, field_validator, model_validator
 from typing import Optional
 from ...core.base.config_base import BasePipelineConfig
+from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 
-class FeatureSelectionConfig(BasePipelineConfig):
+class FeatureSelectionConfig(ProcessingStepConfigBase):
     """
     Configuration for the Feature Selection step.
-    Inherits from BasePipelineConfig for common pipeline attributes.
+    Inherits from ProcessingStepConfigBase for processing-specific attributes
+    and portable path support.
     """
 
-    # Required user inputs
+    # Required user inputs (Tier 1 - Essential Fields)
     selection_method: str = Field(
         description="Feature selection method: 'mutual_info', 'correlation', or 'tree_based'"
     )
@@ -814,7 +816,7 @@ class FeatureSelectionConfig(BasePipelineConfig):
         description="Name of the target/label column in the dataset"
     )
     
-    # Optional fields with defaults
+    # Optional fields with defaults (Tier 2 - System Fields)
     job_type: str = Field(
         default='training',
         description="One of ['training','validation','testing','calibration']"
@@ -837,20 +839,19 @@ class FeatureSelectionConfig(BasePipelineConfig):
         description="Enable debug logging mode"
     )
 
-    # Processing instance configuration
-    processing_instance_type: str = Field(
-        default="ml.m5.2xlarge",
-        description="Instance type for processing job"
+    # Processing configuration (inherited from ProcessingStepConfigBase)
+    processing_entry_point: str = Field(
+        default="feature_selection.py",
+        description="Processing script entry point"
     )
     
-    processing_instance_count: int = Field(
-        default=1,
-        ge=1,
-        description="Number of instances for processing job"
+    processing_source_dir: Optional[str] = Field(
+        default=None,
+        description="Source directory for processing scripts (supports portable paths)"
     )
 
     # Update to Pydantic V2 style model_config (based on real patterns from codebase)
-    model_config = BasePipelineConfig.model_config.copy()
+    model_config = ProcessingStepConfigBase.model_config.copy()
     model_config.update({
         'arbitrary_types_allowed': True,
         'validate_assignment': True
@@ -1112,7 +1113,7 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         return ["--job_type", job_type]
 
     def create_step(self, **kwargs) -> ProcessingStep:
-        """Create the ProcessingStep."""
+        """Create the ProcessingStep with portable path support."""
         # Extract parameters
         inputs_raw = kwargs.get('inputs', {})
         outputs = kwargs.get('outputs', {})
@@ -1139,9 +1140,13 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         proc_outputs = self._get_outputs(outputs)
         job_args = self._get_job_arguments()
         
-        # Get step name and script path
+        # Get step name and script path with portable path support
         step_name = self._get_step_name()
-        script_path = self.config.script_path
+        script_path = self.config.get_portable_script_path() or self.config.get_script_path()
+        
+        self.log_info("Using script path: %s (portable: %s)", 
+                     script_path, 
+                     "yes" if self.config.get_portable_script_path() else "no")
         
         # Create step
         step = ProcessingStep(
@@ -1388,9 +1393,20 @@ def create_feature_selection_pipeline_dag() -> PipelineDAG:
 # Create and compile the pipeline
 dag = create_feature_selection_pipeline_dag()
 
-# Compile with your configuration
+# Compile with your configuration and pipeline parameters
+from sagemaker.workflow.parameters import ParameterString
+
+# Define pipeline parameters for runtime configuration
+pipeline_parameters = [
+    ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://your-bucket/temp"),
+    ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value=""),
+    ParameterString(name="SECURITY_GROUP_ID", default_value=""),
+    ParameterString(name="VPC_SUBNET", default_value=""),
+]
+
 compiler = PipelineDAGCompiler(
     config_path="path/to/your/config.json",
+    pipeline_parameters=pipeline_parameters,  # Enable runtime parameter injection
     sagemaker_session=pipeline_session,
     role=role
 )
@@ -1480,6 +1496,12 @@ Congratulations! You've successfully created a complete Feature Selection step f
 - **[Validation Framework](../../0_developer_guide/validation_framework_guide.md)** - Advanced validation patterns
 - **[Best Practices](../../0_developer_guide/best_practices.md)** - Development best practices
 - **[Pipeline Catalog](../../../src/cursus/pipeline_catalog/)** - Example pipeline implementations
+
+#### **Architecture and Design References**
+- **[Unified Step Catalog System Design](../../1_design/unified_step_catalog_system_design.md)** - Core discovery system architecture
+- **[Cursus Package Portability Architecture Design](../../1_design/cursus_package_portability_architecture_design.md)** - Universal deployment compatibility and runtime parameter support
+- **[Config Portability Path Resolution Design](../../1_design/config_portability_path_resolution_design.md)** - Portable path resolution system design
+- **[Pipeline Execution Temp Dir Integration](../../1_design/pipeline_execution_temp_dir_integration.md)** - Runtime parameter flow architecture
 
 ### 💡 Key Takeaways
 
