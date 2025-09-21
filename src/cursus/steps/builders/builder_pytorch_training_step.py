@@ -111,68 +111,15 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
 
         self.log_info("PyTorchTrainingConfig validation succeeded.")
 
-    def _normalize_s3_uri(self, uri: str, description: str = "S3 URI") -> str:
-        """
-        Normalizes an S3 URI to ensure it has no trailing slashes and is properly formatted.
-        Uses S3PathHandler for consistent path handling.
-
-        Args:
-            uri: The S3 URI to normalize
-            description: Description for logging purposes
-
-        Returns:
-            Normalized S3 URI
-        """
-        # Handle PipelineVariable objects
-        if hasattr(uri, "expr"):
-            uri = str(uri.expr)
-
-        # Handle Pipeline step references with Get key - return as is
-        if isinstance(uri, dict) and "Get" in uri:
-            self.log_info("Found Pipeline step reference during normalization: %s", uri)
-            return uri
-
-        return S3PathHandler.normalize(uri, description)
-
-    def _validate_s3_uri(self, uri: str, description: str = "data") -> bool:
-        """
-        Validates that a string is a properly formatted S3 URI.
-        Uses S3PathHandler for consistent path validation.
-
-        Args:
-            uri: The URI to validate
-            description: Description of what the URI is for (used in error messages)
-
-        Returns:
-            True if valid, False otherwise
-        """
-        # Handle PipelineVariable objects
-        if hasattr(uri, "expr"):
-            # For PipelineVariables, we trust they'll resolve to valid URIs at execution time
-            return True
-
-        # Handle Pipeline step references with Get key
-        if isinstance(uri, dict) and "Get" in uri:
-            # For Get expressions, we also trust they'll resolve properly at execution time
-            self.log_info("Found Pipeline step reference: %s", uri)
-            return True
-
-        if not isinstance(uri, str):
-            self.log_warning("Invalid %s URI: type %s", description, type(uri).__name__)
-            return False
-
-        # Use S3PathHandler for validation
-        valid = S3PathHandler.is_valid(uri)
-        if not valid:
-            self.log_warning("Invalid %s URI format: %s", description, uri)
-
-        return valid
-
-    def _create_estimator(self) -> PyTorch:
+    def _create_estimator(self, output_path=None) -> PyTorch:
         """
         Creates and configures the PyTorch estimator for the SageMaker Training Job.
         This defines the execution environment for the training script, including the instance
         type, framework version, and hyperparameters.
+
+        Args:
+            output_path: Optional override for model output path. If provided, this will be used
+                         instead of generating a default output path.
 
         Returns:
             An instance of sagemaker.pytorch.PyTorch.
@@ -207,7 +154,7 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
             hyperparameters=hyperparameters,
             sagemaker_session=self.session,
-            output_path=None,  # Will be set by create_step method
+            output_path=output_path,  # Use provided output_path directly
             environment=self._get_environment_variables(),
         )
 
@@ -476,7 +423,7 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
         output_path = self._get_outputs({})
 
         # Create estimator
-        estimator = self._create_estimator()
+        estimator = self._create_estimator(output_path)
 
         # Create the training step
         try:
