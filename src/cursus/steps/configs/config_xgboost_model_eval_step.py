@@ -176,7 +176,7 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         """
         return XGBOOST_MODEL_EVAL_CONTRACT
 
-    def get_script_path(self) -> str:
+    def get_script_path(self, default_path: Optional[str] = None) -> str:
         """
         Get script path for XGBoost model evaluation.
 
@@ -184,6 +184,9 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         processing_source_dir and processing_entry_point directly to the processor.run()
         method separately. Therefore, this method should return only the entry point name
         without combining with source_dir.
+
+        Args:
+            default_path: Optional default path to use if no entry point can be determined
 
         Returns:
             Script entry point name (without source_dir)

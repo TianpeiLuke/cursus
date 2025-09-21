@@ -90,9 +90,20 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
     @property
     def effective_source_dir(self) -> Optional[str]:
-        """Get the effective source directory (processing_source_dir or base source_dir)."""
+        """Get the effective source directory with portable paths prioritized."""
         if self._effective_source_dir is None:
-            self._effective_source_dir = self.processing_source_dir or self.source_dir
+            # Priority 1: Portable processing source dir
+            if self.portable_processing_source_dir is not None:
+                self._effective_source_dir = self.portable_processing_source_dir
+            # Priority 2: Portable base source dir
+            elif self.portable_source_dir is not None:
+                self._effective_source_dir = self.portable_source_dir
+            # Priority 3: Absolute processing source dir (fallback)
+            elif self.processing_source_dir is not None:
+                self._effective_source_dir = self.processing_source_dir
+            # Priority 4: Absolute base source dir (final fallback)
+            else:
+                self._effective_source_dir = self.source_dir
         return self._effective_source_dir
 
     @property
@@ -272,8 +283,19 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         # Call parent validator first
         super().initialize_derived_fields()
 
-        # Initialize processing-specific derived fields
-        self._effective_source_dir = self.processing_source_dir or self.source_dir
+        # Initialize processing-specific derived fields with portable path priority
+        # Priority 1: Portable processing source dir
+        if self.portable_processing_source_dir is not None:
+            self._effective_source_dir = self.portable_processing_source_dir
+        # Priority 2: Portable base source dir
+        elif self.portable_source_dir is not None:
+            self._effective_source_dir = self.portable_source_dir
+        # Priority 3: Absolute processing source dir (fallback)
+        elif self.processing_source_dir is not None:
+            self._effective_source_dir = self.processing_source_dir
+        # Priority 4: Absolute base source dir (final fallback)
+        else:
+            self._effective_source_dir = self.source_dir
 
         self._effective_instance_type = (
             self.processing_instance_type_large

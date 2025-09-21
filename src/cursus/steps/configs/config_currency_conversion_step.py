@@ -187,7 +187,7 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         """
         return CURRENCY_CONVERSION_CONTRACT
 
-    def get_script_path(self) -> str:
+    def get_script_path(self, default_path: Optional[str] = None) -> str:
         """
         Get script path from contract.
 

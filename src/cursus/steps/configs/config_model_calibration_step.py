@@ -192,13 +192,16 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
 
         return MODEL_CALIBRATION_CONTRACT
 
-    def get_script_path(self) -> str:
+    def get_script_path(self, default_path: Optional[str] = None) -> str:
         """
         Get script path with priority order:
         1. Use processing_entry_point if provided
         2. Fall back to script_contract.entry_point if available
 
         Always combines with effective source directory.
+
+        Args:
+            default_path: Optional default path to use if no entry point can be determined
 
         Returns:
             Script path or None if no entry point can be determined
