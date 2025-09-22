@@ -482,12 +482,17 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         step_name = self._get_step_name()
 
         # Get full script path from config or contract - use portable path with fallback
-        script_path = self.config.get_portable_script_path() or self.config.get_script_path()
-        if not script_path and self.contract:
-            script_path = self.contract.entry_point
-        self.log_info("Using script path: %s (portable: %s)", 
-                     script_path, 
-                     "yes" if self.config.get_portable_script_path() else "no")
+        # Get script path from config - use portable path with fallback
+        portable_script_path = self.config.get_portable_script_path()
+        if portable_script_path:
+            # Resolve portable path to absolute path for SageMaker using runtime detection
+            script_path = self.config.get_resolved_path(portable_script_path)
+            self.log_info("Resolved portable path %s to %s", portable_script_path, script_path)
+        else:
+            script_path = self.config.get_script_path()
+            if not script_path and self.contract:
+                script_path = self.contract.script_path
+            self.log_info("Using script path: %s (portable: no)", script_path)
 
         # Create step
         step = ProcessingStep(

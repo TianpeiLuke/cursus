@@ -351,12 +351,16 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
         # return only the entry point without combining it with source directory
         # Use portable paths with fallback for universal deployment compatibility
         # For processor.run(), code parameter should be just the entry point filename
-        entry_point = self.config.processing_entry_point  # Entry point only
-        source_dir = self.config.portable_processing_source_dir or self.config.processing_source_dir
+        entry_point = self.config.processing_entry_point  # Just the filename
+        portable_processing_source_dir = self.config.portable_processing_source_dir
+        if portable_processing_source_dir:
+            # Resolve portable path to absolute path for SageMaker using runtime detection
+            source_dir = self.config.get_resolved_path(portable_processing_source_dir)
+            self.log_info("Resolved portable processing source dir %s to %s", portable_processing_source_dir, source_dir)
+        else:
+            source_dir = self.config.processing_source_dir
+            self.log_info("Using processing source directory: %s (portable: no)", source_dir)
         self.log_info("Using entry point: %s", entry_point)
-        self.log_info("Using source directory: %s (portable: %s)", 
-                     source_dir, 
-                     "yes" if self.config.portable_processing_source_dir else "no")
 
         # Create step arguments
         step_args = processor.run(

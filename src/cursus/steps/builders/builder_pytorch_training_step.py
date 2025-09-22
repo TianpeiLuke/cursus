@@ -137,10 +137,14 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
                         hyperparameters[key] = value
 
         # Use portable path with fallback for universal deployment compatibility
-        source_dir = self.config.portable_source_dir or self.config.source_dir
-        self.log_info("Using source directory: %s (portable: %s)", 
-                     source_dir, 
-                     "yes" if self.config.portable_source_dir else "no")
+        portable_source_dir = self.config.portable_source_dir
+        if portable_source_dir:
+            # Resolve portable path to absolute path for SageMaker using runtime detection
+            source_dir = self.config.get_resolved_path(portable_source_dir)
+            self.log_info("Resolved portable source dir %s to %s", portable_source_dir, source_dir)
+        else:
+            source_dir = self.config.source_dir
+            self.log_info("Using source directory: %s (portable: no)", source_dir)
         
         return PyTorch(
             entry_point=self.config.training_entry_point,

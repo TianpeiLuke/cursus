@@ -167,6 +167,16 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                 self._portable_script_path = None
         
         return self._portable_script_path
+    
+    def get_resolved_effective_source_dir(self) -> Optional[str]:
+        """Get effective source directory resolved to absolute path for SageMaker compatibility."""
+        portable_path = self.portable_effective_source_dir
+        if portable_path:
+            # Resolve portable path to absolute path for SageMaker using runtime detection
+            return self.get_resolved_path(portable_path)
+        else:
+            # Fallback to absolute path
+            return self.get_effective_source_dir()
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:

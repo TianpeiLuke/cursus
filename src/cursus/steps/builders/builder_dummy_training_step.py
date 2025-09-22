@@ -240,11 +240,9 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             # Use portable paths with fallback for universal deployment compatibility
             # For processor.run(), code parameter should be just the entry point filename
             entry_point = self.config.processing_entry_point  # Just the filename
-            source_dir = self.config.portable_effective_source_dir or self.config.get_effective_source_dir()  # Source directory path (processing_source_dir or source_dir)
+            source_dir = self.config.get_resolved_effective_source_dir()  # Resolved absolute path for SageMaker
             self.log_info("Using entry point: %s", entry_point)
-            self.log_info("Using source directory: %s (portable: %s)", 
-                         source_dir, 
-                         "yes" if self.config.portable_effective_source_dir else "no")
+            self.log_info("Using resolved source directory: %s", source_dir)
 
             # Create step arguments using processor.run()
             step_args = processor.run(
