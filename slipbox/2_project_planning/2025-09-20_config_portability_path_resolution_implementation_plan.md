@@ -1188,7 +1188,7 @@ def _convert_to_relative_path(self, path: str) -> str:
 
 ## Lessons Learned (Critical Implementation Insights)
 
-### **CRITICAL LESSON: SageMaker Path Resolution Context**
+### **CRITICAL LESSON 1: SageMaker Path Resolution Context**
 
 **❌ INITIAL MISTAKE**: We initially designed the system to calculate relative paths from the **config class location** (`src/cursus/steps/configs/`), thinking that step builders would resolve paths from their own location.
 
@@ -1205,12 +1205,52 @@ From demo/: /Users/tianpeixie/github_workspace/cursus/demo/../dockers/...
   Resolves to: /Users/tianpeixie/github_workspace/cursus/dockers/xgboost_atoz/scripts/tabular_preprocessing.py ✅ (exists!)
 ```
 
+### **CRITICAL LESSON 2: Lambda Deployment Sibling Directory Architecture**
+
+**❌ CRITICAL ERROR IN ORIGINAL DESIGN**: The original implementation assumed that in all deployment contexts, target files would be **children** of the cursus package directory. This assumption was fundamentally flawed for Lambda deployments.
+
+**Original Flawed Assumption**:
+```
+/tmp/buyer_abuse_mods_template/cursus/
+└── mods_pipeline_adapter/          # Assumed child directory
+    └── dockers/
+        └── xgboost_atoz/
+            └── scripts/
+                └── tabular_preprocessing.py
+```
+
+**✅ ACTUAL LAMBDA ARCHITECTURE DISCOVERED**: Lambda deployments use a **sibling directory structure** where cursus and target files are siblings, not parent-child:
+
+```
+/tmp/buyer_abuse_mods_template/
+├── cursus/                         # cursus package
+│   ├── __init__.py
+│   └── ...
+└── mods_pipeline_adapter/          # SIBLING directory
+    └── dockers/
+        └── xgboost_atoz/
+            └── scripts/
+                └── tabular_preprocessing.py
+```
+
+**Impact of This Error**:
+- **MODS Lambda Deployment Failures**: Path resolution failed because files were looked for in wrong location
+- **Universal Portability Broken**: Lambda deployments couldn't use the same configs as other environments
+- **Critical Production Issue**: Real-world Lambda deployments would fail with "file not found" errors
+
+**✅ CORRECTED DESIGN**: Multi-strategy path resolution that handles both architectures:
+1. **Strategy 1**: Try as child of cursus package (traditional structure)
+2. **Strategy 2**: Try as sibling of cursus package (Lambda structure)
+3. **Strategy 3**: Fallback for backward compatibility
+
 ### **Key Insights for Future Development**
 
 1. **Runtime Context Matters**: Always consider **where the code will be executed**, not where it's defined
 2. **SageMaker SDK Behavior**: SageMaker resolves paths from current working directory, not from code location
-3. **Test Path Resolution**: Always test path resolution from the actual execution context
-4. **Execution vs Definition**: The location where classes are defined is irrelevant to path resolution
+3. **Deployment Architecture Varies**: Different deployment contexts have fundamentally different directory structures
+4. **Test Path Resolution**: Always test path resolution from the actual execution context
+5. **Execution vs Definition**: The location where classes are defined is irrelevant to path resolution
+6. **Realistic Testing Required**: Must simulate actual deployment contexts, not just development convenience
 
 ### **Corrected Implementation Strategy**
 
@@ -1222,11 +1262,31 @@ builders_dir = config_file.parent.parent / "builders"
 relative_path = abs_path.relative_to(builders_dir)  # Wrong reference point
 ```
 
-**✅ Correct Approach (Implemented)**:
+**✅ Correct Approach (Phase 1 - Runtime Context)**:
 ```python
 # Calculate relative to runtime execution context
 runtime_location = Path.cwd()  # Where notebook/script runs
 relative_path = abs_path.relative_to(runtime_location)  # Correct reference point
+```
+
+**✅ Enhanced Approach (Phase 2 - Multi-Strategy Resolution)**:
+```python
+# Multi-strategy resolution for universal deployment compatibility
+def resolve_package_relative_path(relative_path: str) -> str:
+    cursus_package_dir = Path(cursus.__file__).parent
+    
+    # Strategy 1: Try as child (traditional)
+    child_path = cursus_package_dir / relative_path
+    if child_path.exists():
+        return str(child_path.resolve())
+    
+    # Strategy 2: Try as sibling (Lambda)
+    sibling_path = cursus_package_dir.parent / relative_path
+    if sibling_path.exists():
+        return str(sibling_path.resolve())
+    
+    # Strategy 3: Fallback
+    return str(child_path.resolve())
 ```
 
 ### **Testing Methodology Learned**
@@ -1234,14 +1294,45 @@ relative_path = abs_path.relative_to(runtime_location)  # Correct reference poin
 1. **Test from actual execution context**: Run tests from `demo/` directory, not from project root
 2. **Verify SageMaker path resolution**: Test that SageMaker can actually find the files
 3. **Test multiple execution contexts**: Verify paths work from different working directories
-4. **End-to-end validation**: Test complete pipeline creation, not just path generation
+4. **Simulate realistic deployment contexts**: Properly separate execution and package locations
+5. **End-to-end validation**: Test complete pipeline creation, not just path generation
 
 ### **Documentation Reminder**
 
 This lesson learned section serves as a permanent reminder that:
 - **Path resolution context is critical** - always consider where paths will be resolved
 - **Framework behavior matters** - understand how external tools (like SageMaker) handle paths
+- **Deployment architecture varies** - different contexts have different directory structures
 - **Testing must match reality** - test from actual execution contexts, not development convenience
+- **Assumptions must be validated** - verify architectural assumptions across all deployment contexts
+
+## Critical Error Resolution and Continued Implementation
+
+### **Beyond This Implementation Plan**
+
+The discovery of the Lambda sibling directory architecture error revealed that the original design in this plan, while correct for runtime context resolution, was **insufficient for universal deployment portability**. The error was so fundamental that it required a complete redesign of the path resolution strategy.
+
+### **Continued Implementation Effort**
+
+Due to the critical nature of the Lambda deployment architecture mismatch, continued implementation effort beyond this plan was required and documented in:
+
+**📋 [2025-09-22 MODS Lambda Sibling Directory Path Resolution Fix - Implementation Completion](./2025-09-22_mods_lambda_sibling_directory_path_resolution_fix_completion.md)**
+
+This follow-up implementation plan documents:
+- **Root Cause Analysis**: Deep dive into the sibling directory architecture discovery
+- **Enhanced Multi-Strategy Path Resolution**: Implementation that handles both child and sibling structures
+- **Comprehensive Testing**: 16 tests including realistic Lambda simulation
+- **Universal Deployment Validation**: Verified compatibility across all deployment contexts
+- **Production-Ready Solution**: Complete fix for MODS Lambda deployment failures
+
+### **Integration with Original Plan**
+
+The enhanced implementation builds upon the foundation established in this plan:
+- **Phase 1 & 2 Completed**: Config enhancement and step builder integration as planned
+- **Phase 3 Enhanced**: Testing expanded to include realistic deployment simulation
+- **Phase 4 Extended**: Documentation updated to reflect architectural discoveries
+
+The original plan remains valid for the runtime context resolution aspect, but the Lambda sibling directory fix represents a critical enhancement that ensures true universal deployment portability.
 
 ## Conclusion
 

@@ -26,9 +26,36 @@ date of note: 2025-09-20
 
 # Configuration Portability Path Resolution Design
 
+## ⚠️ CRITICAL DESIGN LIMITATION DISCOVERED
+
+**IMPORTANT UPDATE (2025-09-22)**: This design document contains a **fundamental architectural flaw** that was discovered during implementation and testing. The design **cannot be applied to Lambda deployment scenarios** due to a critical misunderstanding of Lambda's package installation architecture.
+
+**❌ CRITICAL ERROR**: This design assumes that target files are **children** of the cursus package directory in all deployment contexts. This assumption is **fundamentally incorrect** for Lambda deployments, which use a **sibling directory structure**.
+
+**🚫 DESIGN INVALIDATED FOR LAMBDA**: The path resolution approach described in this document will **fail in Lambda environments** because:
+- Lambda installs packages to `/tmp/buyer_abuse_mods_template/cursus/` (cursus package)
+- Target files are located at `/tmp/buyer_abuse_mods_template/mods_pipeline_adapter/` (SIBLING, not child)
+- This design's path resolution cannot handle sibling directory structures
+
+**✅ CORRECTED DESIGN AVAILABLE**: The Lambda deployment issue has been resolved through an enhanced design that handles both child and sibling directory structures:
+
+**📋 [Deployment-Context-Agnostic Path Resolution Design](./deployment_context_agnostic_path_resolution_design.md)**
+
+This enhanced design document provides:
+- **Multi-Strategy Path Resolution**: Handles both traditional child and Lambda sibling structures
+- **Universal Deployment Compatibility**: Verified across all deployment contexts
+- **Realistic Testing Methodology**: Proper simulation of runtime vs development separation
+- **Production-Ready Implementation**: Complete solution for MODS Lambda deployment failures
+
+**⚠️ RECOMMENDATION**: Use the enhanced design document for any new implementation. This document remains for historical reference and lessons learned.
+
+---
+
 ## Executive Summary
 
 This document presents a comprehensive design for making cursus configuration files portable across different deployment environments by replacing absolute paths with a workspace-aware, relative path resolution system. The design addresses the critical portability issue where saved configuration JSON files contain hardcoded absolute paths that become invalid when used in different systems, different package installations, or different deployment environments.
+
+**NOTE**: This design has been superseded by the enhanced deployment-context-agnostic design due to Lambda deployment compatibility issues.
 
 ### Problem Statement
 

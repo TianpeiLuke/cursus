@@ -165,31 +165,34 @@ class BasePipelineConfig(BaseModel, ABC):
         
         return self._portable_source_dir
     
-    # NEW: Path conversion method with runtime-aware approach
+    # NEW: Package-aware path conversion method (DEPLOYMENT-CONTEXT-AGNOSTIC)
     def _convert_to_relative_path(self, path: str) -> str:
-        """Convert absolute path to relative path based on runtime instantiation location."""
-        if not path or not Path(path).is_absolute():
-            return path  # Already relative, keep as-is
+        """
+        Convert absolute path to package-relative path for deployment portability.
         
-        try:
-            abs_path = Path(path)
+        This method replaces the problematic Path.cwd() approach with package-aware
+        path resolution that works across all deployment contexts (development,
+        Lambda, container, PyPI package installations).
+        """
+        # Import the new path resolution utilities
+        from ..utils.path_resolution import get_package_relative_path
+        return get_package_relative_path(path)
+    
+    # NEW: Helper method for step builders to resolve portable paths
+    def get_resolved_path(self, relative_path: str) -> str:
+        """
+        Resolve package-relative path to absolute path in current deployment context.
+        
+        Step builders can use this method to get absolute paths when needed.
+        
+        Args:
+            relative_path: Package-relative path to resolve
             
-            # Use current working directory as reference point
-            # This is where the config is being instantiated (e.g., demo/ directory)
-            # and also where SageMaker will resolve relative paths from
-            runtime_location = Path.cwd()
-            
-            # Try direct relative_to first
-            try:
-                relative_path = abs_path.relative_to(runtime_location)
-                return str(relative_path)
-            except ValueError:
-                # If direct relative_to fails, use common parent approach
-                return self._convert_via_common_parent(path, runtime_location)
-            
-        except Exception:
-            # Final fallback: return original path
-            return path
+        Returns:
+            Absolute path in current deployment context
+        """
+        from ..utils.path_resolution import resolve_package_relative_path
+        return resolve_package_relative_path(relative_path)
     
     # NEW: Fallback conversion method
     def _convert_via_common_parent(self, path: str, reference_location: Optional[Path] = None) -> str:
