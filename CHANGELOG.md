@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2025-09-21
+
+### Enhanced
+- **Package Portability System** - Major improvements to package portability and path handling
+  - **Relative Path Computation** - Changed relative path computation to use execution location instead of definition location
+  - **Builder Class Portability** - Enhanced builder classes with relative path support for better portability
+  - **Config Base Portability** - Updated config base to allow relative path creation for improved portability
+  - **Step Catalog Dual Search Space** - Enhanced step catalog with improved search space and dual search capabilities
+
+- **Step Catalog System Improvements** - Significant enhancements to step catalog architecture
+  - **Pipeline DAG Resolver Redesign** - Complete redesign of pipeline DAG resolver using step catalog
+  - **Contract Discovery Refactoring** - Refactored contract discovery with relative import support
+  - **Builder Discovery System** - Created builder discovery class for step catalog integration
+  - **Specification Discovery** - Added spec discovery and relative import module support
+
+- **Configuration Management Enhancements** - Major improvements to configuration handling
+  - **Config Field Management Refactor** - Complete refactor of config field management system
+  - **Payload Config Simplification** - Simplified payload configuration for better usability
+  - **Contract Name Standardization** - Standardized contract names and removed source directory validator
+  - **Config Error Fixes** - Fixed various configuration errors and improved validation
+
+- **PyTorch Integration Improvements** - Enhanced PyTorch support and Docker integration
+  - **PyTorch Training Builder Fixes** - Fixed PyTorch training builder, script, contract, and step specifications
+  - **PyTorch Docker Updates** - Updated PyTorch Docker containers with improved functionality
+  - **Batch Transform Builder Fixes** - Fixed builder for batch transform operations
+
+### Added
+- **Execution Document Generation** - New execution document generation capabilities
+  - **Demo Pipeline Integration** - Updated execution documents and demo pipeline examples
+  - **Config Samples** - Added comprehensive configuration samples and examples
+  - **Test Execution Location** - New notebook for testing execution vs definition location
+
+- **Enhanced Documentation** - Comprehensive documentation and tutorial updates
+  - **Tutorials and Guides Updates** - Updated tutorials and guides with latest features
+  - **Notebook Root Removal** - Removed notebook root references for better portability
+  - **Demo Configuration** - Enhanced demo configuration notebooks and examples
+
+### Fixed
+- **Import System Improvements** - Major fixes to import and module loading
+  - **Relative Import Support** - Enhanced relative import support throughout the system
+  - **Importlib Issues** - Fixed importlib issues with step catalog system when system path doesn't include cursus
+  - **Module Discovery** - Improved module discovery and loading mechanisms
+  - **System Path Independence** - Reduced dependency on system path configuration
+
+- **Test Infrastructure Fixes** - Comprehensive test system improvements
+  - **Test Bug Fixes** - Fixed multiple test bugs and improved test reliability
+  - **Test Integration** - Enhanced test integration and execution
+  - **Load Config Error Fixes** - Fixed load_config errors and improved error handling
+
+- **Portability and Path Issues** - Systematic fixes to path handling and portability
+  - **Relative Path Creation** - Fixed relative path creation across different components
+  - **Package Module Definition** - Improved package module definition using relative imports
+  - **Path Computation Logic** - Enhanced path computation logic for better cross-platform support
+
+### Technical Details
+- **Step Catalog Architecture** - Enhanced step catalog system with dual search space and improved discovery
+- **Portability Framework** - Comprehensive portability improvements across configuration, builders, and path handling
+- **Import System** - Modernized import system with relative imports and reduced system path dependencies
+- **Configuration Management** - Streamlined configuration management with simplified payload handling
+- **Docker Integration** - Updated Docker containers with improved PyTorch support and functionality
+
+### Quality Assurance
+- **Test System Reliability** - Improved test system reliability with comprehensive bug fixes
+- **Configuration Validation** - Enhanced configuration validation and error handling
+- **Import Stability** - Improved import stability with better module discovery and loading
+- **Cross-Platform Support** - Enhanced cross-platform support with improved path handling
+
+### Performance Improvements
+- **Step Catalog Performance** - Optimized step catalog operations with enhanced search capabilities
+- **Configuration Processing** - Improved configuration processing performance with streamlined management
+- **Import Performance** - Enhanced import performance with optimized relative import system
+- **Path Resolution Speed** - Faster path resolution with improved computation algorithms
+
 ## [1.3.1] - 2025-09-18
 
 ### Enhanced
