@@ -96,6 +96,14 @@ class BasePipelineConfig(BaseModel, ABC):
         description="Common source directory for scripts if applicable. Can be overridden by step configs.",
     )
 
+    # ===== Tier 2 Hybrid Resolution Fields =====
+    # These fields are required for the hybrid path resolution system, which is used in Processing/Training/Model Step
+    
+    project_root_folder: Optional[str] = Field(
+        default=None,
+        description="Root folder name for the user's project (Tier 1 required for hybrid resolution)"
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
     # with public read-only properties for access
@@ -471,6 +479,41 @@ class BasePipelineConfig(BaseModel, ABC):
         """
         # Default implementation returns None since not all step types need scripts
         return default_path
+
+    def resolve_hybrid_path(self, relative_path: str) -> Optional[str]:
+        """
+        Resolve a path using the hybrid path resolution system.
+        
+        This method uses the hybrid path resolution system to find files across
+        different deployment scenarios (Lambda/MODS bundled, development monorepo,
+        pip-installed separated).
+        
+        Args:
+            relative_path: Relative path from project root to target
+            
+        Returns:
+            Resolved absolute path if found, None otherwise
+        """
+        if not self.project_root_folder or not relative_path:
+            logger.debug("Missing project_root_folder or relative_path for hybrid resolution")
+            return None
+        
+        try:
+            from ..utils.hybrid_path_resolution import resolve_hybrid_path
+            return resolve_hybrid_path(self.project_root_folder, relative_path)
+        except ImportError:
+            logger.debug("Hybrid path resolution not available")
+            return None
+        except Exception as e:
+            logger.debug(f"Error in hybrid path resolution: {e}")
+            return None
+
+    @property
+    def resolved_source_dir(self) -> Optional[str]:
+        """Get resolved source directory using hybrid resolution."""
+        if self.source_dir:
+            return self.resolve_hybrid_path(self.source_dir)
+        return None
 
     @classmethod
     def get_step_name(cls, config_class_name: str) -> str:

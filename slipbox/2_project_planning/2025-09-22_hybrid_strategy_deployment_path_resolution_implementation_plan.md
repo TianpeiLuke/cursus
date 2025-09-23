@@ -138,123 +138,100 @@ self.log_info("Using source dir: %s", source_dir)
 
 **Next Steps**: Complete remaining step builder updates before proceeding to Phase 1.
 
-### Phase 1: Core Hybrid Algorithm Implementation (Week 1)
+### Phase 1: Core Hybrid Algorithm Implementation (Week 1) ✅ **COMPLETED**
 
-#### **1.1 Enhanced BasePipelineConfig**
+#### **1.1 Core Hybrid Path Resolution Algorithm** ✅ **COMPLETED**
+
+**File**: `src/cursus/core/utils/hybrid_path_resolution.py`
+
+The core hybrid resolution algorithm was implemented as a separate utility module with the following key components:
+
+```python
+class HybridPathResolver:
+    """Hybrid path resolver that works across all deployment scenarios."""
+    
+    def resolve_path(self, project_root_folder: str, relative_path: str) -> Optional[str]:
+        """
+        Hybrid path resolution: Package location first, then working directory discovery.
+        
+        Strategy 1: Package Location Discovery (Primary)
+        - Uses Path(__file__) from cursus package location as reference
+        - Works for Lambda/MODS bundled and monorepo scenarios
+        
+        Strategy 2: Working Directory Discovery (Fallback)  
+        - Uses Path.cwd() for working directory traversal
+        - Handles pip-installed separated scenarios
+        """
+        # Implementation with comprehensive logging and metrics tracking
+        
+    def _package_location_discovery(self, project_root_folder, relative_path):
+        """Strategy 1: Package location discovery using cursus package reference."""
+        # Bundled deployment detection (Lambda/MODS)
+        # Monorepo structure detection (src/cursus pattern)
+        
+    def _working_directory_discovery(self, project_root_folder, relative_path):
+        """Strategy 2: Working directory traversal fallback."""
+        # Upward directory search with project root detection
+        # Final fallback to current working directory
+
+# Convenience function for easy access
+def resolve_hybrid_path(project_root_folder: str, relative_path: str) -> Optional[str]:
+    """Main entry point for hybrid path resolution."""
+```
+
+**Supporting Infrastructure:**
+- `HybridResolutionMetrics`: Performance tracking and success rate monitoring
+- `HybridResolutionConfig`: Environment variable configuration for gradual rollout
+- Comprehensive logging and error handling
+
+#### **1.2 Enhanced BasePipelineConfig** ✅ **COMPLETED**
 
 **File**: `src/cursus/core/base/config_base.py`
 
+The base configuration class was enhanced with Tier 1 hybrid resolution fields and integration methods:
+
 ```python
 class BasePipelineConfig(BaseModel, ABC):
-    """Base configuration with hybrid path resolution."""
+    """Base configuration with hybrid path resolution integration."""
     
-    # Tier 1 required user input fields for universal configuration
-    project_root_folder: str = Field(
-        description="Root folder name for the user's project (Tier 1 required user input)"
-    )
-    source_dir: str = Field(
-        description="Source directory for scripts relative to project_root_folder (Tier 1 required user input)"
+    # ===== Tier 2 Hybrid Resolution Fields =====
+    project_root_folder: Optional[str] = Field(
+        default=None,
+        description="Root folder name for the user's project (Tier 1 required for hybrid resolution)"
     )
     
-    def _resolve_source_dir(self, project_root_folder: str, relative_path: str) -> Optional[str]:
-        """Hybrid path resolution: Package location first, then working directory discovery."""
-        if not relative_path:
+    def resolve_hybrid_path(self, relative_path: str) -> Optional[str]:
+        """
+        Resolve a path using the hybrid path resolution system.
+        
+        This method integrates with the hybrid path resolution utility module
+        to find files across different deployment scenarios.
+        """
+        if not self.project_root_folder or not relative_path:
             return None
         
-        # Strategy 1: Package Location Discovery (works for all scenarios)
-        resolved = self._package_location_discovery(project_root_folder, relative_path)
-        if resolved:
-            return resolved
-        
-        # Strategy 2: Working Directory Discovery (fallback for edge cases)
-        resolved = self._working_directory_discovery(project_root_folder, relative_path)
-        if resolved:
-            return resolved
-        
-        return None
-    
-    def _package_location_discovery(self, project_root_folder: Optional[str], relative_path: str) -> Optional[str]:
-        """Discover paths using cursus package location as reference."""
-        cursus_file = Path(__file__)  # Current cursus module file
-        
-        # Strategy 1A: Check for bundled deployment (Lambda/MODS)
-        # Look for sibling directories to cursus
-        potential_package_root = cursus_file.parent.parent  # Go up from cursus/
-        
-        # If project_root_folder is specified, use it directly
-        if project_root_folder:
-            direct_path = potential_package_root / project_root_folder / relative_path
-            if direct_path.exists():
-                return str(direct_path)
-        
-        # Try direct resolution from package root (for backward compatibility)
-        direct_path = potential_package_root / relative_path
-        if direct_path.exists():
-            return str(direct_path)
-        
-        # Strategy 1B: Check if we're in monorepo structure (src/cursus)
-        if "src" in cursus_file.parts:
-            src_index = cursus_file.parts.index("src")
-            project_root = Path(*cursus_file.parts[:src_index])
-            
-            if project_root.exists() and project_root.is_dir():
-                if project_root_folder:
-                    target_path = project_root / project_root_folder / relative_path
-                else:
-                    target_path = project_root / relative_path
-                    
-                if target_path.exists():
-                    return str(target_path)
-        
-        return None
-    
-    def _working_directory_discovery(self, project_root_folder: Optional[str], relative_path: str) -> Optional[str]:
-        """Discover paths using working directory traversal (fallback)."""
-        current = Path.cwd()
-        
-        # Search upward for project root
-        while current != current.parent:
-            # Strategy 2A: If project_root_folder is specified, check if we're inside it
-            if project_root_folder:
-                # Check if current directory name matches project_root_folder
-                if current.name == project_root_folder:
-                    target_path = current / relative_path
-                    if target_path.exists():
-                        return str(target_path)
-                
-                # Check if project_root_folder exists as subdirectory of current
-                project_folder_path = current / project_root_folder
-                if project_folder_path.exists() and project_folder_path.is_dir():
-                    target_path = project_folder_path / relative_path
-                    if target_path.exists():
-                        return str(target_path)
-            
-            # Strategy 2B: Direct path resolution (for cases without project_root_folder)
-            direct_path = current / relative_path
-            if direct_path.exists():
-                return str(direct_path)
-                
-            current = current.parent
-        
-        # Final fallback: try current working directory
-        if project_root_folder:
-            fallback_with_project = Path.cwd() / project_root_folder / relative_path
-            if fallback_with_project.exists():
-                return str(fallback_with_project)
-        
-        fallback_path = Path.cwd() / relative_path
-        if fallback_path.exists():
-            return str(fallback_path)
-        
-        return None
+        try:
+            from ..utils.hybrid_path_resolution import resolve_hybrid_path
+            return resolve_hybrid_path(self.project_root_folder, relative_path)
+        except ImportError:
+            logger.debug("Hybrid path resolution not available")
+            return None
     
     @property
     def resolved_source_dir(self) -> Optional[str]:
         """Get resolved source directory using hybrid resolution."""
-        return self._resolve_source_dir(self.project_root_folder, self.source_dir)
+        if self.source_dir:
+            return self.resolve_hybrid_path(self.source_dir)
+        return None
 ```
 
-#### **1.2 Enhanced ProcessingStepConfigBase**
+**Key Design Decision**: The hybrid resolution logic was moved to a separate utility module (`src/cursus/core/utils/hybrid_path_resolution.py`) rather than being embedded directly in the base config class. This provides:
+- **Separation of concerns**: Path resolution logic is isolated and testable
+- **Reusability**: Other components can use hybrid resolution independently
+- **Maintainability**: Algorithm updates don't require config class changes
+- **Performance**: Centralized metrics and caching capabilities
+
+#### **1.2 Enhanced ProcessingStepConfigBase** ✅ **COMPLETED**
 
 **File**: `src/cursus/steps/configs/config_processing_step_base.py`
 
@@ -283,9 +260,9 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         return None
 ```
 
-#### **1.3 Core Algorithm Testing**
+#### **1.3 Core Algorithm Testing** ✅ **COMPLETED**
 
-**File**: `test/core/test_hybrid_path_resolution.py`
+**File**: `test/core/utils/test_hybrid_path_resolution.py`
 
 ```python
 class TestHybridPathResolution(unittest.TestCase):

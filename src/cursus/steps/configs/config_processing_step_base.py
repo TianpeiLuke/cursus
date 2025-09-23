@@ -129,6 +129,27 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
         return self._script_path
 
+    @property
+    def resolved_processing_source_dir(self) -> Optional[str]:
+        """Get resolved processing source directory using hybrid resolution."""
+        if self.processing_source_dir:
+            return self.resolve_hybrid_path(self.processing_source_dir)
+        elif self.source_dir:
+            return self.resolve_hybrid_path(self.source_dir)
+        return None
+
+    def get_resolved_script_path(self) -> Optional[str]:
+        """Get resolved script path for step builders using hybrid resolution."""
+        if not self.processing_entry_point:
+            return None
+        
+        # Try hybrid resolution first
+        resolved_source_dir = self.resolved_processing_source_dir
+        if resolved_source_dir:
+            return str(Path(resolved_source_dir) / self.processing_entry_point)
+        
+        # Fallback to legacy script_path property
+        return self.script_path
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:
