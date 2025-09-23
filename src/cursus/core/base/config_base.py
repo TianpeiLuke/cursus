@@ -111,6 +111,7 @@ class BasePipelineConfig(BaseModel, ABC):
     _pipeline_name: Optional[str] = PrivateAttr(default=None)
     _pipeline_description: Optional[str] = PrivateAttr(default=None)
     _pipeline_s3_loc: Optional[str] = PrivateAttr(default=None)
+    _effective_source_dir: Optional[str] = PrivateAttr(default=None)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -157,6 +158,43 @@ class BasePipelineConfig(BaseModel, ABC):
             )
         return self._pipeline_s3_loc
 
+    @property
+    def effective_source_dir(self) -> Optional[str]:
+        """
+        Get effective source directory with hybrid resolution and Scenario 1 fallback.
+        
+        This base implementation works with just source_dir (which can be None).
+        Processing configs override this to handle both processing_source_dir and source_dir.
+        
+        Resolution Priority:
+        1. Hybrid resolution of source_dir
+        2. Scenario 1 fallback for source_dir
+        3. Legacy value (source_dir)
+        4. None if source_dir is not provided
+        """
+        if self._effective_source_dir is None:
+            # Only proceed if source_dir is provided
+            if self.source_dir:
+                # Strategy 1: Hybrid resolution of source_dir
+                resolved = self.resolve_hybrid_path(self.source_dir)
+                if resolved and Path(resolved).exists():
+                    self._effective_source_dir = resolved
+                    return self._effective_source_dir
+                
+                # Strategy 2: Scenario 1 fallback for source_dir
+                scenario_1_path = self._scenario_1_fallback(self.source_dir)
+                if scenario_1_path:
+                    self._effective_source_dir = scenario_1_path
+                    return self._effective_source_dir
+                
+                # Strategy 3: Legacy fallback (current behavior)
+                self._effective_source_dir = self.source_dir
+            else:
+                # source_dir is None - this is valid for base config
+                self._effective_source_dir = None
+        
+        return self._effective_source_dir
+
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
@@ -167,6 +205,8 @@ class BasePipelineConfig(BaseModel, ABC):
         data["pipeline_name"] = self.pipeline_name
         data["pipeline_description"] = self.pipeline_description
         data["pipeline_s3_loc"] = self.pipeline_s3_loc
+        if self.effective_source_dir is not None:
+            data["effective_source_dir"] = self.effective_source_dir
         
         return data
 
