@@ -96,12 +96,11 @@ class BasePipelineConfig(BaseModel, ABC):
         description="Common source directory for scripts if applicable. Can be overridden by step configs.",
     )
 
-    # ===== Tier 2 Hybrid Resolution Fields =====
-    # These fields are required for the hybrid path resolution system, which is used in Processing/Training/Model Step
+    # ===== Tier 1 Hybrid Resolution Fields =====
+    # These fields are required for the hybrid path resolution system
     
-    project_root_folder: Optional[str] = Field(
-        default=None,
-        description="Root folder name for the user's project (Tier 1 required for hybrid resolution)"
+    project_root_folder: str = Field(
+        description="Root folder name for the user's project (required for hybrid resolution)"
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -510,7 +509,12 @@ class BasePipelineConfig(BaseModel, ABC):
 
     @property
     def resolved_source_dir(self) -> Optional[str]:
-        """Get resolved source directory using hybrid resolution."""
+        """
+        Get resolved source directory using hybrid resolution.
+        
+        Returns None if source_dir is not provided, since it's optional in base class.
+        Processing, training, and model step configs should ensure source_dir is provided.
+        """
         if self.source_dir:
             return self.resolve_hybrid_path(self.source_dir)
         return None
