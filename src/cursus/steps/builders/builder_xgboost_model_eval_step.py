@@ -352,7 +352,11 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
         # Use portable paths with fallback for universal deployment compatibility
         # For processor.run(), code parameter should be just the entry point filename
         entry_point = self.config.processing_entry_point  # Just the filename
-        source_dir = self.config.processing_source_dir
+        # Use processing source directory with hybrid resolution fallback
+        source_dir = (
+            self.config.resolved_processing_source_dir or  # Hybrid resolution
+            self.config.processing_source_dir              # Fallback to existing behavior
+        )
         self.log_info("Using processing source directory: %s", source_dir)
         self.log_info("Using entry point: %s", entry_point)
 

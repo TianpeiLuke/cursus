@@ -136,8 +136,11 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
                     if not key.startswith("_"):
                         hyperparameters[key] = value
 
-        # Use source directory from config
-        source_dir = self.config.source_dir
+        # Use source directory with hybrid resolution fallback
+        source_dir = (
+            self.config.resolved_source_dir or  # Hybrid resolution
+            self.config.source_dir              # Fallback to existing behavior
+        )
         self.log_info("Using source directory: %s", source_dir)
         
         return PyTorch(

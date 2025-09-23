@@ -192,11 +192,12 @@ class PackageStepBuilder(StepBuilderBase):
         # SPECIAL CASE: Always handle inference_scripts_input from local path
         # This will take precedence over any dependency-resolved value
         inference_scripts_key = "inference_scripts_input"
-        # Use source directory from config
-        inference_scripts_path = self.config.source_dir
-        if not inference_scripts_path:
-            # Simple relative path fallback - portable across environments
-            inference_scripts_path = "inference"
+        # Use source directory with hybrid resolution fallback
+        inference_scripts_path = (
+            self.config.resolved_source_dir or  # Hybrid resolution
+            self.config.source_dir or           # Fallback to existing behavior
+            "inference"                         # Final fallback
+        )
         self.log_info("Using source dir: %s", inference_scripts_path)
 
         self.log_info(
@@ -402,11 +403,11 @@ class PackageStepBuilder(StepBuilderBase):
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
 
-        # Get full script path from config or contract - use portable path with fallback
-        # Get script path from config
-        script_path = self.config.get_script_path()
-        if not script_path and self.contract:
-            script_path = self.contract.script_path
+        # Get script path using hybrid resolution with fallback
+        script_path = (
+            self.config.get_resolved_script_path() or  # Hybrid resolution
+            self.config.get_script_path()              # Fallback to existing behavior
+        )
         self.log_info("Using script path: %s", script_path)
 
         # Create step
