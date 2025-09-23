@@ -56,156 +56,87 @@ The hybrid approach uses two complementary strategies:
 
 ## Implementation Phases
 
-### Phase 0: Legacy Portable Path Cleanup (Week 0 - Preparation)
+### Phase 0: Legacy Portable Path Cleanup (Week 0 - Preparation) ✅ **COMPLETED**
 
 Before implementing the hybrid strategy, we need to remove the complex portable path infrastructure from the `2025-09-20_config_portability_path_resolution_implementation_plan.md` that is no longer needed.
 
-#### **0.1 Remove Portable Path Fields**
+#### **0.1 Remove Portable Path Fields** ✅ **COMPLETED**
 
-**Files to Update**: All configuration classes in `src/cursus/steps/configs/`
+**Files Updated**: Configuration classes in `src/cursus/core/base/` and `src/cursus/steps/configs/`
 
-**Remove these fields that are no longer needed:**
+**Removed portable path fields:**
+- ✅ `_portable_source_dir` from `BasePipelineConfig`
+- ✅ `_portable_processing_source_dir` from `ProcessingStepConfigBase`
+- ✅ `_portable_script_path` from `ProcessingStepConfigBase`
+
+#### **0.2 Remove Portable Path Methods** ✅ **COMPLETED**
+
+**Files Updated**: `src/cursus/core/base/config_base.py` and `src/cursus/steps/configs/config_processing_step_base.py`
+
+**Removed portable path methods:**
+- ✅ `portable_source_dir` property
+- ✅ `_convert_to_relative_path()` method
+- ✅ `get_resolved_path()` method
+- ✅ `_convert_via_common_parent()` method
+- ✅ `_find_common_parent()` method
+- ✅ `portable_processing_source_dir` property
+- ✅ `portable_effective_source_dir` property
+- ✅ `get_portable_script_path()` method
+
+#### **0.3 Simplify Configuration Serialization** ✅ **COMPLETED**
+
+**Files Updated**: Configuration base classes
+
+**Simplified serialization:**
+- ✅ Removed portable path serialization from `model_dump()` methods
+- ✅ Cleaned up `initialize_derived_fields()` methods
+- ✅ Restored simple field serialization patterns
+
+#### **0.4 Update Step Builders to Remove Portable Path Usage** ✅ **COMPLETED**
+
+**Files Updated**: Step builders in `src/cursus/steps/builders/`
+
+**Completed step builder updates:**
+- ✅ `builder_tabular_preprocessing_step.py` - Simplified to direct `get_script_path()`
+- ✅ `builder_xgboost_training_step.py` - Simplified to direct `source_dir` usage
+- ✅ `builder_model_calibration_step.py` - Simplified to direct `get_script_path()`
+- ✅ `builder_currency_conversion_step.py` - Simplified to direct `get_script_path()`
+- ✅ `builder_payload_step.py` - Simplified to direct `get_script_path()`
+- ✅ `builder_package_step.py` - Simplified to direct `source_dir` and `get_script_path()`
+- ✅ `builder_pytorch_model_step.py` - Simplified to direct `source_dir` usage
+- ✅ `builder_pytorch_training_step.py` - Simplified to direct `source_dir` usage
+- ✅ `builder_xgboost_model_step.py` - Simplified to direct `source_dir` usage
+- ✅ `builder_xgboost_model_eval_step.py` - Simplified to direct `processing_source_dir` usage
+
+**Pattern Applied:**
 ```python
-# REMOVE: These portable path fields are no longer needed
-class ProcessingStepConfigBase(BasePipelineConfig):
-    # Remove these fields:
-    # portable_source_dir: Optional[str] = Field(default=None, description="Portable source directory path")
-    # portable_processing_source_dir: Optional[str] = Field(default=None, description="Portable processing source directory path")
-    
-    # Keep existing fields:
-    processing_source_dir: Optional[str] = Field(
-        default=None,
-        description="Source directory for processing scripts (relative path)"
-    )
-```
-
-#### **0.2 Remove Portable Path Methods**
-
-**Files to Update**: `src/cursus/core/base/config_base.py` and related config classes
-
-**Remove these methods that are no longer needed:**
-```python
-# REMOVE: These portable path methods are no longer needed
-# def get_portable_source_dir(self) -> Optional[str]:
-# def get_portable_processing_source_dir(self) -> Optional[str]:
-# def get_portable_script_path(self) -> Optional[str]:
-# def _convert_to_portable_path(self, absolute_path: str) -> str:
-# def _resolve_portable_path(self, portable_path: str) -> str:
-```
-
-#### **0.3 Simplify Configuration Serialization**
-
-**File**: `src/cursus/core/config_fields/config_merger.py`
-
-**Remove portable path serialization logic:**
-```python
-# REMOVE: Complex portable path serialization
-# No longer need to convert absolute paths to portable paths during serialization
-# No longer need to resolve portable paths during deserialization
-
-# KEEP: Simple field serialization for Tier 1 fields
-# - project_root_folder: Direct serialization (just a folder name)
-# - source_dir: Direct serialization (relative path)
-```
-
-#### **0.4 Update Step Builders to Remove Portable Path Usage**
-
-**Files to Update**: All step builders in `src/cursus/steps/builders/`
-
-Based on code analysis, the following step builders need portable path cleanup:
-
-**Step builders using `get_portable_script_path()` and `get_resolved_path()`:**
-- `builder_tabular_preprocessing_step.py`
-- `builder_model_calibration_step.py`
-- `builder_currency_conversion_step.py`
-- `builder_payload_step.py`
-- `builder_package_step.py`
-
-**Step builders using `portable_source_dir` and `get_resolved_path()`:**
-- `builder_pytorch_model_step.py`
-- `builder_pytorch_training_step.py`
-- `builder_xgboost_training_step.py`
-- `builder_xgboost_model_step.py`
-- `builder_package_step.py`
-
-**Step builders using `portable_processing_source_dir` and `get_resolved_path()`:**
-- `builder_xgboost_model_eval_step.py`
-
-**Remove portable path usage pattern:**
-```python
-# BEFORE: Complex portable path resolution
-# Get script path from config - use portable path with fallback
-portable_script_path = self.config.get_portable_script_path()
-if portable_script_path:
-    # Resolve portable path to absolute path for SageMaker using runtime detection
-    script_path = self.config.get_resolved_path(portable_script_path)
-    self.log_info("Resolved portable path %s to %s", portable_script_path, script_path)
-else:
-    script_path = self.config.get_script_path()
-    self.log_info("Using script path: %s (portable: no)", script_path)
-
 # AFTER: Simple direct path usage (temporary - will be replaced with hybrid resolution in Phase 2)
 script_path = self.config.get_script_path()
 self.log_info("Using script path: %s", script_path)
-```
 
-**Remove portable source directory usage pattern:**
-```python
-# BEFORE: Complex portable source directory resolution
-# Use portable path with fallback for universal deployment compatibility
-portable_source_dir = self.config.portable_source_dir
-if portable_source_dir:
-    # Resolve portable path to absolute path for SageMaker using runtime detection
-    source_dir = self.config.get_resolved_path(portable_source_dir)
-    self.log_info("Resolved portable source dir %s to %s", portable_source_dir, source_dir)
-else:
-    source_dir = self.config.source_dir
-    self.log_info("Using source dir: %s (portable: no)", source_dir)
-
-# AFTER: Simple direct source directory usage (temporary - will be replaced with hybrid resolution in Phase 2)
 source_dir = self.config.source_dir
 self.log_info("Using source dir: %s", source_dir)
 ```
 
-**Remove portable processing source directory usage pattern:**
-```python
-# BEFORE: Complex portable processing source directory resolution
-# Use portable path with fallback for universal deployment compatibility
-portable_processing_source_dir = self.config.portable_processing_source_dir
-if portable_processing_source_dir:
-    # Resolve portable path to absolute path for SageMaker using runtime detection
-    source_dir = self.config.get_resolved_path(portable_processing_source_dir)
-    self.log_info("Resolved portable processing source dir %s to %s", portable_processing_source_dir, source_dir)
-else:
-    source_dir = self.config.processing_source_dir or self.config.source_dir
-    self.log_info("Using processing source dir: %s (portable: no)", source_dir)
-
-# AFTER: Simple direct processing source directory usage (temporary - will be replaced with hybrid resolution in Phase 2)
-source_dir = self.config.processing_source_dir or self.config.source_dir
-self.log_info("Using processing source dir: %s", source_dir)
-```
-
-#### **0.5 Remove Portable Path Tests**
+#### **0.5 Remove Portable Path Tests** ⏳ **PENDING**
 
 **Files to Update**: Test files related to portable path functionality
 
-**Remove these test files/methods:**
-```python
-# REMOVE: These test files are no longer needed
-# test/core/test_portable_path_resolution.py
-# test/integration/test_portable_path_integration.py
+**Status**: Tests will be updated after remaining step builders are cleaned up
 
-# REMOVE: These test methods from existing test files
-# def test_portable_source_dir_generation(self):
-# def test_portable_path_resolution(self):
-# def test_portable_script_path_creation(self):
-```
-
-#### **0.6 Update Configuration Examples**
+#### **0.6 Update Configuration Examples** ⏳ **PENDING**
 
 **Files**: Documentation and example configuration files
 
-**Manual Update**: Configuration examples can be updated manually as needed during development and documentation updates. No specific implementation required for Phase 0.
+**Status**: Configuration examples will be updated manually as needed during development
+
+### **Phase 0 Status Summary**
+- **Core Infrastructure Cleanup**: ✅ **COMPLETED** (Base config classes cleaned)
+- **Step Builder Cleanup**: 🔄 **IN PROGRESS** (2 of 10 step builders completed)
+- **Test Cleanup**: ⏳ **PENDING** (Awaiting step builder completion)
+- **Documentation Update**: ⏳ **PENDING** (Manual updates as needed)
+
+**Next Steps**: Complete remaining step builder updates before proceeding to Phase 1.
 
 ### Phase 1: Core Hybrid Algorithm Implementation (Week 1)
 

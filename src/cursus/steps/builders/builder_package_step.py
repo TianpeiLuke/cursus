@@ -192,18 +192,12 @@ class PackageStepBuilder(StepBuilderBase):
         # SPECIAL CASE: Always handle inference_scripts_input from local path
         # This will take precedence over any dependency-resolved value
         inference_scripts_key = "inference_scripts_input"
-        # Use portable path with fallback for universal deployment compatibility
-        portable_source_dir = self.config.portable_source_dir
-        if portable_source_dir:
-            # Resolve portable path to absolute path for SageMaker using runtime detection
-            inference_scripts_path = self.config.get_resolved_path(portable_source_dir)
-            self.log_info("Resolved portable source dir %s to %s", portable_source_dir, inference_scripts_path)
-        else:
-            inference_scripts_path = self.config.source_dir
-            if not inference_scripts_path:
-                # Simple relative path fallback - portable across environments
-                inference_scripts_path = "inference"
-            self.log_info("Using source dir: %s (portable: no)", inference_scripts_path)
+        # Use source directory from config
+        inference_scripts_path = self.config.source_dir
+        if not inference_scripts_path:
+            # Simple relative path fallback - portable across environments
+            inference_scripts_path = "inference"
+        self.log_info("Using source dir: %s", inference_scripts_path)
 
         self.log_info(
             "[PACKAGING INPUT OVERRIDE] Using local inference scripts path from configuration: %s",
@@ -409,17 +403,11 @@ class PackageStepBuilder(StepBuilderBase):
         step_name = self._get_step_name()
 
         # Get full script path from config or contract - use portable path with fallback
-        # Get script path from config - use portable path with fallback
-        portable_script_path = self.config.get_portable_script_path()
-        if portable_script_path:
-            # Resolve portable path to absolute path for SageMaker using runtime detection
-            script_path = self.config.get_resolved_path(portable_script_path)
-            self.log_info("Resolved portable script path %s to %s", portable_script_path, script_path)
-        else:
-            script_path = self.config.get_script_path()
-            if not script_path and self.contract:
-                script_path = self.contract.script_path
-            self.log_info("Using script path: %s (portable: no)", script_path)
+        # Get script path from config
+        script_path = self.config.get_script_path()
+        if not script_path and self.contract:
+            script_path = self.contract.script_path
+        self.log_info("Using script path: %s", script_path)
 
         # Create step
         step = ProcessingStep(

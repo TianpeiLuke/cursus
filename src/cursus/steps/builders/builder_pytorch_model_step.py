@@ -131,15 +131,9 @@ class PyTorchModelStepBuilder(StepBuilderBase):
         # Generate the image URI automatically
         image_uri = self._get_image_uri()
 
-        # Use portable path with fallback for universal deployment compatibility
-        portable_source_dir = self.config.portable_source_dir
-        if portable_source_dir:
-            # Resolve portable path to absolute path for SageMaker using runtime detection
-            source_dir = self.config.get_resolved_path(portable_source_dir)
-            self.log_info("Resolved portable source dir %s to %s", portable_source_dir, source_dir)
-        else:
-            source_dir = self.config.source_dir
-            self.log_info("Using source directory: %s (portable: no)", source_dir)
+        # Use source directory from config
+        source_dir = self.config.source_dir
+        self.log_info("Using source directory: %s", source_dir)
         
         return PyTorchModel(
             model_data=model_data,
