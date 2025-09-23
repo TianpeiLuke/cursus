@@ -239,11 +239,8 @@ class DummyTrainingStepBuilder(StepBuilderBase):
             # Use processor.run() with both code and source_dir parameters
             # For processor.run(), code parameter should be just the entry point filename
             entry_point = self.config.processing_entry_point  # Just the filename
-            # Use processing source directory with hybrid resolution fallback
-            source_dir = (
-                self.config.resolved_processing_source_dir or  # Hybrid resolution
-                self.config.processing_source_dir              # Fallback to existing behavior
-            )
+            # Use modernized effective_source_dir with comprehensive hybrid resolution
+            source_dir = self.config.effective_source_dir
             self.log_info("Using entry point: %s", entry_point)
             self.log_info("Using resolved source directory: %s", source_dir)
 

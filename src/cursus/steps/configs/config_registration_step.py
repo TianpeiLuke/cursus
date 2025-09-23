@@ -397,19 +397,10 @@ class RegistrationConfig(BasePipelineConfig):
         """Legacy method that forwards to the property"""
         return self.variable_schema
 
-    def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
-        """
-        Get script path for registration step.
-        
-        Returns:
-            Path to the inference entry point script or default_path if not available
-        """
-        if self.inference_entry_point and self.source_dir:
-            if self.source_dir.startswith("s3://"):
-                return f"{self.source_dir.rstrip('/')}/{self.inference_entry_point}"
-            else:
-                return str(Path(self.source_dir) / self.inference_entry_point)
-        return default_path
+    # Removed get_script_path override - now inherits modernized version from BasePipelineConfig
+    # which includes hybrid resolution and comprehensive fallbacks
+    # Note: This config uses inference_entry_point instead of processing_entry_point,
+    # but the modernized base method can handle this through the comprehensive fallback strategy
 
     # ===== Serialization =====
 

@@ -74,44 +74,6 @@ class PackageConfig(ProcessingStepConfigBase):
         """
         return PACKAGE_CONTRACT
 
-    def get_script_path(self, default_path: Optional[str] = None) -> str:
-        """
-        Get script path with priority order:
-        1. Use processing_entry_point if provided
-        2. Fall back to script_contract.entry_point if available
-
-        Always combines with effective source directory.
-
-        Args:
-            default_path: Optional default path to use if no entry point can be determined
-
-        Returns:
-            Script path or None if no entry point can be determined
-        """
-        # Determine which entry point to use
-        entry_point = None
-
-        # First priority: Use processing_entry_point if provided
-        if self.processing_entry_point:
-            entry_point = self.processing_entry_point
-        # Second priority: Use contract entry point
-        else:
-            contract = self.get_script_contract()
-            if contract and hasattr(contract, "entry_point"):
-                entry_point = contract.entry_point
-
-        if not entry_point:
-            return None
-
-        # Get the effective source directory
-        effective_source_dir = self.get_effective_source_dir()
-        if not effective_source_dir:
-            return entry_point  # No source dir, just return entry point
-
-        # Combine source dir with entry point
-        if effective_source_dir.startswith("s3://"):
-            full_path = f"{effective_source_dir.rstrip('/')}/{entry_point}"
-        else:
-            full_path = str(Path(effective_source_dir) / entry_point)
-
-        return full_path
+    # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
+    # which includes hybrid resolution and comprehensive fallbacks
+    # The contract fallback logic was deemed unnecessary since processing_entry_point has a default value

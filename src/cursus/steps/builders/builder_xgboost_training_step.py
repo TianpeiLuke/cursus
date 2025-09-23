@@ -132,11 +132,8 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         # Note: Hyperparameters are now embedded in the source directory
         # and loaded by the training script from /opt/ml/code/hyperparams/
 
-        # Use source directory with hybrid resolution fallback
-        source_dir = (
-            self.config.resolved_source_dir or  # Hybrid resolution
-            self.config.source_dir              # Fallback to existing behavior
-        )
+        # Use modernized effective_source_dir with comprehensive hybrid resolution
+        source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
         
         return XGBoost(

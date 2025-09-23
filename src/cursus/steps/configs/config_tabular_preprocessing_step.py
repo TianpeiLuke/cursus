@@ -185,18 +185,8 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         """
         return TABULAR_PREPROCESSING_CONTRACT
 
-    def get_script_path(self, default_path: str = None) -> str:
-        """
-        Get script path with priority order:
-        1. Use full_script_path property if available
-        2. Use default_path if provided
-
-        Returns:
-            Script path or default_path if no entry point can be determined
-        """
-        if self.full_script_path:
-            return self.full_script_path
-        return default_path
+    # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
+    # which includes hybrid resolution and comprehensive fallbacks
 
     # ===== Overrides for Inheritance =====
 

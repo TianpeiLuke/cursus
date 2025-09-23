@@ -391,11 +391,8 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
 
-        # Get script path using hybrid resolution with fallback
-        script_path = (
-            self.config.get_resolved_script_path() or  # Hybrid resolution
-            self.config.get_script_path()              # Fallback to existing behavior
-        )
+        # Get script path using modernized method with comprehensive fallbacks
+        script_path = self.config.get_script_path()
         self.log_info("Using script path: %s", script_path)
 
         # Create step

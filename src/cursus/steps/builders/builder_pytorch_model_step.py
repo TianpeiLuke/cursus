@@ -133,8 +133,7 @@ class PyTorchModelStepBuilder(StepBuilderBase):
 
         # Use source directory with hybrid resolution fallback
         source_dir = (
-            self.config.resolved_source_dir or  # Hybrid resolution
-            self.config.source_dir              # Fallback to existing behavior
+            self.config.effective_source_dir
         )
         self.log_info("Using source directory: %s", source_dir)
         

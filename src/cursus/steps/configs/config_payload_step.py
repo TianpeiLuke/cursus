@@ -274,9 +274,6 @@ class PayloadConfig(ProcessingStepConfigBase):
 
     # Methods for payload generation and paths
 
-    def get_effective_source_dir(self) -> Optional[str]:
-        """Get the effective source directory"""
-        return self.processing_source_dir or self.source_dir
 
     # Removed ensure_payload_path() and get_full_payload_path() methods
     # These are redundant and not portable - S3 path construction should happen in builders/scripts

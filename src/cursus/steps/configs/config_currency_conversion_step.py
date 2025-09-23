@@ -187,17 +187,5 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         """
         return CURRENCY_CONVERSION_CONTRACT
 
-    def get_script_path(self, default_path: Optional[str] = None) -> str:
-        """
-        Get script path from contract.
-
-        Returns:
-            Script path
-        """
-        # Use the entry_point from the contract
-        contract = self.get_script_contract()
-        if contract and contract.entry_point:
-            return contract.entry_point
-
-        # Fall back to processing_entry_point if contract doesn't specify
-        return self.processing_entry_point
+    # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
+    # which includes hybrid resolution and comprehensive fallbacks

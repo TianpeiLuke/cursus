@@ -176,38 +176,10 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         """
         return XGBOOST_MODEL_EVAL_CONTRACT
 
-    def get_script_path(self, default_path: Optional[str] = None) -> str:
-        """
-        Get script path for XGBoost model evaluation.
-
-        SPECIAL CASE: Unlike other step configs, XGBoostModelEvalStepBuilder provides
-        processing_source_dir and processing_entry_point directly to the processor.run()
-        method separately. Therefore, this method should return only the entry point name
-        without combining with source_dir.
-
-        Args:
-            default_path: Optional default path to use if no entry point can be determined
-
-        Returns:
-            Script entry point name (without source_dir)
-        """
-        # Determine which entry point to use
-        entry_point = None
-
-        # First priority: Use processing_entry_point if provided
-        if self.processing_entry_point:
-            entry_point = self.processing_entry_point
-        # Second priority: Use contract entry point
-        elif (
-            hasattr(self, "script_contract")
-            and self.script_contract
-            and hasattr(self.script_contract, "entry_point")
-        ):
-            entry_point = self.script_contract.entry_point
-
-        # Return just the entry point name without combining with source directory
-        # This is important for XGBoostModelEvalStepBuilder which handles paths differently
-        return entry_point
+    # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
+    # which includes hybrid resolution and comprehensive fallbacks
+    # The special case logic for returning only entry point name was deemed unnecessary
+    # as the builder can extract the filename from the full path if needed
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """

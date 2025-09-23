@@ -86,14 +86,51 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
     @property
     def effective_source_dir(self) -> Optional[str]:
-        """Get the effective source directory."""
+        """
+        Get effective source directory with hybrid resolution and Scenario 1 fallback.
+        
+        Resolution Priority:
+        1. Hybrid resolution of processing_source_dir
+        2. Hybrid resolution of source_dir
+        3. Scenario 1 fallback for processing_source_dir
+        4. Scenario 1 fallback for source_dir
+        5. Legacy values (processing_source_dir, source_dir)
+        """
         if self._effective_source_dir is None:
-            # Priority 1: Processing source dir (fallback)
+            # Strategy 1: Hybrid resolution of processing_source_dir
+            if self.processing_source_dir:
+                resolved = self.resolve_hybrid_path(self.processing_source_dir)
+                if resolved and Path(resolved).exists():
+                    self._effective_source_dir = resolved
+                    return self._effective_source_dir
+            
+            # Strategy 2: Hybrid resolution of source_dir
+            if self.source_dir:
+                resolved = self.resolve_hybrid_path(self.source_dir)
+                if resolved and Path(resolved).exists():
+                    self._effective_source_dir = resolved
+                    return self._effective_source_dir
+            
+            # Strategy 3: Scenario 1 fallback for processing_source_dir
+            if self.processing_source_dir:
+                scenario_1_path = self._scenario_1_fallback(self.processing_source_dir)
+                if scenario_1_path:
+                    self._effective_source_dir = scenario_1_path
+                    return self._effective_source_dir
+            
+            # Strategy 4: Scenario 1 fallback for source_dir
+            if self.source_dir:
+                scenario_1_path = self._scenario_1_fallback(self.source_dir)
+                if scenario_1_path:
+                    self._effective_source_dir = scenario_1_path
+                    return self._effective_source_dir
+            
+            # Strategy 5: Legacy fallback (current behavior)
             if self.processing_source_dir is not None:
                 self._effective_source_dir = self.processing_source_dir
-            # Priority 2: Base source dir (final fallback)
             else:
                 self._effective_source_dir = self.source_dir
+        
         return self._effective_source_dir
 
     @property
@@ -109,15 +146,21 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
     @property
     def script_path(self) -> Optional[str]:
-        """Get the full path to the processing script if entry point is provided."""
+        """
+        Get script path with hybrid resolution and Scenario 1 fallback.
+        
+        Uses modernized effective_source_dir which already includes hybrid resolution.
+        """
         if self.processing_entry_point is None:
             return None
 
         if self._script_path is None:
+            # Use modernized effective_source_dir (which includes hybrid resolution)
             effective_source = self.effective_source_dir
             if effective_source is None:
                 return None
 
+            # Construct full script path
             if effective_source.startswith("s3://"):
                 self._script_path = (
                     f"{effective_source.rstrip('/')}/{self.processing_entry_point}"
@@ -346,20 +389,58 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                 f"Invalid size parameter: {size}. Must be 'small' or 'large'"
             )
 
-    def get_script_path(self, default_path: str = None) -> Optional[str]:
+    def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
-        Get the full path to the processing script (legacy compatibility).
-
+        Get script path with hybrid resolution and comprehensive fallbacks.
+        
+        Resolution Priority:
+        1. Modernized script_path property (includes hybrid resolution)
+        2. Direct hybrid resolution of entry_point
+        3. Scenario 1 fallback for entry_point
+        4. Legacy get_resolved_script_path() method
+        5. Default path fallback
+        
         Args:
-            default_path: Default path to use if no script path is available
-
+            default_path: Default path to use if all resolution methods fail
+            
         Returns:
-            Optional[str]: Full path to the script or default_path if no entry point is set
+            Optional[str]: Resolved script path or default_path if not found
         """
+        
+        # Strategy 1: Use modernized script_path property (includes hybrid resolution)
         path = self.script_path
-        if path is None:
-            return default_path
-        return path
+        if path and Path(path).exists():
+            return path
+        
+        # Strategy 2: Direct hybrid resolution of entry_point
+        if self.processing_entry_point:
+            # Try with processing_source_dir first
+            if self.processing_source_dir:
+                relative_path = f"{self.processing_source_dir}/{self.processing_entry_point}"
+            elif self.source_dir:
+                relative_path = f"{self.source_dir}/{self.processing_entry_point}"
+            else:
+                relative_path = self.processing_entry_point
+            
+            resolved = self.resolve_hybrid_path(relative_path)
+            if resolved and Path(resolved).exists():
+                return resolved
+            
+            # Strategy 3: Scenario 1 fallback
+            scenario_1_path = self._scenario_1_fallback(relative_path)
+            if scenario_1_path:
+                return scenario_1_path
+        
+        # Strategy 4: Legacy get_resolved_script_path() method
+        try:
+            resolved_path = self.get_resolved_script_path()
+            if resolved_path:
+                return resolved_path
+        except Exception:
+            pass
+        
+        # Strategy 5: Default fallback
+        return default_path
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """
