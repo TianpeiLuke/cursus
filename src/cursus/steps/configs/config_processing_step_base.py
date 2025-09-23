@@ -79,10 +79,6 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     _effective_source_dir: Optional[str] = PrivateAttr(default=None)
     _effective_instance_type: Optional[str] = PrivateAttr(default=None)
     _script_path: Optional[str] = PrivateAttr(default=None)
-    
-    # NEW: Portable path fields (Tier 3) - for configuration portability
-    _portable_processing_source_dir: Optional[str] = PrivateAttr(default=None)
-    _portable_script_path: Optional[str] = PrivateAttr(default=None)
 
     model_config = BasePipelineConfig.model_config
 
@@ -90,18 +86,12 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
     @property
     def effective_source_dir(self) -> Optional[str]:
-        """Get the effective source directory with portable paths prioritized."""
+        """Get the effective source directory."""
         if self._effective_source_dir is None:
-            # Priority 1: Portable processing source dir
-            if self.portable_processing_source_dir is not None:
-                self._effective_source_dir = self.portable_processing_source_dir
-            # Priority 2: Portable base source dir
-            elif self.portable_source_dir is not None:
-                self._effective_source_dir = self.portable_source_dir
-            # Priority 3: Absolute processing source dir (fallback)
-            elif self.processing_source_dir is not None:
+            # Priority 1: Processing source dir (fallback)
+            if self.processing_source_dir is not None:
                 self._effective_source_dir = self.processing_source_dir
-            # Priority 4: Absolute base source dir (final fallback)
+            # Priority 2: Base source dir (final fallback)
             else:
                 self._effective_source_dir = self.source_dir
         return self._effective_source_dir
@@ -139,44 +129,6 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
         return self._script_path
 
-    # NEW: Portable path properties for step builders to use
-    @property
-    def portable_processing_source_dir(self) -> Optional[str]:
-        """Get processing source directory as relative path for portability."""
-        if self.processing_source_dir is None:
-            return None
-            
-        if self._portable_processing_source_dir is None:
-            self._portable_processing_source_dir = self._convert_to_relative_path(self.processing_source_dir)
-        
-        return self._portable_processing_source_dir
-    
-    @property
-    def portable_effective_source_dir(self) -> Optional[str]:
-        """Get effective source directory as relative path for step builders to use."""
-        return self.portable_processing_source_dir or self.portable_source_dir
-    
-    def get_portable_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
-        """Get script path as relative path for portability."""
-        if self._portable_script_path is None:
-            # Get the absolute script path first
-            absolute_script_path = self.get_script_path(default_path)
-            if absolute_script_path:
-                self._portable_script_path = self._convert_to_relative_path(absolute_script_path)
-            else:
-                self._portable_script_path = None
-        
-        return self._portable_script_path
-    
-    def get_resolved_effective_source_dir(self) -> Optional[str]:
-        """Get effective source directory resolved to absolute path for SageMaker compatibility."""
-        portable_path = self.portable_effective_source_dir
-        if portable_path:
-            # Resolve portable path to absolute path for SageMaker using runtime detection
-            return self.get_resolved_path(portable_path)
-        else:
-            # Fallback to absolute path
-            return self.get_effective_source_dir()
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:
@@ -187,14 +139,6 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         data["effective_instance_type"] = self.effective_instance_type
         if self.script_path:
             data["script_path"] = self.script_path
-        
-        # Add portable paths as additional fields
-        if self.portable_processing_source_dir is not None:
-            data["portable_processing_source_dir"] = self.portable_processing_source_dir
-        
-        portable_script = self.get_portable_script_path()
-        if portable_script is not None:
-            data["portable_script_path"] = portable_script
         
         return data
 
@@ -293,17 +237,11 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         # Call parent validator first
         super().initialize_derived_fields()
 
-        # Initialize processing-specific derived fields with portable path priority
-        # Priority 1: Portable processing source dir
-        if self.portable_processing_source_dir is not None:
-            self._effective_source_dir = self.portable_processing_source_dir
-        # Priority 2: Portable base source dir
-        elif self.portable_source_dir is not None:
-            self._effective_source_dir = self.portable_source_dir
-        # Priority 3: Absolute processing source dir (fallback)
-        elif self.processing_source_dir is not None:
+        # Initialize processing-specific derived fields
+        # Priority 1: Processing source dir (fallback)
+        if self.processing_source_dir is not None:
             self._effective_source_dir = self.processing_source_dir
-        # Priority 4: Absolute base source dir (final fallback)
+        # Priority 2: Base source dir (final fallback)
         else:
             self._effective_source_dir = self.source_dir
 
