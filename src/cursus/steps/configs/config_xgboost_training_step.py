@@ -68,6 +68,14 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         default="py3", description="Python version for the SageMaker XGBoost container."
     )
 
+    # Hyperparameters handling configuration
+    skip_hyperparameters_s3_uri: bool = Field(
+        default=True, 
+        description="Whether to skip hyperparameters_s3_uri channel during _get_inputs. "
+                   "If True (default), hyperparameters are loaded from script folder. "
+                   "If False, hyperparameters_s3_uri channel is created as TrainingInput."
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
     # with public read-only properties for access
@@ -207,6 +215,7 @@ class XGBoostTrainingConfig(BasePipelineConfig):
             "training_volume_size": self.training_volume_size,
             "framework_version": self.framework_version,
             "py_version": self.py_version,
+            "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
         }
 
         # Hyperparameters require special handling since it's a Pydantic model

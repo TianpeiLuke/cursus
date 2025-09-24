@@ -220,6 +220,11 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         for _, dependency_spec in self.spec.dependencies.items():
             logical_name = dependency_spec.logical_name
 
+            # Skip hyperparameters_s3_uri if configured to do so
+            if logical_name == "hyperparameters_s3_uri" and self.config.skip_hyperparameters_s3_uri:
+                self.log_info("Skipping hyperparameters_s3_uri channel as configured (hyperparameters loaded from script folder)")
+                continue
+
             # Skip if optional and not provided
             if not dependency_spec.required and logical_name not in inputs:
                 continue

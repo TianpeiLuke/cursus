@@ -53,7 +53,7 @@ class TrainingScriptContract(BaseModel):
     @classmethod
     def validate_input_paths(cls, v: Dict[str, str]) -> Dict[str, str]:
         """Validate input paths are valid SageMaker training paths"""
-        valid_prefixes = ["/opt/ml/input/data", "/opt/ml/input/config"]
+        valid_prefixes = ["/opt/ml/input/data", "/opt/ml/input/config", "/opt/ml/code"]
         for logical_name, path in v.items():
             if not any(path.startswith(prefix) for prefix in valid_prefixes):
                 raise ValueError(

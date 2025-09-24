@@ -11,7 +11,7 @@ XGBOOST_TRAIN_CONTRACT = TrainingScriptContract(
     entry_point="xgboost_training.py",
     expected_input_paths={
         "input_path": "/opt/ml/input/data",
-        "hyperparameters_s3_uri": "/opt/ml/input/data/config/hyperparameters.json",
+        "hyperparameters_s3_uri": "/opt/ml/code/hyperparams/hyperparameters.json",
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
