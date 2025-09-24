@@ -20,10 +20,356 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-from ...processing.risk_table_processor import RiskTableMappingProcessor
-from ...processing.numerical_imputation_processor import (
-    NumericalVariableImputationProcessor,
-)
+# Embedded processor classes to remove external dependencies
+
+class RiskTableMappingProcessor:
+    """
+    A processor that performs risk-table-based mapping on a specified categorical variable.
+    The 'process' method (called via __call__) handles single values.
+    The 'transform' method handles pandas Series or DataFrames.
+    """
+
+    def __init__(
+        self,
+        column_name: str,
+        label_name: str,
+        smooth_factor: float = 0.0,
+        count_threshold: int = 0,
+        risk_tables: Optional[Dict] = None,
+    ):
+        """
+        Initialize RiskTableMappingProcessor.
+
+        Args:
+            column_name: Name of the categorical column to be binned.
+            label_name: Name of label/target variable (expected to be binary 0 or 1).
+            smooth_factor: Smoothing factor for risk calculation (0 to 1).
+            count_threshold: Minimum count for considering a category's calculated risk.
+            risk_tables: Optional pre-computed risk tables.
+        """
+        self.processor_name = "risk_table_mapping_processor"
+        self.function_name_list = ["process", "transform", "fit"]
+
+        if not isinstance(column_name, str) or not column_name:
+            raise ValueError("column_name must be a non-empty string.")
+        self.column_name = column_name
+        self.label_name = label_name
+        self.smooth_factor = smooth_factor
+        self.count_threshold = count_threshold
+
+        self.is_fitted = False
+        if risk_tables:
+            self._validate_risk_tables(risk_tables)
+            self.risk_tables = risk_tables
+            self.is_fitted = True
+        else:
+            self.risk_tables = {}
+
+    def get_name(self) -> str:
+        return self.processor_name
+
+    def _validate_risk_tables(self, risk_tables: Dict) -> None:
+        if not isinstance(risk_tables, dict):
+            raise ValueError("Risk tables must be a dictionary.")
+        if "bins" not in risk_tables or "default_bin" not in risk_tables:
+            raise ValueError("Risk tables must contain 'bins' and 'default_bin' keys.")
+        if not isinstance(risk_tables["bins"], dict):
+            raise ValueError("Risk tables 'bins' must be a dictionary.")
+        if not isinstance(
+            risk_tables["default_bin"], (int, float, np.floating, np.integer)
+        ):
+            raise ValueError(
+                f"Risk tables 'default_bin' must be a number, got {type(risk_tables['default_bin'])}."
+            )
+
+    def set_risk_tables(self, risk_tables: Dict) -> None:
+        self._validate_risk_tables(risk_tables)
+        self.risk_tables = risk_tables
+        self.is_fitted = True
+
+    def fit(self, data: pd.DataFrame) -> "RiskTableMappingProcessor":
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("fit() requires a pandas DataFrame.")
+        if self.label_name not in data.columns:
+            raise ValueError(
+                f"Label variable '{self.label_name}' not found in input data."
+            )
+        if self.column_name not in data.columns:
+            raise ValueError(
+                f"Column to bin '{self.column_name}' not found in input data."
+            )
+
+        filtered_data = data[data[self.label_name] != -1].dropna(
+            subset=[self.label_name, self.column_name]
+        )
+
+        if filtered_data.empty:
+            # Handle case with no valid data for fitting
+            print(
+                f"Warning: Filtered data for column '{self.column_name}' is empty during fit. "
+                "Risk tables will be empty, default_bin will be 0.5 or NaN if no labels at all."
+            )
+            # Attempt to get a global mean if any data existed before filtering for column_name
+            overall_label_mean = data[self.label_name][
+                data[self.label_name] != -1
+            ].mean()
+            self.risk_tables = {
+                "bins": {},
+                "default_bin": (
+                    0.5 if pd.isna(overall_label_mean) else float(overall_label_mean)
+                ),
+            }
+            self.is_fitted = True
+            return self
+
+        default_risk = float(filtered_data[self.label_name].mean())
+        smooth_samples = int(len(filtered_data) * self.smooth_factor)
+
+        cross_tab_result = pd.crosstab(
+            index=filtered_data[self.column_name].astype(str),
+            columns=filtered_data[self.label_name].astype(int),
+            margins=True,
+            margins_name="_count_",
+            dropna=False,
+        )
+
+        positive_label_col = 1
+        negative_label_col = 0
+
+        if positive_label_col not in cross_tab_result.columns:
+            cross_tab_result[positive_label_col] = 0
+        if negative_label_col not in cross_tab_result.columns:
+            cross_tab_result[negative_label_col] = 0
+
+        calc_df = cross_tab_result[cross_tab_result.index != "_count_"].copy()
+
+        if calc_df.empty:
+            self.risk_tables = {"bins": {}, "default_bin": default_risk}
+            self.is_fitted = True
+            return self
+
+        calc_df["risk"] = calc_df.apply(
+            lambda x: (
+                x[positive_label_col] / (x[positive_label_col] + x[negative_label_col])
+                if (x[positive_label_col] + x[negative_label_col]) > 0
+                else 0.0
+            ),
+            axis=1,
+        )
+
+        calc_df["_category_count_"] = cross_tab_result.loc[calc_df.index, "_count_"]
+
+        calc_df["smooth_risk"] = calc_df.apply(
+            lambda x: (
+                (x["_category_count_"] * x["risk"] + smooth_samples * default_risk)
+                / (x["_category_count_"] + smooth_samples)
+                if (
+                    x["_category_count_"] >= self.count_threshold
+                    and (x["_category_count_"] + smooth_samples) > 0
+                )
+                else default_risk
+            ),
+            axis=1,
+        )
+
+        self.risk_tables = {
+            "bins": dict(zip(calc_df.index.astype(str), calc_df["smooth_risk"])),
+            "default_bin": default_risk,
+        }
+
+        self.is_fitted = True
+        return self
+
+    def process(self, input_value: Any) -> float:
+        """
+        Process a single input value (for the configured 'column_name'),
+        mapping it to its binned risk value.
+        This method is called when the processor instance is called as a function.
+        """
+        if not self.is_fitted:
+            raise RuntimeError(
+                "RiskTableMappingProcessor must be fitted or initialized with risk tables before processing."
+            )
+        str_value = str(input_value)
+        return self.risk_tables["bins"].get(str_value, self.risk_tables["default_bin"])
+
+    def transform(
+        self, data: Union[pd.DataFrame, pd.Series, Any]
+    ) -> Union[pd.DataFrame, pd.Series, float]:
+        """
+        Transform data using the computed risk tables.
+        - If data is a DataFrame, transforms the 'column_name' Series within it.
+        - If data is a Series, transforms the Series (assumed to be the target column).
+        - If data is a single value, uses the 'process' method.
+        """
+        if not self.is_fitted:
+            raise RuntimeError(
+                "RiskTableMappingProcessor must be fitted or initialized with risk tables before transforming."
+            )
+
+        if isinstance(data, pd.DataFrame):
+            if self.column_name not in data.columns:
+                raise ValueError(
+                    f"Column '{self.column_name}' not found in input DataFrame for transform operation."
+                )
+            output_data = data.copy()
+            output_data[self.column_name] = (
+                data[self.column_name]
+                .astype(str)
+                .map(self.risk_tables["bins"])
+                .fillna(self.risk_tables["default_bin"])
+            )
+            return output_data
+        elif isinstance(data, pd.Series):
+            return (
+                data.astype(str)
+                .map(self.risk_tables["bins"])
+                .fillna(self.risk_tables["default_bin"])
+            )
+        else:
+            return self.process(data)  # Consistent with __call__
+
+    def get_risk_tables(self) -> Dict:
+        if not self.is_fitted:
+            raise RuntimeError(
+                "RiskTableMappingProcessor has not been fitted or initialized with risk tables."
+            )
+        return self.risk_tables
+
+
+class NumericalVariableImputationProcessor:
+    """
+    A processor that performs imputation on numerical variables using predefined or computed values.
+    Supports mean, median, and mode imputation strategies.
+    """
+
+    def __init__(
+        self,
+        variables: Optional[List[str]] = None,
+        imputation_dict: Optional[Dict[str, Union[int, float]]] = None,
+        strategy: str = "mean",
+    ):
+        self.processor_name = "numerical_variable_imputation_processor"
+        self.function_name_list = ["fit", "process", "transform"]
+
+        self.variables = variables
+        self.strategy = strategy
+        self.is_fitted = False
+
+        if imputation_dict:
+            self._validate_imputation_dict(imputation_dict)
+            self.imputation_dict = imputation_dict
+            self.is_fitted = True
+        else:
+            self.imputation_dict = None
+
+    def get_name(self) -> str:
+        return self.processor_name
+
+    def __call__(self, input_data):
+        return self.process(input_data)
+
+    def _validate_imputation_dict(self, imputation_dict: Dict[str, Any]) -> None:
+        if not isinstance(imputation_dict, dict):
+            raise ValueError("imputation_dict must be a dictionary")
+        if not imputation_dict:
+            raise ValueError("imputation_dict cannot be empty")
+        for k, v in imputation_dict.items():
+            if not isinstance(k, str):
+                raise ValueError(f"All keys must be strings, got {type(k)} for key {k}")
+            if not isinstance(v, (int, float, np.number)):
+                raise ValueError(
+                    f"All values must be numeric, got {type(v)} for key {k}"
+                )
+
+    def fit(
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None
+    ) -> "NumericalVariableImputationProcessor":
+        if self.imputation_dict is None:
+            self.imputation_dict = {}
+
+            if self.variables is None:
+                self.variables = X.select_dtypes(include=np.number).columns.tolist()
+
+            for var in self.variables:
+                if var not in X.columns:
+                    raise ValueError(f"Variable {var} not found in the input data")
+
+                if X[var].isna().all():
+                    self.imputation_dict[var] = np.nan
+                    continue
+
+                if self.strategy == "mean":
+                    self.imputation_dict[var] = float(X[var].mean())
+                elif self.strategy == "median":
+                    self.imputation_dict[var] = float(X[var].median())
+                elif self.strategy == "mode":
+                    self.imputation_dict[var] = float(X[var].mode()[0])
+                else:
+                    raise ValueError(f"Unknown strategy: {self.strategy}")
+
+        self._validate_imputation_dict(self.imputation_dict)
+        self.is_fitted = True
+        return self
+
+    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.is_fitted:
+            raise RuntimeError(
+                "Processor is not fitted. Call 'fit' with appropriate arguments before using this method."
+            )
+
+        output_data = input_data.copy()
+        for var, value in input_data.items():
+            if var in self.imputation_dict and pd.isna(value):
+                output_data[var] = self.imputation_dict[var]
+        return output_data
+
+    def transform(
+        self, X: Union[pd.DataFrame, pd.Series]
+    ) -> Union[pd.DataFrame, pd.Series]:
+        """
+        Transform input data by imputing missing values.
+
+        Args:
+            X: Input DataFrame or Series
+
+        Returns:
+            Transformed DataFrame or Series with imputed values
+        """
+        if not self.is_fitted:
+            raise RuntimeError(
+                "Processor is not fitted. Call 'fit' with appropriate arguments before using this method."
+            )
+
+        # Handle Series input
+        if isinstance(X, pd.Series):
+            if X.name not in self.imputation_dict:
+                raise ValueError(f"No imputation value found for series name: {X.name}")
+            return X.fillna(self.imputation_dict[X.name])
+
+        # Handle DataFrame input
+        if not isinstance(X, pd.DataFrame):
+            raise TypeError("Input must be pandas Series or DataFrame")
+
+        # Make a copy to avoid modifying the input
+        df = X.copy()
+
+        # Apply imputation only to variables in imputation_dict and only to NaN values
+        for var, impute_value in self.imputation_dict.items():
+            if var in df.columns:
+                # Create mask for NaN values
+                nan_mask = df[var].isna()
+                # Only replace NaN values
+                df.loc[nan_mask, var] = impute_value
+
+        return df
+
+    def get_params(self) -> Dict[str, Any]:
+        return {
+            "variables": self.variables,
+            "imputation_dict": self.imputation_dict,
+            "strategy": self.strategy,
+        }
 
 import logging
 
