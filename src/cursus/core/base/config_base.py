@@ -161,16 +161,15 @@ class BasePipelineConfig(BaseModel, ABC):
     @property
     def effective_source_dir(self) -> Optional[str]:
         """
-        Get effective source directory with hybrid resolution and Scenario 1 fallback.
+        Get effective source directory with hybrid resolution.
         
         This base implementation works with just source_dir (which can be None).
         Processing configs override this to handle both processing_source_dir and source_dir.
         
         Resolution Priority:
         1. Hybrid resolution of source_dir
-        2. Scenario 1 fallback for source_dir
-        3. Legacy value (source_dir)
-        4. None if source_dir is not provided
+        2. Legacy value (source_dir)
+        3. None if source_dir is not provided
         """
         if self._effective_source_dir is None:
             # Only proceed if source_dir is provided
@@ -181,13 +180,7 @@ class BasePipelineConfig(BaseModel, ABC):
                     self._effective_source_dir = resolved
                     return self._effective_source_dir
                 
-                # Strategy 2: Scenario 1 fallback for source_dir
-                scenario_1_path = self._scenario_1_fallback(self.source_dir)
-                if scenario_1_path:
-                    self._effective_source_dir = scenario_1_path
-                    return self._effective_source_dir
-                
-                # Strategy 3: Legacy fallback (current behavior)
+                # Strategy 2: Legacy fallback (current behavior)
                 self._effective_source_dir = self.source_dir
             else:
                 # source_dir is None - this is valid for base config
@@ -559,49 +552,6 @@ class BasePipelineConfig(BaseModel, ABC):
             return self.resolve_hybrid_path(self.source_dir)
         return None
 
-    def _scenario_1_fallback(self, relative_path: str) -> Optional[str]:
-        """
-        Scenario 1 fallback: Navigate from cursus package root to project root.
-        
-        This assumes cursus and project are co-located in the same package root
-        (like in Lambda/MODS bundled deployments).
-        
-        Args:
-            relative_path: Relative path from project root to target file/directory
-            
-        Returns:
-            Resolved absolute path if found, None otherwise
-        """
-        if not self.project_root_folder or not relative_path:
-            return None
-            
-        try:
-            # Use this config file as anchor point to find cursus package location
-            config_file = Path(__file__)  # This file: src/cursus/core/base/config_base.py
-            cursus_package_root = config_file.parent.parent.parent  # Navigate to src/cursus/
-            
-            # Navigate up to find package root (where both cursus and project exist)
-            current_dir = cursus_package_root.parent  # Start from src/ or package root
-            max_depth = 10  # Prevent infinite loops
-            depth = 0
-            
-            while current_dir.parent != current_dir and depth < max_depth:
-                # Look for project_root_folder at this level
-                project_dir = current_dir / self.project_root_folder
-                if project_dir.exists():
-                    # Found project root, construct target path
-                    target_path = project_dir / relative_path
-                    if target_path.exists():
-                        logger.debug(f"Scenario 1 fallback succeeded: {target_path}")
-                        return str(target_path)
-                current_dir = current_dir.parent
-                depth += 1
-            
-            logger.debug(f"Scenario 1 fallback failed: project_root_folder '{self.project_root_folder}' not found")
-            return None
-        except Exception as e:
-            logger.debug(f"Scenario 1 fallback failed: {e}")
-            return None
 
     @classmethod
     def get_step_name(cls, config_class_name: str) -> str:

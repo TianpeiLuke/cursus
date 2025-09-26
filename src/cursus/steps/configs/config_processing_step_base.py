@@ -87,14 +87,12 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     @property
     def effective_source_dir(self) -> Optional[str]:
         """
-        Get effective source directory with hybrid resolution and Scenario 1 fallback.
+        Get effective source directory with hybrid resolution.
         
         Resolution Priority:
         1. Hybrid resolution of processing_source_dir
         2. Hybrid resolution of source_dir
-        3. Scenario 1 fallback for processing_source_dir
-        4. Scenario 1 fallback for source_dir
-        5. Legacy values (processing_source_dir, source_dir)
+        3. Legacy values (processing_source_dir, source_dir)
         """
         if self._effective_source_dir is None:
             # Strategy 1: Hybrid resolution of processing_source_dir
@@ -111,21 +109,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                     self._effective_source_dir = resolved
                     return self._effective_source_dir
             
-            # Strategy 3: Scenario 1 fallback for processing_source_dir
-            if self.processing_source_dir:
-                scenario_1_path = self._scenario_1_fallback(self.processing_source_dir)
-                if scenario_1_path:
-                    self._effective_source_dir = scenario_1_path
-                    return self._effective_source_dir
-            
-            # Strategy 4: Scenario 1 fallback for source_dir
-            if self.source_dir:
-                scenario_1_path = self._scenario_1_fallback(self.source_dir)
-                if scenario_1_path:
-                    self._effective_source_dir = scenario_1_path
-                    return self._effective_source_dir
-            
-            # Strategy 5: Legacy fallback (current behavior)
+            # Strategy 3: Legacy fallback (current behavior)
             if self.processing_source_dir is not None:
                 self._effective_source_dir = self.processing_source_dir
             else:
@@ -147,7 +131,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     @property
     def script_path(self) -> Optional[str]:
         """
-        Get script path with hybrid resolution and Scenario 1 fallback.
+        Get script path with hybrid resolution.
         
         Uses modernized effective_source_dir which already includes hybrid resolution.
         """
@@ -396,9 +380,8 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         Resolution Priority:
         1. Modernized script_path property (includes hybrid resolution)
         2. Direct hybrid resolution of entry_point
-        3. Scenario 1 fallback for entry_point
-        4. Legacy get_resolved_script_path() method
-        5. Default path fallback
+        3. Legacy get_resolved_script_path() method
+        4. Default path fallback
         
         Args:
             default_path: Default path to use if all resolution methods fail
@@ -425,13 +408,8 @@ class ProcessingStepConfigBase(BasePipelineConfig):
             resolved = self.resolve_hybrid_path(relative_path)
             if resolved and Path(resolved).exists():
                 return resolved
-            
-            # Strategy 3: Scenario 1 fallback
-            scenario_1_path = self._scenario_1_fallback(relative_path)
-            if scenario_1_path:
-                return scenario_1_path
         
-        # Strategy 4: Legacy get_resolved_script_path() method
+        # Strategy 3: Legacy get_resolved_script_path() method
         try:
             resolved_path = self.get_resolved_script_path()
             if resolved_path:
@@ -439,7 +417,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         except Exception:
             pass
         
-        # Strategy 5: Default fallback
+        # Strategy 4: Default fallback
         return default_path
 
     def get_public_init_fields(self) -> Dict[str, Any]:

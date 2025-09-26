@@ -167,7 +167,7 @@ class HybridPathResolver:
             
             # Strategy 1A: Check for bundled deployment (Lambda/MODS)
             # Look for sibling directories to cursus
-            potential_package_root = cursus_file.parent.parent.parent  # Go up from cursus/core/utils/
+            potential_package_root = cursus_file.parent.parent.parent.parent  # Go up from cursus/core/utils/
             logger.debug(f"Checking potential package root: {potential_package_root}")
             
             # If project_root_folder is specified, use it directly
