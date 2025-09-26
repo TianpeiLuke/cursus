@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2025-09-25
+
+### Enhanced
+- **Path Resolution System** - Major improvements to deployment-agnostic path resolution
+  - **Hybrid Path Resolution Strategy** - New hybrid approach combining direct matching with intelligent fallback mechanisms
+  - **Development Context Awareness** - Enhanced path resolution that adapts to development vs package deployment contexts
+  - **Fallback Logic Improvements** - Improved fallback logic in path resolution for better reliability across environments
+  - **Portable Configuration System** - Redesigned configuration portability system with package-aware path handling
+
+- **Project Structure Improvements** - Enhanced project organization and Docker integration
+  - **Docker Container Updates** - Updated Docker containers with improved folder structure and organization
+  - **Project Folder Restructuring** - Reorganized project folders for better maintainability and clarity
+  - **PyTorch BSM Extension** - Complete PyTorch BSM extension with Lightning models, processing utilities, and training scripts
+  - **XGBoost Project Enhancements** - Enhanced XGBoost projects with improved hyperparameter handling and model evaluation
+
+- **Step Builder System** - Comprehensive updates to step builders and configuration management
+  - **Step Builder Modernization** - Updated all step builders with improved path resolution and configuration handling
+  - **Configuration Portability** - Enhanced configuration classes with portable path resolution capabilities
+  - **Hyperparameter Loading Fixes** - Fixed hyperparameter loading issues in XGBoost training with local folder support
+  - **Model Evaluation Updates** - Updated model evaluation step scripts with improved functionality
+
+### Added
+- **CLI Pipeline Compilation Tools** - New command-line interface tools for pipeline compilation and management
+  - **Pipeline Initiation CLI** - New CLI tools for pipeline project initiation and setup
+  - **Compilation Tools** - Enhanced compilation tools with better error handling and user experience
+  - **Project Template Support** - Support for different project templates and initialization patterns
+
+- **Comprehensive Processing Libraries** - Extensive processing utilities for different ML frameworks
+  - **PyTorch Processing Suite** - Complete processing library with BERT tokenization, binning, and data loading utilities
+  - **XGBoost Processing Tools** - Comprehensive processing tools for XGBoost workflows including categorical processing and risk table handling
+  - **Multimodal Model Support** - Added support for multimodal models including cross-attention, gate fusion, and mixture of experts
+  - **Lightning Model Collection** - Complete collection of PyTorch Lightning models for various use cases
+
+- **Enhanced Testing Infrastructure** - Expanded testing capabilities for hybrid path resolution
+  - **Hybrid Path Resolution Tests** - Comprehensive test suite for hybrid path resolution strategies
+  - **Integration Testing** - Enhanced integration tests for portable path resolution across different deployment contexts
+  - **Configuration Validation Tests** - New tests for modernized path resolution and configuration validation
+
+### Fixed
+- **Path Resolution Issues** - Critical fixes to path resolution across different deployment contexts
+  - **Execution Location Path Computation** - Fixed path computation to use execution location instead of definition location
+  - **Hyperparameter Loading** - Fixed XGBoost training to properly load hyperparameter.json from local folders
+  - **Portable Source Directory** - Resolved issues with portable source directory handling and removed redundant backup scenarios
+  - **Development vs Package Context** - Fixed path resolution to work correctly in both development and packaged environments
+
+- **Configuration Management Fixes** - Enhanced configuration handling and validation
+  - **Config Base Portability** - Fixed configuration base classes to support portable path creation
+  - **Step Builder Configuration** - Updated step builder configurations with improved path handling and validation
+  - **Contract and Script Alignment** - Fixed alignment issues between contracts and training scripts
+
+- **Project Structure Cleanup** - Comprehensive cleanup and organization improvements
+  - **Redundant File Removal** - Removed redundant scenario backup files and cleaned up project structure
+  - **Import Path Corrections** - Fixed import paths across all project modules for better consistency
+  - **Documentation Updates** - Updated internal documentation and design documents
+
+### Technical Details
+- **Hybrid Path Resolution** - New hybrid strategy combining direct path matching with intelligent fallback mechanisms
+- **Deployment Context Awareness** - System now adapts path resolution based on development vs deployment context
+- **Configuration Portability** - Enhanced configuration system with package-aware and development-agnostic path handling
+- **Project Template System** - Improved project template system with better organization and Docker integration
+- **Processing Pipeline Architecture** - Comprehensive processing pipeline architecture supporting multiple ML frameworks
+
+### Quality Assurance
+- **Cross-Environment Testing** - Enhanced testing across different deployment environments and contexts
+- **Path Resolution Validation** - Comprehensive validation of path resolution in various scenarios
+- **Configuration Consistency** - Improved consistency in configuration handling across different project types
+- **Integration Reliability** - Enhanced reliability of integration between different system components
+
+### Performance Improvements
+- **Path Resolution Performance** - Optimized path resolution algorithms for better performance across different contexts
+- **Configuration Processing** - Improved configuration processing performance with better caching and validation
+- **Docker Container Efficiency** - Enhanced Docker container efficiency with optimized folder structures and processing
+- **Build System Optimization** - Optimized build system performance with better dependency management
+
 ## [1.3.2] - 2025-09-21
 
 ### Enhanced
