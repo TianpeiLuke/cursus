@@ -21,6 +21,7 @@ class TestBasePipelineConfig:
             "region": "NA",
             "service_name": "test_service",
             "pipeline_version": "1.0.0",
+            "project_root_folder": "cursus",
         }
 
     def test_init_with_required_fields(self, valid_config_data):
@@ -107,27 +108,16 @@ class TestBasePipelineConfig:
         assert "Invalid custom region code" in str(exc_info.value)
 
     def test_source_dir_validation(self, valid_config_data):
-        """Test source_dir validation."""
+        """Test source_dir validation - now removed for portability."""
         config_data = valid_config_data.copy()
         config_data["source_dir"] = "/nonexistent/path"
 
-        # Test non-existent local path
-        with patch("pathlib.Path.exists", return_value=False):
-            with pytest.raises(ValueError) as exc_info:
-                BasePipelineConfig(**config_data)
+        # Source dir validation has been removed for improved configuration portability
+        # Path validation should happen at execution time in builders, not at config creation time
+        config = BasePipelineConfig(**config_data)
+        assert config.source_dir == "/nonexistent/path"
 
-            assert "Local source directory does not exist" in str(exc_info.value)
-
-        # Test path that exists but is not a directory
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.is_dir", return_value=False
-        ):
-            with pytest.raises(ValueError) as exc_info:
-                BasePipelineConfig(**config_data)
-
-            assert "Local source_dir is not a directory" in str(exc_info.value)
-
-        # Test S3 path (should not be validated)
+        # Test S3 path (should work fine)
         config_data["source_dir"] = "s3://bucket/path"
         config = BasePipelineConfig(**config_data)
         assert config.source_dir == "s3://bucket/path"
@@ -166,6 +156,7 @@ class TestBasePipelineConfig:
             "region",
             "service_name",
             "pipeline_version",
+            "project_root_folder",
         }
         assert essential_fields == expected_essential
 
@@ -187,9 +178,12 @@ class TestBasePipelineConfig:
             "pipeline_name",
             "pipeline_description",
             "pipeline_s3_loc",
+            "effective_source_dir",
+            "resolved_source_dir",
             "script_contract",
-            "model_extra",
-            "model_fields_set",
+            "step_catalog",
+            "model_fields_set",  # Pydantic built-in property
+            "model_extra",       # Pydantic built-in property
         }
         assert derived_fields == expected_derived
 
@@ -244,10 +238,15 @@ class TestBasePipelineConfig:
 
     def test_get_config_class_name_class_method(self):
         """Test get_config_class_name class method."""
-        # This tests the reverse lookup
-        config_class = BasePipelineConfig.get_config_class_name("TestStep")
-        # Should return the input if not found in reverse mapping
-        assert config_class == "TestStep"
+        # This tests the reverse lookup with a valid step name
+        config_class = BasePipelineConfig.get_config_class_name("Base")
+        # Should return the config class name for Base step
+        assert config_class == "BasePipelineConfig"
+        
+        # Test with invalid step name should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            BasePipelineConfig.get_config_class_name("InvalidStep")
+        assert "Unknown step name: InvalidStep" in str(exc_info.value)
 
     def test_get_script_contract_default(self, valid_config_data):
         """Test get_script_contract default implementation."""

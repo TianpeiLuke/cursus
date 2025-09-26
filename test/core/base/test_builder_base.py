@@ -20,6 +20,7 @@ class MockConfig(BasePipelineConfig):
             region="NA",
             service_name="test_service",
             pipeline_version="1.0.0",
+            project_root_folder="cursus",
         )
 
 
@@ -123,6 +124,7 @@ class TestStepBuilderBase:
                 region="INVALID",
                 service_name="test_service",
                 pipeline_version="1.0.0",
+                project_root_folder="cursus",
             )
 
         # Check that the error message mentions the invalid region
@@ -375,6 +377,7 @@ class TestStepBuilderBase:
                 region=region_code,
                 service_name="test_service",
                 pipeline_version="1.0.0",
+                project_root_folder="cursus",
             )
 
             builder = ConcreteStepBuilder(config=config)

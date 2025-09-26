@@ -29,6 +29,7 @@ class MockConfig(BasePipelineConfig):
         region="NA",
         service_name="test_service",
         pipeline_version="1.0.0",
+        project_root_folder="cursus",
     ):
         super().__init__(
             author=author,
@@ -37,6 +38,7 @@ class MockConfig(BasePipelineConfig):
             region=region,
             service_name=service_name,
             pipeline_version=pipeline_version,
+            project_root_folder=project_root_folder,
         )
 
 

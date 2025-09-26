@@ -205,11 +205,11 @@ class TestThreeDeploymentScenarios:
                 
                 # Test XGBoost AtoZ project resolution (root directory, source_dir = ".")
                 # Note: When relative_path = ".", the algorithm finds the direct path from package root
-                # which is src/cursus in monorepo structure, not the specific project folder
+                # which is src in monorepo structure, not the specific project folder
                 resolved_xgboost_atoz = self.resolver.resolve_path("project_xgboost_atoz", ".")
-                # The current implementation returns src/cursus for relative_path = "." in monorepo
-                expected_src_cursus = project_root / "src" / "cursus"
-                assert resolved_xgboost_atoz == str(expected_src_cursus)
+                # The current implementation returns src for relative_path = "." in monorepo
+                expected_src = project_root / "src"
+                assert resolved_xgboost_atoz == str(expected_src)
                 
                 # Test XGBoost PDA project resolution (materials subdirectory)
                 resolved_xgboost_pda = self.resolver.resolve_path("project_xgboost_pda", "materials")

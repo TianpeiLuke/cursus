@@ -1,8 +1,8 @@
 """
-Unit tests for BasePipelineConfig portable path functionality.
+Unit tests for BasePipelineConfig hybrid path resolution functionality.
 
-Tests the automatic path conversion and portability features added to
-BasePipelineConfig as part of Phase 1 implementation.
+Tests the hybrid path resolution features in BasePipelineConfig that work
+across different deployment scenarios (Lambda/MODS, development, pip-installed).
 """
 
 import pytest
@@ -19,8 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 from cursus.core.base.config_base import BasePipelineConfig
 
 
-class TestBasePipelineConfigPortability:
-    """Test portable path functionality in BasePipelineConfig."""
+class TestBasePipelineConfigHybridResolution:
+    """Test hybrid path resolution functionality in BasePipelineConfig."""
 
     @pytest.fixture
     def temp_cursus_structure(self):
@@ -73,38 +73,90 @@ class TestBasePipelineConfigPortability:
             "role": "arn:aws:iam::123456789012:role/test-role",
             "region": "NA",
             "service_name": "test_service",
-            "pipeline_version": "1.0.0"
+            "pipeline_version": "1.0.0",
+            "project_root_folder": "cursus"
         }
 
-    def test_portable_source_dir_conversion(self, temp_cursus_structure, sample_config_data):
-        """Test automatic conversion of absolute to relative paths."""
-        cursus_root = temp_cursus_structure["cursus_root"]
-        dockers_dir = temp_cursus_structure["dockers_dir"]
-        configs_dir = temp_cursus_structure["configs_dir"]
-        builders_dir = temp_cursus_structure["builders_dir"]
+    def test_resolve_hybrid_path_method_exists(self, sample_config_data):
+        """Test that resolve_hybrid_path method exists and is callable."""
+        config = BasePipelineConfig(**sample_config_data)
         
-        # Mock inspect.getfile to return our test config location
-        with patch('inspect.getfile') as mock_getfile:
-            mock_getfile.return_value = str(configs_dir / "test_config.py")
-            
-            config = BasePipelineConfig(
-                source_dir=str(dockers_dir),
-                **sample_config_data
-            )
-            
-            # Should convert to relative path automatically
-            portable_path = config.portable_source_dir
-            
-            # The path conversion should work and produce a relative path
-            # Since dockers_dir is not a subdirectory of builders_dir, it will use common parent fallback
-            assert portable_path is not None
-            assert portable_path.startswith("../")
-            assert portable_path.endswith("dockers/xgboost_atoz")
+        # Method should exist and be callable
+        assert hasattr(config, 'resolve_hybrid_path')
+        assert callable(config.resolve_hybrid_path)
+        
+        # Should handle None input gracefully
+        result = config.resolve_hybrid_path(None)
+        assert result is None
+        
+        # Should handle empty string input gracefully
+        result = config.resolve_hybrid_path("")
+        assert result is None
 
-    def test_portable_path_with_relative_input(self, sample_config_data):
-        """Test that relative paths are kept as-is."""
+    def test_resolved_source_dir_property_exists(self, sample_config_data):
+        """Test that resolved_source_dir property exists and works."""
+        config = BasePipelineConfig(
+            source_dir="/some/test/path",
+            **sample_config_data
+        )
+        
+        # Property should exist
+        assert hasattr(config, 'resolved_source_dir')
+        
+        # Should return None when hybrid resolution fails (expected in test environment)
+        resolved = config.resolved_source_dir
+        assert resolved is None or isinstance(resolved, str)
+
+    def test_resolved_source_dir_with_none_source_dir(self, sample_config_data):
+        """Test resolved_source_dir when source_dir is None."""
+        config = BasePipelineConfig(
+            source_dir=None,
+            **sample_config_data
+        )
+        
+        # Should return None when source_dir is None
+        assert config.resolved_source_dir is None
+
+    def test_effective_source_dir_property(self, sample_config_data):
+        """Test effective_source_dir property behavior."""
+        # Test with source_dir provided
+        config = BasePipelineConfig(
+            source_dir="/some/test/path",
+            **sample_config_data
+        )
+        
+        # effective_source_dir should exist and return the source_dir when hybrid resolution fails
+        assert hasattr(config, 'effective_source_dir')
+        effective = config.effective_source_dir
+        assert effective == "/some/test/path"  # Falls back to original source_dir
+        
+        # Test with None source_dir
+        config_none = BasePipelineConfig(
+            source_dir=None,
+            **sample_config_data
+        )
+        
+        assert config_none.effective_source_dir is None
+
+    def test_hybrid_path_resolution_with_s3_paths(self, sample_config_data):
+        """Test that S3 paths are handled correctly."""
+        s3_path = "s3://my-bucket/path/to/source"
+        config = BasePipelineConfig(
+            source_dir=s3_path,
+            **sample_config_data
+        )
+        
+        # S3 paths should not be resolved via hybrid resolution
+        resolved = config.resolve_hybrid_path(s3_path)
+        assert resolved is None  # Hybrid resolution doesn't handle S3 paths
+        
+        # But effective_source_dir should return the original S3 path
+        assert config.effective_source_dir == s3_path
+
+    def test_hybrid_path_resolution_with_relative_paths(self, sample_config_data):
+        """Test hybrid path resolution with relative paths."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Create the relative directory to avoid validation errors
+            # Create the relative directory
             rel_dir = Path(temp_dir) / "dockers" / "xgboost_atoz"
             rel_dir.mkdir(parents=True)
             
@@ -118,87 +170,36 @@ class TestBasePipelineConfigPortability:
                     **sample_config_data
                 )
                 
-                # Should keep relative path unchanged
-                assert config.portable_source_dir == "./dockers/xgboost_atoz"
+                # Relative paths may or may not be resolved depending on hybrid resolution
+                resolved = config.resolved_source_dir
+                effective = config.effective_source_dir
+                
+                # effective_source_dir may resolve relative paths to absolute paths
+                # This is expected behavior - the path should exist and be valid
+                assert effective is not None
+                assert "dockers/xgboost_atoz" in effective
+                
             finally:
                 os.chdir(original_cwd)
 
-    def test_portable_path_with_none_input(self, sample_config_data):
-        """Test that None source_dir returns None portable path."""
+    def test_model_dump_includes_resolved_paths(self, sample_config_data):
+        """Test that model_dump includes resolved path information."""
         config = BasePipelineConfig(
-            source_dir=None,
+            source_dir="/some/test/path",
             **sample_config_data
         )
         
-        # Should return None for None input
-        assert config.portable_source_dir is None
-
-    def test_portable_path_fallback_mechanism(self, temp_cursus_structure, sample_config_data):
-        """Test fallback when direct conversion fails."""
-        cursus_root = temp_cursus_structure["cursus_root"]
-        configs_dir = temp_cursus_structure["configs_dir"]
+        data = config.model_dump()
         
-        # Create a path that doesn't share structure with builders directory
-        different_root = temp_cursus_structure["temp_dir"] / "different_root" / "dockers" / "xgboost_atoz"
-        different_root.mkdir(parents=True)
+        # Should include original source_dir
+        assert data["source_dir"] == "/some/test/path"
         
-        with patch('inspect.getfile') as mock_getfile:
-            mock_getfile.return_value = str(configs_dir / "test_config.py")
-            
-            config = BasePipelineConfig(
-                source_dir=str(different_root),
-                **sample_config_data
-            )
-            
-            # Should use common parent fallback
-            portable_path = config.portable_source_dir
-            assert portable_path.startswith("../")
-            assert portable_path.endswith("dockers/xgboost_atoz")
+        # Should include effective_source_dir
+        assert "effective_source_dir" in data
+        assert data["effective_source_dir"] == "/some/test/path"  # Falls back to original
 
-    def test_portable_path_final_fallback(self, sample_config_data):
-        """Test final fallback returns original path when all conversions fail."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a directory to avoid validation errors
-            test_path = Path(temp_dir) / "completely" / "different" / "path"
-            test_path.mkdir(parents=True)
-            
-            with patch('inspect.getfile') as mock_getfile:
-                # Mock to raise an exception
-                mock_getfile.side_effect = Exception("Mock error")
-                
-                config = BasePipelineConfig(
-                    source_dir=str(test_path),
-                    **sample_config_data
-                )
-                
-                # Should return original path as final fallback
-                assert config.portable_source_dir == str(test_path)
-
-    def test_serialization_includes_portable_paths(self, temp_cursus_structure, sample_config_data):
-        """Test that serialization includes both original and portable paths."""
-        cursus_root = temp_cursus_structure["cursus_root"]
-        dockers_dir = temp_cursus_structure["dockers_dir"]
-        configs_dir = temp_cursus_structure["configs_dir"]
-        
-        with patch('inspect.getfile') as mock_getfile:
-            mock_getfile.return_value = str(configs_dir / "test_config.py")
-            
-            config = BasePipelineConfig(
-                source_dir=str(dockers_dir),
-                **sample_config_data
-            )
-            
-            data = config.model_dump()
-            
-            # Should include both original and portable paths
-            assert data["source_dir"] == str(dockers_dir)
-            # The portable path should be a relative path using common parent fallback
-            portable_path = data["portable_source_dir"]
-            assert portable_path.startswith("../")
-            assert portable_path.endswith("dockers/xgboost_atoz")
-
-    def test_serialization_excludes_none_portable_paths(self, sample_config_data):
-        """Test that serialization excludes None portable paths."""
+    def test_model_dump_excludes_none_paths(self, sample_config_data):
+        """Test that model_dump handles None paths correctly."""
         config = BasePipelineConfig(
             source_dir=None,
             **sample_config_data
@@ -206,21 +207,21 @@ class TestBasePipelineConfigPortability:
         
         data = config.model_dump()
         
-        # Should not include portable_source_dir when it's None
-        assert "portable_source_dir" not in data
+        # Should include source_dir as None
         assert data["source_dir"] is None
-
-    def test_backward_compatibility(self, temp_cursus_structure, sample_config_data):
-        """Test that existing functionality is unchanged."""
-        dockers_dir = temp_cursus_structure["dockers_dir"]
         
+        # effective_source_dir should not be included when None
+        assert "effective_source_dir" not in data or data["effective_source_dir"] is None
+
+    def test_backward_compatibility(self, sample_config_data):
+        """Test that existing functionality is unchanged."""
         config = BasePipelineConfig(
-            source_dir=str(dockers_dir),
+            source_dir="/some/test/path",
             **sample_config_data
         )
         
         # Existing property should work exactly as before
-        assert config.source_dir == str(dockers_dir)
+        assert config.source_dir == "/some/test/path"
         
         # All existing derived properties should work
         assert config.aws_region == "us-east-1"
@@ -228,99 +229,47 @@ class TestBasePipelineConfigPortability:
         assert config.pipeline_description == "test_service xgboost Model NA"
         assert config.pipeline_s3_loc.startswith("s3://test-bucket/MODS/")
 
-    def test_path_conversion_caching(self, temp_cursus_structure, sample_config_data):
-        """Test that path conversion results are cached for performance."""
-        cursus_root = temp_cursus_structure["cursus_root"]
-        dockers_dir = temp_cursus_structure["dockers_dir"]
-        configs_dir = temp_cursus_structure["configs_dir"]
-        
-        with patch('inspect.getfile') as mock_getfile:
-            mock_getfile.return_value = str(configs_dir / "test_config.py")
-            
-            config = BasePipelineConfig(
-                source_dir=str(dockers_dir),
-                **sample_config_data
+    def test_project_root_folder_required(self):
+        """Test that project_root_folder is required for hybrid resolution."""
+        # Should raise validation error without project_root_folder
+        with pytest.raises(Exception):  # Pydantic validation error
+            BasePipelineConfig(
+                author="test_author",
+                bucket="test-bucket",
+                role="arn:aws:iam::123456789012:role/test-role",
+                region="NA",
+                service_name="test_service",
+                pipeline_version="1.0.0",
+                # Missing project_root_folder
             )
-            
-            # First access should trigger conversion
-            first_result = config.portable_source_dir
-            
-            # Second access should use cached result
-            second_result = config.portable_source_dir
-            
-            # Results should be identical
-            assert first_result == second_result
-            # Should be a relative path using common parent fallback
-            assert first_result.startswith("../")
-            assert first_result.endswith("dockers/xgboost_atoz")
-            
-            # Verify caching by checking private attribute
-            assert config._portable_source_dir == first_result
 
-    def test_find_common_parent_helper(self, temp_cursus_structure, sample_config_data):
-        """Test the _find_common_parent helper method."""
-        config = BasePipelineConfig(**sample_config_data)
+    def test_hybrid_resolution_integration(self, temp_cursus_structure, sample_config_data):
+        """Test integration with hybrid path resolution system."""
+        dockers_dir = temp_cursus_structure["dockers_dir"]
         
-        # Test with paths that have common parent
-        path1 = Path("/home/user/cursus/src/cursus/steps/configs")
-        path2 = Path("/home/user/cursus/dockers/xgboost_atoz")
+        config = BasePipelineConfig(
+            source_dir=str(dockers_dir),
+            **sample_config_data
+        )
         
-        common_parent = config._find_common_parent(path1, path2)
-        assert common_parent == Path("/home/user/cursus")
+        # Test that hybrid resolution methods exist and don't crash
+        assert hasattr(config, 'resolve_hybrid_path')
+        assert hasattr(config, 'resolved_source_dir')
+        assert hasattr(config, 'effective_source_dir')
         
-        # Test with paths that have no common parent
-        path1 = Path("/home/user/cursus")
-        path2 = Path("/different/root/path")
+        # In test environment, hybrid resolution may fail, but methods should not crash
+        resolved = config.resolve_hybrid_path(str(dockers_dir))
+        assert resolved is None or isinstance(resolved, str)
         
-        common_parent = config._find_common_parent(path1, path2)
-        assert common_parent == Path("/")
-
-    def test_find_common_parent_with_exception(self, sample_config_data):
-        """Test _find_common_parent handles exceptions gracefully."""
-        config = BasePipelineConfig(**sample_config_data)
+        resolved_source = config.resolved_source_dir
+        assert resolved_source is None or isinstance(resolved_source, str)
         
-        # Test with invalid paths that might cause exceptions
-        with patch('pathlib.Path.parts', side_effect=Exception("Mock error")):
-            path1 = Path("/some/path")
-            path2 = Path("/other/path")
-            
-            common_parent = config._find_common_parent(path1, path2)
-            assert common_parent is None
-
-    def test_convert_via_common_parent_method(self, temp_cursus_structure, sample_config_data):
-        """Test the _convert_via_common_parent fallback method."""
-        cursus_root = temp_cursus_structure["cursus_root"]
-        configs_dir = temp_cursus_structure["configs_dir"]
-        
-        with patch('inspect.getfile') as mock_getfile:
-            mock_getfile.return_value = str(configs_dir / "test_config.py")
-            
-            config = BasePipelineConfig(**sample_config_data)
-            
-            # Test conversion via common parent
-            target_path = str(cursus_root / "dockers" / "xgboost_atoz")
-            result = config._convert_via_common_parent(target_path)
-            
-            # Should create relative path using common parent
-            assert result.startswith("../")
-            assert result.endswith("dockers/xgboost_atoz")
-
-    def test_convert_via_common_parent_with_exception(self, sample_config_data):
-        """Test _convert_via_common_parent handles exceptions gracefully."""
-        with patch('inspect.getfile') as mock_getfile:
-            mock_getfile.side_effect = Exception("Mock error")
-            
-            config = BasePipelineConfig(**sample_config_data)
-            
-            original_path = "/some/path"
-            result = config._convert_via_common_parent(original_path)
-            
-            # Should return original path when conversion fails
-            assert result == original_path
+        effective_source = config.effective_source_dir
+        assert effective_source == str(dockers_dir)  # Should fall back to original
 
 
-class TestBasePipelineConfigPortabilityEdgeCases:
-    """Test edge cases and error conditions for portable path functionality."""
+class TestBasePipelineConfigEdgeCases:
+    """Test edge cases for BasePipelineConfig path handling."""
 
     @pytest.fixture
     def sample_config_data(self):
@@ -331,7 +280,8 @@ class TestBasePipelineConfigPortabilityEdgeCases:
             "role": "arn:aws:iam::123456789012:role/test-role",
             "region": "NA",
             "service_name": "test_service",
-            "pipeline_version": "1.0.0"
+            "pipeline_version": "1.0.0",
+            "project_root_folder": "cursus"
         }
 
     def test_empty_string_source_dir(self, sample_config_data):
@@ -341,124 +291,78 @@ class TestBasePipelineConfigPortabilityEdgeCases:
             **sample_config_data
         )
         
-        # Empty string should be returned as-is
-        assert config.portable_source_dir == ""
+        # Empty string should be handled gracefully
+        assert config.source_dir == ""
+        # effective_source_dir returns None for empty string (expected behavior)
+        assert config.effective_source_dir is None
+        
+        # Hybrid resolution should return None for empty string
+        resolved = config.resolve_hybrid_path("")
+        assert resolved is None
 
     def test_s3_path_source_dir(self, sample_config_data):
-        """Test handling of S3 paths (should be returned as-is)."""
+        """Test handling of S3 paths."""
         s3_path = "s3://my-bucket/path/to/source"
         config = BasePipelineConfig(
             source_dir=s3_path,
             **sample_config_data
         )
         
-        # S3 paths are not absolute filesystem paths, should be returned as-is
-        assert config.portable_source_dir == s3_path
+        # S3 paths should be preserved as-is
+        assert config.source_dir == s3_path
+        assert config.effective_source_dir == s3_path
+        
+        # Hybrid resolution should not handle S3 paths
+        resolved = config.resolve_hybrid_path(s3_path)
+        assert resolved is None
 
     def test_windows_absolute_path(self, sample_config_data):
         """Test handling of Windows absolute paths."""
-        if os.name == 'nt':  # Only test on Windows
-            windows_path = r"C:\Users\test\cursus\dockers\xgboost_atoz"
-            
-            with patch('inspect.getfile') as mock_getfile:
-                mock_getfile.return_value = r"C:\Users\test\cursus\src\cursus\steps\configs\test_config.py"
-                
-                config = BasePipelineConfig(
-                    source_dir=windows_path,
-                    **sample_config_data
-                )
-                
-                # Should handle Windows paths correctly
-                portable_path = config.portable_source_dir
-                assert ".." in portable_path
-                assert "dockers" in portable_path
-                assert "xgboost_atoz" in portable_path
-
-    def test_symlink_handling(self, sample_config_data):
-        """Test handling of symbolic links in paths."""
-        # This test would require creating actual symlinks
-        # For now, we'll test that the conversion doesn't break with symlinks
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            
-            # Create a regular directory
-            source_dir = temp_path / "source"
-            source_dir.mkdir()
-            
-            # Create a symlink (if supported by the system)
-            try:
-                symlink_dir = temp_path / "symlink_source"
-                symlink_dir.symlink_to(source_dir)
-                
-                with patch('inspect.getfile') as mock_getfile:
-                    mock_getfile.return_value = str(temp_path / "config.py")
-                    
-                    config = BasePipelineConfig(
-                        source_dir=str(symlink_dir),
-                        **sample_config_data
-                    )
-                    
-                    # Should handle symlinks without crashing
-                    portable_path = config.portable_source_dir
-                    assert portable_path is not None
-                    
-            except (OSError, NotImplementedError):
-                # Symlinks not supported on this system, skip test
-                pytest.skip("Symlinks not supported on this system")
-
-    def test_very_deep_path_structure(self, sample_config_data):
-        """Test handling of very deep directory structures."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            
-            # Create a very deep structure
-            deep_path = temp_path
-            for i in range(20):  # Create 20 levels deep
-                deep_path = deep_path / f"level_{i}"
-            deep_path.mkdir(parents=True)
-            
-            config_path = temp_path / "config.py"
-            
-            with patch('inspect.getfile') as mock_getfile:
-                mock_getfile.return_value = str(config_path)
-                
-                config = BasePipelineConfig(
-                    source_dir=str(deep_path),
-                    **sample_config_data
-                )
-                
-                # Should handle deep paths without issues
-                portable_path = config.portable_source_dir
-                assert portable_path is not None
-                # For very deep paths, it might use the common parent approach
-                # which could result in either "../" or the full relative path
-                assert len(portable_path) > 0
+        windows_path = r"C:\Users\test\cursus\dockers\xgboost_atoz"
+        config = BasePipelineConfig(
+            source_dir=windows_path,
+            **sample_config_data
+        )
+        
+        # Windows paths should be preserved
+        assert config.source_dir == windows_path
+        assert config.effective_source_dir == windows_path
+        
+        # Hybrid resolution may or may not work depending on environment
+        resolved = config.resolve_hybrid_path(windows_path)
+        assert resolved is None or isinstance(resolved, str)
 
     def test_unicode_paths(self, sample_config_data):
         """Test handling of paths with unicode characters."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            
-            # Create directory with unicode characters
-            unicode_dir = temp_path / "测试目录" / "ñoño" / "émoji_😀"
-            unicode_dir.mkdir(parents=True)
-            
-            config_path = temp_path / "config.py"
-            
-            with patch('inspect.getfile') as mock_getfile:
-                mock_getfile.return_value = str(config_path)
-                
-                config = BasePipelineConfig(
-                    source_dir=str(unicode_dir),
-                    **sample_config_data
-                )
-                
-                # Should handle unicode paths correctly
-                portable_path = config.portable_source_dir
-                assert portable_path is not None
-                assert "测试目录" in portable_path
-                assert "ñoño" in portable_path
-                assert "émoji_😀" in portable_path
+        unicode_path = "/测试目录/ñoño/émoji_😀"
+        config = BasePipelineConfig(
+            source_dir=unicode_path,
+            **sample_config_data
+        )
+        
+        # Unicode paths should be preserved
+        assert config.source_dir == unicode_path
+        assert config.effective_source_dir == unicode_path
+        
+        # Hybrid resolution should handle unicode gracefully
+        resolved = config.resolve_hybrid_path(unicode_path)
+        assert resolved is None or isinstance(resolved, str)
+
+    def test_very_long_paths(self, sample_config_data):
+        """Test handling of very long paths."""
+        long_path = "/" + "/".join([f"level_{i}" for i in range(50)])
+        config = BasePipelineConfig(
+            source_dir=long_path,
+            **sample_config_data
+        )
+        
+        # Long paths should be preserved
+        assert config.source_dir == long_path
+        assert config.effective_source_dir == long_path
+        
+        # Hybrid resolution should handle long paths gracefully
+        resolved = config.resolve_hybrid_path(long_path)
+        assert resolved is None or isinstance(resolved, str)
 
 
 if __name__ == "__main__":

@@ -67,7 +67,8 @@ class TestEndToEndIntegration:
             pipeline_version="1.0.0",
             framework_version="1.7-1",
             py_version="py3",
-            source_dir=str(self.source_dir)  # Use the actual temp directory
+            source_dir=str(self.source_dir),  # Use the actual temp directory
+            project_root_folder="cursus"
         )
 
         # 2. Processing Step Config (inherits from base)

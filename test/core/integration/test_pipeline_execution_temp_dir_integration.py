@@ -35,6 +35,7 @@ class MockConfig(BasePipelineConfig):
             region="NA",
             service_name="test_service",
             pipeline_version="1.0.0",
+            project_root_folder="cursus",
         )
 
 
