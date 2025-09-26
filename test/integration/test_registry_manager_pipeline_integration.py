@@ -7,7 +7,7 @@ Tests the integration of RegistryManager with complex pipeline scenarios includi
 - Pipeline cleanup scenarios
 """
 
-import unittest
+import pytest
 from cursus.core.deps import RegistryManager
 from cursus.core.base.specification_base import (
     StepSpecification,
@@ -16,15 +16,18 @@ from cursus.core.base.specification_base import (
     DependencyType,
     NodeType,
 )
-from ..core.deps.test_helpers import IsolatedTestCase
+from ..core.deps.test_helpers import reset_all_global_state
 
 
-class TestRegistryManagerPipelineIntegration(IsolatedTestCase):
+class TestRegistryManagerPipelineIntegration:
     """Test RegistryManager integration with pipeline scenarios."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        # Reset global state before each test
+        reset_all_global_state()
+        
         self.manager = RegistryManager()
 
         # Create pipeline step specifications
@@ -77,17 +80,17 @@ class TestRegistryManagerPipelineIntegration(IsolatedTestCase):
         training_steps = training_registry.list_step_names()
         inference_steps = inference_registry.list_step_names()
 
-        self.assertEqual(len(training_steps), 2)
-        self.assertEqual(len(inference_steps), 1)
+        assert len(training_steps) == 2
+        assert len(inference_steps) == 1
 
-        self.assertIn("data_step", training_steps)
-        self.assertIn("training_step", training_steps)
-        self.assertIn("inference_data", inference_steps)
+        assert "data_step" in training_steps
+        assert "training_step" in training_steps
+        assert "inference_data" in inference_steps
 
         # Verify no cross-contamination
-        self.assertNotIn("inference_data", training_steps)
-        self.assertNotIn("data_step", inference_steps)
-        self.assertNotIn("training_step", inference_steps)
+        assert "inference_data" not in training_steps
+        assert "data_step" not in inference_steps
+        assert "training_step" not in inference_steps
 
     def test_pipeline_context_switching(self):
         """Test switching between pipeline contexts."""
@@ -102,15 +105,15 @@ class TestRegistryManagerPipelineIntegration(IsolatedTestCase):
         # Verify all contexts exist
         all_contexts = self.manager.list_contexts()
         for context in contexts:
-            self.assertIn(f"{context}_pipeline", all_contexts)
+            assert f"{context}_pipeline" in all_contexts
 
         # Test context switching
         for context in contexts:
             registry = self.manager.get_registry(f"{context}_pipeline")
             steps = registry.list_step_names()
-            self.assertEqual(len(steps), 2)
-            self.assertIn("data_step", steps)
-            self.assertIn("training_step", steps)
+            assert len(steps) == 2
+            assert "data_step" in steps
+            assert "training_step" in steps
 
     def test_pipeline_cleanup_scenarios(self):
         """Test various pipeline cleanup scenarios."""
@@ -123,22 +126,22 @@ class TestRegistryManagerPipelineIntegration(IsolatedTestCase):
             registry.register("step2", self.training_spec)
 
         # Verify all created
-        self.assertEqual(len(self.manager.list_contexts()), 3)
+        assert len(self.manager.list_contexts()) == 3
 
         # Clear specific pipeline
         result = self.manager.clear_context("pipeline_b")
-        self.assertTrue(result)
+        assert result is True
 
         remaining_contexts = self.manager.list_contexts()
-        self.assertEqual(len(remaining_contexts), 2)
-        self.assertIn("pipeline_a", remaining_contexts)
-        self.assertIn("pipeline_c", remaining_contexts)
-        self.assertNotIn("pipeline_b", remaining_contexts)
+        assert len(remaining_contexts) == 2
+        assert "pipeline_a" in remaining_contexts
+        assert "pipeline_c" in remaining_contexts
+        assert "pipeline_b" not in remaining_contexts
 
         # Clear all remaining
         self.manager.clear_all_contexts()
-        self.assertEqual(len(self.manager.list_contexts()), 0)
+        assert len(self.manager.list_contexts()) == 0
 
 
 if __name__ == "__main__":
-    unittest.main()
+    pytest.main([__file__])

@@ -9,8 +9,6 @@ capabilities to validate actual step builders from the codebase.
 import sys
 from pathlib import Path
 
-)
-
 # Import directly from the module to avoid any caching issues
 from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 

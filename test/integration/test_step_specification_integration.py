@@ -8,10 +8,10 @@ Tests the integration aspects of StepSpecification including:
 - End-to-end step construction with nested components
 """
 
-import unittest
+import pytest
 import json
 from typing import List, Dict
-from ..core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from ..core.deps.test_helpers import reset_all_global_state
 
 from cursus.core.base.specification_base import (
     StepSpecification,
@@ -23,12 +23,14 @@ from cursus.core.base.specification_base import (
 from cursus.core.deps.property_reference import PropertyReference
 
 
-class TestStepSpecificationIntegration(IsolatedTestCase):
+class TestStepSpecificationIntegration:
     """Test integration aspects of StepSpecification."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        # Reset global state before each test
+        reset_all_global_state()
 
         # Use string values for input but expect enum instances for comparison
         self.node_type_source_input = "source"
@@ -81,13 +83,13 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
         # Simulate resolving a property reference
         # We'll call its string representation to get the reference string
         resolved_value = str(prop_ref)
-        self.assertIn("source_step", resolved_value)
-        self.assertIn("source_output", resolved_value)
+        assert "source_step" in resolved_value
+        assert "source_output" in resolved_value
 
         # Also test repr method
         repr_value = repr(prop_ref)
-        self.assertIn("source_step", repr_value)
-        self.assertIn("source_output", repr_value)
+        assert "source_step" in repr_value
+        assert "source_output" in repr_value
 
     def test_end_to_end_step_creation(self):
         """Test end-to-end step specification creation with all components."""
@@ -129,10 +131,10 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
         )
 
         # Verify basic properties
-        self.assertEqual(spec.step_type, "ComplexProcessingStep")
-        self.assertEqual(spec.node_type, self.node_type_internal)
-        self.assertEqual(len(spec.dependencies), 2)
-        self.assertEqual(len(spec.outputs), 2)
+        assert spec.step_type == "ComplexProcessingStep"
+        assert spec.node_type == self.node_type_internal
+        assert len(spec.dependencies) == 2
+        assert len(spec.outputs) == 2
 
         # Convert to JSON to test serialization of the complete object
         try:
@@ -140,24 +142,24 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
             parsed = json.loads(json_str)
 
             # Verify key components in JSON
-            self.assertEqual(parsed["step_type"], "ComplexProcessingStep")
-            self.assertEqual(len(parsed["dependencies"]), 2)
-            self.assertEqual(len(parsed["outputs"]), 2)
+            assert parsed["step_type"] == "ComplexProcessingStep"
+            assert len(parsed["dependencies"]) == 2
+            assert len(parsed["outputs"]) == 2
 
             # Check if dependency names are in the dictionary
             dep_keys = parsed["dependencies"].keys()
-            self.assertIn("input_data", dep_keys)
-            self.assertIn("model", dep_keys)
+            assert "input_data" in dep_keys
+            assert "model" in dep_keys
 
             # Check if output names are in the dictionary
             out_keys = parsed["outputs"].keys()
-            self.assertIn("processed_data", out_keys)
-            self.assertIn("metrics", out_keys)
+            assert "processed_data" in out_keys
+            assert "metrics" in out_keys
 
         except Exception as e:
             # Handle the case where model_dump_json might not be available
             # or custom fields aren't properly serialized
-            self.fail(f"JSON serialization failed: {str(e)}")
+            pytest.fail(f"JSON serialization failed: {str(e)}")
 
     def test_dependency_resolution_simulation(self):
         """Test simulation of dependency resolution."""
@@ -197,7 +199,7 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
         sink_dependency = next(iter(sink_spec.dependencies.values()))
 
         # 3. Check if they can be connected based on type
-        self.assertEqual(source_output.output_type, sink_dependency.dependency_type)
+        assert source_output.output_type == sink_dependency.dependency_type
 
         # 4. Simulate creating a connection/reference
         connection = {
@@ -208,9 +210,9 @@ class TestStepSpecificationIntegration(IsolatedTestCase):
         }
 
         # Verify connection details
-        self.assertEqual(connection["from_output"], "source_output")
-        self.assertEqual(connection["to_dependency"], "sink_input")
+        assert connection["from_output"] == "source_output"
+        assert connection["to_dependency"] == "sink_input"
 
 
 if __name__ == "__main__":
-    unittest.main()
+    pytest.main([__file__])

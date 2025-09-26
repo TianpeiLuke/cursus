@@ -7,9 +7,9 @@ Tests the integration between script contracts and specifications including:
 - Contract validation with specifications
 """
 
-import unittest
+import pytest
 from typing import List, Dict
-from ..core.deps.test_helpers import IsolatedTestCase, reset_all_global_state
+from ..core.deps.test_helpers import reset_all_global_state
 
 from cursus.core.base.specification_base import (
     StepSpecification,
@@ -57,12 +57,14 @@ class ScriptArgumentMapping:
 CONTRACTS_AVAILABLE = True
 
 
-class TestScriptContractIntegration(IsolatedTestCase):
+class TestScriptContractIntegration:
     """Test integration with script contracts."""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
         """Set up test fixtures."""
-        super().setUp()
+        # Reset global state before each test
+        reset_all_global_state()
 
         # Create fresh instances of the enums for each test to ensure isolation
         self.node_type_source = NodeType.SOURCE
@@ -110,11 +112,11 @@ class TestScriptContractIntegration(IsolatedTestCase):
     def test_script_contract_creation(self):
         """Test creation of a script contract."""
         # Verify contract properties
-        self.assertEqual(self.contract.script_name, "test_script")
-        self.assertEqual(len(self.contract.inputs), 1)
-        self.assertEqual(len(self.contract.outputs), 1)
-        self.assertEqual(self.contract.inputs[0].name, "input_data")
-        self.assertEqual(self.contract.outputs[0].name, "processed_data")
+        assert self.contract.script_name == "test_script"
+        assert len(self.contract.inputs) == 1
+        assert len(self.contract.outputs) == 1
+        assert self.contract.inputs[0].name == "input_data"
+        assert self.contract.outputs[0].name == "processed_data"
 
     def test_input_descriptor_matching(self):
         """Test matching of input descriptors with dependency specs."""
@@ -122,8 +124,8 @@ class TestScriptContractIntegration(IsolatedTestCase):
         input_desc = self.input_descriptor
         dep_spec = self.dependency_spec
 
-        self.assertEqual(input_desc.name, dep_spec.logical_name)
-        self.assertEqual(input_desc.required, dep_spec.required)
+        assert input_desc.name == dep_spec.logical_name
+        assert input_desc.required == dep_spec.required
 
     def test_output_descriptor_matching(self):
         """Test matching of output descriptors with output specs."""
@@ -131,7 +133,7 @@ class TestScriptContractIntegration(IsolatedTestCase):
         output_desc = self.output_descriptor
         out_spec = self.output_spec
 
-        self.assertEqual(output_desc.name, out_spec.logical_name)
+        assert output_desc.name == out_spec.logical_name
 
     def test_script_argument_mapping(self):
         """Test script argument mapping."""
@@ -141,8 +143,8 @@ class TestScriptContractIntegration(IsolatedTestCase):
         )
 
         # Verify mapping properties
-        self.assertEqual(mapping.contract_arg, "input_data")
-        self.assertEqual(mapping.property_path, "properties.InputDataConfig.S3Uri")
+        assert mapping.contract_arg == "input_data"
+        assert mapping.property_path == "properties.InputDataConfig.S3Uri"
 
     def test_step_spec_with_script_name(self):
         """Test step specification with script name."""
@@ -156,9 +158,9 @@ class TestScriptContractIntegration(IsolatedTestCase):
         )
 
         # Check properties
-        self.assertEqual(script_spec.step_type, "ProcessingStep")
-        self.assertEqual(len(script_spec.dependencies), 1)
-        self.assertEqual(len(script_spec.outputs), 1)
+        assert script_spec.step_type == "ProcessingStep"
+        assert len(script_spec.dependencies) == 1
+        assert len(script_spec.outputs) == 1
 
     def test_integration_validation(self):
         """Test validation of integration between contracts and specs."""
@@ -178,11 +180,11 @@ class TestScriptContractIntegration(IsolatedTestCase):
 
         # Verify they match
         for input_name in contract_inputs:
-            self.assertIn(input_name, spec_inputs)
+            assert input_name in spec_inputs
 
         for output_name in contract_outputs:
-            self.assertIn(output_name, spec_outputs)
+            assert output_name in spec_outputs
 
 
 if __name__ == "__main__":
-    unittest.main()
+    pytest.main([__file__])
