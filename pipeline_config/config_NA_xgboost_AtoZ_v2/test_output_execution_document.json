@@ -425,7 +425,6 @@
         },
         "load_testing_info_map": {
           "sample_payload_s3_bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
-          "sample_payload_s3_key": null,
           "expected_tps": 2,
           "max_latency_in_millisecond": 800,
           "max_acceptable_error_rate": 0.2,
