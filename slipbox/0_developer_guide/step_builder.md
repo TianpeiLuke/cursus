@@ -293,7 +293,6 @@ class YourStepBuilder(StepBuilderBase):
 Here's how the actual `TabularPreprocessingStepBuilder` handles job type variants:
 
 ```python
-@register_builder()
 class TabularPreprocessingStepBuilder(StepBuilderBase):
     def __init__(self, config, **kwargs):
         # Get job type from config
@@ -980,8 +979,7 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
 ## Step Builder Registration
 
 > **📖 For comprehensive information about the step builder registry system, see:**
-> - **[Step Builder Registry Guide](step_builder_registry_guide.md)** - Complete guide to the registry architecture and implementation
-> - **[Step Builder Registry Usage](step_builder_registry_usage.md)** - Practical usage examples and best practices
+> - **[Step Catalog Integration Guide](step_catalog_integration_guide.md)** - Complete guide to the StepCatalog architecture and implementation
 
 ### Automatic Registration with UnifiedRegistryManager
 

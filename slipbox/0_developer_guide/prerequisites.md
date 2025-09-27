@@ -69,7 +69,7 @@ Review these documents to understand our architecture:
 - [Script Contract Design](../1_design/level1_script_contract_alignment_design.md) - Script contract alignment patterns
 - [Step Specification Design](../1_design/level2_contract_specification_alignment_design.md) - Step specification alignment
 - [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - Zettelkasten-based catalog system
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Modern registry system usage
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - Modern StepCatalog system usage
 - [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
 - [Config Field Manager Design](../1_design/config_field_manager_refactoring.md) - Configuration field management
 - [Validation Framework Design](../1_design/enhanced_universal_step_builder_tester_design.md) - Validation system architecture

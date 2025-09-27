@@ -566,8 +566,6 @@ from ..configs.config_your_new_step import YourNewStepConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-from ...registry.builder_registry import register_builder
-
 # Import the step specification
 try:
     from ..specs.your_new_step_spec import YOUR_NEW_STEP_SPEC
@@ -579,7 +577,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class YourNewStepBuilder(StepBuilderBase):
     """
     Builder for YourNewStep Processing Step.
@@ -1841,6 +1838,7 @@ Use the [validation checklist](validation_checklist.md) to verify your implement
 
 ## Related Documentation
 
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - Comprehensive guide to the StepCatalog system and automatic builder discovery
 - [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - How to integrate your pipeline steps with the Zettelkasten-inspired catalog system
 - [Adding New Pipeline Step](adding_new_pipeline_step.md) - Main developer guide with overview and quick start
 - [Prerequisites](prerequisites.md) - Required information before starting step creation
@@ -1854,7 +1852,7 @@ Use the [validation checklist](validation_checklist.md) to verify your implement
 - [Script Contract Development](script_contract.md) - Script contract creation guide
 - [Step Specification Development](step_specification.md) - Step specification creation guide
 - [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Comprehensive guide to the UnifiedRegistryManager and hybrid registry system
-- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for registry operations
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - Comprehensive guide to the StepCatalog system with automatic builder discovery
+- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for StepCatalog operations
 - [Common Pitfalls](common_pitfalls.md) - Common mistakes to avoid
 - [Example](example.md) - Complete step implementation example

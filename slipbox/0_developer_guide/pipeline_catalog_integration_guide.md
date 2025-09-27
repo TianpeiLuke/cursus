@@ -624,8 +624,8 @@ cursus catalog connections --pipeline my_framework_training_basic --verbose
 
 - [Adding New Pipeline Step](adding_new_pipeline_step.md) - How to create new pipeline steps
 - [Creation Process](creation_process.md) - Complete pipeline creation workflow
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry system for step builders
-- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical registry usage examples
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - StepCatalog system for step builders
+- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical StepCatalog usage examples
 
 ## Conclusion
 

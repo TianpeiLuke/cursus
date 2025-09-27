@@ -36,8 +36,8 @@ The developer guide is organized into several interconnected documents:
 
 ### Registry and Validation
 
-- **[Step Builder Registry Guide](step_builder_registry_guide.md)** - Comprehensive guide to the UnifiedRegistryManager and hybrid registry system
-- **[Step Builder Registry Usage](step_builder_registry_usage.md)** - Practical examples and usage patterns for registry operations
+- **[Step Catalog Integration Guide](step_catalog_integration_guide.md)** - Comprehensive guide to the StepCatalog system and automatic builder discovery
+- **[Step Builder Implementation](step_builder.md)** - Detailed guide to step builder implementation patterns
 - **[Validation Framework Guide](validation_framework_guide.md)** - Updated comprehensive validation usage instructions with workspace-aware system
 
 ### Pipeline Integration
@@ -95,7 +95,7 @@ For new developers, we recommend the following reading order:
    - **[Step Specification Development](step_specification.md)**
    - **[Step Builder Implementation](step_builder.md)** (updated for UnifiedRegistryManager)
 7. Learn about registry and validation:
-   - **[Step Builder Registry Guide](step_builder_registry_guide.md)** for hybrid registry system
+   - **[Step Catalog Integration Guide](step_catalog_integration_guide.md)** for StepCatalog system
    - **[Validation Framework Guide](validation_framework_guide.md)** for workspace-aware validation
 8. Understand pipeline integration:
    - **[Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md)** for Zettelkasten-based catalog

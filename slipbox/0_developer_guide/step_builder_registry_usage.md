@@ -1,645 +1,749 @@
-# Step Builder Registry Usage Guide: UnifiedRegistryManager
+# Step Catalog System Usage Guide
 
-**Version**: 2.0  
-**Date**: September 5, 2025  
-**Author**: MODS Development Team
+**Version**: 3.0  
+**Date**: September 27, 2025  
+**Author**: Development Team
 
 ## Overview
 
-This guide provides practical examples of using the UnifiedRegistryManager system for step builder registration and usage in both main workspace and isolated project development scenarios. The examples demonstrate workspace-aware patterns and modern registry usage.
+This guide provides practical examples of using the **StepCatalog System** for step builder discovery and usage in pipeline development. The examples demonstrate modern patterns with automatic builder discovery and config-to-builder resolution.
 
 ## Basic Usage Patterns
 
-### Getting Registry Instance
+### Getting StepCatalog Instance
 
 ```python
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
+from cursus.step_catalog import StepCatalog
 
-# Get registry instance (singleton)
-registry = UnifiedRegistryManager()
-
-# Set workspace context
-registry.set_workspace_context("main")  # or "project_alpha", etc.
+# Get catalog instance - automatically discovers all builders
+catalog = StepCatalog()
 ```
 
 ### Checking Builder Availability
 
 ```python
-# Check if a step builder exists in current workspace
-if registry.has_step_builder("XGBoostTraining"):
+# Check if a step builder exists
+if catalog.is_step_type_supported("XGBoostTraining"):
     print("XGBoostTraining builder is available")
 
-# Check across all workspaces
-workspaces = registry.find_step_builder_workspaces("XGBoostTraining")
-print(f"XGBoostTraining available in: {workspaces}")
+# List all available step types
+step_types = catalog.list_supported_step_types()
+print(f"Available step types: {step_types}")
 
-# List all available builders in current workspace
-builders = registry.list_step_builders()
-print(f"Available builders: {builders}")
+# Get complete builder map
+builder_map = catalog.get_builder_map()
+print(f"Available builders: {list(builder_map.keys())}")
 ```
 
 ### Getting and Using Builders
 
 ```python
-# Get builder class
-builder_class = registry.get_step_builder("XGBoostTraining")
+# Get builder class by step type
+builder_class = catalog.get_builder_for_step_type("XGBoostTraining")
 
 # Create builder instance with proper XGBoost configuration
-from cursus.steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
-from cursus.steps.configs.config_xgboost_training_step import XGBoostTrainingConfig
-
-# Create hyperparameters
-hyperparams = XGBoostModelHyperparameters(
-    full_field_list=["feature1", "feature2", "feature3", "label"],
-    tab_field_list=["feature1", "feature2", "feature3"],
-    cat_field_list=[],
-    label_name="label",
-    id_name="id",
-    num_round=100,
-    max_depth=6,
-    eta=0.1
-)
+from cursus.steps.configs.config_xgboost_training_step import XGBoostTrainingStepConfig
 
 # Create config
-config = XGBoostTrainingConfig(
-    training_entry_point="train.py",
-    hyperparameters=hyperparams,
-    training_instance_type="ml.m5.xlarge",
-    source_dir="scripts/"
+config = XGBoostTrainingStepConfig(
+    job_type="training",
+    region="us-west-2",
+    pipeline_s3_loc="s3://my-bucket/pipeline",
+    # ... other config parameters
 )
-builder = builder_class(config)
+
+# Create builder instance
+builder = builder_class(config=config, role=role, sagemaker_session=session)
 
 # Create step
 step = builder.create_step()
 ```
 
-## Main Workspace Development
+## Config-to-Builder Resolution
 
-### Adding a New Step Builder (Main Workspace)
+### Direct Config Resolution
 
-For development directly in `src/cursus/`:
-
-```python
-# File: src/cursus/steps/builders/custom_processing_builder.py
-
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
-from cursus.core.step_builder import StepBuilderBase
-from cursus.core.config import BasePipelineConfig
-
-class CustomProcessingConfig(BasePipelineConfig):
-    """Configuration for custom processing step."""
-    
-    def __init__(self, 
-                 input_path: str,
-                 output_path: str,
-                 processing_mode: str = "standard",
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.input_path = input_path
-        self.output_path = output_path
-        self.processing_mode = processing_mode
-
-class CustomProcessingStepBuilder(StepBuilderBase):
-    """Builder for custom processing step in main workspace."""
-    
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-        self.config: CustomProcessingConfig = config
-    
-    def build_step(self, **kwargs):
-        # Implementation here
-        from ..custom_processing_step import CustomProcessingStep
-        return CustomProcessingStep(self.config)
-    
-    def validate_config(self, config):
-        required_fields = ['input_path', 'output_path']
-        for field in required_fields:
-            if not hasattr(config, field):
-                raise ValueError(f"Missing required field: {field}")
-        return True
-
-# Register in main workspace
-registry = UnifiedRegistryManager()
-registry.set_workspace_context("main")
-registry.register_step_builder("CustomProcessing", CustomProcessingStepBuilder)
-```
-
-### Using Legacy Decorator (Main Workspace)
+The StepCatalog can directly resolve builder classes from configuration instances:
 
 ```python
-# File: src/cursus/steps/builders/legacy_step_builder.py
+from cursus.step_catalog import StepCatalog
+from cursus.steps.configs.config_batch_transform_step import BatchTransformStepConfig
 
-from cursus.registry.decorators import register_builder
-from cursus.core.step_builder import StepBuilderBase
+# Initialize catalog
+catalog = StepCatalog()
 
-@register_builder("LegacyStep")
-class LegacyStepBuilder(StepBuilderBase):
-    """Legacy step builder using decorator pattern."""
-    
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-        # The decorator automatically registers this with UnifiedRegistryManager
-        # in the current workspace context
-    
-    def build_step(self, **kwargs):
-        # Implementation here
-        pass
-```
-
-### Verifying Main Workspace Registration
-
-```python
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
-
-# Get registry and set main workspace
-registry = UnifiedRegistryManager()
-registry.set_workspace_context("main")
-
-# Verify registration
-if registry.has_step_builder("CustomProcessing"):
-    print("CustomProcessing successfully registered in main workspace")
-    
-    # Get builder info
-    builder_info = registry.inspect_step_builder("CustomProcessing")
-    print(f"Builder class: {builder_info['class']}")
-    print(f"Workspace: {builder_info['workspace']}")
-    print(f"Metadata: {builder_info.get('metadata', {})}")
-
-# List all builders in main workspace
-main_builders = registry.list_step_builders(workspace="main")
-print(f"Main workspace builders: {main_builders}")
-```
-
-## Isolated Project Development
-
-### Setting Up Project Workspace
-
-```python
-# Initialize project workspace
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
-
-registry = UnifiedRegistryManager()
-
-# Initialize workspace for new project
-registry.initialize_workspace("project_alpha")
-registry.set_workspace_context("project_alpha")
-
-print(f"Current workspace: {registry.workspace_context}")
-```
-
-### Adding Project-Specific Step Builder
-
-```python
-# File: development/projects/project_alpha/src/cursus_dev/steps/builders/project_specific_builder.py
-
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
-from cursus.core.step_builder import StepBuilderBase
-from cursus.core.config import BasePipelineConfig
-
-class ProjectSpecificConfig(BasePipelineConfig):
-    """Configuration for project-specific processing."""
-    
-    def __init__(self, 
-                 project_data_path: str,
-                 custom_algorithm: str,
-                 project_params: dict,
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.project_data_path = project_data_path
-        self.custom_algorithm = custom_algorithm
-        self.project_params = project_params
-
-class ProjectSpecificStepBuilder(StepBuilderBase):
-    """Builder for project-specific step in isolated environment."""
-    
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-        self.config: ProjectSpecificConfig = config
-    
-    def build_step(self, **kwargs):
-        # Project-specific implementation
-        from ..project_specific_step import ProjectSpecificStep
-        return ProjectSpecificStep(self.config)
-    
-    def validate_config(self, config):
-        # Project-specific validation
-        required_fields = ['project_data_path', 'custom_algorithm']
-        for field in required_fields:
-            if not hasattr(config, field):
-                raise ValueError(f"Missing required field: {field}")
-        
-        # Validate custom algorithm
-        valid_algorithms = ['custom_ml', 'project_transform', 'special_processing']
-        if config.custom_algorithm not in valid_algorithms:
-            raise ValueError(f"Invalid algorithm: {config.custom_algorithm}")
-        
-        return True
-
-# Register in project workspace
-registry = UnifiedRegistryManager()
-registry.set_workspace_context("project_alpha")
-registry.register_step_builder(
-    "ProjectSpecificProcessing", 
-    ProjectSpecificStepBuilder,
-    metadata={
-        "description": "Project-specific processing for project_alpha",
-        "version": "1.0",
-        "project": "project_alpha",
-        "dependencies": ["custom_ml_lib", "project_utils"]
-    }
+# Create configuration
+config = BatchTransformStepConfig(
+    job_type="training",
+    region="us-west-2",
+    pipeline_s3_loc="s3://my-bucket/pipeline",
+    model_name="my-model",
+    instance_type="ml.m5.xlarge"
 )
+
+# Get builder class directly from config
+builder_class = catalog.get_builder_for_config(config)
+if builder_class:
+    # Create builder instance
+    builder = builder_class(config=config, role=role, sagemaker_session=session)
+    print(f"Created builder: {builder.__class__.__name__}")
+    
+    # Create step
+    step = builder.create_step()
+else:
+    print("No builder found for config")
 ```
 
-### Using Hybrid Resolution
+### Multiple Config Types
 
 ```python
-# File: development/projects/project_alpha/src/cursus_dev/pipeline/project_pipeline.py
+from cursus.step_catalog import StepCatalog
 
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
+catalog = StepCatalog()
 
-def create_project_pipeline():
-    """Create pipeline using both shared and project-specific steps."""
-    
-    registry = UnifiedRegistryManager()
-    registry.set_workspace_context("project_alpha")
-    
-    # Use shared step from main workspace (fallback resolution)
-    preprocessing_builder = registry.get_step_builder("TabularPreprocessing")
-    preprocessing_step = preprocessing_builder(preprocessing_config).build_step()
-    
-    # Use project-specific step (priority resolution)
-    project_builder = registry.get_step_builder("ProjectSpecificProcessing")
-    project_step = project_builder(project_config).build_step()
-    
-    # Use shared training step
-    training_builder = registry.get_step_builder("XGBoostTraining")
-    training_step = training_builder(training_config).build_step()
-    
-    return [preprocessing_step, project_step, training_step]
+# Different config types
+configs = [
+    XGBoostTrainingStepConfig(job_type="training", region="us-west-2"),
+    BatchTransformStepConfig(job_type="inference", region="us-west-2"),
+    PackageStepConfig(job_type="packaging", region="us-west-2")
+]
+
+# Resolve builders for each config
+builders = []
+for config in configs:
+    builder_class = catalog.get_builder_for_config(config)
+    if builder_class:
+        builder = builder_class(config=config, role=role, sagemaker_session=session)
+        builders.append(builder)
+        print(f"Created {builder.__class__.__name__} for {config.__class__.__name__}")
+
+# Create steps
+steps = [builder.create_step() for builder in builders]
 ```
 
-### Verifying Project Workspace Registration
+## Step Type Resolution
+
+### Basic Step Type Resolution
 
 ```python
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
+from cursus.step_catalog import StepCatalog
 
-# Set project workspace
-registry = UnifiedRegistryManager()
-registry.set_workspace_context("project_alpha")
+catalog = StepCatalog()
 
-# Check project-specific builders
-project_builders = registry.list_step_builders(workspace="project_alpha")
-print(f"Project-specific builders: {project_builders}")
+# Get builder class by step type
+builder_class = catalog.get_builder_for_step_type("XGBoostTraining")
+if builder_class:
+    print(f"Builder class: {builder_class.__name__}")
+    
+    # Create instance with config
+    config = XGBoostTrainingStepConfig(
+        job_type="training",
+        region="us-west-2",
+        pipeline_s3_loc="s3://my-bucket/pipeline"
+    )
+    builder = builder_class(config=config, role=role, sagemaker_session=session)
+```
 
-# Check hybrid resolution
-all_available = registry.list_step_builders()  # Includes fallback to shared
-print(f"All available builders in project_alpha context: {all_available}")
+### Job Type Variant Resolution
 
-# Verify specific builder resolution
-if registry.has_step_builder("ProjectSpecificProcessing"):
-    builder_info = registry.inspect_step_builder("ProjectSpecificProcessing")
-    print(f"ProjectSpecificProcessing resolved from: {builder_info['workspace']}")
+The StepCatalog automatically handles job type variants:
 
-# Check shared builder access
-if registry.has_step_builder("XGBoostTraining"):
-    builder_info = registry.inspect_step_builder("XGBoostTraining")
-    print(f"XGBoostTraining resolved from: {builder_info['workspace']}")
+```python
+from cursus.step_catalog import StepCatalog
+
+catalog = StepCatalog()
+
+# Handles variants like "CradleDataLoading_training", "CradleDataLoading_calibration"
+training_builder = catalog.get_builder_for_step_type("CradleDataLoading_training")
+calibration_builder = catalog.get_builder_for_step_type("CradleDataLoading_calibration")
+
+# Both resolve to the same builder class but with different specifications
+print(f"Training builder: {training_builder.__name__}")
+print(f"Calibration builder: {calibration_builder.__name__}")
+print(f"Same class: {training_builder == calibration_builder}")  # True
+```
+
+### Legacy Alias Support
+
+```python
+from cursus.step_catalog import StepCatalog
+
+catalog = StepCatalog()
+
+# Legacy aliases are automatically resolved
+legacy_builder = catalog.get_builder_for_step_type("PytorchTraining")  # Legacy name
+canonical_builder = catalog.get_builder_for_step_type("PyTorchTraining")  # Canonical name
+
+# Both return the same builder class
+print(f"Legacy builder: {legacy_builder.__name__}")
+print(f"Canonical builder: {canonical_builder.__name__}")
+print(f"Same class: {legacy_builder == canonical_builder}")  # True
+```
+
+## Pipeline Construction Examples
+
+### Complete Pipeline Assembly
+
+```python
+from cursus.step_catalog import StepCatalog
+
+def create_complete_pipeline():
+    """Create a complete pipeline using StepCatalog."""
+    
+    catalog = StepCatalog()
+    
+    # Define pipeline steps
+    pipeline_steps = [
+        ("CradleDataLoading", "training"),
+        ("TabularPreprocessing", "training"),
+        ("XGBoostTraining", None),
+        ("BatchTransform", None),
+        ("Package", None)
+    ]
+    
+    # Create builders for each step
+    builders = []
+    for step_type, job_type in pipeline_steps:
+        # Handle job type variants
+        if job_type:
+            step_name = f"{step_type}_{job_type}"
+        else:
+            step_name = step_type
+            
+        builder_class = catalog.get_builder_for_step_type(step_name)
+        if builder_class:
+            # Create appropriate config (simplified for example)
+            config = create_config_for_step(step_type, job_type)
+            builder = builder_class(config=config, role=role, sagemaker_session=session)
+            builders.append((step_name, builder))
+            print(f"Created builder for {step_name}")
+        else:
+            print(f"No builder found for {step_name}")
+    
+    return builders
+
+def create_config_for_step(step_type, job_type):
+    """Create appropriate config for step type."""
+    base_config = {
+        "region": "us-west-2",
+        "pipeline_s3_loc": "s3://my-bucket/pipeline"
+    }
+    
+    if job_type:
+        base_config["job_type"] = job_type
+    
+    # Return appropriate config class instance
+    if step_type == "CradleDataLoading":
+        from cursus.steps.configs.config_cradle_data_load import CradleDataLoadConfig
+        return CradleDataLoadConfig(**base_config)
+    elif step_type == "TabularPreprocessing":
+        from cursus.steps.configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
+        return TabularPreprocessingConfig(**base_config)
+    elif step_type == "XGBoostTraining":
+        from cursus.steps.configs.config_xgboost_training_step import XGBoostTrainingStepConfig
+        return XGBoostTrainingStepConfig(**base_config)
+    # ... add other step types as needed
+    
+    return None
+
+# Usage
+pipeline_builders = create_complete_pipeline()
+```
+
+### Builder Availability Validation
+
+```python
+from cursus.step_catalog import StepCatalog
+
+def validate_pipeline_builders(required_steps):
+    """Validate that all required builders are available."""
+    
+    catalog = StepCatalog()
+    
+    # Validate builder availability for multiple step types
+    availability = catalog.validate_builder_availability(required_steps)
+    
+    print("Builder Availability Report:")
+    print("=" * 40)
+    
+    all_available = True
+    for step_type, available in availability.items():
+        status = "✅" if available else "❌"
+        print(f"{status} {step_type}: {'Available' if available else 'Not Available'}")
+        if not available:
+            all_available = False
+    
+    if all_available:
+        print("\n🎉 All required builders are available!")
+    else:
+        print("\n⚠️ Some builders are missing. Check step names and registry.")
+        
+        # Show available alternatives
+        available_steps = catalog.list_supported_step_types()
+        print(f"\nAvailable step types: {available_steps}")
+    
+    return all_available
+
+# Usage
+required_steps = ["XGBoostTraining", "BatchTransform", "Package", "Registration"]
+validate_pipeline_builders(required_steps)
 ```
 
 ## Advanced Usage Patterns
 
-### Cross-Workspace Builder Access
+### Dynamic Builder Discovery
 
 ```python
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
+from cursus.step_catalog import StepCatalog
 
-registry = UnifiedRegistryManager()
-
-# Access builder from specific workspace regardless of current context
-main_builder = registry.get_step_builder("XGBoostTraining", workspace="main")
-project_builder = registry.get_step_builder("CustomProcessing", workspace="project_alpha")
-
-# Find all workspaces containing a specific builder
-workspaces = registry.find_step_builder_workspaces("XGBoostTraining")
-print(f"XGBoostTraining available in workspaces: {workspaces}")
-
-# Get builder with workspace preference
-try:
-    # Try project workspace first, fallback to main
-    builder = registry.get_step_builder("SomeStep", workspace="project_alpha")
-except KeyError:
-    builder = registry.get_step_builder("SomeStep", workspace="main")
-```
-
-### Dynamic Builder Registration
-
-```python
-def register_dynamic_builder(step_name, builder_class, workspace="main"):
-    """Dynamically register a step builder."""
+def discover_processing_steps():
+    """Discover all available processing steps."""
     
-    registry = UnifiedRegistryManager()
-    registry.set_workspace_context(workspace)
+    catalog = StepCatalog()
     
-    # Register with metadata
-    registry.register_step_builder(
-        step_name,
-        builder_class,
-        metadata={
-            "registered_at": datetime.now().isoformat(),
-            "dynamic": True,
-            "workspace": workspace
-        }
-    )
+    # Get all step types
+    all_steps = catalog.list_supported_step_types()
     
-    # Validate registration
-    if registry.has_step_builder(step_name):
-        print(f"Successfully registered {step_name} in {workspace}")
-        return True
-    else:
-        print(f"Failed to register {step_name}")
-        return False
+    # Filter for processing steps (example heuristic)
+    processing_steps = []
+    for step_type in all_steps:
+        try:
+            builder_class = catalog.get_builder_for_step_type(step_type)
+            # Check if it creates ProcessingStep (simplified check)
+            if hasattr(builder_class, 'create_step'):
+                processing_steps.append(step_type)
+        except Exception:
+            continue
+    
+    print(f"Discovered {len(processing_steps)} processing steps:")
+    for step in processing_steps:
+        print(f"  - {step}")
+    
+    return processing_steps
 
 # Usage
-register_dynamic_builder("DynamicStep", DynamicStepBuilder, "project_beta")
+processing_steps = discover_processing_steps()
+```
+
+### Config Type Discovery
+
+```python
+from cursus.step_catalog import StepCatalog
+
+def discover_config_types():
+    """Discover config types for each step."""
+    
+    catalog = StepCatalog()
+    
+    step_types = catalog.list_supported_step_types()
+    
+    print("Step Type → Config Type Mapping:")
+    print("=" * 50)
+    
+    for step_type in step_types:
+        try:
+            config_types = catalog.get_config_types_for_step_type(step_type)
+            if config_types:
+                print(f"{step_type}: {config_types}")
+            else:
+                print(f"{step_type}: No config types found")
+        except Exception as e:
+            print(f"{step_type}: Error - {e}")
+
+# Usage
+discover_config_types()
 ```
 
 ### Builder Factory Pattern
 
 ```python
+from cursus.step_catalog import StepCatalog
+
 class StepBuilderFactory:
-    """Factory for creating step builders with workspace awareness."""
+    """Factory for creating step builders using StepCatalog."""
     
-    def __init__(self, workspace="main"):
-        self.registry = UnifiedRegistryManager()
-        self.registry.set_workspace_context(workspace)
-        self.workspace = workspace
+    def __init__(self):
+        self.catalog = StepCatalog()
     
-    def create_builder(self, step_type, config):
+    def create_builder(self, step_type, config, **kwargs):
         """Create a step builder instance."""
-        if not self.registry.has_step_builder(step_type):
-            available = self.registry.list_step_builders()
-            raise ValueError(f"Step type '{step_type}' not found. Available: {available}")
+        if not self.catalog.is_step_type_supported(step_type):
+            available = self.catalog.list_supported_step_types()
+            raise ValueError(f"Step type '{step_type}' not supported. Available: {available}")
         
-        builder_class = self.registry.get_step_builder(step_type)
-        return builder_class(config)
+        builder_class = self.catalog.get_builder_for_step_type(step_type)
+        return builder_class(config=config, **kwargs)
+    
+    def create_builder_from_config(self, config, **kwargs):
+        """Create builder directly from config."""
+        builder_class = self.catalog.get_builder_for_config(config)
+        if not builder_class:
+            raise ValueError(f"No builder found for config type: {type(config).__name__}")
+        
+        return builder_class(config=config, **kwargs)
     
     def list_available_steps(self):
-        """List all available step types in current workspace."""
-        return self.registry.list_step_builders()
+        """List all available step types."""
+        return self.catalog.list_supported_step_types()
     
-    def switch_workspace(self, workspace):
-        """Switch to different workspace."""
-        self.registry.set_workspace_context(workspace)
-        self.workspace = workspace
+    def validate_step_availability(self, step_types):
+        """Validate availability of multiple step types."""
+        return self.catalog.validate_builder_availability(step_types)
 
 # Usage
-factory = StepBuilderFactory("project_alpha")
-builder = factory.create_builder("CustomProcessing", config)
-step = builder.build_step()
+factory = StepBuilderFactory()
+
+# Create builder by step type
+config = XGBoostTrainingStepConfig(job_type="training", region="us-west-2")
+builder = factory.create_builder("XGBoostTraining", config, role=role, sagemaker_session=session)
+
+# Create builder from config
+builder = factory.create_builder_from_config(config, role=role, sagemaker_session=session)
+
+# List available steps
+available_steps = factory.list_available_steps()
+print(f"Available steps: {available_steps}")
 ```
 
-## CLI Integration Examples
+## Integration with Pipeline Systems
 
-### Using CLI Commands
-
-```bash
-# Set workspace context
-cursus set-workspace project_alpha
-
-# List available step builders
-cursus list-steps --workspace project_alpha
-
-# Validate registry integrity
-cursus validate-registry --workspace project_alpha
-
-# Get builder information
-cursus inspect-step XGBoostTraining --workspace project_alpha
-
-# Clear registry cache
-cursus clear-cache --workspace project_alpha
-```
-
-### CLI Integration in Python
+### DAG Compiler Integration
 
 ```python
-from cursus.cli.workspace_cli import WorkspaceCLI
+from cursus.step_catalog import StepCatalog
+from cursus.core.dag.dag_compiler import PipelineDAGCompiler
 
-# Initialize CLI
-cli = WorkspaceCLI()
+def create_dag_compiler_with_catalog():
+    """Create DAG compiler with StepCatalog integration."""
+    
+    # Create catalog
+    catalog = StepCatalog()
+    
+    # Create DAG compiler with catalog
+    compiler = PipelineDAGCompiler(step_catalog=catalog)
+    
+    # Get supported step types from catalog
+    supported_types = compiler.get_supported_step_types()
+    print(f"Compiler supports {len(supported_types)} step types")
+    
+    return compiler, catalog
 
-# Set workspace
-cli.set_workspace("project_alpha")
+# Usage
+compiler, catalog = create_dag_compiler_with_catalog()
 
-# List steps
-steps = cli.list_steps(workspace="project_alpha")
-print(f"Available steps: {steps}")
+# Create pipeline template
+template = compiler.create_template(
+    dag=pipeline_dag,
+    config_path="config.json",
+    step_catalog=catalog
+)
+```
 
-# Validate registry
-validation_result = cli.validate_registry(workspace="project_alpha")
-if validation_result.is_valid:
-    print("Registry is valid")
-else:
-    print(f"Validation errors: {validation_result.errors}")
+### Pipeline Assembler Integration
+
+```python
+from cursus.step_catalog import StepCatalog
+from cursus.core.assembly.pipeline_assembler import PipelineAssembler
+
+def create_pipeline_with_catalog(dag, config_map):
+    """Create pipeline using StepCatalog for builder resolution."""
+    
+    # Create catalog
+    catalog = StepCatalog()
+    
+    # Create assembler with catalog
+    assembler = PipelineAssembler(
+        dag=dag,
+        config_map=config_map,
+        step_catalog=catalog  # Direct config-to-builder resolution
+    )
+    
+    # Assembler automatically uses catalog for builder resolution
+    pipeline = assembler.assemble()
+    
+    return pipeline
+
+# Usage
+pipeline = create_pipeline_with_catalog(my_dag, my_config_map)
+```
+
+## Performance Optimization
+
+### Catalog Performance Monitoring
+
+```python
+from cursus.step_catalog import StepCatalog
+import time
+
+def monitor_catalog_performance():
+    """Monitor StepCatalog performance."""
+    
+    # Measure initialization time
+    start_time = time.time()
+    catalog = StepCatalog()
+    init_time = time.time() - start_time
+    print(f"Catalog initialized in {init_time:.3f}s")
+    
+    # Measure discovery time
+    start_time = time.time()
+    step_types = catalog.list_supported_step_types()
+    discovery_time = time.time() - start_time
+    print(f"Discovered {len(step_types)} step types in {discovery_time:.3f}s")
+    
+    # Measure resolution time
+    test_steps = ["XGBoostTraining", "BatchTransform", "Package"]
+    start_time = time.time()
+    for step_type in test_steps:
+        builder_class = catalog.get_builder_for_step_type(step_type)
+    resolution_time = time.time() - start_time
+    print(f"Resolved {len(test_steps)} builders in {resolution_time:.3f}s")
+    
+    return {
+        "init_time": init_time,
+        "discovery_time": discovery_time,
+        "resolution_time": resolution_time,
+        "step_count": len(step_types)
+    }
+
+# Usage
+performance_stats = monitor_catalog_performance()
+```
+
+### Caching Optimization
+
+```python
+from cursus.step_catalog import StepCatalog
+
+def optimize_catalog_usage():
+    """Demonstrate optimal catalog usage patterns."""
+    
+    # Create single catalog instance (recommended)
+    catalog = StepCatalog()
+    
+    # Cache frequently used builders
+    common_builders = {}
+    common_steps = ["XGBoostTraining", "BatchTransform", "Package"]
+    
+    for step_type in common_steps:
+        builder_class = catalog.get_builder_for_step_type(step_type)
+        common_builders[step_type] = builder_class
+        print(f"Cached builder for {step_type}")
+    
+    # Use cached builders
+    def create_cached_builder(step_type, config, **kwargs):
+        if step_type in common_builders:
+            builder_class = common_builders[step_type]
+            return builder_class(config=config, **kwargs)
+        else:
+            # Fall back to catalog lookup
+            builder_class = catalog.get_builder_for_step_type(step_type)
+            return builder_class(config=config, **kwargs)
+    
+    return create_cached_builder
+
+# Usage
+create_builder = optimize_catalog_usage()
+builder = create_builder("XGBoostTraining", config, role=role, sagemaker_session=session)
+```
+
+## Error Handling and Debugging
+
+### Graceful Error Handling
+
+```python
+from cursus.step_catalog import StepCatalog
+
+def get_builder_safely(step_type):
+    """Get builder with comprehensive error handling."""
+    
+    catalog = StepCatalog()
+    
+    try:
+        # Check if step type is supported
+        if not catalog.is_step_type_supported(step_type):
+            available_steps = catalog.list_supported_step_types()
+            raise ValueError(
+                f"Step type '{step_type}' not supported. "
+                f"Available step types: {available_steps}"
+            )
+        
+        # Get builder class
+        builder_class = catalog.get_builder_for_step_type(step_type)
+        return builder_class
+        
+    except Exception as e:
+        print(f"Error getting builder for '{step_type}': {e}")
+        
+        # Provide helpful debugging information
+        print("\nDebugging Information:")
+        print(f"- Supported step types: {catalog.list_supported_step_types()}")
+        
+        # Check for similar step names
+        available_steps = catalog.list_supported_step_types()
+        similar_steps = [s for s in available_steps if step_type.lower() in s.lower()]
+        if similar_steps:
+            print(f"- Similar step types: {similar_steps}")
+        
+        return None
+
+# Usage
+builder_class = get_builder_safely("XGBoostTraining")
+if builder_class:
+    builder = builder_class(config=config, role=role, sagemaker_session=session)
+```
+
+### Debugging Catalog State
+
+```python
+from cursus.step_catalog import StepCatalog
+
+def debug_catalog_state():
+    """Debug catalog state and discovery."""
+    
+    catalog = StepCatalog()
+    
+    print("StepCatalog Debug Information:")
+    print("=" * 50)
+    
+    # List all discovered step types
+    step_types = catalog.list_supported_step_types()
+    print(f"Total discovered step types: {len(step_types)}")
+    
+    # Show step types by category (heuristic)
+    processing_steps = [s for s in step_types if any(keyword in s.lower() 
+                       for keyword in ['processing', 'preprocess', 'transform', 'package'])]
+    training_steps = [s for s in step_types if 'training' in s.lower()]
+    model_steps = [s for s in step_types if 'model' in s.lower()]
+    
+    print(f"\nProcessing steps ({len(processing_steps)}): {processing_steps}")
+    print(f"Training steps ({len(training_steps)}): {training_steps}")
+    print(f"Model steps ({len(model_steps)}): {model_steps}")
+    
+    # Test builder resolution for each step type
+    print(f"\nBuilder Resolution Test:")
+    failed_resolutions = []
+    for step_type in step_types:
+        try:
+            builder_class = catalog.get_builder_for_step_type(step_type)
+            print(f"✅ {step_type} → {builder_class.__name__}")
+        except Exception as e:
+            print(f"❌ {step_type} → Error: {e}")
+            failed_resolutions.append(step_type)
+    
+    if failed_resolutions:
+        print(f"\nFailed resolutions: {failed_resolutions}")
+    else:
+        print(f"\n🎉 All step types resolved successfully!")
+
+# Usage
+debug_catalog_state()
 ```
 
 ## Best Practices
 
-### 1. Always Set Workspace Context
+### 1. Use Single Catalog Instance
 
 ```python
-# Good: Explicit workspace context
-registry = UnifiedRegistryManager()
-registry.set_workspace_context("project_alpha")
-builder = registry.get_step_builder("MyStep")
+# Good: Single instance
+catalog = StepCatalog()
+builder1 = catalog.get_builder_for_step_type("Step1")
+builder2 = catalog.get_builder_for_step_type("Step2")
 
-# Avoid: Implicit context
-registry = UnifiedRegistryManager()
-builder = registry.get_step_builder("MyStep")  # Uses default context
+# Avoid: Multiple instances
+catalog1 = StepCatalog()
+builder1 = catalog1.get_builder_for_step_type("Step1")
+catalog2 = StepCatalog()  # Unnecessary
+builder2 = catalog2.get_builder_for_step_type("Step2")
 ```
 
-### 2. Use Descriptive Metadata
+### 2. Handle Missing Builders Gracefully
 
 ```python
-# Good: Include comprehensive metadata
-registry.register_step_builder(
-    "CustomProcessing",
-    CustomProcessingStepBuilder,
-    metadata={
-        "description": "Custom data processing for project_alpha",
-        "version": "1.2.0",
-        "author": "Data Science Team",
-        "dependencies": ["pandas>=1.3.0", "scikit-learn>=1.0.0"],
-        "workspace": "project_alpha",
-        "tags": ["preprocessing", "custom", "ml"]
-    }
-)
+# Good: Check availability first
+if catalog.is_step_type_supported("MyStep"):
+    builder_class = catalog.get_builder_for_step_type("MyStep")
+else:
+    print("MyStep not supported")
+
+# Better: Use try-catch with helpful error messages
+try:
+    builder_class = catalog.get_builder_for_step_type("MyStep")
+except Exception as e:
+    available = catalog.list_supported_step_types()
+    print(f"Error: {e}. Available steps: {available}")
 ```
 
-### 3. Handle Missing Builders Gracefully
+### 3. Leverage Config-to-Builder Resolution
 
 ```python
-# Good: Graceful error handling
-def get_builder_safely(step_type, workspace="main"):
-    registry = UnifiedRegistryManager()
-    registry.set_workspace_context(workspace)
-    
-    try:
-        return registry.get_step_builder(step_type)
-    except KeyError:
-        available = registry.list_step_builders()
-        raise ValueError(
-            f"Step builder '{step_type}' not found in workspace '{workspace}'. "
-            f"Available builders: {available}"
-        )
+# Good: Direct config resolution
+builder_class = catalog.get_builder_for_config(config)
+if builder_class:
+    builder = builder_class(config=config, **kwargs)
+
+# Avoid: Manual step type extraction
+step_type = extract_step_type_from_config(config)  # Manual work
+builder_class = catalog.get_builder_for_step_type(step_type)
 ```
 
-### 4. Validate Registry State
+### 4. Validate Builder Availability Early
 
 ```python
-# Good: Regular validation
-def validate_workspace_registry(workspace):
-    registry = UnifiedRegistryManager()
-    registry.set_workspace_context(workspace)
-    
-    validation = registry.validate()
-    if not validation.is_valid:
-        print(f"Registry validation failed for {workspace}:")
-        for error in validation.errors:
-            print(f"  - {error}")
-        return False
-    
-    print(f"Registry for {workspace} is valid")
-    return True
+# Good: Validate all required builders upfront
+required_steps = ["XGBoostTraining", "BatchTransform", "Package"]
+availability = catalog.validate_builder_availability(required_steps)
 
-# Run validation for all workspaces
-for workspace in ["main", "project_alpha", "project_beta"]:
-    validate_workspace_registry(workspace)
+if not all(availability.values()):
+    missing = [step for step, available in availability.items() if not available]
+    raise ValueError(f"Missing required builders: {missing}")
+
+# Proceed with pipeline creation
 ```
 
-### 5. Use Workspace-Specific Naming
+### 5. Use Performance Monitoring
 
 ```python
-# Good: Clear workspace-specific naming
-registry.set_workspace_context("project_alpha")
-registry.register_step_builder("AlphaCustomProcessing", AlphaCustomStepBuilder)
+# Good: Monitor performance in production
+import time
 
-# Avoid: Generic naming that could conflict
-registry.register_step_builder("CustomProcessing", SomeStepBuilder)  # Could conflict
+start_time = time.time()
+catalog = StepCatalog()
+init_time = time.time() - start_time
+
+if init_time > 1.0:  # Threshold
+    print(f"Warning: Catalog initialization took {init_time:.3f}s")
+
+# Log performance metrics
+logger.info(f"StepCatalog initialized in {init_time:.3f}s")
 ```
 
-## Troubleshooting
+## Migration from Legacy Systems
 
-### Builder Not Found
+### Old Pattern (Removed)
 
 ```python
-# Debug missing builder
-def debug_missing_builder(step_type):
-    registry = UnifiedRegistryManager()
-    
-    print(f"Current workspace: {registry.workspace_context}")
-    print(f"Available builders: {registry.list_step_builders()}")
-    
-    # Check other workspaces
-    workspaces = registry.find_step_builder_workspaces(step_type)
-    if workspaces:
-        print(f"{step_type} found in workspaces: {workspaces}")
-    else:
-        print(f"{step_type} not found in any workspace")
-    
-    # Check cache
-    stats = registry.get_cache_stats()
-    print(f"Cache stats: {stats}")
+# Old way - don't use (this has been removed)
+from cursus.registry.builder_registry import StepBuilderRegistry
 
-# Usage
-debug_missing_builder("MissingStep")
+registry = StepBuilderRegistry()
+builder = registry.get_builder_for_config(config)
 ```
 
-### Wrong Builder Resolution
-
-```python
-# Debug resolution order
-def debug_builder_resolution(step_type):
-    registry = UnifiedRegistryManager()
-    
-    # Check resolution in different workspaces
-    for workspace in ["main", "project_alpha", "project_beta"]:
-        try:
-            registry.set_workspace_context(workspace)
-            builder_info = registry.inspect_step_builder(step_type)
-            print(f"In {workspace}: {step_type} resolves to {builder_info['class']} from {builder_info['workspace']}")
-        except KeyError:
-            print(f"In {workspace}: {step_type} not found")
-
-# Usage
-debug_builder_resolution("XGBoostTraining")
-```
-
-### Cache Issues
-
-```python
-# Debug cache problems
-def debug_cache_issues():
-    registry = UnifiedRegistryManager()
-    
-    # Get cache statistics
-    stats = registry.get_cache_stats()
-    print(f"Cache hits: {stats['hits']}")
-    print(f"Cache misses: {stats['misses']}")
-    print(f"Cache size: {stats['size']}")
-    
-    # Clear cache if needed
-    if stats['size'] > 1000:  # Arbitrary threshold
-        print("Cache size large, clearing...")
-        registry.clear_cache()
-    
-    # Check cache after clearing
-    new_stats = registry.get_cache_stats()
-    print(f"Cache after clearing: {new_stats}")
-
-# Usage
-debug_cache_issues()
-```
-
-## Migration from Legacy Registry
-
-### Old Pattern (Deprecated)
-
-```python
-# Old way - don't use
-from src.pipeline_registry.builder_registry import get_global_registry, register_builder
-
-@register_builder("XGBoostTraining")
-class XGBoostTrainingStepBuilder(StepBuilderBase):
-    pass
-
-registry = get_global_registry()
-builder = registry.get_builder_for_step_type("XGBoostTraining")
-```
-
-### New Pattern (Recommended)
+### New Pattern (Current)
 
 ```python
 # New way - use this
-from cursus.registry.hybrid.manager import UnifiedRegistryManager
+from cursus.step_catalog import StepCatalog
 
-class XGBoostTrainingStepBuilder(StepBuilderBase):
-    pass
-
-# Explicit registration
-registry = UnifiedRegistryManager()
-registry.set_workspace_context("main")
-registry.register_step_builder("XGBoostTraining", XGBoostTrainingStepBuilder)
-
-# Get builder
-builder_class = registry.get_step_builder("XGBoostTraining")
-builder = builder_class(config)
+catalog = StepCatalog()
+builder = catalog.get_builder_for_config(config)
 ```
 
 ## Related Resources
 
-- [Step Builder Registry Guide](./step_builder_registry_guide.md)
-- [Adding a New Pipeline Step](./adding_new_pipeline_step.md)
-- [Workspace-Aware Development Guide](../01_workspace_aware_developer_guide/ws_README.md)
-- [UnifiedRegistryManager Design](../1_design/hybrid_registry_standardization_enforcement_design.md)
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - Comprehensive system documentation
+- [Adding a New Pipeline Step](adding_new_pipeline_step.md) - Complete guide to adding new steps
+- [Step Builder Implementation](step_builder.md) - Detailed step builder patterns
+- [Creation Process](creation_process.md) - Step-by-step creation process
 
-This guide demonstrates practical usage patterns for the modern UnifiedRegistryManager system with workspace awareness and should be used for all new development.
+This guide demonstrates practical usage patterns for the modern StepCatalog system and should be used for all pipeline development.

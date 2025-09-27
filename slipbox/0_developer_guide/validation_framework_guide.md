@@ -1416,7 +1416,7 @@ For detailed technical design information about the validation frameworks:
 - [Script Contract Development](script_contract.md) - Script contract creation guide
 - [Step Specification Development](step_specification.md) - Step specification creation guide
 - [Three-Tier Config Design](three_tier_config_design.md) - Configuration design patterns
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry usage and auto-discovery
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - StepCatalog usage and auto-discovery
 - [Hyperparameter Class Guide](hyperparameter_class.md) - Adding hyperparameter classes for training steps
 
 ### Rules and Standards

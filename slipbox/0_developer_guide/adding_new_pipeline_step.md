@@ -53,7 +53,7 @@ Choose the approach that best fits your development needs. This guide covers bot
    - [Configuration Classes Development](three_tier_config_design.md)
    - [Config Field Manager Guide](config_field_manager_guide.md)
    - [Adding a New Hyperparameter Class](hyperparameter_class.md)
-   - [Step Builder Registry Guide](step_builder_registry_guide.md)
+   - [Step Catalog Integration Guide](step_catalog_integration_guide.md)
 4. [Design Principles](design_principles.md)
 5. [Best Practices](best_practices.md)
 6. [Standardization Rules](standardization_rules.md)
@@ -271,17 +271,23 @@ registry.set_workspace_context("your_project")
 registry.register_step_builder("YourStepType", YourStepStepBuilder)
 ```
 
-### Legacy Decorator Support
-The `@register_builder` decorator is still supported for backward compatibility but uses UnifiedRegistryManager internally:
+### Modern Step Catalog Integration
+Step builders are automatically discovered by the StepCatalog system through file system scanning. No decorators or manual registration are required:
 
 ```python
-@register_builder("YourStepType")
 class YourStepStepBuilder(StepBuilderBase):
     """Builder for your step."""
-    # Implementation here
+    # Implementation here - no decorator needed
 ```
 
-For detailed guidance on using the registry system, workspace context management, and resolution strategies, see the [Step Builder Registry Guide](step_builder_registry_guide.md).
+The StepCatalog automatically discovers builders based on:
+- File naming convention: `builder_*.py` files in `src/cursus/steps/builders/`
+- Class naming convention: Classes ending with `StepBuilder`
+- Registry integration: Step definitions from `src/cursus/registry/step_names.py`
+
+For detailed guidance on step catalog integration and builder discovery, see the [Step Catalog Integration Guide](step_catalog_integration_guide.md).
+
+**📖 Related Documentation**: This modern approach is detailed in the [Step Catalog Integration Guide](step_catalog_integration_guide.md), which provides comprehensive documentation on automatic builder discovery, config-to-builder resolution, and pipeline construction interfaces.
 
 ## Additional Resources
 
@@ -296,8 +302,8 @@ For detailed guidance on using the registry system, workspace context management
 - [Creation Process](creation_process.md) - Complete step-by-step pipeline creation workflow
 - [Script Development Guide](script_development_guide.md) - Comprehensive guide for developing SageMaker-compatible scripts
 - [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - How to integrate your pipeline steps with the Zettelkasten-inspired catalog system
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Comprehensive guide to the UnifiedRegistryManager and hybrid registry system
-- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for registry operations
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - Comprehensive guide to the StepCatalog system with automatic builder discovery
+- [Step Builder Registry Usage](step_builder_registry_usage.md) - Practical examples and usage patterns for StepCatalog operations
 - [Step Builder](step_builder.md) - Detailed guide to step builder implementation
 - [Step Specification](step_specification.md) - How to define step specifications
 - [Validation Framework Guide](validation_framework_guide.md) - Comprehensive validation system

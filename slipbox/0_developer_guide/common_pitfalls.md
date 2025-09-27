@@ -1251,7 +1251,7 @@ When in doubt, refer to the [validation checklist](validation_checklist.md) to v
 - [Step Specification](step_specification.md) - Step specification development guide
 - [Three Tier Config Design](three_tier_config_design.md) - Configuration class design patterns
 - [Component Guide](component_guide.md) - System component overview
-- [Step Builder Registry Guide](step_builder_registry_guide.md) - Registry integration patterns
+- [Step Catalog Integration Guide](step_catalog_integration_guide.md) - StepCatalog integration patterns
 - [Pipeline Catalog Integration Guide](pipeline_catalog_integration_guide.md) - Pipeline catalog usage
 
 ### Design References
