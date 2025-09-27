@@ -19,7 +19,8 @@ warnings.warn(
 
 # Import everything from the new registry location
 from ...registry.step_names import *
-from ...registry.builder_registry import *
+# StepBuilderRegistry has been removed - use StepCatalog instead
+# from ...registry.builder_registry import *
 from ...registry.hyperparameter_registry import *
 from ...registry.exceptions import *
 
@@ -30,8 +31,8 @@ __all__ = [
     "CONFIG_STEP_REGISTRY",
     "BUILDER_STEP_NAMES",
     "SPEC_STEP_TYPES",
-    # Registry classes
-    "StepBuilderRegistry",
+    # Registry classes - StepBuilderRegistry removed, use StepCatalog instead
+    # "StepBuilderRegistry",
     "HYPERPARAMETER_REGISTRY",
     # Helper functions from step_names
     "get_config_class_name",
@@ -51,10 +52,10 @@ __all__ = [
     "get_sagemaker_step_type_mapping",
     "get_canonical_name_from_file_name",
     "validate_file_name",
-    # Registry management from builder_registry
-    "get_global_registry",
-    "register_global_builder",
-    "list_global_step_types",
+    # Registry management from builder_registry - REMOVED: Use StepCatalog instead
+    # "get_global_registry",
+    # "register_global_builder", 
+    # "list_global_step_types",
     # Hyperparameter registry functions
     "get_all_hyperparameter_classes",
     "get_hyperparameter_class_by_model_type",

@@ -12,7 +12,7 @@ import time
 from collections import defaultdict
 
 from ...core.base import StepBuilderBase, BasePipelineConfig
-from ...registry.builder_registry import StepBuilderRegistry
+from ...step_catalog import StepCatalog
 from ...registry.step_names import STEP_NAMES
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,8 @@ class WorkspaceComponentRegistry:
         self._cache_timestamp: Dict[str, float] = {}
         self.cache_expiry = 300
 
-        # Core registry for fallback
-        self.core_registry = StepBuilderRegistry()
+        # Core registry for fallback - use StepCatalog instead
+        self.core_registry = StepCatalog()
 
     def discover_components(self, developer_id: str = None) -> Dict[str, Any]:
         """

@@ -19,7 +19,7 @@ from ..base import StepBuilderBase, BasePipelineConfig
 from ..assembler.pipeline_template_base import PipelineTemplateBase
 
 from .config_resolver import StepConfigResolver
-from ...registry.builder_registry import StepBuilderRegistry
+from ...step_catalog import StepCatalog
 from .validation import ValidationEngine
 from .exceptions import ConfigurationError, ValidationError
 from ...registry.exceptions import RegistryError
@@ -44,7 +44,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         dag: PipelineDAG,
         config_path: str,
         config_resolver: Optional[StepConfigResolver] = None,
-        builder_registry: Optional[StepBuilderRegistry] = None,
+        step_catalog: Optional[StepCatalog] = None,
         skip_validation: bool = False,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         **kwargs: Any,
@@ -56,7 +56,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             dag: PipelineDAG instance defining pipeline structure
             config_path: Path to configuration file
             config_resolver: Custom config resolver (optional)
-            builder_registry: Custom builder registry (optional)
+            step_catalog: Custom step catalog (optional)
             skip_validation: Whether to skip validation (for testing)
             pipeline_parameters: Custom pipeline parameters from DAGCompiler (optional)
             **kwargs: Additional arguments for base template
@@ -66,7 +66,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
 
         self._dag = dag
         self._config_resolver = config_resolver or StepConfigResolver()
-        self._builder_registry = builder_registry or StepBuilderRegistry()
+        self._step_catalog = step_catalog or StepCatalog()
         self._validation_engine = ValidationEngine()
 
         # Store config_path as an instance attribute so it's available to _detect_config_classes
@@ -193,9 +193,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
 
     def _create_step_builder_map(self) -> Dict[str, Type[StepBuilderBase]]:
         """
-        Auto-map step types to builders using registry.
+        Auto-map step types to builders using StepCatalog.
 
-        Uses StepBuilderRegistry to map configuration types to their
+        Uses StepCatalog to map configuration types to their
         corresponding step builder classes.
 
         Returns:
@@ -207,14 +207,14 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         # Strategy 2 + 3: Use lazy loading flag to preserve original logic
         if not self._builder_map_loaded:
             try:
-                # Get the complete builder registry
-                builder_map = self._builder_registry.get_builder_map()
+                # Get the complete builder map from StepCatalog
+                builder_map = self._step_catalog.get_builder_map()
                 
                 # Update the early-initialized dict
                 self._resolved_builder_map.update(builder_map)
 
                 self.logger.info(
-                    f"Using {len(self._resolved_builder_map)} registered step builders"
+                    f"Using {len(self._resolved_builder_map)} registered step builders from StepCatalog"
                 )
 
                 # Validate that all required builders are available
@@ -223,18 +223,15 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
 
                 for node, config in config_map.items():
                     try:
-                        # Pass the node name to the registry for better resolution
-                        builder_class = self._builder_registry.get_builder_for_config(
+                        # Use StepCatalog for config-to-builder resolution
+                        builder_class = self._step_catalog.get_builder_for_config(
                             config, node_name=node
                         )
-                        job_type = getattr(config, "job_type", None)
-                        step_type = self._builder_registry._config_class_to_step_type(
-                            type(config).__name__,
-                            node_name=node,
-                            job_type=str(job_type) if job_type is not None else "",
-                        )
-                        self.logger.debug(f"  {step_type} → {builder_class.__name__}")
-                    except RegistryError as e:
+                        if builder_class:
+                            self.logger.debug(f"  {node} → {builder_class.__name__}")
+                        else:
+                            missing_builders.append(f"{node} ({type(config).__name__})")
+                    except Exception as e:
                         missing_builders.append(f"{node} ({type(config).__name__})")
 
                 if missing_builders:
@@ -386,14 +383,17 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         # generator = ExecutionDocumentGenerator(config_path=config_path)
         # filled_doc = generator.fill_execution_document(dag, execution_doc)
 
-    def get_builder_registry_stats(self) -> Dict[str, Any]:
+    def get_step_catalog_stats(self) -> Dict[str, Any]:
         """
-        Get statistics about the builder registry.
+        Get statistics about the step catalog.
 
         Returns:
-            Dictionary with registry statistics
+            Dictionary with step catalog statistics
         """
-        return self._builder_registry.get_registry_stats()
+        return {
+            "supported_step_types": len(self._step_catalog.list_supported_step_types()),
+            "indexed_steps": len(self._step_catalog._step_index) if hasattr(self._step_catalog, '_step_index') else 0,
+        }
 
     def validate_before_build(self) -> bool:
         """

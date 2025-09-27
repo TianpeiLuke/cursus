@@ -45,7 +45,7 @@ except ImportError:
         encrypt_inter_container_traffic=True,
     )
 from .config_resolver import StepConfigResolver
-from ...registry.builder_registry import StepBuilderRegistry
+from ...step_catalog import StepCatalog
 from .validation import (
     ValidationResult,
     ResolutionPreview,
@@ -149,7 +149,7 @@ class PipelineDAGCompiler:
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         config_resolver: Optional[StepConfigResolver] = None,
-        builder_registry: Optional[StepBuilderRegistry] = None,
+        step_catalog: Optional[StepCatalog] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         **kwargs: Any,
     ) -> None:
@@ -161,7 +161,7 @@ class PipelineDAGCompiler:
             sagemaker_session: SageMaker session for pipeline execution
             role: IAM role for pipeline execution
             config_resolver: Custom config resolver (optional)
-            builder_registry: Custom builder registry (optional)
+            step_catalog: Custom step catalog (optional)
             pipeline_parameters: Pipeline parameters to pass to template (optional)
             **kwargs: Additional arguments for template constructor
         """
@@ -184,7 +184,7 @@ class PipelineDAGCompiler:
 
         # Initialize components
         self.config_resolver = config_resolver or StepConfigResolver()
-        self.builder_registry = builder_registry or StepBuilderRegistry()
+        self.step_catalog = step_catalog or StepCatalog()
         self.validation_engine = ValidationEngine()
 
         self.logger = logging.getLogger(__name__)
@@ -327,13 +327,14 @@ class PipelineDAGCompiler:
 
                     # Get builder for this config type
                     try:
-                        step_type = self.builder_registry._config_class_to_step_type(
+                        # Use step catalog to get builder for config type
+                        builder_class = self.step_catalog.get_builder_for_step_type(
                             config_type
                         )
-                        builder_class = self.builder_registry.get_builder_for_step_type(
-                            step_type
-                        )
-                        config_builder_map[config_type] = builder_class.__name__
+                        if builder_class:
+                            config_builder_map[config_type] = builder_class.__name__
+                        else:
+                            config_builder_map[config_type] = "UNKNOWN"
                     except Exception:
                         config_builder_map[config_type] = "UNKNOWN"
 
@@ -504,7 +505,10 @@ class PipelineDAGCompiler:
                     "dag_nodes": len(dag_nodes),
                     "dag_edges": len(dag.edges),
                     "config_path": self.config_path,
-                    "builder_registry_stats": self.builder_registry.get_registry_stats(),
+                    "step_catalog_stats": {
+                        "supported_step_types": len(self.step_catalog.list_supported_step_types()),
+                        "indexed_steps": len(self.step_catalog._step_index) if hasattr(self.step_catalog, '_step_index') else 0,
+                    },
                 },
             )
 
@@ -554,7 +558,7 @@ class PipelineDAGCompiler:
                 dag=dag,
                 config_path=self.config_path,
                 config_resolver=self.config_resolver,
-                builder_registry=self.builder_registry,
+                step_catalog=self.step_catalog,
                 sagemaker_session=self.sagemaker_session,
                 role=self.role,
                 pipeline_parameters=self.pipeline_parameters,  # Pass parameters to template
@@ -575,7 +579,7 @@ class PipelineDAGCompiler:
         Returns:
             List of supported step type names
         """
-        return self.builder_registry.list_supported_step_types()
+        return self.step_catalog.list_supported_step_types()
 
     def validate_config_file(self) -> Dict[str, Any]:
         """

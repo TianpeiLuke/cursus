@@ -14,12 +14,13 @@ Enhanced Features:
 
 from .exceptions import RegistryError
 
-from .builder_registry import (
-    StepBuilderRegistry,
-    get_global_registry,
-    register_global_builder,
-    list_global_step_types,
-)
+# StepBuilderRegistry has been removed - use StepCatalog instead
+# from .builder_registry import (
+#     StepBuilderRegistry,
+#     get_global_registry,
+#     register_global_builder,
+#     list_global_step_types,
+# )
 
 from .step_names import (
     # Core registry data structures
@@ -108,11 +109,11 @@ except ImportError:
 __all__ = [
     # Exceptions
     "RegistryError",
-    # Builder registry
-    "StepBuilderRegistry",
-    "get_global_registry",
-    "register_global_builder",
-    "list_global_step_types",
+    # Builder registry - REMOVED: Use StepCatalog instead
+    # "StepBuilderRegistry",
+    # "get_global_registry", 
+    # "register_global_builder",
+    # "list_global_step_types",
     # Core step names and registry (backward compatible)
     "STEP_NAMES",
     "CONFIG_STEP_REGISTRY",

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 # Import registry components needed for step type resolution
 from ...registry.step_names import CONFIG_STEP_REGISTRY
-from ...registry.builder_registry import StepBuilderRegistry
+from ...step_catalog import StepCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -335,7 +335,8 @@ class ValidationEngine:
                     continue
 
             # Check if step type is in builder registry or legacy aliases
-            legacy_aliases = StepBuilderRegistry.LEGACY_ALIASES
+            # Use StepCatalog's legacy aliases instead of StepBuilderRegistry
+            legacy_aliases = StepCatalog.LEGACY_ALIASES
 
             if step_type in builder_registry:
                 continue

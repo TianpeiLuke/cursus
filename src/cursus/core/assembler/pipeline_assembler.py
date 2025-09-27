@@ -26,6 +26,7 @@ from ..deps.factory import create_pipeline_components
 from ..deps.property_reference import PropertyReference
 from ..base import OutputSpec
 from ...registry.step_names import CONFIG_STEP_REGISTRY
+from ...step_catalog import StepCatalog
 
 from ...api.dag.base_dag import PipelineDAG
 
@@ -87,7 +88,7 @@ class PipelineAssembler:
         self,
         dag: PipelineDAG,
         config_map: Dict[str, BasePipelineConfig],
-        step_builder_map: Dict[str, Type[StepBuilderBase]],
+        step_catalog: Optional[StepCatalog] = None,
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         pipeline_parameters: Optional[List[ParameterString]] = None,
@@ -100,7 +101,7 @@ class PipelineAssembler:
         Args:
             dag: PipelineDAG instance defining the pipeline structure
             config_map: Mapping from step name to config instance
-            step_builder_map: Mapping from step type to StepBuilderBase subclass
+            step_catalog: StepCatalog for config-to-builder resolution
             sagemaker_session: SageMaker session to use for creating the pipeline
             role: IAM role to use for the pipeline
             pipeline_parameters: List of pipeline parameters
@@ -109,7 +110,7 @@ class PipelineAssembler:
         """
         self.dag = dag
         self.config_map = config_map
-        self.step_builder_map = step_builder_map
+        self.step_catalog = step_catalog or StepCatalog()
         self.sagemaker_session = sagemaker_session
         self.role = role
         self.pipeline_parameters = pipeline_parameters or []
@@ -142,20 +143,13 @@ class PipelineAssembler:
         if missing_configs:
             raise ValueError(f"Missing configs for nodes: {missing_configs}")
 
-        # Check that all configs have a corresponding step builder
+        # Check that all configs have a corresponding step builder using StepCatalog
         for step_name, config in self.config_map.items():
-            config_class_name = type(config).__name__
-            # Use the centralized registry to get the canonical step type
-            step_type = CONFIG_STEP_REGISTRY.get(config_class_name)
-            if not step_type:
-                # Fall back to old method if not in registry
-                step_type = BasePipelineConfig.get_step_name(config_class_name)
-                logger.warning(
-                    f"Config class {config_class_name} not found in registry, using derived name: {step_type}"
-                )
-
-            if step_type not in self.step_builder_map:
-                raise ValueError(f"Missing step builder for step type: {step_type}")
+            # Use StepCatalog to validate builder availability
+            builder_class = self.step_catalog.get_builder_for_config(config, step_name)
+            if not builder_class:
+                config_class_name = type(config).__name__
+                raise ValueError(f"No step builder found for config: {config_class_name}")
 
         # Check that all edges in the DAG connect nodes that exist in the DAG
         for src, dst in self.dag.edges:
@@ -174,8 +168,8 @@ class PipelineAssembler:
         Initialize step builders for all steps in the DAG.
 
         This method creates a step builder instance for each step in the DAG,
-        using the corresponding config from config_map and the appropriate
-        builder class from step_builder_map.
+        using the corresponding config from config_map and StepCatalog for
+        direct config-to-builder resolution.
         """
         logger.info("Initializing step builders")
         start_time = time.time()
@@ -183,17 +177,12 @@ class PipelineAssembler:
         for step_name in self.dag.nodes:
             try:
                 config = self.config_map[step_name]
-                config_class_name = type(config).__name__
-                # Use the centralized registry to get the canonical step type
-                step_type = CONFIG_STEP_REGISTRY.get(config_class_name)
-                if not step_type:
-                    # Fall back to old method if not in registry
-                    step_type = BasePipelineConfig.get_step_name(config_class_name)
-                    logger.warning(
-                        f"Config class {config_class_name} not found in registry, using derived name: {step_type}"
-                    )
-
-                builder_cls = self.step_builder_map[step_type]
+                
+                # Use StepCatalog for direct config-to-builder resolution
+                builder_cls = self.step_catalog.get_builder_for_config(config, step_name)
+                if not builder_cls:
+                    config_class_name = type(config).__name__
+                    raise ValueError(f"No step builder found for config: {config_class_name}")
 
                 # Initialize the builder with dependency components
                 builder = builder_cls(
@@ -219,7 +208,7 @@ class PipelineAssembler:
                 
                 self.step_builders[step_name] = builder
                 logger.info(
-                    f"Initialized builder for step {step_name} of type {step_type}"
+                    f"Initialized builder for step {step_name} using StepCatalog"
                 )
             except Exception as e:
                 logger.error(f"Error initializing builder for step {step_name}: {e}")
@@ -451,7 +440,7 @@ class PipelineAssembler:
         cls,
         dag: PipelineDAG,
         config_map: Dict[str, BasePipelineConfig],
-        step_builder_map: Dict[str, Type[StepBuilderBase]],
+        step_catalog: Optional[StepCatalog] = None,
         context_name: Optional[str] = None,
         **kwargs: Any,
     ) -> "PipelineAssembler":
@@ -464,7 +453,7 @@ class PipelineAssembler:
         Args:
             dag: PipelineDAG instance defining the pipeline structure
             config_map: Mapping from step name to config instance
-            step_builder_map: Mapping from step type to StepBuilderBase subclass
+            step_catalog: StepCatalog for config-to-builder resolution
             context_name: Optional context name for registry
             **kwargs: Additional arguments to pass to the constructor
 
@@ -475,7 +464,7 @@ class PipelineAssembler:
         return cls(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=step_catalog,
             registry_manager=components["registry_manager"],
             dependency_resolver=components["resolver"],
             **kwargs,
