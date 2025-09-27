@@ -13,7 +13,6 @@ from ..configs.config_batch_transform_step import BatchTransformStepConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-from ...registry.builder_registry import register_builder
 
 # Import specifications based on job type
 try:
@@ -34,7 +33,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class BatchTransformStepBuilder(StepBuilderBase):
     """
     Builder for creating a SageMaker Batch Transform step in a workflow.

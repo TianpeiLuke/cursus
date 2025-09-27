@@ -9,7 +9,6 @@ from sagemaker.sklearn import SKLearnProcessor
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-from ...registry.builder_registry import register_builder
 
 # Use TYPE_CHECKING to avoid circular imports
 if TYPE_CHECKING:
@@ -27,7 +26,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class PayloadStepBuilder(StepBuilderBase):
     """
     Builder for a MIMS Payload Generation ProcessingStep.

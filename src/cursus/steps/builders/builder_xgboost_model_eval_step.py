@@ -10,7 +10,6 @@ from ..configs.config_xgboost_model_eval_step import XGBoostModelEvalConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-from ...registry.builder_registry import register_builder
 
 # Import the model evaluation specification
 try:
@@ -24,7 +23,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class XGBoostModelEvalStepBuilder(StepBuilderBase):
     """
     Builder for an XGBoost Model Evaluation ProcessingStep.

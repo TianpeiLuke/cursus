@@ -9,7 +9,6 @@ from sagemaker.sklearn import SKLearnProcessor
 
 from ..configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
 from ...core.base.builder_base import StepBuilderBase
-from ...registry.builder_registry import register_builder
 
 # Import specifications based on job type
 try:
@@ -36,7 +35,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class TabularPreprocessingStepBuilder(StepBuilderBase):
     """
     Builder for a Tabular Preprocessing ProcessingStep.

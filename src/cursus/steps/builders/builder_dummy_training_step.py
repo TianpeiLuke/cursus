@@ -25,12 +25,10 @@ from ..configs.config_dummy_training_step import DummyTrainingConfig
 from ...core.base.builder_base import StepBuilderBase
 from .s3_utils import S3PathHandler
 from ..specs.dummy_training_spec import DUMMY_TRAINING_SPEC
-from ...registry.builder_registry import register_builder
 
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class DummyTrainingStepBuilder(StepBuilderBase):
     """Builder for DummyTraining processing step that handles pretrained model processing with hyperparameters."""
 

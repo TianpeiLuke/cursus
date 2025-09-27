@@ -18,7 +18,6 @@ from sagemaker.workflow.entities import PipelineVariable
 
 from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_model_calibration_step import ModelCalibrationConfig
-from ...registry.builder_registry import register_builder
 
 # Import specifications based on job type
 try:
@@ -41,7 +40,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@register_builder()
 class ModelCalibrationStepBuilder(StepBuilderBase):
     """Builder for ModelCalibration processing step.
 
