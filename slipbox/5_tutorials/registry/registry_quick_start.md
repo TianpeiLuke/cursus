@@ -216,7 +216,8 @@ except ImportError:
     
     # Register the builder
     builder_registry = get_global_registry()
-    warnings = builder_registry.register_builder("MyCustomStep", MyCustomStepBuilder)
+    warnings = # StepCatalog automatically discovers builders through naming conventions
+# No manual registration needed - just follow naming patterns
     
     if warnings:
         print("⚠️ Registration warnings:")

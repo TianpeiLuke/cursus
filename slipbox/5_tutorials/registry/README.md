@@ -81,7 +81,7 @@ from cursus.registry.step_names import StepNamesRegistry
 
 ### Builder Registry (`cursus.registry.builder_registry`)
 ```python
-from cursus.registry.builder_registry import StepBuilderRegistry
+from cursus.step_catalog.step_catalog import StepCatalog
 ```
 
 ### Unified Registry (`cursus.registry.unified`)
@@ -164,7 +164,7 @@ slipbox/5_tutorials/registry/
 
 ## Related Documentation
 
-- [Step Builder Registry Guide](../../0_developer_guide/step_builder_registry_guide.md)
+- [Step Catalog Integration Guide](../../0_developer_guide/step_catalog_integration_guide.md)
 - [Hybrid Registry Design](../../1_design/hybrid_registry_standardization_enforcement_design.md)
 - [Workspace-Aware Registry Design](../../1_design/workspace_aware_distributed_registry_design.md)
 - [Workspace Tutorials](../workspace/)

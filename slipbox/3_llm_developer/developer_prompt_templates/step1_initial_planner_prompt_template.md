@@ -398,17 +398,14 @@ from ..builders.builder_project_step import ProjectStepBuilder  # Project-specif
 #### 1. **Class Naming and Registration Patterns**
 ```python
 # Step builder class names follow the pattern: [StepName]StepBuilder
-@register_builder()
 class TabularPreprocessingStepBuilder(StepBuilderBase):
     """Builder for a Tabular Preprocessing ProcessingStep."""
 
 # For training steps:
-@register_builder()
 class XGBoostTrainingStepBuilder(StepBuilderBase):
     """Builder for an XGBoost Training Step."""
 
 # For model steps:
-@register_builder()
 class XGBoostModelStepBuilder(StepBuilderBase):
     """Builder for an XGBoost Model Step."""
 ```

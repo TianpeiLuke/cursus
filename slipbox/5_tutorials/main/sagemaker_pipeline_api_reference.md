@@ -47,7 +47,7 @@ def __init__(
     sagemaker_session: Optional[PipelineSession] = None,
     role: Optional[str] = None,
     config_resolver: Optional[StepConfigResolver] = None,
-    builder_registry: Optional[StepBuilderRegistry] = None,
+    step_catalog: Optional[StepCatalog] = None,
     pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
     **kwargs: Any,
 )
@@ -58,7 +58,7 @@ def __init__(
 - `sagemaker_session`: Optional SageMaker pipeline session for AWS operations
 - `role`: Optional IAM role ARN for pipeline execution
 - `config_resolver`: Optional custom config resolver for step name resolution
-- `builder_registry`: Optional custom step builder registry
+- `step_catalog`: Optional custom step catalog (uses default StepCatalog if not provided)
 - `pipeline_parameters`: Optional list of pipeline parameters (defaults to standard MODS parameters)
 - `**kwargs`: Additional arguments passed to the compiler
 
@@ -1108,7 +1108,7 @@ mlops_pipeline.upsert()
 
 ### Registry and Discovery
 - **[Step Registry](../../../src/cursus/registry/)** - Step registration system
-- **[Registry Guide](../../0_developer_guide/step_builder_registry_guide.md)** - Using the step registry
+- **[Step Catalog Integration Guide](../../0_developer_guide/step_catalog_integration_guide.md)** - Using the step catalog system
 - **[Hybrid Registry](../../01_developer_guide_workspace_aware/ws_hybrid_registry_integration.md)** - Workspace registry patterns
 
 ### Advanced Features

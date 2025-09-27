@@ -90,8 +90,7 @@ Based on the provided implementation plan, create all necessary code files for t
 - [Hyperparameter Class](../../0_developer_guide/hyperparameter_class.md) - Hyperparameter implementation
 
 ### Registry and Validation
-- [Step Builder Registry Guide](../../0_developer_guide/step_builder_registry_guide.md) - UnifiedRegistryManager system
-- [Step Builder Registry Usage](../../0_developer_guide/step_builder_registry_usage.md) - Practical registry examples
+- [Step Catalog Integration Guide](../../0_developer_guide/step_catalog_integration_guide.md) - StepCatalog system
 - [Validation Framework Guide](../../0_developer_guide/validation_framework_guide.md) - Workspace-aware validation
 
 ### Design Pattern References
@@ -441,17 +440,14 @@ class [StepName]Config(ProcessingStepConfigBase):
 #### 1. **Class Naming and Registration Patterns**
 ```python
 # Step builder class names follow the pattern: [StepName]StepBuilder
-@register_builder()
 class TabularPreprocessingStepBuilder(StepBuilderBase):
     """Builder for a Tabular Preprocessing ProcessingStep."""
 
 # For training steps:
-@register_builder()
 class XGBoostTrainingStepBuilder(StepBuilderBase):
     """Builder for an XGBoost Training Step."""
 
 # For model steps:
-@register_builder()
 class XGBoostModelStepBuilder(StepBuilderBase):
     """Builder for an XGBoost Model Step."""
 ```

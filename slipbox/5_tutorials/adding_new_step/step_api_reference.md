@@ -529,7 +529,7 @@ def create_step(self, **kwargs) -> ProcessingStep:
 
 **Related Documentation:**
 - [Step Builder Guide](../../0_developer_guide/step_builder.md)
-- [Step Builder Registry Guide](../../0_developer_guide/step_builder_registry_guide.md)
+- [Step Catalog Integration Guide](../../0_developer_guide/step_catalog_integration_guide.md)
 
 ## Registry API
 
@@ -570,7 +570,6 @@ warnings = add_new_step_with_validation(
 
 **Related Documentation:**
 - [Registry API Reference](../registry/api_reference.md)
-- [Step Builder Registry Usage](../../0_developer_guide/step_builder_registry_usage.md)
 
 ## Pipeline Integration API
 
@@ -832,7 +831,7 @@ execution = pipeline.start()
 
 ### Advanced Topics
 - **[Validation Framework](../../0_developer_guide/validation_framework_guide.md)** - Comprehensive validation
-- **[Registry System](../../0_developer_guide/step_builder_registry_guide.md)** - Step registration
+- **[Registry System](../../0_developer_guide/step_catalog_integration_guide.md)** - Step registration
 - **[Dependency Resolution](../../1_design/dependency_resolution_system.md)** - How dependencies work
 - **[Alignment Rules](../../0_developer_guide/alignment_rules.md)** - Component alignment requirements
 

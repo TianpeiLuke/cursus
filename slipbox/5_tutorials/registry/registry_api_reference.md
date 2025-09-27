@@ -971,7 +971,7 @@ else:
 
 - [Registry Quick Start Tutorial](./registry_quick_start.md)
 - [Workspace Integration Guide](../workspace/workspace_api_reference.md)
-- [Step Builder Development Guide](../../0_developer_guide/step_builder_registry_guide.md)
+- [Step Catalog Integration Guide](../../0_developer_guide/step_catalog_integration_guide.md)
 - [Registry Design Documentation](../../1_design/hybrid_registry_standardization_enforcement_design.md)
 
 ---

@@ -202,8 +202,8 @@ Based on the provided validation reports, implement precise code fixes that addr
 - Cross-component consistency requirements
 
 ### Step Builder Registry Integration
-**Source**: `slipbox/1_design/step_builder_registry_design.md`
-- Registry integration patterns and requirements
+**Source**: `slipbox/1_design/step_catalog_integration_design.md`
+- Step catalog integration patterns and requirements
 - Step registration and discovery patterns
 - Naming consistency across registry components
 - Registry-based validation approaches
