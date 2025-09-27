@@ -187,13 +187,21 @@ This document outlines a comprehensive plan to refine and modernize the Unified 
 **Priority**: Medium  
 **Dependencies**: Phase 1 completion
 
+**✅ PREREQUISITE COMPLETED (2025-09-27)**: Step Catalog Phase 1 Enhancement has been successfully implemented, providing the enhanced Step Catalog functionality required for this integration phase. The Step Catalog now includes:
+- Config-to-builder resolution functionality
+- Legacy alias support
+- Pipeline construction interface
+- Enhanced registry integration
+- Mapping functionality extracted to separate module for maintainability
+
 #### Tasks
 
-1. **Step Catalog Integration** (Day 1-3)
+1. **Step Catalog Integration** (Day 1-3) **[READY FOR IMPLEMENTATION]**
    - Update UnifiedAlignmentTester to use Step Catalog for script discovery
    - Replace legacy `_discover_scripts()` method with Step Catalog `list_available_steps()`
    - Implement workspace-aware validation using Step Catalog workspace discovery
    - Add support for job type variants through Step Catalog integration
+   - **NEW**: Leverage enhanced mapping functionality from `cursus.step_catalog.mapping` module
 
 2. **File Resolution Consolidation** (Day 3-5)
    - Standardize all validation levels to use hybrid path resolution

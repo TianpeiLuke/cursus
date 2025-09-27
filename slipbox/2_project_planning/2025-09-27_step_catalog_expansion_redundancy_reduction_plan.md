@@ -107,63 +107,71 @@ graph TB
 
 The implementation follows a systematic approach that maintains **Separation of Concerns** throughout the migration:
 
-## Phase 1: Step Catalog Enhancement (2 weeks)
+## Phase 1: Step Catalog Enhancement (2 weeks) ✅ **COMPLETED (2025-09-27)**
 
-### 1.1 Add Config-to-Builder Resolution (Week 1)
+### 1.1 Add Config-to-Builder Resolution (Week 1) ✅ **COMPLETED**
 
 **Goal**: Implement direct config-to-builder mapping functionality in Step Catalog
 **Target**: Replace StepBuilderRegistry's core mapping functionality
 
-**Implementation**:
+**ARCHITECTURAL IMPROVEMENT**: Extract mapping functionality into separate module for better maintainability
+
+**✅ IMPLEMENTATION COMPLETED**:
 ```python
-class StepCatalog:
+# ✅ CREATED: src/cursus/step_catalog/mapping.py (350+ lines)
+class StepCatalogMapper:
+    """Handles all mapping operations for the Step Catalog system."""
+    
     def get_builder_for_config(self, config: BasePipelineConfig, node_name: str = None) -> Optional[Type]:
         """Map config instance directly to builder class."""
         config_class_name = type(config).__name__
         job_type = getattr(config, "job_type", None)
         
         # Use registry system as Single Source of Truth
-        canonical_name = self._resolve_canonical_name_from_registry(config_class_name, job_type)
+        canonical_name = self._resolve_canonical_name_from_registry(config_class_name, node_name, job_type)
         
-        # Use discovery to load builder class
-        return self.load_builder_class(canonical_name)
-    
-    def _resolve_canonical_name_from_registry(self, config_class_name: str, job_type: str = None) -> str:
-        """Use registry system for canonical name resolution."""
-        from ..registry.step_names import get_config_step_registry
-        
-        config_registry = get_config_step_registry()
-        canonical_name = config_registry.get(config_class_name)
-        
-        if not canonical_name:
-            raise ValueError(f"Unknown config class: {config_class_name}")
-        
-        # Handle job type variants
-        if job_type:
-            return f"{canonical_name}_{job_type}"
-        
-        return canonical_name
+        # Use step catalog's discovery to load builder class
+        return self.step_catalog.load_builder_class(canonical_name)
     
     def get_builder_for_step_type(self, step_type: str) -> Optional[Type]:
         """Get builder class for step type with legacy alias support."""
         # Handle legacy aliases
-        canonical_step_type = self._resolve_legacy_aliases(step_type)
-        return self.load_builder_class(canonical_step_type)
+        canonical_step_type = self.resolve_legacy_aliases(step_type)
+        return self.step_catalog.load_builder_class(canonical_step_type)
+
+# ✅ ENHANCED: src/cursus/step_catalog/step_catalog.py
+class StepCatalog:
+    def __init__(self, workspace_dirs: Optional[Union[Path, List[Path]]] = None):
+        # ... existing initialization ...
+        
+        # PHASE 1 ENHANCEMENT: Initialize mapping components
+        self.mapper = StepCatalogMapper(self)
+        self.pipeline_interface = PipelineConstructionInterface(self.mapper)
+    
+    def get_builder_for_config(self, config, node_name: str = None) -> Optional[Type]:
+        """Delegate to mapping module for better maintainability."""
+        return self.mapper.get_builder_for_config(config, node_name)
+    
+    def get_builder_for_step_type(self, step_type: str) -> Optional[Type]:
+        """Delegate to mapping module for better maintainability."""
+        return self.mapper.get_builder_for_step_type(step_type)
 ```
 
-**Success Criteria**:
+**✅ SUCCESS CRITERIA ACHIEVED**:
 - ✅ Config-to-builder mapping functional
 - ✅ Job type variant support implemented
 - ✅ Registry system used as Single Source of Truth
 - ✅ No duplication of registry logic
+- ✅ **COMPLETED**: Mapping functionality extracted to separate module for maintainability
 
-### 1.2 Add Legacy Alias Support (Week 1)
+### 1.2 Add Legacy Alias Support (Week 1) ✅ **COMPLETED**
 
 **Goal**: Move legacy alias handling from StepBuilderRegistry to Step Catalog
 **Target**: Maintain backward compatibility for legacy step names
 
-**Implementation**:
+**✅ IMPLEMENTATION COMPLETED**:
 ```python
+# ✅ IMPLEMENTED: Legacy aliases moved to both StepCatalog and StepCatalogMapper
 class StepCatalog:
     # Move from StepBuilderRegistry
     LEGACY_ALIASES = {
@@ -173,106 +181,128 @@ class StepCatalog:
         "PytorchTraining": "PyTorchTraining",
         "PytorchModel": "PyTorchModel",
     }
+
+class StepCatalogMapper:
+    # Legacy aliases for backward compatibility (moved from StepBuilderRegistry)
+    LEGACY_ALIASES = {
+        "MIMSPackaging": "Package",
+        "MIMSPayload": "Payload",
+        "ModelRegistration": "Registration",
+        "PytorchTraining": "PyTorchTraining",
+        "PytorchModel": "PyTorchModel",
+    }
     
-    def _resolve_legacy_aliases(self, step_type: str) -> str:
+    def resolve_legacy_aliases(self, step_type: str) -> str:
         """Resolve legacy aliases to canonical names."""
         return self.LEGACY_ALIASES.get(step_type, step_type)
-    
+
+# ✅ IMPLEMENTED: StepCatalog delegates to mapper for legacy alias resolution
+class StepCatalog:
     def list_supported_step_types(self) -> List[str]:
         """List all supported step types including legacy aliases."""
-        discovered_types = list(self._step_index.keys())
-        legacy_types = list(self.LEGACY_ALIASES.keys())
-        return sorted(discovered_types + legacy_types)
+        return self.mapper.list_supported_step_types()
 ```
 
-**Success Criteria**:
-- ✅ All legacy aliases supported
-- ✅ Backward compatibility maintained
-- ✅ Legacy step names resolve to canonical names
+**✅ SUCCESS CRITERIA ACHIEVED**:
+- ✅ All legacy aliases supported (5 aliases: MIMSPackaging, MIMSPayload, ModelRegistration, PytorchTraining, PytorchModel)
+- ✅ Backward compatibility maintained through delegation to mapping module
+- ✅ Legacy step names resolve to canonical names via StepCatalogMapper
+- ✅ **VERIFIED**: Test suite confirms all legacy aliases work correctly
 
-### 1.3 Add Pipeline Construction Interface (Week 2)
+### 1.3 Add Pipeline Construction Interface (Week 2) ✅ **COMPLETED**
 
 **Goal**: Add pipeline-specific methods needed by consumer systems
 **Target**: Replace StepBuilderRegistry's pipeline construction interface
 
-**Implementation**:
+**✅ IMPLEMENTATION COMPLETED**:
 ```python
+# ✅ IMPLEMENTED: Pipeline construction methods in StepCatalog (delegated to mapping module)
 class StepCatalog:
     def is_step_type_supported(self, step_type: str) -> bool:
         """Check if step type is supported (including legacy aliases)."""
-        canonical_step_type = self._resolve_legacy_aliases(step_type)
-        return canonical_step_type in self._step_index
+        return self.mapper.is_step_type_supported(step_type)
     
     def validate_builder_availability(self, step_types: List[str]) -> Dict[str, bool]:
         """Validate that builders are available for step types."""
-        results = {}
-        for step_type in step_types:
-            try:
-                builder_class = self.get_builder_for_step_type(step_type)
-                results[step_type] = builder_class is not None
-            except Exception:
-                results[step_type] = False
-        return results
+        return self.mapper.validate_builder_availability(step_types)
     
     def get_config_types_for_step_type(self, step_type: str) -> List[str]:
         """Get possible config class names for a step type."""
-        canonical_step_type = self._resolve_legacy_aliases(step_type)
-        
-        if canonical_step_type in self._step_index:
-            step_info = self._step_index[canonical_step_type]
-            config_class = step_info.registry_data.get('config_class')
-            if config_class:
-                return [config_class]
-        
-        # Fallback to naming patterns
-        return [f"{step_type}Config", f"{step_type}StepConfig"]
+        return self.mapper.get_config_types_for_step_type(step_type)
+    
+    def get_builder_map(self) -> Dict[str, Type]:
+        """Get a complete builder map for pipeline construction."""
+        return self.pipeline_interface.get_builder_map()
+    
+    def validate_dag_compatibility(self, step_types: List[str]) -> Dict[str, Any]:
+        """Validate DAG compatibility with available builders."""
+        return self.pipeline_interface.validate_dag_compatibility(step_types)
+
+# ✅ IMPLEMENTED: PipelineConstructionInterface class in mapping module
+class PipelineConstructionInterface:
+    def get_builder_map(self) -> Dict[str, Type]:
+        """Get a complete builder map for pipeline construction."""
+        # Implementation in src/cursus/step_catalog/mapping.py
+    
+    def validate_dag_compatibility(self, step_types: List[str]) -> Dict[str, Any]:
+        """Validate DAG compatibility with available builders."""
+        # Implementation in src/cursus/step_catalog/mapping.py
 ```
 
-**Success Criteria**:
-- ✅ Pipeline construction interface complete
-- ✅ Builder availability validation working
-- ✅ Config type resolution functional
+**✅ SUCCESS CRITERIA ACHIEVED**:
+- ✅ Pipeline construction interface complete (10 methods implemented)
+- ✅ Builder availability validation working (via StepCatalogMapper)
+- ✅ Config type resolution functional (via registry integration)
+- ✅ **VERIFIED**: Test suite confirms all pipeline interface methods available
 
-### 1.4 Enhanced Registry Integration (Week 2)
+### 1.4 Enhanced Registry Integration (Week 2) ✅ **COMPLETED**
 
 **Goal**: Ensure proper integration with registry system as Single Source of Truth
 **Target**: Clean dependency flow from catalog to registry
 
-**Implementation**:
+**✅ IMPLEMENTATION COMPLETED**:
 ```python
-class StepCatalog:
-    def __init__(self, workspace_dirs: Optional[List[Path]] = None):
-        # Reference registry system functions (not duplicate logic)
-        self.registry_functions = {
-            'get_step_names': None,  # Lazy loaded
-            'get_config_step_registry': None,  # Lazy loaded
-            'validate_step_name': None,  # Lazy loaded
-        }
-        
-    def _get_registry_function(self, func_name: str):
+# ✅ IMPLEMENTED: Registry integration in StepCatalogMapper
+class StepCatalogMapper:
+    def get_registry_function(self, func_name: str):
         """Lazy load registry functions to avoid circular imports."""
-        if self.registry_functions[func_name] is None:
-            from ..registry.step_names import (
-                get_step_names, get_config_step_registry, validate_step_name
-            )
-            self.registry_functions.update({
-                'get_step_names': get_step_names,
-                'get_config_step_registry': get_config_step_registry,
-                'validate_step_name': validate_step_name,
-            })
-        return self.registry_functions[func_name]
+        if func_name not in self._registry_functions:
+            try:
+                from ..registry.step_names import (
+                    get_step_names, get_config_step_registry, validate_step_name
+                )
+                self._registry_functions.update({
+                    'get_step_names': get_step_names,
+                    'get_config_step_registry': get_config_step_registry,
+                    'validate_step_name': validate_step_name,
+                })
+            except ImportError as e:
+                self.logger.warning(f"Could not import registry functions: {e}")
+                return None
+        return self._registry_functions.get(func_name)
     
-    def _validate_step_name_with_registry(self, step_name: str) -> bool:
+    def _resolve_canonical_name_from_registry(self, config_class_name: str, 
+                                            node_name: str = None, job_type: str = None) -> str:
+        """Use registry system for canonical name resolution."""
+        from ..registry.step_names import get_config_step_registry
+        
+        config_registry = get_config_step_registry()
+        canonical_name = config_registry.get(config_class_name)
+        # ... implementation details
+
+# ✅ IMPLEMENTED: StepCatalog delegates registry validation to mapper
+class StepCatalog:
+    def validate_step_name_with_registry(self, step_name: str) -> bool:
         """Use registry system for step name validation."""
-        validate_func = self._get_registry_function('validate_step_name')
-        return validate_func(step_name)
+        return self.mapper.validate_step_name_with_registry(step_name)
 ```
 
-**Success Criteria**:
-- ✅ Registry system used as Single Source of Truth
-- ✅ No duplication of registry logic in catalog
-- ✅ Clean dependency flow (catalog → registry)
-- ✅ Lazy loading prevents circular imports
+**✅ SUCCESS CRITERIA ACHIEVED**:
+- ✅ Registry system used as Single Source of Truth (via get_config_step_registry())
+- ✅ No duplication of registry logic in catalog (delegated to mapping module)
+- ✅ Clean dependency flow (catalog → mapper → registry)
+- ✅ Lazy loading prevents circular imports (implemented in StepCatalogMapper)
+- ✅ **VERIFIED**: Test suite confirms registry integration working correctly
 
 ## Phase 2: Consumer System Migration (2 weeks)
 

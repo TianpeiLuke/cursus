@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Type, Any, Union
 
 from .models import StepInfo, FileMetadata, StepSearchResult
+from .mapping import StepCatalogMapper, PipelineConstructionInterface
 
 # Type hints for discovery components - all handled symmetrically
 try:
@@ -44,7 +45,22 @@ class StepCatalog:
     
     This single class consolidates the functionality of 16+ discovery systems
     while maintaining simple, efficient O(1) lookups through dictionary-based indexing.
+    
+    PHASE 1 ENHANCEMENT: Now includes StepBuilderRegistry functionality:
+    - Config-to-builder resolution
+    - Legacy alias support  
+    - Pipeline construction interface
+    - Enhanced registry integration
     """
+    
+    # Legacy aliases for backward compatibility (moved from StepBuilderRegistry)
+    LEGACY_ALIASES = {
+        "MIMSPackaging": "Package",  # Legacy name from before standardization
+        "MIMSPayload": "Payload",  # Legacy name from before standardization
+        "ModelRegistration": "Registration",  # Legacy name from before standardization
+        "PytorchTraining": "PyTorchTraining",  # Case sensitivity difference
+        "PytorchModel": "PyTorchModel",  # Case sensitivity difference
+    }
     
     def __init__(self, workspace_dirs: Optional[Union[Path, List[Path]]] = None):
         """
@@ -102,6 +118,10 @@ class StepCatalog:
             'index_build_time': 0.0,
             'last_index_build': None
         }
+        
+        # PHASE 1 ENHANCEMENT: Initialize mapping components
+        self.mapper = StepCatalogMapper(self)
+        self.pipeline_interface = PipelineConstructionInterface(self.mapper)
     
     # US1: Query by Step Name
     def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
@@ -838,6 +858,130 @@ class StepCatalog:
             return name
         
         return None
+    
+    # PHASE 1 ENHANCEMENT: Config-to-Builder Resolution (delegated to mapping module)
+    def get_builder_for_config(self, config, node_name: str = None) -> Optional[Type]:
+        """
+        Map config instance directly to builder class.
+        
+        This method replaces StepBuilderRegistry.get_builder_for_config() functionality
+        while using the registry system as Single Source of Truth.
+        
+        Args:
+            config: Configuration instance (BasePipelineConfig)
+            node_name: Optional DAG node name for context
+            
+        Returns:
+            Builder class type or None if not found
+        """
+        return self.mapper.get_builder_for_config(config, node_name)
+    
+    def get_builder_for_step_type(self, step_type: str) -> Optional[Type]:
+        """
+        Get builder class for step type with legacy alias support.
+        
+        This method replaces StepBuilderRegistry.get_builder_for_step_type() functionality.
+        
+        Args:
+            step_type: Step type name (may be legacy alias)
+            
+        Returns:
+            Builder class type or None if not found
+        """
+        return self.mapper.get_builder_for_step_type(step_type)
+    
+    # PHASE 1 ENHANCEMENT: Pipeline Construction Interface (delegated to mapping module)
+    def is_step_type_supported(self, step_type: str) -> bool:
+        """
+        Check if step type is supported (including legacy aliases).
+        
+        Args:
+            step_type: Step type name
+            
+        Returns:
+            True if supported, False otherwise
+        """
+        return self.mapper.is_step_type_supported(step_type)
+    
+    def validate_builder_availability(self, step_types: List[str]) -> Dict[str, bool]:
+        """
+        Validate that builders are available for step types.
+        
+        Args:
+            step_types: List of step types to validate
+            
+        Returns:
+            Dictionary mapping step types to availability status
+        """
+        return self.mapper.validate_builder_availability(step_types)
+    
+    def get_config_types_for_step_type(self, step_type: str) -> List[str]:
+        """
+        Get possible config class names for a step type.
+        
+        Args:
+            step_type: Step type name
+            
+        Returns:
+            List of possible configuration class names
+        """
+        return self.mapper.get_config_types_for_step_type(step_type)
+    
+    def list_supported_step_types(self) -> List[str]:
+        """
+        List all supported step types including legacy aliases.
+        
+        Returns:
+            List of supported step type names
+        """
+        return self.mapper.list_supported_step_types()
+    
+    # PHASE 1 ENHANCEMENT: Enhanced Registry Integration (delegated to mapping module)
+    def validate_step_name_with_registry(self, step_name: str) -> bool:
+        """
+        Use registry system for step name validation.
+        
+        Args:
+            step_name: Step name to validate
+            
+        Returns:
+            True if valid, False otherwise
+        """
+        return self.mapper.validate_step_name_with_registry(step_name)
+    
+    # PHASE 1 ENHANCEMENT: Pipeline Construction Interface Methods
+    def get_builder_map(self) -> Dict[str, Type]:
+        """
+        Get a complete builder map for pipeline construction.
+        
+        Returns:
+            Dictionary mapping step types to builder classes
+        """
+        return self.pipeline_interface.get_builder_map()
+    
+    def validate_dag_compatibility(self, step_types: List[str]) -> Dict[str, Any]:
+        """
+        Validate DAG compatibility with available builders.
+        
+        Args:
+            step_types: List of step types in the DAG
+            
+        Returns:
+            Dictionary with validation results
+        """
+        return self.pipeline_interface.validate_dag_compatibility(step_types)
+    
+    def get_step_builder_suggestions(self, config_class_name: str) -> List[str]:
+        """
+        Get suggestions for step builders based on config class name.
+        
+        Args:
+            config_class_name: Configuration class name
+            
+        Returns:
+            List of suggested step type names
+        """
+        return self.pipeline_interface.get_step_builder_suggestions(config_class_name)
     
     def get_metrics_report(self) -> Dict[str, Any]:
         """Get simple metrics report."""
