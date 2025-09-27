@@ -170,14 +170,14 @@ base_config = BasePipelineConfig(
     bucket=sagemaker_session.default_bucket(),
     current_date=current_date,
     region="NA",  # or "EU", "FE" based on your region
-    aws_region=sagemaker_session.boto_region_name,
     author="tutorial_user",
     role=role,
     service_name="CursusTutorial",
     pipeline_version="1.0.0",
     framework_version="1.7-1",
     py_version="py3",
-    source_dir=str(source_dir)
+    source_dir=str(source_dir),
+    project_root_folder="cursus"  # Required for hybrid path resolution system
 )
 
 print(f"✅ Base config created for region: {base_config.region}")
