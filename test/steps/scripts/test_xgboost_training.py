@@ -9,6 +9,10 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import pickle as pkl
+import sys
+
+# Mock torch before any imports that might need it
+sys.modules['torch'] = MagicMock()
 
 # Import the functions to be tested
 from cursus.steps.scripts.xgboost_training import (
@@ -41,6 +45,7 @@ class TestXGBoostTrainHelpers:
             "tab_field_list": ["feature1", "feature2", "feature3"],
             "cat_field_list": ["category1", "category2"],
             "label_name": "target",
+            "multiclass_categories": [0, 1],
             "is_binary": True,
             "num_classes": 2,
             "eta": 0.1,
@@ -461,6 +466,7 @@ class TestXGBoostTrainMain:
             "tab_field_list": ["feature1", "feature2"],
             "cat_field_list": ["category1"],
             "label_name": "target",
+            "multiclass_categories": [0, 1],
             "is_binary": True,
             "num_classes": 2,
             "eta": 0.1,

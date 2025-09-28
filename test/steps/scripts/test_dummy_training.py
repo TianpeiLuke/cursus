@@ -301,97 +301,108 @@ class TestDummyTrainingMain:
         output_file = output_dir / "model.tar.gz"
         assert output_file.exists()
 
-    def test_main_without_hyperparameters(self, temp_dir, setup_paths):
-        """Test main function without hyperparameters file (fallback mode)."""
-        model_path, hyperparams_path, output_dir = setup_paths
+    @patch("cursus.steps.scripts.dummy_training.find_model_file")
+    @patch("cursus.steps.scripts.dummy_training.find_hyperparams_file")
+    def test_main_without_hyperparameters(self, mock_find_hyperparams, mock_find_model, temp_dir, setup_paths):
+        """Test main function without hyperparameters file raises FileNotFoundError."""
+        model_path, hyperparams_path, output_dir, temp_root = setup_paths
         
         # Create only model file (no hyperparameters)
         self._create_dummy_tar(temp_dir, model_path, {"model.pth": "model content"})
         # Don't create hyperparameters file
 
-        # Set up input and output paths (hyperparams_input points to non-existent file)
-        input_paths = {
-            "model_input": str(model_path),
-            "hyperparams_input": str(hyperparams_path),  # This file doesn't exist
-        }
+        # Mock the file finding functions
+        mock_find_model.return_value = model_path
+        mock_find_hyperparams.return_value = None  # No hyperparameters file
+
+        # Set up input and output paths
+        input_paths = {}  # Empty for SOURCE node
         output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
-        # Run main function
-        result = main(input_paths, output_paths, environ_vars)
+        # Run main function and expect FileNotFoundError
+        with pytest.raises(FileNotFoundError) as exc_info:
+            main(input_paths, output_paths, environ_vars)
+        
+        assert "Hyperparameters file" in str(exc_info.value)
 
-        # Verify success (should return Path object)
-        assert isinstance(result, Path)
-
-        # Verify output file exists
-        output_file = output_dir / "model.tar.gz"
-        assert output_file.exists()
-
-    def test_main_missing_model_file(self, setup_paths):
-        """Test main function with missing model file."""
-        model_path, hyperparams_path, output_dir = setup_paths
+    @patch("cursus.steps.scripts.dummy_training.find_model_file")
+    @patch("cursus.steps.scripts.dummy_training.find_hyperparams_file")
+    def test_main_missing_model_file(self, mock_find_hyperparams, mock_find_model, setup_paths):
+        """Test main function with missing model file raises FileNotFoundError."""
+        model_path, hyperparams_path, output_dir, temp_root = setup_paths
         
         # Don't create model file
         # Create hyperparameters file
         hyperparams_path.write_text('{"test": "value"}')
 
+        # Mock the file finding functions to simulate missing model
+        mock_find_model.return_value = None  # No model file found
+        mock_find_hyperparams.return_value = hyperparams_path
+
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(model_path),  # This file doesn't exist
-            "hyperparams_input": str(hyperparams_path),
-        }
+        input_paths = {}  # Empty for SOURCE node
         output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
-        # Run main function
-        result = main(input_paths, output_paths, environ_vars)
+        # Run main function and expect FileNotFoundError
+        with pytest.raises(FileNotFoundError) as exc_info:
+            main(input_paths, output_paths, environ_vars)
+        
+        assert "Model file" in str(exc_info.value)
 
-        # Verify failure with appropriate exit code
-        assert result == 1  # FileNotFoundError
-
-    def test_main_invalid_model_file(self, setup_paths):
-        """Test main function with invalid model file."""
-        model_path, hyperparams_path, output_dir = setup_paths
+    @patch("cursus.steps.scripts.dummy_training.find_model_file")
+    @patch("cursus.steps.scripts.dummy_training.find_hyperparams_file")
+    def test_main_invalid_model_file(self, mock_find_hyperparams, mock_find_model, setup_paths):
+        """Test main function with invalid model file raises FileNotFoundError."""
+        model_path, hyperparams_path, output_dir, temp_root = setup_paths
         
         # Create invalid model file (not a tar)
         model_path.write_text("not a tar file")
+        # Create hyperparameters file
+        hyperparams_path.write_text('{"test": "value"}')
+
+        # Mock the file finding functions to return our test paths
+        mock_find_model.return_value = model_path
+        mock_find_hyperparams.return_value = hyperparams_path
 
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(model_path),
-            "hyperparams_input": str(hyperparams_path),
-        }
+        input_paths = {}  # Empty for SOURCE node
         output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
-        # Run main function
-        result = main(input_paths, output_paths, environ_vars)
+        # Run main function and expect tarfile.ReadError due to invalid tar file
+        with pytest.raises(Exception) as exc_info:
+            main(input_paths, output_paths, environ_vars)
+        
+        # The error could be tarfile.ReadError or any exception from the invalid tar processing
+        assert "file could not be opened successfully" in str(exc_info.value) or "ReadError" in str(exc_info.value)
 
-        # Verify failure with appropriate exit code
-        assert result == 2  # ValueError
-
+    @patch("cursus.steps.scripts.dummy_training.find_model_file")
+    @patch("cursus.steps.scripts.dummy_training.find_hyperparams_file")
     @patch("cursus.steps.scripts.dummy_training.process_model_with_hyperparameters")
-    def test_main_unexpected_error(self, mock_process, temp_dir, setup_paths):
-        """Test main function with unexpected error."""
-        model_path, hyperparams_path, output_dir = setup_paths
+    def test_main_unexpected_error(self, mock_process, mock_find_hyperparams, mock_find_model, temp_dir, setup_paths):
+        """Test main function with unexpected error raises RuntimeError."""
+        model_path, hyperparams_path, output_dir, temp_root = setup_paths
         
         # Create input files
         self._create_dummy_tar(temp_dir, model_path, {"model.pth": "content"})
         hyperparams_path.write_text('{"test": "value"}')
 
+        # Mock the file finding functions to return our test paths
+        mock_find_model.return_value = model_path
+        mock_find_hyperparams.return_value = hyperparams_path
+
         # Mock process function to raise unexpected error
         mock_process.side_effect = RuntimeError("Unexpected error")
 
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(model_path),
-            "hyperparams_input": str(hyperparams_path),
-        }
+        input_paths = {}  # Empty for SOURCE node
         output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
-        # Run main function
-        result = main(input_paths, output_paths, environ_vars)
-
-        # Verify failure with appropriate exit code
-        assert result == 3  # RuntimeError
+        # Run main function and expect RuntimeError
+        with pytest.raises(RuntimeError) as exc_info:
+            main(input_paths, output_paths, environ_vars)
+        
+        assert "Unexpected error" in str(exc_info.value)
