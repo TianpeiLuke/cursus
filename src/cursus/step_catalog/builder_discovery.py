@@ -32,12 +32,14 @@ class BuilderAutoDiscovery:
             package_root: Root directory of the cursus package
             workspace_dirs: Optional list of workspace directories to search
         """
+        # Initialize logger FIRST before any other operations
+        self.logger = logging.getLogger(__name__)
+        
         # Handle sys.path setup internally for deployment portability
         self._ensure_cursus_importable()
         
         self.package_root = package_root
         self.workspace_dirs = workspace_dirs or []
-        self.logger = logging.getLogger(__name__)
         
         # Caches for performance
         self._builder_cache: Dict[str, Type] = {}

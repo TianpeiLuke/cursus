@@ -121,7 +121,14 @@ class StepCatalog:
         
         # PHASE 1 ENHANCEMENT: Initialize mapping components
         self.mapper = StepCatalogMapper(self)
-        self.pipeline_interface = PipelineConstructionInterface(self.mapper)
+        
+        # Initialize pipeline_interface with error handling
+        try:
+            self.pipeline_interface = PipelineConstructionInterface(self.mapper)
+            self.logger.debug("Successfully initialized pipeline_interface")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize pipeline_interface: {e}")
+            self.pipeline_interface = None
     
     # US1: Query by Step Name
     def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
@@ -970,7 +977,33 @@ class StepCatalog:
         Returns:
             Dictionary mapping step types to builder classes
         """
+        if self.pipeline_interface is None:
+            self.logger.warning("pipeline_interface is None, using fallback builder map generation")
+            return self._generate_fallback_builder_map()
         return self.pipeline_interface.get_builder_map()
+    
+    def _generate_fallback_builder_map(self) -> Dict[str, Type]:
+        """
+        Generate builder map without pipeline_interface (fallback method).
+        
+        Returns:
+            Dictionary mapping step types to builder classes
+        """
+        try:
+            builder_map = {}
+            step_types = self.mapper.list_supported_step_types()
+            
+            for step_type in step_types:
+                builder_class = self.mapper.get_builder_for_step_type(step_type)
+                if builder_class:
+                    builder_map[step_type] = builder_class
+            
+            self.logger.info(f"Generated fallback builder map with {len(builder_map)} builders")
+            return builder_map
+            
+        except Exception as e:
+            self.logger.error(f"Error generating fallback builder map: {e}")
+            return {}
     
     def validate_dag_compatibility(self, step_types: List[str]) -> Dict[str, Any]:
         """
