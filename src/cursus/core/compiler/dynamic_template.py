@@ -122,6 +122,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             registry_manager=kwargs.get("registry_manager"),
             dependency_resolver=kwargs.get("dependency_resolver"),
             pipeline_parameters=pipeline_parameters,  # Pass directly to parent
+            step_catalog=self._step_catalog,  # ✅ CRITICAL FIX: Pass step_catalog to parent!
         )
 
     def _detect_config_classes(self) -> Dict[str, Type[BasePipelineConfig]]:
