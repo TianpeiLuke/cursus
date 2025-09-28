@@ -142,11 +142,12 @@ class TestBasePipeline:
             pipeline = ConcretePipeline()
 
             assert pipeline.dag_compiler == mock_compiler
-            mock_compiler_class.assert_called_once_with(
-                config_path=None,
-                sagemaker_session=mock_session,
-                role="arn:aws:iam::123456789012:role/test-role"
-            )
+            # Verify the compiler was called - the exact parameters may vary based on implementation
+            mock_compiler_class.assert_called_once()
+            call_args = mock_compiler_class.call_args
+            assert call_args.kwargs['config_path'] is None
+            assert call_args.kwargs['sagemaker_session'] == mock_session
+            assert call_args.kwargs['role'] == "arn:aws:iam::123456789012:role/test-role"
 
     @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
     def test_generate_pipeline_with_validation(self, mock_compiler_class, mock_session):
@@ -409,3 +410,352 @@ class TestBasePipeline:
             assert dag_info["node_count"] == 2  # step1, step2
             assert dag_info["edge_count"] == 1  # step1 -> step2
             assert dag_info["is_valid"] is True
+
+    # Tests for StepCatalog Integration Methods
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_step_catalog_initialization_success(self, mock_compiler_class, mock_session):
+        """Test successful StepCatalog initialization."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                
+                assert pipeline.step_catalog == mock_step_catalog
+                mock_step_catalog_class.assert_called_once_with(workspace_dirs=None)
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_step_catalog_initialization_failure(self, mock_compiler_class, mock_session):
+        """Test StepCatalog initialization failure."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog_class.side_effect = Exception("StepCatalog init failed")
+                
+                pipeline = ConcretePipeline()
+                
+                assert pipeline.step_catalog is None
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_catalog_info_available(self, mock_compiler_class, mock_session):
+        """Test get_step_catalog_info when StepCatalog is available."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.return_value = ["XGBoostTraining", "PyTorchTraining"]
+                mock_step_catalog.list_available_steps.return_value = ["step1", "step2", "step3"]
+                mock_step_catalog.LEGACY_ALIASES = {"OldStep": "NewStep"}
+                mock_step_catalog.workspace_dirs = None
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_catalog_info()
+                
+                expected = {
+                    "available": True,
+                    "supported_step_types": 2,
+                    "indexed_steps": 3,
+                    "legacy_aliases_supported": 1,
+                    "workspace_aware": False
+                }
+                assert result == expected
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_catalog_info_unavailable(self, mock_compiler_class, mock_session):
+        """Test get_step_catalog_info when StepCatalog is unavailable."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog_class.side_effect = Exception("StepCatalog init failed")
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_catalog_info()
+                
+                expected = {
+                    "available": False,
+                    "reason": "StepCatalog initialization failed"
+                }
+                assert result == expected
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_catalog_info_error(self, mock_compiler_class, mock_session):
+        """Test get_step_catalog_info when accessing StepCatalog throws error."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.side_effect = Exception("Access error")
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_catalog_info()
+                
+                assert result["available"] is False
+                assert "Error accessing StepCatalog" in result["reason"]
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_validate_dag_steps_with_catalog_available(self, mock_compiler_class, mock_session):
+        """Test validate_dag_steps_with_catalog when StepCatalog is available."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.return_value = ["step1", "NewStep"]
+                mock_step_catalog.LEGACY_ALIASES = {"step2": "NewStep"}
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                # Pipeline DAG has nodes: step1, step2 (from ConcretePipeline.create_dag)
+                result = pipeline.validate_dag_steps_with_catalog()
+                
+                expected = {
+                    "catalog_available": True,
+                    "validation_performed": True,
+                    "total_steps": 2,
+                    "supported_steps": ["step1"],
+                    "unsupported_steps": [],
+                    "legacy_aliases": [{"step": "step2", "canonical": "NewStep"}],
+                    "validation_summary": {
+                        "all_supported": True,
+                        "has_legacy_aliases": True,
+                        "support_percentage": 100.0
+                    }
+                }
+                assert result == expected
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_validate_dag_steps_with_catalog_unavailable(self, mock_compiler_class, mock_session):
+        """Test validate_dag_steps_with_catalog when StepCatalog is unavailable."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog_class.side_effect = Exception("StepCatalog init failed")
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.validate_dag_steps_with_catalog()
+                
+                expected = {
+                    "catalog_available": False,
+                    "validation_performed": False,
+                    "message": "StepCatalog not available for enhanced validation"
+                }
+                assert result == expected
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_validate_dag_steps_with_catalog_error(self, mock_compiler_class, mock_session):
+        """Test validate_dag_steps_with_catalog when validation throws error."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.side_effect = Exception("Validation error")
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.validate_dag_steps_with_catalog()
+                
+                assert result["catalog_available"] is True
+                assert result["validation_performed"] is False
+                assert "error" in result
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_recommendations_supported_step(self, mock_compiler_class, mock_session):
+        """Test get_step_recommendations for a supported step."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.return_value = ["XGBoostTraining", "PyTorchTraining"]
+                mock_step_catalog.LEGACY_ALIASES = {"OldStep": "NewStep"}
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_recommendations("XGBoostTraining")
+                
+                expected = {
+                    "catalog_available": True,
+                    "step_name": "XGBoostTraining",
+                    "is_supported": True,
+                    "recommendations": []
+                }
+                assert result == expected
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_recommendations_legacy_alias(self, mock_compiler_class, mock_session):
+        """Test get_step_recommendations for a legacy alias."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.return_value = ["XGBoostTraining", "PyTorchTraining"]
+                mock_step_catalog.LEGACY_ALIASES = {"OldStep": "XGBoostTraining"}
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_recommendations("OldStep")
+                
+                assert result["catalog_available"] is True
+                assert result["step_name"] == "OldStep"
+                assert result["is_supported"] is False
+                assert result["is_legacy_alias"] is True
+                assert result["canonical_name"] == "XGBoostTraining"
+                assert len(result["recommendations"]) == 1
+                assert result["recommendations"][0]["type"] == "legacy_alias"
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_recommendations_unsupported_with_similar(self, mock_compiler_class, mock_session):
+        """Test get_step_recommendations for unsupported step with similar alternatives."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.return_value = ["XGBoostTraining", "XGBoostModel", "PyTorchTraining"]
+                mock_step_catalog.LEGACY_ALIASES = {}
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_recommendations("XGBoost")
+                
+                assert result["catalog_available"] is True
+                assert result["step_name"] == "XGBoost"
+                assert result["is_supported"] is False
+                assert len(result["recommendations"]) == 1
+                assert result["recommendations"][0]["type"] == "similar_steps"
+                assert "XGBoostTraining" in result["recommendations"][0]["alternatives"]
+                assert "XGBoostModel" in result["recommendations"][0]["alternatives"]
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_recommendations_unavailable(self, mock_compiler_class, mock_session):
+        """Test get_step_recommendations when StepCatalog is unavailable."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog_class.side_effect = Exception("StepCatalog init failed")
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_recommendations("AnyStep")
+                
+                expected = {
+                    "catalog_available": False,
+                    "recommendations": []
+                }
+                assert result == expected
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_step_recommendations_error(self, mock_compiler_class, mock_session):
+        """Test get_step_recommendations when accessing StepCatalog throws error."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.side_effect = Exception("Access error")
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_step_recommendations("AnyStep")
+                
+                assert result["catalog_available"] is True
+                assert "error" in result
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_enhanced_pipeline_metadata_with_catalog(self, mock_compiler_class, mock_session):
+        """Test get_enhanced_pipeline_metadata when StepCatalog is available."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog.list_supported_step_types.return_value = ["step1", "step2"]
+                mock_step_catalog.list_available_steps.return_value = ["step1", "step2", "step3"]
+                mock_step_catalog.LEGACY_ALIASES = {}
+                mock_step_catalog.workspace_dirs = None
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_enhanced_pipeline_metadata()
+                
+                # Should include basic DAG info
+                assert "nodes" in result
+                assert "edges" in result
+                assert "node_count" in result
+                assert "edge_count" in result
+                assert "is_valid" in result
+                
+                # Should include StepCatalog integration info
+                assert "step_catalog_integration" in result
+                assert result["step_catalog_integration"]["available"] is True
+                assert "step_validation" in result
+                assert result["enhanced_features_available"] is True
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_get_enhanced_pipeline_metadata_without_catalog(self, mock_compiler_class, mock_session):
+        """Test get_enhanced_pipeline_metadata when StepCatalog is unavailable."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog_class.side_effect = Exception("StepCatalog init failed")
+                
+                pipeline = ConcretePipeline()
+                result = pipeline.get_enhanced_pipeline_metadata()
+                
+                # Should include basic DAG info
+                assert "nodes" in result
+                assert "edges" in result
+                assert "node_count" in result
+                assert "edge_count" in result
+                assert "is_valid" in result
+                
+                # Should indicate StepCatalog is unavailable
+                assert "step_catalog_integration" in result
+                assert result["step_catalog_integration"]["available"] is False
+                assert result["enhanced_features_available"] is False
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_compiler_receives_step_catalog(self, mock_compiler_class, mock_session):
+        """Test that DAG compiler receives StepCatalog when available."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog = Mock()
+                mock_step_catalog_class.return_value = mock_step_catalog
+                
+                pipeline = ConcretePipeline()
+                
+                # Verify StepCatalog was passed to compiler
+                call_args = mock_compiler_class.call_args
+                assert 'step_catalog' in call_args.kwargs
+                assert call_args.kwargs['step_catalog'] == mock_step_catalog
+
+    @patch('cursus.pipeline_catalog.core.base_pipeline.PipelineDAGCompiler')
+    def test_compiler_without_step_catalog(self, mock_compiler_class, mock_session):
+        """Test that DAG compiler works without StepCatalog."""
+        mock_compiler_class.return_value = Mock()
+        
+        with patch('cursus.pipeline_catalog.core.base_pipeline.PipelineSession', return_value=mock_session):
+            with patch('cursus.pipeline_catalog.core.base_pipeline.StepCatalog') as mock_step_catalog_class:
+                mock_step_catalog_class.side_effect = Exception("StepCatalog init failed")
+                
+                pipeline = ConcretePipeline()
+                
+                # Verify StepCatalog was not passed to compiler
+                call_args = mock_compiler_class.call_args
+                assert 'step_catalog' not in call_args.kwargs or call_args.kwargs.get('step_catalog') is None
