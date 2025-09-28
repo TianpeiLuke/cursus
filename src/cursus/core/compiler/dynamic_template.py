@@ -63,10 +63,32 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         """
         # Initialize logger first so it's available in all methods
         self.logger = logging.getLogger(__name__)
+        
+        self.logger.info("🔧 DynamicPipelineTemplate.__init__ starting...")
+        self.logger.info(f"🔧 DynamicPipelineTemplate: step_catalog parameter: {step_catalog}")
+        self.logger.info(f"🔧 DynamicPipelineTemplate: step_catalog type: {type(step_catalog)}")
 
         self._dag = dag
         self._config_resolver = config_resolver or StepConfigResolver()
-        self._step_catalog = step_catalog or StepCatalog()
+        
+        # Enhanced step_catalog initialization with detailed logging
+        if step_catalog is not None:
+            self.logger.info("✅ Using provided step_catalog from DAGCompiler")
+            self._step_catalog = step_catalog
+        else:
+            self.logger.warning("⚠️ step_catalog parameter is None, creating new StepCatalog()")
+            try:
+                self._step_catalog = StepCatalog()
+                self.logger.info("✅ Successfully created new StepCatalog()")
+            except Exception as e:
+                self.logger.error(f"❌ Failed to create new StepCatalog(): {e}")
+                import traceback
+                self.logger.error(f"❌ StepCatalog creation traceback: {traceback.format_exc()}")
+                self._step_catalog = None
+        
+        self.logger.info(f"🔧 DynamicPipelineTemplate: final self._step_catalog: {self._step_catalog}")
+        self.logger.info(f"🔧 DynamicPipelineTemplate: final self._step_catalog type: {type(self._step_catalog)}")
+        
         self._validation_engine = ValidationEngine()
 
         # Store config_path as an instance attribute so it's available to _detect_config_classes
@@ -204,11 +226,24 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         Raises:
             RegistryError: If step builders cannot be found for config types
         """
+        self.logger.info("🔧 DynamicPipelineTemplate._create_step_builder_map() called")
+        self.logger.info(f"🔧 self._step_catalog status: {self._step_catalog}")
+        self.logger.info(f"🔧 self._step_catalog type: {type(self._step_catalog)}")
+        
         # Strategy 2 + 3: Use lazy loading flag to preserve original logic
         if not self._builder_map_loaded:
             try:
+                # Check if step_catalog is None before calling get_builder_map()
+                if self._step_catalog is None:
+                    self.logger.error("❌ CRITICAL: self._step_catalog is None when trying to call get_builder_map()!")
+                    raise RegistryError("Step catalog is None - cannot get builder map")
+                
+                self.logger.info("🔧 Calling self._step_catalog.get_builder_map()...")
+                
                 # Get the complete builder map from StepCatalog
                 builder_map = self._step_catalog.get_builder_map()
+                
+                self.logger.info(f"✅ self._step_catalog.get_builder_map() returned {len(builder_map)} builders")
                 
                 # Update the early-initialized dict
                 self._resolved_builder_map.update(builder_map)
@@ -245,7 +280,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                 self._builder_map_loaded = True
 
             except Exception as e:
-                self.logger.error(f"Failed to create step builder map: {e}")
+                self.logger.error(f"❌ Failed to create step builder map: {e}")
+                import traceback
+                self.logger.error(f"❌ _create_step_builder_map() traceback: {traceback.format_exc()}")
                 raise RegistryError(f"Step builder mapping failed: {e}")
 
         return self._resolved_builder_map
