@@ -6,6 +6,6 @@ architectural patterns and filter false positives in validation results.
 """
 
 from .pattern_recognizer import PatternRecognizer
-from .file_resolver import HybridFileResolver
+from ....step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver
 
 __all__ = ["PatternRecognizer", "HybridFileResolver"]

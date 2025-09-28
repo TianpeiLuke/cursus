@@ -30,7 +30,7 @@ from .script_analysis_models import (
 from .dependency_classifier import DependencyPattern, DependencyPatternClassifier
 
 # File resolution
-from .file_resolver import FlexibleFileResolver
+from ...step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 
 # Step type detection
 from .step_type_detection import (
