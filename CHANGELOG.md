@@ -81,6 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **System Responsiveness** - Enhanced system responsiveness with streamlined step catalog architecture
 - **Memory Usage** - Reduced memory footprint through elimination of redundant registry components
 - **Code Execution Speed** - Improved execution speed through unified step catalog system
+- **Resource Utilization** - Better resource utilization through unified step catalog system
+
+## [1.3.3] - 2025-09-25
 
 ### Enhanced
 - **Path Resolution System** - Major improvements to deployment-agnostic path resolution
