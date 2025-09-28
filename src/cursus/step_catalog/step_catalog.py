@@ -123,12 +123,21 @@ class StepCatalog:
         self.mapper = StepCatalogMapper(self)
         
         # Initialize pipeline_interface with error handling
+        self.logger.info("🔧 StepCatalog: Initializing pipeline_interface...")
+        self.logger.info(f"🔧 StepCatalog: mapper object: {self.mapper}")
+        self.logger.info(f"🔧 StepCatalog: mapper type: {type(self.mapper)}")
+        
         try:
+            self.logger.debug("🔧 Creating PipelineConstructionInterface with mapper...")
             self.pipeline_interface = PipelineConstructionInterface(self.mapper)
-            self.logger.debug("Successfully initialized pipeline_interface")
+            self.logger.info("✅ Successfully initialized pipeline_interface")
+            self.logger.info(f"✅ pipeline_interface type: {type(self.pipeline_interface)}")
         except Exception as e:
-            self.logger.error(f"Failed to initialize pipeline_interface: {e}")
+            self.logger.error(f"❌ Failed to initialize pipeline_interface: {e}")
+            import traceback
+            self.logger.error(f"❌ PipelineConstructionInterface traceback: {traceback.format_exc()}")
             self.pipeline_interface = None
+            self.logger.error("❌ Set pipeline_interface = None due to initialization failure")
     
     # US1: Query by Step Name
     def get_step_info(self, step_name: str, job_type: Optional[str] = None) -> Optional[StepInfo]:
@@ -989,10 +998,25 @@ class StepCatalog:
         Returns:
             Dictionary mapping step types to builder classes
         """
+        self.logger.info("🔧 StepCatalog.get_builder_map() called")
+        self.logger.info(f"🔧 pipeline_interface status: {self.pipeline_interface}")
+        self.logger.info(f"🔧 pipeline_interface type: {type(self.pipeline_interface)}")
+        
         if self.pipeline_interface is None:
-            self.logger.warning("pipeline_interface is None, using fallback builder map generation")
+            self.logger.error("❌ pipeline_interface is None, using fallback builder map generation")
             return self._generate_fallback_builder_map()
-        return self.pipeline_interface.get_builder_map()
+        
+        try:
+            self.logger.info("🔧 Calling pipeline_interface.get_builder_map()...")
+            builder_map = self.pipeline_interface.get_builder_map()
+            self.logger.info(f"✅ pipeline_interface.get_builder_map() returned {len(builder_map)} builders")
+            return builder_map
+        except Exception as e:
+            self.logger.error(f"❌ pipeline_interface.get_builder_map() failed: {e}")
+            import traceback
+            self.logger.error(f"❌ get_builder_map() traceback: {traceback.format_exc()}")
+            self.logger.info("🔧 Falling back to fallback builder map generation...")
+            return self._generate_fallback_builder_map()
     
     def _generate_fallback_builder_map(self) -> Dict[str, Type]:
         """
