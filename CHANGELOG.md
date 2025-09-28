@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2025-09-27
+
+### Fixed
+- **Step Catalog System Stability** - Critical fixes to step catalog functionality and builder recovery
+  - **Builder Recovery Issue** - Fixed builder recovery mechanism in step catalog system
+  - **Step Builder Map Issues** - Resolved issues with step builder mapping and discovery
+  - **Dynamic Template Integration** - Fixed critical bug in dynamic template where step_catalog wasn't passed to parent class
+  - **Job Type Variants** - Fixed errors in job type variant handling and mapping
+
+- **Pipeline Template System** - Enhanced pipeline template base to work with deprecated builder registry
+  - **Builder Registry Deprecation** - Updated pipeline template base to reflect deprecated builder registry system
+  - **Template Integration** - Improved integration between pipeline templates and step catalog system
+  - **Logging Cleanup** - Removed extensive debug logging for cleaner production output
+
+### Enhanced
+- **Step Catalog Mapping** - Improved step catalog mapping system with better error handling
+  - **Mapping Reliability** - Enhanced mapping reliability and error recovery mechanisms
+  - **Builder Discovery** - Improved builder discovery with better fallback mechanisms
+  - **Job Type Handling** - Enhanced job type variant handling in step catalog mapping
+
+### Technical Details
+- **Critical Bug Fix** - Fixed missing step_catalog parameter in dynamic template parent class initialization
+- **Builder Recovery** - Enhanced builder recovery mechanism with better error handling and fallback options
+- **Mapping System** - Improved step catalog mapping system with enhanced job type variant support
+- **Template System** - Updated pipeline template system to work seamlessly with step catalog architecture
+
+### Quality Assurance
+- **System Stability** - Improved overall system stability with critical bug fixes
+- **Error Handling** - Enhanced error handling and recovery mechanisms throughout step catalog system
+- **Integration Testing** - Better integration between step catalog and pipeline template systems
+
 ## [1.3.4] - 2025-09-27
 
 ### Enhanced
