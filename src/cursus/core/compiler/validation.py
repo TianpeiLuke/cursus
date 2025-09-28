@@ -116,7 +116,7 @@ class ValidationResult(BaseModel):
 
             if self.unresolvable_builders:
                 lines.append(
-                    "  - Register missing step builders in StepBuilderRegistry"
+                    "  - Register missing step builders in StepCatalog"
                 )
                 lines.append("  - Use supported configuration types")
                 lines.append(
