@@ -270,8 +270,8 @@ class TestPipelineTemplateBase:
         # Verify config_map was created
         assert call_kwargs["config_map"] is not None
 
-        # Verify step_builder_map was created
-        assert call_kwargs["step_builder_map"] is not None
+        # Verify step_catalog was created
+        assert call_kwargs["step_catalog"] is not None
 
         # Verify dependency components were passed
         assert call_kwargs["registry_manager"] == mocks["mock_registry_manager"]

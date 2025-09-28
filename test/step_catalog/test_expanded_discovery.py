@@ -228,7 +228,13 @@ class TestExpandedDiscoveryMethods:
         # Should return None since we can't actually import the module in tests
         # but the fallback path should be attempted
         assert builder_class is None
-        mock_builder_discovery.load_builder_class.assert_called_once_with("test_step")
+        
+        # With job type variant fallback logic, it should be called twice:
+        # 1. First with "test_step" (original name)
+        # 2. Then with "test" (base name after removing "_step" suffix)
+        assert mock_builder_discovery.load_builder_class.call_count == 2
+        mock_builder_discovery.load_builder_class.assert_any_call("test_step")
+        mock_builder_discovery.load_builder_class.assert_any_call("test")
     
     def test_load_builder_class_no_builder_discovery(self, catalog_with_test_data):
         """Test loading builder class when BuilderAutoDiscovery is not available."""
