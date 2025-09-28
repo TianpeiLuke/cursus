@@ -433,10 +433,10 @@ class StepCatalog:
     
     def load_builder_class(self, step_name: str) -> Optional[Type]:
         """
-        Load builder class for a step using BuilderAutoDiscovery component.
+        Load builder class for a step with job type variant fallback support.
         
         Args:
-            step_name: Name of the step
+            step_name: Name of the step (may include job type variant)
             
         Returns:
             Builder class type or None if not found/loadable
@@ -444,14 +444,27 @@ class StepCatalog:
         try:
             # Use the initialized builder discovery component
             if self.builder_discovery:
+                # Try exact match first
                 builder_class = self.builder_discovery.load_builder_class(step_name)
                 
                 if builder_class:
                     self.logger.debug(f"Successfully loaded builder class for {step_name}: {builder_class.__name__}")
                     return builder_class
-                else:
-                    self.logger.warning(f"No builder class found for step: {step_name}")
-                    return None
+                
+                # JOB TYPE FALLBACK: Try base step name if compound name fails
+                if "_" in step_name:
+                    base_step_name = step_name.rsplit("_", 1)[0]
+                    job_type = step_name.rsplit("_", 1)[1]
+                    
+                    self.logger.debug(f"Trying base step name '{base_step_name}' for compound '{step_name}' (job_type: {job_type})")
+                    builder_class = self.builder_discovery.load_builder_class(base_step_name)
+                    
+                    if builder_class:
+                        self.logger.info(f"Successfully loaded builder class using base name '{base_step_name}' for '{step_name}': {builder_class.__name__}")
+                        return builder_class
+                
+                self.logger.warning(f"No builder class found for step: {step_name}")
+                return None
             else:
                 self.logger.warning(f"BuilderAutoDiscovery not available, cannot load builder for {step_name}")
                 return None

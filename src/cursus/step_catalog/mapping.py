@@ -81,21 +81,37 @@ class StepCatalogMapper:
     
     def get_builder_for_step_type(self, step_type: str) -> Optional[Type]:
         """
-        Get builder class for step type with legacy alias support.
-        
+        Get builder class for step type with legacy alias support and job type variant fallback.
+
         This method replaces StepBuilderRegistry.get_builder_for_step_type() functionality.
-        
+
         Args:
-            step_type: Step type name (may be legacy alias)
-            
+            step_type: Step type name (may be legacy alias or compound name with job type)
+
         Returns:
             Builder class type or None if not found
         """
         try:
-            # Handle legacy aliases
+            # Handle legacy aliases first
             canonical_step_type = self.resolve_legacy_aliases(step_type)
-            return self.step_catalog.load_builder_class(canonical_step_type)
             
+            # Try exact match first
+            builder_class = self.step_catalog.load_builder_class(canonical_step_type)
+            if builder_class:
+                return builder_class
+                
+            # JOB TYPE FALLBACK: If compound name fails, try base name
+            if "_" in canonical_step_type:
+                base_step_type = canonical_step_type.rsplit("_", 1)[0]
+                job_type = canonical_step_type.rsplit("_", 1)[1]
+                
+                self.logger.info(f"Trying base step type '{base_step_type}' for compound '{canonical_step_type}' (job_type: {job_type})")
+                builder_class = self.step_catalog.load_builder_class(base_step_type)
+                if builder_class:
+                    return builder_class
+                    
+            return None
+
         except Exception as e:
             self.logger.error(f"Error getting builder for step type {step_type}: {e}")
             return None
