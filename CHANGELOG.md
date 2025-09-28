@@ -5,7 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.3] - 2025-09-25
+## [1.3.4] - 2025-09-27
+
+### Enhanced
+- **Step Catalog System Revolution** - Major architectural transformation with unified step catalog system
+  - **Step Catalog Expansion** - Comprehensive expansion of step catalog with mapping enhancement and registry absorption
+  - **Builder Registry Deprecation** - Complete deprecation and removal of step builder registry in favor of unified step catalog
+  - **Workspace-Aware Integration** - Full integration of step catalog into workspace-aware system architecture
+  - **Redundancy Reduction** - Massive code redundancy reduction through step catalog consolidation
+
+- **Documentation System Overhaul** - Comprehensive documentation updates reflecting new architecture
+  - **Step Catalog Integration Guide** - New comprehensive guide for step catalog integration replacing builder registry documentation
+  - **Developer Guide Updates** - Updated all developer guides to reflect removal of step builder registry
+  - **Tutorial Modernization** - Modernized tutorials and API references to use step catalog system
+  - **Documentation Cleanup** - Removed 750+ lines of outdated step builder registry documentation
+
+- **Pipeline System Improvements** - Enhanced pipeline infrastructure with better integration
+  - **Base Pipeline Enhancement** - Major improvements to base pipeline with 556+ lines of new functionality
+  - **Workspace Core Integration** - Enhanced workspace core assembler and compiler with step catalog support
+  - **Pipeline Catalog Updates** - Updated pipeline catalog to work seamlessly with new step catalog architecture
+
+- **Validation System Enhancements** - Improved validation capabilities with step catalog integration
+  - **Interface Validation Updates** - Enhanced interface validation with better error handling and reference removal
+  - **Builder Validation Improvements** - Updated builder validation to work with new step catalog system
+  - **Test Infrastructure Modernization** - Modernized test infrastructure to support step catalog architecture
+
+### Added
+- **Unified Step Catalog Architecture** - Revolutionary new architecture for component management
+  - **Step Catalog Core** - Complete step catalog system with mapping and discovery capabilities
+  - **Component Mapping System** - Advanced mapping system for step catalog components
+  - **Registry Integration** - Seamless integration of registry functionality into step catalog
+  - **Workspace Catalog Support** - Full workspace-aware step catalog implementation
+
+- **Enhanced Project Structure** - Improved project organization and Docker integration
+  - **Docker Container Reorganization** - Moved Docker projects to dedicated `dockers/` directory
+  - **Project Structure Cleanup** - Better organization of PyTorch BSM extension and XGBoost projects
+  - **Container Integration** - Enhanced Docker container integration with step catalog system
+
+- **Advanced Testing Framework** - Expanded testing capabilities for new architecture
+  - **Step Catalog Tests** - Comprehensive test suite for step catalog functionality
+  - **Mapping Tests** - Detailed tests for step catalog mapping system
+  - **Integration Tests** - Enhanced integration tests for workspace-aware step catalog
+
+### Fixed
+- **Architecture Migration Issues** - Resolved issues during migration to step catalog system
+  - **Registry Removal** - Clean removal of deprecated step builder registry system
+  - **Import Path Updates** - Updated all import paths to use step catalog instead of builder registry
+  - **Test Infrastructure Fixes** - Fixed test infrastructure to work with new step catalog architecture
+  - **XGBoost Model Evaluation** - Fixed XGBoost model evaluation step builder issues
+
+- **Code Quality Improvements** - Major code quality enhancements through redundancy reduction
+  - **Redundant Code Elimination** - Removed massive amounts of redundant code through step catalog consolidation
+  - **Documentation Consistency** - Ensured consistency across all documentation after registry removal
+  - **Test Reliability** - Improved test reliability with better integration testing
+
+- **Project Organization Fixes** - Enhanced project structure and organization
+  - **Folder Structure** - Improved folder structure with Docker projects properly organized
+  - **Path Resolution** - Fixed path resolution issues in configuration and processing steps
+  - **Test Configuration** - Fixed test configuration issues across multiple test modules
+
+### Technical Details
+- **Step Catalog Architecture** - Complete unified step catalog system replacing fragmented builder registry approach
+- **Code Reduction Metrics** - Achieved significant code reduction through consolidation and redundancy elimination
+- **Migration Strategy** - Seamless migration from builder registry to step catalog with full backward compatibility
+- **Performance Optimization** - Improved performance through unified architecture and reduced complexity
+- **Architectural Simplification** - Simplified architecture with clear component boundaries and responsibilities
+
+### Quality Assurance
+- **Comprehensive Testing** - Enhanced test coverage for step catalog system and workspace integration
+- **Migration Validation** - Thorough validation of migration from builder registry to step catalog
+- **Integration Testing** - Comprehensive integration testing across all system components
+- **Documentation Quality** - Improved documentation quality with updated guides and references
+
+### Performance Improvements
+- **System Responsiveness** - Enhanced system responsiveness with streamlined step catalog architecture
+- **Memory Usage** - Reduced memory footprint through elimination of redundant registry components
+- **Code Execution Speed** - Improved execution speed through unified step catalog system
 
 ### Enhanced
 - **Path Resolution System** - Major improvements to deployment-agnostic path resolution
