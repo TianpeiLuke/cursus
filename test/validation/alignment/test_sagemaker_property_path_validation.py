@@ -259,7 +259,7 @@ def test_sagemaker_property_path_validator():
                 print(f"    - {path}")
 
     print("\n✅ Enhanced Property Path Validator testing completed!")
-    return True
+    assert True  # Test completed successfully
 
 
 def test_sagemaker_property_path_integration_with_unified_tester():
@@ -310,14 +310,14 @@ def test_sagemaker_property_path_integration_with_unified_tester():
             print("No Level 2 validation results found")
 
         print("\n✅ Integration testing completed!")
-        return True
+        assert True  # Integration test completed successfully
 
     except ImportError as e:
         print(f"❌ Could not import unified alignment tester: {e}")
-        return False
+        assert False, f"Could not import unified alignment tester: {e}"
     except Exception as e:
         print(f"❌ Integration test failed: {e}")
-        return False
+        assert False, f"Integration test failed: {e}"
 
 
 if __name__ == "__main__":
@@ -325,28 +325,25 @@ if __name__ == "__main__":
     print("=" * 80)
 
     # Run standalone validator tests
-    success1 = test_sagemaker_property_path_validator()
+    test_sagemaker_property_path_validator()
 
     # Run integration tests
-    success2 = test_sagemaker_property_path_integration_with_unified_tester()
+    test_sagemaker_property_path_integration_with_unified_tester()
 
     print("\n" + "=" * 80)
-    if success1 and success2:
-        print("🎉 All tests completed successfully!")
-        print("\n📚 Property Path Validation (Level 2) Implementation Summary:")
-        print("  ✅ Created SageMakerPropertyPathValidator module")
-        print("  ✅ Integrated with ContractSpecificationAlignmentTester")
-        print("  ✅ Supports 10 SageMaker step types with comprehensive property paths")
-        print("  ✅ Provides intelligent suggestions for invalid property paths")
-        print("  ✅ References official SageMaker documentation v2.92.2")
-        print(
-            "  ✅ Includes pattern matching for array indexing (e.g., [*], ['metric_name'])"
-        )
-        print("  ✅ Integrated with unified alignment tester workflow")
+    print("🎉 All tests completed successfully!")
+    print("\n📚 Property Path Validation (Level 2) Implementation Summary:")
+    print("  ✅ Created SageMakerPropertyPathValidator module")
+    print("  ✅ Integrated with ContractSpecificationAlignmentTester")
+    print("  ✅ Supports 10 SageMaker step types with comprehensive property paths")
+    print("  ✅ Provides intelligent suggestions for invalid property paths")
+    print("  ✅ References official SageMaker documentation v2.92.2")
+    print(
+        "  ✅ Includes pattern matching for array indexing (e.g., [*], ['metric_name'])"
+    )
+    print("  ✅ Integrated with unified alignment tester workflow")
 
-        print("\n🔗 Reference Documentation:")
-        print(
-            "  https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
-        )
-    else:
-        print("❌ Some tests failed. Check the output above for details.")
+    print("\n🔗 Reference Documentation:")
+    print(
+        "  https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+    )
