@@ -1,45 +1,53 @@
 {
-  "total_scripts": 9,
-  "passed_scripts": 5,
-  "failed_scripts": 4,
+  "total_scripts": 11,
+  "passed_scripts": 11,
+  "failed_scripts": 0,
   "error_scripts": 0,
-  "validation_timestamp": "2025-09-18T07:45:41.638740",
+  "validation_timestamp": "2025-09-28T11:08:48.685718",
   "script_results": {
     "currency_conversion": {
-      "status": "FAILING",
-      "timestamp": "2025-09-18T07:45:41.657002"
+      "status": "PASSING",
+      "timestamp": "2025-09-28T11:08:48.712473"
     },
     "dummy_training": {
       "status": "PASSING",
-      "timestamp": "2025-09-18T07:45:41.678031"
+      "timestamp": "2025-09-28T11:08:48.727588"
     },
     "model_calibration": {
       "status": "PASSING",
-      "timestamp": "2025-09-18T07:45:41.715930"
+      "timestamp": "2025-09-28T11:08:48.764552"
     },
     "package": {
       "status": "PASSING",
-      "timestamp": "2025-09-18T07:45:41.803839"
+      "timestamp": "2025-09-28T11:08:48.788268"
     },
     "payload": {
       "status": "PASSING",
-      "timestamp": "2025-09-18T07:45:41.826862"
+      "timestamp": "2025-09-28T11:08:48.811183"
+    },
+    "pytorch_training": {
+      "status": "PASSING",
+      "timestamp": "2025-09-28T11:08:48.839405"
     },
     "risk_table_mapping": {
-      "status": "FAILING",
-      "timestamp": "2025-09-18T07:45:41.848821"
+      "status": "PASSING",
+      "timestamp": "2025-09-28T11:08:48.865373"
+    },
+    "stratified_sampling": {
+      "status": "PASSING",
+      "timestamp": "2025-09-28T11:08:48.899880"
     },
     "tabular_preprocessing": {
-      "status": "FAILING",
-      "timestamp": "2025-09-18T07:45:41.866097"
+      "status": "PASSING",
+      "timestamp": "2025-09-28T11:08:48.922072"
     },
-    "xgboost_model_evaluation": {
-      "status": "FAILING",
-      "timestamp": "2025-09-18T07:45:41.882255"
+    "xgboost_model_eval": {
+      "status": "PASSING",
+      "timestamp": "2025-09-28T11:08:48.953924"
     },
     "xgboost_training": {
       "status": "PASSING",
-      "timestamp": "2025-09-18T07:45:41.911135"
+      "timestamp": "2025-09-28T11:08:48.981645"
     }
   }
 }

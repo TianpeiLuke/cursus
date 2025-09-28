@@ -5,6 +5,40 @@
     "issues": [
       {
         "severity": "INFO",
+        "category": "path_usage",
+        "message": "INTERNAL step uses fallback path: /opt/ml/code/hyperparams/hyperparameters.json",
+        "details": {
+          "path": "/opt/ml/code/hyperparams/hyperparameters.json",
+          "script": "risk_table_mapping",
+          "node_type": "internal",
+          "path_type": "fallback_path"
+        },
+        "recommendation": "Fallback path /opt/ml/code/hyperparams/hyperparameters.json allowed for robustness - consider providing via proper input channel"
+      },
+      {
+        "severity": "INFO",
+        "category": "path_usage",
+        "message": "INTERNAL step uses fallback path: /opt/ml/code/hyperparams",
+        "details": {
+          "path": "/opt/ml/code/hyperparams",
+          "script": "risk_table_mapping",
+          "node_type": "internal",
+          "path_type": "fallback_path"
+        },
+        "recommendation": "Fallback path /opt/ml/code/hyperparams allowed for robustness - consider providing via proper input channel"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "Contract declares path not used in script: /opt/ml/processing/input/config",
+        "details": {
+          "path": "/opt/ml/processing/input/config",
+          "script": "risk_table_mapping"
+        },
+        "recommendation": "Either use path /opt/ml/processing/input/config in script or remove from contract"
+      },
+      {
+        "severity": "INFO",
         "category": "arguments",
         "message": "Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)",
         "details": {
@@ -17,15 +51,26 @@
       },
       {
         "severity": "INFO",
+        "category": "file_operations",
+        "message": "Contract declares input not read by script: /opt/ml/processing/input/config",
+        "details": {
+          "path": "/opt/ml/processing/input/config",
+          "operation": "read",
+          "script": "risk_table_mapping"
+        },
+        "recommendation": "Either read /opt/ml/processing/input/config in script or remove from contract inputs"
+      },
+      {
+        "severity": "INFO",
         "category": "testability_compliance",
         "message": "Main function follows testability pattern with all required parameters",
         "details": {
           "script": "risk_table_mapping",
           "testability_parameters": [
+            "output_paths",
             "job_args",
             "environ_vars",
-            "input_paths",
-            "output_paths"
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -49,9 +94,9 @@
             "environ_vars"
           ],
           "used_parameters": [
+            "output_paths",
             "job_args",
-            "input_paths",
-            "output_paths"
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -64,7 +109,7 @@
           "script": "risk_table_mapping",
           "parameter": "job_args",
           "current_pattern": "job_args.job_type",
-          "line_number": 445
+          "line_number": 508
         },
         "recommendation": "Use job_args['key'] for accessing nested values"
       },
@@ -76,7 +121,7 @@
           "script": "risk_table_mapping",
           "parameter": "input_paths",
           "current_pattern": "input_paths.get",
-          "line_number": 448
+          "line_number": 511
         },
         "recommendation": "Use input_paths['key'] for accessing nested values"
       },
@@ -88,7 +133,7 @@
           "script": "risk_table_mapping",
           "parameter": "input_paths",
           "current_pattern": "input_paths.get",
-          "line_number": 453
+          "line_number": 516
         },
         "recommendation": "Use input_paths['key'] for accessing nested values"
       },
@@ -100,7 +145,7 @@
           "script": "risk_table_mapping",
           "parameter": "job_args",
           "current_pattern": "args.job_type",
-          "line_number": 514
+          "line_number": 590
         },
         "recommendation": "Use job_args['key'] for accessing nested values"
       },
@@ -129,26 +174,31 @@
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py",
       "path_references": [
         "path='\\nRisk Table Mapping Processing Script\\n\\nThis script creates and applies risk tables for categorical features based on \\ntarget variable correlation, and handles missing value imputation for numeric features.\\nIt supports both training mode (fit and transform) and inference mode (transform only).\\n' line_number=2 context='#!/usr/bin/env python\\n>>> \"\"\"\\nRisk Table Mapping Processing Script\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/data' line_number=24 context='\\n# Default paths (will be overridden by parameters in main function)\\n>>> DEFAULT_INPUT_DIR = \"/opt/ml/processing/input/data\"\\nDEFAULT_CONFIG_DIR = \"/opt/ml/processing/input/config\" \\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/config' line_number=25 context='# Default paths (will be overridden by parameters in main function)\\nDEFAULT_INPUT_DIR = \"/opt/ml/processing/input/data\"\\n>>> DEFAULT_CONFIG_DIR = \"/opt/ml/processing/input/config\" \\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\nDEFAULT_RISK_TABLE_DIR = \"/opt/ml/processing/input/risk_tables\"' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=26 context='DEFAULT_INPUT_DIR = \"/opt/ml/processing/input/data\"\\nDEFAULT_CONFIG_DIR = \"/opt/ml/processing/input/config\" \\n>>> DEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\nDEFAULT_RISK_TABLE_DIR = \"/opt/ml/processing/input/risk_tables\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/risk_tables' line_number=27 context='DEFAULT_CONFIG_DIR = \"/opt/ml/processing/input/config\" \\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\n>>> DEFAULT_RISK_TABLE_DIR = \"/opt/ml/processing/input/risk_tables\"\\n\\n# Constants for file paths to ensure consistency between training and inference' is_hardcoded=True construction_method=None",
-        "path='bin_mapping.pkl' line_number=32 context='# These constants ensure the same filenames are used across all job types,\\n# facilitating proper connections between training and non-training steps\\n>>> RISK_TABLE_FILENAME = \"bin_mapping.pkl\"  # Used by downstream steps as input dependency\\nHYPERPARAMS_FILENAME = \"hyperparameters.json\"  # Expected by the script and generated by the builder\\n' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=33 context='# facilitating proper connections between training and non-training steps\\nRISK_TABLE_FILENAME = \"bin_mapping.pkl\"  # Used by downstream steps as input dependency\\n>>> HYPERPARAMS_FILENAME = \"hyperparameters.json\"  # Expected by the script and generated by the builder\\n\\n# Set up logging' is_hardcoded=True construction_method=None",
-        "path='\\n    A class to create risk tables for categorical features.\\n    \\n    Risk tables map categorical values to numerical risk scores based on\\n    their correlation with the target variable.\\n    ' line_number=108 context='\\nclass OfflineBinning:\\n>>>     \"\"\"\\n    A class to create risk tables for categorical features.\\n    ' is_hardcoded=True construction_method=None",
-        "path='Fits the risk tables based on the provided dataframe.' line_number=120 context='\\n    def fit(self, df: pd.DataFrame, smooth_factor: float = 0, count_threshold: int = 0) -> None:\\n>>>         \"\"\"Fits the risk tables based on the provided dataframe.\"\"\"\\n        # Drop any -1 or NaN target rows for fitting\\n        fit_df = df.loc[(df[self.target] != -1) & (~df[self.target].isnull())].copy()' is_hardcoded=True construction_method=None",
-        "path='Helper to calculate the risk table for a single variable.' line_number=152 context='    def _create_risk_table(self, df: pd.DataFrame, variable: str, default_risk: float, \\n                          samples: int, count_threshold: int) -> Dict:\\n>>>         \"\"\"Helper to calculate the risk table for a single variable.\"\"\"\\n        cross_tab = pd.crosstab(df[variable], df[self.target].astype(object), margins=True, margins_name=\"_count_\", dropna=False)\\n        cross_tab[\"risk\"] = cross_tab.apply(lambda x: x.get(1, 0.0) / (x.get(1, 0) + x.get(0, 0)), axis=1)' is_hardcoded=True construction_method=None",
-        "path='Transforms the dataframe using the fitted risk tables.' line_number=163 context='\\n    def transform(self, df: pd.DataFrame) -> pd.DataFrame:\\n>>>         \"\"\"Transforms the dataframe using the fitted risk tables.\"\"\"\\n        df_transformed = df.copy()\\n        for var, risk_table_info in self.risk_tables.items():' is_hardcoded=True construction_method=None",
-        "path='Loads pre-existing risk tables.' line_number=173 context='\\n    def load_risk_tables(self, risk_tables: Dict) -> None:\\n>>>         \"\"\"Loads pre-existing risk tables.\"\"\"\\n        self.risk_tables = risk_tables\\n        logger.info(f\"Loaded {len(risk_tables)} risk tables\")' is_hardcoded=True construction_method=None",
-        "path='train_processed_data.csv' line_number=189 context='    if job_type == \"training\":\\n        # For training, we expect data in train/test/val subdirectories\\n>>>         train_df = pd.read_csv(input_path / \"train\" / \"train_processed_data.csv\")\\n        test_df = pd.read_csv(input_path / \"test\" / \"test_processed_data.csv\")\\n        val_df = pd.read_csv(input_path / \"val\" / \"val_processed_data.csv\")' is_hardcoded=True construction_method=None",
-        "path='test_processed_data.csv' line_number=190 context='        # For training, we expect data in train/test/val subdirectories\\n        train_df = pd.read_csv(input_path / \"train\" / \"train_processed_data.csv\")\\n>>>         test_df = pd.read_csv(input_path / \"test\" / \"test_processed_data.csv\")\\n        val_df = pd.read_csv(input_path / \"val\" / \"val_processed_data.csv\")\\n        logger.info(f\"Loaded training data splits: train={train_df.shape}, test={test_df.shape}, val={val_df.shape}\")' is_hardcoded=True construction_method=None",
-        "path='val_processed_data.csv' line_number=191 context='        train_df = pd.read_csv(input_path / \"train\" / \"train_processed_data.csv\")\\n        test_df = pd.read_csv(input_path / \"test\" / \"test_processed_data.csv\")\\n>>>         val_df = pd.read_csv(input_path / \"val\" / \"val_processed_data.csv\")\\n        logger.info(f\"Loaded training data splits: train={train_df.shape}, test={test_df.shape}, val={val_df.shape}\")\\n        return {\"train\": train_df, \"test\": test_df, \"val\": val_df}' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=196 context='    else:\\n        # For other job types, we expect data in a single directory named after job_type\\n>>>         df = pd.read_csv(input_path / job_type / f\"{job_type}_processed_data.csv\")\\n        logger.info(f\"Loaded {job_type} data: {df.shape}\")\\n        return {job_type: df}' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=214 context='        split_output_dir.mkdir(exist_ok=True, parents=True)\\n        \\n>>>         output_file = split_output_dir / f\"{split_name}_processed_data.csv\"\\n        df.to_csv(output_file, index=False)\\n        logger.info(f\"Saved {split_name} data to {output_file}, shape: {df.shape}\")' is_hardcoded=True construction_method=None",
-        "path='No valid categorical fields found for risk mapping. Using original data.' line_number=249 context='        \\n        if not valid_cat_fields:\\n>>>             logger.warning(\"No valid categorical fields found for risk mapping. Using original data.\")\\n            transformed_data = data_dict\\n            ' is_hardcoded=True construction_method=None",
-        "path='Risk-table mapping complete.' line_number=410 context='    save_artifacts(binner, hyperparams, output_path)\\n\\n>>>     logger.info(\"Risk-table mapping complete.\")\\n    return transformed_data, binner\\n' is_hardcoded=True construction_method=None",
-        "path='. ' line_number=455 context='            risk_table_input_dir = input_paths.get(\"risk_table_input\")\\n            if not risk_table_input_dir:\\n>>>                 logger.warning(f\"No risk_table_input path provided for non-training job {job_type}. \" +\\n                               \"Risk table mapping may fail.\")\\n        ' is_hardcoded=True construction_method=None",
-        "path='Risk table mapping may fail.' line_number=456 context='            if not risk_table_input_dir:\\n                logger.warning(f\"No risk_table_input path provided for non-training job {job_type}. \" +\\n>>>                                \"Risk table mapping may fail.\")\\n        \\n        # Log input/output paths for clarity' is_hardcoded=True construction_method=None"
+        "path='/opt/ml/processing/input/data' line_number=24 context='\\n# Default paths (will be overridden by parameters in main function)\\n>>> DEFAULT_INPUT_DIR = \"/opt/ml/processing/input/data\"\\nDEFAULT_CONFIG_DIR = \"/opt/ml/code/hyperparams\"  # Source directory path\\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/hyperparams' line_number=25 context='# Default paths (will be overridden by parameters in main function)\\nDEFAULT_INPUT_DIR = \"/opt/ml/processing/input/data\"\\n>>> DEFAULT_CONFIG_DIR = \"/opt/ml/code/hyperparams\"  # Source directory path\\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\nDEFAULT_RISK_TABLE_DIR = \"/opt/ml/processing/input/risk_tables\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=26 context='DEFAULT_INPUT_DIR = \"/opt/ml/processing/input/data\"\\nDEFAULT_CONFIG_DIR = \"/opt/ml/code/hyperparams\"  # Source directory path\\n>>> DEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\nDEFAULT_RISK_TABLE_DIR = \"/opt/ml/processing/input/risk_tables\"\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/risk_tables' line_number=27 context='DEFAULT_CONFIG_DIR = \"/opt/ml/code/hyperparams\"  # Source directory path\\nDEFAULT_OUTPUT_DIR = \"/opt/ml/processing/output\"\\n>>> DEFAULT_RISK_TABLE_DIR = \"/opt/ml/processing/input/risk_tables\"\\n\\n# Constants for file paths to ensure consistency between training and inference' is_hardcoded=True construction_method=None",
+        "path='bin_mapping.pkl' line_number=32 context='# These constants ensure the same filenames are used across all job types,\\n# facilitating proper connections between training and non-training steps\\n>>> RISK_TABLE_FILENAME = \"bin_mapping.pkl\"  # Used by downstream steps as input dependency\\nHYPERPARAMS_FILENAME = (\\n    \"hyperparameters.json\"  # Expected by the script and generated by the builder' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=34 context='RISK_TABLE_FILENAME = \"bin_mapping.pkl\"  # Used by downstream steps as input dependency\\nHYPERPARAMS_FILENAME = (\\n>>>     \"hyperparameters.json\"  # Expected by the script and generated by the builder\\n)\\n' is_hardcoded=True construction_method=None",
+        "path='\\n    A class to create risk tables for categorical features.\\n\\n    Risk tables map categorical values to numerical risk scores based on\\n    their correlation with the target variable.\\n    ' line_number=120 context='\\nclass OfflineBinning:\\n>>>     \"\"\"\\n    A class to create risk tables for categorical features.\\n' is_hardcoded=True construction_method=None",
+        "path='Fits the risk tables based on the provided dataframe.' line_number=135 context='        self, df: pd.DataFrame, smooth_factor: float = 0, count_threshold: int = 0\\n    ) -> None:\\n>>>         \"\"\"Fits the risk tables based on the provided dataframe.\"\"\"\\n        # Drop any -1 or NaN target rows for fitting\\n        fit_df = df.loc[(df[self.target] != -1) & (~df[self.target].isnull())].copy()' is_hardcoded=True construction_method=None",
+        "path='Helper to calculate the risk table for a single variable.' line_number=175 context='        count_threshold: int,\\n    ) -> Dict:\\n>>>         \"\"\"Helper to calculate the risk table for a single variable.\"\"\"\\n        cross_tab = pd.crosstab(\\n            df[variable],' is_hardcoded=True construction_method=None",
+        "path='Transforms the dataframe using the fitted risk tables.' line_number=201 context='\\n    def transform(self, df: pd.DataFrame) -> pd.DataFrame:\\n>>>         \"\"\"Transforms the dataframe using the fitted risk tables.\"\"\"\\n        df_transformed = df.copy()\\n        for var, risk_table_info in self.risk_tables.items():' is_hardcoded=True construction_method=None",
+        "path='Loads pre-existing risk tables.' line_number=211 context='\\n    def load_risk_tables(self, risk_tables: Dict) -> None:\\n>>>         \"\"\"Loads pre-existing risk tables.\"\"\"\\n        self.risk_tables = risk_tables\\n        logger.info(f\"Loaded {len(risk_tables)} risk tables\")' is_hardcoded=True construction_method=None",
+        "path='train_processed_data.csv' line_number=227 context='    if job_type == \"training\":\\n        # For training, we expect data in train/test/val subdirectories\\n>>>         train_df = pd.read_csv(input_path / \"train\" / \"train_processed_data.csv\")\\n        test_df = pd.read_csv(input_path / \"test\" / \"test_processed_data.csv\")\\n        val_df = pd.read_csv(input_path / \"val\" / \"val_processed_data.csv\")' is_hardcoded=True construction_method=None",
+        "path='test_processed_data.csv' line_number=228 context='        # For training, we expect data in train/test/val subdirectories\\n        train_df = pd.read_csv(input_path / \"train\" / \"train_processed_data.csv\")\\n>>>         test_df = pd.read_csv(input_path / \"test\" / \"test_processed_data.csv\")\\n        val_df = pd.read_csv(input_path / \"val\" / \"val_processed_data.csv\")\\n        logger.info(' is_hardcoded=True construction_method=None",
+        "path='val_processed_data.csv' line_number=229 context='        train_df = pd.read_csv(input_path / \"train\" / \"train_processed_data.csv\")\\n        test_df = pd.read_csv(input_path / \"test\" / \"test_processed_data.csv\")\\n>>>         val_df = pd.read_csv(input_path / \"val\" / \"val_processed_data.csv\")\\n        logger.info(\\n            f\"Loaded training data splits: train={train_df.shape}, test={test_df.shape}, val={val_df.shape}\"' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=236 context='    else:\\n        # For other job types, we expect data in a single directory named after job_type\\n>>>         df = pd.read_csv(input_path / job_type / f\"{job_type}_processed_data.csv\")\\n        logger.info(f\"Loaded {job_type} data: {df.shape}\")\\n        return {job_type: df}' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=256 context='        split_output_dir.mkdir(exist_ok=True, parents=True)\\n\\n>>>         output_file = split_output_dir / f\"{split_name}_processed_data.csv\"\\n        df.to_csv(output_file, index=False)\\n        logger.info(f\"Saved {split_name} data to {output_file}, shape: {df.shape}\")' is_hardcoded=True construction_method=None",
+        "path='No valid categorical fields found for risk mapping. Using original data.' line_number=296 context='        if not valid_cat_fields:\\n            logger.warning(\\n>>>                 \"No valid categorical fields found for risk mapping. Using original data.\"\\n            )\\n            transformed_data = data_dict' is_hardcoded=True construction_method=None",
+        "path='Risk-table mapping complete.' line_number=473 context='    save_artifacts(binner, hyperparams, output_path)\\n\\n>>>     logger.info(\"Risk-table mapping complete.\")\\n    return transformed_data, binner\\n' is_hardcoded=True construction_method=None",
+        "path='. ' line_number=519 context='            if not risk_table_input_dir:\\n                logger.warning(\\n>>>                     f\"No risk_table_input path provided for non-training job {job_type}. \"\\n                    + \"Risk table mapping may fail.\"\\n                )' is_hardcoded=True construction_method=None",
+        "path='Risk table mapping may fail.' line_number=520 context='                logger.warning(\\n                    f\"No risk_table_input path provided for non-training job {job_type}. \"\\n>>>                     + \"Risk table mapping may fail.\"\\n                )\\n' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=536 context='        if \"hyperparameters_s3_uri\" in input_paths:\\n            hparam_path = input_paths[\"hyperparameters_s3_uri\"]\\n>>>             if not hparam_path.endswith(\"hyperparameters.json\"):\\n                hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=537 context='            hparam_path = input_paths[\"hyperparameters_s3_uri\"]\\n            if not hparam_path.endswith(\"hyperparameters.json\"):\\n>>>                 hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:\\n            # Fallback to source directory if not provided' is_hardcoded=False construction_method='os.path.join'",
+        "path='hyperparameters.json' line_number=537 context='            hparam_path = input_paths[\"hyperparameters_s3_uri\"]\\n            if not hparam_path.endswith(\"hyperparameters.json\"):\\n>>>                 hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:\\n            # Fallback to source directory if not provided' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/hyperparams/hyperparameters.json' line_number=540 context='        else:\\n            # Fallback to source directory if not provided\\n>>>             hparam_path = \"/opt/ml/code/hyperparams/hyperparameters.json\"\\n\\n        logger.info(f\"Loading hyperparameters from {hparam_path}\")' is_hardcoded=True construction_method=None",
+        "path='. Risk table mapping requires hyperparameters to be provided either via input channel or in source directory at /opt/ml/code/hyperparams/hyperparameters.json' line_number=549 context='            # FAIL with clear error instead of using arbitrary defaults\\n            raise FileNotFoundError(\\n>>>                 f\"Hyperparameters file not found at {hparam_path}. \"\\n                f\"Risk table mapping requires hyperparameters to be provided either via \"\\n                f\"input channel or in source directory at /opt/ml/code/hyperparams/hyperparameters.json\"' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [],
       "imports": [
@@ -166,13 +216,13 @@
         "module_name='typing' import_alias=None line_number=21 is_from_import=True imported_items=['Dict', 'List', 'Tuple', 'Any', 'Optional', 'Callable']"
       ],
       "argument_definitions": [
-        "argument_name='job_type' line_number=498 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']"
+        "argument_name='job_type' line_number=572 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']"
       ],
       "file_operations": [
-        "file_path='<file_object>' operation_type='read' line_number=62 context='    try:\\n        with open(config_path, \"r\") as file:\\n>>>             return json.load(file)\\n    except FileNotFoundError as e:\\n        logger.error(f\"Configuration file not found at {config_path}: {str(e)}\")' mode=None method='json.load'",
-        "file_path='<file_object>' operation_type='write' line_number=311 context='    bin_output_path = output_path / RISK_TABLE_FILENAME\\n    with open(bin_output_path, \"wb\") as f:\\n>>>         pkl.dump(binner.risk_tables, f)\\n    logger.info(f\"Saved binning mapping to {bin_output_path}\")\\n    logger.info(f\"This file can be used as input for non-training jobs\")' mode=None method='pickle.dump'",
-        "file_path='<file_object>' operation_type='write' line_number=318 context='    hyperparams_output_path = output_path / HYPERPARAMS_FILENAME\\n    with open(hyperparams_output_path, \"w\") as f:\\n>>>         json.dump(hyperparams, f, indent=2)\\n    logger.info(f\"Saved hyperparameters to {hyperparams_output_path}\")\\n' mode=None method='json.dump'",
-        "file_path='<file_object>' operation_type='read' line_number=337 context='    logger.info(f\"Loading risk tables from {risk_table_path}\")    \\n    with open(risk_table_path, \"rb\") as f:\\n>>>         risk_tables = pkl.load(f)\\n        \\n    logger.info(f\"Successfully loaded risk tables with {len(risk_tables)} mappings\")' mode=None method='pickle.load'"
+        "file_path='<file_object>' operation_type='read' line_number=64 context='    try:\\n        with open(config_path, \"r\") as file:\\n>>>             return json.load(file)\\n    except FileNotFoundError as e:\\n        logger.error(f\"Configuration file not found at {config_path}: {str(e)}\")' mode=None method='json.load'",
+        "file_path='<file_object>' operation_type='write' line_number=372 context='    bin_output_path = output_path / RISK_TABLE_FILENAME\\n    with open(bin_output_path, \"wb\") as f:\\n>>>         pkl.dump(binner.risk_tables, f)\\n    logger.info(f\"Saved binning mapping to {bin_output_path}\")\\n    logger.info(f\"This file can be used as input for non-training jobs\")' mode=None method='pickle.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=379 context='    hyperparams_output_path = output_path / HYPERPARAMS_FILENAME\\n    with open(hyperparams_output_path, \"w\") as f:\\n>>>         json.dump(hyperparams, f, indent=2)\\n    logger.info(f\"Saved hyperparameters to {hyperparams_output_path}\")\\n' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='read' line_number=398 context='    logger.info(f\"Loading risk tables from {risk_table_path}\")\\n    with open(risk_table_path, \"rb\") as f:\\n>>>         risk_tables = pkl.load(f)\\n\\n    logger.info(f\"Successfully loaded risk tables with {len(risk_tables)} mappings\")' mode=None method='pickle.load'"
       ],
       "step_type": "Processing",
       "framework": "sklearn",
@@ -334,8 +384,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed testing data from tabular preprocessing step"
@@ -345,13 +395,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ConfigurationStep",
               "ProcessingStep",
               "FeatureEngineering",
+              "ConfigurationStep",
               "DataQuality",
-              "DataPrep",
+              "ModelTraining",
               "HyperparameterPrep",
-              "ModelTraining"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -393,8 +443,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -404,13 +454,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ConfigurationStep",
               "ProcessingStep",
               "FeatureEngineering",
+              "ConfigurationStep",
               "DataQuality",
-              "DataPrep",
+              "ModelTraining",
               "HyperparameterPrep",
-              "ModelTraining"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -452,8 +502,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed validation data from tabular preprocessing step"
@@ -463,13 +513,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ConfigurationStep",
               "ProcessingStep",
               "FeatureEngineering",
+              "ConfigurationStep",
               "DataQuality",
-              "DataPrep",
+              "ModelTraining",
               "HyperparameterPrep",
-              "ModelTraining"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -511,8 +561,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -522,13 +572,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ConfigurationStep",
               "ProcessingStep",
               "FeatureEngineering",
+              "ConfigurationStep",
               "DataQuality",
-              "DataPrep",
+              "ModelTraining",
               "HyperparameterPrep",
-              "ModelTraining"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -538,8 +588,8 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "RiskTableMapping_Training",
-              "ProcessingStep"
+              "ProcessingStep",
+              "RiskTableMapping_Training"
             ],
             "data_type": "S3Uri",
             "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
@@ -573,8 +623,8 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "TabularPreprocessing",
-              "ProcessingStep"
+              "ProcessingStep",
+              "TabularPreprocessing"
             ],
             "data_type": "S3Uri",
             "description": "Preprocessed training data from tabular preprocessing step"
@@ -584,13 +634,13 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "ConfigurationStep",
               "ProcessingStep",
               "FeatureEngineering",
+              "ConfigurationStep",
               "DataQuality",
-              "DataPrep",
+              "ModelTraining",
               "HyperparameterPrep",
-              "ModelTraining"
+              "DataPrep"
             ],
             "data_type": "S3Uri",
             "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -600,8 +650,8 @@
             "dependency_type": "processing_output",
             "required": false,
             "compatible_sources": [
-              "RiskTableMapping_Training",
-              "ProcessingStep"
+              "ProcessingStep",
+              "RiskTableMapping_Training"
             ],
             "data_type": "S3Uri",
             "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
@@ -634,8 +684,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed training data from tabular preprocessing step"
@@ -645,13 +695,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ConfigurationStep",
                 "ProcessingStep",
                 "FeatureEngineering",
+                "ConfigurationStep",
                 "DataQuality",
-                "DataPrep",
+                "ModelTraining",
                 "HyperparameterPrep",
-                "ModelTraining"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -661,8 +711,8 @@
               "dependency_type": "processing_output",
               "required": false,
               "compatible_sources": [
-                "RiskTableMapping_Training",
-                "ProcessingStep"
+                "ProcessingStep",
+                "RiskTableMapping_Training"
               ],
               "data_type": "S3Uri",
               "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
@@ -694,8 +744,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed testing data from tabular preprocessing step"
@@ -705,13 +755,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ConfigurationStep",
                 "ProcessingStep",
                 "FeatureEngineering",
+                "ConfigurationStep",
                 "DataQuality",
-                "DataPrep",
+                "ModelTraining",
                 "HyperparameterPrep",
-                "ModelTraining"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -753,8 +803,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed validation data from tabular preprocessing step"
@@ -764,13 +814,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ConfigurationStep",
                 "ProcessingStep",
                 "FeatureEngineering",
+                "ConfigurationStep",
                 "DataQuality",
-                "DataPrep",
+                "ModelTraining",
                 "HyperparameterPrep",
-                "ModelTraining"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -812,8 +862,8 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "TabularPreprocessing",
-                "ProcessingStep"
+                "ProcessingStep",
+                "TabularPreprocessing"
               ],
               "data_type": "S3Uri",
               "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -823,13 +873,13 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "ConfigurationStep",
                 "ProcessingStep",
                 "FeatureEngineering",
+                "ConfigurationStep",
                 "DataQuality",
-                "DataPrep",
+                "ModelTraining",
                 "HyperparameterPrep",
-                "ModelTraining"
+                "DataPrep"
               ],
               "data_type": "S3Uri",
               "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -869,8 +919,8 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
           "description": "Preprocessed calibration data from tabular preprocessing step"
@@ -880,13 +930,13 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ConfigurationStep",
             "ProcessingStep",
             "FeatureEngineering",
+            "ConfigurationStep",
             "DataQuality",
-            "DataPrep",
+            "ModelTraining",
             "HyperparameterPrep",
-            "ModelTraining"
+            "DataPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -1012,7 +1062,7 @@
       }
     ],
     "specification": {
-      "step_type": "RiskTableMapping_Testing",
+      "step_type": "RiskTableMapping_Training",
       "node_type": "internal",
       "dependencies": [
         {
@@ -1020,24 +1070,24 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "TabularPreprocessing",
-            "ProcessingStep"
+            "ProcessingStep",
+            "TabularPreprocessing"
           ],
           "data_type": "S3Uri",
-          "description": "Preprocessed testing data from tabular preprocessing step"
+          "description": "Preprocessed training data from tabular preprocessing step"
         },
         {
           "logical_name": "hyperparameters_s3_uri",
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "ConfigurationStep",
             "ProcessingStep",
             "FeatureEngineering",
+            "ConfigurationStep",
             "DataQuality",
-            "DataPrep",
+            "ModelTraining",
             "HyperparameterPrep",
-            "ModelTraining"
+            "DataPrep"
           ],
           "data_type": "S3Uri",
           "description": "Optional external hyperparameters configuration file (will be overridden by internal generation)"
@@ -1045,12 +1095,13 @@
         {
           "logical_name": "risk_tables",
           "dependency_type": "processing_output",
-          "required": true,
+          "required": false,
           "compatible_sources": [
+            "ProcessingStep",
             "RiskTableMapping_Training"
           ],
           "data_type": "S3Uri",
-          "description": "Risk tables and imputation models from training step"
+          "description": "Optional pre-existing risk tables (training mode creates new ones if not provided)"
         }
       ],
       "outputs": [
@@ -1059,14 +1110,14 @@
           "output_type": "processing_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "Processed testing data with risk table mappings applied"
+          "description": "Processed data with risk table mappings applied"
         },
         {
           "logical_name": "risk_tables",
           "output_type": "processing_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['risk_tables'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "Risk tables and imputation models (passthrough from training)"
+          "description": "Risk tables and imputation models for categorical features"
         }
       ]
     }
@@ -1075,17 +1126,28 @@
     "passed": true,
     "issues": [
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: project_root_folder",
+        "details": {
+          "field_name": "project_root_folder",
+          "builder": "risk_table_mapping"
+        },
+        "recommendation": "Access required field project_root_folder in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "author",
+            "project_root_folder",
             "role",
-            "service_name",
-            "region",
             "bucket",
-            "pipeline_version"
+            "pipeline_version",
+            "author",
+            "service_name",
+            "region"
           ],
           "builder": "risk_table_mapping"
         },
@@ -1096,93 +1158,93 @@
       "config_accesses": [
         {
           "field_name": "job_type",
-          "line_number": 74,
-          "context": "line_74"
+          "line_number": 79,
+          "context": "line_79"
         },
         {
           "field_name": "job_type",
-          "line_number": 127,
-          "context": "line_127"
-        },
-        {
-          "field_name": "job_type",
-          "line_number": 128,
-          "context": "line_128"
-        },
-        {
-          "field_name": "label_name",
-          "line_number": 131,
-          "context": "line_131"
-        },
-        {
-          "field_name": "job_type",
-          "line_number": 135,
-          "context": "line_135"
-        },
-        {
-          "field_name": "cat_field_list",
-          "line_number": 135,
-          "context": "line_135"
-        },
-        {
-          "field_name": "use_large_processing_instance",
-          "line_number": 145,
-          "context": "line_145"
-        },
-        {
-          "field_name": "processing_instance_type_large",
-          "line_number": 145,
-          "context": "line_145"
-        },
-        {
-          "field_name": "processing_instance_type_small",
-          "line_number": 145,
-          "context": "line_145"
-        },
-        {
-          "field_name": "processing_framework_version",
           "line_number": 148,
           "context": "line_148"
         },
         {
-          "field_name": "processing_instance_count",
-          "line_number": 151,
-          "context": "line_151"
+          "field_name": "job_type",
+          "line_number": 154,
+          "context": "line_154"
         },
         {
-          "field_name": "processing_volume_size",
-          "line_number": 152,
-          "context": "line_152"
+          "field_name": "label_name",
+          "line_number": 157,
+          "context": "line_157"
         },
         {
-          "field_name": "env",
-          "line_number": 173,
-          "context": "line_173"
+          "field_name": "job_type",
+          "line_number": 161,
+          "context": "line_161"
         },
         {
-          "field_name": "env",
+          "field_name": "cat_field_list",
+          "line_number": 161,
+          "context": "line_161"
+        },
+        {
+          "field_name": "use_large_processing_instance",
+          "line_number": 175,
+          "context": "line_175"
+        },
+        {
+          "field_name": "processing_instance_type_large",
           "line_number": 174,
           "context": "line_174"
         },
         {
-          "field_name": "hyperparameters_s3_uri",
-          "line_number": 203,
-          "context": "line_203"
+          "field_name": "processing_instance_type_small",
+          "line_number": 176,
+          "context": "line_176"
         },
         {
-          "field_name": "pipeline_s3_loc",
-          "line_number": 411,
-          "context": "line_411"
+          "field_name": "processing_framework_version",
+          "line_number": 180,
+          "context": "line_180"
+        },
+        {
+          "field_name": "processing_instance_count",
+          "line_number": 183,
+          "context": "line_183"
+        },
+        {
+          "field_name": "processing_volume_size",
+          "line_number": 184,
+          "context": "line_184"
+        },
+        {
+          "field_name": "env",
+          "line_number": 205,
+          "context": "line_205"
+        },
+        {
+          "field_name": "env",
+          "line_number": 206,
+          "context": "line_206"
         },
         {
           "field_name": "job_type",
-          "line_number": 411,
-          "context": "line_411"
+          "line_number": 311,
+          "context": "line_311"
         },
         {
           "field_name": "job_type",
-          "line_number": 434,
-          "context": "line_434"
+          "line_number": 338,
+          "context": "line_338"
+        },
+        {
+          "field_name": "processing_entry_point",
+          "line_number": 399,
+          "context": "line_399"
+        },
+        {
+          "field_name": "effective_source_dir",
+          "line_number": 401,
+          "context": "line_401"
         }
       ],
       "validation_calls": [],
@@ -1190,25 +1252,22 @@
       "class_definitions": [
         {
           "class_name": "RiskTableMappingStepBuilder",
-          "line_number": 37,
+          "line_number": 44,
           "base_classes": [
             "StepBuilderBase"
           ],
-          "decorators": [
-            "Call"
-          ]
+          "decorators": []
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 46,
+          "line_number": 53,
           "args": [
             "self",
             "config",
             "sagemaker_session",
             "role",
-            "notebook_root",
             "registry_manager",
             "dependency_resolver"
           ],
@@ -1217,7 +1276,7 @@
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 107,
+          "line_number": 125,
           "args": [
             "self"
           ],
@@ -1226,7 +1285,7 @@
         },
         {
           "method_name": "_create_processor",
-          "line_number": 138,
+          "line_number": 166,
           "args": [
             "self"
           ],
@@ -1235,16 +1294,7 @@
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 158,
-          "args": [
-            "self"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_prepare_hyperparameters_file",
-          "line_number": 179,
+          "line_number": 190,
           "args": [
             "self"
           ],
@@ -1253,7 +1303,7 @@
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 276,
+          "line_number": 212,
           "args": [
             "self",
             "inputs"
@@ -1263,7 +1313,7 @@
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 372,
+          "line_number": 270,
           "args": [
             "self",
             "outputs"
@@ -1273,7 +1323,7 @@
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 424,
+          "line_number": 328,
           "args": [
             "self"
           ],
@@ -1282,7 +1332,7 @@
         },
         {
           "method_name": "create_step",
-          "line_number": 440,
+          "line_number": 344,
           "args": [
             "self"
           ],
@@ -1440,38 +1490,44 @@
         },
         {
           "type": "from_import",
-          "module": "registry.builder_registry",
-          "name": "register_builder",
-          "alias": null,
-          "line_number": 20
-        },
-        {
-          "type": "from_import",
           "module": "specs.risk_table_mapping_training_spec",
           "name": "RISK_TABLE_MAPPING_TRAINING_SPEC",
           "alias": null,
-          "line_number": 24
+          "line_number": 23
         },
         {
           "type": "from_import",
           "module": "specs.risk_table_mapping_validation_spec",
           "name": "RISK_TABLE_MAPPING_VALIDATION_SPEC",
           "alias": null,
-          "line_number": 25
+          "line_number": 26
         },
         {
           "type": "from_import",
           "module": "specs.risk_table_mapping_testing_spec",
           "name": "RISK_TABLE_MAPPING_TESTING_SPEC",
           "alias": null,
-          "line_number": 26
+          "line_number": 29
         },
         {
           "type": "from_import",
           "module": "specs.risk_table_mapping_calibration_spec",
           "name": "RISK_TABLE_MAPPING_CALIBRATION_SPEC",
           "alias": null,
-          "line_number": 27
+          "line_number": 30
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.functions",
+          "name": "Join",
+          "alias": null,
+          "line_number": 309
+        },
+        {
+          "type": "import",
+          "module": "traceback",
+          "alias": null,
+          "line_number": 429
         }
       ],
       "config_class_usage": []
@@ -1522,6 +1578,10 @@
         "source_dir": {
           "type": "typing.Optional[str]",
           "required": false
+        },
+        "project_root_folder": {
+          "type": "<class 'str'>",
+          "required": true
         },
         "processing_instance_count": {
           "type": "<class 'int'>",
@@ -1579,14 +1639,6 @@
           "type": "<class 'int'>",
           "required": false
         },
-        "hyperparameters_s3_uri": {
-          "type": "typing.Optional[str]",
-          "required": false
-        },
-        "hyperparameters": {
-          "type": "typing.Optional[cursus.core.base.hyperparameters_base.ModelHyperparameters]",
-          "required": false
-        },
         "aws_region": {
           "type": "property",
           "required": false
@@ -1619,11 +1671,23 @@
           "type": "property",
           "required": false
         },
+        "resolved_processing_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "resolved_source_dir": {
+          "type": "property",
+          "required": false
+        },
         "script_contract": {
           "type": "property",
           "required": false
         },
         "script_path": {
+          "type": "property",
+          "required": false
+        },
+        "step_catalog": {
           "type": "property",
           "required": false
         }
@@ -1634,7 +1698,8 @@
         "role",
         "region",
         "service_name",
-        "pipeline_version"
+        "pipeline_version",
+        "project_root_folder"
       ],
       "optional_fields": [
         "model_class",
@@ -1656,8 +1721,6 @@
         "label_name",
         "smooth_factor",
         "count_threshold",
-        "hyperparameters_s3_uri",
-        "hyperparameters",
         "aws_region",
         "effective_instance_type",
         "effective_source_dir",
@@ -1666,8 +1729,11 @@
         "pipeline_description",
         "pipeline_name",
         "pipeline_s3_loc",
+        "resolved_processing_source_dir",
+        "resolved_source_dir",
         "script_contract",
-        "script_path"
+        "script_path",
+        "step_catalog"
       ],
       "default_values": {
         "author": "PydanticUndefined",
@@ -1681,6 +1747,7 @@
         "framework_version": "2.1.0",
         "py_version": "py310",
         "source_dir": null,
+        "project_root_folder": "PydanticUndefined",
         "processing_instance_count": 1,
         "processing_volume_size": 500,
         "processing_instance_type_large": "ml.m5.4xlarge",
@@ -1694,16 +1761,24 @@
         "cat_field_list": [],
         "label_name": "target",
         "smooth_factor": 0.01,
-        "count_threshold": 5,
-        "hyperparameters_s3_uri": null,
-        "hyperparameters": null
+        "count_threshold": 5
       }
     }
   },
   "overall_status": "PASSING",
+  "scoring": {
+    "overall_score": 100.0,
+    "quality_rating": "Excellent",
+    "level_scores": {
+      "level1_script_contract": 100.0,
+      "level2_contract_spec": 100.0,
+      "level3_spec_dependencies": 100.0,
+      "level4_builder_config": 100.0
+    }
+  },
   "metadata": {
     "script_name": "risk_table_mapping",
-    "validation_timestamp": "2025-09-07T19:44:09.053694",
+    "validation_timestamp": "2025-09-28T11:01:36.943009",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/risk_table_mapping.py"
   }

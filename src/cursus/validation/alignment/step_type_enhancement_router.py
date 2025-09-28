@@ -127,9 +127,14 @@ class StepTypeEnhancementRouter:
             "Processing": {
                 "input_types": ["ProcessingInput"],
                 "output_types": ["ProcessingOutput"],
-                "required_methods": ["_create_processor"],
+                "required_methods": [
+                    "create_step",
+                    "_create_processor", 
+                    "_get_inputs", 
+                    "_get_outputs",
+                    ],
                 "required_patterns": ["data_transformation", "environment_variables"],
-                "common_frameworks": ["pandas", "sklearn", "numpy"],
+                "common_frameworks": ["pandas", "sklearn", "numpy", "xgboost"],
                 "typical_paths": [
                     "/opt/ml/processing/input",
                     "/opt/ml/processing/output",
@@ -144,8 +149,10 @@ class StepTypeEnhancementRouter:
                 "input_types": ["TrainingInput"],
                 "output_types": ["model_artifacts"],
                 "required_methods": [
+                    "create_step",
                     "_create_estimator",
-                    "_prepare_hyperparameters_file",
+                    "_get_inputs",
+                    "_get_outputs",
                 ],
                 "required_patterns": [
                     "training_loop",
@@ -157,6 +164,8 @@ class StepTypeEnhancementRouter:
                     "/opt/ml/input/data/train",
                     "/opt/ml/model",
                     "/opt/ml/input/data/config",
+                    "/opt/ml/input/config/hyperparameters.json",
+                    "/opt/ml/code",
                 ],
                 "validation_focus": [
                     "training_patterns",
@@ -167,7 +176,13 @@ class StepTypeEnhancementRouter:
             "CreateModel": {
                 "input_types": ["model_artifacts"],
                 "output_types": ["model_endpoint"],
-                "required_methods": ["_create_model"],
+                "required_methods": [
+                    "create_step",
+                    "_create_model",
+                    "_get_image_uri",
+                    "_get_inputs",
+                    "_get_outputs",
+                ],
                 "required_patterns": ["model_loading", "inference_code"],
                 "common_frameworks": ["xgboost", "pytorch", "sklearn", "tensorflow"],
                 "typical_paths": ["/opt/ml/model"],
@@ -180,7 +195,12 @@ class StepTypeEnhancementRouter:
             "Transform": {
                 "input_types": ["TransformInput"],
                 "output_types": ["transform_results"],
-                "required_methods": ["_create_transformer"],
+                "required_methods": [
+                    "create_step",
+                    "_create_transformer",
+                    "_get_inputs",
+                    "_get_outputs",
+                ],
                 "required_patterns": ["batch_processing", "model_inference"],
                 "common_frameworks": ["xgboost", "pytorch", "sklearn"],
                 "typical_paths": ["/opt/ml/transform"],

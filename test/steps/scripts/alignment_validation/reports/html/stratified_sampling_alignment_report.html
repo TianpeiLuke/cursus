@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Alignment Validation Report - payload</title>
+    <title>Alignment Validation Report - stratified_sampling</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
@@ -28,14 +28,14 @@
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <h2>Script: payload</h2>
-        <p>Generated: 2025-09-28T11:08:48.811183</p>
+        <h2>Script: stratified_sampling</h2>
+        <p>Generated: 2025-09-28T11:08:48.899880</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>21</h3>
+            <h3>24</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
@@ -47,7 +47,7 @@
             <p>Error Issues</p>
         </div>
         <div class="metric">
-            <h3>10</h3>
+            <h3>5</h3>
             <p>Warning Issues</p>
         </div>
     </div>
@@ -59,9 +59,24 @@
                 <h4>Level 1: Script ↔ Contract</h4>
                 <p>Status: PASSED</p>
                 
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Optional environment variable accessed without default: VARIANCE_COLUMN
+                    <br><em>Recommendation: Provide default value when accessing optional variable VARIANCE_COLUMN</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Script defines config-driven argument provided by builder: --job-type (accessed as args.job_type)
+                    <br><em>Recommendation: Argument --job-type is provided by builder - no action needed</em>
+                </div>
+                
                 <div class="issue info">
                     <strong>INFO:</strong> Main function follows testability pattern with all required parameters
                     <br><em>Recommendation: No action needed - script follows testability best practices</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper functions use direct environment access - consider parameter passing
+                    <br><em>Recommendation: Pass environment variables as parameters to helper functions instead of direct access</em>
                 </div>
                 
                 <div class="issue warning">
@@ -69,9 +84,9 @@
                     <br><em>Recommendation: Add environment variable collection in __main__ block to pass to main function</em>
                 </div>
                 
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Testability parameters defined but not used: job_args
-                    <br><em>Recommendation: Either use the testability parameters or remove them from function signature</em>
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
                 </div>
                 
                 <div class="issue info">
@@ -97,11 +112,41 @@
                 <div class="issue info">
                     <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
                     <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for environ_vars
+                    <br><em>Recommendation: Use environ_vars['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for input_paths
+                    <br><em>Recommendation: Use input_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for output_paths
+                    <br><em>Recommendation: Use output_paths['key'] for accessing nested values</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Consider using dictionary-style access for job_args
+                    <br><em>Recommendation: Use job_args['key'] for accessing nested values</em>
                 </div>
                 
                 <div class="issue info">
                     <strong>INFO:</strong> No container detection found - consider adding hybrid mode support
                     <br><em>Recommendation: Add container detection to support both local and container execution</em>
+                </div>
+                
+                <div class="issue warning">
+                    <strong>WARNING:</strong> Helper function 'None' accesses environment directly
+                    <br><em>Recommendation: Refactor 'None' to accept environment variables as parameters</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Processing script uses sklearn framework
+                    <br><em>Recommendation: Ensure sklearn dependencies are properly specified</em>
                 </div>
                 
             </div>
@@ -111,17 +156,22 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue info">
-                    <strong>INFO:</strong> Step type resolved via registry: Payload -> Payload -> Processing
+                    <strong>INFO:</strong> Smart Specification Selection: validated against 5 variants
+                    <br><em>Recommendation: Multi-variant validation completed successfully</em>
+                </div>
+                
+                <div class="issue info">
+                    <strong>INFO:</strong> Step type resolved via registry: StratifiedSampling_Training -> StratifiedSampling -> Processing
                     <br><em>Recommendation: Using Processing step property paths for validation</em>
                 </div>
                 
                 <div class="issue info">
-                    <strong>INFO:</strong> Valid property path in output payload_sample: properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri
+                    <strong>INFO:</strong> Valid property path in output processed_data: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
                     <br><em>Recommendation: Property path is correctly formatted for the step type</em>
                 </div>
                 
                 <div class="issue info">
-                    <strong>INFO:</strong> Property path validation completed for payload_contract
+                    <strong>INFO:</strong> Property path validation completed for stratified_sampling_contract
                     <br><em>Recommendation: Validated 1/1 outputs with property paths against SageMaker documentation</em>
                 </div>
                 
@@ -138,43 +188,8 @@
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_owner
-                    <br><em>Recommendation: Access required field model_owner in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_input_variable_list
-                    <br><em>Recommendation: Access required field source_model_inference_input_variable_list in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: source_model_inference_output_variable_list
-                    <br><em>Recommendation: Access required field source_model_inference_output_variable_list in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
                     <strong>WARNING:</strong> Required configuration field not accessed in builder: project_root_folder
                     <br><em>Recommendation: Access required field project_root_folder in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_objective
-                    <br><em>Recommendation: Access required field model_objective in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: expected_tps
-                    <br><em>Recommendation: Access required field expected_tps in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: max_latency_in_millisecond
-                    <br><em>Recommendation: Access required field max_latency_in_millisecond in builder or make it optional</em>
-                </div>
-                
-                <div class="issue warning">
-                    <strong>WARNING:</strong> Required configuration field not accessed in builder: model_domain
-                    <br><em>Recommendation: Access required field model_domain in builder or make it optional</em>
                 </div>
                 
                 <div class="issue info">
@@ -188,8 +203,8 @@
     
     <div class="metadata">
         <h3>Metadata</h3>
-        <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/payload.py</p>
-        <p><strong>Validation Timestamp:</strong> 2025-09-28T11:08:48.811183</p>
+        <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/stratified_sampling.py</p>
+        <p><strong>Validation Timestamp:</strong> 2025-09-28T11:08:48.899880</p>
         <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>

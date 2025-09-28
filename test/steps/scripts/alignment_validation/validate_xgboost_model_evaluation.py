@@ -10,6 +10,14 @@ import sys
 from pathlib import Path
 from typing import Dict, Any
 
+# Use centralized import resolver for robust import handling
+from cursus.validation.utils.import_resolver import ensure_cursus_imports
+
+# Ensure cursus imports work across all deployment scenarios
+if not ensure_cursus_imports():
+    print("❌ Failed to setup cursus imports")
+    sys.exit(1)
+
 # Define workspace directory structure
 # workspace_dir points to src/cursus (the main workspace)
 current_file = Path(__file__).resolve()

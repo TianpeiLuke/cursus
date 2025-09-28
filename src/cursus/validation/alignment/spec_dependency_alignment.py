@@ -125,17 +125,50 @@ class SpecificationDependencyAlignmentTester:
         spec_files = self._find_specification_files(spec_name)
 
         if not spec_files:
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "CRITICAL",
-                        "category": "missing_file",
-                        "message": f'Specification file not found: {self.specs_dir / f"{spec_name}_spec.py"}',
-                        "recommendation": f"Create the specification file {spec_name}_spec.py",
-                    }
-                ],
-            }
+            # Check if variant-specific files exist before reporting missing generic file
+            variant_files = []
+            job_type_suffixes = ["training", "validation", "testing", "calibration"]
+            
+            for job_type in job_type_suffixes:
+                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
+                if variant_file.exists():
+                    variant_files.append(variant_file)
+            
+            if variant_files:
+                # Variant files exist but weren't found by the loader - this is a loader issue
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "ERROR",
+                            "category": "spec_loader_error",
+                            "message": f"Variant specification files found but not loaded: {[f.name for f in variant_files]}",
+                            "details": {
+                                "found_variants": [str(f) for f in variant_files],
+                                "spec_name": spec_name,
+                            },
+                            "recommendation": f"Check specification loader configuration for {spec_name}",
+                        }
+                    ],
+                }
+            else:
+                # No files found at all - report missing specification
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "missing_file",
+                            "message": f'No specification files found for {spec_name}. Expected either {spec_name}_spec.py or variant files like {spec_name}_training_spec.py',
+                            "details": {
+                                "spec_name": spec_name,
+                                "expected_generic": f"{spec_name}_spec.py",
+                                "expected_variants": [f"{spec_name}_{jt}_spec.py" for jt in job_type_suffixes],
+                            },
+                            "recommendation": f"Create specification file(s) for {spec_name}",
+                        }
+                    ],
+                }
 
         # Load specifications from Python files
         specifications = {}

@@ -30,7 +30,7 @@ class ScriptContractValidator:
     """
 
     def validate_path_usage(
-        self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str
+        self, analysis: Dict[str, Any], contract: Dict[str, Any], script_name: str, node_type: str = None
     ) -> List[Dict[str, Any]]:
         """
         Validate that script path usage matches contract declarations.
@@ -39,6 +39,11 @@ class ScriptContractValidator:
         1. Contract file path + Script uses file path → Direct match
         2. Contract file path + Script uses directory path → Parent-child relationship
         3. Contract directory path + Script uses directory path → Direct match
+        
+        Node type-aware validation:
+        - SOURCE steps: Allow standard SageMaker source paths (/opt/ml/code/*)
+        - INTERNAL steps: Strict input/output declaration requirements
+        - SINK steps: Allow flexible output path handling
         """
         issues = []
 
@@ -125,18 +130,105 @@ class ScriptContractValidator:
                         )
 
         # Check for undeclared paths (not validated by any scenario)
+        # Apply node_type-aware validation rules
         undeclared_paths = script_paths - validated_paths
         for path in undeclared_paths:
             if is_sagemaker_path(path):
-                issues.append(
-                    {
-                        "severity": "ERROR",
-                        "category": "path_usage",
-                        "message": f"Script uses undeclared SageMaker path: {path}",
-                        "details": {"path": path, "script": script_name},
-                        "recommendation": f"Add path {path} to contract inputs or outputs",
-                    }
-                )
+                # Node type-aware validation
+                if node_type and node_type.lower() == "source":
+                    # SOURCE steps: Allow standard SageMaker source paths
+                    if self._is_allowed_source_path(path):
+                        issues.append(
+                            {
+                                "severity": "INFO",
+                                "category": "path_usage",
+                                "message": f"SOURCE step uses standard SageMaker source path: {path}",
+                                "details": {
+                                    "path": path, 
+                                    "script": script_name,
+                                    "node_type": node_type,
+                                    "path_type": "source_directory"
+                                },
+                                "recommendation": f"Path {path} is allowed for SOURCE steps - no action needed",
+                            }
+                        )
+                    else:
+                        issues.append(
+                            {
+                                "severity": "WARNING",
+                                "category": "path_usage",
+                                "message": f"SOURCE step uses non-standard path: {path}",
+                                "details": {
+                                    "path": path, 
+                                    "script": script_name,
+                                    "node_type": node_type
+                                },
+                                "recommendation": f"Consider using standard source paths or add {path} to contract",
+                            }
+                        )
+                elif node_type and node_type.lower() == "sink":
+                    # SINK steps: Allow flexible output path handling
+                    if self._is_allowed_sink_path(path):
+                        issues.append(
+                            {
+                                "severity": "INFO",
+                                "category": "path_usage",
+                                "message": f"SINK step uses standard SageMaker output path: {path}",
+                                "details": {
+                                    "path": path, 
+                                    "script": script_name,
+                                    "node_type": node_type,
+                                    "path_type": "output_directory"
+                                },
+                                "recommendation": f"Path {path} is allowed for SINK steps - no action needed",
+                            }
+                        )
+                    else:
+                        issues.append(
+                            {
+                                "severity": "WARNING",
+                                "category": "path_usage",
+                                "message": f"SINK step uses non-standard output path: {path}",
+                                "details": {
+                                    "path": path, 
+                                    "script": script_name,
+                                    "node_type": node_type
+                                },
+                                "recommendation": f"Consider using standard output paths or add {path} to contract",
+                            }
+                        )
+                else:
+                    # INTERNAL steps: Allow certain fallback patterns, strict validation for others
+                    if self._is_allowed_fallback_path(path):
+                        issues.append(
+                            {
+                                "severity": "INFO",
+                                "category": "path_usage",
+                                "message": f"INTERNAL step uses fallback path: {path}",
+                                "details": {
+                                    "path": path, 
+                                    "script": script_name,
+                                    "node_type": node_type or "internal",
+                                    "path_type": "fallback_path"
+                                },
+                                "recommendation": f"Fallback path {path} allowed for robustness - consider providing via proper input channel",
+                            }
+                        )
+                    else:
+                        # Strict validation for non-fallback paths
+                        issues.append(
+                            {
+                                "severity": "ERROR",
+                                "category": "path_usage",
+                                "message": f"Script uses undeclared SageMaker path: {path}",
+                                "details": {
+                                    "path": path, 
+                                    "script": script_name,
+                                    "node_type": node_type or "internal"
+                                },
+                                "recommendation": f"Add path {path} to contract inputs or outputs",
+                            }
+                        )
 
         # Check for unused contract paths (only if not validated by parent-child relationship)
         all_contract_paths = contract_file_paths.union(contract_dir_paths)
@@ -1054,3 +1146,56 @@ class ScriptContractValidator:
             )
 
         return issues
+
+    def _is_allowed_source_path(self, path: str) -> bool:
+        """
+        Check if a path is allowed for SOURCE steps.
+        
+        SOURCE steps can access standard SageMaker source paths like /opt/ml/code/*
+        """
+        allowed_source_patterns = [
+            "/opt/ml/code",
+            "/opt/ml/input/data/code",
+        ]
+        
+        for pattern in allowed_source_patterns:
+            if path.startswith(pattern):
+                return True
+        return False
+
+    def _is_allowed_sink_path(self, path: str) -> bool:
+        """
+        Check if a path is allowed for SINK steps.
+        
+        SINK steps can write to standard SageMaker output paths
+        """
+        allowed_sink_patterns = [
+            "/opt/ml/output",
+            "/opt/ml/model",
+            "/opt/ml/processing/output",
+        ]
+        
+        for pattern in allowed_sink_patterns:
+            if path.startswith(pattern):
+                return True
+        return False
+
+    def _is_allowed_fallback_path(self, path: str) -> bool:
+        """
+        Check if a path is allowed as a fallback for INTERNAL steps.
+        
+        INTERNAL steps can use certain fallback paths for robustness,
+        such as accessing hyperparameters or models from source directories
+        when they're not provided via proper input channels.
+        """
+        allowed_fallback_patterns = [
+            "/opt/ml/code/hyperparams",      # Common hyperparameter fallback
+            "/opt/ml/code/models",           # Common model artifact fallback  
+            "/opt/ml/code/config",           # Common config fallback
+            "/opt/ml/code/data",             # Common data fallback
+        ]
+        
+        for pattern in allowed_fallback_patterns:
+            if path.startswith(pattern):
+                return True
+        return False

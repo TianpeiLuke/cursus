@@ -87,15 +87,16 @@ class SpecificationLoader:
 
         # FALLBACK METHOD: Direct file matching if catalog unavailable
         if not spec_files:
+            # First, look for generic spec file
             direct_spec_file = self.specs_dir / f"{spec_name}_spec.py"
             if direct_spec_file.exists():
                 spec_files.append(direct_spec_file)
 
-                # Look for job type variants in the same directory
-                for job_type in ["training", "validation", "testing", "calibration"]:
-                    variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
-                    if variant_file.exists() and variant_file not in spec_files:
-                        spec_files.append(variant_file)
+            # Always look for job type variants, regardless of whether generic file exists
+            for job_type in ["training", "validation", "testing", "calibration"]:
+                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
+                if variant_file.exists() and variant_file not in spec_files:
+                    spec_files.append(variant_file)
 
         return spec_files
 

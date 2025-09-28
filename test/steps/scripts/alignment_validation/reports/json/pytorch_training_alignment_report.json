@@ -1,0 +1,1241 @@
+{
+  "script_name": "pytorch_training",
+  "level1": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "testability_compliance",
+        "message": "Main function follows testability pattern with all required parameters",
+        "details": {
+          "script": "pytorch_training",
+          "testability_parameters": [
+            "job_args",
+            "input_paths",
+            "environ_vars",
+            "output_paths"
+          ]
+        },
+        "recommendation": "No action needed - script follows testability best practices"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_env_access",
+        "message": "Helper functions use direct environment access - consider parameter passing",
+        "details": {
+          "script": "pytorch_training",
+          "helper_accesses": [
+            {
+              "function": null,
+              "variable": "SM_CHECKPOINT_DIR",
+              "line_number": 86
+            }
+          ]
+        },
+        "recommendation": "Pass environment variables as parameters to helper functions instead of direct access"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_entry_point",
+        "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
+        "details": {
+          "script": "pytorch_training"
+        },
+        "recommendation": "Add environment variable collection in __main__ block to pass to main function"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_parameter_usage",
+        "message": "Testability parameters defined but not used: environ_vars",
+        "details": {
+          "script": "pytorch_training",
+          "unused_parameters": [
+            "environ_vars"
+          ],
+          "used_parameters": [
+            "job_args",
+            "input_paths",
+            "output_paths"
+          ]
+        },
+        "recommendation": "Either use the testability parameters or remove them from function signature"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for job_args",
+        "details": {
+          "script": "pytorch_training",
+          "parameter": "job_args",
+          "current_pattern": "args.items",
+          "line_number": 292
+        },
+        "recommendation": "Use job_args['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for input_paths",
+        "details": {
+          "script": "pytorch_training",
+          "parameter": "input_paths",
+          "current_pattern": "input_paths.get",
+          "line_number": 674
+        },
+        "recommendation": "Use input_paths['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_container_support",
+        "message": "No container detection found - consider adding hybrid mode support",
+        "details": {
+          "script": "pytorch_training"
+        },
+        "recommendation": "Add container detection to support both local and container execution"
+      },
+      {
+        "severity": "WARNING",
+        "category": "testability_helper_functions",
+        "message": "Helper function 'None' accesses environment directly",
+        "details": {
+          "script": "pytorch_training",
+          "function": null,
+          "env_variables": [
+            "SM_CHECKPOINT_DIR"
+          ],
+          "line_numbers": [
+            86
+          ]
+        },
+        "recommendation": "Refactor 'None' to accept environment variables as parameters"
+      },
+      {
+        "severity": "WARNING",
+        "category": "step_type_enhancement_error",
+        "message": "Failed to apply step type enhancements: 'str' object has no attribute 'get'",
+        "details": {
+          "script": "pytorch_training",
+          "error": "'str' object has no attribute 'get'"
+        },
+        "recommendation": "Check step type detection and framework patterns"
+      }
+    ],
+    "script_analysis": {
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/pytorch_training.py",
+      "path_references": [
+        "path='/opt/ml/' line_number=81 context='\\n# ================== Model, Data and Hyperparameter Folder =================\\n>>> prefix = \"/opt/ml/\"\\ninput_path = os.path.join(prefix, \"input/data\")\\noutput_path = os.path.join(prefix, \"output/data\")' is_hardcoded=True construction_method=None",
+        "path='input/data' line_number=82 context='# ================== Model, Data and Hyperparameter Folder =================\\nprefix = \"/opt/ml/\"\\n>>> input_path = os.path.join(prefix, \"input/data\")\\noutput_path = os.path.join(prefix, \"output/data\")\\nmodel_path = os.path.join(prefix, \"model\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='output/data' line_number=83 context='prefix = \"/opt/ml/\"\\ninput_path = os.path.join(prefix, \"input/data\")\\n>>> output_path = os.path.join(prefix, \"output/data\")\\nmodel_path = os.path.join(prefix, \"model\")\\nhparam_path = os.path.join(prefix, \"input/config/hyperparameters.json\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='model' line_number=84 context='input_path = os.path.join(prefix, \"input/data\")\\noutput_path = os.path.join(prefix, \"output/data\")\\n>>> model_path = os.path.join(prefix, \"model\")\\nhparam_path = os.path.join(prefix, \"input/config/hyperparameters.json\")\\ncheckpoint_path = os.environ.get(\"SM_CHECKPOINT_DIR\", \"/opt/ml/checkpoints\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='input/config/hyperparameters.json' line_number=85 context='output_path = os.path.join(prefix, \"output/data\")\\nmodel_path = os.path.join(prefix, \"model\")\\n>>> hparam_path = os.path.join(prefix, \"input/config/hyperparameters.json\")\\ncheckpoint_path = os.environ.get(\"SM_CHECKPOINT_DIR\", \"/opt/ml/checkpoints\")\\ntrain_channel = \"train\"' is_hardcoded=False construction_method='os.path.join'",
+        "path='input/config/hyperparameters.json' line_number=85 context='output_path = os.path.join(prefix, \"output/data\")\\nmodel_path = os.path.join(prefix, \"model\")\\n>>> hparam_path = os.path.join(prefix, \"input/config/hyperparameters.json\")\\ncheckpoint_path = os.environ.get(\"SM_CHECKPOINT_DIR\", \"/opt/ml/checkpoints\")\\ntrain_channel = \"train\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/checkpoints' line_number=86 context='model_path = os.path.join(prefix, \"model\")\\nhparam_path = os.path.join(prefix, \"input/config/hyperparameters.json\")\\n>>> checkpoint_path = os.environ.get(\"SM_CHECKPOINT_DIR\", \"/opt/ml/checkpoints\")\\ntrain_channel = \"train\"\\ntrain_path = os.path.join(input_path, train_channel)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/model' line_number=164 context='    test_filename: Optional[str] = None\\n    embed_size: Optional[int] = None  # Added for type consistency\\n>>>     model_path: str = \"/opt/ml/model\"  # Add model_path with a default value\\n    categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = (\\n        None  # Add this line' is_hardcoded=True construction_method=None",
+        "path='For binary classification, num_classes must be 2.' line_number=174 context='        # Validate consistency between multiclass_categories and num_classes\\n        if self.is_binary and self.num_classes != 2:\\n>>>             raise ValueError(\"For binary classification, num_classes must be 2.\")\\n        if not self.is_binary:\\n            if self.num_classes < 2:' is_hardcoded=True construction_method=None",
+        "path='For multiclass classification, num_classes must be >= 2.' line_number=178 context='            if self.num_classes < 2:\\n                raise ValueError(\\n>>>                     \"For multiclass classification, num_classes must be >= 2.\"\\n                )\\n            if not self.multiclass_categories:' is_hardcoded=True construction_method=None",
+        "path='multiclass_categories must be provided for multiclass classification.' line_number=182 context='            if not self.multiclass_categories:\\n                raise ValueError(\\n>>>                     \"multiclass_categories must be provided for multiclass classification.\"\\n                )\\n            if len(self.multiclass_categories) != self.num_classes:' is_hardcoded=True construction_method=None",
+        "path='multiclass_categories must contain unique values.' line_number=190 context='                )\\n            if len(set(self.multiclass_categories)) != len(self.multiclass_categories):\\n>>>                 raise ValueError(\"multiclass_categories must contain unique values.\")\\n        else:\\n            # Optional: Warn if multiclass_categories is defined when binary' is_hardcoded=True construction_method=None",
+        "path='For binary classification, multiclass_categories must contain exactly 2 items.' line_number=195 context='            if self.multiclass_categories and len(self.multiclass_categories) != 2:\\n                raise ValueError(\\n>>>                     \"For binary classification, multiclass_categories must contain exactly 2 items.\"\\n                )\\n' is_hardcoded=True construction_method=None",
+        "path=').' line_number=202 context='            raise ValueError(\\n                f\"class_weights must have the same number of elements as num_classes \"\\n>>>                 f\"(expected {self.num_classes}, got {len(self.class_weights)}).\"\\n            )\\n' is_hardcoded=True construction_method=None",
+        "path='.tsv' line_number=311 context='# ----------------- Detect training, testing and validation file names --------\\ndef find_first_data_file(\\n>>>     data_dir: str, extensions: List[str] = [\".tsv\", \".csv\", \".parquet\"]\\n) -> Optional[str]:\\n    for fname in sorted(os.listdir(data_dir)):' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=311 context='# ----------------- Detect training, testing and validation file names --------\\ndef find_first_data_file(\\n>>>     data_dir: str, extensions: List[str] = [\".tsv\", \".csv\", \".parquet\"]\\n) -> Optional[str]:\\n    for fname in sorted(os.listdir(data_dir)):' is_hardcoded=True construction_method=None",
+        "path='\\n    Loads and preprocesses the train/val/test datasets according to the provided config.\\n\\n    Returns:\\n        Tuple of ([train_dataset, val_dataset, test_dataset], tokenizer, config)\\n    ' line_number=423 context='    config: Config,\\n) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:\\n>>>     \"\"\"\\n    Loads and preprocesses the train/val/test datasets according to the provided config.\\n' is_hardcoded=True construction_method=None",
+        "path='\\n    Export a (possibly FSDP-wrapped) MultimodalBert model to ONNX using a sample batch from the validation dataloader.\\n\\n    Args:\\n        model (torch.nn.Module): The trained model or FSDP-wrapped model.\\n        trainer: The Lightning trainer used during training (for strategy check).\\n        val_dataloader (DataLoader): DataLoader to fetch a sample batch for tracing.\\n        onnx_path (Union[str, Path]): File path to save the ONNX model.\\n\\n    Raises:\\n        RuntimeError: If export fails.\\n    ' line_number=533 context='    onnx_path: Union[str, Path],\\n):\\n>>>     \"\"\"\\n    Export a (possibly FSDP-wrapped) MultimodalBert model to ONNX using a sample batch from the validation dataloader.\\n' is_hardcoded=True construction_method=None",
+        "path='Validation dataloader is empty. Cannot export ONNX.' line_number=551 context='        sample_batch = next(iter(val_dataloader))\\n    except StopIteration:\\n>>>         raise RuntimeError(\"Validation dataloader is empty. Cannot export ONNX.\")\\n\\n    sample_batch_cpu = {' is_hardcoded=True construction_method=None",
+        "path='Unwrapping FSDP model for ONNX export.' line_number=562 context='    if isinstance(trainer.strategy, FSDPStrategy):\\n        if isinstance(model, FSDP):\\n>>>             logger.info(\"Unwrapping FSDP model for ONNX export.\")\\n            model_to_export = model.module\\n        else:' is_hardcoded=True construction_method=None",
+        "path='Trainer uses FSDPStrategy, but model is not FSDP-wrapped.' line_number=565 context='            model_to_export = model.module\\n        else:\\n>>>             logger.warning(\"Trainer uses FSDPStrategy, but model is not FSDP-wrapped.\")\\n\\n    # 3. Move model to CPU and export' is_hardcoded=True construction_method=None",
+        "path='Failed to export model to ONNX.' line_number=575 context='    except Exception as e:\\n        logger.error(f\"ONNX export failed: {e}\")\\n>>>         raise RuntimeError(\"Failed to export model to ONNX.\") from e\\n\\n' is_hardcoded=True construction_method=None",
+        "path='Inference Starts ...' line_number=586 context='    trainer: pl.Trainer,\\n) -> None:\\n>>>     log_once(logger, \"Inference Starts ...\")\\n    val_predict_labels, val_true_labels = model_inference(\\n        model,' is_hardcoded=True construction_method=None",
+        "path='Inference Complete.' line_number=601 context='        model_log_path=checkpoint_path,\\n    )\\n>>>     log_once(logger, \"Inference Complete.\")\\n    if is_main_process():\\n        task = \"binary\" if config.is_binary else \"multiclass\"' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=624 context='        log_once(logger, \"Metric output for Hyperparameter optimization:\")\\n        for key, value in metric_val.items():\\n>>>             log_once(logger, f\"{key} = {value:.4f}\")\\n        for key, value in metric_test.items():\\n            log_once(logger, f\"{key} = {value:.4f}\")' is_hardcoded=True construction_method=None",
+        "path='.4f' line_number=626 context='            log_once(logger, f\"{key} = {value:.4f}\")\\n        for key, value in metric_test.items():\\n>>>             log_once(logger, f\"{key} = {value:.4f}\")\\n        log_once(logger, \"Saving metric plots...\")\\n        writer = SummaryWriter(log_dir=os.path.join(output_path, \"tensorboard_eval\"))' is_hardcoded=True construction_method=None",
+        "path='Saving metric plots...' line_number=627 context='        for key, value in metric_test.items():\\n            log_once(logger, f\"{key} = {value:.4f}\")\\n>>>         log_once(logger, \"Saving metric plots...\")\\n        writer = SummaryWriter(log_dir=os.path.join(output_path, \"tensorboard_eval\"))\\n        roc_metric_plot(' is_hardcoded=True construction_method=None",
+        "path='tensorboard_eval' line_number=628 context='            log_once(logger, f\"{key} = {value:.4f}\")\\n        log_once(logger, \"Saving metric plots...\")\\n>>>         writer = SummaryWriter(log_dir=os.path.join(output_path, \"tensorboard_eval\"))\\n        roc_metric_plot(\\n            y_pred=test_predict_labels,' is_hardcoded=False construction_method='os.path.join'",
+        "path='predict_results.pth' line_number=652 context='        )\\n        writer.close()\\n>>>         prediction_filename = os.path.join(output_path, \"predict_results.pth\")\\n        log_once(logger, f\"Saving prediction result to {prediction_filename}\")\\n        save_prediction(prediction_filename, test_true_labels, test_predict_labels)' is_hardcoded=False construction_method='os.path.join'",
+        "path='predict_results.pth' line_number=652 context='        )\\n        writer.close()\\n>>>         prediction_filename = os.path.join(output_path, \"predict_results.pth\")\\n        log_once(logger, f\"Saving prediction result to {prediction_filename}\")\\n        save_prediction(prediction_filename, test_true_labels, test_predict_labels)' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=675 context='    # Load hyperparameters from the standardized path structure\\n    hparam_file = input_paths.get(\"hyperparameters_s3_uri\", hparam_path)\\n>>>     if not hparam_file.endswith(\"hyperparameters.json\"):\\n        hparam_file = os.path.join(hparam_file, \"hyperparameters.json\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=676 context='    hparam_file = input_paths.get(\"hyperparameters_s3_uri\", hparam_path)\\n    if not hparam_file.endswith(\"hyperparameters.json\"):\\n>>>         hparam_file = os.path.join(hparam_file, \"hyperparameters.json\")\\n    \\n    hyperparameters = load_parse_hyperparameters(hparam_file)' is_hardcoded=False construction_method='os.path.join'",
+        "path='hyperparameters.json' line_number=676 context='    hparam_file = input_paths.get(\"hyperparameters_s3_uri\", hparam_path)\\n    if not hparam_file.endswith(\"hyperparameters.json\"):\\n>>>         hparam_file = os.path.join(hparam_file, \"hyperparameters.json\")\\n    \\n    hyperparameters = load_parse_hyperparameters(hparam_file)' is_hardcoded=True construction_method=None",
+        "path='Starting the training process.' line_number=698 context='    log_once(logger, json.dumps(config.model_dump(), indent=4))\\n    log_once(logger, \"================================================\")\\n>>>     log_once(logger, \"Starting the training process.\")\\n    \\n    device = setup_training_environment(config)' is_hardcoded=True construction_method=None",
+        "path='Training starts using pytorch.lightning ...' line_number=707 context='    # update tab dimension\\n    config.input_tab_dim = len(config.tab_field_list)\\n>>>     log_once(logger, \"Training starts using pytorch.lightning ...\")\\n    trainer = model_train(\\n        model,' is_hardcoded=True construction_method=None",
+        "path='Training Complete.' line_number=717 context='        early_stop_metric=config.early_stop_metric,\\n    )\\n>>>     log_once(logger, \"Training Complete.\")\\n    log_once(logger, \"Evaluating final model.\")\\n    if config.load_ckpt:' is_hardcoded=True construction_method=None",
+        "path='Evaluating final model.' line_number=718 context='    )\\n    log_once(logger, \"Training Complete.\")\\n>>>     log_once(logger, \"Evaluating final model.\")\\n    if config.load_ckpt:\\n        best_model_path = trainer.checkpoint_callback.best_model_path' is_hardcoded=True construction_method=None",
+        "path='model.pth' line_number=726 context='        )\\n    if is_main_process():\\n>>>         model_filename = os.path.join(model_path, \"model.pth\")\\n        logger.info(f\"Saving model to {model_filename}\")\\n        save_model(model_filename, model)' is_hardcoded=False construction_method='os.path.join'",
+        "path='model.pth' line_number=726 context='        )\\n    if is_main_process():\\n>>>         model_filename = os.path.join(model_path, \"model.pth\")\\n        logger.info(f\"Saving model to {model_filename}\")\\n        save_model(model_filename, model)' is_hardcoded=True construction_method=None",
+        "path='model_artifacts.pth' line_number=729 context='        logger.info(f\"Saving model to {model_filename}\")\\n        save_model(model_filename, model)\\n>>>         artifact_filename = os.path.join(model_path, \"model_artifacts.pth\")\\n        logger.info(f\"Saving model artifacts to {artifact_filename}\")\\n        save_artifacts(' is_hardcoded=False construction_method='os.path.join'",
+        "path='model_artifacts.pth' line_number=729 context='        logger.info(f\"Saving model to {model_filename}\")\\n        save_model(model_filename, model)\\n>>>         artifact_filename = os.path.join(model_path, \"model_artifacts.pth\")\\n        logger.info(f\"Saving model artifacts to {artifact_filename}\")\\n        save_artifacts(' is_hardcoded=True construction_method=None",
+        "path='model.onnx' line_number=740 context='\\n        # ------------------ ONNX Export ------------------\\n>>>         onnx_path = os.path.join(model_path, \"model.onnx\")\\n        logger.info(f\"Saving model as ONNX to {onnx_path}\")\\n        export_model_to_onnx(model, trainer, val_dataloader, onnx_path)' is_hardcoded=False construction_method='os.path.join'",
+        "path='model.onnx' line_number=740 context='\\n        # ------------------ ONNX Export ------------------\\n>>>         onnx_path = os.path.join(model_path, \"model.onnx\")\\n        logger.info(f\"Saving model as ONNX to {onnx_path}\")\\n        export_model_to_onnx(model, trainer, val_dataloader, onnx_path)' is_hardcoded=True construction_method=None",
+        "path='Script starting...' line_number=749 context='# ----------------- Entrypoint ---------------------------\\nif __name__ == \"__main__\":\\n>>>     logger.info(\"Script starting...\")\\n\\n    # Container path constants' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/input/data' line_number=753 context='    # Container path constants\\n    CONTAINER_PATHS = {\\n>>>         \"INPUT_DATA\": \"/opt/ml/input/data\",\\n        \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/model' line_number=754 context='    CONTAINER_PATHS = {\\n        \"INPUT_DATA\": \"/opt/ml/input/data\",\\n>>>         \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n        \"CONFIG_DIR\": \"/opt/ml/input/config\",  # Source directory path' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/output/data' line_number=755 context='        \"INPUT_DATA\": \"/opt/ml/input/data\",\\n        \"MODEL_DIR\": \"/opt/ml/model\",\\n>>>         \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n        \"CONFIG_DIR\": \"/opt/ml/input/config\",  # Source directory path\\n    }' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/input/config' line_number=756 context='        \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n>>>         \"CONFIG_DIR\": \"/opt/ml/input/config\",  # Source directory path\\n    }\\n' is_hardcoded=True construction_method=None",
+        "path='failure' line_number=797 context='        \\n        # Write failure file for compatibility\\n>>>         failure_file = os.path.join(output_paths[\"evaluation_output\"], \"failure\")\\n        try:\\n            with open(failure_file, \"w\") as f:' is_hardcoded=False construction_method='os.path.join'"
+      ],
+      "env_var_accesses": [
+        "variable_name='SM_CHECKPOINT_DIR' line_number=86 context='model_path = os.path.join(prefix, \"model\")\\nhparam_path = os.path.join(prefix, \"input/config/hyperparameters.json\")\\n>>> checkpoint_path = os.environ.get(\"SM_CHECKPOINT_DIR\", \"/opt/ml/checkpoints\")\\ntrain_channel = \"train\"\\ntrain_path = os.path.join(input_path, train_channel)' access_method='os.environ.get' has_default=True default_value='/opt/ml/checkpoints'"
+      ],
+      "imports": [
+        "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
+        "module_name='json' import_alias=None line_number=3 is_from_import=False imported_items=[]",
+        "module_name='sys' import_alias=None line_number=4 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=5 is_from_import=False imported_items=[]",
+        "module_name='ast' import_alias=None line_number=6 is_from_import=False imported_items=[]",
+        "module_name='logging' import_alias=None line_number=7 is_from_import=False imported_items=[]",
+        "module_name='argparse' import_alias=None line_number=8 is_from_import=False imported_items=[]",
+        "module_name='pandas' import_alias='pd' line_number=9 is_from_import=False imported_items=[]",
+        "module_name='numpy' import_alias='np' line_number=10 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=11 is_from_import=True imported_items=['Path']",
+        "module_name='typing' import_alias=None line_number=13 is_from_import=True imported_items=['List', 'Tuple', 'Pattern', 'Union', 'Dict', 'Set', 'Optional']",
+        "module_name='collections.abc' import_alias=None line_number=14 is_from_import=True imported_items=['Callable', 'Mapping']",
+        "module_name='torch' import_alias=None line_number=16 is_from_import=False imported_items=[]",
+        "module_name='torch.utils.data' import_alias=None line_number=17 is_from_import=True imported_items=['Dataset', 'IterableDataset', 'DataLoader']",
+        "module_name='torch.optim' import_alias='optim' line_number=18 is_from_import=False imported_items=[]",
+        "module_name='torch' import_alias=None line_number=19 is_from_import=True imported_items=['nn']",
+        "module_name='torch.utils.tensorboard' import_alias=None line_number=20 is_from_import=True imported_items=['SummaryWriter']",
+        "module_name='torch.distributed.fsdp' import_alias=None line_number=21 is_from_import=True imported_items=['FullyShardedDataParallel']",
+        "module_name='lightning.pytorch' import_alias='pl' line_number=23 is_from_import=False imported_items=[]",
+        "module_name='lightning.pytorch.strategies' import_alias=None line_number=24 is_from_import=True imported_items=['FSDPStrategy']",
+        "module_name='transformers' import_alias=None line_number=27 is_from_import=True imported_items=['AutoTokenizer', 'AutoModel']",
+        "module_name='warnings' import_alias=None line_number=28 is_from_import=False imported_items=[]",
+        "module_name='processing.processors' import_alias=None line_number=31 is_from_import=True imported_items=['Processor']",
+        "module_name='processing.bsm_processor' import_alias=None line_number=34 is_from_import=True imported_items=['HTMLNormalizerProcessor', 'EmojiRemoverProcessor', 'TextNormalizationProcessor', 'DialogueSplitterProcessor', 'DialogueChunkerProcessor']",
+        "module_name='processing.bert_tokenize_processor' import_alias=None line_number=41 is_from_import=True imported_items=['TokenizationProcessor']",
+        "module_name='processing.categorical_label_processor' import_alias=None line_number=42 is_from_import=True imported_items=['CategoricalLabelProcessor']",
+        "module_name='processing.multiclass_label_processor' import_alias=None line_number=43 is_from_import=True imported_items=['MultiClassLabelProcessor']",
+        "module_name='processing.bsm_datasets' import_alias=None line_number=44 is_from_import=True imported_items=['BSMDataset']",
+        "module_name='processing.bsm_dataloader' import_alias=None line_number=45 is_from_import=True imported_items=['build_collate_batch']",
+        "module_name='lightning_models.pl_tab_ae' import_alias=None line_number=46 is_from_import=True imported_items=['TabAE']",
+        "module_name='lightning_models.pl_text_cnn' import_alias=None line_number=47 is_from_import=True imported_items=['TextCNN']",
+        "module_name='lightning_models.pl_multimodal_cnn' import_alias=None line_number=48 is_from_import=True imported_items=['MultimodalCNN']",
+        "module_name='lightning_models.pl_multimodal_bert' import_alias=None line_number=49 is_from_import=True imported_items=['MultimodalBert']",
+        "module_name='lightning_models.pl_multimodal_moe' import_alias=None line_number=50 is_from_import=True imported_items=['MultimodalBertMoE']",
+        "module_name='lightning_models.pl_multimodal_gate_fusion' import_alias=None line_number=51 is_from_import=True imported_items=['MultimodalBertGateFusion']",
+        "module_name='lightning_models.pl_multimodal_cross_attn' import_alias=None line_number=52 is_from_import=True imported_items=['MultimodalBertCrossAttn']",
+        "module_name='lightning_models.pl_bert_classification' import_alias=None line_number=53 is_from_import=True imported_items=['TextBertClassification']",
+        "module_name='lightning_models.pl_lstm' import_alias=None line_number=54 is_from_import=True imported_items=['TextLSTM']",
+        "module_name='lightning_models.pl_train' import_alias=None line_number=55 is_from_import=True imported_items=['model_train', 'model_inference', 'predict_stack_transform', 'save_model', 'save_prediction', 'save_artifacts', 'load_model', 'load_artifacts', 'load_checkpoint']",
+        "module_name='lightning_models.pl_model_plots' import_alias=None line_number=66 is_from_import=True imported_items=['compute_metrics', 'roc_metric_plot', 'pr_metric_plot']",
+        "module_name='lightning_models.dist_utils' import_alias=None line_number=71 is_from_import=True imported_items=['get_rank', 'is_main_process']",
+        "module_name='pydantic' import_alias=None line_number=72 is_from_import=True imported_items=['BaseModel', 'Field', 'ValidationError', 'field_validator']"
+      ],
+      "argument_definitions": [],
+      "file_operations": [
+        "file_path='<file_object>' operation_type='read' line_number=290 context='    hyperparameters = {}\\n    with open(hparam_path, \"r\") as f:\\n>>>         args = json.load(f)\\n        log_once(logger, \"Hyperparameters for training job:\")\\n        for key, value in args.items():' mode=None method='json.load'"
+      ],
+      "step_type": "Training",
+      "framework": "pytorch",
+      "step_type_patterns": {
+        "error": "Training pattern detection failed: 'str' object has no attribute 'get'"
+      }
+    },
+    "contract": {
+      "entry_point": "pytorch_training.py",
+      "inputs": {
+        "input_path": {
+          "path": "/opt/ml/input/data"
+        },
+        "hyperparameters_s3_uri": {
+          "path": "/opt/ml/input/config"
+        }
+      },
+      "outputs": {
+        "model_output": {
+          "path": "/opt/ml/model"
+        },
+        "evaluation_output": {
+          "path": "/opt/ml/output/data"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {
+          "SM_CHECKPOINT_DIR": "/opt/ml/checkpoints"
+        }
+      },
+      "description": "\n    PyTorch Lightning training script for multimodal BSM (Business Seller Messaging) models that:\n    1. Loads and preprocesses multimodal data (text + tabular features)\n    2. Supports multiple model architectures (BERT, CNN, LSTM, multimodal variants)\n    3. Handles both binary and multiclass classification\n    4. Applies text preprocessing pipeline with tokenization and chunking\n    5. Performs categorical feature encoding and label processing\n    6. Trains using PyTorch Lightning with early stopping and checkpointing\n    7. Evaluates on validation and test sets with comprehensive metrics\n    8. Exports trained model in multiple formats (PyTorch, ONNX)\n    \n    Input Structure:\n    - /opt/ml/input/data: Root directory containing train/val/test subdirectories\n      - /opt/ml/input/data/train: Training data files (.csv, .tsv, .parquet)\n      - /opt/ml/input/data/val: Validation data files\n      - /opt/ml/input/data/test: Test data files\n    - /opt/ml/input/config/hyperparameters.json: Model configuration and hyperparameters\n    \n    Output Structure:\n    - /opt/ml/model: Model artifacts directory\n      - /opt/ml/model/model.pth: Trained PyTorch model\n      - /opt/ml/model/model_artifacts.pth: Model artifacts (config, embeddings, vocab)\n      - /opt/ml/model/model.onnx: ONNX exported model\n    - /opt/ml/output/data: Evaluation results directory\n      - /opt/ml/output/data/predict_results.pth: Prediction results\n      - /opt/ml/output/data/tensorboard_eval/: TensorBoard evaluation logs\n    - /opt/ml/checkpoints/: Training checkpoints\n    \n    Contract aligned with step specification:\n    - Inputs: input_path (required), hyperparameters_s3_uri (optional)\n    - Outputs: model_output (primary), evaluation_output (secondary)\n    \n    Environment Variables:\n    - SM_CHECKPOINT_DIR: SageMaker checkpoint directory (optional)\n    \n    Hyperparameters (via JSON config):\n    - Model architecture: model_class (multimodal_bert, multimodal_cnn, bert, lstm, etc.)\n    - Data fields: id_name, text_name, label_name, tab_field_list, cat_field_list\n    - Training: batch_size, max_epochs, lr, optimizer, early_stop_patience\n    - Text processing: tokenizer, max_sen_len, max_total_chunks\n    - Model: num_classes, is_binary, class_weights, hidden_common_dim\n    - Advanced: fp16, gradient_clip_val, warmup_steps, reinit_layers\n    \n    Supported Model Classes:\n    - multimodal_bert: BERT + tabular fusion\n    - multimodal_cnn: CNN + tabular fusion  \n    - multimodal_moe: Mixture of Experts multimodal\n    - multimodal_gate_fusion: Gated fusion multimodal\n    - multimodal_cross_attn: Cross-attention multimodal\n    - bert: Text-only BERT classification\n    - lstm: Text-only LSTM classification\n    ",
+      "framework_requirements": {
+        "torch": "==2.1.2",
+        "torchvision": "==0.16.2",
+        "torchaudio": "==2.1.2",
+        "transformers": "==4.37.2",
+        "lightning": "==2.1.3",
+        "lightning-utilities": "==0.10.1",
+        "torchmetrics": "==1.7.1",
+        "tensorboard": "==2.16.2",
+        "matplotlib": "==3.8.2",
+        "scikit-learn": "==1.3.2",
+        "pandas": "==2.1.4",
+        "pyarrow": "==14.0.2",
+        "beautifulsoup4": "==4.12.3",
+        "gensim": "==4.3.1",
+        "pydantic": "==2.11.2",
+        "onnx": "==1.15.0",
+        "onnxruntime": "==1.17.0",
+        "flask": "==3.0.2"
+      }
+    }
+  },
+  "level2": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "INFO",
+        "category": "step_type_resolution",
+        "message": "Step type resolved via registry: PyTorchTraining -> PyTorchTraining -> Training",
+        "details": {
+          "contract": "pytorch_training_contract",
+          "original_spec_type": "PyTorchTraining",
+          "canonical_name": "PyTorchTraining",
+          "resolved_sagemaker_type": "Training",
+          "registry_available": true
+        },
+        "recommendation": "Using Training step property paths for validation"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output model_output: properties.ModelArtifacts.S3ModelArtifacts",
+        "details": {
+          "contract": "pytorch_training_contract",
+          "logical_name": "model_output",
+          "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+          "step_type": "training",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation",
+        "message": "Valid property path in output evaluation_output: properties.OutputDataConfig.S3OutputPath",
+        "details": {
+          "contract": "pytorch_training_contract",
+          "logical_name": "evaluation_output",
+          "property_path": "properties.OutputDataConfig.S3OutputPath",
+          "step_type": "training",
+          "validation_source": "SageMaker Documentation v2.92.2",
+          "documentation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference"
+        },
+        "recommendation": "Property path is correctly formatted for the step type"
+      },
+      {
+        "severity": "INFO",
+        "category": "property_path_validation_summary",
+        "message": "Property path validation completed for pytorch_training_contract",
+        "details": {
+          "contract": "pytorch_training_contract",
+          "step_type": "training",
+          "node_type": "internal",
+          "total_outputs": 2,
+          "outputs_with_property_paths": 2,
+          "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
+          "documentation_version": "v2.92.2"
+        },
+        "recommendation": "Validated 2/2 outputs with property paths against SageMaker documentation"
+      }
+    ],
+    "contract": {
+      "entry_point": "pytorch_training.py",
+      "inputs": {
+        "input_path": {
+          "path": "/opt/ml/input/data"
+        },
+        "hyperparameters_s3_uri": {
+          "path": "/opt/ml/input/config"
+        }
+      },
+      "outputs": {
+        "model_output": {
+          "path": "/opt/ml/model"
+        },
+        "evaluation_output": {
+          "path": "/opt/ml/output/data"
+        }
+      },
+      "arguments": {},
+      "environment_variables": {
+        "required": [],
+        "optional": {
+          "SM_CHECKPOINT_DIR": "/opt/ml/checkpoints"
+        }
+      },
+      "description": "\n    PyTorch Lightning training script for multimodal BSM (Business Seller Messaging) models that:\n    1. Loads and preprocesses multimodal data (text + tabular features)\n    2. Supports multiple model architectures (BERT, CNN, LSTM, multimodal variants)\n    3. Handles both binary and multiclass classification\n    4. Applies text preprocessing pipeline with tokenization and chunking\n    5. Performs categorical feature encoding and label processing\n    6. Trains using PyTorch Lightning with early stopping and checkpointing\n    7. Evaluates on validation and test sets with comprehensive metrics\n    8. Exports trained model in multiple formats (PyTorch, ONNX)\n    \n    Input Structure:\n    - /opt/ml/input/data: Root directory containing train/val/test subdirectories\n      - /opt/ml/input/data/train: Training data files (.csv, .tsv, .parquet)\n      - /opt/ml/input/data/val: Validation data files\n      - /opt/ml/input/data/test: Test data files\n    - /opt/ml/input/config/hyperparameters.json: Model configuration and hyperparameters\n    \n    Output Structure:\n    - /opt/ml/model: Model artifacts directory\n      - /opt/ml/model/model.pth: Trained PyTorch model\n      - /opt/ml/model/model_artifacts.pth: Model artifacts (config, embeddings, vocab)\n      - /opt/ml/model/model.onnx: ONNX exported model\n    - /opt/ml/output/data: Evaluation results directory\n      - /opt/ml/output/data/predict_results.pth: Prediction results\n      - /opt/ml/output/data/tensorboard_eval/: TensorBoard evaluation logs\n    - /opt/ml/checkpoints/: Training checkpoints\n    \n    Contract aligned with step specification:\n    - Inputs: input_path (required), hyperparameters_s3_uri (optional)\n    - Outputs: model_output (primary), evaluation_output (secondary)\n    \n    Environment Variables:\n    - SM_CHECKPOINT_DIR: SageMaker checkpoint directory (optional)\n    \n    Hyperparameters (via JSON config):\n    - Model architecture: model_class (multimodal_bert, multimodal_cnn, bert, lstm, etc.)\n    - Data fields: id_name, text_name, label_name, tab_field_list, cat_field_list\n    - Training: batch_size, max_epochs, lr, optimizer, early_stop_patience\n    - Text processing: tokenizer, max_sen_len, max_total_chunks\n    - Model: num_classes, is_binary, class_weights, hidden_common_dim\n    - Advanced: fp16, gradient_clip_val, warmup_steps, reinit_layers\n    \n    Supported Model Classes:\n    - multimodal_bert: BERT + tabular fusion\n    - multimodal_cnn: CNN + tabular fusion  \n    - multimodal_moe: Mixture of Experts multimodal\n    - multimodal_gate_fusion: Gated fusion multimodal\n    - multimodal_cross_attn: Cross-attention multimodal\n    - bert: Text-only BERT classification\n    - lstm: Text-only LSTM classification\n    ",
+      "framework_requirements": {
+        "torch": "==2.1.2",
+        "torchvision": "==0.16.2",
+        "torchaudio": "==2.1.2",
+        "transformers": "==4.37.2",
+        "lightning": "==2.1.3",
+        "lightning-utilities": "==0.10.1",
+        "torchmetrics": "==1.7.1",
+        "tensorboard": "==2.16.2",
+        "matplotlib": "==3.8.2",
+        "scikit-learn": "==1.3.2",
+        "pandas": "==2.1.4",
+        "pyarrow": "==14.0.2",
+        "beautifulsoup4": "==4.12.3",
+        "gensim": "==4.3.1",
+        "pydantic": "==2.11.2",
+        "onnx": "==1.15.0",
+        "onnxruntime": "==1.17.0",
+        "flask": "==3.0.2"
+      }
+    },
+    "specifications": {
+      "pytorch_training_spec": {
+        "step_type": "PyTorchTraining",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "input_path",
+            "dependency_type": "training_data",
+            "required": true,
+            "compatible_sources": [
+              "RiskTableMapping",
+              "DataLoad",
+              "TabularPreprocessing",
+              "ProcessingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Training dataset S3 location with train/val/test subdirectories"
+          },
+          {
+            "logical_name": "hyperparameters_s3_uri",
+            "dependency_type": "hyperparameters",
+            "required": false,
+            "compatible_sources": [
+              "HyperparameterPrep",
+              "ConfigGeneration",
+              "ProcessingStep",
+              "HyperparameterTuning"
+            ],
+            "data_type": "S3Uri",
+            "description": "S3 URI containing hyperparameters configuration directory (optional)"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "model_output",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+            "data_type": "S3Uri",
+            "description": "Trained PyTorch model artifacts"
+          },
+          {
+            "logical_name": "evaluation_output",
+            "output_type": "processing_output",
+            "property_path": "properties.OutputDataConfig.S3OutputPath",
+            "data_type": "S3Uri",
+            "description": "Training evaluation results and predictions"
+          }
+        ]
+      }
+    },
+    "unified_specification": {
+      "primary_spec": {
+        "step_type": "PyTorchTraining",
+        "node_type": "internal",
+        "dependencies": [
+          {
+            "logical_name": "input_path",
+            "dependency_type": "training_data",
+            "required": true,
+            "compatible_sources": [
+              "RiskTableMapping",
+              "DataLoad",
+              "TabularPreprocessing",
+              "ProcessingStep"
+            ],
+            "data_type": "S3Uri",
+            "description": "Training dataset S3 location with train/val/test subdirectories"
+          },
+          {
+            "logical_name": "hyperparameters_s3_uri",
+            "dependency_type": "hyperparameters",
+            "required": false,
+            "compatible_sources": [
+              "HyperparameterPrep",
+              "ConfigGeneration",
+              "ProcessingStep",
+              "HyperparameterTuning"
+            ],
+            "data_type": "S3Uri",
+            "description": "S3 URI containing hyperparameters configuration directory (optional)"
+          }
+        ],
+        "outputs": [
+          {
+            "logical_name": "model_output",
+            "output_type": "model_artifacts",
+            "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+            "data_type": "S3Uri",
+            "description": "Trained PyTorch model artifacts"
+          },
+          {
+            "logical_name": "evaluation_output",
+            "output_type": "processing_output",
+            "property_path": "properties.OutputDataConfig.S3OutputPath",
+            "data_type": "S3Uri",
+            "description": "Training evaluation results and predictions"
+          }
+        ]
+      },
+      "variants": {
+        "training": {
+          "step_type": "PyTorchTraining",
+          "node_type": "internal",
+          "dependencies": [
+            {
+              "logical_name": "input_path",
+              "dependency_type": "training_data",
+              "required": true,
+              "compatible_sources": [
+                "RiskTableMapping",
+                "DataLoad",
+                "TabularPreprocessing",
+                "ProcessingStep"
+              ],
+              "data_type": "S3Uri",
+              "description": "Training dataset S3 location with train/val/test subdirectories"
+            },
+            {
+              "logical_name": "hyperparameters_s3_uri",
+              "dependency_type": "hyperparameters",
+              "required": false,
+              "compatible_sources": [
+                "HyperparameterPrep",
+                "ConfigGeneration",
+                "ProcessingStep",
+                "HyperparameterTuning"
+              ],
+              "data_type": "S3Uri",
+              "description": "S3 URI containing hyperparameters configuration directory (optional)"
+            }
+          ],
+          "outputs": [
+            {
+              "logical_name": "model_output",
+              "output_type": "model_artifacts",
+              "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+              "data_type": "S3Uri",
+              "description": "Trained PyTorch model artifacts"
+            },
+            {
+              "logical_name": "evaluation_output",
+              "output_type": "processing_output",
+              "property_path": "properties.OutputDataConfig.S3OutputPath",
+              "data_type": "S3Uri",
+              "description": "Training evaluation results and predictions"
+            }
+          ]
+        }
+      },
+      "unified_dependencies": {
+        "input_path": {
+          "logical_name": "input_path",
+          "dependency_type": "training_data",
+          "required": true,
+          "compatible_sources": [
+            "RiskTableMapping",
+            "DataLoad",
+            "TabularPreprocessing",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Training dataset S3 location with train/val/test subdirectories"
+        },
+        "hyperparameters_s3_uri": {
+          "logical_name": "hyperparameters_s3_uri",
+          "dependency_type": "hyperparameters",
+          "required": false,
+          "compatible_sources": [
+            "HyperparameterPrep",
+            "ConfigGeneration",
+            "ProcessingStep",
+            "HyperparameterTuning"
+          ],
+          "data_type": "S3Uri",
+          "description": "S3 URI containing hyperparameters configuration directory (optional)"
+        }
+      },
+      "unified_outputs": {
+        "model_output": {
+          "logical_name": "model_output",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+          "data_type": "S3Uri",
+          "description": "Trained PyTorch model artifacts"
+        },
+        "evaluation_output": {
+          "logical_name": "evaluation_output",
+          "output_type": "processing_output",
+          "property_path": "properties.OutputDataConfig.S3OutputPath",
+          "data_type": "S3Uri",
+          "description": "Training evaluation results and predictions"
+        }
+      },
+      "dependency_sources": {
+        "input_path": [
+          "training"
+        ],
+        "hyperparameters_s3_uri": [
+          "training"
+        ]
+      },
+      "output_sources": {
+        "model_output": [
+          "training"
+        ],
+        "evaluation_output": [
+          "training"
+        ]
+      },
+      "variant_count": 1
+    }
+  },
+  "level3": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "WARNING",
+        "category": "dependency_compatibility",
+        "message": "Dependency hyperparameters_s3_uri has low compatibility score: 0.420",
+        "details": {
+          "logical_name": "hyperparameters_s3_uri",
+          "specification": "pytorch_training",
+          "best_match": {
+            "provider": "BatchTransform",
+            "output": "transform_output",
+            "score": 0.4197368421052632
+          },
+          "required": false,
+          "threshold_info": {
+            "mode": "relaxed",
+            "thresholds": {
+              "pass": "\u2265 0.6",
+              "warning": "0.4 - 0.59",
+              "error": "0.2 - 0.39",
+              "critical": "< 0.2"
+            },
+            "resolution_threshold": 0.5,
+            "description": "Relaxed validation allowing reasonable compatibility matches"
+          },
+          "score_breakdown": {
+            "type_compatibility": 0.2,
+            "data_type_compatibility": 0.2,
+            "semantic_similarity": 0.019736842105263157,
+            "exact_match_bonus": 0.0,
+            "source_compatibility": 0.0,
+            "keyword_matching": 0.0
+          },
+          "all_candidates": [
+            {
+              "provider": "BatchTransform",
+              "output": "transform_output",
+              "score": 0.4197368421052632
+            },
+            {
+              "provider": "PyTorchModel",
+              "output": "model_name",
+              "score": 0.31875000000000003
+            },
+            {
+              "provider": "XGBoostModel",
+              "output": "model_name",
+              "score": 0.31875000000000003
+            }
+          ]
+        },
+        "recommendation": "Consider renaming 'hyperparameters_s3_uri' or adding aliases to improve semantic matching; Add 'BatchTransform' to compatible_sources for hyperparameters_s3_uri"
+      }
+    ],
+    "specification": {
+      "step_type": "PyTorchTraining",
+      "node_type": "internal",
+      "dependencies": [
+        {
+          "logical_name": "input_path",
+          "dependency_type": "training_data",
+          "required": true,
+          "compatible_sources": [
+            "RiskTableMapping",
+            "DataLoad",
+            "TabularPreprocessing",
+            "ProcessingStep"
+          ],
+          "data_type": "S3Uri",
+          "description": "Training dataset S3 location with train/val/test subdirectories"
+        },
+        {
+          "logical_name": "hyperparameters_s3_uri",
+          "dependency_type": "hyperparameters",
+          "required": false,
+          "compatible_sources": [
+            "HyperparameterPrep",
+            "ConfigGeneration",
+            "ProcessingStep",
+            "HyperparameterTuning"
+          ],
+          "data_type": "S3Uri",
+          "description": "S3 URI containing hyperparameters configuration directory (optional)"
+        }
+      ],
+      "outputs": [
+        {
+          "logical_name": "model_output",
+          "output_type": "model_artifacts",
+          "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+          "data_type": "S3Uri",
+          "description": "Trained PyTorch model artifacts"
+        },
+        {
+          "logical_name": "evaluation_output",
+          "output_type": "processing_output",
+          "property_path": "properties.OutputDataConfig.S3OutputPath",
+          "data_type": "S3Uri",
+          "description": "Training evaluation results and predictions"
+        }
+      ]
+    }
+  },
+  "level4": {
+    "passed": true,
+    "issues": [
+      {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: project_root_folder",
+        "details": {
+          "field_name": "project_root_folder",
+          "builder": "pytorch_training"
+        },
+        "recommendation": "Access required field project_root_folder in builder or make it optional"
+      },
+      {
+        "severity": "INFO",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
+        "details": {
+          "required_fields": [
+            "service_name",
+            "bucket",
+            "role",
+            "project_root_folder",
+            "author",
+            "pipeline_version",
+            "region"
+          ],
+          "builder": "pytorch_training"
+        },
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
+      }
+    ],
+    "builder_analysis": {
+      "config_accesses": [
+        {
+          "field_name": "hyperparameters",
+          "line_number": 127,
+          "context": "line_127"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 129,
+          "context": "line_129"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 130,
+          "context": "line_130"
+        },
+        {
+          "field_name": "hyperparameters",
+          "line_number": 133,
+          "context": "line_133"
+        },
+        {
+          "field_name": "effective_source_dir",
+          "line_number": 139,
+          "context": "line_139"
+        },
+        {
+          "field_name": "training_entry_point",
+          "line_number": 144,
+          "context": "line_144"
+        },
+        {
+          "field_name": "framework_version",
+          "line_number": 146,
+          "context": "line_146"
+        },
+        {
+          "field_name": "py_version",
+          "line_number": 147,
+          "context": "line_147"
+        },
+        {
+          "field_name": "training_instance_type",
+          "line_number": 149,
+          "context": "line_149"
+        },
+        {
+          "field_name": "training_instance_count",
+          "line_number": 150,
+          "context": "line_150"
+        },
+        {
+          "field_name": "training_volume_size",
+          "line_number": 151,
+          "context": "line_151"
+        },
+        {
+          "field_name": "env",
+          "line_number": 172,
+          "context": "line_172"
+        },
+        {
+          "field_name": "env",
+          "line_number": 173,
+          "context": "line_173"
+        }
+      ],
+      "validation_calls": [],
+      "default_assignments": [],
+      "class_definitions": [
+        {
+          "class_name": "PyTorchTrainingStepBuilder",
+          "line_number": 28,
+          "base_classes": [
+            "StepBuilderBase"
+          ],
+          "decorators": []
+        }
+      ],
+      "method_definitions": [
+        {
+          "method_name": "__init__",
+          "line_number": 35,
+          "args": [
+            "self",
+            "config",
+            "sagemaker_session",
+            "role",
+            "registry_manager",
+            "dependency_resolver"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "validate_configuration",
+          "line_number": 77,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_create_estimator",
+          "line_number": 112,
+          "args": [
+            "self",
+            "output_path"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_environment_variables",
+          "line_number": 159,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_metric_definitions",
+          "line_number": 178,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_create_profiler_config",
+          "line_number": 197,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_create_data_channel_from_source",
+          "line_number": 214,
+          "args": [
+            "self",
+            "base_path"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_inputs",
+          "line_number": 229,
+          "args": [
+            "self",
+            "inputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "_get_outputs",
+          "line_number": 292,
+          "args": [
+            "self",
+            "outputs"
+          ],
+          "decorators": [],
+          "is_async": false
+        },
+        {
+          "method_name": "create_step",
+          "line_number": 361,
+          "args": [
+            "self"
+          ],
+          "decorators": [],
+          "is_async": false
+        }
+      ],
+      "import_statements": [
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Dict",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Optional",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "Any",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "typing",
+          "name": "List",
+          "alias": null,
+          "line_number": 1
+        },
+        {
+          "type": "from_import",
+          "module": "pathlib",
+          "name": "Path",
+          "alias": null,
+          "line_number": 2
+        },
+        {
+          "type": "import",
+          "module": "logging",
+          "alias": null,
+          "line_number": 3
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "TrainingStep",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.steps",
+          "name": "Step",
+          "alias": null,
+          "line_number": 5
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.pytorch",
+          "name": "PyTorch",
+          "alias": null,
+          "line_number": 6
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.inputs",
+          "name": "TrainingInput",
+          "alias": null,
+          "line_number": 7
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.functions",
+          "name": "Join",
+          "alias": null,
+          "line_number": 8
+        },
+        {
+          "type": "from_import",
+          "module": "configs.config_pytorch_training_step",
+          "name": "PyTorchTrainingConfig",
+          "alias": null,
+          "line_number": 10
+        },
+        {
+          "type": "from_import",
+          "module": "core.base.builder_base",
+          "name": "StepBuilderBase",
+          "alias": null,
+          "line_number": 11
+        },
+        {
+          "type": "from_import",
+          "module": "s3_utils",
+          "name": "S3PathHandler",
+          "alias": null,
+          "line_number": 12
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.registry_manager",
+          "name": "RegistryManager",
+          "alias": null,
+          "line_number": 13
+        },
+        {
+          "type": "from_import",
+          "module": "core.deps.dependency_resolver",
+          "name": "UnifiedDependencyResolver",
+          "alias": null,
+          "line_number": 14
+        },
+        {
+          "type": "from_import",
+          "module": "specs.pytorch_training_spec",
+          "name": "PYTORCH_TRAINING_SPEC",
+          "alias": null,
+          "line_number": 18
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.debugger",
+          "name": "ProfilerConfig",
+          "alias": null,
+          "line_number": 205
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.debugger",
+          "name": "FrameworkProfile",
+          "alias": null,
+          "line_number": 205
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.functions",
+          "name": "Join",
+          "alias": null,
+          "line_number": 335
+        }
+      ],
+      "config_class_usage": []
+    },
+    "config_analysis": {
+      "class_name": "PyTorchTrainingConfig",
+      "fields": {
+        "author": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "bucket": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "role": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "region": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "service_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "pipeline_version": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_class": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "current_date": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "py_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "project_root_folder": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "training_instance_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "training_instance_count": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "training_volume_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "training_entry_point": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "hyperparameters": {
+          "type": "typing.Optional[cursus.core.base.hyperparameters_base.ModelHyperparameters]",
+          "required": false
+        },
+        "aws_region": {
+          "type": "property",
+          "required": false
+        },
+        "effective_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "model_extra": {
+          "type": "property",
+          "required": false
+        },
+        "model_fields_set": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_description": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_name": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_s3_loc": {
+          "type": "property",
+          "required": false
+        },
+        "resolved_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "script_contract": {
+          "type": "property",
+          "required": false
+        },
+        "step_catalog": {
+          "type": "property",
+          "required": false
+        }
+      },
+      "required_fields": [
+        "author",
+        "bucket",
+        "role",
+        "region",
+        "service_name",
+        "pipeline_version",
+        "project_root_folder"
+      ],
+      "optional_fields": [
+        "model_class",
+        "current_date",
+        "framework_version",
+        "py_version",
+        "source_dir",
+        "training_instance_type",
+        "training_instance_count",
+        "training_volume_size",
+        "training_entry_point",
+        "hyperparameters",
+        "aws_region",
+        "effective_source_dir",
+        "model_extra",
+        "model_fields_set",
+        "pipeline_description",
+        "pipeline_name",
+        "pipeline_s3_loc",
+        "resolved_source_dir",
+        "script_contract",
+        "step_catalog"
+      ],
+      "default_values": {
+        "author": "PydanticUndefined",
+        "bucket": "PydanticUndefined",
+        "role": "PydanticUndefined",
+        "region": "PydanticUndefined",
+        "service_name": "PydanticUndefined",
+        "pipeline_version": "PydanticUndefined",
+        "model_class": "xgboost",
+        "current_date": "PydanticUndefined",
+        "framework_version": "1.12.0",
+        "py_version": "py38",
+        "source_dir": null,
+        "project_root_folder": "PydanticUndefined",
+        "training_instance_type": "ml.g5.12xlarge",
+        "training_instance_count": 1,
+        "training_volume_size": 30,
+        "training_entry_point": "train.py",
+        "hyperparameters": null
+      }
+    }
+  },
+  "overall_status": "PASSING",
+  "scoring": {
+    "overall_score": 100.0,
+    "quality_rating": "Excellent",
+    "level_scores": {
+      "level1_script_contract": 100.0,
+      "level2_contract_spec": 100.0,
+      "level3_spec_dependencies": 100.0,
+      "level4_builder_config": 100.0
+    }
+  },
+  "metadata": {
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/pytorch_training.py",
+    "validation_timestamp": "2025-09-28T11:08:48.839405",
+    "validator_version": "1.0.0"
+  }
+}

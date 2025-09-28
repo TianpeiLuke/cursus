@@ -70,6 +70,7 @@ def is_sagemaker_path(path: str) -> bool:
         "/opt/ml/input/",
         "/opt/ml/model",
         "/opt/ml/output",
+        "/opt/ml/code",
     ]
 
     normalized_path = normalize_path(path)

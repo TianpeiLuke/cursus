@@ -223,8 +223,10 @@ class ScriptContractAlignmentTester:
                 pass
 
         # Validate path usage
+        # Get node_type from specification (dummy_training is SOURCE)
+        node_type = "source" if script_name == "dummy_training" else None
         path_issues = self.script_validator.validate_path_usage(
-            analysis, contract, script_name
+            analysis, contract, script_name, node_type
         )
         issues.extend(path_issues)
 

@@ -4,6 +4,88 @@
     "passed": true,
     "issues": [
       {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "SOURCE step uses non-standard path: /opt/ml/processing/input/config",
+        "details": {
+          "path": "/opt/ml/processing/input/config",
+          "script": "dummy_training",
+          "node_type": "source"
+        },
+        "recommendation": "Consider using standard source paths or add /opt/ml/processing/input/config to contract"
+      },
+      {
+        "severity": "INFO",
+        "category": "path_usage",
+        "message": "SOURCE step uses standard SageMaker source path: /opt/ml/code/hyperparams/hyperparameters.json",
+        "details": {
+          "path": "/opt/ml/code/hyperparams/hyperparameters.json",
+          "script": "dummy_training",
+          "node_type": "source",
+          "path_type": "source_directory"
+        },
+        "recommendation": "Path /opt/ml/code/hyperparams/hyperparameters.json is allowed for SOURCE steps - no action needed"
+      },
+      {
+        "severity": "INFO",
+        "category": "path_usage",
+        "message": "SOURCE step uses standard SageMaker source path: /opt/ml/code/hyperparams",
+        "details": {
+          "path": "/opt/ml/code/hyperparams",
+          "script": "dummy_training",
+          "node_type": "source",
+          "path_type": "source_directory"
+        },
+        "recommendation": "Path /opt/ml/code/hyperparams is allowed for SOURCE steps - no action needed"
+      },
+      {
+        "severity": "WARNING",
+        "category": "path_usage",
+        "message": "SOURCE step uses non-standard path: /opt/ml/processing/input/model",
+        "details": {
+          "path": "/opt/ml/processing/input/model",
+          "script": "dummy_training",
+          "node_type": "source"
+        },
+        "recommendation": "Consider using standard source paths or add /opt/ml/processing/input/model to contract"
+      },
+      {
+        "severity": "INFO",
+        "category": "path_usage",
+        "message": "SOURCE step uses standard SageMaker source path: /opt/ml/code",
+        "details": {
+          "path": "/opt/ml/code",
+          "script": "dummy_training",
+          "node_type": "source",
+          "path_type": "source_directory"
+        },
+        "recommendation": "Path /opt/ml/code is allowed for SOURCE steps - no action needed"
+      },
+      {
+        "severity": "INFO",
+        "category": "path_usage",
+        "message": "SOURCE step uses standard SageMaker source path: /opt/ml/code/models/model.tar.gz",
+        "details": {
+          "path": "/opt/ml/code/models/model.tar.gz",
+          "script": "dummy_training",
+          "node_type": "source",
+          "path_type": "source_directory"
+        },
+        "recommendation": "Path /opt/ml/code/models/model.tar.gz is allowed for SOURCE steps - no action needed"
+      },
+      {
+        "severity": "INFO",
+        "category": "path_usage",
+        "message": "SOURCE step uses standard SageMaker source path: /opt/ml/code/models",
+        "details": {
+          "path": "/opt/ml/code/models",
+          "script": "dummy_training",
+          "node_type": "source",
+          "path_type": "source_directory"
+        },
+        "recommendation": "Path /opt/ml/code/models is allowed for SOURCE steps - no action needed"
+      },
+      {
         "severity": "INFO",
         "category": "testability_compliance",
         "message": "Main function follows testability pattern with all required parameters",
@@ -11,9 +93,9 @@
           "script": "dummy_training",
           "testability_parameters": [
             "input_paths",
-            "environ_vars",
             "output_paths",
-            "job_args"
+            "job_args",
+            "environ_vars"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -30,31 +112,19 @@
       {
         "severity": "WARNING",
         "category": "testability_parameter_usage",
-        "message": "Testability parameters defined but not used: environ_vars, job_args",
+        "message": "Testability parameters defined but not used: input_paths, job_args, environ_vars",
         "details": {
           "script": "dummy_training",
           "unused_parameters": [
-            "environ_vars",
-            "job_args"
+            "input_paths",
+            "job_args",
+            "environ_vars"
           ],
           "used_parameters": [
-            "input_paths",
             "output_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
-      },
-      {
-        "severity": "INFO",
-        "category": "testability_parameter_access",
-        "message": "Consider using dictionary-style access for input_paths",
-        "details": {
-          "script": "dummy_training",
-          "parameter": "input_paths",
-          "current_pattern": "input_paths.get",
-          "line_number": 234
-        },
-        "recommendation": "Use input_paths['key'] for accessing nested values"
       },
       {
         "severity": "INFO",
@@ -70,25 +140,31 @@
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py",
       "path_references": [
         "path='\\nDummyTraining Processing Script\\n\\nThis script validates, unpacks a pretrained model.tar.gz file, adds a hyperparameters.json file \\ninside it, then repacks it and outputs to the destination. It serves as a dummy training step \\nthat skips actual training and integrates with downstream MIMS packaging and payload steps.\\n' line_number=2 context='#!/usr/bin/env python\\n>>> \"\"\"\\nDummyTraining Processing Script\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/model/model.tar.gz' line_number=35 context='# - hyperparameters_s3_uri: \"/opt/ml/processing/input/config/hyperparameters.json\"\\n# - model_input: \"/opt/ml/processing/output/model\" (aligns with packaging step dependency)\\n>>> MODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\nHYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/config/hyperparameters.json' line_number=36 context='# - model_input: \"/opt/ml/processing/output/model\" (aligns with packaging step dependency)\\nMODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\n>>> HYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output/model' line_number=37 context='MODEL_INPUT_PATH = \"/opt/ml/processing/input/model/model.tar.gz\"\\nHYPERPARAMS_INPUT_PATH = \"/opt/ml/processing/input/config/hyperparameters.json\"\\n>>> MODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n\\ndef validate_model(input_path: Path) -> bool:' is_hardcoded=True construction_method=None",
-        "path='.tar.gz' line_number=56 context='    \\n    # Check file extension\\n>>>     if not input_path.suffix == \\'.tar.gz\\' and not str(input_path).endswith(\\'.tar.gz\\'):\\n        raise ValueError(f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='.tar.gz' line_number=56 context='    \\n    # Check file extension\\n>>>     if not input_path.suffix == \\'.tar.gz\\' and not str(input_path).endswith(\\'.tar.gz\\'):\\n        raise ValueError(f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='Ensure a directory exists, creating it if necessary.' line_number=72 context='\\ndef ensure_directory(directory: Path):\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        directory.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
-        "path='Extract a tar file to the specified path.' line_number=82 context='\\ndef extract_tarfile(tar_path: Path, extract_path: Path):\\n>>>     \"\"\"Extract a tar file to the specified path.\"\"\"\\n    logger.info(f\"Extracting tar file: {tar_path} to {extract_path}\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=97 context='                size_mb = member.size / 1024 / 1024\\n                total_size += size_mb\\n>>>                 logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n            logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=98 context='                total_size += size_mb\\n                logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n>>>             logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n            \\n            logger.info(f\"Extracting to: {extract_path}\")' is_hardcoded=True construction_method=None",
-        "path='Create a tar file from the contents of a directory.' line_number=110 context='\\ndef create_tarfile(output_tar_path: Path, source_dir: Path):\\n>>>     \"\"\"Create a tar file from the contents of a directory.\"\"\"\\n    logger.info(f\"Creating tar file: {output_tar_path} from {source_dir}\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=126 context='                    total_size += size_mb\\n                    files_added += 1\\n>>>                     logger.info(f\"Adding to tar: {arcname} ({size_mb:.2f}MB)\")\\n                    tar.add(item, arcname=arcname)\\n        ' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=131 context='        logger.info(f\"Tar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n        \\n        if output_tar_path.exists():' is_hardcoded=True construction_method=None",
-        "path='.2f' line_number=135 context='        if output_tar_path.exists():\\n            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        ' is_hardcoded=True construction_method=None",
-        "path='.2%' line_number=136 context='            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n        \\n    except Exception as e:' is_hardcoded=True construction_method=None",
-        "path='Copy a file and ensure the destination directory exists.' line_number=143 context='\\ndef copy_file(src: Path, dst: Path):\\n>>>     \"\"\"Copy a file and ensure the destination directory exists.\"\"\"\\n    logger.info(f\"Copying file: {src} to {dst}\")\\n    ' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=195 context='        \\n        # Copy hyperparameters.json to the working directory\\n>>>         hyperparams_dest = working_dir / \"hyperparameters.json\"\\n        copy_file(hyperparams_path, hyperparams_dest)\\n        ' is_hardcoded=True construction_method=None",
-        "path='model.tar.gz' line_number=202 context='        \\n        # Create the output model.tar.gz\\n>>>         output_path = output_dir / \"model.tar.gz\"\\n        create_tarfile(output_path, working_dir)\\n        ' is_hardcoded=True construction_method=None",
-        "path='No hyperparameters file found. Falling back to simple copy mode.' line_number=249 context='        else:\\n            # For backward compatibility: just validate and copy the model\\n>>>             logger.info(\"No hyperparameters file found. Falling back to simple copy mode.\")\\n            validate_model(model_path)\\n            output_path = output_dir / \"model.tar.gz\"' is_hardcoded=True construction_method=None",
-        "path='model.tar.gz' line_number=251 context='            logger.info(\"No hyperparameters file found. Falling back to simple copy mode.\")\\n            validate_model(model_path)\\n>>>             output_path = output_dir / \"model.tar.gz\"\\n            ensure_directory(output_dir)\\n            copy_file(model_path, output_path)' is_hardcoded=True construction_method=None"
+        "path='/opt/ml/code/models/model.tar.gz' line_number=33 context='# These paths align with SOURCE node approach where model and hyperparameters\\n# are embedded in the source directory structure\\n>>> MODEL_SOURCE_PATH = \"/opt/ml/code/models/model.tar.gz\"\\nHYPERPARAMS_SOURCE_PATH = \"/opt/ml/code/hyperparams/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/hyperparams/hyperparameters.json' line_number=34 context='# are embedded in the source directory structure\\nMODEL_SOURCE_PATH = \"/opt/ml/code/models/model.tar.gz\"\\n>>> HYPERPARAMS_SOURCE_PATH = \"/opt/ml/code/hyperparams/hyperparameters.json\"\\nMODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output/model' line_number=35 context='MODEL_SOURCE_PATH = \"/opt/ml/code/models/model.tar.gz\"\\nHYPERPARAMS_SOURCE_PATH = \"/opt/ml/code/hyperparams/hyperparameters.json\"\\n>>> MODEL_OUTPUT_DIR = \"/opt/ml/processing/output/model\"\\n\\n' is_hardcoded=True construction_method=None",
+        "path='.tar.gz' line_number=55 context='\\n    # Check file extension\\n>>>     if not input_path.suffix == \".tar.gz\" and not str(input_path).endswith(\".tar.gz\"):\\n        raise ValueError(\\n            f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\"' is_hardcoded=True construction_method=None",
+        "path='.tar.gz' line_number=55 context='\\n    # Check file extension\\n>>>     if not input_path.suffix == \".tar.gz\" and not str(input_path).endswith(\".tar.gz\"):\\n        raise ValueError(\\n            f\"Expected a .tar.gz file, but got: {input_path} (ERROR_CODE: INVALID_FORMAT)\"' is_hardcoded=True construction_method=None",
+        "path='Ensure a directory exists, creating it if necessary.' line_number=76 context='\\ndef ensure_directory(directory: Path) -> bool:\\n>>>     \"\"\"Ensure a directory exists, creating it if necessary.\"\"\"\\n    try:\\n        directory.mkdir(parents=True, exist_ok=True)' is_hardcoded=True construction_method=None",
+        "path='Extract a tar file to the specified path.' line_number=87 context='\\ndef extract_tarfile(tar_path: Path, extract_path: Path) -> None:\\n>>>     \"\"\"Extract a tar file to the specified path.\"\"\"\\n    logger.info(f\"Extracting tar file: {tar_path} to {extract_path}\")\\n' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=102 context='                size_mb = member.size / 1024 / 1024\\n                total_size += size_mb\\n>>>                 logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n            logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=103 context='                total_size += size_mb\\n                logger.info(f\"  {member.name} ({size_mb:.2f}MB)\")\\n>>>             logger.info(f\"Total size in tar: {total_size:.2f}MB\")\\n\\n            logger.info(f\"Extracting to: {extract_path}\")' is_hardcoded=True construction_method=None",
+        "path='Create a tar file from the contents of a directory.' line_number=116 context='\\ndef create_tarfile(output_tar_path: Path, source_dir: Path) -> None:\\n>>>     \"\"\"Create a tar file from the contents of a directory.\"\"\"\\n    logger.info(f\"Creating tar file: {output_tar_path} from {source_dir}\")\\n' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=132 context='                    total_size += size_mb\\n                    files_added += 1\\n>>>                     logger.info(f\"Adding to tar: {arcname} ({size_mb:.2f}MB)\")\\n                    tar.add(item, arcname=arcname)\\n' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=137 context='        logger.info(f\"Tar creation summary:\")\\n        logger.info(f\"  Files added: {files_added}\")\\n>>>         logger.info(f\"  Total uncompressed size: {total_size:.2f}MB\")\\n\\n        if output_tar_path.exists():' is_hardcoded=True construction_method=None",
+        "path='.2f' line_number=141 context='        if output_tar_path.exists():\\n            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n>>>             logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n            logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n' is_hardcoded=True construction_method=None",
+        "path='.2%' line_number=142 context='            compressed_size = output_tar_path.stat().st_size / 1024 / 1024\\n            logger.info(f\"  Compressed tar size: {compressed_size:.2f}MB\")\\n>>>             logger.info(f\"  Compression ratio: {compressed_size/total_size:.2%}\")\\n\\n    except Exception as e:' is_hardcoded=True construction_method=None",
+        "path='Copy a file and ensure the destination directory exists.' line_number=150 context='\\ndef copy_file(src: Path, dst: Path) -> None:\\n>>>     \"\"\"Copy a file and ensure the destination directory exists.\"\"\"\\n    logger.info(f\"Copying file: {src} to {dst}\")\\n' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=205 context='\\n        # Copy hyperparameters.json to the working directory\\n>>>         hyperparams_dest = working_dir / \"hyperparameters.json\"\\n        copy_file(hyperparams_path, hyperparams_dest)\\n' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=212 context='\\n        # Create the output model.tar.gz\\n>>>         output_path = output_dir / \"model.tar.gz\"\\n        create_tarfile(output_path, working_dir)\\n' is_hardcoded=True construction_method=None",
+        "path='model.tar.gz' line_number=230 context='    \"\"\"\\n    for base_path in base_paths:\\n>>>         model_path = Path(base_path) / \"model.tar.gz\"\\n        if model_path.exists():\\n            logger.info(f\"Found model file at: {model_path}\")' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=248 context='    \"\"\"\\n    for base_path in base_paths:\\n>>>         hyperparams_path = Path(base_path) / \"hyperparameters.json\"\\n        if hyperparams_path.exists():\\n            logger.info(f\"Found hyperparameters file at: {hyperparams_path}\")' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/models' line_number=278 context='        # Define fallback search paths for model file\\n        model_search_paths = [\\n>>>             \"/opt/ml/code/models\",           # Primary: source directory models folder\\n            \"/opt/ml/code\",                  # Fallback: source directory root\\n            \"/opt/ml/processing/input/model\", # Legacy: processing input (if somehow provided)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code' line_number=279 context='        model_search_paths = [\\n            \"/opt/ml/code/models\",           # Primary: source directory models folder\\n>>>             \"/opt/ml/code\",                  # Fallback: source directory root\\n            \"/opt/ml/processing/input/model\", # Legacy: processing input (if somehow provided)\\n        ]' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/model' line_number=280 context='            \"/opt/ml/code/models\",           # Primary: source directory models folder\\n            \"/opt/ml/code\",                  # Fallback: source directory root\\n>>>             \"/opt/ml/processing/input/model\", # Legacy: processing input (if somehow provided)\\n        ]\\n        ' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/hyperparams' line_number=285 context='        # Define fallback search paths for hyperparameters file\\n        hyperparams_search_paths = [\\n>>>             \"/opt/ml/code/hyperparams\",      # Primary: source directory hyperparams folder\\n            \"/opt/ml/code\",                  # Fallback: source directory root\\n            \"/opt/ml/processing/input/config\", # Legacy: processing input (if somehow provided)' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code' line_number=286 context='        hyperparams_search_paths = [\\n            \"/opt/ml/code/hyperparams\",      # Primary: source directory hyperparams folder\\n>>>             \"/opt/ml/code\",                  # Fallback: source directory root\\n            \"/opt/ml/processing/input/config\", # Legacy: processing input (if somehow provided)\\n        ]' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/config' line_number=287 context='            \"/opt/ml/code/hyperparams\",      # Primary: source directory hyperparams folder\\n            \"/opt/ml/code\",                  # Fallback: source directory root\\n>>>             \"/opt/ml/processing/input/config\", # Legacy: processing input (if somehow provided)\\n        ]\\n        ' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [],
       "imports": [
@@ -102,8 +178,7 @@
         "module_name='tempfile' import_alias=None line_number=17 is_from_import=False imported_items=[]",
         "module_name='traceback' import_alias=None line_number=18 is_from_import=False imported_items=[]",
         "module_name='pathlib' import_alias=None line_number=19 is_from_import=True imported_items=['Path']",
-        "module_name='typing' import_alias=None line_number=20 is_from_import=True imported_items=['Dict', 'Optional']",
-        "module_name='traceback' import_alias=None line_number=269 is_from_import=False imported_items=[]"
+        "module_name='typing' import_alias=None line_number=20 is_from_import=True imported_items=['Dict', 'Optional']"
       ],
       "argument_definitions": [],
       "file_operations": [],
@@ -113,14 +188,7 @@
     },
     "contract": {
       "entry_point": "dummy_training.py",
-      "inputs": {
-        "pretrained_model_path": {
-          "path": "/opt/ml/processing/input/model/model.tar.gz"
-        },
-        "hyperparameters_s3_uri": {
-          "path": "/opt/ml/processing/input/config/hyperparameters.json"
-        }
-      },
+      "inputs": {},
       "outputs": {
         "model_input": {
           "path": "/opt/ml/processing/output/model"
@@ -131,7 +199,7 @@
         "required": [],
         "optional": {}
       },
-      "description": "Contract for dummy training step that processes a pretrained model.tar.gz by unpacking it, adding a hyperparameters.json file inside, and repacking it for downstream steps",
+      "description": "Contract for dummy training SOURCE step that packages model.tar.gz and hyperparameters.json from source directory",
       "framework_requirements": {
         "boto3": ">=1.26.0",
         "pathlib": ">=1.0.0"
@@ -175,7 +243,7 @@
         "details": {
           "contract": "dummy_training_contract",
           "step_type": "processing",
-          "node_type": "internal",
+          "node_type": "source",
           "total_outputs": 1,
           "outputs_with_property_paths": 1,
           "validation_reference": "https://sagemaker.readthedocs.io/en/v2.92.2/amazon_sagemaker_model_building_pipeline.html#data-dependency-property-reference",
@@ -186,14 +254,7 @@
     ],
     "contract": {
       "entry_point": "dummy_training.py",
-      "inputs": {
-        "pretrained_model_path": {
-          "path": "/opt/ml/processing/input/model/model.tar.gz"
-        },
-        "hyperparameters_s3_uri": {
-          "path": "/opt/ml/processing/input/config/hyperparameters.json"
-        }
-      },
+      "inputs": {},
       "outputs": {
         "model_input": {
           "path": "/opt/ml/processing/output/model"
@@ -204,7 +265,7 @@
         "required": [],
         "optional": {}
       },
-      "description": "Contract for dummy training step that processes a pretrained model.tar.gz by unpacking it, adding a hyperparameters.json file inside, and repacking it for downstream steps",
+      "description": "Contract for dummy training SOURCE step that packages model.tar.gz and hyperparameters.json from source directory",
       "framework_requirements": {
         "boto3": ">=1.26.0",
         "pathlib": ">=1.0.0"
@@ -213,40 +274,15 @@
     "specifications": {
       "dummy_training_spec": {
         "step_type": "DummyTraining",
-        "node_type": "internal",
-        "dependencies": [
-          {
-            "logical_name": "pretrained_model_path",
-            "dependency_type": "processing_output",
-            "required": false,
-            "compatible_sources": [
-              "XGBoostTraining",
-              "ProcessingStep",
-              "TabularPreprocessing",
-              "PytorchTraining"
-            ],
-            "data_type": "S3Uri",
-            "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
-          },
-          {
-            "logical_name": "hyperparameters_s3_uri",
-            "dependency_type": "hyperparameters",
-            "required": false,
-            "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
-            ],
-            "data_type": "S3Uri",
-            "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
-          }
-        ],
+        "node_type": "source",
+        "dependencies": [],
         "outputs": [
           {
             "logical_name": "model_input",
             "output_type": "model_artifacts",
             "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "S3 path to model artifacts with integrated hyperparameters"
+            "description": "S3 path to model artifacts with integrated hyperparameters (from source directory)"
           }
         ]
       }
@@ -254,127 +290,45 @@
     "unified_specification": {
       "primary_spec": {
         "step_type": "DummyTraining",
-        "node_type": "internal",
-        "dependencies": [
-          {
-            "logical_name": "pretrained_model_path",
-            "dependency_type": "processing_output",
-            "required": false,
-            "compatible_sources": [
-              "XGBoostTraining",
-              "ProcessingStep",
-              "TabularPreprocessing",
-              "PytorchTraining"
-            ],
-            "data_type": "S3Uri",
-            "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
-          },
-          {
-            "logical_name": "hyperparameters_s3_uri",
-            "dependency_type": "hyperparameters",
-            "required": false,
-            "compatible_sources": [
-              "HyperparameterPrep",
-              "ProcessingStep"
-            ],
-            "data_type": "S3Uri",
-            "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
-          }
-        ],
+        "node_type": "source",
+        "dependencies": [],
         "outputs": [
           {
             "logical_name": "model_input",
             "output_type": "model_artifacts",
             "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "S3 path to model artifacts with integrated hyperparameters"
+            "description": "S3 path to model artifacts with integrated hyperparameters (from source directory)"
           }
         ]
       },
       "variants": {
         "training": {
           "step_type": "DummyTraining",
-          "node_type": "internal",
-          "dependencies": [
-            {
-              "logical_name": "pretrained_model_path",
-              "dependency_type": "processing_output",
-              "required": false,
-              "compatible_sources": [
-                "XGBoostTraining",
-                "ProcessingStep",
-                "TabularPreprocessing",
-                "PytorchTraining"
-              ],
-              "data_type": "S3Uri",
-              "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
-            },
-            {
-              "logical_name": "hyperparameters_s3_uri",
-              "dependency_type": "hyperparameters",
-              "required": false,
-              "compatible_sources": [
-                "HyperparameterPrep",
-                "ProcessingStep"
-              ],
-              "data_type": "S3Uri",
-              "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
-            }
-          ],
+          "node_type": "source",
+          "dependencies": [],
           "outputs": [
             {
               "logical_name": "model_input",
               "output_type": "model_artifacts",
               "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
               "data_type": "S3Uri",
-              "description": "S3 path to model artifacts with integrated hyperparameters"
+              "description": "S3 path to model artifacts with integrated hyperparameters (from source directory)"
             }
           ]
         }
       },
-      "unified_dependencies": {
-        "pretrained_model_path": {
-          "logical_name": "pretrained_model_path",
-          "dependency_type": "processing_output",
-          "required": false,
-          "compatible_sources": [
-            "XGBoostTraining",
-            "ProcessingStep",
-            "TabularPreprocessing",
-            "PytorchTraining"
-          ],
-          "data_type": "S3Uri",
-          "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
-        },
-        "hyperparameters_s3_uri": {
-          "logical_name": "hyperparameters_s3_uri",
-          "dependency_type": "hyperparameters",
-          "required": false,
-          "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
-          ],
-          "data_type": "S3Uri",
-          "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
-        }
-      },
+      "unified_dependencies": {},
       "unified_outputs": {
         "model_input": {
           "logical_name": "model_input",
           "output_type": "model_artifacts",
           "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "S3 path to model artifacts with integrated hyperparameters"
+          "description": "S3 path to model artifacts with integrated hyperparameters (from source directory)"
         }
       },
-      "dependency_sources": {
-        "pretrained_model_path": [
-          "training"
-        ],
-        "hyperparameters_s3_uri": [
-          "training"
-        ]
-      },
+      "dependency_sources": {},
       "output_sources": {
         "model_input": [
           "training"
@@ -385,96 +339,18 @@
   },
   "level3": {
     "passed": true,
-    "issues": [
-      {
-        "severity": "WARNING",
-        "category": "dependency_compatibility",
-        "message": "Dependency hyperparameters_s3_uri has low compatibility score: 0.420",
-        "details": {
-          "logical_name": "hyperparameters_s3_uri",
-          "specification": "dummy_training",
-          "best_match": {
-            "provider": "BatchTransform",
-            "output": "transform_output",
-            "score": 0.4197368421052632
-          },
-          "required": false,
-          "threshold_info": {
-            "mode": "relaxed",
-            "thresholds": {
-              "pass": "\u2265 0.6",
-              "warning": "0.4 - 0.59",
-              "error": "0.2 - 0.39",
-              "critical": "< 0.2"
-            },
-            "resolution_threshold": 0.5,
-            "description": "Relaxed validation allowing reasonable compatibility matches"
-          },
-          "score_breakdown": {
-            "type_compatibility": 0.2,
-            "data_type_compatibility": 0.2,
-            "semantic_similarity": 0.019736842105263157,
-            "exact_match_bonus": 0.0,
-            "source_compatibility": 0.0,
-            "keyword_matching": 0.0
-          },
-          "all_candidates": [
-            {
-              "provider": "BatchTransform",
-              "output": "transform_output",
-              "score": 0.4197368421052632
-            },
-            {
-              "provider": "PyTorchModel",
-              "output": "model_name",
-              "score": 0.31875000000000003
-            },
-            {
-              "provider": "XGBoostModel",
-              "output": "model_name",
-              "score": 0.31875000000000003
-            }
-          ]
-        },
-        "recommendation": "Consider renaming 'hyperparameters_s3_uri' or adding aliases to improve semantic matching; Add 'BatchTransform' to compatible_sources for hyperparameters_s3_uri"
-      }
-    ],
+    "issues": [],
     "specification": {
       "step_type": "DummyTraining",
-      "node_type": "internal",
-      "dependencies": [
-        {
-          "logical_name": "pretrained_model_path",
-          "dependency_type": "processing_output",
-          "required": false,
-          "compatible_sources": [
-            "XGBoostTraining",
-            "ProcessingStep",
-            "TabularPreprocessing",
-            "PytorchTraining"
-          ],
-          "data_type": "S3Uri",
-          "description": "Optional pretrained model path. If not provided, step uploads local model file from config."
-        },
-        {
-          "logical_name": "hyperparameters_s3_uri",
-          "dependency_type": "hyperparameters",
-          "required": false,
-          "compatible_sources": [
-            "HyperparameterPrep",
-            "ProcessingStep"
-          ],
-          "data_type": "S3Uri",
-          "description": "Optional hyperparameters file. If not provided, step generates hyperparameters from config."
-        }
-      ],
+      "node_type": "source",
+      "dependencies": [],
       "outputs": [
         {
           "logical_name": "model_input",
           "output_type": "model_artifacts",
           "property_path": "properties.ProcessingOutputConfig.Outputs['model_input'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "S3 path to model artifacts with integrated hyperparameters"
+          "description": "S3 path to model artifacts with integrated hyperparameters (from source directory)"
         }
       ]
     }
@@ -483,17 +359,28 @@
     "passed": true,
     "issues": [
       {
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: project_root_folder",
+        "details": {
+          "field_name": "project_root_folder",
+          "builder": "dummy_training"
+        },
+        "recommendation": "Access required field project_root_folder in builder or make it optional"
+      },
+      {
         "severity": "INFO",
         "category": "required_field_validation",
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "pipeline_version",
             "author",
-            "role",
+            "project_root_folder",
             "bucket",
+            "region",
             "service_name",
-            "region"
+            "pipeline_version",
+            "role"
           ],
           "builder": "dummy_training"
         },
@@ -503,79 +390,34 @@
     "builder_analysis": {
       "config_accesses": [
         {
-          "field_name": "pretrained_model_path",
-          "line_number": 83,
-          "context": "line_83"
-        },
-        {
-          "field_name": "pretrained_model_path",
+          "field_name": "processing_entry_point",
           "line_number": 87,
           "context": "line_87"
         },
         {
-          "field_name": "pretrained_model_path",
-          "line_number": 88,
-          "context": "line_88"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 97,
-          "context": "line_97"
-        },
-        {
-          "field_name": "pretrained_model_path",
-          "line_number": 188,
-          "context": "line_188"
-        },
-        {
-          "field_name": "pipeline_s3_loc",
-          "line_number": 191,
-          "context": "line_191"
-        },
-        {
-          "field_name": "pretrained_model_path",
-          "line_number": 197,
-          "context": "line_197"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 221,
-          "context": "line_221"
-        },
-        {
-          "field_name": "hyperparameters_s3_uri",
-          "line_number": 232,
-          "context": "line_232"
-        },
-        {
-          "field_name": "bucket",
-          "line_number": 235,
-          "context": "line_235"
-        },
-        {
-          "field_name": "pipeline_name",
-          "line_number": 236,
-          "context": "line_236"
-        },
-        {
           "field_name": "processing_framework_version",
-          "line_number": 290,
-          "context": "line_290"
+          "line_number": 103,
+          "context": "line_103"
         },
         {
           "field_name": "processing_instance_count",
-          "line_number": 293,
-          "context": "line_293"
+          "line_number": 106,
+          "context": "line_106"
         },
         {
           "field_name": "processing_volume_size",
-          "line_number": 294,
-          "context": "line_294"
+          "line_number": 107,
+          "context": "line_107"
         },
         {
-          "field_name": "pipeline_s3_loc",
-          "line_number": 406,
-          "context": "line_406"
+          "field_name": "processing_entry_point",
+          "line_number": 239,
+          "context": "line_239"
+        },
+        {
+          "field_name": "effective_source_dir",
+          "line_number": 241,
+          "context": "line_241"
         }
       ],
       "validation_calls": [],
@@ -583,25 +425,22 @@
       "class_definitions": [
         {
           "class_name": "DummyTrainingStepBuilder",
-          "line_number": 33,
+          "line_number": 32,
           "base_classes": [
             "StepBuilderBase"
           ],
-          "decorators": [
-            "Call"
-          ]
+          "decorators": []
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 36,
+          "line_number": 35,
           "args": [
             "self",
             "config",
             "sagemaker_session",
             "role",
-            "notebook_root",
             "registry_manager",
             "dependency_resolver"
           ],
@@ -610,58 +449,7 @@
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 72,
-          "args": [
-            "self"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_normalize_s3_uri",
-          "line_number": 102,
-          "args": [
-            "self",
-            "uri",
-            "description"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_validate_s3_uri",
-          "line_number": 130,
-          "args": [
-            "self",
-            "uri",
-            "description"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_get_s3_directory_path",
-          "line_number": 154,
-          "args": [
-            "self",
-            "uri",
-            "filename"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_upload_model_to_s3",
-          "line_number": 178,
-          "args": [
-            "self"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_prepare_hyperparameters_file",
-          "line_number": 210,
+          "line_number": 70,
           "args": [
             "self"
           ],
@@ -670,7 +458,7 @@
         },
         {
           "method_name": "_get_processor",
-          "line_number": 282,
+          "line_number": 95,
           "args": [
             "self"
           ],
@@ -679,7 +467,7 @@
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 300,
+          "line_number": 113,
           "args": [
             "self"
           ],
@@ -688,7 +476,7 @@
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 315,
+          "line_number": 128,
           "args": [
             "self",
             "inputs"
@@ -698,7 +486,7 @@
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 386,
+          "line_number": 140,
           "args": [
             "self",
             "outputs"
@@ -708,7 +496,7 @@
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 426,
+          "line_number": 186,
           "args": [
             "self"
           ],
@@ -717,7 +505,7 @@
         },
         {
           "method_name": "create_step",
-          "line_number": 437,
+          "line_number": 197,
           "args": [
             "self"
           ],
@@ -877,22 +665,16 @@
         },
         {
           "type": "from_import",
-          "module": "registry.builder_registry",
-          "name": "register_builder",
+          "module": "sagemaker.workflow.functions",
+          "name": "Join",
           "alias": null,
-          "line_number": 28
+          "line_number": 160
         },
         {
           "type": "import",
           "module": "traceback",
           "alias": null,
-          "line_number": 206
-        },
-        {
-          "type": "import",
-          "module": "traceback",
-          "alias": null,
-          "line_number": 506
+          "line_number": 269
         }
       ],
       "config_class_usage": []
@@ -944,6 +726,10 @@
           "type": "typing.Optional[str]",
           "required": false
         },
+        "project_root_folder": {
+          "type": "<class 'str'>",
+          "required": true
+        },
         "processing_instance_count": {
           "type": "<class 'int'>",
           "required": false
@@ -980,18 +766,6 @@
           "type": "<class 'str'>",
           "required": false
         },
-        "pretrained_model_path": {
-          "type": "<class 'str'>",
-          "required": false
-        },
-        "hyperparameters": {
-          "type": "<class 'cursus.core.base.hyperparameters_base.ModelHyperparameters'>",
-          "required": false
-        },
-        "hyperparameters_s3_uri": {
-          "type": "typing.Optional[str]",
-          "required": false
-        },
         "aws_region": {
           "type": "property",
           "required": false
@@ -1024,11 +798,23 @@
           "type": "property",
           "required": false
         },
+        "resolved_processing_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "resolved_source_dir": {
+          "type": "property",
+          "required": false
+        },
         "script_contract": {
           "type": "property",
           "required": false
         },
         "script_path": {
+          "type": "property",
+          "required": false
+        },
+        "step_catalog": {
           "type": "property",
           "required": false
         }
@@ -1039,7 +825,8 @@
         "role",
         "region",
         "service_name",
-        "pipeline_version"
+        "pipeline_version",
+        "project_root_folder"
       ],
       "optional_fields": [
         "model_class",
@@ -1056,9 +843,6 @@
         "processing_entry_point",
         "processing_script_arguments",
         "processing_framework_version",
-        "pretrained_model_path",
-        "hyperparameters",
-        "hyperparameters_s3_uri",
         "aws_region",
         "effective_instance_type",
         "effective_source_dir",
@@ -1067,8 +851,11 @@
         "pipeline_description",
         "pipeline_name",
         "pipeline_s3_loc",
+        "resolved_processing_source_dir",
+        "resolved_source_dir",
         "script_contract",
-        "script_path"
+        "script_path",
+        "step_catalog"
       ],
       "default_values": {
         "author": "PydanticUndefined",
@@ -1082,6 +869,7 @@
         "framework_version": "2.1.0",
         "py_version": "py310",
         "source_dir": null,
+        "project_root_folder": "PydanticUndefined",
         "processing_instance_count": 1,
         "processing_volume_size": 500,
         "processing_instance_type_large": "ml.m5.4xlarge",
@@ -1090,17 +878,24 @@
         "processing_source_dir": null,
         "processing_entry_point": "dummy_training.py",
         "processing_script_arguments": null,
-        "processing_framework_version": "1.2-1",
-        "pretrained_model_path": "",
-        "hyperparameters": "PydanticUndefined",
-        "hyperparameters_s3_uri": null
+        "processing_framework_version": "1.2-1"
       }
     }
   },
   "overall_status": "PASSING",
+  "scoring": {
+    "overall_score": 100.0,
+    "quality_rating": "Excellent",
+    "level_scores": {
+      "level1_script_contract": 100.0,
+      "level2_contract_spec": 100.0,
+      "level3_spec_dependencies": 100.0,
+      "level4_builder_config": 100.0
+    }
+  },
   "metadata": {
     "script_name": "dummy_training",
-    "validation_timestamp": "2025-09-07T19:43:23.361443",
+    "validation_timestamp": "2025-09-28T10:45:59.312429",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/dummy_training.py"
   }

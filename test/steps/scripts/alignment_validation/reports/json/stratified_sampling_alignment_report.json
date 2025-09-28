@@ -1,8 +1,19 @@
 {
-  "script_name": "tabular_preprocessing",
+  "script_name": "stratified_sampling",
   "level1": {
     "passed": true,
     "issues": [
+      {
+        "severity": "WARNING",
+        "category": "environment_variables",
+        "message": "Optional environment variable accessed without default: VARIANCE_COLUMN",
+        "details": {
+          "variable": "VARIANCE_COLUMN",
+          "line": 392,
+          "script": "stratified_sampling"
+        },
+        "recommendation": "Provide default value when accessing optional variable VARIANCE_COLUMN"
+      },
       {
         "severity": "INFO",
         "category": "arguments",
@@ -10,7 +21,7 @@
         "details": {
           "cli_argument": "job-type",
           "python_attribute": "job_type",
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "source": "builder"
         },
         "recommendation": "Argument --job-type is provided by builder - no action needed"
@@ -20,7 +31,7 @@
         "category": "testability_compliance",
         "message": "Main function follows testability pattern with all required parameters",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "testability_parameters": [
             "job_args",
             "input_paths",
@@ -35,22 +46,37 @@
         "category": "testability_env_access",
         "message": "Helper functions use direct environment access - consider parameter passing",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "helper_accesses": [
             {
               "function": null,
-              "variable": "LABEL_FIELD",
-              "line_number": 228
+              "variable": "STRATA_COLUMN",
+              "line_number": 385
             },
             {
               "function": null,
-              "variable": "TRAIN_RATIO",
-              "line_number": 231
+              "variable": "SAMPLING_STRATEGY",
+              "line_number": 389
             },
             {
               "function": null,
-              "variable": "TEST_VAL_RATIO",
-              "line_number": 232
+              "variable": "TARGET_SAMPLE_SIZE",
+              "line_number": 390
+            },
+            {
+              "function": null,
+              "variable": "MIN_SAMPLES_PER_STRATUM",
+              "line_number": 391
+            },
+            {
+              "function": null,
+              "variable": "VARIANCE_COLUMN",
+              "line_number": 392
+            },
+            {
+              "function": null,
+              "variable": "RANDOM_STATE",
+              "line_number": 393
             }
           ]
         },
@@ -61,7 +87,7 @@
         "category": "testability_entry_point",
         "message": "Main function expects environ_vars parameter but no environment collection found in entry point",
         "details": {
-          "script": "tabular_preprocessing"
+          "script": "stratified_sampling"
         },
         "recommendation": "Add environment variable collection in __main__ block to pass to main function"
       },
@@ -70,10 +96,10 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for job_args",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "job_args",
           "current_pattern": "job_args.job_type",
-          "line_number": 149
+          "line_number": 267
         },
         "recommendation": "Use job_args['key'] for accessing nested values"
       },
@@ -82,10 +108,10 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for environ_vars",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "environ_vars",
           "current_pattern": "environ_vars.get",
-          "line_number": 150
+          "line_number": 268
         },
         "recommendation": "Use environ_vars['key'] for accessing nested values"
       },
@@ -94,10 +120,10 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for environ_vars",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "environ_vars",
           "current_pattern": "environ_vars.get",
-          "line_number": 151
+          "line_number": 269
         },
         "recommendation": "Use environ_vars['key'] for accessing nested values"
       },
@@ -106,10 +132,46 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for environ_vars",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "environ_vars",
           "current_pattern": "environ_vars.get",
-          "line_number": 152
+          "line_number": 270
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "stratified_sampling",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 271
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "stratified_sampling",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 272
+        },
+        "recommendation": "Use environ_vars['key'] for accessing nested values"
+      },
+      {
+        "severity": "INFO",
+        "category": "testability_parameter_access",
+        "message": "Consider using dictionary-style access for environ_vars",
+        "details": {
+          "script": "stratified_sampling",
+          "parameter": "environ_vars",
+          "current_pattern": "environ_vars.get",
+          "line_number": 273
         },
         "recommendation": "Use environ_vars['key'] for accessing nested values"
       },
@@ -118,10 +180,10 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for input_paths",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "input_paths",
           "current_pattern": "input_paths.get",
-          "line_number": 155
+          "line_number": 276
         },
         "recommendation": "Use input_paths['key'] for accessing nested values"
       },
@@ -130,10 +192,10 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for output_paths",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "output_paths",
           "current_pattern": "output_paths.get",
-          "line_number": 156
+          "line_number": 277
         },
         "recommendation": "Use output_paths['key'] for accessing nested values"
       },
@@ -142,10 +204,10 @@
         "category": "testability_parameter_access",
         "message": "Consider using dictionary-style access for job_args",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "parameter": "job_args",
           "current_pattern": "args.job_type",
-          "line_number": 248
+          "line_number": 409
         },
         "recommendation": "Use job_args['key'] for accessing nested values"
       },
@@ -154,7 +216,7 @@
         "category": "testability_container_support",
         "message": "No container detection found - consider adding hybrid mode support",
         "details": {
-          "script": "tabular_preprocessing"
+          "script": "stratified_sampling"
         },
         "recommendation": "Add container detection to support both local and container execution"
       },
@@ -163,17 +225,23 @@
         "category": "testability_helper_functions",
         "message": "Helper function 'None' accesses environment directly",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "function": null,
           "env_variables": [
-            "LABEL_FIELD",
-            "TRAIN_RATIO",
-            "TEST_VAL_RATIO"
+            "STRATA_COLUMN",
+            "SAMPLING_STRATEGY",
+            "TARGET_SAMPLE_SIZE",
+            "MIN_SAMPLES_PER_STRATUM",
+            "VARIANCE_COLUMN",
+            "RANDOM_STATE"
           ],
           "line_numbers": [
-            228,
-            231,
-            232
+            385,
+            389,
+            390,
+            391,
+            392,
+            393
           ]
         },
         "recommendation": "Refactor 'None' to accept environment variables as parameters"
@@ -183,7 +251,7 @@
         "category": "framework_detected",
         "message": "Processing script uses sklearn framework",
         "details": {
-          "script": "tabular_preprocessing",
+          "script": "stratified_sampling",
           "step_type": "Processing",
           "framework": "sklearn"
         },
@@ -191,73 +259,56 @@
       }
     ],
     "script_analysis": {
-      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
+      "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/stratified_sampling.py",
       "path_references": [
-        "path='.gz' line_number=23 context='\\ndef _is_gzipped(path: str) -> bool:\\n>>>     return path.lower().endswith(\".gz\")\\n\\n' is_hardcoded=True construction_method=None",
-        "path='Use csv.Sniffer to detect a delimiter, defaulting to comma.' line_number=27 context='\\ndef _detect_separator_from_sample(sample_lines: str) -> str:\\n>>>     \"\"\"Use csv.Sniffer to detect a delimiter, defaulting to comma.\"\"\"\\n    try:\\n        dialect = csv.Sniffer().sniff(sample_lines)' is_hardcoded=True construction_method=None",
-        "path='Check if the JSON file is in JSON Lines or regular format.' line_number=36 context='\\ndef peek_json_format(file_path: Path, open_func: Callable = open) -> str:\\n>>>     \"\"\"Check if the JSON file is in JSON Lines or regular format.\"\"\"\\n    try:\\n        with open_func(str(file_path), \"rt\") as f:' is_hardcoded=True construction_method=None",
-        "path='Read a JSON or JSON Lines file into a DataFrame.' line_number=56 context='\\ndef _read_json_file(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a JSON or JSON Lines file into a DataFrame.\"\"\"\\n    open_func = gzip.open if _is_gzipped(str(file_path)) else open\\n    fmt = peek_json_format(file_path, open_func)' is_hardcoded=True construction_method=None",
-        "path='Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.' line_number=68 context='\\ndef _read_file_to_df(file_path: Path) -> pd.DataFrame:\\n>>>     \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n    if suffix == \".gz\":' is_hardcoded=True construction_method=None",
-        "path='.gz' line_number=70 context='    \"\"\"Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.\"\"\"\\n    suffix = file_path.suffix.lower()\\n>>>     if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n        if inner_ext in [\".csv\", \".tsv\"]:' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=72 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.tsv' line_number=72 context='    if suffix == \".gz\":\\n        inner_ext = Path(file_path.stem).suffix.lower()\\n>>>         if inner_ext in [\".csv\", \".tsv\"]:\\n            with gzip.open(str(file_path), \"rt\") as f:\\n                sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=76 context='                sep = _detect_separator_from_sample(f.readline() + f.readline())\\n            return pd.read_csv(str(file_path), sep=sep, compression=\"gzip\")\\n>>>         elif inner_ext == \".json\":\\n            return _read_json_file(file_path)\\n        elif inner_ext.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=89 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.tsv' line_number=89 context='        else:\\n            raise ValueError(f\"Unsupported gzipped file type: {file_path}\")\\n>>>     elif suffix in [\".csv\", \".tsv\"]:\\n        with open(str(file_path), \"rt\") as f:\\n            sep = _detect_separator_from_sample(f.readline() + f.readline())' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=93 context='            sep = _detect_separator_from_sample(f.readline() + f.readline())\\n        return pd.read_csv(str(file_path), sep=sep)\\n>>>     elif suffix == \".json\":\\n        return _read_json_file(file_path)\\n    elif suffix.endswith(\".parquet\"):' is_hardcoded=True construction_method=None",
-        "path='Detect and combine all supported data shards in a directory.' line_number=102 context='\\ndef combine_shards(input_dir: str) -> pd.DataFrame:\\n>>>     \"\"\"Detect and combine all supported data shards in a directory.\"\"\"\\n    input_path = Path(input_dir)\\n    if not input_path.is_dir():' is_hardcoded=True construction_method=None",
-        "path='part-*.csv' line_number=107 context='        raise RuntimeError(f\"Input directory does not exist: {input_dir}\")\\n    patterns = [\\n>>>         \"part-*.csv\",\\n        \"part-*.csv.gz\",\\n        \"part-*.json\",' is_hardcoded=True construction_method=None",
-        "path='part-*.csv.gz' line_number=108 context='    patterns = [\\n        \"part-*.csv\",\\n>>>         \"part-*.csv.gz\",\\n        \"part-*.json\",\\n        \"part-*.json.gz\",' is_hardcoded=True construction_method=None",
-        "path='part-*.json' line_number=109 context='        \"part-*.csv\",\\n        \"part-*.csv.gz\",\\n>>>         \"part-*.json\",\\n        \"part-*.json.gz\",\\n        \"part-*.parquet\",' is_hardcoded=True construction_method=None",
-        "path='part-*.json.gz' line_number=110 context='        \"part-*.csv.gz\",\\n        \"part-*.json\",\\n>>>         \"part-*.json.gz\",\\n        \"part-*.parquet\",\\n        \"part-*.snappy.parquet\",' is_hardcoded=True construction_method=None",
-        "path='part-*.parquet.gz' line_number=113 context='        \"part-*.parquet\",\\n        \"part-*.snappy.parquet\",\\n>>>         \"part-*.parquet.gz\",\\n    ]\\n    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])' is_hardcoded=True construction_method=None",
-        "path='No CSV/JSON/Parquet shards found under ' line_number=117 context='    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])\\n    if not all_shards:\\n>>>         raise RuntimeError(f\"No CSV/JSON/Parquet shards found under {input_dir}\")\\n    try:\\n        dfs = [_read_file_to_df(shard) for shard in all_shards]' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/data' line_number=155 context='\\n    # Extract paths\\n>>>     input_data_dir = input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\")\\n    output_dir = output_paths.get(\"data_output\", \"/opt/ml/processing/output\")\\n    # Use print function if no logger is provided' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=156 context='    # Extract paths\\n    input_data_dir = input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\")\\n>>>     output_dir = output_paths.get(\"data_output\", \"/opt/ml/processing/output\")\\n    # Use print function if no logger is provided\\n    log = logger or print' is_hardcoded=True construction_method=None",
-        "path='.' line_number=170 context='\\n    # 3. Process columns and labels\\n>>>     df.columns = [col.replace(\"__DOT__\", \".\") for col in df.columns]\\n    if label_field not in df.columns:\\n        raise RuntimeError(' is_hardcoded=True construction_method=None",
-        "path='_processed_data.csv' line_number=207 context='\\n        # Only output processed_data.csv\\n>>>         proc_path = subfolder / f\"{split_name}_processed_data.csv\"\\n        split_df.to_csv(proc_path, index=False)\\n        log(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")' is_hardcoded=True construction_method=None",
-        "path='[INFO] Preprocessing complete.' line_number=211 context='        log(f\"[INFO] Saved {proc_path} (shape={split_df.shape})\")\\n\\n>>>     log(\"[INFO] Preprocessing complete.\")\\n    return splits\\n' is_hardcoded=True construction_method=None",
-        "path='LABEL_FIELD environment variable must be set.' line_number=230 context='        LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n        if not LABEL_FIELD:\\n>>>             raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n        TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n        TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/input/data' line_number=235 context='\\n        # Define standard SageMaker paths - use contract-declared paths directly\\n>>>         INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"\\n        OUTPUT_DIR = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/processing/output' line_number=236 context='        # Define standard SageMaker paths - use contract-declared paths directly\\n        INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"\\n>>>         OUTPUT_DIR = \"/opt/ml/processing/output\"\\n\\n        # Set up logging' is_hardcoded=True construction_method=None"
+        "path='Extract stratum information from DataFrame.' line_number=71 context='    \\n    def _get_strata_info(self, df: pd.DataFrame, strata_column: str, variance_column: Optional[str] = None) -> Dict:\\n>>>         \"\"\"Extract stratum information from DataFrame.\"\"\"\\n        strata_info = {}\\n        ' is_hardcoded=True construction_method=None",
+        "path='Perform the actual sampling based on allocation.' line_number=196 context='    \\n    def _perform_sampling(self, df: pd.DataFrame, strata_column: str, allocation: Dict[Any, int]) -> pd.DataFrame:\\n>>>         \"\"\"Perform the actual sampling based on allocation.\"\"\"\\n        sampled_dfs = []\\n        ' is_hardcoded=True construction_method=None",
+        "path='Read processed data from tabular_preprocessing output structure.' line_number=218 context='\\ndef _read_processed_data(input_dir: str, split_name: str) -> pd.DataFrame:\\n>>>     \"\"\"Read processed data from tabular_preprocessing output structure.\"\"\"\\n    input_path = Path(input_dir)\\n    split_dir = input_path / split_name' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=223 context='    \\n    # Look for the processed data file\\n>>>     processed_file = split_dir / f\"{split_name}_processed_data.csv\"\\n    \\n    if not processed_file.exists():' is_hardcoded=True construction_method=None",
+        "path='Save sampled data maintaining the same folder structure as tabular_preprocessing.' line_number=232 context='\\ndef _save_sampled_data(df: pd.DataFrame, output_dir: str, split_name: str, logger: Callable[[str], None]):\\n>>>     \"\"\"Save sampled data maintaining the same folder structure as tabular_preprocessing.\"\"\"\\n    output_path = Path(output_dir)\\n    split_dir = output_path / split_name' is_hardcoded=True construction_method=None",
+        "path='_processed_data.csv' line_number=238 context='    \\n    # Save with same naming convention\\n>>>     output_file = split_dir / f\"{split_name}_processed_data.csv\"\\n    df.to_csv(output_file, index=False)\\n    logger(f\"[INFO] Saved {output_file} (shape={df.shape})\")' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=276 context='    \\n    # Extract paths\\n>>>     input_data_dir = input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\")\\n    output_dir = output_paths.get(\"data_output\", \"/opt/ml/processing/output\")\\n    ' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=277 context='    # Extract paths\\n    input_data_dir = input_paths.get(\"data_input\", \"/opt/ml/processing/input/data\")\\n>>>     output_dir = output_paths.get(\"data_output\", \"/opt/ml/processing/output\")\\n    \\n    # Use print function if no logger is provided' is_hardcoded=True construction_method=None",
+        "path='STRATA_COLUMN environment variable must be set.' line_number=284 context='    # Validate required parameters\\n    if not strata_column:\\n>>>         raise RuntimeError(\"STRATA_COLUMN environment variable must be set.\")\\n    \\n    if sampling_strategy not in [\\'balanced\\', \\'proportional_min\\', \\'optimal\\']:' is_hardcoded=True construction_method=None",
+        "path=' split...' line_number=316 context='    for split_name in splits_to_process:\\n        try:\\n>>>             log(f\"[INFO] Processing {split_name} split...\")\\n            \\n            # Read the processed data from tabular_preprocessing output' is_hardcoded=True construction_method=None",
+        "path=\"' not found. Using default variance for optimal allocation.\" line_number=328 context='            # Check if variance column exists (for optimal strategy)\\n            if sampling_strategy == \\'optimal\\' and variance_column and variance_column not in df.columns:\\n>>>                 log(f\"[WARNING] Variance column \\'{variance_column}\\' not found. Using default variance for optimal allocation.\")\\n                variance_column = None\\n            ' is_hardcoded=True construction_method=None",
+        "path='[INFO] Stratified sampling complete.' line_number=368 context='            log(f\"[WARNING] Could not copy test split: {str(e)}\")\\n    \\n>>>     log(\"[INFO] Stratified sampling complete.\")\\n    return sampled_splits\\n' is_hardcoded=True construction_method=None",
+        "path='STRATA_COLUMN environment variable must be set.' line_number=387 context='        STRATA_COLUMN = os.environ.get(\"STRATA_COLUMN\")\\n        if not STRATA_COLUMN:\\n>>>             raise RuntimeError(\"STRATA_COLUMN environment variable must be set.\")\\n        \\n        SAMPLING_STRATEGY = os.environ.get(\"SAMPLING_STRATEGY\", \"balanced\")' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/input/data' line_number=396 context='\\n        # Define standard SageMaker paths - use contract-declared paths directly\\n>>>         INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"\\n        OUTPUT_DIR = \"/opt/ml/processing/output\"\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/processing/output' line_number=397 context='        # Define standard SageMaker paths - use contract-declared paths directly\\n        INPUT_DATA_DIR = \"/opt/ml/processing/input/data\"\\n>>>         OUTPUT_DIR = \"/opt/ml/processing/output\"\\n\\n        # Set up logging' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [
-        "variable_name='LABEL_FIELD' line_number=228 context='\\n        # Read configuration from environment variables\\n>>>         LABEL_FIELD = os.environ.get(\"LABEL_FIELD\")\\n        if not LABEL_FIELD:\\n            raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
-        "variable_name='TRAIN_RATIO' line_number=231 context='        if not LABEL_FIELD:\\n            raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n>>>         TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n        TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n' access_method='os.environ.get' has_default=True default_value=None",
-        "variable_name='TEST_VAL_RATIO' line_number=232 context='            raise RuntimeError(\"LABEL_FIELD environment variable must be set.\")\\n        TRAIN_RATIO = float(os.environ.get(\"TRAIN_RATIO\", 0.7))\\n>>>         TEST_VAL_RATIO = float(os.environ.get(\"TEST_VAL_RATIO\", 0.5))\\n\\n        # Define standard SageMaker paths - use contract-declared paths directly' access_method='os.environ.get' has_default=True default_value=None"
+        "variable_name='STRATA_COLUMN' line_number=385 context='\\n        # Read configuration from environment variables\\n>>>         STRATA_COLUMN = os.environ.get(\"STRATA_COLUMN\")\\n        if not STRATA_COLUMN:\\n            raise RuntimeError(\"STRATA_COLUMN environment variable must be set.\")' access_method='os.environ.get' has_default=False default_value=None",
+        "variable_name='SAMPLING_STRATEGY' line_number=389 context='            raise RuntimeError(\"STRATA_COLUMN environment variable must be set.\")\\n        \\n>>>         SAMPLING_STRATEGY = os.environ.get(\"SAMPLING_STRATEGY\", \"balanced\")\\n        TARGET_SAMPLE_SIZE = int(os.environ.get(\"TARGET_SAMPLE_SIZE\", 1000))\\n        MIN_SAMPLES_PER_STRATUM = int(os.environ.get(\"MIN_SAMPLES_PER_STRATUM\", 10))' access_method='os.environ.get' has_default=True default_value='balanced'",
+        "variable_name='TARGET_SAMPLE_SIZE' line_number=390 context='        \\n        SAMPLING_STRATEGY = os.environ.get(\"SAMPLING_STRATEGY\", \"balanced\")\\n>>>         TARGET_SAMPLE_SIZE = int(os.environ.get(\"TARGET_SAMPLE_SIZE\", 1000))\\n        MIN_SAMPLES_PER_STRATUM = int(os.environ.get(\"MIN_SAMPLES_PER_STRATUM\", 10))\\n        VARIANCE_COLUMN = os.environ.get(\"VARIANCE_COLUMN\")  # Optional' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='MIN_SAMPLES_PER_STRATUM' line_number=391 context='        SAMPLING_STRATEGY = os.environ.get(\"SAMPLING_STRATEGY\", \"balanced\")\\n        TARGET_SAMPLE_SIZE = int(os.environ.get(\"TARGET_SAMPLE_SIZE\", 1000))\\n>>>         MIN_SAMPLES_PER_STRATUM = int(os.environ.get(\"MIN_SAMPLES_PER_STRATUM\", 10))\\n        VARIANCE_COLUMN = os.environ.get(\"VARIANCE_COLUMN\")  # Optional\\n        RANDOM_STATE = int(os.environ.get(\"RANDOM_STATE\", 42))' access_method='os.environ.get' has_default=True default_value=None",
+        "variable_name='VARIANCE_COLUMN' line_number=392 context='        TARGET_SAMPLE_SIZE = int(os.environ.get(\"TARGET_SAMPLE_SIZE\", 1000))\\n        MIN_SAMPLES_PER_STRATUM = int(os.environ.get(\"MIN_SAMPLES_PER_STRATUM\", 10))\\n>>>         VARIANCE_COLUMN = os.environ.get(\"VARIANCE_COLUMN\")  # Optional\\n        RANDOM_STATE = int(os.environ.get(\"RANDOM_STATE\", 42))\\n' access_method='os.environ.get' has_default=False default_value=None",
+        "variable_name='RANDOM_STATE' line_number=393 context='        MIN_SAMPLES_PER_STRATUM = int(os.environ.get(\"MIN_SAMPLES_PER_STRATUM\", 10))\\n        VARIANCE_COLUMN = os.environ.get(\"VARIANCE_COLUMN\")  # Optional\\n>>>         RANDOM_STATE = int(os.environ.get(\"RANDOM_STATE\", 42))\\n\\n        # Define standard SageMaker paths - use contract-declared paths directly' access_method='os.environ.get' has_default=True default_value=None"
       ],
       "imports": [
         "module_name='os' import_alias=None line_number=2 is_from_import=False imported_items=[]",
-        "module_name='gzip' import_alias=None line_number=3 is_from_import=False imported_items=[]",
-        "module_name='tempfile' import_alias=None line_number=4 is_from_import=False imported_items=[]",
-        "module_name='shutil' import_alias=None line_number=5 is_from_import=False imported_items=[]",
-        "module_name='csv' import_alias=None line_number=6 is_from_import=False imported_items=[]",
-        "module_name='json' import_alias=None line_number=7 is_from_import=False imported_items=[]",
-        "module_name='argparse' import_alias=None line_number=8 is_from_import=False imported_items=[]",
-        "module_name='logging' import_alias=None line_number=9 is_from_import=False imported_items=[]",
-        "module_name='sys' import_alias=None line_number=10 is_from_import=False imported_items=[]",
-        "module_name='traceback' import_alias=None line_number=11 is_from_import=False imported_items=[]",
-        "module_name='pathlib' import_alias=None line_number=12 is_from_import=True imported_items=['Path']",
-        "module_name='typing' import_alias=None line_number=13 is_from_import=True imported_items=['Dict', 'Optional', 'Callable', 'Any']",
-        "module_name='multiprocessing' import_alias=None line_number=14 is_from_import=True imported_items=['Pool', 'cpu_count']",
-        "module_name='pandas' import_alias='pd' line_number=15 is_from_import=False imported_items=[]",
-        "module_name='numpy' import_alias='np' line_number=16 is_from_import=False imported_items=[]",
-        "module_name='sklearn.model_selection' import_alias=None line_number=17 is_from_import=True imported_items=['train_test_split']"
+        "module_name='argparse' import_alias=None line_number=3 is_from_import=False imported_items=[]",
+        "module_name='logging' import_alias=None line_number=4 is_from_import=False imported_items=[]",
+        "module_name='sys' import_alias=None line_number=5 is_from_import=False imported_items=[]",
+        "module_name='traceback' import_alias=None line_number=6 is_from_import=False imported_items=[]",
+        "module_name='pathlib' import_alias=None line_number=7 is_from_import=True imported_items=['Path']",
+        "module_name='typing' import_alias=None line_number=8 is_from_import=True imported_items=['Dict', 'Optional', 'Callable', 'Any', 'Tuple']",
+        "module_name='pandas' import_alias='pd' line_number=9 is_from_import=False imported_items=[]",
+        "module_name='numpy' import_alias='np' line_number=10 is_from_import=False imported_items=[]",
+        "module_name='sklearn.model_selection' import_alias=None line_number=11 is_from_import=True imported_items=['train_test_split']"
       ],
       "argument_definitions": [
-        "argument_name='job_type' line_number=218 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']"
+        "argument_name='job_type' line_number=375 is_required=True has_default=False default_value=None argument_type='str' choices=['training', 'validation', 'testing', 'calibration']"
       ],
-      "file_operations": [
-        "file_path='<file_object>' operation_type='read' line_number=63 context='    else:\\n        with open_func(str(file_path), \"rt\") as f:\\n>>>             data = json.load(f)\\n        return pd.json_normalize(data if isinstance(data, list) else [data])\\n' mode=None method='json.load'"
-      ],
+      "file_operations": [],
       "step_type": "Processing",
       "framework": "sklearn",
       "step_type_patterns": {}
     },
     "contract": {
-      "entry_point": "tabular_preprocessing.py",
+      "entry_point": "stratified_sampling.py",
       "inputs": {
-        "DATA": {
+        "processed_data": {
           "path": "/opt/ml/processing/input/data"
         }
       },
@@ -269,18 +320,17 @@
       "arguments": {},
       "environment_variables": {
         "required": [
-          "LABEL_FIELD",
-          "TRAIN_RATIO",
-          "TEST_VAL_RATIO"
+          "STRATA_COLUMN"
         ],
         "optional": {
-          "CATEGORICAL_COLUMNS": "",
-          "NUMERICAL_COLUMNS": "",
-          "TEXT_COLUMNS": "",
-          "DATE_COLUMNS": ""
+          "SAMPLING_STRATEGY": "balanced",
+          "TARGET_SAMPLE_SIZE": "1000",
+          "MIN_SAMPLES_PER_STRATUM": "10",
+          "VARIANCE_COLUMN": "",
+          "RANDOM_STATE": "42"
         }
       },
-      "description": "\n    Tabular preprocessing script that:\n    1. Combines data shards from input directory\n    2. Cleans and processes label field\n    3. Splits data into train/test/val for training jobs\n    4. Outputs processed CSV files by split\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing)\n    \n    Script Implementation Details:\n    - Reads data shards (CSV, JSON, Parquet) from input/data directory\n    - Supports gzipped files and various formats\n    - Processes labels (converts categorical to numeric if needed)\n    - Splits data based on job_type (training creates train/test/val splits)\n    - Outputs processed files to split subdirectories under /opt/ml/processing/output\n    ",
+      "description": "\n    Stratified sampling script that:\n    1. Reads processed data from tabular_preprocessing output structure\n    2. Applies stratified sampling with configurable allocation strategies\n    3. Maintains folder structure compatibility for seamless pipeline integration\n    4. Handles different job types (training vs non-training)\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing/calibration)\n    \n    Script Implementation Details:\n    - Reads CSV files from split subdirectories (train/, val/, test/)\n    - Supports three allocation strategies:\n      * balanced: Equal samples per stratum (class imbalance)\n      * proportional_min: Proportional with minimum constraints (causal analysis)\n      * optimal: Neyman allocation for variance optimization\n    - For training job_type: samples train/val splits, copies test unchanged\n    - For non-training job_types: samples only the specified split\n    - Outputs sampled files maintaining same folder structure as input\n    - Preserves test set integrity for training workflows\n    \n    Environment Variables:\n    - STRATA_COLUMN (required): Column name to stratify by\n    - SAMPLING_STRATEGY (optional): One of 'balanced', 'proportional_min', 'optimal'\n    - TARGET_SAMPLE_SIZE (optional): Total desired sample size per split\n    - MIN_SAMPLES_PER_STRATUM (optional): Minimum samples per stratum for statistical power\n    - VARIANCE_COLUMN (optional): Column for variance calculation (needed for optimal strategy)\n    - RANDOM_STATE (optional): Random seed for reproducibility\n    \n    Integration Points:\n    - Input compatible with: tabular_preprocessing output\n    - Output compatible with: xgboost_training input, other downstream processing steps\n    - Maintains SageMaker processing path contracts\n    ",
       "framework_requirements": {
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
@@ -296,7 +346,7 @@
         "category": "multi_variant_validation",
         "message": "Smart Specification Selection: validated against 5 variants",
         "details": {
-          "contract": "tabular_preprocessing_contract",
+          "contract": "stratified_sampling_contract",
           "variants": [
             "training",
             "testing",
@@ -314,11 +364,11 @@
       {
         "severity": "INFO",
         "category": "step_type_resolution",
-        "message": "Step type resolved via registry: TabularPreprocessing_Training -> TabularPreprocessing -> Processing",
+        "message": "Step type resolved via registry: StratifiedSampling_Training -> StratifiedSampling -> Processing",
         "details": {
-          "contract": "tabular_preprocessing_contract",
-          "original_spec_type": "TabularPreprocessing_Training",
-          "canonical_name": "TabularPreprocessing",
+          "contract": "stratified_sampling_contract",
+          "original_spec_type": "StratifiedSampling_Training",
+          "canonical_name": "StratifiedSampling",
           "resolved_sagemaker_type": "Processing",
           "registry_available": true
         },
@@ -329,7 +379,7 @@
         "category": "property_path_validation",
         "message": "Valid property path in output processed_data: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
         "details": {
-          "contract": "tabular_preprocessing_contract",
+          "contract": "stratified_sampling_contract",
           "logical_name": "processed_data",
           "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
           "step_type": "processing",
@@ -341,9 +391,9 @@
       {
         "severity": "INFO",
         "category": "property_path_validation_summary",
-        "message": "Property path validation completed for tabular_preprocessing_contract",
+        "message": "Property path validation completed for stratified_sampling_contract",
         "details": {
-          "contract": "tabular_preprocessing_contract",
+          "contract": "stratified_sampling_contract",
           "step_type": "processing",
           "node_type": "internal",
           "total_outputs": 1,
@@ -355,9 +405,9 @@
       }
     ],
     "contract": {
-      "entry_point": "tabular_preprocessing.py",
+      "entry_point": "stratified_sampling.py",
       "inputs": {
-        "DATA": {
+        "processed_data": {
           "path": "/opt/ml/processing/input/data"
         }
       },
@@ -369,18 +419,17 @@
       "arguments": {},
       "environment_variables": {
         "required": [
-          "LABEL_FIELD",
-          "TRAIN_RATIO",
-          "TEST_VAL_RATIO"
+          "STRATA_COLUMN"
         ],
         "optional": {
-          "CATEGORICAL_COLUMNS": "",
-          "NUMERICAL_COLUMNS": "",
-          "TEXT_COLUMNS": "",
-          "DATE_COLUMNS": ""
+          "SAMPLING_STRATEGY": "balanced",
+          "TARGET_SAMPLE_SIZE": "1000",
+          "MIN_SAMPLES_PER_STRATUM": "10",
+          "VARIANCE_COLUMN": "",
+          "RANDOM_STATE": "42"
         }
       },
-      "description": "\n    Tabular preprocessing script that:\n    1. Combines data shards from input directory\n    2. Cleans and processes label field\n    3. Splits data into train/test/val for training jobs\n    4. Outputs processed CSV files by split\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing)\n    \n    Script Implementation Details:\n    - Reads data shards (CSV, JSON, Parquet) from input/data directory\n    - Supports gzipped files and various formats\n    - Processes labels (converts categorical to numeric if needed)\n    - Splits data based on job_type (training creates train/test/val splits)\n    - Outputs processed files to split subdirectories under /opt/ml/processing/output\n    ",
+      "description": "\n    Stratified sampling script that:\n    1. Reads processed data from tabular_preprocessing output structure\n    2. Applies stratified sampling with configurable allocation strategies\n    3. Maintains folder structure compatibility for seamless pipeline integration\n    4. Handles different job types (training vs non-training)\n    \n    Contract aligned with actual script implementation:\n    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data\n    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output\n    - Arguments: job_type (required) - defines processing mode (training/validation/testing/calibration)\n    \n    Script Implementation Details:\n    - Reads CSV files from split subdirectories (train/, val/, test/)\n    - Supports three allocation strategies:\n      * balanced: Equal samples per stratum (class imbalance)\n      * proportional_min: Proportional with minimum constraints (causal analysis)\n      * optimal: Neyman allocation for variance optimization\n    - For training job_type: samples train/val splits, copies test unchanged\n    - For non-training job_types: samples only the specified split\n    - Outputs sampled files maintaining same folder structure as input\n    - Preserves test set integrity for training workflows\n    \n    Environment Variables:\n    - STRATA_COLUMN (required): Column name to stratify by\n    - SAMPLING_STRATEGY (optional): One of 'balanced', 'proportional_min', 'optimal'\n    - TARGET_SAMPLE_SIZE (optional): Total desired sample size per split\n    - MIN_SAMPLES_PER_STRATUM (optional): Minimum samples per stratum for statistical power\n    - VARIANCE_COLUMN (optional): Column for variance calculation (needed for optimal strategy)\n    - RANDOM_STATE (optional): Random seed for reproducibility\n    \n    Integration Points:\n    - Input compatible with: tabular_preprocessing output\n    - Output compatible with: xgboost_training input, other downstream processing steps\n    - Maintains SageMaker processing path contracts\n    ",
       "framework_requirements": {
         "pandas": ">=1.3.0",
         "numpy": ">=1.21.0",
@@ -388,21 +437,20 @@
       }
     },
     "specifications": {
-      "tabular_preprocessing_testing_spec": {
-        "step_type": "TabularPreprocessing_Testing",
+      "stratified_sampling_spec": {
+        "step_type": "StratifiedSampling_Training",
         "node_type": "internal",
         "dependencies": [
           {
-            "logical_name": "DATA",
+            "logical_name": "processed_data",
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
-              "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Raw testing data for preprocessing"
+            "description": "Processed tabular data from preprocessing step for stratified sampling"
           }
         ],
         "outputs": [
@@ -411,25 +459,24 @@
             "output_type": "processing_output",
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "Processed testing data"
+            "description": "Stratified sampled data with balanced train/val/test splits"
           }
         ]
       },
-      "tabular_preprocessing_calibration_spec": {
-        "step_type": "TabularPreprocessing_Calibration",
+      "stratified_sampling_calibration_spec": {
+        "step_type": "StratifiedSampling_Calibration",
         "node_type": "internal",
         "dependencies": [
           {
-            "logical_name": "DATA",
+            "logical_name": "processed_data",
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
-              "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Raw calibration data for preprocessing"
+            "description": "Processed calibration data from preprocessing step for stratified sampling"
           }
         ],
         "outputs": [
@@ -438,25 +485,24 @@
             "output_type": "processing_output",
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "Processed calibration data for model evaluation"
+            "description": "Stratified sampled calibration data"
           }
         ]
       },
-      "tabular_preprocessing_validation_spec": {
-        "step_type": "TabularPreprocessing_Validation",
+      "stratified_sampling_training_spec": {
+        "step_type": "StratifiedSampling_Training",
         "node_type": "internal",
         "dependencies": [
           {
-            "logical_name": "DATA",
+            "logical_name": "processed_data",
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
-              "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Raw validation data for preprocessing"
+            "description": "Processed training data from preprocessing step for stratified sampling"
           }
         ],
         "outputs": [
@@ -465,25 +511,24 @@
             "output_type": "processing_output",
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "Processed validation data"
+            "description": "Stratified sampled training data with balanced train/val/test splits"
           }
         ]
       },
-      "tabular_preprocessing_training_spec": {
-        "step_type": "TabularPreprocessing_Training",
+      "stratified_sampling_testing_spec": {
+        "step_type": "StratifiedSampling_Testing",
         "node_type": "internal",
         "dependencies": [
           {
-            "logical_name": "DATA",
+            "logical_name": "processed_data",
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
-              "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Raw training data for preprocessing"
+            "description": "Processed testing data from preprocessing step for stratified sampling"
           }
         ],
         "outputs": [
@@ -492,25 +537,24 @@
             "output_type": "processing_output",
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "Processed training data with train/val/test splits"
+            "description": "Stratified sampled testing data"
           }
         ]
       },
-      "tabular_preprocessing_spec": {
-        "step_type": "TabularPreprocessing_Training",
+      "stratified_sampling_validation_spec": {
+        "step_type": "StratifiedSampling_Validation",
         "node_type": "internal",
         "dependencies": [
           {
-            "logical_name": "DATA",
+            "logical_name": "processed_data",
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
-              "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Raw tabular data for preprocessing"
+            "description": "Processed validation data from preprocessing step for stratified sampling"
           }
         ],
         "outputs": [
@@ -519,27 +563,26 @@
             "output_type": "processing_output",
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "Processed tabular data with train/val/test splits"
+            "description": "Stratified sampled validation data"
           }
         ]
       }
     },
     "unified_specification": {
       "primary_spec": {
-        "step_type": "TabularPreprocessing_Training",
+        "step_type": "StratifiedSampling_Training",
         "node_type": "internal",
         "dependencies": [
           {
-            "logical_name": "DATA",
+            "logical_name": "processed_data",
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CradleDataLoading",
-              "DataLoad",
+              "TabularPreprocessing",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Raw training data for preprocessing"
+            "description": "Processed training data from preprocessing step for stratified sampling"
           }
         ],
         "outputs": [
@@ -548,26 +591,25 @@
             "output_type": "processing_output",
             "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             "data_type": "S3Uri",
-            "description": "Processed training data with train/val/test splits"
+            "description": "Stratified sampled training data with balanced train/val/test splits"
           }
         ]
       },
       "variants": {
         "training": {
-          "step_type": "TabularPreprocessing_Training",
+          "step_type": "StratifiedSampling_Training",
           "node_type": "internal",
           "dependencies": [
             {
-              "logical_name": "DATA",
+              "logical_name": "processed_data",
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
-                "DataLoad",
+                "TabularPreprocessing",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
-              "description": "Raw training data for preprocessing"
+              "description": "Processed training data from preprocessing step for stratified sampling"
             }
           ],
           "outputs": [
@@ -576,25 +618,24 @@
               "output_type": "processing_output",
               "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
               "data_type": "S3Uri",
-              "description": "Processed training data with train/val/test splits"
+              "description": "Stratified sampled training data with balanced train/val/test splits"
             }
           ]
         },
         "testing": {
-          "step_type": "TabularPreprocessing_Testing",
+          "step_type": "StratifiedSampling_Testing",
           "node_type": "internal",
           "dependencies": [
             {
-              "logical_name": "DATA",
+              "logical_name": "processed_data",
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
-                "DataLoad",
+                "TabularPreprocessing",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
-              "description": "Raw testing data for preprocessing"
+              "description": "Processed testing data from preprocessing step for stratified sampling"
             }
           ],
           "outputs": [
@@ -603,25 +644,24 @@
               "output_type": "processing_output",
               "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
               "data_type": "S3Uri",
-              "description": "Processed testing data"
+              "description": "Stratified sampled testing data"
             }
           ]
         },
         "validation": {
-          "step_type": "TabularPreprocessing_Validation",
+          "step_type": "StratifiedSampling_Validation",
           "node_type": "internal",
           "dependencies": [
             {
-              "logical_name": "DATA",
+              "logical_name": "processed_data",
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
-                "DataLoad",
+                "TabularPreprocessing",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
-              "description": "Raw validation data for preprocessing"
+              "description": "Processed validation data from preprocessing step for stratified sampling"
             }
           ],
           "outputs": [
@@ -630,25 +670,24 @@
               "output_type": "processing_output",
               "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
               "data_type": "S3Uri",
-              "description": "Processed validation data"
+              "description": "Stratified sampled validation data"
             }
           ]
         },
         "calibration": {
-          "step_type": "TabularPreprocessing_Calibration",
+          "step_type": "StratifiedSampling_Calibration",
           "node_type": "internal",
           "dependencies": [
             {
-              "logical_name": "DATA",
+              "logical_name": "processed_data",
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
-                "DataLoad",
+                "TabularPreprocessing",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
-              "description": "Raw calibration data for preprocessing"
+              "description": "Processed calibration data from preprocessing step for stratified sampling"
             }
           ],
           "outputs": [
@@ -657,25 +696,24 @@
               "output_type": "processing_output",
               "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
               "data_type": "S3Uri",
-              "description": "Processed calibration data for model evaluation"
+              "description": "Stratified sampled calibration data"
             }
           ]
         },
         "generic": {
-          "step_type": "TabularPreprocessing_Training",
+          "step_type": "StratifiedSampling_Training",
           "node_type": "internal",
           "dependencies": [
             {
-              "logical_name": "DATA",
+              "logical_name": "processed_data",
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CradleDataLoading",
-                "DataLoad",
+                "TabularPreprocessing",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
-              "description": "Raw tabular data for preprocessing"
+              "description": "Processed tabular data from preprocessing step for stratified sampling"
             }
           ],
           "outputs": [
@@ -684,23 +722,22 @@
               "output_type": "processing_output",
               "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
               "data_type": "S3Uri",
-              "description": "Processed tabular data with train/val/test splits"
+              "description": "Stratified sampled data with balanced train/val/test splits"
             }
           ]
         }
       },
       "unified_dependencies": {
-        "DATA": {
-          "logical_name": "DATA",
+        "processed_data": {
+          "logical_name": "processed_data",
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
-            "DataLoad",
+            "TabularPreprocessing",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
-          "description": "Raw tabular data for preprocessing"
+          "description": "Processed tabular data from preprocessing step for stratified sampling"
         }
       },
       "unified_outputs": {
@@ -709,11 +746,11 @@
           "output_type": "processing_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "Processed tabular data with train/val/test splits"
+          "description": "Stratified sampled data with balanced train/val/test splits"
         }
       },
       "dependency_sources": {
-        "DATA": [
+        "processed_data": [
           "training",
           "testing",
           "validation",
@@ -737,20 +774,19 @@
     "passed": true,
     "issues": [],
     "specification": {
-      "step_type": "TabularPreprocessing_Training",
+      "step_type": "StratifiedSampling_Training",
       "node_type": "internal",
       "dependencies": [
         {
-          "logical_name": "DATA",
+          "logical_name": "processed_data",
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CradleDataLoading",
-            "DataLoad",
+            "TabularPreprocessing",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
-          "description": "Raw tabular data for preprocessing"
+          "description": "Processed tabular data from preprocessing step for stratified sampling"
         }
       ],
       "outputs": [
@@ -759,7 +795,7 @@
           "output_type": "processing_output",
           "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
           "data_type": "S3Uri",
-          "description": "Processed tabular data with train/val/test splits"
+          "description": "Stratified sampled data with balanced train/val/test splits"
         }
       ]
     }
@@ -773,7 +809,7 @@
         "message": "Required configuration field not accessed in builder: project_root_folder",
         "details": {
           "field_name": "project_root_folder",
-          "builder": "tabular_preprocessing"
+          "builder": "stratified_sampling"
         },
         "recommendation": "Access required field project_root_folder in builder or make it optional"
       },
@@ -786,13 +822,13 @@
             "service_name",
             "bucket",
             "role",
+            "strata_column",
             "project_root_folder",
             "author",
             "pipeline_version",
-            "label_name",
             "region"
           ],
-          "builder": "tabular_preprocessing"
+          "builder": "stratified_sampling"
         },
         "recommendation": "Consider adding explicit validation logic for required configuration fields"
       }
@@ -806,85 +842,135 @@
         },
         {
           "field_name": "job_type",
-          "line_number": 141,
-          "context": "line_141"
+          "line_number": 145,
+          "context": "line_145"
         },
         {
           "field_name": "job_type",
-          "line_number": 147,
-          "context": "line_147"
+          "line_number": 151,
+          "context": "line_151"
         },
         {
-          "field_name": "label_name",
-          "line_number": 150,
-          "context": "line_150"
+          "field_name": "strata_column",
+          "line_number": 154,
+          "context": "line_154"
         },
         {
-          "field_name": "label_name",
-          "line_number": 150,
-          "context": "line_150"
+          "field_name": "strata_column",
+          "line_number": 154,
+          "context": "line_154"
         },
         {
-          "field_name": "use_large_processing_instance",
-          "line_number": 162,
-          "context": "line_162"
+          "field_name": "sampling_strategy",
+          "line_number": 158,
+          "context": "line_158"
         },
         {
-          "field_name": "processing_instance_type_large",
-          "line_number": 161,
-          "context": "line_161"
-        },
-        {
-          "field_name": "processing_instance_type_small",
+          "field_name": "sampling_strategy",
           "line_number": 163,
           "context": "line_163"
         },
         {
-          "field_name": "processing_framework_version",
-          "line_number": 167,
-          "context": "line_167"
+          "field_name": "target_sample_size",
+          "line_number": 166,
+          "context": "line_166"
         },
         {
-          "field_name": "processing_instance_count",
+          "field_name": "min_samples_per_stratum",
           "line_number": 170,
           "context": "line_170"
         },
         {
-          "field_name": "processing_volume_size",
-          "line_number": 171,
-          "context": "line_171"
+          "field_name": "sampling_strategy",
+          "line_number": 175,
+          "context": "line_175"
         },
         {
-          "field_name": "label_name",
-          "line_number": 189,
-          "context": "line_189"
+          "field_name": "variance_column",
+          "line_number": 176,
+          "context": "line_176"
         },
         {
-          "field_name": "train_ratio",
+          "field_name": "use_large_processing_instance",
           "line_number": 192,
           "context": "line_192"
         },
         {
-          "field_name": "test_val_ratio",
-          "line_number": 195,
-          "context": "line_195"
+          "field_name": "processing_instance_type_large",
+          "line_number": 191,
+          "context": "line_191"
+        },
+        {
+          "field_name": "processing_instance_type_small",
+          "line_number": 193,
+          "context": "line_193"
+        },
+        {
+          "field_name": "processing_framework_version",
+          "line_number": 197,
+          "context": "line_197"
+        },
+        {
+          "field_name": "processing_instance_count",
+          "line_number": 200,
+          "context": "line_200"
+        },
+        {
+          "field_name": "processing_volume_size",
+          "line_number": 201,
+          "context": "line_201"
+        },
+        {
+          "field_name": "strata_column",
+          "line_number": 218,
+          "context": "line_218"
+        },
+        {
+          "field_name": "sampling_strategy",
+          "line_number": 221,
+          "context": "line_221"
+        },
+        {
+          "field_name": "target_sample_size",
+          "line_number": 222,
+          "context": "line_222"
+        },
+        {
+          "field_name": "min_samples_per_stratum",
+          "line_number": 223,
+          "context": "line_223"
+        },
+        {
+          "field_name": "random_state",
+          "line_number": 224,
+          "context": "line_224"
+        },
+        {
+          "field_name": "variance_column",
+          "line_number": 227,
+          "context": "line_227"
+        },
+        {
+          "field_name": "variance_column",
+          "line_number": 228,
+          "context": "line_228"
         },
         {
           "field_name": "job_type",
-          "line_number": 307,
-          "context": "line_307"
+          "line_number": 329,
+          "context": "line_329"
         },
         {
           "field_name": "job_type",
-          "line_number": 337,
-          "context": "line_337"
+          "line_number": 359,
+          "context": "line_359"
         }
       ],
       "validation_calls": [],
       "default_assignments": [],
       "class_definitions": [
         {
-          "class_name": "TabularPreprocessingStepBuilder",
+          "class_name": "StratifiedSamplingStepBuilder",
           "line_number": 38,
           "base_classes": [
             "StepBuilderBase"
@@ -918,7 +1004,7 @@
         },
         {
           "method_name": "_create_processor",
-          "line_number": 153,
+          "line_number": 183,
           "args": [
             "self"
           ],
@@ -927,7 +1013,7 @@
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 177,
+          "line_number": 207,
           "args": [
             "self"
           ],
@@ -936,7 +1022,7 @@
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 210,
+          "line_number": 232,
           "args": [
             "self",
             "inputs"
@@ -946,7 +1032,7 @@
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 263,
+          "line_number": 285,
           "args": [
             "self",
             "outputs"
@@ -956,7 +1042,7 @@
         },
         {
           "method_name": "_get_job_arguments",
-          "line_number": 324,
+          "line_number": 346,
           "args": [
             "self"
           ],
@@ -965,7 +1051,7 @@
         },
         {
           "method_name": "create_step",
-          "line_number": 344,
+          "line_number": 366,
           "args": [
             "self"
           ],
@@ -1058,8 +1144,8 @@
         },
         {
           "type": "from_import",
-          "module": "configs.config_tabular_preprocessing_step",
-          "name": "TabularPreprocessingConfig",
+          "module": "configs.config_stratified_sampling_step",
+          "name": "StratifiedSamplingConfig",
           "alias": null,
           "line_number": 10
         },
@@ -1072,29 +1158,29 @@
         },
         {
           "type": "from_import",
-          "module": "specs.tabular_preprocessing_training_spec",
-          "name": "TABULAR_PREPROCESSING_TRAINING_SPEC",
+          "module": "specs.stratified_sampling_training_spec",
+          "name": "STRATIFIED_SAMPLING_TRAINING_SPEC",
           "alias": null,
           "line_number": 15
         },
         {
           "type": "from_import",
-          "module": "specs.tabular_preprocessing_calibration_spec",
-          "name": "TABULAR_PREPROCESSING_CALIBRATION_SPEC",
+          "module": "specs.stratified_sampling_calibration_spec",
+          "name": "STRATIFIED_SAMPLING_CALIBRATION_SPEC",
           "alias": null,
           "line_number": 18
         },
         {
           "type": "from_import",
-          "module": "specs.tabular_preprocessing_validation_spec",
-          "name": "TABULAR_PREPROCESSING_VALIDATION_SPEC",
+          "module": "specs.stratified_sampling_validation_spec",
+          "name": "STRATIFIED_SAMPLING_VALIDATION_SPEC",
           "alias": null,
           "line_number": 21
         },
         {
           "type": "from_import",
-          "module": "specs.tabular_preprocessing_testing_spec",
-          "name": "TABULAR_PREPROCESSING_TESTING_SPEC",
+          "module": "specs.stratified_sampling_testing_spec",
+          "name": "STRATIFIED_SAMPLING_TESTING_SPEC",
           "alias": null,
           "line_number": 24
         },
@@ -1103,13 +1189,13 @@
           "module": "sagemaker.workflow.functions",
           "name": "Join",
           "alias": null,
-          "line_number": 305
+          "line_number": 327
         }
       ],
       "config_class_usage": []
     },
     "config_analysis": {
-      "class_name": "TabularPreprocessingConfig",
+      "class_name": "StratifiedSamplingConfig",
       "fields": {
         "author": {
           "type": "<class 'str'>",
@@ -1195,7 +1281,7 @@
           "type": "<class 'str'>",
           "required": false
         },
-        "label_name": {
+        "strata_column": {
           "type": "<class 'str'>",
           "required": true
         },
@@ -1203,12 +1289,24 @@
           "type": "<class 'str'>",
           "required": false
         },
-        "train_ratio": {
-          "type": "<class 'float'>",
+        "sampling_strategy": {
+          "type": "<class 'str'>",
           "required": false
         },
-        "test_val_ratio": {
-          "type": "<class 'float'>",
+        "target_sample_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "min_samples_per_stratum": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "variance_column": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "random_state": {
+          "type": "<class 'int'>",
           "required": false
         },
         "aws_region": {
@@ -1276,7 +1374,7 @@
         "service_name",
         "pipeline_version",
         "project_root_folder",
-        "label_name"
+        "strata_column"
       ],
       "optional_fields": [
         "model_class",
@@ -1294,8 +1392,11 @@
         "processing_script_arguments",
         "processing_framework_version",
         "job_type",
-        "train_ratio",
-        "test_val_ratio",
+        "sampling_strategy",
+        "target_sample_size",
+        "min_samples_per_stratum",
+        "variance_column",
+        "random_state",
         "aws_region",
         "effective_instance_type",
         "effective_source_dir",
@@ -1330,13 +1431,16 @@
         "processing_instance_type_small": "ml.m5.2xlarge",
         "use_large_processing_instance": false,
         "processing_source_dir": null,
-        "processing_entry_point": "tabular_preprocessing.py",
+        "processing_entry_point": "stratified_sampling.py",
         "processing_script_arguments": null,
         "processing_framework_version": "1.2-1",
-        "label_name": "PydanticUndefined",
+        "strata_column": "PydanticUndefined",
         "job_type": "training",
-        "train_ratio": 0.7,
-        "test_val_ratio": 0.5
+        "sampling_strategy": "balanced",
+        "target_sample_size": 1000,
+        "min_samples_per_stratum": 10,
+        "variance_column": null,
+        "random_state": 42
       }
     }
   },
@@ -1352,8 +1456,8 @@
     }
   },
   "metadata": {
-    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/tabular_preprocessing.py",
-    "validation_timestamp": "2025-09-28T11:08:48.922072",
+    "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/stratified_sampling.py",
+    "validation_timestamp": "2025-09-28T11:08:48.899880",
     "validator_version": "1.0.0"
   }
 }

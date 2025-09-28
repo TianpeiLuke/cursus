@@ -20,6 +20,14 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any
 
+# Use centralized import resolver for robust import handling
+from cursus.validation.utils.import_resolver import ensure_cursus_imports
+
+# Ensure cursus imports work across all deployment scenarios
+if not ensure_cursus_imports():
+    print("❌ Failed to setup cursus imports")
+    sys.exit(1)
+
 # Define workspace directory structure
 # workspace_dir points to src/cursus (the main workspace)
 current_file = Path(__file__).resolve()
@@ -68,18 +76,8 @@ class ScriptAlignmentValidator:
             configs_dir=str(self.configs_dir),
         )
 
-        # Script to contract mapping
-        self.script_mappings = {
-            "currency_conversion": "currency_conversion_contract",
-            "dummy_training": "dummy_training_contract",
-            "model_calibration": "model_calibration_contract",
-            "package": "package_contract",
-            "payload": "payload_contract",
-            "risk_table_mapping": "risk_table_mapping_contract",
-            "tabular_preprocessing": "tabular_preprocessing_contract",
-            "xgboost_model_evaluation": "xgboost_model_eval_contract",
-            "xgboost_training": "xgboost_training_contract",
-        }
+        # Note: Script-to-contract mapping is now handled automatically by the 
+        # enhanced UnifiedAlignmentTester with improved import resolution
 
     def discover_scripts(self) -> List[str]:
         """Discover all Python scripts in the scripts directory."""
@@ -114,9 +112,6 @@ class ScriptAlignmentValidator:
             # Add metadata
             results["metadata"] = {
                 "script_path": str(self.scripts_dir / f"{script_name}.py"),
-                "contract_mapping": self.script_mappings.get(
-                    script_name, f"{script_name}_contract"
-                ),
                 "validation_timestamp": datetime.now().isoformat(),
                 "validator_version": "1.0.0",
             }
@@ -409,7 +404,6 @@ class ScriptAlignmentValidator:
     <div class="metadata">
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> {results.get('metadata', {}).get('script_path', 'Unknown')}</p>
-        <p><strong>Contract Mapping:</strong> {results.get('metadata', {}).get('contract_mapping', 'Unknown')}</p>
         <p><strong>Validation Timestamp:</strong> {timestamp}</p>
         <p><strong>Validator Version:</strong> {results.get('metadata', {}).get('validator_version', 'Unknown')}</p>
     </div>

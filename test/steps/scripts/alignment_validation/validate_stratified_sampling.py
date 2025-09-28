@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Individual Alignment Validation Script for dummy_training
+Individual Alignment Validation Script for stratified_sampling
 
 This script validates the alignment between script, contract, specification,
-and builder configuration for the dummy_training script.
+and builder configuration for the stratified_sampling script.
 """
 
 import sys
@@ -36,8 +36,8 @@ from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmen
 
 
 def main():
-    """Run alignment validation for dummy_training script."""
-    print("🔍 Dummy Training Script Alignment Validation")
+    """Run alignment validation for stratified_sampling script."""
+    print("🔍 Stratified Sampling Script Alignment Validation")
     print("=" * 60)
 
     # Initialize the tester
@@ -49,8 +49,8 @@ def main():
         configs_dir=configs_dir,
     )
 
-    # Run validation for dummy_training script
-    script_name = "dummy_training"
+    # Run validation for stratified_sampling script
+    script_name = "stratified_sampling"
 
     try:
         results = tester.validate_specific_script(script_name)
@@ -215,35 +215,35 @@ def generate_html_report(script_name: str, results: dict) -> str:
     html_template = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>Alignment Validation Report - dummy_training</title>
+    <title>Alignment Validation Report - stratified_sampling</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-        .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-        .summary { display: flex; justify-content: space-around; margin: 20px 0; }
-        .metric { text-align: center; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
-        .metric h3 { margin: 0; font-size: 2em; }
-        .metric p { margin: 5px 0; color: #666; }
-        .passing { color: #28a745; }
-        .failing { color: #dc3545; }
-        .warning { color: #ffc107; }
-        .level-section { margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
-        .level-header { background-color: #e9ecef; padding: 15px; font-weight: bold; font-size: 1.2em; }
-        .test-result { padding: 15px; border-bottom: 1px solid #eee; }
-        .test-passed { border-left: 4px solid #28a745; }
-        .test-failed { border-left: 4px solid #dc3545; }
-        .issue { margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 3px; }
-        .critical { border-left: 4px solid #dc3545; background-color: #f8d7da; }
-        .error { border-left: 4px solid #fd7e14; background-color: #fff3cd; }
-        .warning { border-left: 4px solid #ffc107; background-color: #fff3cd; }
-        .info { border-left: 4px solid #17a2b8; background-color: #d1ecf1; }
-        .metadata { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
-        .footer { margin-top: 30px; padding: 15px; background-color: #e9ecef; border-radius: 5px; text-align: center; color: #666; }
+        body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
+        .header {{ background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px; }}
+        .summary {{ display: flex; justify-content: space-around; margin: 20px 0; }}
+        .metric {{ text-align: center; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }}
+        .metric h3 {{ margin: 0; font-size: 2em; }}
+        .metric p {{ margin: 5px 0; color: #666; }}
+        .passing {{ color: #28a745; }}
+        .failing {{ color: #dc3545; }}
+        .warning {{ color: #ffc107; }}
+        .level-section {{ margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }}
+        .level-header {{ background-color: #e9ecef; padding: 15px; font-weight: bold; font-size: 1.2em; }}
+        .test-result {{ padding: 15px; border-bottom: 1px solid #eee; }}
+        .test-passed {{ border-left: 4px solid #28a745; }}
+        .test-failed {{ border-left: 4px solid #dc3545; }}
+        .issue {{ margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 3px; }}
+        .critical {{ border-left: 4px solid #dc3545; background-color: #f8d7da; }}
+        .error {{ border-left: 4px solid #fd7e14; background-color: #fff3cd; }}
+        .warning {{ border-left: 4px solid #ffc107; background-color: #fff3cd; }}
+        .info {{ border-left: 4px solid #17a2b8; background-color: #d1ecf1; }}
+        .metadata {{ margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }}
+        .footer {{ margin-top: 30px; padding: 15px; background-color: #e9ecef; border-radius: 5px; text-align: center; color: #666; }}
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🔍 Alignment Validation Report</h1>
-        <h2>Script: dummy_training</h2>
+        <h2>Script: stratified_sampling</h2>
         <p><strong>Generated:</strong> {timestamp}</p>
         <p><strong>Overall Status:</strong> <span class="{status_class}">{status}</span></p>
     </div>

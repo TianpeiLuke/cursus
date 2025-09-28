@@ -11,14 +11,7 @@ from pathlib import Path
 import logging
 
 from ...core.base.contract_base import ScriptContract, ValidationResult
-from .tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
-from .package_contract import PACKAGE_CONTRACT
-from .payload_contract import PAYLOAD_CONTRACT
-from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
-from .currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
-from .risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
-from .pytorch_training_contract import PYTORCH_TRAIN_CONTRACT
-from .xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
+from ...step_catalog import StepCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -44,22 +37,11 @@ class ContractValidationReport(BaseModel):
 
 
 class ScriptContractValidator:
-    """Validates script implementations against their contracts"""
-
-    # Registry of all available contracts
-    CONTRACTS = {
-        "tabular_preprocessing.py": TABULAR_PREPROCESSING_CONTRACT,
-        "package.py": PACKAGE_CONTRACT,
-        "payload.py": PAYLOAD_CONTRACT,
-        "xgboost_model_evaluation.py": XGBOOST_MODEL_EVAL_CONTRACT,
-        "currency_conversion.py": CURRENCY_CONVERSION_CONTRACT,
-        "risk_table_mapping.py": RISK_TABLE_MAPPING_CONTRACT,
-        "train.py": PYTORCH_TRAIN_CONTRACT,
-        "xgboost_training.py": XGBOOST_TRAIN_CONTRACT,
-    }
+    """Validates script implementations against their contracts using StepCatalog"""
 
     def __init__(self, scripts_directory: str = "src/pipeline_scripts"):
         self.scripts_directory = Path(scripts_directory)
+        self.step_catalog = StepCatalog()
 
     def validate_script(self, script_name: str) -> ContractValidationReport:
         """
