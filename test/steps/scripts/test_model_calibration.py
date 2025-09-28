@@ -593,18 +593,18 @@ class TestCalibrationMain:
         shutil.rmtree(temp_dir)
 
     @patch("cursus.steps.scripts.model_calibration.plot_reliability_diagram")
-    @patch("cursus.steps.scripts.model_calibration.joblib.dump")
-    def test_main_binary_calibration(self, mock_joblib_dump, mock_plot, setup_main_data):
+    @patch("cursus.steps.scripts.model_calibration.pkl.dump")
+    def test_main_binary_calibration(self, mock_pkl_dump, mock_plot, setup_main_data):
         """Test main function for binary calibration."""
         temp_dir, df, n_samples = setup_main_data
         
         mock_plot.return_value = str(temp_dir / "plot.png")
 
         # Set up input and output paths
-        input_paths = {"eval_data": str(temp_dir / "input")}
+        input_paths = {"evaluation_data": str(temp_dir / "input")}
         output_paths = {
-            "calibration": str(temp_dir / "calibration"),
-            "metrics": str(temp_dir / "metrics"),
+            "calibration_output": str(temp_dir / "calibration"),
+            "metrics_output": str(temp_dir / "metrics"),
             "calibrated_data": str(temp_dir / "calibrated"),
         }
         environ_vars = {
@@ -624,8 +624,8 @@ class TestCalibrationMain:
         main(input_paths, output_paths, environ_vars)
 
         # Check that output files were created
-        calibration_dir = Path(output_paths["calibration"])
-        metrics_dir = Path(output_paths["metrics"])
+        calibration_dir = Path(output_paths["calibration_output"])
+        metrics_dir = Path(output_paths["metrics_output"])
         calibrated_dir = Path(output_paths["calibrated_data"])
 
         assert calibration_dir.exists()
@@ -635,17 +635,17 @@ class TestCalibrationMain:
         # Check specific output files
         assert (calibration_dir / "calibration_summary.json").exists()
         assert (metrics_dir / "calibration_metrics.json").exists()
-        assert (calibrated_dir / "calibrated_data.parquet").exists()
+        assert (calibrated_dir / "calibrated_data.csv").exists()
 
-        # Verify joblib.dump was called to save the calibrator
-        mock_joblib_dump.assert_called_once()
+        # Verify pkl.dump was called to save the calibrator
+        mock_pkl_dump.assert_called_once()
 
         # Verify plot function was called
         mock_plot.assert_called_once()
 
     @patch("cursus.steps.scripts.model_calibration.plot_multiclass_reliability_diagram")
-    @patch("cursus.steps.scripts.model_calibration.joblib.dump")
-    def test_main_multiclass_calibration(self, mock_joblib_dump, mock_plot, setup_main_data):
+    @patch("cursus.steps.scripts.model_calibration.pkl.dump")
+    def test_main_multiclass_calibration(self, mock_pkl_dump, mock_plot, setup_main_data):
         """Test main function for multiclass calibration."""
         temp_dir, df, n_samples = setup_main_data
         
@@ -677,10 +677,10 @@ class TestCalibrationMain:
         mock_plot.return_value = str(temp_dir / "plot.png")
 
         # Set up input and output paths
-        input_paths = {"eval_data": str(input_dir)}
+        input_paths = {"evaluation_data": str(input_dir)}
         output_paths = {
-            "calibration": str(temp_dir / "calibration"),
-            "metrics": str(temp_dir / "metrics"),
+            "calibration_output": str(temp_dir / "calibration"),
+            "metrics_output": str(temp_dir / "metrics"),
             "calibrated_data": str(temp_dir / "calibrated"),
         }
         environ_vars = {
@@ -700,16 +700,16 @@ class TestCalibrationMain:
         main(input_paths, output_paths, environ_vars)
 
         # Check that output files were created
-        calibration_dir = Path(output_paths["calibration"])
-        metrics_dir = Path(output_paths["metrics"])
+        calibration_dir = Path(output_paths["calibration_output"])
+        metrics_dir = Path(output_paths["metrics_output"])
         calibrated_dir = Path(output_paths["calibrated_data"])
 
         assert (calibration_dir / "calibration_summary.json").exists()
         assert (metrics_dir / "calibration_metrics.json").exists()
-        assert (calibrated_dir / "calibrated_data.parquet").exists()
+        assert (calibrated_dir / "calibrated_data.csv").exists()
 
         # For multiclass, multiple calibrators should be saved
-        assert mock_joblib_dump.call_count == n_classes
+        assert mock_pkl_dump.call_count == n_classes
 
         # Verify plot function was called
         mock_plot.assert_called_once()

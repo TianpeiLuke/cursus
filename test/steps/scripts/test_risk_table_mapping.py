@@ -145,7 +145,10 @@ class TestMainRiskTableFlow:
         job_args = Namespace(job_type="training")
 
         # Set up input and output paths
-        input_paths = {"data_input": input_dir, "config_input": config_dir}
+        input_paths = {
+            "data_input": input_dir, 
+            "hyperparameters_s3_uri": hyperparams_path
+        }
         output_paths = {"data_output": output_dir}
         environ_vars = {}
 
@@ -226,7 +229,7 @@ class TestMainRiskTableFlow:
         # Set up input and output paths for validation
         input_paths = {
             "data_input": val_input_dir,
-            "config_input": config_dir,
+            "hyperparameters_s3_uri": hyperparams_path,
             "risk_table_input": risk_table_dir,
         }
         output_paths = {"data_output": output_dir}
