@@ -34,6 +34,7 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
+                "StratifiedSampling",
                 "ProcessingStep",
                 "DataLoad",
                 "RiskTableMapping",
