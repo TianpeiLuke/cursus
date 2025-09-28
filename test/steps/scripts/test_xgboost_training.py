@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock, mock_open
 import os
 import tempfile
@@ -24,15 +24,20 @@ from cursus.steps.scripts.xgboost_training import (
 )
 
 
-class TestXGBoostTrainHelpers(unittest.TestCase):
+class TestXGBoostTrainHelpers:
     """Unit tests for helper functions in the XGBoost training script."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_dir(self):
         """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        shutil.rmtree(temp_dir)
 
-        # Create sample configuration
-        self.sample_config = {
+    @pytest.fixture
+    def sample_config(self):
+        """Create sample configuration."""
+        return {
             "tab_field_list": ["feature1", "feature2", "feature3"],
             "cat_field_list": ["category1", "category2"],
             "label_name": "target",
@@ -46,9 +51,11 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
             "count_threshold": 0,
         }
 
-        # Create sample data
+    @pytest.fixture
+    def sample_data(self):
+        """Create sample data."""
         np.random.seed(42)
-        self.sample_data = pd.DataFrame(
+        return pd.DataFrame(
             {
                 "feature1": np.random.normal(0, 1, 100),
                 "feature2": np.random.normal(1, 2, 100),
@@ -60,58 +67,54 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
             }
         )
 
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
-
-    def test_load_and_validate_config_valid(self):
+    def test_load_and_validate_config_valid(self, temp_dir, sample_config):
         """Test loading and validating a valid configuration file."""
-        config_path = self.temp_dir / "hyperparameters.json"
+        config_path = temp_dir / "hyperparameters.json"
         with open(config_path, "w") as f:
-            json.dump(self.sample_config, f)
+            json.dump(sample_config, f)
 
         result = load_and_validate_config(str(config_path))
 
-        self.assertEqual(result, self.sample_config)
-        self.assertEqual(result["tab_field_list"], ["feature1", "feature2", "feature3"])
-        self.assertEqual(result["num_classes"], 2)
+        assert result == sample_config
+        assert result["tab_field_list"] == ["feature1", "feature2", "feature3"]
+        assert result["num_classes"] == 2
 
-    def test_load_and_validate_config_missing_keys(self):
+    def test_load_and_validate_config_missing_keys(self, temp_dir):
         """Test validation fails with missing required keys."""
         incomplete_config = {"tab_field_list": ["feature1"]}
-        config_path = self.temp_dir / "hyperparameters.json"
+        config_path = temp_dir / "hyperparameters.json"
         with open(config_path, "w") as f:
             json.dump(incomplete_config, f)
 
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             load_and_validate_config(str(config_path))
 
-        self.assertIn("Missing required key in config", str(context.exception))
+        assert "Missing required key in config" in str(exc_info.value)
 
-    def test_load_and_validate_config_invalid_class_weights(self):
+    def test_load_and_validate_config_invalid_class_weights(self, temp_dir, sample_config):
         """Test validation fails with mismatched class weights."""
-        invalid_config = self.sample_config.copy()
+        invalid_config = sample_config.copy()
         invalid_config["class_weights"] = [0.3, 0.7, 0.5]  # 3 weights for 2 classes
 
-        config_path = self.temp_dir / "hyperparameters.json"
+        config_path = temp_dir / "hyperparameters.json"
         with open(config_path, "w") as f:
             json.dump(invalid_config, f)
 
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             load_and_validate_config(str(config_path))
 
-        self.assertIn("Number of class weights", str(context.exception))
+        assert "Number of class weights" in str(exc_info.value)
 
-    def test_load_and_validate_config_file_not_found(self):
+    def test_load_and_validate_config_file_not_found(self, temp_dir):
         """Test error handling when config file doesn't exist."""
-        nonexistent_path = self.temp_dir / "nonexistent.json"
+        nonexistent_path = temp_dir / "nonexistent.json"
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             load_and_validate_config(str(nonexistent_path))
 
-    def test_find_first_data_file_csv(self):
+    def test_find_first_data_file_csv(self, temp_dir):
         """Test finding CSV data file."""
-        data_dir = self.temp_dir / "data"
+        data_dir = temp_dir / "data"
         data_dir.mkdir()
 
         # Create test files
@@ -120,11 +123,11 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
 
         result = find_first_data_file(str(data_dir))
 
-        self.assertEqual(result, str(data_dir / "data.csv"))
+        assert result == str(data_dir / "data.csv")
 
-    def test_find_first_data_file_parquet(self):
+    def test_find_first_data_file_parquet(self, temp_dir):
         """Test finding Parquet data file."""
-        data_dir = self.temp_dir / "data"
+        data_dir = temp_dir / "data"
         data_dir.mkdir()
 
         # Create test files (parquet comes first alphabetically)
@@ -133,11 +136,11 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
 
         result = find_first_data_file(str(data_dir))
 
-        self.assertEqual(result, str(data_dir / "data.parquet"))
+        assert result == str(data_dir / "data.parquet")
 
-    def test_find_first_data_file_no_data_files(self):
+    def test_find_first_data_file_no_data_files(self, temp_dir):
         """Test behavior when no data files are found."""
-        data_dir = self.temp_dir / "data"
+        data_dir = temp_dir / "data"
         data_dir.mkdir()
 
         # Create non-data files
@@ -146,15 +149,15 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
 
         result = find_first_data_file(str(data_dir))
 
-        self.assertIsNone(result)
+        assert result is None
 
-    def test_find_first_data_file_nonexistent_dir(self):
+    def test_find_first_data_file_nonexistent_dir(self, temp_dir):
         """Test behavior when directory doesn't exist."""
-        nonexistent_dir = self.temp_dir / "nonexistent"
+        nonexistent_dir = temp_dir / "nonexistent"
 
         result = find_first_data_file(str(nonexistent_dir))
 
-        self.assertIsNone(result)
+        assert result is None
 
     @patch("cursus.steps.scripts.xgboost_training.pd.read_csv")
     @patch("cursus.steps.scripts.xgboost_training.find_first_data_file")
@@ -182,8 +185,8 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         pd.testing.assert_frame_equal(result_test, test_df)
 
         # Verify calls
-        self.assertEqual(mock_find_file.call_count, 3)
-        self.assertEqual(mock_read_csv.call_count, 3)
+        assert mock_find_file.call_count == 3
+        assert mock_read_csv.call_count == 3
 
     @patch("cursus.steps.scripts.xgboost_training.find_first_data_file")
     def test_load_datasets_missing_files(self, mock_find_file):
@@ -195,15 +198,13 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
             "/path/test.csv",
         ]
 
-        with self.assertRaises(FileNotFoundError) as context:
+        with pytest.raises(FileNotFoundError) as exc_info:
             load_datasets("/input/path")
 
-        self.assertIn(
-            "Training, validation, or test data file not found", str(context.exception)
-        )
+        assert "Training, validation, or test data file not found" in str(exc_info.value)
 
     @patch("cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor")
-    def test_apply_numerical_imputation(self, mock_imputer_class):
+    def test_apply_numerical_imputation(self, mock_imputer_class, sample_config, sample_data):
         """Test numerical imputation application."""
         # Create mock imputer
         mock_imputer = MagicMock()
@@ -214,30 +215,30 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         mock_imputer_class.return_value = mock_imputer
 
         # Test data
-        train_df = self.sample_data.copy()
-        val_df = self.sample_data.copy()
-        test_df = self.sample_data.copy()
+        train_df = sample_data.copy()
+        val_df = sample_data.copy()
+        test_df = sample_data.copy()
 
         result = apply_numerical_imputation(
-            self.sample_config, train_df, val_df, test_df
+            sample_config, train_df, val_df, test_df
         )
 
         train_result, val_result, test_result, impute_dict = result
 
         # Verify imputer was created correctly
         mock_imputer_class.assert_called_once_with(
-            variables=self.sample_config["tab_field_list"], strategy="mean"
+            variables=sample_config["tab_field_list"], strategy="mean"
         )
 
         # Verify imputer methods were called
         mock_imputer.fit.assert_called_once()
-        self.assertEqual(mock_imputer.transform.call_count, 3)
+        assert mock_imputer.transform.call_count == 3
 
         # Verify imputation dictionary
-        self.assertEqual(impute_dict, {"feature1": 0.5})
+        assert impute_dict == {"feature1": 0.5}
 
     @patch("cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor")
-    def test_fit_and_apply_risk_tables(self, mock_processor_class):
+    def test_fit_and_apply_risk_tables(self, mock_processor_class, sample_config, sample_data):
         """Test risk table fitting and application."""
         # Create mock processor
         mock_processor = MagicMock()
@@ -248,25 +249,25 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         mock_processor_class.return_value = mock_processor
 
         # Test data
-        train_df = self.sample_data.copy()
-        val_df = self.sample_data.copy()
-        test_df = self.sample_data.copy()
+        train_df = sample_data.copy()
+        val_df = sample_data.copy()
+        test_df = sample_data.copy()
 
         result = fit_and_apply_risk_tables(
-            self.sample_config, train_df, val_df, test_df
+            sample_config, train_df, val_df, test_df
         )
 
         train_result, val_result, test_result, risk_tables = result
 
         # Verify processors were created for each categorical variable
-        self.assertEqual(mock_processor_class.call_count, 2)  # 2 categorical variables
+        assert mock_processor_class.call_count == 2  # 2 categorical variables
 
         # Verify risk tables structure
-        self.assertIn("category1", risk_tables)
-        self.assertIn("category2", risk_tables)
+        assert "category1" in risk_tables
+        assert "category2" in risk_tables
 
     @patch("cursus.steps.scripts.xgboost_training.xgb.DMatrix")
-    def test_prepare_dmatrices(self, mock_dmatrix):
+    def test_prepare_dmatrices(self, mock_dmatrix, sample_config, sample_data):
         """Test DMatrix preparation."""
         # Create mock DMatrix instances
         mock_dtrain = MagicMock()
@@ -275,8 +276,8 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
 
         # Prepare test data with numerical values for categorical columns
         # (simulating the output after risk table mapping)
-        train_df = self.sample_data.copy()
-        val_df = self.sample_data.copy()
+        train_df = sample_data.copy()
+        val_df = sample_data.copy()
 
         # Convert categorical columns to numerical (as would happen after risk table mapping)
         train_df["category1"] = train_df["category1"].map(
@@ -286,7 +287,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         val_df["category1"] = val_df["category1"].map({"A": 0.1, "B": 0.2, "C": 0.3})
         val_df["category2"] = val_df["category2"].map({"X": 0.4, "Y": 0.5})
 
-        result = prepare_dmatrices(self.sample_config, train_df, val_df)
+        result = prepare_dmatrices(sample_config, train_df, val_df)
         dtrain, dval, feature_columns = result
 
         # Verify feature columns
@@ -297,20 +298,20 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
             "category1",
             "category2",
         ]
-        self.assertEqual(feature_columns, expected_features)
+        assert feature_columns == expected_features
 
         # Verify DMatrix creation
-        self.assertEqual(mock_dmatrix.call_count, 2)
+        assert mock_dmatrix.call_count == 2
 
         # Verify feature names were set
         mock_dtrain.feature_names = expected_features
         mock_dval.feature_names = expected_features
 
-    def test_prepare_dmatrices_nan_values(self):
+    def test_prepare_dmatrices_nan_values(self, sample_config, sample_data):
         """Test DMatrix preparation fails with NaN values."""
         # Create data with NaN values
-        train_df = self.sample_data.copy()
-        val_df = self.sample_data.copy()
+        train_df = sample_data.copy()
+        val_df = sample_data.copy()
 
         # Convert categorical columns to numerical first (as would happen after risk table mapping)
         train_df["category1"] = train_df["category1"].map(
@@ -323,15 +324,13 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         # Now add NaN values
         train_df.loc[0, "feature1"] = np.nan
 
-        with self.assertRaises(ValueError) as context:
-            prepare_dmatrices(self.sample_config, train_df, val_df)
+        with pytest.raises(ValueError) as exc_info:
+            prepare_dmatrices(sample_config, train_df, val_df)
 
-        self.assertIn(
-            "Training data contains NaN or inf values", str(context.exception)
-        )
+        assert "Training data contains NaN or inf values" in str(exc_info.value)
 
     @patch("cursus.steps.scripts.xgboost_training.xgb.train")
-    def test_train_model_binary(self, mock_xgb_train):
+    def test_train_model_binary(self, mock_xgb_train, sample_config):
         """Test binary classification model training."""
         # Create mock DMatrix objects
         mock_dtrain = MagicMock()
@@ -343,7 +342,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         mock_model = MagicMock()
         mock_xgb_train.return_value = mock_model
 
-        result = train_model(self.sample_config, mock_dtrain, mock_dval)
+        result = train_model(sample_config, mock_dtrain, mock_dval)
 
         # Verify xgb.train was called
         mock_xgb_train.assert_called_once()
@@ -351,18 +350,18 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         # Verify parameters
         call_args = mock_xgb_train.call_args
         params = call_args[1]["params"]
-        self.assertEqual(params["objective"], "binary:logistic")
-        self.assertEqual(params["eta"], 0.1)
-        self.assertEqual(params["max_depth"], 6)
+        assert params["objective"] == "binary:logistic"
+        assert params["eta"] == 0.1
+        assert params["max_depth"] == 6
 
         # Verify result
-        self.assertEqual(result, mock_model)
+        assert result == mock_model
 
     @patch("cursus.steps.scripts.xgboost_training.xgb.train")
-    def test_train_model_multiclass(self, mock_xgb_train):
+    def test_train_model_multiclass(self, mock_xgb_train, sample_config):
         """Test multiclass model training."""
         # Update config for multiclass
-        multiclass_config = self.sample_config.copy()
+        multiclass_config = sample_config.copy()
         multiclass_config["is_binary"] = False
         multiclass_config["num_classes"] = 3
 
@@ -381,15 +380,15 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         # Verify parameters
         call_args = mock_xgb_train.call_args
         params = call_args[1]["params"]
-        self.assertEqual(params["objective"], "multi:softprob")
-        self.assertEqual(params["num_class"], 3)
+        assert params["objective"] == "multi:softprob"
+        assert params["num_class"] == 3
 
     @patch("cursus.steps.scripts.xgboost_training.json.dump")
     @patch("cursus.steps.scripts.xgboost_training.pkl.dump")
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     def test_save_artifacts(
-        self, mock_makedirs, mock_file_open, mock_pkl_dump, mock_json_dump
+        self, mock_makedirs, mock_file_open, mock_pkl_dump, mock_json_dump, sample_config
     ):
         """Test model artifacts saving."""
         # Create mock model
@@ -408,7 +407,7 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
             impute_dict,
             model_path,
             feature_columns,
-            self.sample_config,
+            sample_config,
         )
 
         # Verify directory creation
@@ -418,39 +417,47 @@ class TestXGBoostTrainHelpers(unittest.TestCase):
         mock_model.save_model.assert_called_once()
 
         # Verify pickle dumps (risk tables and imputation dict)
-        self.assertEqual(mock_pkl_dump.call_count, 2)
+        assert mock_pkl_dump.call_count == 2
 
         # Verify JSON dumps (feature importance and hyperparameters)
-        self.assertEqual(mock_json_dump.call_count, 2)
+        assert mock_json_dump.call_count == 2
 
 
-class TestXGBoostTrainMain(unittest.TestCase):
+class TestXGBoostTrainMain:
     """Tests for the main function of the XGBoost training script."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_dirs(self):
         """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
+        temp_dir = Path(tempfile.mkdtemp())
 
         # Create directory structure
-        self.data_dir = self.temp_dir / "data"
-        self.config_dir = self.temp_dir / "config"
-        self.model_dir = self.temp_dir / "model"
-        self.output_dir = self.temp_dir / "output"
+        data_dir = temp_dir / "data"
+        config_dir = temp_dir / "config"
+        model_dir = temp_dir / "model"
+        output_dir = temp_dir / "output"
 
-        for dir_path in [
-            self.data_dir,
-            self.config_dir,
-            self.model_dir,
-            self.output_dir,
-        ]:
+        for dir_path in [data_dir, config_dir, model_dir, output_dir]:
             dir_path.mkdir(parents=True)
 
         # Create subdirectories for train/val/test
         for split in ["train", "val", "test"]:
-            (self.data_dir / split).mkdir()
+            (data_dir / split).mkdir()
 
-        # Create sample configuration
-        self.sample_config = {
+        yield {
+            'temp_dir': temp_dir,
+            'data_dir': data_dir,
+            'config_dir': config_dir,
+            'model_dir': model_dir,
+            'output_dir': output_dir
+        }
+        
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def sample_config(self):
+        """Create sample configuration."""
+        return {
             "tab_field_list": ["feature1", "feature2"],
             "cat_field_list": ["category1"],
             "label_name": "target",
@@ -462,10 +469,15 @@ class TestXGBoostTrainMain(unittest.TestCase):
             "early_stopping_rounds": 5,
         }
 
+    def _create_test_data(self, dirs, sample_config):
+        """Create test data files."""
+        data_dir = dirs['data_dir']
+        config_dir = dirs['config_dir']
+        
         # Save configuration
-        config_path = self.config_dir / "hyperparameters.json"
+        config_path = config_dir / "hyperparameters.json"
         with open(config_path, "w") as f:
-            json.dump(self.sample_config, f)
+            json.dump(sample_config, f)
 
         # Create sample datasets
         np.random.seed(42)
@@ -479,19 +491,18 @@ class TestXGBoostTrainMain(unittest.TestCase):
                     "id": range(50),
                 }
             )
-            data.to_csv(self.data_dir / split / "data.csv", index=False)
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
+            data.to_csv(data_dir / split / "data.csv", index=False)
 
     @patch("cursus.steps.scripts.xgboost_training.xgb.train")
     @patch("cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor")
     @patch("cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor")
     def test_main_success(
-        self, mock_imputer_class, mock_processor_class, mock_xgb_train
+        self, mock_imputer_class, mock_processor_class, mock_xgb_train, setup_dirs, sample_config
     ):
         """Test successful main function execution."""
+        dirs = setup_dirs
+        self._create_test_data(dirs, sample_config)
+        
         # Setup mocks
         mock_imputer = MagicMock()
         mock_imputer.transform.side_effect = lambda df: df
@@ -512,12 +523,12 @@ class TestXGBoostTrainMain(unittest.TestCase):
 
         # Prepare input parameters using contract logical names
         input_paths = {
-            "input_path": str(self.data_dir),
-            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json"),
+            "input_path": str(dirs['data_dir']),
+            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(self.model_dir),
-            "evaluation_output": str(self.output_dir),
+            "model_output": str(dirs['model_dir']),
+            "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
         args = argparse.Namespace()
@@ -531,105 +542,105 @@ class TestXGBoostTrainMain(unittest.TestCase):
             error = str(e)
 
         # Verify success
-        self.assertTrue(
-            success,
-            f"Main function failed with error: {error if not success else 'None'}",
-        )
+        assert success, f"Main function failed with error: {error if not success else 'None'}"
 
         # Verify model training was called
         mock_xgb_train.assert_called_once()
 
         # Verify model artifacts were saved
-        self.assertTrue(
-            (Path(self.model_dir) / "xgboost_model.bst").exists()
+        assert (
+            (Path(dirs['model_dir']) / "xgboost_model.bst").exists()
             or mock_model.save_model.called
         )
 
-    def test_main_missing_config(self):
+    def test_main_missing_config(self, setup_dirs, sample_config):
         """Test main function with missing configuration file."""
+        dirs = setup_dirs
+        self._create_test_data(dirs, sample_config)
+        
         # Remove config file
-        (self.config_dir / "hyperparameters.json").unlink()
+        (dirs['config_dir'] / "hyperparameters.json").unlink()
 
         input_paths = {
-            "input_path": str(self.data_dir),
-            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json"),
+            "input_path": str(dirs['data_dir']),
+            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(self.model_dir),
-            "evaluation_output": str(self.output_dir),
+            "model_output": str(dirs['model_dir']),
+            "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
         args = argparse.Namespace()
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             main(input_paths, output_paths, environ_vars, args)
 
-    def test_main_missing_data(self):
+    def test_main_missing_data(self, setup_dirs, sample_config):
         """Test main function with missing data files."""
+        dirs = setup_dirs
+        self._create_test_data(dirs, sample_config)
+        
         # Remove training data
-        shutil.rmtree(self.data_dir / "train")
+        shutil.rmtree(dirs['data_dir'] / "train")
 
         input_paths = {
-            "input_path": str(self.data_dir),
-            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json"),
+            "input_path": str(dirs['data_dir']),
+            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(self.model_dir),
-            "evaluation_output": str(self.output_dir),
+            "model_output": str(dirs['model_dir']),
+            "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
         args = argparse.Namespace()
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             main(input_paths, output_paths, environ_vars, args)
 
-    def test_main_invalid_config(self):
+    def test_main_invalid_config(self, setup_dirs):
         """Test main function with invalid configuration."""
+        dirs = setup_dirs
+        
         # Create invalid config (missing required keys)
         invalid_config = {"tab_field_list": ["feature1"]}
-        config_path = self.config_dir / "hyperparameters.json"
+        config_path = dirs['config_dir'] / "hyperparameters.json"
         with open(config_path, "w") as f:
             json.dump(invalid_config, f)
 
         input_paths = {
-            "input_path": str(self.data_dir),
-            "hyperparameters_s3_uri": str(self.config_dir / "hyperparameters.json"),
+            "input_path": str(dirs['data_dir']),
+            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(self.model_dir),
-            "evaluation_output": str(self.output_dir),
+            "model_output": str(dirs['model_dir']),
+            "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
         args = argparse.Namespace()
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             main(input_paths, output_paths, environ_vars, args)
 
 
-class TestXGBoostTrainIntegration(unittest.TestCase):
+class TestXGBoostTrainIntegration:
     """Integration tests for the XGBoost training script."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_dir(self):
         """Set up test fixtures for integration tests."""
-        self.temp_dir = Path(tempfile.mkdtemp())
+        temp_dir = Path(tempfile.mkdtemp())
 
         # Create directory structure
-        self.data_dir = self.temp_dir / "data"
-        self.config_dir = self.temp_dir / "config"
-        self.model_dir = self.temp_dir / "model"
-        self.output_dir = self.temp_dir / "output"
+        data_dir = temp_dir / "data"
+        config_dir = temp_dir / "config"
+        model_dir = temp_dir / "model"
+        output_dir = temp_dir / "output"
 
-        for dir_path in [
-            self.data_dir,
-            self.config_dir,
-            self.model_dir,
-            self.output_dir,
-        ]:
+        for dir_path in [data_dir, config_dir, model_dir, output_dir]:
             dir_path.mkdir(parents=True)
 
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
+        yield temp_dir
+        shutil.rmtree(temp_dir)
 
     def test_script_imports_successfully(self):
         """Test that the script can be imported without errors."""
@@ -641,10 +652,4 @@ class TestXGBoostTrainIntegration(unittest.TestCase):
             success = False
             error = str(e)
 
-        self.assertTrue(
-            success, f"Script import failed: {error if not success else 'None'}"
-        )
-
-
-if __name__ == "__main__":
-    unittest.main(argv=["first-arg-is-ignored"], exit=False)
+        assert success, f"Script import failed: {error if not success else 'None'}"

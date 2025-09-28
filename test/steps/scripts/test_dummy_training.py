@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock, mock_open
 import tempfile
 import shutil
@@ -18,20 +18,19 @@ from cursus.steps.scripts.dummy_training import (
 )
 
 
-class TestDummyTrainingHelpers(unittest.TestCase):
+class TestDummyTrainingHelpers:
     """Unit tests for helper functions in the dummy training script."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_dir(self):
         """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        shutil.rmtree(temp_dir)
 
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
-
-    def _create_dummy_tar(self, tar_path: Path, files_content: dict):
+    def _create_dummy_tar(self, temp_dir: Path, tar_path: Path, files_content: dict):
         """Helper to create a dummy tar.gz file with specified content."""
-        temp_content_dir = self.temp_dir / "temp_content"
+        temp_content_dir = temp_dir / "temp_content"
         temp_content_dir.mkdir()
 
         # Create files in temp directory
@@ -47,141 +46,139 @@ class TestDummyTrainingHelpers(unittest.TestCase):
                     arcname = item.relative_to(temp_content_dir)
                     tar.add(item, arcname=arcname)
 
-    def test_validate_model_valid_tar(self):
+    def test_validate_model_valid_tar(self, temp_dir):
         """Test model validation with valid tar.gz file."""
         # Create a valid tar.gz file
-        tar_path = self.temp_dir / "model.tar.gz"
-        self._create_dummy_tar(tar_path, {"model.pth": "dummy model content"})
+        tar_path = temp_dir / "model.tar.gz"
+        self._create_dummy_tar(temp_dir, tar_path, {"model.pth": "dummy model content"})
 
         # Should return True without raising exception
         result = validate_model(tar_path)
-        self.assertTrue(result)
+        assert result is True
 
-    def test_validate_model_invalid_extension(self):
+    def test_validate_model_invalid_extension(self, temp_dir):
         """Test model validation with invalid file extension."""
-        invalid_path = self.temp_dir / "model.txt"
+        invalid_path = temp_dir / "model.txt"
         invalid_path.write_text("not a tar file")
 
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             validate_model(invalid_path)
 
-        self.assertIn("Expected a .tar.gz file", str(context.exception))
-        self.assertIn("INVALID_FORMAT", str(context.exception))
+        assert "Expected a .tar.gz file" in str(exc_info.value)
+        assert "INVALID_FORMAT" in str(exc_info.value)
 
-    def test_validate_model_invalid_tar(self):
+    def test_validate_model_invalid_tar(self, temp_dir):
         """Test model validation with invalid tar file."""
-        invalid_tar = self.temp_dir / "model.tar.gz"
+        invalid_tar = temp_dir / "model.tar.gz"
         invalid_tar.write_text("not a valid tar file")
 
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as exc_info:
             validate_model(invalid_tar)
 
-        self.assertIn("not a valid tar archive", str(context.exception))
-        self.assertIn("INVALID_ARCHIVE", str(context.exception))
+        assert "not a valid tar archive" in str(exc_info.value)
+        assert "INVALID_ARCHIVE" in str(exc_info.value)
 
-    def test_ensure_directory_creates_new_directory(self):
+    def test_ensure_directory_creates_new_directory(self, temp_dir):
         """Test that ensure_directory creates a new directory."""
-        new_dir = self.temp_dir / "new_directory"
-        self.assertFalse(new_dir.exists())
+        new_dir = temp_dir / "new_directory"
+        assert not new_dir.exists()
 
         result = ensure_directory(new_dir)
 
-        self.assertTrue(result)
-        self.assertTrue(new_dir.exists())
-        self.assertTrue(new_dir.is_dir())
+        assert result is True
+        assert new_dir.exists()
+        assert new_dir.is_dir()
 
-    def test_ensure_directory_existing_directory(self):
+    def test_ensure_directory_existing_directory(self, temp_dir):
         """Test that ensure_directory works with existing directory."""
-        existing_dir = self.temp_dir / "existing"
+        existing_dir = temp_dir / "existing"
         existing_dir.mkdir()
 
         result = ensure_directory(existing_dir)
 
-        self.assertTrue(result)
-        self.assertTrue(existing_dir.exists())
+        assert result is True
+        assert existing_dir.exists()
 
-    def test_copy_file_success(self):
+    def test_copy_file_success(self, temp_dir):
         """Test successful file copying."""
-        src_file = self.temp_dir / "source.txt"
-        dst_file = self.temp_dir / "dest" / "destination.txt"
+        src_file = temp_dir / "source.txt"
+        dst_file = temp_dir / "dest" / "destination.txt"
 
         src_file.write_text("test content")
 
         copy_file(src_file, dst_file)
 
-        self.assertTrue(dst_file.exists())
-        self.assertEqual(dst_file.read_text(), "test content")
+        assert dst_file.exists()
+        assert dst_file.read_text() == "test content"
 
-    def test_copy_file_nonexistent_source(self):
+    def test_copy_file_nonexistent_source(self, temp_dir):
         """Test copying nonexistent source file raises FileNotFoundError."""
-        src_file = self.temp_dir / "nonexistent.txt"
-        dst_file = self.temp_dir / "destination.txt"
+        src_file = temp_dir / "nonexistent.txt"
+        dst_file = temp_dir / "destination.txt"
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             copy_file(src_file, dst_file)
 
-    def test_extract_tarfile_success(self):
+    def test_extract_tarfile_success(self, temp_dir):
         """Test successful tar file extraction."""
         # Create a tar file
-        tar_path = self.temp_dir / "test.tar.gz"
-        extract_path = self.temp_dir / "extracted"
+        tar_path = temp_dir / "test.tar.gz"
+        extract_path = temp_dir / "extracted"
 
         files_content = {"file1.txt": "content1", "subdir/file2.txt": "content2"}
-        self._create_dummy_tar(tar_path, files_content)
+        self._create_dummy_tar(temp_dir, tar_path, files_content)
 
         # Extract the tar file
         extract_tarfile(tar_path, extract_path)
 
         # Verify extraction
-        self.assertTrue((extract_path / "file1.txt").exists())
-        self.assertTrue((extract_path / "subdir" / "file2.txt").exists())
-        self.assertEqual((extract_path / "file1.txt").read_text(), "content1")
-        self.assertEqual(
-            (extract_path / "subdir" / "file2.txt").read_text(), "content2"
-        )
+        assert (extract_path / "file1.txt").exists()
+        assert (extract_path / "subdir" / "file2.txt").exists()
+        assert (extract_path / "file1.txt").read_text() == "content1"
+        assert (extract_path / "subdir" / "file2.txt").read_text() == "content2"
 
-    def test_extract_tarfile_nonexistent_file(self):
+    def test_extract_tarfile_nonexistent_file(self, temp_dir):
         """Test extracting nonexistent tar file raises FileNotFoundError."""
-        tar_path = self.temp_dir / "nonexistent.tar.gz"
-        extract_path = self.temp_dir / "extracted"
+        tar_path = temp_dir / "nonexistent.tar.gz"
+        extract_path = temp_dir / "extracted"
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             extract_tarfile(tar_path, extract_path)
 
-    def test_create_tarfile_success(self):
+    def test_create_tarfile_success(self, temp_dir):
         """Test successful tar file creation."""
         # Create source directory with files
-        source_dir = self.temp_dir / "source"
+        source_dir = temp_dir / "source"
         source_dir.mkdir()
         (source_dir / "file1.txt").write_text("content1")
         (source_dir / "subdir").mkdir()
         (source_dir / "subdir" / "file2.txt").write_text("content2")
 
         # Create tar file
-        tar_path = self.temp_dir / "output.tar.gz"
+        tar_path = temp_dir / "output.tar.gz"
         create_tarfile(tar_path, source_dir)
 
         # Verify tar file was created and contains expected files
-        self.assertTrue(tar_path.exists())
+        assert tar_path.exists()
 
         with tarfile.open(tar_path, "r:gz") as tar:
             members = tar.getnames()
-            self.assertIn("file1.txt", members)
-            self.assertIn("subdir/file2.txt", members)
+            assert "file1.txt" in members
+            assert "subdir/file2.txt" in members
 
-    def test_process_model_with_hyperparameters_success(self):
+    def test_process_model_with_hyperparameters_success(self, temp_dir):
         """Test successful model processing with hyperparameters."""
         # Create input model tar
-        model_path = self.temp_dir / "input_model.tar.gz"
-        self._create_dummy_tar(model_path, {"model.pth": "model content"})
+        model_path = temp_dir / "input_model.tar.gz"
+        self._create_dummy_tar(temp_dir, model_path, {"model.pth": "model content"})
 
         # Create hyperparameters file
-        hyperparams_path = self.temp_dir / "hyperparameters.json"
+        hyperparams_path = temp_dir / "hyperparameters.json"
         hyperparams_data = {"learning_rate": 0.01, "epochs": 100}
         hyperparams_path.write_text(json.dumps(hyperparams_data))
 
         # Create output directory
-        output_dir = self.temp_dir / "output"
+        output_dir = temp_dir / "output"
 
         # Process model
         result_path = process_model_with_hyperparameters(
@@ -190,64 +187,75 @@ class TestDummyTrainingHelpers(unittest.TestCase):
 
         # Verify output
         expected_output = output_dir / "model.tar.gz"
-        self.assertEqual(result_path, expected_output)
-        self.assertTrue(expected_output.exists())
+        assert result_path == expected_output
+        assert expected_output.exists()
 
         # Verify contents of output tar
-        extract_dir = self.temp_dir / "verify_extract"
+        extract_dir = temp_dir / "verify_extract"
         with tarfile.open(expected_output, "r:gz") as tar:
             tar.extractall(extract_dir)
 
-        self.assertTrue((extract_dir / "model.pth").exists())
-        self.assertTrue((extract_dir / "hyperparameters.json").exists())
+        assert (extract_dir / "model.pth").exists()
+        assert (extract_dir / "hyperparameters.json").exists()
 
         # Verify hyperparameters content
         extracted_hyperparams = json.loads(
             (extract_dir / "hyperparameters.json").read_text()
         )
-        self.assertEqual(extracted_hyperparams, hyperparams_data)
+        assert extracted_hyperparams == hyperparams_data
 
-    def test_process_model_with_hyperparameters_missing_model(self):
+    def test_process_model_with_hyperparameters_missing_model(self, temp_dir):
         """Test processing with missing model file."""
-        model_path = self.temp_dir / "nonexistent_model.tar.gz"
-        hyperparams_path = self.temp_dir / "hyperparameters.json"
+        model_path = temp_dir / "nonexistent_model.tar.gz"
+        hyperparams_path = temp_dir / "hyperparameters.json"
         hyperparams_path.write_text('{"test": "value"}')
-        output_dir = self.temp_dir / "output"
+        output_dir = temp_dir / "output"
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)
 
-    def test_process_model_with_hyperparameters_missing_hyperparams(self):
+    def test_process_model_with_hyperparameters_missing_hyperparams(self, temp_dir):
         """Test processing with missing hyperparameters file."""
-        model_path = self.temp_dir / "model.tar.gz"
-        self._create_dummy_tar(model_path, {"model.pth": "content"})
+        model_path = temp_dir / "model.tar.gz"
+        self._create_dummy_tar(temp_dir, model_path, {"model.pth": "content"})
 
-        hyperparams_path = self.temp_dir / "nonexistent_hyperparams.json"
-        output_dir = self.temp_dir / "output"
+        hyperparams_path = temp_dir / "nonexistent_hyperparams.json"
+        output_dir = temp_dir / "output"
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)
 
 
-class TestDummyTrainingMain(unittest.TestCase):
+class TestDummyTrainingMain:
     """Tests for the main function of the dummy training script."""
 
-    def setUp(self):
+    @pytest.fixture
+    def temp_dir(self):
         """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        shutil.rmtree(temp_dir)
 
-        # Set up mock paths
-        self.model_path = self.temp_dir / "model.tar.gz"
-        self.hyperparams_path = self.temp_dir / "hyperparameters.json"
-        self.output_dir = self.temp_dir / "output"
+    @pytest.fixture
+    def setup_paths(self, temp_dir):
+        """Set up mock paths that match the script's expected structure."""
+        # Create the directory structure the script expects
+        models_dir = temp_dir / "opt" / "ml" / "code" / "models"
+        hyperparams_dir = temp_dir / "opt" / "ml" / "code" / "hyperparams"
+        output_dir = temp_dir / "output"
+        
+        models_dir.mkdir(parents=True, exist_ok=True)
+        hyperparams_dir.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        model_path = models_dir / "model.tar.gz"
+        hyperparams_path = hyperparams_dir / "hyperparameters.json"
+        
+        return model_path, hyperparams_path, output_dir, temp_dir
 
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
-
-    def _create_dummy_tar(self, tar_path: Path, files_content: dict):
+    def _create_dummy_tar(self, temp_dir: Path, tar_path: Path, files_content: dict):
         """Helper to create a dummy tar.gz file with specified content."""
-        temp_content_dir = self.temp_dir / "temp_content"
+        temp_content_dir = temp_dir / "temp_content"
         temp_content_dir.mkdir(exist_ok=True)
 
         # Create files in temp directory
@@ -263,118 +271,127 @@ class TestDummyTrainingMain(unittest.TestCase):
                     arcname = item.relative_to(temp_content_dir)
                     tar.add(item, arcname=arcname)
 
-    def test_main_with_hyperparameters(self):
+    @patch("cursus.steps.scripts.dummy_training.find_model_file")
+    @patch("cursus.steps.scripts.dummy_training.find_hyperparams_file")
+    def test_main_with_hyperparameters(self, mock_find_hyperparams, mock_find_model, temp_dir, setup_paths):
         """Test main function with hyperparameters file present."""
+        model_path, hyperparams_path, output_dir, temp_root = setup_paths
+        
         # Create input files
-        self._create_dummy_tar(self.model_path, {"model.pth": "model content"})
+        self._create_dummy_tar(temp_dir, model_path, {"model.pth": "model content"})
         hyperparams_data = {"learning_rate": 0.01, "epochs": 100}
-        self.hyperparams_path.write_text(json.dumps(hyperparams_data))
+        hyperparams_path.write_text(json.dumps(hyperparams_data))
+
+        # Mock the file finding functions to return our test paths
+        mock_find_model.return_value = model_path
+        mock_find_hyperparams.return_value = hyperparams_path
 
         # Set up input and output paths
-        input_paths = {
-            "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path),
-        }
-        output_paths = {"model_output": str(self.output_dir)}
+        input_paths = {}  # Empty for SOURCE node
+        output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
 
         # Verify success (should return Path object, not exit code)
-        self.assertIsInstance(result, Path)
+        assert isinstance(result, Path)
 
         # Verify output file exists
-        output_file = self.output_dir / "model.tar.gz"
-        self.assertTrue(output_file.exists())
+        output_file = output_dir / "model.tar.gz"
+        assert output_file.exists()
 
-    def test_main_without_hyperparameters(self):
+    def test_main_without_hyperparameters(self, temp_dir, setup_paths):
         """Test main function without hyperparameters file (fallback mode)."""
+        model_path, hyperparams_path, output_dir = setup_paths
+        
         # Create only model file (no hyperparameters)
-        self._create_dummy_tar(self.model_path, {"model.pth": "model content"})
+        self._create_dummy_tar(temp_dir, model_path, {"model.pth": "model content"})
         # Don't create hyperparameters file
 
         # Set up input and output paths (hyperparams_input points to non-existent file)
         input_paths = {
-            "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path),  # This file doesn't exist
+            "model_input": str(model_path),
+            "hyperparams_input": str(hyperparams_path),  # This file doesn't exist
         }
-        output_paths = {"model_output": str(self.output_dir)}
+        output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
 
         # Verify success (should return Path object)
-        self.assertIsInstance(result, Path)
+        assert isinstance(result, Path)
 
         # Verify output file exists
-        output_file = self.output_dir / "model.tar.gz"
-        self.assertTrue(output_file.exists())
+        output_file = output_dir / "model.tar.gz"
+        assert output_file.exists()
 
-    def test_main_missing_model_file(self):
+    def test_main_missing_model_file(self, setup_paths):
         """Test main function with missing model file."""
+        model_path, hyperparams_path, output_dir = setup_paths
+        
         # Don't create model file
         # Create hyperparameters file
-        self.hyperparams_path.write_text('{"test": "value"}')
+        hyperparams_path.write_text('{"test": "value"}')
 
         # Set up input and output paths
         input_paths = {
-            "model_input": str(self.model_path),  # This file doesn't exist
-            "hyperparams_input": str(self.hyperparams_path),
+            "model_input": str(model_path),  # This file doesn't exist
+            "hyperparams_input": str(hyperparams_path),
         }
-        output_paths = {"model_output": str(self.output_dir)}
+        output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
 
         # Verify failure with appropriate exit code
-        self.assertEqual(result, 1)  # FileNotFoundError
+        assert result == 1  # FileNotFoundError
 
-    def test_main_invalid_model_file(self):
+    def test_main_invalid_model_file(self, setup_paths):
         """Test main function with invalid model file."""
+        model_path, hyperparams_path, output_dir = setup_paths
+        
         # Create invalid model file (not a tar)
-        self.model_path.write_text("not a tar file")
+        model_path.write_text("not a tar file")
 
         # Set up input and output paths
         input_paths = {
-            "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path),
+            "model_input": str(model_path),
+            "hyperparams_input": str(hyperparams_path),
         }
-        output_paths = {"model_output": str(self.output_dir)}
+        output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
 
         # Verify failure with appropriate exit code
-        self.assertEqual(result, 2)  # ValueError
+        assert result == 2  # ValueError
 
     @patch("cursus.steps.scripts.dummy_training.process_model_with_hyperparameters")
-    def test_main_unexpected_error(self, mock_process):
+    def test_main_unexpected_error(self, mock_process, temp_dir, setup_paths):
         """Test main function with unexpected error."""
+        model_path, hyperparams_path, output_dir = setup_paths
+        
         # Create input files
-        self._create_dummy_tar(self.model_path, {"model.pth": "content"})
-        self.hyperparams_path.write_text('{"test": "value"}')
+        self._create_dummy_tar(temp_dir, model_path, {"model.pth": "content"})
+        hyperparams_path.write_text('{"test": "value"}')
 
         # Mock process function to raise unexpected error
         mock_process.side_effect = RuntimeError("Unexpected error")
 
         # Set up input and output paths
         input_paths = {
-            "model_input": str(self.model_path),
-            "hyperparams_input": str(self.hyperparams_path),
+            "model_input": str(model_path),
+            "hyperparams_input": str(hyperparams_path),
         }
-        output_paths = {"model_output": str(self.output_dir)}
+        output_paths = {"model_output": str(output_dir)}
         environ_vars = {}
 
         # Run main function
         result = main(input_paths, output_paths, environ_vars)
 
         # Verify failure with appropriate exit code
-        self.assertEqual(result, 3)  # RuntimeError
-
-
-if __name__ == "__main__":
-    unittest.main(argv=["first-arg-is-ignored"], exit=False)
+        assert result == 3  # RuntimeError

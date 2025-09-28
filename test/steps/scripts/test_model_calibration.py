@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock, mock_open
 import os
 import tempfile
@@ -28,21 +28,21 @@ from cursus.steps.scripts.model_calibration import (
 )
 
 
-class TestCalibrationConfig(unittest.TestCase):
+class TestCalibrationConfig:
     """Tests for the CalibrationConfig class."""
 
     def test_calibration_config_defaults(self):
         """Test CalibrationConfig with default values."""
         config = CalibrationConfig()
 
-        self.assertEqual(config.calibration_method, "gam")
-        self.assertEqual(config.label_field, "label")
-        self.assertEqual(config.score_field, "prob_class_1")
-        self.assertTrue(config.is_binary)
-        self.assertTrue(config.monotonic_constraint)
-        self.assertEqual(config.gam_splines, 10)
-        self.assertEqual(config.error_threshold, 0.05)
-        self.assertEqual(config.num_classes, 2)
+        assert config.calibration_method == "gam"
+        assert config.label_field == "label"
+        assert config.score_field == "prob_class_1"
+        assert config.is_binary is True
+        assert config.monotonic_constraint is True
+        assert config.gam_splines == 10
+        assert config.error_threshold == 0.05
+        assert config.num_classes == 2
 
     def test_calibration_config_custom_values(self):
         """Test CalibrationConfig with custom values."""
@@ -58,15 +58,15 @@ class TestCalibrationConfig(unittest.TestCase):
             multiclass_categories=["A", "B", "C"],
         )
 
-        self.assertEqual(config.calibration_method, "isotonic")
-        self.assertEqual(config.label_field, "target")
-        self.assertEqual(config.score_field, "prediction")
-        self.assertFalse(config.is_binary)
-        self.assertFalse(config.monotonic_constraint)
-        self.assertEqual(config.gam_splines, 20)
-        self.assertEqual(config.error_threshold, 0.1)
-        self.assertEqual(config.num_classes, 3)
-        self.assertEqual(config.multiclass_categories, ["A", "B", "C"])
+        assert config.calibration_method == "isotonic"
+        assert config.label_field == "target"
+        assert config.score_field == "prediction"
+        assert config.is_binary is False
+        assert config.monotonic_constraint is False
+        assert config.gam_splines == 20
+        assert config.error_threshold == 0.1
+        assert config.num_classes == 3
+        assert config.multiclass_categories == ["A", "B", "C"]
 
     @patch.dict(
         os.environ,
@@ -86,91 +86,101 @@ class TestCalibrationConfig(unittest.TestCase):
         """Test CalibrationConfig.from_env() with environment variables."""
         config = CalibrationConfig.from_env()
 
-        self.assertEqual(config.calibration_method, "platt")
-        self.assertEqual(config.label_field, "y_true")
-        self.assertEqual(config.score_field, "y_score")
-        self.assertFalse(config.is_binary)
-        self.assertFalse(config.monotonic_constraint)
-        self.assertEqual(config.gam_splines, 15)
-        self.assertEqual(config.error_threshold, 0.02)
-        self.assertEqual(config.num_classes, 4)
-        self.assertEqual(
-            config.multiclass_categories, ["class1", "class2", "class3", "class4"]
-        )
+        assert config.calibration_method == "platt"
+        assert config.label_field == "y_true"
+        assert config.score_field == "y_score"
+        assert config.is_binary is False
+        assert config.monotonic_constraint is False
+        assert config.gam_splines == 15
+        assert config.error_threshold == 0.02
+        assert config.num_classes == 4
+        assert config.multiclass_categories == ["class1", "class2", "class3", "class4"]
 
 
-class TestCalibrationHelpers(unittest.TestCase):
+class TestCalibrationHelpers:
     """Tests for calibration helper functions."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_dirs(self):
         """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
-        self.config = CalibrationConfig(
-            input_data_path=str(self.temp_dir / "input"),
-            output_calibration_path=str(self.temp_dir / "calibration"),
-            output_metrics_path=str(self.temp_dir / "metrics"),
-            output_calibrated_data_path=str(self.temp_dir / "calibrated"),
+        temp_dir = Path(tempfile.mkdtemp())
+        config = CalibrationConfig(
+            input_data_path=str(temp_dir / "input"),
+            output_calibration_path=str(temp_dir / "calibration"),
+            output_metrics_path=str(temp_dir / "metrics"),
+            output_calibrated_data_path=str(temp_dir / "calibrated"),
         )
+        
+        yield temp_dir, config
+        shutil.rmtree(temp_dir)
 
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
-
-    def test_create_directories(self):
+    def test_create_directories(self, setup_dirs):
         """Test create_directories function."""
-        create_directories(self.config)
+        temp_dir, config = setup_dirs
+        
+        create_directories(config)
 
-        self.assertTrue(Path(self.config.output_calibration_path).exists())
-        self.assertTrue(Path(self.config.output_metrics_path).exists())
-        self.assertTrue(Path(self.config.output_calibrated_data_path).exists())
+        assert Path(config.output_calibration_path).exists()
+        assert Path(config.output_metrics_path).exists()
+        assert Path(config.output_calibrated_data_path).exists()
 
-    def test_find_first_data_file_csv(self):
+    def test_find_first_data_file_csv(self, setup_dirs):
         """Test finding CSV data file."""
-        input_dir = Path(self.config.input_data_path)
+        temp_dir, config = setup_dirs
+        
+        input_dir = Path(config.input_data_path)
         input_dir.mkdir(parents=True)
 
         # Create test files
         (input_dir / "data.csv").write_text("col1,col2\n1,2\n")
         (input_dir / "other.txt").write_text("not a data file")
 
-        result = find_first_data_file(config=self.config)
-        self.assertTrue(result.endswith("data.csv"))
+        result = find_first_data_file(config=config)
+        assert result.endswith("data.csv")
 
-    def test_find_first_data_file_parquet(self):
+    def test_find_first_data_file_parquet(self, setup_dirs):
         """Test finding Parquet data file."""
-        input_dir = Path(self.config.input_data_path)
+        temp_dir, config = setup_dirs
+        
+        input_dir = Path(config.input_data_path)
         input_dir.mkdir(parents=True)
 
         # Create a dummy parquet file (just touch it for the test)
         (input_dir / "data.parquet").touch()
 
-        result = find_first_data_file(config=self.config)
-        self.assertTrue(result.endswith("data.parquet"))
+        result = find_first_data_file(config=config)
+        assert result.endswith("data.parquet")
 
-    def test_find_first_data_file_no_files(self):
+    def test_find_first_data_file_no_files(self, setup_dirs):
         """Test finding data file when none exist."""
-        input_dir = Path(self.config.input_data_path)
+        temp_dir, config = setup_dirs
+        
+        input_dir = Path(config.input_data_path)
         input_dir.mkdir(parents=True)
 
-        with self.assertRaises(FileNotFoundError):
-            find_first_data_file(config=self.config)
+        with pytest.raises(FileNotFoundError):
+            find_first_data_file(config=config)
 
-    def test_find_first_data_file_no_directory(self):
+    def test_find_first_data_file_no_directory(self, setup_dirs):
         """Test finding data file when directory doesn't exist."""
-        with self.assertRaises(FileNotFoundError):
-            find_first_data_file(config=self.config)
+        temp_dir, config = setup_dirs
+        
+        with pytest.raises(FileNotFoundError):
+            find_first_data_file(config=config)
 
     @patch("cursus.steps.scripts.model_calibration.pd.read_csv")
     @patch("cursus.steps.scripts.model_calibration.find_first_data_file")
-    def test_load_data_csv(self, mock_find_file, mock_read_csv):
+    def test_load_data_csv(self, mock_find_file, mock_read_csv, setup_dirs):
         """Test loading CSV data."""
+        temp_dir, config = setup_dirs
+        
         mock_find_file.return_value = "/path/to/data.csv"
         mock_df = pd.DataFrame(
             {"label": [0, 1, 0, 1], "prob_class_1": [0.2, 0.8, 0.3, 0.9]}
         )
         mock_read_csv.return_value = mock_df
 
-        result = load_data(self.config)
+        result = load_data(config)
 
         mock_find_file.assert_called_once()
         mock_read_csv.assert_called_once_with("/path/to/data.csv")
@@ -178,24 +188,28 @@ class TestCalibrationHelpers(unittest.TestCase):
 
     @patch("cursus.steps.scripts.model_calibration.pd.read_parquet")
     @patch("cursus.steps.scripts.model_calibration.find_first_data_file")
-    def test_load_data_parquet(self, mock_find_file, mock_read_parquet):
+    def test_load_data_parquet(self, mock_find_file, mock_read_parquet, setup_dirs):
         """Test loading Parquet data."""
+        temp_dir, config = setup_dirs
+        
         mock_find_file.return_value = "/path/to/data.parquet"
         mock_df = pd.DataFrame(
             {"label": [0, 1, 0, 1], "prob_class_1": [0.2, 0.8, 0.3, 0.9]}
         )
         mock_read_parquet.return_value = mock_df
 
-        result = load_data(self.config)
+        result = load_data(config)
 
         mock_find_file.assert_called_once()
         mock_read_parquet.assert_called_once_with("/path/to/data.parquet")
         pd.testing.assert_frame_equal(result, mock_df)
 
     @patch("cursus.steps.scripts.model_calibration.find_first_data_file")
-    def test_load_data_missing_label_field(self, mock_find_file):
+    def test_load_data_missing_label_field(self, mock_find_file, setup_dirs):
         """Test loading data with missing label field."""
-        input_dir = Path(self.config.input_data_path)
+        temp_dir, config = setup_dirs
+        
+        input_dir = Path(config.input_data_path)
         input_dir.mkdir(parents=True)
         csv_file = input_dir / "data.csv"
 
@@ -205,15 +219,17 @@ class TestCalibrationHelpers(unittest.TestCase):
 
         mock_find_file.return_value = str(csv_file)
 
-        with self.assertRaises(ValueError) as context:
-            load_data(self.config)
+        with pytest.raises(ValueError) as exc_info:
+            load_data(config)
 
-        self.assertIn("Label field 'label' not found", str(context.exception))
+        assert "Label field 'label' not found" in str(exc_info.value)
 
     @patch("cursus.steps.scripts.model_calibration.find_first_data_file")
-    def test_load_data_missing_score_field_binary(self, mock_find_file):
+    def test_load_data_missing_score_field_binary(self, mock_find_file, setup_dirs):
         """Test loading binary data with missing score field."""
-        input_dir = Path(self.config.input_data_path)
+        temp_dir, config = setup_dirs
+        
+        input_dir = Path(config.input_data_path)
         input_dir.mkdir(parents=True)
         csv_file = input_dir / "data.csv"
 
@@ -223,52 +239,61 @@ class TestCalibrationHelpers(unittest.TestCase):
 
         mock_find_file.return_value = str(csv_file)
 
-        with self.assertRaises(ValueError) as context:
-            load_data(self.config)
+        with pytest.raises(ValueError) as exc_info:
+            load_data(config)
 
-        self.assertIn("Score field 'prob_class_1' not found", str(context.exception))
+        assert "Score field 'prob_class_1' not found" in str(exc_info.value)
 
 
-class TestCalibrationMethods(unittest.TestCase):
+class TestCalibrationMethods:
     """Tests for calibration training methods."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_data(self):
         """Set up test data."""
         np.random.seed(42)
-        self.n_samples = 100
-        self.scores = np.random.uniform(0, 1, self.n_samples)
-        self.labels = (self.scores > 0.5).astype(int)
-        self.config = CalibrationConfig()
+        n_samples = 100
+        scores = np.random.uniform(0, 1, n_samples)
+        labels = (scores > 0.5).astype(int)
+        config = CalibrationConfig()
+        
+        return scores, labels, config
 
-    def test_train_isotonic_calibration(self):
+    def test_train_isotonic_calibration(self, setup_data):
         """Test training isotonic regression calibration."""
-        calibrator = train_isotonic_calibration(self.scores, self.labels, self.config)
+        scores, labels, config = setup_data
+        
+        calibrator = train_isotonic_calibration(scores, labels, config)
 
         # Test that we get a calibrator object
-        self.assertIsNotNone(calibrator)
+        assert calibrator is not None
 
         # Test that it can make predictions
-        calibrated_scores = calibrator.transform(self.scores)
-        self.assertEqual(len(calibrated_scores), len(self.scores))
-        self.assertTrue(np.all(calibrated_scores >= 0))
-        self.assertTrue(np.all(calibrated_scores <= 1))
+        calibrated_scores = calibrator.transform(scores)
+        assert len(calibrated_scores) == len(scores)
+        assert np.all(calibrated_scores >= 0)
+        assert np.all(calibrated_scores <= 1)
 
-    def test_train_platt_scaling(self):
+    def test_train_platt_scaling(self, setup_data):
         """Test training Platt scaling calibration."""
-        calibrator = train_platt_scaling(self.scores, self.labels, self.config)
+        scores, labels, config = setup_data
+        
+        calibrator = train_platt_scaling(scores, labels, config)
 
         # Test that we get a calibrator object
-        self.assertIsNotNone(calibrator)
+        assert calibrator is not None
 
         # Test that it can make predictions
-        calibrated_scores = calibrator.predict_proba(self.scores.reshape(-1, 1))[:, 1]
-        self.assertEqual(len(calibrated_scores), len(self.scores))
-        self.assertTrue(np.all(calibrated_scores >= 0))
-        self.assertTrue(np.all(calibrated_scores <= 1))
+        calibrated_scores = calibrator.predict_proba(scores.reshape(-1, 1))[:, 1]
+        assert len(calibrated_scores) == len(scores)
+        assert np.all(calibrated_scores >= 0)
+        assert np.all(calibrated_scores <= 1)
 
     @patch("cursus.steps.scripts.model_calibration.HAS_PYGAM", True)
-    def test_train_gam_calibration_with_pygam(self):
+    def test_train_gam_calibration_with_pygam(self, setup_data):
         """Test training GAM calibration when pygam is available."""
+        scores, labels, config = setup_data
+        
         mock_gam = MagicMock()
         mock_gam.statistics_ = {"deviance": 100.0}
         mock_s = MagicMock()
@@ -281,100 +306,116 @@ class TestCalibrationMethods(unittest.TestCase):
         ) as mock_gam_class, patch(
             "cursus.steps.scripts.model_calibration.s", return_value=mock_s, create=True
         ):
-            result = train_gam_calibration(self.scores, self.labels, self.config)
+            result = train_gam_calibration(scores, labels, config)
 
-            self.assertEqual(result, mock_gam)
+            assert result == mock_gam
             mock_gam.fit.assert_called_once()
             mock_gam_class.assert_called_once()
 
     @patch("cursus.steps.scripts.model_calibration.HAS_PYGAM", False)
-    def test_train_gam_calibration_without_pygam(self):
+    def test_train_gam_calibration_without_pygam(self, setup_data):
         """Test training GAM calibration when pygam is not available."""
-        with self.assertRaises(ImportError):
-            train_gam_calibration(self.scores, self.labels, self.config)
+        scores, labels, config = setup_data
+        
+        with pytest.raises(ImportError):
+            train_gam_calibration(scores, labels, config)
 
 
-class TestMulticlassCalibration(unittest.TestCase):
+class TestMulticlassCalibration:
     """Tests for multiclass calibration methods."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_multiclass_data(self):
         """Set up test data."""
         np.random.seed(42)
-        self.n_samples = 100
-        self.n_classes = 3
-        self.y_prob_matrix = np.random.dirichlet([1, 1, 1], self.n_samples)
-        self.y_true = np.random.choice(self.n_classes, self.n_samples)
-        self.config = CalibrationConfig(
+        n_samples = 100
+        n_classes = 3
+        y_prob_matrix = np.random.dirichlet([1, 1, 1], n_samples)
+        y_true = np.random.choice(n_classes, n_samples)
+        config = CalibrationConfig(
             is_binary=False,
-            num_classes=self.n_classes,
+            num_classes=n_classes,
             multiclass_categories=["class_0", "class_1", "class_2"],
         )
+        
+        return y_prob_matrix, y_true, config, n_samples, n_classes
 
-    def test_train_multiclass_calibration_isotonic(self):
+    def test_train_multiclass_calibration_isotonic(self, setup_multiclass_data):
         """Test training multiclass calibration with isotonic regression."""
+        y_prob_matrix, y_true, config, n_samples, n_classes = setup_multiclass_data
+        
         calibrators = train_multiclass_calibration(
-            self.y_prob_matrix, self.y_true, "isotonic", self.config
+            y_prob_matrix, y_true, "isotonic", config
         )
 
-        self.assertEqual(len(calibrators), self.n_classes)
+        assert len(calibrators) == n_classes
 
         # Test that each calibrator can make predictions
         for calibrator in calibrators:
             test_scores = np.random.uniform(0, 1, 10)
             calibrated = calibrator.transform(test_scores)
-            self.assertEqual(len(calibrated), 10)
+            assert len(calibrated) == 10
 
-    def test_train_multiclass_calibration_platt(self):
+    def test_train_multiclass_calibration_platt(self, setup_multiclass_data):
         """Test training multiclass calibration with Platt scaling."""
+        y_prob_matrix, y_true, config, n_samples, n_classes = setup_multiclass_data
+        
         calibrators = train_multiclass_calibration(
-            self.y_prob_matrix, self.y_true, "platt", self.config
+            y_prob_matrix, y_true, "platt", config
         )
 
-        self.assertEqual(len(calibrators), self.n_classes)
+        assert len(calibrators) == n_classes
 
         # Test that each calibrator can make predictions
         for calibrator in calibrators:
             test_scores = np.random.uniform(0, 1, 10).reshape(-1, 1)
             calibrated = calibrator.predict_proba(test_scores)[:, 1]
-            self.assertEqual(len(calibrated), 10)
+            assert len(calibrated) == 10
 
-    def test_apply_multiclass_calibration(self):
+    def test_apply_multiclass_calibration(self, setup_multiclass_data):
         """Test applying multiclass calibration."""
+        y_prob_matrix, y_true, config, n_samples, n_classes = setup_multiclass_data
+        
         # Train calibrators first
         calibrators = train_multiclass_calibration(
-            self.y_prob_matrix, self.y_true, "isotonic", self.config
+            y_prob_matrix, y_true, "isotonic", config
         )
 
         # Apply calibration
         calibrated_probs = apply_multiclass_calibration(
-            self.y_prob_matrix, calibrators, self.config
+            y_prob_matrix, calibrators, config
         )
 
         # Check output shape and properties
-        self.assertEqual(calibrated_probs.shape, self.y_prob_matrix.shape)
+        assert calibrated_probs.shape == y_prob_matrix.shape
 
         # Check that probabilities sum to 1 (approximately)
         row_sums = calibrated_probs.sum(axis=1)
         np.testing.assert_allclose(row_sums, 1.0, rtol=1e-10)
 
         # Check that all probabilities are between 0 and 1
-        self.assertTrue(np.all(calibrated_probs >= 0))
-        self.assertTrue(np.all(calibrated_probs <= 1))
+        assert np.all(calibrated_probs >= 0)
+        assert np.all(calibrated_probs <= 1)
 
 
-class TestCalibrationMetrics(unittest.TestCase):
+class TestCalibrationMetrics:
     """Tests for calibration metrics computation."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_metrics_data(self):
         """Set up test data."""
         np.random.seed(42)
-        self.n_samples = 100
-        self.y_true = np.random.choice([0, 1], self.n_samples)
-        self.y_prob = np.random.uniform(0, 1, self.n_samples)
+        n_samples = 100
+        y_true = np.random.choice([0, 1], n_samples)
+        y_prob = np.random.uniform(0, 1, n_samples)
+        
+        return y_true, y_prob, n_samples
 
-    def test_compute_calibration_metrics(self):
+    def test_compute_calibration_metrics(self, setup_metrics_data):
         """Test computing calibration metrics."""
-        metrics = compute_calibration_metrics(self.y_true, self.y_prob)
+        y_true, y_prob, n_samples = setup_metrics_data
+        
+        metrics = compute_calibration_metrics(y_true, y_prob)
 
         # Check that all expected metrics are present
         expected_keys = [
@@ -389,24 +430,26 @@ class TestCalibrationMetrics(unittest.TestCase):
         ]
 
         for key in expected_keys:
-            self.assertIn(key, metrics)
+            assert key in metrics
 
         # Check metric value ranges
-        self.assertGreaterEqual(metrics["expected_calibration_error"], 0)
-        self.assertLessEqual(metrics["expected_calibration_error"], 1)
-        self.assertGreaterEqual(metrics["maximum_calibration_error"], 0)
-        self.assertLessEqual(metrics["maximum_calibration_error"], 1)
-        self.assertGreaterEqual(metrics["brier_score"], 0)
-        self.assertLessEqual(metrics["brier_score"], 1)
-        self.assertGreaterEqual(metrics["auc_roc"], 0)
-        self.assertLessEqual(metrics["auc_roc"], 1)
-        self.assertEqual(metrics["num_samples"], self.n_samples)
+        assert metrics["expected_calibration_error"] >= 0
+        assert metrics["expected_calibration_error"] <= 1
+        assert metrics["maximum_calibration_error"] >= 0
+        assert metrics["maximum_calibration_error"] <= 1
+        assert metrics["brier_score"] >= 0
+        assert metrics["brier_score"] <= 1
+        assert metrics["auc_roc"] >= 0
+        assert metrics["auc_roc"] <= 1
+        assert metrics["num_samples"] == n_samples
 
-    def test_compute_multiclass_calibration_metrics(self):
+    def test_compute_multiclass_calibration_metrics(self, setup_metrics_data):
         """Test computing multiclass calibration metrics."""
+        _, _, n_samples = setup_metrics_data
+        
         n_classes = 3
-        y_true = np.random.choice(n_classes, self.n_samples)
-        y_prob_matrix = np.random.dirichlet([1, 1, 1], self.n_samples)
+        y_true = np.random.choice(n_classes, n_samples)
+        y_prob_matrix = np.random.dirichlet([1, 1, 1], n_samples)
 
         config = CalibrationConfig(
             is_binary=False,
@@ -431,48 +474,50 @@ class TestCalibrationMetrics(unittest.TestCase):
         ]
 
         for key in expected_keys:
-            self.assertIn(key, metrics)
+            assert key in metrics
 
         # Check per-class metrics
-        self.assertEqual(len(metrics["per_class_metrics"]), n_classes)
-        self.assertEqual(metrics["num_classes"], n_classes)
-        self.assertEqual(metrics["num_samples"], self.n_samples)
+        assert len(metrics["per_class_metrics"]) == n_classes
+        assert metrics["num_classes"] == n_classes
+        assert metrics["num_samples"] == n_samples
 
 
-class TestCalibrationVisualization(unittest.TestCase):
+class TestCalibrationVisualization:
     """Tests for calibration visualization functions."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_viz_data(self):
         """Set up test data."""
-        self.temp_dir = Path(tempfile.mkdtemp())
-        self.config = CalibrationConfig(output_metrics_path=str(self.temp_dir))
+        temp_dir = Path(tempfile.mkdtemp())
+        config = CalibrationConfig(output_metrics_path=str(temp_dir))
 
         np.random.seed(42)
-        self.n_samples = 100
-        self.y_true = np.random.choice([0, 1], self.n_samples)
-        self.y_prob_uncalibrated = np.random.uniform(0, 1, self.n_samples)
-        self.y_prob_calibrated = np.random.uniform(0, 1, self.n_samples)
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
+        n_samples = 100
+        y_true = np.random.choice([0, 1], n_samples)
+        y_prob_uncalibrated = np.random.uniform(0, 1, n_samples)
+        y_prob_calibrated = np.random.uniform(0, 1, n_samples)
+        
+        yield temp_dir, config, y_true, y_prob_uncalibrated, y_prob_calibrated, n_samples
+        shutil.rmtree(temp_dir)
 
     @patch("cursus.steps.scripts.model_calibration.plt")
-    def test_plot_reliability_diagram(self, mock_plt):
+    def test_plot_reliability_diagram(self, mock_plt, setup_viz_data):
         """Test plotting reliability diagram."""
+        temp_dir, config, y_true, y_prob_uncalibrated, y_prob_calibrated, n_samples = setup_viz_data
+        
         mock_fig = MagicMock()
         mock_plt.figure.return_value = mock_fig
         mock_plt.subplot2grid.return_value = MagicMock()
 
         result_path = plot_reliability_diagram(
-            self.y_true,
-            self.y_prob_uncalibrated,
-            self.y_prob_calibrated,
-            config=self.config,
+            y_true,
+            y_prob_uncalibrated,
+            y_prob_calibrated,
+            config=config,
         )
 
-        expected_path = str(self.temp_dir / "reliability_diagram.png")
-        self.assertEqual(result_path, expected_path)
+        expected_path = str(temp_dir / "reliability_diagram.png")
+        assert result_path == expected_path
 
         # Verify that plotting functions were called
         mock_plt.figure.assert_called_once()
@@ -480,15 +525,17 @@ class TestCalibrationVisualization(unittest.TestCase):
         mock_plt.close.assert_called_once_with(mock_fig)
 
     @patch("cursus.steps.scripts.model_calibration.plt")
-    def test_plot_multiclass_reliability_diagram(self, mock_plt):
+    def test_plot_multiclass_reliability_diagram(self, mock_plt, setup_viz_data):
         """Test plotting multiclass reliability diagram."""
+        temp_dir, _, _, _, _, n_samples = setup_viz_data
+        
         n_classes = 3
-        y_true = np.random.choice(n_classes, self.n_samples)
-        y_prob_uncalibrated = np.random.dirichlet([1, 1, 1], self.n_samples)
-        y_prob_calibrated = np.random.dirichlet([1, 1, 1], self.n_samples)
+        y_true = np.random.choice(n_classes, n_samples)
+        y_prob_uncalibrated = np.random.dirichlet([1, 1, 1], n_samples)
+        y_prob_calibrated = np.random.dirichlet([1, 1, 1], n_samples)
 
         config = CalibrationConfig(
-            output_metrics_path=str(self.temp_dir),
+            output_metrics_path=str(temp_dir),
             is_binary=False,
             num_classes=n_classes,
             multiclass_categories=["class_0", "class_1", "class_2"],
@@ -502,8 +549,8 @@ class TestCalibrationVisualization(unittest.TestCase):
             y_true, y_prob_uncalibrated, y_prob_calibrated, config=config
         )
 
-        expected_path = str(self.temp_dir / "multiclass_reliability_diagram.png")
-        self.assertEqual(result_path, expected_path)
+        expected_path = str(temp_dir / "multiclass_reliability_diagram.png")
+        assert result_path == expected_path
 
         # Verify that plotting functions were called
         mock_plt.subplots.assert_called_once()
@@ -511,52 +558,54 @@ class TestCalibrationVisualization(unittest.TestCase):
         mock_plt.close.assert_called_once_with(mock_fig)
 
 
-class TestCalibrationMain(unittest.TestCase):
+class TestCalibrationMain:
     """Tests for the main calibration function."""
 
-    def setUp(self):
+    @pytest.fixture
+    def setup_main_data(self):
         """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
+        temp_dir = Path(tempfile.mkdtemp())
 
         # Create test data
         np.random.seed(42)
-        self.n_samples = 100
-        self.df = pd.DataFrame(
+        n_samples = 100
+        df = pd.DataFrame(
             {
-                "label": np.random.choice([0, 1], self.n_samples),
-                "prob_class_1": np.random.uniform(0, 1, self.n_samples),
+                "label": np.random.choice([0, 1], n_samples),
+                "prob_class_1": np.random.uniform(0, 1, n_samples),
             }
         )
 
         # Create input data file
-        input_dir = self.temp_dir / "input"
+        input_dir = temp_dir / "input"
         input_dir.mkdir(parents=True)
-        self.df.to_csv(input_dir / "data.csv", index=False)
+        df.to_csv(input_dir / "data.csv", index=False)
 
-        self.config = CalibrationConfig(
+        config = CalibrationConfig(
             input_data_path=str(input_dir),
-            output_calibration_path=str(self.temp_dir / "calibration"),
-            output_metrics_path=str(self.temp_dir / "metrics"),
-            output_calibrated_data_path=str(self.temp_dir / "calibrated"),
+            output_calibration_path=str(temp_dir / "calibration"),
+            output_metrics_path=str(temp_dir / "metrics"),
+            output_calibrated_data_path=str(temp_dir / "calibrated"),
             calibration_method="isotonic",
         )
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
+        
+        yield temp_dir, df, n_samples
+        shutil.rmtree(temp_dir)
 
     @patch("cursus.steps.scripts.model_calibration.plot_reliability_diagram")
     @patch("cursus.steps.scripts.model_calibration.joblib.dump")
-    def test_main_binary_calibration(self, mock_joblib_dump, mock_plot):
+    def test_main_binary_calibration(self, mock_joblib_dump, mock_plot, setup_main_data):
         """Test main function for binary calibration."""
-        mock_plot.return_value = str(self.temp_dir / "plot.png")
+        temp_dir, df, n_samples = setup_main_data
+        
+        mock_plot.return_value = str(temp_dir / "plot.png")
 
         # Set up input and output paths
-        input_paths = {"eval_data": str(self.temp_dir / "input")}
+        input_paths = {"eval_data": str(temp_dir / "input")}
         output_paths = {
-            "calibration": str(self.temp_dir / "calibration"),
-            "metrics": str(self.temp_dir / "metrics"),
-            "calibrated_data": str(self.temp_dir / "calibrated"),
+            "calibration": str(temp_dir / "calibration"),
+            "metrics": str(temp_dir / "metrics"),
+            "calibrated_data": str(temp_dir / "calibrated"),
         }
         environ_vars = {
             "CALIBRATION_METHOD": "isotonic",
@@ -579,14 +628,14 @@ class TestCalibrationMain(unittest.TestCase):
         metrics_dir = Path(output_paths["metrics"])
         calibrated_dir = Path(output_paths["calibrated_data"])
 
-        self.assertTrue(calibration_dir.exists())
-        self.assertTrue(metrics_dir.exists())
-        self.assertTrue(calibrated_dir.exists())
+        assert calibration_dir.exists()
+        assert metrics_dir.exists()
+        assert calibrated_dir.exists()
 
         # Check specific output files
-        self.assertTrue((calibration_dir / "calibration_summary.json").exists())
-        self.assertTrue((metrics_dir / "calibration_metrics.json").exists())
-        self.assertTrue((calibrated_dir / "calibrated_data.parquet").exists())
+        assert (calibration_dir / "calibration_summary.json").exists()
+        assert (metrics_dir / "calibration_metrics.json").exists()
+        assert (calibrated_dir / "calibrated_data.parquet").exists()
 
         # Verify joblib.dump was called to save the calibrator
         mock_joblib_dump.assert_called_once()
@@ -596,16 +645,18 @@ class TestCalibrationMain(unittest.TestCase):
 
     @patch("cursus.steps.scripts.model_calibration.plot_multiclass_reliability_diagram")
     @patch("cursus.steps.scripts.model_calibration.joblib.dump")
-    def test_main_multiclass_calibration(self, mock_joblib_dump, mock_plot):
+    def test_main_multiclass_calibration(self, mock_joblib_dump, mock_plot, setup_main_data):
         """Test main function for multiclass calibration."""
+        temp_dir, df, n_samples = setup_main_data
+        
         # Create multiclass test data
         n_classes = 3
         multiclass_df = pd.DataFrame(
             {
-                "label": np.random.choice(n_classes, self.n_samples),
-                "prob_class_0": np.random.uniform(0, 1, self.n_samples),
-                "prob_class_1": np.random.uniform(0, 1, self.n_samples),
-                "prob_class_2": np.random.uniform(0, 1, self.n_samples),
+                "label": np.random.choice(n_classes, n_samples),
+                "prob_class_0": np.random.uniform(0, 1, n_samples),
+                "prob_class_1": np.random.uniform(0, 1, n_samples),
+                "prob_class_2": np.random.uniform(0, 1, n_samples),
             }
         )
 
@@ -616,21 +667,21 @@ class TestCalibrationMain(unittest.TestCase):
         )
 
         # Save multiclass data (remove existing binary data first)
-        input_dir = Path(self.temp_dir / "input")
+        input_dir = Path(temp_dir / "input")
         # Remove existing binary data file
         existing_files = list(input_dir.glob("*.csv"))
         for f in existing_files:
             f.unlink()
         multiclass_df.to_csv(input_dir / "multiclass_data.csv", index=False)
 
-        mock_plot.return_value = str(self.temp_dir / "plot.png")
+        mock_plot.return_value = str(temp_dir / "plot.png")
 
         # Set up input and output paths
         input_paths = {"eval_data": str(input_dir)}
         output_paths = {
-            "calibration": str(self.temp_dir / "calibration"),
-            "metrics": str(self.temp_dir / "metrics"),
-            "calibrated_data": str(self.temp_dir / "calibrated"),
+            "calibration": str(temp_dir / "calibration"),
+            "metrics": str(temp_dir / "metrics"),
+            "calibrated_data": str(temp_dir / "calibrated"),
         }
         environ_vars = {
             "CALIBRATION_METHOD": "isotonic",
@@ -653,16 +704,12 @@ class TestCalibrationMain(unittest.TestCase):
         metrics_dir = Path(output_paths["metrics"])
         calibrated_dir = Path(output_paths["calibrated_data"])
 
-        self.assertTrue((calibration_dir / "calibration_summary.json").exists())
-        self.assertTrue((metrics_dir / "calibration_metrics.json").exists())
-        self.assertTrue((calibrated_dir / "calibrated_data.parquet").exists())
+        assert (calibration_dir / "calibration_summary.json").exists()
+        assert (metrics_dir / "calibration_metrics.json").exists()
+        assert (calibrated_dir / "calibrated_data.parquet").exists()
 
         # For multiclass, multiple calibrators should be saved
-        self.assertEqual(mock_joblib_dump.call_count, n_classes)
+        assert mock_joblib_dump.call_count == n_classes
 
         # Verify plot function was called
         mock_plot.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main(argv=["first-arg-is-ignored"], exit=False)
