@@ -238,10 +238,10 @@ class TestValidationEngine:
         return {"XGBoostTraining": MagicMock(), "XGBoostModelEval": MagicMock()}
 
     @patch("cursus.core.compiler.validation.CONFIG_STEP_REGISTRY")
-    @patch("cursus.core.compiler.validation.StepBuilderRegistry")
+    @patch("cursus.core.compiler.validation.StepCatalog")
     def test_validate_dag_compatibility_success(
         self,
-        mock_step_builder_registry,
+        mock_step_catalog,
         mock_config_step_registry,
         engine,
         available_configs,
@@ -257,7 +257,9 @@ class TestValidationEngine:
             "XGBoostTraining" if "Training" in x else "XGBoostModelEval"
         )
 
-        mock_step_builder_registry.LEGACY_ALIASES = {}
+        mock_catalog_instance = MagicMock()
+        mock_catalog_instance.get_builder_for_config.return_value = MagicMock()
+        mock_step_catalog.return_value = mock_catalog_instance
 
         dag_nodes = ["training", "evaluation"]
 
@@ -295,16 +297,19 @@ class TestValidationEngine:
         assert "missing_node" in result.missing_configs
 
     @patch("cursus.core.compiler.validation.CONFIG_STEP_REGISTRY")
-    @patch("cursus.core.compiler.validation.StepBuilderRegistry")
+    @patch("cursus.core.compiler.validation.StepCatalog")
     def test_validate_dag_compatibility_unresolvable_builders(
-        self, mock_step_builder_registry, mock_config_step_registry, engine
+        self, mock_step_catalog, mock_config_step_registry, engine
     ):
         """Test validation with unresolvable step builders."""
         # Setup mocks to simulate missing builders
         mock_config_step_registry.__contains__ = (
             lambda self, x: False
         )  # Not in registry
-        mock_step_builder_registry.LEGACY_ALIASES = {}
+        
+        mock_catalog_instance = MagicMock()
+        mock_catalog_instance.get_builder_for_config.return_value = None  # No builder found
+        mock_step_catalog.return_value = mock_catalog_instance
 
         dag_nodes = ["training"]
 
@@ -349,16 +354,18 @@ class TestValidationEngine:
         assert "Invalid parameter" in result.config_errors["training"][0]
 
     @patch("cursus.core.compiler.validation.CONFIG_STEP_REGISTRY")
-    @patch("cursus.core.compiler.validation.StepBuilderRegistry")
+    @patch("cursus.core.compiler.validation.StepCatalog")
     def test_validate_dag_compatibility_with_job_type_variants(
-        self, mock_step_builder_registry, mock_config_step_registry, engine
+        self, mock_step_catalog, mock_config_step_registry, engine
     ):
         """Test validation with job type variants."""
         # Setup mocks
         mock_config_step_registry.__contains__ = lambda self, x: True
         mock_config_step_registry.__getitem__ = lambda self, x: "XGBoostTraining"
 
-        mock_step_builder_registry.LEGACY_ALIASES = {}
+        mock_catalog_instance = MagicMock()
+        mock_catalog_instance.get_builder_for_config.return_value = MagicMock()
+        mock_step_catalog.return_value = mock_catalog_instance
 
         dag_nodes = ["training_step"]  # Node with job type pattern
 
@@ -382,16 +389,18 @@ class TestValidationEngine:
         assert result.is_valid
 
     @patch("cursus.core.compiler.validation.CONFIG_STEP_REGISTRY")
-    @patch("cursus.core.compiler.validation.StepBuilderRegistry")
+    @patch("cursus.core.compiler.validation.StepCatalog")
     def test_validate_dag_compatibility_with_legacy_aliases(
-        self, mock_step_builder_registry, mock_config_step_registry, engine
+        self, mock_step_catalog, mock_config_step_registry, engine
     ):
         """Test validation with legacy aliases."""
         # Setup mocks
         mock_config_step_registry.__contains__ = lambda self, x: True
         mock_config_step_registry.__getitem__ = lambda self, x: "Package"
 
-        mock_step_builder_registry.LEGACY_ALIASES = {"Package": "MIMSPackaging"}
+        mock_catalog_instance = MagicMock()
+        mock_catalog_instance.get_builder_for_config.return_value = MagicMock()
+        mock_step_catalog.return_value = mock_catalog_instance
 
         dag_nodes = ["packaging"]
 

@@ -530,16 +530,18 @@ class TestPipelineAssembler:
         return {"step1": mock_config1, "step2": mock_config2, "step3": mock_config3}
 
     @pytest.fixture
-    def mock_step_builder_map(self):
+    def mock_step_catalog(self):
+        """Create mock step catalog."""
+        from cursus.step_catalog import StepCatalog
+        mock_catalog = MagicMock(spec=StepCatalog)
+        
+        # Mock builder class
         mock_builder_cls = MagicMock()
         mock_builder = MagicMock()
         mock_builder_cls.return_value = mock_builder
-
-        return {
-            "TestStep1": mock_builder_cls,
-            "TestStep2": mock_builder_cls,
-            "TestStep3": mock_builder_cls,
-        }
+        
+        mock_catalog.get_builder_for_config.return_value = mock_builder_cls
+        return mock_catalog
 
     @pytest.fixture
     def mock_dependency_components(self):
@@ -587,7 +589,7 @@ class TestPipelineAssembler:
         self,
         mock_dag,
         mock_configs,
-        mock_step_builder_map,
+        mock_step_catalog,
         mock_dependency_components,
         setup_assembler_mocks,
     ):
@@ -595,7 +597,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=mock_dag,
             config_map=mock_configs,
-            step_builder_map=mock_step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_dependency_components["registry_manager"],
             dependency_resolver=mock_dependency_components["dependency_resolver"],
         )
@@ -603,7 +605,7 @@ class TestPipelineAssembler:
         # Verify attributes
         assert assembler.dag == mock_dag
         assert assembler.config_map == mock_configs
-        assert assembler.step_builder_map == mock_step_builder_map
+        assert assembler.step_catalog == mock_step_catalog
         assert (
             assembler._registry_manager
             == mock_dependency_components["registry_manager"]
@@ -617,7 +619,7 @@ class TestPipelineAssembler:
         assert len(assembler.step_builders) == 3
 
     def test_assembler_validation_missing_configs(
-        self, mock_dag, mock_step_builder_map, setup_assembler_mocks
+        self, mock_dag, mock_step_catalog, setup_assembler_mocks
     ):
         """Test assembler validation with missing configs."""
         # Remove a config
@@ -627,7 +629,7 @@ class TestPipelineAssembler:
             PipelineAssembler(
                 dag=mock_dag,
                 config_map=incomplete_config_map,
-                step_builder_map=mock_step_builder_map,
+                step_catalog=mock_step_catalog,
             )
 
         assert "Missing configs for nodes" in str(exc_info.value)
@@ -636,23 +638,25 @@ class TestPipelineAssembler:
         self, mock_dag, mock_configs, setup_assembler_mocks
     ):
         """Test assembler validation with missing step builders."""
-        # Remove a step builder
-        incomplete_builder_map = {"TestStep1": MagicMock()}
+        # Mock step catalog to return None (no builder found)
+        from cursus.step_catalog import StepCatalog
+        mock_catalog = MagicMock(spec=StepCatalog)
+        mock_catalog.get_builder_for_config.return_value = None
 
         with pytest.raises(ValueError) as exc_info:
             PipelineAssembler(
                 dag=mock_dag,
                 config_map=mock_configs,
-                step_builder_map=incomplete_builder_map,
+                step_catalog=mock_catalog,
             )
 
-        assert "Missing step builder for step type" in str(exc_info.value)
+        assert "No step builder found for config" in str(exc_info.value)
 
     def test_generate_pipeline(
         self,
         mock_dag,
         mock_configs,
-        mock_step_builder_map,
+        mock_step_catalog,
         mock_dependency_components,
         setup_assembler_mocks,
     ):
@@ -662,7 +666,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=mock_dag,
             config_map=mock_configs,
-            step_builder_map=mock_step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_dependency_components["registry_manager"],
             dependency_resolver=mock_dependency_components["dependency_resolver"],
         )
@@ -672,8 +676,8 @@ class TestPipelineAssembler:
         mock_step2 = MagicMock()
         mock_step3 = MagicMock()
 
-        # Get the mock builder from the step_builder_map
-        mock_builder_cls = list(mock_step_builder_map.values())[0]
+        # Get the mock builder from the step catalog
+        mock_builder_cls = mock_step_catalog.get_builder_for_config.return_value
         mock_builder = mock_builder_cls.return_value
         mock_builder.create_step.side_effect = [mock_step1, mock_step2, mock_step3]
 
@@ -698,7 +702,7 @@ class TestPipelineAssembler:
         self,
         mock_dag,
         mock_configs,
-        mock_step_builder_map,
+        mock_step_catalog,
         mock_dependency_components,
         setup_assembler_mocks,
     ):
@@ -715,7 +719,7 @@ class TestPipelineAssembler:
             assembler = PipelineAssembler.create_with_components(
                 dag=mock_dag,
                 config_map=mock_configs,
-                step_builder_map=mock_step_builder_map,
+                step_catalog=mock_step_catalog,
                 context_name="test-context",
             )
 

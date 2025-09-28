@@ -21,7 +21,7 @@ from cursus.core.compiler.dag_compiler import (
     VPC_SUBNET,
 )
 from cursus.core.compiler.config_resolver import StepConfigResolver
-from cursus.registry.builder_registry import StepBuilderRegistry
+from cursus.step_catalog.step_catalog import StepCatalog
 from cursus.core.base.config_base import BasePipelineConfig
 from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
 
@@ -76,7 +76,7 @@ class TestDynamicPipelineTemplate:
 
         # Set up mocks
         self.mock_config_resolver = MagicMock(spec=StepConfigResolver)
-        self.mock_builder_registry = MagicMock(spec=StepBuilderRegistry)
+        self.mock_step_catalog = MagicMock(spec=StepCatalog)
 
         yield
 
@@ -107,11 +107,11 @@ class TestDynamicPipelineTemplate:
         # Mock the base config getter
         mock_get_base_config.return_value = base_config
 
-        # Create the template with mocked builder_registry to avoid import errors
+        # Create the template with mocked step_catalog to avoid import errors
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -141,11 +141,11 @@ class TestDynamicPipelineTemplate:
         mock_load_configs.return_value = mock_configs
         mock_template_load_configs.return_value = mock_configs
 
-        # Create the template with mocked builder_registry
+        # Create the template with mocked step_catalog
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -167,11 +167,11 @@ class TestDynamicPipelineTemplate:
         mock_load_configs.return_value = mock_configs
         mock_template_load_configs.return_value = mock_configs
 
-        # Create the template with mocked builder_registry
+        # Create the template with mocked step_catalog
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -218,7 +218,7 @@ class TestDynamicPipelineTemplate:
             dag=self.dag,
             config_path=self.config_path,
             config_resolver=self.mock_config_resolver,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -283,7 +283,7 @@ class TestDynamicPipelineTemplate:
         }
         self.mock_config_resolver.resolve_config_map.return_value = config_map
 
-        # Setup builder registry mock
+        # Setup step catalog mock
         mock_builder1 = MagicMock()
         mock_builder1.__name__ = "MockCradleDataLoadingBuilder"
         mock_builder2 = MagicMock()
@@ -296,14 +296,14 @@ class TestDynamicPipelineTemplate:
             "TabularPreprocessing": mock_builder2,
             "XGBoostTraining": mock_builder3,
         }
-        self.mock_builder_registry.get_builder_map.return_value = builder_map
+        self.mock_step_catalog.get_builder_map.return_value = builder_map
 
         # Create the template with skip_validation
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
             config_resolver=self.mock_config_resolver,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -363,12 +363,12 @@ class TestDynamicPipelineTemplate:
         }
         self.mock_config_resolver.preview_resolution.return_value = preview_data
 
-        # Create the template with mocked builder_registry and skip_validation
+        # Create the template with mocked step_catalog and skip_validation
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
             config_resolver=self.mock_config_resolver,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -416,11 +416,11 @@ class TestDynamicPipelineTemplate:
         mock_load_configs.return_value = mock_configs
         mock_template_load_configs.return_value = mock_configs
 
-        # Create the template with mocked builder_registry and skip_validation
+        # Create the template with mocked step_catalog and skip_validation
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -447,13 +447,13 @@ class TestDynamicPipelineTemplate:
         mock_load_configs.return_value = mock_configs
         mock_template_load_configs.return_value = mock_configs
 
-        # Create the template with mocked builder_registry and skip_validation
+        # Create the template with mocked step_catalog and skip_validation
         # Note: DynamicPipelineTemplate no longer defines its own _get_pipeline_parameters
         # It inherits from PipelineTemplateBase which returns empty list by default
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
 
@@ -487,7 +487,7 @@ class TestDynamicPipelineTemplate:
             dag=self.dag,
             config_path=self.config_path,
             pipeline_parameters=custom_params,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
         
@@ -519,7 +519,7 @@ class TestDynamicPipelineTemplate:
             dag=self.dag,
             config_path=self.config_path,
             pipeline_parameters=custom_params,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
         
@@ -547,7 +547,7 @@ class TestDynamicPipelineTemplate:
         template = DynamicPipelineTemplate(
             dag=self.dag,
             config_path=self.config_path,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
         
@@ -582,7 +582,7 @@ class TestDynamicPipelineTemplate:
             dag=self.dag,
             config_path=self.config_path,
             pipeline_parameters=custom_params,
-            builder_registry=self.mock_builder_registry,
+            step_catalog=self.mock_step_catalog,
             skip_validation=True,
         )
         

@@ -144,9 +144,12 @@ class TestPipelineAssembler:
         return {"step1": MockConfig(), "step2": MockConfig(), "step3": MockConfig()}
 
     @pytest.fixture
-    def step_builder_map(self):
-        """Create mock step builder map."""
-        return {"MockConfig": MockStepBuilder}
+    def mock_step_catalog(self):
+        """Create mock step catalog."""
+        from cursus.step_catalog import StepCatalog
+        mock_catalog = Mock(spec=StepCatalog)
+        mock_catalog.get_builder_for_config.return_value = MockStepBuilder
+        return mock_catalog
 
     @pytest.fixture
     def mock_session(self):
@@ -178,7 +181,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_session,
         role,
         mock_registry_manager,
@@ -188,7 +191,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             sagemaker_session=mock_session,
             role=role,
             registry_manager=mock_registry_manager,
@@ -198,7 +201,7 @@ class TestPipelineAssembler:
         # Verify initialization
         assert assembler.dag == dag
         assert assembler.config_map == config_map
-        assert assembler.step_builder_map == step_builder_map
+        assert assembler.step_catalog == mock_step_catalog
         assert assembler.sagemaker_session == mock_session
         assert assembler.role == role
         assert len(assembler.step_builders) == 3
@@ -208,7 +211,7 @@ class TestPipelineAssembler:
             assert step_name in assembler.step_builders
             assert isinstance(assembler.step_builders[step_name], MockStepBuilder)
 
-    def test_init_missing_configs(self, dag, step_builder_map):
+    def test_init_missing_configs(self, dag, mock_step_catalog):
         """Test initialization with missing configs raises ValueError."""
         incomplete_config_map = {
             "step1": MockConfig(),
@@ -220,21 +223,23 @@ class TestPipelineAssembler:
             PipelineAssembler(
                 dag=dag,
                 config_map=incomplete_config_map,
-                step_builder_map=step_builder_map,
+                step_catalog=mock_step_catalog,
             )
 
         assert "Missing configs for nodes" in str(exc_info.value)
 
     def test_init_missing_step_builders(self, dag, config_map):
         """Test initialization with missing step builders raises ValueError."""
-        incomplete_builder_map = {}  # Empty builder map
+        from cursus.step_catalog import StepCatalog
+        mock_catalog = Mock(spec=StepCatalog)
+        mock_catalog.get_builder_for_config.return_value = None  # No builder found
 
         with pytest.raises(ValueError) as exc_info:
             PipelineAssembler(
-                dag=dag, config_map=config_map, step_builder_map=incomplete_builder_map
+                dag=dag, config_map=config_map, step_catalog=mock_catalog
             )
 
-        assert "Missing step builder for step type" in str(exc_info.value)
+        assert "No step builder found for config" in str(exc_info.value)
 
     def test_init_invalid_dag_edges(self):
         """Test initialization with invalid DAG edges raises KeyError during DAG creation."""
@@ -246,24 +251,19 @@ class TestPipelineAssembler:
                 edges=[("step1", "step2"), ("step2", "step3")],  # step3 doesn't exist
             )
 
-    @patch("cursus.core.assembler.pipeline_assembler.CONFIG_STEP_REGISTRY")
     def test_initialize_step_builders(
         self,
-        mock_registry,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
         """Test step builder initialization."""
-        # Mock the registry to return step type
-        mock_registry.get.return_value = "MockConfig"
-
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -280,7 +280,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -288,7 +288,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -308,7 +308,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -316,7 +316,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -337,7 +337,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -345,7 +345,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -370,7 +370,7 @@ class TestPipelineAssembler:
         mock_pipeline_class,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_session,
         mock_registry_manager,
         mock_dependency_resolver,
@@ -383,7 +383,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             sagemaker_session=mock_session,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
@@ -403,7 +403,7 @@ class TestPipelineAssembler:
     def test_generate_pipeline_with_cycle(
         self,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -417,7 +417,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=cyclic_dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -434,7 +434,7 @@ class TestPipelineAssembler:
         mock_create_components,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_session,
         role,
         mock_registry_manager,
@@ -452,7 +452,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler.create_with_components(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             context_name="test_context",
             sagemaker_session=mock_session,
             role=role,
@@ -467,7 +467,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -475,7 +475,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -487,7 +487,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -495,7 +495,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -521,15 +521,18 @@ class TestPipelineAssembler:
         class MockCradleConfig(MockConfig):
             pass
 
-        # Update step builder map and config
+        # Update step catalog and config
         cradle_config_map = {"step1": MockCradleConfig()}
-        cradle_builder_map = {"MockCradleConfig": MockStepBuilder}  # Use the actual class name
         cradle_dag = PipelineDAG(nodes=["step1"], edges=[])
+        
+        from cursus.step_catalog import StepCatalog
+        mock_catalog = Mock(spec=StepCatalog)
+        mock_catalog.get_builder_for_config.return_value = MockStepBuilder
 
         assembler = PipelineAssembler(
             dag=cradle_dag,
             config_map=cradle_config_map,
-            step_builder_map=cradle_builder_map,
+            step_catalog=mock_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -548,7 +551,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -556,7 +559,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -579,7 +582,7 @@ class TestPipelineAssembler:
         self,
         dag,
         config_map,
-        step_builder_map,
+        mock_step_catalog,
         mock_registry_manager,
         mock_dependency_resolver,
     ):
@@ -588,7 +591,7 @@ class TestPipelineAssembler:
             assembler = PipelineAssembler(
                 dag=dag,
                 config_map=config_map,
-                step_builder_map=step_builder_map,
+                step_catalog=mock_step_catalog,
                 registry_manager=mock_registry_manager,
                 dependency_resolver=mock_dependency_resolver,
             )
@@ -597,7 +600,7 @@ class TestPipelineAssembler:
             mock_logger.info.assert_called()
 
     def test_initialize_step_builders_with_pipeline_parameters(
-        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+        self, dag, config_map, mock_step_catalog, mock_registry_manager, mock_dependency_resolver
     ):
         """Test step builder initialization with pipeline parameters."""
         from sagemaker.workflow.parameters import ParameterString
@@ -611,7 +614,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             pipeline_parameters=pipeline_params,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
@@ -624,13 +627,13 @@ class TestPipelineAssembler:
             assert builder.execution_prefix.name == "EXECUTION_S3_PREFIX"
 
     def test_initialize_step_builders_without_pipeline_parameters(
-        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+        self, dag, config_map, mock_step_catalog, mock_registry_manager, mock_dependency_resolver
     ):
         """Test step builder initialization without pipeline parameters."""
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -641,7 +644,7 @@ class TestPipelineAssembler:
             assert builder.execution_prefix is None
 
     def test_generate_outputs_with_join_pattern(
-        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+        self, dag, config_map, mock_step_catalog, mock_registry_manager, mock_dependency_resolver
     ):
         """Test output generation uses Join pattern for parameter compatibility."""
         from sagemaker.workflow.parameters import ParameterString
@@ -654,7 +657,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             pipeline_parameters=pipeline_params,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
@@ -668,13 +671,13 @@ class TestPipelineAssembler:
             assert isinstance(output_path, Join), f"Output {output_name} should use Join, got {type(output_path)}"
 
     def test_generate_outputs_fallback_to_config(
-        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+        self, dag, config_map, mock_step_catalog, mock_registry_manager, mock_dependency_resolver
     ):
         """Test output generation falls back to config when no parameters provided."""
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,
         )
@@ -690,7 +693,7 @@ class TestPipelineAssembler:
                 assert isinstance(output_path, (str, object))  # Could be Join or string
 
     def test_pipeline_parameters_storage(
-        self, dag, config_map, step_builder_map, mock_registry_manager, mock_dependency_resolver
+        self, dag, config_map, mock_step_catalog, mock_registry_manager, mock_dependency_resolver
     ):
         """Test that pipeline parameters are properly stored."""
         from sagemaker.workflow.parameters import ParameterString
@@ -703,7 +706,7 @@ class TestPipelineAssembler:
         assembler = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=mock_step_catalog,
             pipeline_parameters=pipeline_params,
             registry_manager=mock_registry_manager,
             dependency_resolver=mock_dependency_resolver,

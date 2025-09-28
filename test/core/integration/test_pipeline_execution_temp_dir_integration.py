@@ -125,7 +125,7 @@ class TestPipelineExecutionTempDirIntegration:
         ]
         
         with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
-             patch("cursus.core.compiler.dag_compiler.StepBuilderRegistry") as mock_registry_class, \
+             patch("cursus.core.compiler.dag_compiler.StepCatalog") as mock_catalog_class, \
              patch("cursus.core.compiler.dag_compiler.StepConfigResolver") as mock_resolver_class, \
              patch("cursus.steps.configs.utils.load_configs") as mock_load_configs, \
              patch("cursus.steps.configs.utils.detect_config_classes_from_json") as mock_detect_classes:
@@ -152,10 +152,10 @@ class TestPipelineExecutionTempDirIntegration:
             }
             mock_resolver_class.return_value = mock_resolver
             
-            # Mock builder registry
-            mock_registry = MagicMock()
-            mock_registry.get_builder_map.return_value = {"MockConfig": MockStepBuilder}
-            mock_registry_class.return_value = mock_registry
+            # Mock step catalog
+            mock_catalog = MagicMock()
+            mock_catalog.get_builder_map.return_value = {"MockConfig": MockStepBuilder}
+            mock_catalog_class.return_value = mock_catalog
             
             # Create compiler with custom parameters
             compiler = PipelineDAGCompiler(
@@ -188,21 +188,24 @@ class TestPipelineExecutionTempDirIntegration:
         
         pipeline_params = [custom_execution_param]
         
-        # Create config and builder maps
+        # Create config map
         config_map = {
             "data_loading": MockConfig(),
             "training": MockConfig(),
         }
         
-        step_builder_map = {"MockConfig": MockStepBuilder}
-        
         # Create assembler with pipeline parameters
-        assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=pipeline_params,
-        )
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance.load_builder_class.return_value = MockStepBuilder
+            mock_catalog.return_value = mock_catalog_instance
+            
+            assembler = PipelineAssembler(
+                dag=self.dag,
+                config_map=config_map,
+                pipeline_parameters=pipeline_params,
+            )
         
         # Verify parameters were stored
         assert assembler.pipeline_parameters == pipeline_params
@@ -247,14 +250,18 @@ class TestPipelineExecutionTempDirIntegration:
             "training": MockConfig(),
         }
         
-        step_builder_map = {"MockConfig": MockStepBuilder}
-        
-        assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=[custom_execution_param],
-        )
+        # Create assembler with pipeline parameters
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance.load_builder_class.return_value = MockStepBuilder
+            mock_catalog.return_value = mock_catalog_instance
+            
+            assembler = PipelineAssembler(
+                dag=self.dag,
+                config_map=config_map,
+                pipeline_parameters=[custom_execution_param],
+            )
         
         # Generate outputs for a step
         outputs = assembler._generate_outputs("data_loading")
@@ -270,14 +277,17 @@ class TestPipelineExecutionTempDirIntegration:
             "training": MockConfig(),
         }
         
-        step_builder_map = {"MockConfig": MockStepBuilder}
-        
         # Create assembler without pipeline parameters
-        assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-        )
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance.load_builder_class.return_value = MockStepBuilder
+            mock_catalog.return_value = mock_catalog_instance
+            
+            assembler = PipelineAssembler(
+                dag=self.dag,
+                config_map=config_map,
+            )
         
         # Verify no execution prefix was set on step builders
         for step_name, builder in assembler.step_builders.items():
@@ -332,14 +342,18 @@ class TestPipelineExecutionTempDirIntegration:
             "training": MockConfig(),
         }
         
-        step_builder_map = {"MockConfig": MockStepBuilder}
-        
-        assembler = PipelineAssembler(
-            dag=self.dag,
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=pipeline_params,
-        )
+        # Create assembler with pipeline parameters
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance.load_builder_class.return_value = MockStepBuilder
+            mock_catalog.return_value = mock_catalog_instance
+            
+            assembler = PipelineAssembler(
+                dag=self.dag,
+                config_map=config_map,
+                pipeline_parameters=pipeline_params,
+            )
         
         # Verify all parameters were stored
         assert len(assembler.pipeline_parameters) == 3
@@ -359,26 +373,35 @@ class TestPipelineExecutionTempDirIntegration:
         other_param = ParameterString(name="OTHER_PARAM", default_value="other-value")
         
         config_map = {"data_loading": MockConfig()}
-        step_builder_map = {"MockConfig": MockStepBuilder}
         
-        assembler = PipelineAssembler(
-            dag=PipelineDAG(nodes=["data_loading"], edges=[]),
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=[execution_param, other_param],
-        )
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance.load_builder_class.return_value = MockStepBuilder
+            mock_catalog.return_value = mock_catalog_instance
+            
+            assembler = PipelineAssembler(
+                dag=PipelineDAG(nodes=["data_loading"], edges=[]),
+                config_map=config_map,
+                pipeline_parameters=[execution_param, other_param],
+            )
         
         # Should extract EXECUTION_S3_PREFIX and set it on builders
         builder = assembler.step_builders["data_loading"]
         assert builder.execution_prefix == execution_param
         
         # Test without EXECUTION_S3_PREFIX parameter
-        assembler2 = PipelineAssembler(
-            dag=PipelineDAG(nodes=["data_loading"], edges=[]),
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=[other_param],  # No EXECUTION_S3_PREFIX
-        )
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog2:
+            mock_catalog_instance2 = MagicMock()
+            mock_catalog_instance2.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance2.load_builder_class.return_value = MockStepBuilder
+            mock_catalog2.return_value = mock_catalog_instance2
+            
+            assembler2 = PipelineAssembler(
+                dag=PipelineDAG(nodes=["data_loading"], edges=[]),
+                config_map=config_map,
+                pipeline_parameters=[other_param],  # No EXECUTION_S3_PREFIX
+            )
         
         # Should not set execution prefix
         builder2 = assembler2.step_builders["data_loading"]
@@ -387,26 +410,35 @@ class TestPipelineExecutionTempDirIntegration:
     def test_error_handling_with_invalid_parameters(self):
         """Test error handling with invalid parameter configurations."""
         config_map = {"data_loading": MockConfig()}
-        step_builder_map = {"MockConfig": MockStepBuilder}
         
         # Test with empty parameter list - should work fine
-        assembler = PipelineAssembler(
-            dag=PipelineDAG(nodes=["data_loading"], edges=[]),
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=[],
-        )
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog:
+            mock_catalog_instance = MagicMock()
+            mock_catalog_instance.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance.load_builder_class.return_value = MockStepBuilder
+            mock_catalog.return_value = mock_catalog_instance
+            
+            assembler = PipelineAssembler(
+                dag=PipelineDAG(nodes=["data_loading"], edges=[]),
+                config_map=config_map,
+                pipeline_parameters=[],
+            )
         
         builder = assembler.step_builders["data_loading"]
         assert builder.execution_prefix is None
         
         # Test with None parameter list - should work fine
-        assembler2 = PipelineAssembler(
-            dag=PipelineDAG(nodes=["data_loading"], edges=[]),
-            config_map=config_map,
-            step_builder_map=step_builder_map,
-            pipeline_parameters=None,
-        )
+        with patch("cursus.core.assembler.pipeline_assembler.StepCatalog") as mock_catalog2:
+            mock_catalog_instance2 = MagicMock()
+            mock_catalog_instance2.get_builder_for_config.return_value = MockStepBuilder
+            mock_catalog_instance2.load_builder_class.return_value = MockStepBuilder
+            mock_catalog2.return_value = mock_catalog_instance2
+            
+            assembler2 = PipelineAssembler(
+                dag=PipelineDAG(nodes=["data_loading"], edges=[]),
+                config_map=config_map,
+                pipeline_parameters=None,
+            )
         
         builder2 = assembler2.step_builders["data_loading"]
         assert builder2.execution_prefix is None

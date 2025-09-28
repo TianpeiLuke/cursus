@@ -14,7 +14,6 @@ from ...core.base.contract_base import ScriptContract
 from ...core.base.specification_base import StepSpecification
 from ...core.compiler.config_resolver import StepConfigResolver
 from ...core.compiler.exceptions import ConfigurationError
-from ...registry.builder_registry import get_global_registry
 from ...registry.step_names import (
     get_canonical_name_from_file_name,
     get_spec_step_type,
