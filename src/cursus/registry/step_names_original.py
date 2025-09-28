@@ -38,6 +38,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Tabular data preprocessing step",
     },
+    "StratifiedSampling": {
+        "config_class": "StratifiedSamplingConfig",
+        "builder_step_name": "StratifiedSamplingStepBuilder",
+        "spec_type": "StratifiedSampling",
+        "sagemaker_step_type": "Processing",
+        "description": "Stratified sampling step with multiple allocation strategies for class imbalance, causal analysis, and variance optimization",
+    },
     "RiskTableMapping": {
         "config_class": "RiskTableMappingConfig",
         "builder_step_name": "RiskTableMappingStepBuilder",
