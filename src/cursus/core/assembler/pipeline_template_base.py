@@ -64,6 +64,7 @@ class PipelineTemplateBase(ABC):
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
+        step_catalog: Optional['StepCatalog'] = None,
     ):
         """
         Initialize base template.
@@ -75,6 +76,7 @@ class PipelineTemplateBase(ABC):
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
             pipeline_parameters: Pipeline parameters from DAGCompiler (optional)
+            step_catalog: Optional StepCatalog for config-to-builder resolution
         """
         self.config_path = config_path
         self.session = sagemaker_session
@@ -82,6 +84,9 @@ class PipelineTemplateBase(ABC):
 
         # Store pipeline parameters for template
         self._stored_pipeline_parameters: Optional[List[Union[str, ParameterString]]] = pipeline_parameters
+        
+        # Store step catalog
+        self._step_catalog = step_catalog
 
         # Load configurations
         logger.info(f"Loading configs from: {config_path}")
@@ -304,11 +309,20 @@ class PipelineTemplateBase(ABC):
         config_map = self._create_config_map()
         step_builder_map = self._create_step_builder_map()
 
-        # Create the assembler
+        # Create the assembler with StepCatalog integration
+        # Use provided step_catalog or create a new one
+        if self._step_catalog is not None:
+            step_catalog = self._step_catalog
+            logger.info("Using provided StepCatalog instance")
+        else:
+            from ...step_catalog import StepCatalog
+            step_catalog = StepCatalog()
+            logger.info("Created new StepCatalog instance")
+        
         template = PipelineAssembler(
             dag=dag,
             config_map=config_map,
-            step_builder_map=step_builder_map,
+            step_catalog=step_catalog,
             sagemaker_session=self.session,
             role=self.role,
             pipeline_parameters=self._get_pipeline_parameters(),

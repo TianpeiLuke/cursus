@@ -448,6 +448,59 @@ class TestConsumerMigration:
 - ✅ **VERIFIED**: Integration compatibility across all systems confirmed
 - ✅ **PERFORMANCE**: 60 steps indexed in 0.001s, no performance regression
 
+### 2.5 Pipeline Template Base Integration (Week 2) ✅ **COMPLETED (2025-09-27)**
+
+**Goal**: Update PipelineTemplateBase to support step_catalog parameter and use provided StepCatalog instances
+**Target**: Complete template system integration with StepCatalog architecture
+
+**✅ IMPLEMENTATION COMPLETED**:
+```python
+# ✅ ENHANCED: PipelineTemplateBase constructor now accepts step_catalog parameter
+class PipelineTemplateBase:
+    def __init__(
+        self,
+        config_path: str,
+        sagemaker_session: Optional[PipelineSession] = None,
+        role: Optional[str] = None,
+        registry_manager: Optional[RegistryManager] = None,
+        dependency_resolver: Optional[UnifiedDependencyResolver] = None,
+        pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
+        step_catalog: Optional['StepCatalog'] = None,  # ✅ NEW PARAMETER
+    ):
+        # Store step catalog
+        self._step_catalog = step_catalog
+        # ... rest of initialization
+
+# ✅ ENHANCED: generate_pipeline method uses provided step_catalog or creates new one
+def generate_pipeline(self) -> Pipeline:
+    # Use provided step_catalog or create a new one
+    if self._step_catalog is not None:
+        step_catalog = self._step_catalog
+        logger.info("Using provided StepCatalog instance")
+    else:
+        from ...step_catalog import StepCatalog
+        step_catalog = StepCatalog()
+        logger.info("Created new StepCatalog instance")
+    
+    template = PipelineAssembler(
+        dag=dag,
+        config_map=config_map,
+        step_catalog=step_catalog,  # ✅ Uses step_catalog instead of step_builder_map
+        sagemaker_session=self.session,
+        role=self.role,
+        pipeline_parameters=self._get_pipeline_parameters(),
+        registry_manager=self._registry_manager,
+        dependency_resolver=self._dependency_resolver,
+    )
+```
+
+**✅ SUCCESS CRITERIA ACHIEVED**:
+- ✅ PipelineTemplateBase constructor accepts step_catalog parameter (consistent with DynamicPipelineTemplate)
+- ✅ Template uses provided StepCatalog instance when available (dependency injection support)
+- ✅ Template creates new StepCatalog when none provided (backward compatibility)
+- ✅ PipelineAssembler called with step_catalog instead of deprecated step_builder_map parameter
+- ✅ **VERIFIED**: Template system integration tests passed, API compatibility maintained
+
 ## Phase 3: StepBuilderRegistry Removal (1 week) ✅ **COMPLETED (2025-09-27)**
 
 ### 3.1 Deprecation Strategy (Days 1-2) ✅ **COMPLETED**
