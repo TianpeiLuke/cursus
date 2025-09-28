@@ -78,6 +78,10 @@ class PipelineTemplateBase(ABC):
             pipeline_parameters: Pipeline parameters from DAGCompiler (optional)
             step_catalog: Optional StepCatalog for config-to-builder resolution
         """
+        logger.info("🔧 PipelineTemplateBase.__init__ starting...")
+        logger.info(f"🔧 PipelineTemplateBase: step_catalog parameter received: {step_catalog}")
+        logger.info(f"🔧 PipelineTemplateBase: step_catalog type: {type(step_catalog)}")
+        
         self.config_path = config_path
         self.session = sagemaker_session
         self.role = role
@@ -86,7 +90,9 @@ class PipelineTemplateBase(ABC):
         self._stored_pipeline_parameters: Optional[List[Union[str, ParameterString]]] = pipeline_parameters
         
         # Store step catalog
+        logger.info(f"🔧 PipelineTemplateBase: storing step_catalog in self._step_catalog...")
         self._step_catalog = step_catalog
+        logger.info(f"🔧 PipelineTemplateBase: self._step_catalog after assignment: {self._step_catalog}")
 
         # Load configurations
         logger.info(f"Loading configs from: {config_path}")

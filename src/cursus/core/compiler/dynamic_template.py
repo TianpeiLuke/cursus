@@ -115,6 +115,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
 
         # Call parent constructor AFTER setting CONFIG_CLASSES
         # Pass pipeline_parameters directly to parent - parent handles storage
+        self.logger.info(f"🔧 BEFORE super().__init__: self._step_catalog = {self._step_catalog}")
+        self.logger.info(f"🔧 BEFORE super().__init__: step_catalog parameter = {self._step_catalog}")
+        
         super().__init__(
             config_path=config_path,
             sagemaker_session=kwargs.get("sagemaker_session"),
@@ -124,6 +127,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             pipeline_parameters=pipeline_parameters,  # Pass directly to parent
             step_catalog=self._step_catalog,  # ✅ CRITICAL FIX: Pass step_catalog to parent!
         )
+        
+        self.logger.info(f"🔧 AFTER super().__init__: self._step_catalog = {self._step_catalog}")
+        self.logger.info(f"🔧 AFTER super().__init__: type = {type(self._step_catalog)}")
 
     def _detect_config_classes(self) -> Dict[str, Type[BasePipelineConfig]]:
         """
