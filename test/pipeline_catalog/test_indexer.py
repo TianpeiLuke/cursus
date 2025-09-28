@@ -44,9 +44,6 @@ Returns:
     Trained model with calibration
 """
 
-import xgboost as xgb
-from sklearn.calibration import CalibratedClassifierCV
-
 def train_model(data_path):
     """Train XGBoost model with calibration."""
     # Training logic here
