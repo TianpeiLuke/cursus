@@ -75,16 +75,19 @@ class WorkspacePipelineAssembler(PipelineAssembler):
         self.isolation_manager = self.workspace_manager.isolation_manager
         self.integration_manager = self.workspace_manager.integration_manager
 
+        # Create workspace-aware StepCatalog for enhanced component discovery
+        from ...step_catalog import StepCatalog
+        workspace_step_catalog = StepCatalog(workspace_dirs=[workspace_root])
+
         # Initialize parent with empty maps if not provided
         # We'll populate them from workspace components
         super().__init__(
             dag=dag or PipelineDAG(),
             config_map=config_map or {},
-            step_builder_map=step_builder_map or {},
+            step_catalog=workspace_step_catalog,
             sagemaker_session=sagemaker_session,
             role=role,
             pipeline_parameters=pipeline_parameters,
-            notebook_root=notebook_root,
             **kwargs,
         )
 

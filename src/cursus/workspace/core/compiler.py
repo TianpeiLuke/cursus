@@ -64,11 +64,16 @@ class WorkspaceDAGCompiler(PipelineDAGCompiler):
         self.isolation_manager = self.workspace_manager.isolation_manager
         self.integration_manager = self.workspace_manager.integration_manager
 
+        # Create workspace-aware StepCatalog for enhanced component discovery
+        from ...step_catalog import StepCatalog
+        workspace_step_catalog = StepCatalog(workspace_dirs=[workspace_root])
+
         # Initialize parent with dummy config path (we'll override the compilation logic)
         super().__init__(
             config_path="",  # Not used for workspace compilation
             sagemaker_session=sagemaker_session,
             role=role,
+            step_catalog=workspace_step_catalog,
             **kwargs,
         )
 
