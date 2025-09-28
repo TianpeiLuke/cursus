@@ -508,17 +508,17 @@ class InterfaceStandardValidator:
         """Clear all accumulated violations."""
         self.violations.clear()
 
-    def validate_builder_registry_compliance(
+    def validate_step_catalog_compliance(
         self, builder_class: Type[StepBuilderBase]
     ) -> List[InterfaceViolation]:
         """
-        Validate that the builder class is properly registered or registrable.
+        Validate that the builder class is properly discoverable by StepCatalog.
 
         Args:
             builder_class: Step builder class to validate
 
         Returns:
-            List of registry compliance violations found
+            List of step catalog compliance violations found
         """
         violations = []
         class_name = builder_class.__name__
@@ -528,23 +528,102 @@ class InterfaceStandardValidator:
             violations.append(
                 InterfaceViolation(
                     component=f"Class '{class_name}'",
-                    violation_type="registry_naming_convention",
-                    message="Builder class name should end with 'StepBuilder' for auto-discovery",
+                    violation_type="catalog_naming_convention",
+                    message="Builder class name should end with 'StepBuilder' for StepCatalog auto-discovery",
                     expected=f"{class_name}StepBuilder",
                     actual=class_name,
                     suggestions=[
                         "Rename class to follow naming convention",
-                        "Use @register_builder decorator if custom naming is required",
+                        "Ensure class is discoverable by StepCatalog",
                     ],
                 )
             )
 
-        # Check for registration decorator (optional but recommended)
-        # This is informational, not a violation
-        has_register_decorator = False
-        if hasattr(builder_class, "__dict__"):
-            # Check if class has been decorated (this is a simplified check)
-            # In practice, checking for decorators is complex
-            pass
+        # Check if builder is discoverable by StepCatalog
+        try:
+            from ...step_catalog import StepCatalog
+            
+            catalog = StepCatalog(workspace_dirs=None)  # Package-only discovery
+            step_type = class_name[:-11] if class_name.endswith("StepBuilder") else class_name
+            
+            # Check if step type is supported
+            supported_steps = catalog.list_supported_step_types()
+            if step_type not in supported_steps:
+                # Check if it's a legacy alias
+                if step_type not in catalog.LEGACY_ALIASES:
+                    violations.append(
+                        InterfaceViolation(
+                            component=f"Class '{class_name}'",
+                            violation_type="catalog_not_discoverable",
+                            message=f"Step type '{step_type}' not found in StepCatalog",
+                            suggestions=[
+                                "Ensure builder is in a discoverable location",
+                                "Check if step type is properly registered",
+                                "Verify naming conventions are followed",
+                            ],
+                        )
+                    )
+                else:
+                    # It's a legacy alias - suggest using canonical name
+                    canonical_name = catalog.LEGACY_ALIASES[step_type]
+                    violations.append(
+                        InterfaceViolation(
+                            component=f"Class '{class_name}'",
+                            violation_type="catalog_legacy_alias",
+                            message=f"Step type '{step_type}' is a legacy alias for '{canonical_name}'",
+                            expected=f"{canonical_name}StepBuilder",
+                            actual=class_name,
+                            suggestions=[
+                                f"Consider renaming to {canonical_name}StepBuilder",
+                                "Update references to use canonical name",
+                            ],
+                        )
+                    )
+                    
+        except ImportError:
+            # StepCatalog not available - this is informational
+            violations.append(
+                InterfaceViolation(
+                    component=f"Class '{class_name}'",
+                    violation_type="catalog_unavailable",
+                    message="StepCatalog not available for validation",
+                    suggestions=[
+                        "Ensure StepCatalog is properly installed",
+                        "Check import paths and dependencies",
+                    ],
+                )
+            )
+        except Exception as e:
+            # Other errors during catalog validation
+            violations.append(
+                InterfaceViolation(
+                    component=f"Class '{class_name}'",
+                    violation_type="catalog_validation_error",
+                    message=f"Error during StepCatalog validation: {str(e)}",
+                    suggestions=[
+                        "Check StepCatalog configuration",
+                        "Verify builder class structure",
+                    ],
+                )
+            )
 
         return violations
+
+    # Keep the old method name for backward compatibility
+    def validate_builder_registry_compliance(
+        self, builder_class: Type[StepBuilderBase]
+    ) -> List[InterfaceViolation]:
+        """
+        Validate that the builder class is properly registered or registrable.
+        
+        DEPRECATED: Use validate_step_catalog_compliance instead.
+        This method is kept for backward compatibility.
+
+        Args:
+            builder_class: Step builder class to validate
+
+        Returns:
+            List of registry compliance violations found
+        """
+        # Delegate to the new method
+        return self.validate_step_catalog_compliance(builder_class)

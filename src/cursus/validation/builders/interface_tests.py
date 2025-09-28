@@ -128,13 +128,13 @@ class InterfaceTests(UniversalStepBuilderTestBase):
                 f"Info: Builder has registry key - properly decorated with @register_builder"
             )
         else:
-            # Try to check if class is in a registry
+            # Try to check if class is in the step catalog
             try:
-                from ...registry.builder_registry import StepBuilderRegistry
+                from ...step_catalog import StepCatalog
 
-                registry = StepBuilderRegistry()
+                catalog = StepCatalog(workspace_dirs=None)  # Package-only discovery
 
-                # Check if builder is registered using available methods
+                # Check if builder is available in step catalog
                 class_name = self.builder_class.__name__
                 step_type = (
                     class_name[:-11]
@@ -142,27 +142,51 @@ class InterfaceTests(UniversalStepBuilderTestBase):
                     else class_name
                 )
 
-                # Try different registry methods to check registration
+                # Try to find the builder in the step catalog
                 try:
-                    # Try to get the builder from registry
-                    registered_builder = registry.get_builder(step_type)
-                    if registered_builder == self.builder_class:
+                    # Check if step type is supported
+                    supported_steps = catalog.list_supported_step_types()
+                    if step_type in supported_steps:
                         self._log(
-                            f"Info: {class_name} is properly registered in registry"
+                            f"Info: {class_name} step type '{step_type}' is available in StepCatalog"
                         )
                     else:
-                        self._log(
-                            f"Warning: {class_name} may not be registered with @register_builder() decorator"
-                        )
+                        # Check if it's a legacy alias
+                        if step_type in catalog.LEGACY_ALIASES:
+                            canonical_name = catalog.LEGACY_ALIASES[step_type]
+                            self._log(
+                                f"Info: {class_name} step type '{step_type}' is a legacy alias for '{canonical_name}'"
+                            )
+                        else:
+                            self._log(
+                                f"Warning: {class_name} step type '{step_type}' not found in StepCatalog"
+                            )
+
+                    # Try to get builder using step catalog mapping
+                    try:
+                        from ...step_catalog.mapping import StepCatalogMapping
+                        mapping = StepCatalogMapping(catalog)
+                        builder_class = mapping.get_builder_for_step_type(step_type)
+                        if builder_class == self.builder_class:
+                            self._log(
+                                f"Info: {class_name} is properly accessible via StepCatalog"
+                            )
+                        else:
+                            self._log(
+                                f"Info: {class_name} builder resolution may differ in StepCatalog"
+                            )
+                    except Exception as e:
+                        self._log(f"Info: Could not verify builder resolution: {str(e)}")
+
                 except (AttributeError, KeyError):
-                    # Registry method not available or builder not found
+                    # StepCatalog method not available or builder not found
                     self._log(
-                        f"Info: Could not verify registration for {class_name} - registry API may have changed"
+                        f"Info: Could not verify registration for {class_name} - StepCatalog API may have changed"
                     )
 
             except ImportError:
                 self._log(
-                    "StepBuilderRegistry not available, skipping registry integration test"
+                    "StepCatalog not available, skipping registry integration test"
                 )
             except Exception as e:
                 self._log(f"Registry integration test encountered error: {str(e)}")
