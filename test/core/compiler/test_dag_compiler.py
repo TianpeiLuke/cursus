@@ -75,8 +75,10 @@ class TestDagCompiler:
 
         # Verify custom name is used directly
         assert result.name == "custom-pipeline-name"
-
-        yield
+        
+        # Verify the template was created and used
+        mock_template_class.assert_called_once()
+        mock_template.generate_pipeline.assert_called_once()
 
 
 class TestCompileDagToPipeline:

@@ -13,22 +13,22 @@ from cursus.core.config_fields import ConfigClassStore
 from pydantic import BaseModel
 
 
-class TestConfigA(BaseModel):
-    """Test config class A for testing."""
+class MockConfigA(BaseModel):
+    """Mock config class A for testing."""
 
     name: str = "test_a"
     value: int = 1
 
 
-class TestConfigB(BaseModel):
-    """Test config class B for testing."""
+class MockConfigB(BaseModel):
+    """Mock config class B for testing."""
 
     name: str = "test_b"
     value: int = 2
 
 
-class TestConfigC(BaseModel):
-    """Test config class C for testing."""
+class MockConfigC(BaseModel):
+    """Mock config class C for testing."""
 
     name: str = "test_c"
     value: int = 3
@@ -76,25 +76,25 @@ class TestConfigClassStore:
     def test_register_direct_functionality(self):
         """Test that register works when called directly."""
         # Register class directly
-        registered_class = ConfigClassStore.register(TestConfigA)
+        registered_class = ConfigClassStore.register(MockConfigA)
 
         # Verify the class was registered
         registered_classes = ConfigClassStore.get_all_classes()
-        assert "TestConfigA" in registered_classes
-        assert registered_classes["TestConfigA"] == TestConfigA
+        assert "MockConfigA" in registered_classes
+        assert registered_classes["MockConfigA"] == MockConfigA
 
         # Verify the function returns the original class
-        assert registered_class == TestConfigA
+        assert registered_class == MockConfigA
 
     def test_get_class_method(self):
         """Test the get_class method."""
         # Register a class
-        ConfigClassStore.register(TestConfigA)
+        ConfigClassStore.register(MockConfigA)
 
         # Test successful retrieval - fallback implementation uses get_all_classes
         if hasattr(ConfigClassStore, 'get_class'):
-            retrieved_class = ConfigClassStore.get_class("TestConfigA")
-            assert retrieved_class == TestConfigA
+            retrieved_class = ConfigClassStore.get_class("MockConfigA")
+            assert retrieved_class == MockConfigA
             
             # Test retrieval of non-existent class
             non_existent = ConfigClassStore.get_class("NonExistentClass")
@@ -102,8 +102,8 @@ class TestConfigClassStore:
         else:
             # For fallback implementation, test via get_all_classes
             all_classes = ConfigClassStore.get_all_classes()
-            assert "TestConfigA" in all_classes
-            assert all_classes["TestConfigA"] == TestConfigA
+            assert "MockConfigA" in all_classes
+            assert all_classes["MockConfigA"] == MockConfigA
 
     def test_get_all_classes_method(self):
         """Test the get_all_classes method."""
@@ -112,22 +112,22 @@ class TestConfigClassStore:
         assert len(all_classes) == 0
 
         # Register multiple classes
-        ConfigClassStore.register(TestConfigA)
-        ConfigClassStore.register(TestConfigB)
+        ConfigClassStore.register(MockConfigA)
+        ConfigClassStore.register(MockConfigB)
 
         # Verify all classes are returned
         all_classes = ConfigClassStore.get_all_classes()
         assert len(all_classes) == 2
-        assert "TestConfigA" in all_classes
-        assert "TestConfigB" in all_classes
-        assert all_classes["TestConfigA"] == TestConfigA
-        assert all_classes["TestConfigB"] == TestConfigB
+        assert "MockConfigA" in all_classes
+        assert "MockConfigB" in all_classes
+        assert all_classes["MockConfigA"] == MockConfigA
+        assert all_classes["MockConfigB"] == MockConfigB
 
     def test_clear_method(self):
         """Test the clear method."""
         # Register some classes
-        ConfigClassStore.register(TestConfigA)
-        ConfigClassStore.register(TestConfigB)
+        ConfigClassStore.register(MockConfigA)
+        ConfigClassStore.register(MockConfigB)
 
         # Verify classes are registered
         all_classes = ConfigClassStore.get_all_classes()
@@ -148,26 +148,26 @@ class TestConfigClassStore:
         """Test the register_many method."""
         if hasattr(ConfigClassStore, 'register_many'):
             # Register multiple classes at once
-            ConfigClassStore.register_many(TestConfigA, TestConfigB, TestConfigC)
+            ConfigClassStore.register_many(MockConfigA, MockConfigB, MockConfigC)
 
             # Verify all classes are registered
             all_classes = ConfigClassStore.get_all_classes()
             assert len(all_classes) == 3
-            assert "TestConfigA" in all_classes
-            assert "TestConfigB" in all_classes
-            assert "TestConfigC" in all_classes
+            assert "MockConfigA" in all_classes
+            assert "MockConfigB" in all_classes
+            assert "MockConfigC" in all_classes
         else:
             # For fallback implementation, register individually
-            ConfigClassStore.register(TestConfigA)
-            ConfigClassStore.register(TestConfigB)
-            ConfigClassStore.register(TestConfigC)
+            ConfigClassStore.register(MockConfigA)
+            ConfigClassStore.register(MockConfigB)
+            ConfigClassStore.register(MockConfigC)
 
             # Verify all classes are registered
             all_classes = ConfigClassStore.get_all_classes()
             assert len(all_classes) == 3
-            assert "TestConfigA" in all_classes
-            assert "TestConfigB" in all_classes
-            assert "TestConfigC" in all_classes
+            assert "MockConfigA" in all_classes
+            assert "MockConfigB" in all_classes
+            assert "MockConfigC" in all_classes
 
     def test_registered_names_method(self):
         """Test the registered_names method."""
@@ -177,14 +177,14 @@ class TestConfigClassStore:
             assert len(names) == 0
 
             # Register some classes
-            ConfigClassStore.register(TestConfigA)
-            ConfigClassStore.register(TestConfigB)
+            ConfigClassStore.register(MockConfigA)
+            ConfigClassStore.register(MockConfigB)
 
             # Verify names are returned
             names = ConfigClassStore.registered_names()
             assert len(names) == 2
-            assert "TestConfigA" in names
-            assert "TestConfigB" in names
+            assert "MockConfigA" in names
+            assert "MockConfigB" in names
         else:
             # For fallback implementation, test via get_all_classes
             # Initially should be empty
@@ -192,40 +192,40 @@ class TestConfigClassStore:
             assert len(all_classes) == 0
 
             # Register some classes
-            ConfigClassStore.register(TestConfigA)
-            ConfigClassStore.register(TestConfigB)
+            ConfigClassStore.register(MockConfigA)
+            ConfigClassStore.register(MockConfigB)
 
             # Verify names are returned via keys
             all_classes = ConfigClassStore.get_all_classes()
             names = list(all_classes.keys())
             assert len(names) == 2
-            assert "TestConfigA" in names
-            assert "TestConfigB" in names
+            assert "MockConfigA" in names
+            assert "MockConfigB" in names
 
     def test_class_name_collision_handling(self):
         """Test handling of class name collisions."""
         # Register a class
-        ConfigClassStore.register(TestConfigA)
+        ConfigClassStore.register(MockConfigA)
 
         # Create another class with the same name
-        class TestConfigADuplicate(BaseModel):  # Different name to avoid scope issues
+        class MockConfigADuplicate(BaseModel):  # Different name to avoid scope issues
             name: str = "different"
             different_field: str = "collision"
 
         # Manually set the class name to create collision
-        TestConfigADuplicate.__name__ = "TestConfigA"
+        MockConfigADuplicate.__name__ = "MockConfigA"
 
         # Register the second class (should overwrite)
         # Note: Fallback implementation may not log warnings
-        ConfigClassStore.register(TestConfigADuplicate)
+        ConfigClassStore.register(MockConfigADuplicate)
 
         # Verify the second class overwrote the first
         if hasattr(ConfigClassStore, 'get_class'):
-            retrieved_class = ConfigClassStore.get_class("TestConfigA")
+            retrieved_class = ConfigClassStore.get_class("MockConfigA")
         else:
             # For fallback implementation, get via get_all_classes
             all_classes = ConfigClassStore.get_all_classes()
-            retrieved_class = all_classes.get("TestConfigA")
+            retrieved_class = all_classes.get("MockConfigA")
         
         assert retrieved_class is not None
         instance = retrieved_class()
@@ -235,7 +235,7 @@ class TestConfigClassStore:
     def test_registry_persistence_across_operations(self):
         """Test that registry persists across multiple operations."""
         # Register classes in different ways
-        ConfigClassStore.register(TestConfigA)
+        ConfigClassStore.register(MockConfigA)
 
         @ConfigClassStore.register
         class PersistentConfig(BaseModel):
@@ -243,18 +243,18 @@ class TestConfigClassStore:
 
         # Register additional classes (fallback-compatible)
         if hasattr(ConfigClassStore, 'register_many'):
-            ConfigClassStore.register_many(TestConfigB, TestConfigC)
+            ConfigClassStore.register_many(MockConfigB, MockConfigC)
         else:
-            ConfigClassStore.register(TestConfigB)
-            ConfigClassStore.register(TestConfigC)
+            ConfigClassStore.register(MockConfigB)
+            ConfigClassStore.register(MockConfigC)
 
         # Verify all classes are still registered
         all_classes = ConfigClassStore.get_all_classes()
         assert len(all_classes) == 4
-        assert "TestConfigA" in all_classes
+        assert "MockConfigA" in all_classes
         assert "PersistentConfig" in all_classes
-        assert "TestConfigB" in all_classes
-        assert "TestConfigC" in all_classes
+        assert "MockConfigB" in all_classes
+        assert "MockConfigC" in all_classes
 
     def test_build_complete_config_classes_function(self):
         """Test the build_complete_config_classes function."""
@@ -263,8 +263,8 @@ class TestConfigClassStore:
             from cursus.steps.configs.utils import build_complete_config_classes
             
             # Register some classes
-            ConfigClassStore.register(TestConfigA)
-            ConfigClassStore.register(TestConfigB)
+            ConfigClassStore.register(MockConfigA)
+            ConfigClassStore.register(MockConfigB)
 
             # Build complete config classes
             complete_classes = build_complete_config_classes()
@@ -279,7 +279,7 @@ class TestConfigClassStore:
     def test_registry_thread_safety_simulation(self):
         """Test registry behavior under concurrent-like operations."""
         # Simulate concurrent registrations
-        classes_to_register = [TestConfigA, TestConfigB, TestConfigC]
+        classes_to_register = [MockConfigA, MockConfigB, MockConfigC]
 
         # Register classes in rapid succession
         for cls in classes_to_register:
@@ -329,9 +329,9 @@ class TestConfigClassStore:
             ConfigClassStore.register_many()  # Should not crash
 
         # Verify registry is still functional
-        ConfigClassStore.register(TestConfigA)
+        ConfigClassStore.register(MockConfigA)
         if hasattr(ConfigClassStore, 'get_class'):
-            assert ConfigClassStore.get_class("TestConfigA") is not None
+            assert ConfigClassStore.get_class("MockConfigA") is not None
         else:
             all_classes = ConfigClassStore.get_all_classes()
-            assert "TestConfigA" in all_classes
+            assert "MockConfigA" in all_classes
