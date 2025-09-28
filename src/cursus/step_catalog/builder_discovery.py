@@ -34,12 +34,21 @@ class BuilderAutoDiscovery:
         """
         # Initialize logger FIRST before any other operations
         self.logger = logging.getLogger(__name__)
+        self.logger.info(f"🔧 BuilderAutoDiscovery.__init__ starting - package_root: {package_root}")
+        self.logger.info(f"🔧 BuilderAutoDiscovery.__init__ - workspace_dirs: {workspace_dirs}")
         
-        # Handle sys.path setup internally for deployment portability
-        self._ensure_cursus_importable()
+        try:
+            # Handle sys.path setup internally for deployment portability
+            self.logger.debug("🔧 Calling _ensure_cursus_importable()")
+            self._ensure_cursus_importable()
+            self.logger.debug("✅ _ensure_cursus_importable() completed successfully")
+        except Exception as e:
+            self.logger.error(f"❌ _ensure_cursus_importable() failed: {e}")
+            raise
         
         self.package_root = package_root
         self.workspace_dirs = workspace_dirs or []
+        self.logger.info(f"✅ BuilderAutoDiscovery basic initialization complete")
         
         # Caches for performance
         self._builder_cache: Dict[str, Type] = {}
@@ -52,7 +61,16 @@ class BuilderAutoDiscovery:
         
         # Registry integration
         self._registry_info: Dict[str, Dict[str, Any]] = {}
-        self._load_registry_info()
+        
+        try:
+            self.logger.debug("🔧 Loading registry info...")
+            self._load_registry_info()
+            self.logger.info(f"✅ Registry info loaded: {len(self._registry_info)} steps")
+        except Exception as e:
+            self.logger.error(f"❌ Registry info loading failed: {e}")
+            self._registry_info = {}
+        
+        self.logger.info("🎉 BuilderAutoDiscovery initialization completed successfully")
     
     def _ensure_cursus_importable(self):
         """

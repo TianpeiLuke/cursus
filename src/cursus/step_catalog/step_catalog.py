@@ -616,13 +616,25 @@ class StepCatalog:
         Returns:
             BuilderAutoDiscovery instance or None if initialization fails
         """
+        self.logger.info("🔧 StepCatalog._initialize_builder_discovery() starting...")
+        
         try:
             if BuilderAutoDiscovery is None:
-                self.logger.warning("BuilderAutoDiscovery not available due to import failure")
+                self.logger.error("❌ BuilderAutoDiscovery is None - import failure detected")
                 return None
-            return BuilderAutoDiscovery(self.package_root, self.workspace_dirs)
+            
+            self.logger.info(f"🔧 Creating BuilderAutoDiscovery with package_root: {self.package_root}")
+            self.logger.info(f"🔧 Creating BuilderAutoDiscovery with workspace_dirs: {self.workspace_dirs}")
+            
+            builder_discovery = BuilderAutoDiscovery(self.package_root, self.workspace_dirs)
+            
+            self.logger.info("✅ BuilderAutoDiscovery created successfully")
+            return builder_discovery
+            
         except Exception as e:
-            self.logger.error(f"Error initializing BuilderAutoDiscovery: {e}")
+            self.logger.error(f"❌ Error initializing BuilderAutoDiscovery: {e}")
+            import traceback
+            self.logger.error(f"❌ BuilderAutoDiscovery traceback: {traceback.format_exc()}")
             return None
     
     def _initialize_contract_discovery(self) -> Optional['ContractAutoDiscovery']:
