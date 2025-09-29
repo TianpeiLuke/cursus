@@ -40,18 +40,32 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
     def __init__(
         self,
         builder_class,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
         step_info: Optional[Dict[str, Any]] = None,
         enable_scoring: bool = False,
         enable_structured_reporting: bool = False,
+        **kwargs
     ):
         """
         Initialize Processing step builder test suite.
 
         Args:
             builder_class: The Processing step builder class to test
+            config: Optional config to use (will create via step catalog if not provided)
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
             step_info: Optional step information dictionary
             enable_scoring: Whether to enable scoring functionality
             enable_structured_reporting: Whether to enable structured reporting
+            **kwargs: Additional arguments for subclasses
         """
         # Set Processing-specific step info
         if step_info is None:
@@ -79,11 +93,16 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
         # Store step_info for processing-specific use
         self.step_info = step_info
 
-        # Initialize parent class without step_info parameter
+        # Initialize parent class with new signature
         super().__init__(
             builder_class=builder_class,
-            enable_scoring=enable_scoring,
-            enable_structured_reporting=enable_structured_reporting,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
         )
 
         # Initialize Processing-specific test levels
@@ -229,16 +248,8 @@ class ProcessingStepBuilderTest(UniversalStepBuilderTest):
         }
 
         try:
-            # Create a test instance to check processor type
-            config = Mock()
-            config.processing_framework_version = "0.23-1"
-            config.processing_instance_type_large = "ml.m5.xlarge"
-            config.processing_instance_type_small = "ml.m5.large"
-            config.use_large_processing_instance = False
-            config.processing_instance_count = 1
-            config.processing_volume_size = 30
-
-            builder = self.builder_class(config=config)
+            # Create a test instance to check processor type using enhanced config creation
+            builder = self._create_builder_instance_with_real_config()
             builder.role = "test-role"
             builder.session = Mock()
 

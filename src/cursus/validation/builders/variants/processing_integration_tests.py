@@ -9,7 +9,7 @@ These tests focus on Processing step system integration and end-to-end functiona
 - End-to-end step creation workflow validation
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch, MagicMock
 
 from ..integration_tests import IntegrationTests
@@ -23,6 +23,47 @@ class ProcessingIntegrationTests(IntegrationTests):
     the overall system and can create functional SageMaker ProcessingStep objects
     using both Pattern A (direct ProcessingStep) and Pattern B (processor.run + step_args).
     """
+
+    def __init__(
+        self,
+        builder_class,
+        step_info: Optional[Dict[str, Any]] = None,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        **kwargs
+    ):
+        """
+        Initialize Processing integration tests.
+
+        Args:
+            builder_class: The Processing step builder class to test
+            step_info: Processing-specific step information
+            config: Optional config to use
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            **kwargs: Additional arguments
+        """
+        # Initialize parent with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
+        )
+        
+        # Store Processing-specific step info
+        self.step_info = step_info or {}
 
     def get_step_type_specific_tests(self) -> list:
         """Return Processing-specific integration test methods."""

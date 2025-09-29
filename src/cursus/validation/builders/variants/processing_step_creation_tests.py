@@ -16,6 +16,47 @@ class ProcessingStepCreationTests(StepCreationTests):
     due to SageMaker internal validation requirements.
     """
 
+    def __init__(
+        self,
+        builder_class,
+        step_info: Optional[Dict[str, Any]] = None,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        **kwargs
+    ):
+        """
+        Initialize Processing step creation tests.
+
+        Args:
+            builder_class: The Processing step builder class to test
+            step_info: Processing-specific step information
+            config: Optional config to use
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            **kwargs: Additional arguments
+        """
+        # Initialize parent with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
+        )
+        
+        # Store Processing-specific step info
+        self.step_info = step_info or {}
+
     def _is_pattern_b_builder(self) -> bool:
         """Check if this is a Pattern B processing builder that should auto-pass certain tests."""
         builder_class_name = self.builder_class.__name__

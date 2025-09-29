@@ -1,52 +1,247 @@
 """
-Transform Step Validation Test Orchestrator
+Transform Step Builder Validation Test Suite.
 
-This module provides the main orchestrator for Transform step validation,
-integrating all 4 levels of testing:
-- Level 1: Interface Tests (TransformInterfaceTests)
-- Level 2: Specification Tests (TransformSpecificationTests)  
-- Level 3: Path Mapping Tests (TransformPathMappingTests)
-- Level 4: Integration Tests (TransformIntegrationTests)
+This module provides comprehensive validation for Transform step builders using
+a modular 4-level testing approach:
 
-The orchestrator provides convenience functions for running Transform-specific
-validation suites and generating comprehensive reports.
+Level 1: Interface Tests - Basic interface and inheritance validation
+Level 2: Specification Tests - Specification and contract compliance
+Level 3: Step Creation Tests - Step creation and configuration validation  
+Level 4: Integration Tests - End-to-end step creation and system integration
+
+The tests are designed to validate Transform-specific patterns including:
+- Batch inference and processing
+- Model integration and artifact handling
+- Data format and content type handling
+- Performance optimization and resource allocation
+- Multi-framework transform support
 """
 
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
+from unittest.mock import Mock
 import logging
 
 from .transform_interface_tests import TransformInterfaceTests
 from .transform_specification_tests import TransformSpecificationTests
-from ..step_creation_tests import StepCreationTests
 from .transform_integration_tests import TransformIntegrationTests
+from ..universal_test import UniversalStepBuilderTest
 
 logger = logging.getLogger(__name__)
 
 
-class TransformStepBuilderTest:
-    """Main orchestrator for Transform step validation testing."""
+class TransformStepBuilderTest(UniversalStepBuilderTest):
+    """
+    Comprehensive Transform step builder validation test suite.
 
-    def __init__(self, builder_instance, config: Dict[str, Any]):
+    This class orchestrates all 4 levels of Transform-specific validation tests
+    using the modular test structure. It extends the UniversalStepBuilderTest
+    to provide Transform-specific testing capabilities.
+    """
+
+    def __init__(
+        self,
+        builder_class,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        step_info: Optional[Dict[str, Any]] = None,
+        enable_scoring: bool = False,
+        enable_structured_reporting: bool = False,
+        **kwargs
+    ):
         """
-        Initialize Transform test orchestrator.
+        Initialize Transform step builder test suite.
 
         Args:
-            builder_instance: The Transform step builder instance to test
-            config: Configuration dictionary for testing
+            builder_class: The Transform step builder class to test
+            config: Optional config to use (will create via step catalog if not provided)
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            step_info: Optional step information dictionary
+            enable_scoring: Whether to enable scoring functionality
+            enable_structured_reporting: Whether to enable structured reporting
+            **kwargs: Additional arguments for subclasses
         """
-        self.builder_instance = builder_instance
-        self.config = config
-        self.step_type = "Transform"
+        # Set Transform-specific step info
+        if step_info is None:
+            step_info = {
+                "sagemaker_step_type": "Transform",
+                "step_category": "inference",
+                "supported_frameworks": ["pytorch", "xgboost", "tensorflow", "sklearn"],
+                "transform_patterns": [
+                    "Batch Inference",
+                    "Model Integration",
+                    "Data Format Handling",
+                    "Performance Optimization",
+                ],
+                "common_features": [
+                    "batch_processing",
+                    "model_integration",
+                    "data_format_handling",
+                    "performance_optimization",
+                ],
+                "special_features": [
+                    "multi_framework_support",
+                    "content_type_handling",
+                    "batch_size_optimization",
+                    "inference_acceleration",
+                ],
+            }
 
-        # Initialize all test levels
-        self.interface_tests = TransformInterfaceTests(builder_instance, config)
-        self.specification_tests = TransformSpecificationTests(builder_instance, config)
-        self.path_mapping_tests = StepCreationTests(builder_instance, config)
-        self.integration_tests = TransformIntegrationTests(builder_instance, config)
+        # Store step_info for transform-specific use
+        self.step_info = step_info
 
-        logger.info(
-            f"Initialized Transform test orchestrator for builder: {type(builder_instance).__name__}"
+        # Initialize parent class with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
         )
+
+        # Initialize Transform-specific test levels
+        self._initialize_transform_test_levels()
+
+    def _initialize_transform_test_levels(self) -> None:
+        """Initialize Transform-specific test level instances."""
+        # Level 1: Transform Interface Tests
+        self.level1_tester = TransformInterfaceTests(
+            builder_class=self.builder_class, step_info=self.step_info
+        )
+
+        # Level 2: Transform Specification Tests
+        self.level2_tester = TransformSpecificationTests(
+            builder_class=self.builder_class, step_info=self.step_info
+        )
+
+        # Level 3: Transform Step Creation Tests (using base step creation tests)
+        from ..step_creation_tests import StepCreationTests
+        self.level3_tester = StepCreationTests(
+            builder_class=self.builder_class,
+            config=self._provided_config,
+            spec=self._provided_spec,
+            contract=self._provided_contract,
+            step_name=self._provided_step_name,
+            verbose=self.verbose,
+            test_reporter=self.test_reporter,
+        )
+
+        # Level 4: Transform Integration Tests
+        self.level4_tester = TransformIntegrationTests(
+            builder_class=self.builder_class, step_info=self.step_info
+        )
+
+        # Override the base test levels with Transform-specific ones
+        self.test_levels = {
+            1: self.level1_tester,
+            2: self.level2_tester,
+            3: self.level3_tester,
+            4: self.level4_tester,
+        }
+
+    def get_transform_specific_info(self) -> Dict[str, Any]:
+        """Get Transform-specific information for reporting."""
+        return {
+            "step_type": "Transform",
+            "supported_frameworks": ["pytorch", "xgboost", "tensorflow", "sklearn"],
+            "transform_patterns": {
+                "batch_inference": "Large-scale batch inference processing",
+                "model_integration": "Integration with trained models for inference",
+                "data_format_handling": "Support for multiple data formats and content types",
+                "performance_optimization": "Batch size and resource optimization",
+            },
+            "common_features": {
+                "batch_processing": "Efficient batch processing capabilities",
+                "model_integration": "Seamless model artifact integration",
+                "data_format_handling": "Multiple input/output format support",
+                "performance_optimization": "Resource and throughput optimization",
+            },
+            "special_features": {
+                "multi_framework_support": "Support for multiple ML frameworks",
+                "content_type_handling": "Advanced content type processing",
+                "batch_size_optimization": "Automatic batch size optimization",
+                "inference_acceleration": "Hardware acceleration for inference",
+            },
+        }
+
+    def run_transform_validation(
+        self, levels: Optional[List[int]] = None
+    ) -> Dict[str, Any]:
+        """
+        Run Transform-specific validation tests.
+
+        Args:
+            levels: Optional list of test levels to run (1-4). If None, runs all levels.
+
+        Returns:
+            Dictionary containing test results and Transform-specific information
+        """
+        if levels is None:
+            levels = [1, 2, 3, 4]
+
+        # Run the standard validation
+        results = self.run_all_tests()
+
+        # Add Transform-specific information
+        if isinstance(results, dict):
+            results["transform_info"] = self.get_transform_specific_info()
+            results["test_suite"] = "TransformStepBuilderTest"
+
+            # Add level-specific summaries
+            if "test_results" in results:
+                test_results = results["test_results"]
+
+                # Level 1 summary
+                if 1 in levels and "level_1" in test_results:
+                    level1_results = test_results["level_1"]
+                    level1_results["summary"] = (
+                        "Transform interface and inheritance validation"
+                    )
+                    level1_results["focus"] = (
+                        "Transformer creation methods, batch processing configuration, model integration"
+                    )
+
+                # Level 2 summary
+                if 2 in levels and "level_2" in test_results:
+                    level2_results = test_results["level_2"]
+                    level2_results["summary"] = (
+                        "Transform specification and contract compliance"
+                    )
+                    level2_results["focus"] = (
+                        "Batch processing specification, data format handling, performance configuration"
+                    )
+
+                # Level 3 summary
+                if 3 in levels and "level_3" in test_results:
+                    level3_results = test_results["level_3"]
+                    level3_results["summary"] = (
+                        "Transform step creation and configuration validation"
+                    )
+                    level3_results["focus"] = (
+                        "TransformJob creation, input/output mapping, model artifact integration"
+                    )
+
+                # Level 4 summary
+                if 4 in levels and "level_4" in test_results:
+                    level4_results = test_results["level_4"]
+                    level4_results["summary"] = (
+                        "Transform integration and end-to-end workflow"
+                    )
+                    level4_results["focus"] = (
+                        "Complete transform workflow, batch processing integration, performance optimization"
+                    )
+
+        return results
 
     def run_all_tests(self) -> Dict[str, Any]:
         """

@@ -9,6 +9,7 @@ These tests focus on Processing-specific interface requirements:
 - Environment variables and job arguments methods
 """
 
+from typing import Dict, Any, Optional
 from ..interface_tests import InterfaceTests
 
 
@@ -19,6 +20,47 @@ class ProcessingInterfaceTests(InterfaceTests):
     Extends the base InterfaceTests with Processing step-specific validations
     based on processing_step_builder_patterns.md analysis.
     """
+
+    def __init__(
+        self,
+        builder_class,
+        step_info: Optional[Dict[str, Any]] = None,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        **kwargs
+    ):
+        """
+        Initialize Processing interface tests.
+
+        Args:
+            builder_class: The Processing step builder class to test
+            step_info: Processing-specific step information
+            config: Optional config to use
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            **kwargs: Additional arguments
+        """
+        # Initialize parent with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
+        )
+        
+        # Store Processing-specific step info
+        self.step_info = step_info or {}
 
     def get_step_type_specific_tests(self) -> list:
         """Return Processing-specific interface test methods."""

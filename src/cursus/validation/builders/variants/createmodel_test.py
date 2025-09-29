@@ -1,54 +1,153 @@
 """
-CreateModel Step Validation Test Orchestrator
+CreateModel Step Builder Validation Test Suite.
 
-This module provides the main orchestrator for CreateModel step validation,
-integrating all 4 levels of testing:
-- Level 1: Interface Tests (CreateModelInterfaceTests)
-- Level 2: Specification Tests (CreateModelSpecificationTests)  
-- Level 3: Path Mapping Tests (CreateModelPathMappingTests)
-- Level 4: Integration Tests (CreateModelIntegrationTests)
+This module provides comprehensive validation for CreateModel step builders using
+a modular 4-level testing approach:
 
-The orchestrator provides convenience functions for running CreateModel-specific
-validation suites and generating comprehensive reports.
+Level 1: Interface Tests - Basic interface and inheritance validation
+Level 2: Specification Tests - Specification and contract compliance
+Level 3: Step Creation Tests - Step creation and configuration validation  
+Level 4: Integration Tests - End-to-end step creation and system integration
+
+The tests are designed to validate CreateModel-specific patterns including:
+- Model artifact handling and deployment
+- Container configuration and optimization
+- Multi-container deployment patterns
+- Model registry integration
+- Inference endpoint preparation
 """
 
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
+from unittest.mock import Mock
 import logging
 
 from .createmodel_interface_tests import CreateModelInterfaceTests
 from .createmodel_specification_tests import CreateModelSpecificationTests
-from ..step_creation_tests import StepCreationTests
 from .createmodel_integration_tests import CreateModelIntegrationTests
+from ..universal_test import UniversalStepBuilderTest
 
 logger = logging.getLogger(__name__)
 
 
-class CreateModelStepBuilderTest:
-    """Main orchestrator for CreateModel step validation testing."""
+class CreateModelStepBuilderTest(UniversalStepBuilderTest):
+    """
+    Comprehensive CreateModel step builder validation test suite.
 
-    def __init__(self, builder_instance, config: Dict[str, Any]):
+    This class orchestrates all 4 levels of CreateModel-specific validation tests
+    using the modular test structure. It extends the UniversalStepBuilderTest
+    to provide CreateModel-specific testing capabilities.
+    """
+
+    def __init__(
+        self,
+        builder_class,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        step_info: Optional[Dict[str, Any]] = None,
+        enable_scoring: bool = False,
+        enable_structured_reporting: bool = False,
+        **kwargs
+    ):
         """
-        Initialize CreateModel test orchestrator.
+        Initialize CreateModel step builder test suite.
 
         Args:
-            builder_instance: The CreateModel step builder instance to test
-            config: Configuration dictionary for testing
+            builder_class: The CreateModel step builder class to test
+            config: Optional config to use (will create via step catalog if not provided)
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            step_info: Optional step information dictionary
+            enable_scoring: Whether to enable scoring functionality
+            enable_structured_reporting: Whether to enable structured reporting
+            **kwargs: Additional arguments for subclasses
         """
-        self.builder_instance = builder_instance
-        self.config = config
-        self.step_type = "CreateModel"
+        # Set CreateModel-specific step info
+        if step_info is None:
+            step_info = {
+                "sagemaker_step_type": "CreateModel",
+                "step_category": "deployment",
+                "supported_frameworks": ["pytorch", "xgboost", "tensorflow", "sklearn"],
+                "deployment_patterns": [
+                    "Single Container Deployment",
+                    "Multi-Container Deployment",
+                    "Model Registry Integration",
+                    "Endpoint Deployment",
+                ],
+                "common_features": [
+                    "model_artifact_handling",
+                    "container_configuration",
+                    "inference_preparation",
+                    "deployment_optimization",
+                ],
+                "special_features": [
+                    "multi_container_support",
+                    "model_registry_integration",
+                    "inference_optimization",
+                    "production_deployment",
+                ],
+            }
 
-        # Initialize all test levels
-        self.interface_tests = CreateModelInterfaceTests(builder_instance, config)
-        self.specification_tests = CreateModelSpecificationTests(
-            builder_instance, config
-        )
-        self.path_mapping_tests = CreateModelPathMappingTests(builder_instance, config)
-        self.integration_tests = CreateModelIntegrationTests(builder_instance, config)
+        # Store step_info for createmodel-specific use
+        self.step_info = step_info
 
-        logger.info(
-            f"Initialized CreateModel test orchestrator for builder: {type(builder_instance).__name__}"
+        # Initialize parent class with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
         )
+
+        # Initialize CreateModel-specific test levels
+        self._initialize_createmodel_test_levels()
+
+    def _initialize_createmodel_test_levels(self) -> None:
+        """Initialize CreateModel-specific test level instances."""
+        # Level 1: CreateModel Interface Tests
+        self.level1_tester = CreateModelInterfaceTests(
+            builder_class=self.builder_class, step_info=self.step_info
+        )
+
+        # Level 2: CreateModel Specification Tests
+        self.level2_tester = CreateModelSpecificationTests(
+            builder_class=self.builder_class, step_info=self.step_info
+        )
+
+        # Level 3: CreateModel Step Creation Tests (using base step creation tests)
+        from ..step_creation_tests import StepCreationTests
+        self.level3_tester = StepCreationTests(
+            builder_class=self.builder_class,
+            config=self._provided_config,
+            spec=self._provided_spec,
+            contract=self._provided_contract,
+            step_name=self._provided_step_name,
+            verbose=self.verbose,
+            test_reporter=self.test_reporter,
+        )
+
+        # Level 4: CreateModel Integration Tests
+        self.level4_tester = CreateModelIntegrationTests(
+            builder_class=self.builder_class, step_info=self.step_info
+        )
+
+        # Override the base test levels with CreateModel-specific ones
+        self.test_levels = {
+            1: self.level1_tester,
+            2: self.level2_tester,
+            3: self.level3_tester,
+            4: self.level4_tester,
+        }
 
     def run_all_tests(self) -> Dict[str, Any]:
         """

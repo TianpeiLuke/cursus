@@ -21,8 +21,46 @@ logger = logging.getLogger(__name__)
 class TrainingIntegrationTests(IntegrationTests):
     """Level 4 Training-specific integration validation tests."""
 
-    def __init__(self, builder_instance, config: Dict[str, Any]):
-        super().__init__(builder_instance, config)
+    def __init__(
+        self,
+        builder_class,
+        step_info: Optional[Dict[str, Any]] = None,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        **kwargs
+    ):
+        """
+        Initialize Training integration tests.
+
+        Args:
+            builder_class: The Training step builder class to test
+            step_info: Training-specific step information
+            config: Optional config to use
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            **kwargs: Additional arguments
+        """
+        # Initialize parent with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
+        )
+        
+        # Store Training-specific step info
+        self.step_info = step_info or {}
         self.step_type = "Training"
 
     def get_step_type_specific_tests(self) -> List[str]:

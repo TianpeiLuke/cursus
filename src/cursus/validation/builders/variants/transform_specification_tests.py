@@ -21,9 +21,46 @@ class TransformSpecificationTests(SpecificationTests):
     including batch processing configuration, model integration, and transform job specifications.
     """
 
-    def __init__(self, builder_class: Type[StepBuilderBase], **kwargs):
-        """Initialize Transform specification tests."""
-        super().__init__(builder_class, **kwargs)
+    def __init__(
+        self,
+        builder_class,
+        step_info: Optional[Dict[str, Any]] = None,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        **kwargs
+    ):
+        """
+        Initialize Transform specification tests.
+
+        Args:
+            builder_class: The Transform step builder class to test
+            step_info: Transform-specific step information
+            config: Optional config to use
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            **kwargs: Additional arguments
+        """
+        # Initialize parent with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
+        )
+        
+        # Store Transform-specific step info
+        self.step_info = step_info or {}
         self.step_type = "Transform"
 
     def level2_test_batch_processing_specification_compliance(self) -> Dict[str, Any]:

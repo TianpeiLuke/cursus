@@ -10,7 +10,7 @@ These tests focus on CreateModel step interface and inheritance validation:
 - Deployment preparation methods
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch
 
 from ..interface_tests import InterfaceTests
@@ -21,8 +21,49 @@ class CreateModelInterfaceTests(InterfaceTests):
     Level 1 CreateModel-specific interface tests.
 
     These tests validate that CreateModel step builders implement the correct
-    interface patterns for model deployment preparation.
+    interface patterns for model creation and deployment operations.
     """
+
+    def __init__(
+        self,
+        builder_class,
+        step_info: Optional[Dict[str, Any]] = None,
+        config=None,
+        spec=None,
+        contract=None,
+        step_name=None,
+        verbose: bool = False,
+        test_reporter=None,
+        **kwargs
+    ):
+        """
+        Initialize CreateModel interface tests.
+
+        Args:
+            builder_class: The CreateModel step builder class to test
+            step_info: CreateModel-specific step information
+            config: Optional config to use
+            spec: Optional step specification
+            contract: Optional script contract
+            step_name: Optional step name
+            verbose: Whether to print verbose output
+            test_reporter: Optional function to report test results
+            **kwargs: Additional arguments
+        """
+        # Initialize parent with new signature
+        super().__init__(
+            builder_class=builder_class,
+            config=config,
+            spec=spec,
+            contract=contract,
+            step_name=step_name,
+            verbose=verbose,
+            test_reporter=test_reporter,
+            **kwargs
+        )
+        
+        # Store CreateModel-specific step info
+        self.step_info = step_info or {}
 
     def get_step_type_specific_tests(self) -> list:
         """Return CreateModel-specific interface test methods."""
