@@ -31,7 +31,7 @@ from .base_test import UniversalStepBuilderTestBase
 
 # Enhanced universal tester system
 from .builder_test_factory import UniversalStepBuilderTestFactory
-from .mock_factory import StepTypeMockFactory
+# Removed StepTypeMockFactory - redundant system eliminated
 from .variants.processing_test import ProcessingStepBuilderTest
 from .variants.training_test import TrainingStepBuilderTest
 from .variants.transform_test import TransformStepBuilderTest
@@ -59,7 +59,6 @@ __all__ = [
     "UniversalStepBuilderTestBase",
     # Enhanced universal tester system
     "UniversalStepBuilderTestFactory",
-    "StepTypeMockFactory",
     # Step-type-specific test variants
     "ProcessingStepBuilderTest",
     "TrainingStepBuilderTest",

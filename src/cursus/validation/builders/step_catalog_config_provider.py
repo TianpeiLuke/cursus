@@ -4,6 +4,9 @@ Step Catalog Configuration Provider.
 This module provides a simplified configuration provider that leverages the existing
 step catalog system to eliminate redundancy and provide proper configuration instances
 for testing instead of primitive Mock() objects.
+
+After comprehensive refactoring, this now uses a minimal approach focused on
+architectural validation rather than perfect configuration mocking.
 """
 
 import logging
@@ -18,6 +21,9 @@ class StepCatalogConfigProvider:
     This class eliminates redundancy by using the step catalog's existing
     configuration discovery capabilities directly, with zero hard-coded
     configuration data.
+    
+    After removing the redundant mock_factory.py, this now focuses on minimal
+    configuration creation for architectural validation.
     """
     
     def __init__(self):
@@ -73,12 +79,12 @@ class StepCatalogConfigProvider:
                     self.logger.debug(f"✅ Step catalog config: {config_class_name} for {builder_name}")
                     return config_instance
             
-            # Simple fallback to existing mock factory (reuse existing code)
-            return self._fallback_to_existing_mock_factory(builder_class)
+            # Fallback to minimal mock for architectural validation
+            return self._create_minimal_mock_config(builder_class)
             
         except Exception as e:
             self.logger.debug(f"Config creation failed for {builder_name}: {e}")
-            return self._fallback_to_existing_mock_factory(builder_class)
+            return self._create_minimal_mock_config(builder_class)
     
     def _map_builder_to_config_class(self, builder_name: str) -> str:
         """Simple builder name to config class mapping."""
@@ -91,12 +97,12 @@ class StepCatalogConfigProvider:
         """Create config instance using step catalog's from_base_config pattern."""
         try:
             # Use step catalog's existing base config creation
-            base_config = self._get_base_config(builder_class)
+            base_config = self._get_base_config()
             if base_config is None:
                 return None
             
-            # Get builder-specific data
-            config_data = self._get_builder_config_data(builder_class)
+            # Get minimal builder-specific data
+            config_data = self._get_minimal_config_data(builder_class)
             
             # Use existing from_base_config pattern
             return config_class.from_base_config(base_config, **config_data)
@@ -105,161 +111,228 @@ class StepCatalogConfigProvider:
             self.logger.debug(f"Failed to create {config_class.__name__}: {e}")
             return None
     
-    def _get_base_config(self, builder_class: Type) -> Optional[Any]:
-        """
-        Get base pipeline config by leveraging existing mock factory system.
-        
-        This eliminates hard-coding by reusing the existing mock factory's
-        base configuration generation capabilities.
-        """
+    def _get_base_config(self) -> Optional[Any]:
+        """Get base pipeline config with minimal required fields."""
         try:
-            # First try to create a proper BasePipelineConfig from step catalog
             from ...core.base.config_base import BasePipelineConfig
             
-            # Get base config data from mock factory
-            base_config_data = self._get_base_config_data_from_mock_factory(builder_class)
-            
-            if base_config_data:
-                try:
-                    # Create proper BasePipelineConfig instance
-                    base_config = BasePipelineConfig(**base_config_data)
-                    self.logger.debug(f"✅ Created proper BasePipelineConfig for {builder_class.__name__}")
-                    return base_config
-                except Exception as e:
-                    self.logger.debug(f"Failed to create BasePipelineConfig: {e}")
-            
-            # Fallback to mock factory approach
-            return self._get_base_config_from_mock_factory(builder_class)
-            
-        except Exception as e:
-            self.logger.debug(f"Failed to get base config: {e}")
-            return None
-    
-    def _get_base_config_data_from_mock_factory(self, builder_class: Type) -> Dict[str, Any]:
-        """Extract base config data from mock factory."""
-        try:
-            from .sagemaker_step_type_validator import SageMakerStepTypeValidator
-            from .mock_factory import StepTypeMockFactory
-            
-            # Use the builder class to get base config structure
-            validator = SageMakerStepTypeValidator(builder_class)
-            step_info = validator.get_step_type_info()
-            factory = StepTypeMockFactory(step_info, test_mode=True)
-            
-            # Get mock config and extract base config fields
-            mock_config = factory.create_mock_config()
-            
-            # Extract base config fields with proper defaults
+            # Create minimal base config with only required fields
             base_config_data = {
-                'author': getattr(mock_config, 'author', 'test-author'),
-                'bucket': getattr(mock_config, 'bucket', 'test-bucket'),
-                'role': getattr(mock_config, 'role', 'arn:aws:iam::123456789012:role/MockRole'),
-                'region': getattr(mock_config, 'region', 'NA'),
-                'service_name': getattr(mock_config, 'service_name', 'test-service'),
-                'pipeline_version': getattr(mock_config, 'pipeline_version', '1.0.0'),
-                'model_class': getattr(mock_config, 'model_class', 'test-model'),
-                'current_date': getattr(mock_config, 'current_date', '2024-01-01'),
-                'framework_version': getattr(mock_config, 'framework_version', '1.0'),
-                'py_version': getattr(mock_config, 'py_version', 'py39'),
-                'source_dir': getattr(mock_config, 'source_dir', '/tmp/mock_scripts'),
-                'project_root_folder': getattr(mock_config, 'project_root_folder', '/tmp/mock_project'),  # Required field
-                'pipeline_name': getattr(mock_config, 'pipeline_name', 'test-pipeline'),
-                'pipeline_s3_loc': getattr(mock_config, 'pipeline_s3_loc', 's3://test-bucket/pipeline'),
+                'author': 'test-author',
+                'bucket': 'test-bucket',
+                'role': 'arn:aws:iam::123456789012:role/MockRole',
+                'region': 'NA',
+                'service_name': 'test-service',
+                'pipeline_version': '1.0.0',
+                'model_class': 'test-model',
+                'current_date': '2024-01-01',
+                'framework_version': '1.0',
+                'py_version': 'py39',
+                'source_dir': '/tmp/mock_scripts',
+                'project_root_folder': '/tmp/mock_project',  # Required field
+                'pipeline_name': 'test-pipeline',
+                'pipeline_s3_loc': 's3://test-bucket/pipeline',
             }
             
-            return base_config_data
+            return BasePipelineConfig(**base_config_data)
             
         except Exception as e:
-            self.logger.debug(f"Failed to extract base config data: {e}")
-            return {}
-    
-    def _get_base_config_from_mock_factory(self, builder_class: Type) -> Optional[Any]:
-        """Fallback method to get base config from mock factory."""
-        try:
-            # Leverage existing mock factory to create realistic base config
-            from .sagemaker_step_type_validator import SageMakerStepTypeValidator
-            from .mock_factory import StepTypeMockFactory
-            
-            # Use the builder class to get base config structure
-            validator = SageMakerStepTypeValidator(builder_class)
-            step_info = validator.get_step_type_info()
-            factory = StepTypeMockFactory(step_info, test_mode=True)
-            
-            # Get mock config and extract base config if available
-            mock_config = factory.create_mock_config()
-            
-            # Try to extract base config from mock config
-            if hasattr(mock_config, 'base_config'):
-                return mock_config.base_config
-            
-            # Return the mock config itself as fallback
-            return mock_config
-            
-        except Exception as e:
-            self.logger.debug(f"Failed to get base config from mock factory: {e}")
+            self.logger.debug(f"Failed to create BasePipelineConfig: {e}")
             return None
     
-    def _get_builder_config_data(self, builder_class: Type) -> Dict[str, Any]:
-        """
-        Get builder-specific configuration data by leveraging existing mock factory.
+    def _get_minimal_config_data(self, builder_class: Type) -> Dict[str, Any]:
+        """Get minimal configuration data using registry and step catalog for authoritative SageMaker type lookup."""
         
-        This eliminates hard-coding by reusing the existing StepTypeMockFactory's
-        intelligent configuration generation capabilities.
-        """
+        # Step 1: Find step name from builder class using registry/step catalog
+        step_name = self._find_step_name_for_builder(builder_class)
+        if not step_name:
+            self.logger.debug(f"No step name found for builder {builder_class.__name__}, using fallback")
+            return self._get_fallback_config_data(builder_class)
+        
+        # Step 2: Get SageMaker type from registry (authoritative source)
+        sagemaker_type = self._get_sagemaker_type_from_registry(step_name)
+        if not sagemaker_type:
+            self.logger.debug(f"No SageMaker type found for step {step_name}, using fallback")
+            return self._get_fallback_config_data(builder_class)
+        
+        # Step 3: Generate config based on authoritative SageMaker type
+        return self._generate_config_for_sagemaker_type(sagemaker_type, step_name)
+    
+    def _find_step_name_for_builder(self, builder_class: Type) -> Optional[str]:
+        """Find step name for builder class using step catalog discovery."""
+        builder_name = builder_class.__name__
+        
+        # Try step catalog first (most comprehensive)
+        if self.step_catalog:
+            try:
+                for step_name in self.step_catalog.list_available_steps():
+                    step_info = self.step_catalog.get_step_info(step_name)
+                    if step_info and step_info.registry_data.get('builder_step_name') == builder_name:
+                        return step_name
+            except Exception as e:
+                self.logger.debug(f"Step catalog lookup failed: {e}")
+        
+        # Fallback: Try registry directly
         try:
-            # Leverage existing mock factory's configuration intelligence
-            from .sagemaker_step_type_validator import SageMakerStepTypeValidator
-            from .mock_factory import StepTypeMockFactory
+            from ...registry.step_names import get_builder_step_names
+            builder_step_names = get_builder_step_names()
+            for step_name, registered_builder_name in builder_step_names.items():
+                if registered_builder_name == builder_name:
+                    return step_name
+        except Exception as e:
+            self.logger.debug(f"Registry lookup failed: {e}")
+        
+        return None
+    
+    def _get_sagemaker_type_from_registry(self, step_name: str) -> Optional[str]:
+        """Get SageMaker type from registry (authoritative source)."""
+        try:
+            from ...registry.step_names import get_sagemaker_step_type
+            return get_sagemaker_step_type(step_name)
+        except Exception as e:
+            self.logger.debug(f"Registry SageMaker type lookup failed for {step_name}: {e}")
             
-            # Get step info using existing validator
-            validator = SageMakerStepTypeValidator(builder_class)
-            step_info = validator.get_step_type_info()
+            # Fallback to step catalog
+            if self.step_catalog:
+                try:
+                    step_info = self.step_catalog.get_step_info(step_name)
+                    if step_info:
+                        return step_info.registry_data.get('sagemaker_step_type')
+                except Exception as e2:
+                    self.logger.debug(f"Step catalog SageMaker type lookup failed: {e2}")
             
-            # Use existing mock factory to generate realistic config data
-            factory = StepTypeMockFactory(step_info, test_mode=True)
-            mock_config = factory.create_mock_config()
+            return None
+    
+    def _generate_config_for_sagemaker_type(self, sagemaker_type: str, step_name: str) -> Dict[str, Any]:
+        """Generate minimal configuration based on authoritative SageMaker type."""
+        config_data = {}
+        
+        if sagemaker_type == "Processing":
+            config_data.update({
+                'job_type': 'training',
+                'processing_instance_type': 'ml.m5.large',
+                'processing_instance_count': 1,
+                'processing_volume_size': 30,
+                'processing_entry_point': 'process.py',
+            })
             
-            # Extract configuration data from mock config
-            config_data = {}
-            if hasattr(mock_config, '__dict__'):
-                # Convert mock config to dictionary, filtering out methods
-                config_data = {
-                    key: value for key, value in mock_config.__dict__.items()
-                    if not callable(value) and not key.startswith('_')
-                }
-            elif hasattr(mock_config, 'model_dump'):
-                # Handle Pydantic models
-                config_data = mock_config.model_dump()
-            
-            # Return extracted config data without hard-coded additions
+            # Add step-specific fields based on step name
+            if "ModelCalibration" in step_name:
+                config_data.update({
+                    'label_field': 'target',
+                    'calibration_method': 'isotonic',
+                })
+        
+        elif sagemaker_type == "Training":
+            config_data.update({
+                'training_instance_type': 'ml.m5.xlarge',
+                'training_instance_count': 1,
+                'training_volume_size': 30,
+                'training_entry_point': 'train.py',
+            })
+        
+        elif sagemaker_type == "Transform":
+            config_data.update({
+                'transform_instance_type': 'ml.m5.large',
+                'transform_instance_count': 1,
+                'job_type': 'training',
+            })
+        
+        elif sagemaker_type == "CreateModel":
+            config_data.update({
+                'model_name': 'test-model',
+                'instance_type': 'ml.m5.large',
+                'entry_point': 'inference.py',
+            })
+        
+        return config_data
+    
+    def _get_fallback_config_data(self, builder_class: Type) -> Dict[str, Any]:
+        """Fallback configuration generation using builder name patterns."""
+        builder_name = builder_class.__name__
+        
+        # Simple fallback based on name patterns (minimal)
+        if "Processing" in builder_name or "ModelCalibration" in builder_name:
+            config_data = {
+                'job_type': 'training',
+                'processing_instance_type': 'ml.m5.large',
+                'processing_instance_count': 1,
+                'processing_volume_size': 30,
+                'processing_entry_point': 'process.py',
+            }
+            if "ModelCalibration" in builder_name:
+                config_data.update({
+                    'label_field': 'target',
+                    'calibration_method': 'isotonic',
+                })
             return config_data
-                
-        except Exception as e:
-            self.logger.debug(f"Failed to get config data from mock factory: {e}")
-            # Return empty dict - let the test handle missing fields gracefully
-            return {}
+        
+        elif "Training" in builder_name:
+            return {
+                'training_instance_type': 'ml.m5.xlarge',
+                'training_instance_count': 1,
+                'training_volume_size': 30,
+                'training_entry_point': 'train.py',
+            }
+        
+        elif "Transform" in builder_name:
+            return {
+                'transform_instance_type': 'ml.m5.large',
+                'transform_instance_count': 1,
+                'job_type': 'training',
+            }
+        
+        elif "CreateModel" in builder_name or "Model" in builder_name:
+            return {
+                'model_name': 'test-model',
+                'instance_type': 'ml.m5.large',
+                'entry_point': 'inference.py',
+            }
+        
+        return {}
     
-    # ❌ REMOVED: Hard-coded step-specific configuration method
-    # This violates zero hard-coding principle and creates maintenance burden
-    # Tests should focus on architectural validation, not perfect configuration mocking
-    
-    def _fallback_to_existing_mock_factory(self, builder_class: Type) -> Any:
-        """Fallback to existing mock factory system (reuse existing code)."""
-        try:
-            from .sagemaker_step_type_validator import SageMakerStepTypeValidator
-            from .mock_factory import StepTypeMockFactory
+    def _create_minimal_mock_config(self, builder_class: Type) -> SimpleNamespace:
+        """Create minimal mock configuration for architectural validation."""
+        mock_config = SimpleNamespace()
+        
+        # Basic required fields for architectural validation
+        mock_config.region = "NA"
+        mock_config.pipeline_name = "test-pipeline"
+        mock_config.pipeline_s3_loc = "s3://test-bucket/pipeline"
+        
+        # Add basic methods that builders expect
+        mock_config.get_script_contract = lambda: None
+        mock_config.get_image_uri = lambda: "test-image-uri"
+        mock_config.get_script_path = lambda: "test_script.py"
+        
+        # Add minimal step-specific fields
+        builder_name = builder_class.__name__
+        
+        if "Processing" in builder_name or "ModelCalibration" in builder_name:
+            mock_config.job_type = "training"
+            mock_config.processing_instance_type = "ml.m5.large"
+            mock_config.processing_instance_count = 1
+            mock_config.processing_volume_size = 30
+            mock_config.processing_entry_point = "process.py"
             
-            validator = SageMakerStepTypeValidator(builder_class)
-            step_info = validator.get_step_type_info()
-            factory = StepTypeMockFactory(step_info, test_mode=True)
-            
-            return factory.create_mock_config()
-            
-        except Exception as e:
-            self.logger.debug(f"Mock factory fallback failed: {e}")
-            # Final fallback to simple mock
-            mock_config = SimpleNamespace()
-            mock_config.region = "NA"
-            mock_config.pipeline_name = "test-pipeline"
-            mock_config.pipeline_s3_loc = "s3://bucket/prefix"
-            return mock_config
+            if "ModelCalibration" in builder_name:
+                mock_config.label_field = "target"
+                mock_config.calibration_method = "isotonic"
+        
+        elif "Training" in builder_name:
+            mock_config.training_instance_type = "ml.m5.xlarge"
+            mock_config.training_instance_count = 1
+            mock_config.training_volume_size = 30
+            mock_config.training_entry_point = "train.py"
+        
+        elif "Transform" in builder_name:
+            mock_config.transform_instance_type = "ml.m5.large"
+            mock_config.transform_instance_count = 1
+            mock_config.job_type = "training"
+        
+        elif "CreateModel" in builder_name or "Model" in builder_name:
+            mock_config.model_name = "test-model"
+            mock_config.instance_type = "ml.m5.large"
+            mock_config.entry_point = "inference.py"
+        
+        return mock_config

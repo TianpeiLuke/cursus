@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sagemaker.workflow.steps import Step
 
 # Import new components
-from .mock_factory import StepTypeMockFactory
+# Removed mock_factory import - using simplified approach
 
 
 class ValidationLevel(Enum):
@@ -87,8 +87,7 @@ class UniversalStepBuilderTestBase(ABC):
         # Detect step information using step catalog directly
         self.step_info = self._get_step_info_from_catalog(builder_class)
 
-        # Create mock factory based on step info
-        self.mock_factory = StepTypeMockFactory(self.step_info)
+        # Mock factory removed - using simplified approach
 
         # Setup test environment
         self._setup_test_environment()
