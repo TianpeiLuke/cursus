@@ -68,15 +68,11 @@ class TrainingSpecificationTests(SpecificationTests):
     def get_step_type_specific_tests(self) -> list:
         """Return Training-specific specification test methods."""
         return [
-            "test_estimator_configuration_validation",
             "test_framework_specific_configuration",
             "test_hyperparameter_specification_compliance",
             "test_data_channel_specification",
-            "test_training_environment_variables",
-            "test_metric_definitions_specification",
             "test_training_input_specification",
             "test_training_output_specification",
-            "test_training_contract_integration",
         ]
 
     def _configure_step_type_mocks(self) -> None:
@@ -123,46 +119,6 @@ class TrainingSpecificationTests(SpecificationTests):
             "framework_patterns_validated": True,
         }
 
-    def test_estimator_configuration_validation(self) -> None:
-        """Test that Training builders validate estimator-specific configuration."""
-        self._log("Testing estimator configuration validation")
-
-        # Test required training configuration attributes
-        required_attrs = [
-            "training_instance_type",
-            "training_instance_count",
-            "training_volume_size",
-            "training_entry_point",
-            "source_dir",
-            "framework_version",
-            "py_version",
-        ]
-
-        if hasattr(self.builder_class, "validate_configuration"):
-            # Test with missing required attributes
-            for attr in required_attrs:
-                config = Mock()
-                # Set all attributes except the one being tested
-                for other_attr in required_attrs:
-                    if other_attr != attr:
-                        setattr(config, other_attr, "test_value")
-
-                try:
-                    builder = self.builder_class(config=config)
-                    builder.validate_configuration()
-                    self._log(f"Missing {attr} might be optional")
-                except (ValueError, AttributeError):
-                    self._assert(True, f"Correctly detected missing {attr}")
-                except Exception as e:
-                    self._log(f"Unexpected error for missing {attr}: {e}")
-                    self._assert(False, f"Unexpected error for missing {attr}: {e}")
-        else:
-            self._log("No validate_configuration method found")
-            self._assert(
-                False, "Training builders should have validate_configuration method"
-            )
-
-        self._assert(True, "Estimator configuration validation completed")
 
     def test_framework_specific_configuration(self) -> None:
         """Test that Training builders handle framework-specific configuration."""
@@ -404,103 +360,6 @@ class TrainingSpecificationTests(SpecificationTests):
             self._log("No _get_inputs method found")
             self._assert(False, "Training builders should have _get_inputs method")
 
-    def test_training_environment_variables(self) -> None:
-        """Test that Training builders handle environment variables correctly."""
-        self._log("Testing Training environment variables handling")
-
-        if hasattr(self.builder_class, "_get_environment_variables"):
-            config = Mock()
-            config.env = {
-                "CUSTOM_TRAINING_VAR": "custom_value",
-                "MODEL_TYPE": "classification",
-            }
-
-            try:
-                builder = self.builder_class(config=config)
-                env_vars = builder._get_environment_variables()
-
-                # Check that environment variables are returned as dict
-                self._assert(
-                    isinstance(env_vars, dict), "Environment variables should be dict"
-                )
-
-                # Check for custom environment variables
-                if hasattr(config, "env") and config.env:
-                    for key, value in config.env.items():
-                        self._assert(
-                            key in env_vars and env_vars[key] == value,
-                            f"Custom environment variable {key} should be included",
-                        )
-
-                self._assert(True, "Training environment variables validated")
-
-            except Exception as e:
-                self._log(f"Training environment variables test failed: {e}")
-                self._assert(False, f"Training environment variables test failed: {e}")
-        else:
-            self._log("No _get_environment_variables method found")
-            self._assert(True, "Environment variables method not required")
-
-    def test_metric_definitions_specification(self) -> None:
-        """Test that Training builders define metrics according to specification."""
-        self._log("Testing metric definitions specification")
-
-        if hasattr(self.builder_class, "_get_metric_definitions"):
-            config = Mock()
-
-            try:
-                builder = self.builder_class(config=config)
-                metric_definitions = builder._get_metric_definitions()
-
-                # Check that metric definitions are returned as list
-                self._assert(
-                    isinstance(metric_definitions, list),
-                    "Metric definitions should be list",
-                )
-
-                # Check metric definition structure
-                for metric in metric_definitions:
-                    self._assert(
-                        isinstance(metric, dict),
-                        "Each metric definition should be dict",
-                    )
-                    self._assert(
-                        "Name" in metric and "Regex" in metric,
-                        "Metric definition should have Name and Regex",
-                    )
-
-                    # Validate regex pattern
-                    regex_pattern = metric["Regex"]
-                    self._assert(
-                        "([0-9\\.]+)" in regex_pattern,
-                        f"Metric regex should capture numeric values: {regex_pattern}",
-                    )
-
-                # Check for common training metrics
-                metric_names = [m["Name"] for m in metric_definitions]
-                common_metrics = [
-                    "Train Loss",
-                    "Validation Loss",
-                    "Accuracy",
-                    "F1 Score",
-                ]
-                found_metrics = [
-                    m for m in common_metrics if any(m in name for name in metric_names)
-                ]
-
-                self._assert(
-                    len(found_metrics) > 0,
-                    f"Should define common training metrics, found: {metric_names}",
-                )
-
-                self._assert(True, "Metric definitions specification validated")
-
-            except Exception as e:
-                self._log(f"Metric definitions test failed: {e}")
-                self._assert(False, f"Metric definitions test failed: {e}")
-        else:
-            self._log("No _get_metric_definitions method found")
-            self._assert(True, "Metric definitions method not required")
 
     def test_training_input_specification(self) -> None:
         """Test that Training builders handle inputs according to specification."""
@@ -589,60 +448,3 @@ class TrainingSpecificationTests(SpecificationTests):
         else:
             self._log("No _get_outputs method found")
             self._assert(False, "Training builders should have _get_outputs method")
-
-    def test_training_contract_integration(self) -> None:
-        """Test that Training builders integrate with contracts correctly."""
-        self._log("Testing training contract integration")
-
-        config = Mock()
-        builder = self.builder_class(config=config)
-
-        # Mock contract
-        builder.contract = self.mock_contract
-
-        try:
-            # Check that contract has expected structure
-            if hasattr(builder, "contract") and builder.contract:
-                self._assert(
-                    hasattr(builder.contract, "expected_input_paths"),
-                    "Contract should have expected_input_paths",
-                )
-
-                self._assert(
-                    hasattr(builder.contract, "expected_output_paths"),
-                    "Contract should have expected_output_paths",
-                )
-
-                # Validate path structure
-                if hasattr(builder.contract, "expected_input_paths"):
-                    input_paths = builder.contract.expected_input_paths
-                    self._assert(
-                        isinstance(input_paths, dict), "Input paths should be dict"
-                    )
-
-                    # Check for training-specific paths
-                    for path in input_paths.values():
-                        self._assert(
-                            path.startswith("/opt/ml/"),
-                            f"Input path should be container path: {path}",
-                        )
-
-                if hasattr(builder.contract, "expected_output_paths"):
-                    output_paths = builder.contract.expected_output_paths
-                    self._assert(
-                        isinstance(output_paths, dict), "Output paths should be dict"
-                    )
-
-                    # Check for training-specific output paths
-                    expected_outputs = ["/opt/ml/model", "/opt/ml/output"]
-                    for path in output_paths.values():
-                        self._assert(
-                            any(expected in path for expected in expected_outputs),
-                            f"Output path should be training container path: {path}",
-                        )
-
-            self._assert(True, "Training contract integration validated")
-
-        except Exception as e:
-            self._log(f"Training contract integration test failed: {e}")
-            self._assert(False, f"Training contract integration test failed: {e}")

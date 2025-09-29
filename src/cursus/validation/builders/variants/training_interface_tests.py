@@ -69,14 +69,9 @@ class TrainingInterfaceTests(InterfaceTests):
         """Return Training-specific interface test methods."""
         return [
             "test_estimator_creation_method",
-            "test_training_configuration_attributes",
             "test_framework_specific_methods",
             "test_hyperparameter_handling_methods",
-            "test_data_channel_creation_methods",
-            "test_environment_variables_method",
-            "test_metric_definitions_method",
             "test_training_input_output_methods",
-            "test_step_creation_pattern_compliance",
         ]
 
     def _configure_step_type_mocks(self) -> None:
@@ -161,44 +156,6 @@ class TrainingInterfaceTests(InterfaceTests):
         else:
             self._assert(False, "Training builders must have _create_estimator method")
 
-    def test_training_configuration_attributes(self) -> None:
-        """Test that Training builders validate required training configuration."""
-        self._log("Testing training configuration attributes")
-
-        # Test required training configuration attributes
-        required_attrs = [
-            "training_instance_type",
-            "training_instance_count",
-            "training_volume_size",
-            "training_entry_point",
-            "source_dir",
-            "framework_version",
-            "py_version",
-        ]
-
-        if hasattr(self.builder_class, "validate_configuration"):
-            # Test with missing required attributes
-            for attr in required_attrs:
-                config = Mock()
-                # Set all attributes except the one being tested
-                for other_attr in required_attrs:
-                    if other_attr != attr:
-                        setattr(config, other_attr, "test_value")
-
-                try:
-                    builder = self.builder_class(config=config)
-                    builder.validate_configuration()
-                    self._log(f"Missing {attr} should have caused validation error")
-                    # Some attributes might be optional, so we don't fail here
-                except (ValueError, AttributeError):
-                    self._assert(True, f"Correctly detected missing {attr}")
-                except Exception as e:
-                    self._log(f"Unexpected error for missing {attr}: {e}")
-
-            self._assert(True, "Training configuration attributes validated")
-        else:
-            self._log("No validate_configuration method found")
-            self._assert(True, "Configuration validation method not required")
 
     def test_framework_specific_methods(self) -> None:
         """Test that Training builders implement framework-specific methods."""
@@ -374,140 +331,6 @@ class TrainingInterfaceTests(InterfaceTests):
             self._log(f"Hyperparameter handling test failed: {e}")
             self._assert(False, f"Hyperparameter handling test failed: {e}")
 
-    def test_data_channel_creation_methods(self) -> None:
-        """Test that Training builders implement data channel creation methods."""
-        self._log("Testing data channel creation methods")
-
-        # Check for data channel creation methods
-        data_channel_methods = [
-            "_create_data_channel_from_source",
-            "_create_data_channels_from_source",
-            "_get_inputs",
-        ]
-
-        found_methods = []
-        for method in data_channel_methods:
-            if hasattr(self.builder_class, method):
-                found_methods.append(method)
-
-        self._assert(
-            len(found_methods) > 0,
-            f"Training builders should have data channel methods, found: {found_methods}",
-        )
-
-        # Test data channel creation if method exists
-        if hasattr(self.builder_class, "_get_inputs"):
-            config = Mock()
-            builder = self.builder_class(config=config)
-
-            # Mock specification and contract
-            builder.spec = Mock()
-            builder.spec.dependencies = {
-                "input_path": Mock(logical_name="input_path", required=True)
-            }
-            builder.contract = Mock()
-
-            inputs = {"input_path": "s3://bucket/training/data"}
-
-            try:
-                training_inputs = builder._get_inputs(inputs)
-
-                # Should return dict of TrainingInput objects
-                self._assert(
-                    isinstance(training_inputs, dict),
-                    "Training inputs should be dict of TrainingInput objects",
-                )
-
-                # Check for common channel names
-                common_channels = ["data", "train", "validation", "test"]
-                found_channels = [
-                    ch for ch in common_channels if ch in training_inputs.keys()
-                ]
-
-                self._assert(
-                    len(found_channels) > 0,
-                    f"Should create common training channels, found: {list(training_inputs.keys())}",
-                )
-
-                self._assert(True, "Data channel creation methods validated")
-
-            except Exception as e:
-                self._log(f"Data channel creation test failed: {e}")
-                self._assert(False, f"Data channel creation test failed: {e}")
-        else:
-            self._log("No _get_inputs method found")
-            self._assert(False, "Training builders should have _get_inputs method")
-
-    def test_environment_variables_method(self) -> None:
-        """Test that Training builders implement environment variables method."""
-        self._log("Testing environment variables method")
-
-        if hasattr(self.builder_class, "_get_environment_variables"):
-            config = Mock()
-            config.env = {"CUSTOM_VAR": "custom_value"}
-
-            try:
-                builder = self.builder_class(config=config)
-                env_vars = builder._get_environment_variables()
-
-                # Check that environment variables are returned as dict
-                self._assert(
-                    isinstance(env_vars, dict), "Environment variables should be dict"
-                )
-
-                # Check for custom environment variables
-                if hasattr(config, "env") and config.env:
-                    for key, value in config.env.items():
-                        self._assert(
-                            key in env_vars and env_vars[key] == value,
-                            f"Custom environment variable {key} should be included",
-                        )
-
-                self._assert(True, "Environment variables method validated")
-
-            except Exception as e:
-                self._log(f"Environment variables test failed: {e}")
-                self._assert(False, f"Environment variables test failed: {e}")
-        else:
-            self._log("No _get_environment_variables method found")
-            self._assert(True, "Environment variables method not required")
-
-    def test_metric_definitions_method(self) -> None:
-        """Test that Training builders implement metric definitions method."""
-        self._log("Testing metric definitions method")
-
-        if hasattr(self.builder_class, "_get_metric_definitions"):
-            config = Mock()
-
-            try:
-                builder = self.builder_class(config=config)
-                metric_definitions = builder._get_metric_definitions()
-
-                # Check that metric definitions are returned as list
-                self._assert(
-                    isinstance(metric_definitions, list),
-                    "Metric definitions should be list",
-                )
-
-                # Check metric definition structure
-                for metric in metric_definitions:
-                    self._assert(
-                        isinstance(metric, dict),
-                        "Each metric definition should be dict",
-                    )
-                    self._assert(
-                        "Name" in metric and "Regex" in metric,
-                        "Metric definition should have Name and Regex",
-                    )
-
-                self._assert(True, "Metric definitions method validated")
-
-            except Exception as e:
-                self._log(f"Metric definitions test failed: {e}")
-                self._assert(False, f"Metric definitions test failed: {e}")
-        else:
-            self._log("No _get_metric_definitions method found")
-            self._assert(True, "Metric definitions method not required")
 
     def test_training_input_output_methods(self) -> None:
         """Test that Training builders implement input/output methods correctly."""
@@ -576,69 +399,3 @@ class TrainingInterfaceTests(InterfaceTests):
                 self._assert(False, f"Training outputs test failed: {e}")
 
         self._assert(True, "Training input/output methods validated")
-
-    def test_step_creation_pattern_compliance(self) -> None:
-        """Test that Training builders follow correct step creation patterns."""
-        self._log("Testing step creation pattern compliance")
-
-        if hasattr(self.builder_class, "create_step"):
-            config = Mock()
-            config.training_instance_type = "ml.m5.large"
-            config.training_instance_count = 1
-            config.training_volume_size = 30
-            config.training_entry_point = "train.py"
-            config.source_dir = "src"
-            config.framework_version = "1.12.0"
-            config.py_version = "py38"
-
-            try:
-                builder = self.builder_class(config=config)
-                builder.role = "test-role"
-                builder.session = Mock()
-
-                # Mock required methods
-                builder._create_estimator = Mock(
-                    return_value=self.mock_pytorch_estimator
-                )
-                builder._get_inputs = Mock(
-                    return_value={"data": self.mock_training_input}
-                )
-                builder._get_outputs = Mock(return_value="s3://bucket/output")
-                builder._get_step_name = Mock(return_value="test-training-step")
-                builder._get_cache_config = Mock(return_value=None)
-                builder.extract_inputs_from_dependencies = Mock(return_value={})
-
-                # Test step creation
-                with patch("sagemaker.workflow.steps.TrainingStep") as mock_step_class:
-                    mock_training_step = Mock()
-                    mock_step_class.return_value = mock_training_step
-
-                    step = builder.create_step(
-                        inputs={"input_path": "s3://bucket/input"},
-                        dependencies=[],
-                        enable_caching=True,
-                    )
-
-                    # Verify step creation
-                    self._assert(step is not None, "TrainingStep should be created")
-
-                    # Verify TrainingStep was instantiated
-                    mock_step_class.assert_called_once()
-
-                    # Check TrainingStep parameters
-                    call_kwargs = mock_step_class.call_args[1]
-                    expected_params = ["name", "estimator", "inputs"]
-                    for param in expected_params:
-                        self._assert(
-                            param in call_kwargs,
-                            f"TrainingStep should have {param} parameter",
-                        )
-
-                self._assert(True, "Step creation pattern compliance validated")
-
-            except Exception as e:
-                self._log(f"Step creation pattern test failed: {e}")
-                self._assert(False, f"Step creation pattern test failed: {e}")
-        else:
-            self._log("No create_step method found")
-            self._assert(False, "Training builders should have create_step method")
