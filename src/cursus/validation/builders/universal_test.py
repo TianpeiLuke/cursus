@@ -68,6 +68,7 @@ class UniversalStepBuilderTest:
         verbose: bool = False,
         enable_scoring: bool = True,
         enable_structured_reporting: bool = False,
+        use_step_catalog_discovery: bool = True,  # NEW: Enable step catalog integration
     ):
         """
         Initialize with explicit components.
@@ -81,15 +82,35 @@ class UniversalStepBuilderTest:
             verbose: Whether to print verbose output
             enable_scoring: Whether to calculate and include quality scores
             enable_structured_reporting: Whether to generate structured reports
+            use_step_catalog_discovery: Whether to use step catalog for config discovery
         """
         self.builder_class = builder_class
-        self.config = config
-        self.spec = spec
-        self.contract = contract
-        self.step_name = step_name
+        self.use_step_catalog_discovery = use_step_catalog_discovery
         self.verbose = verbose
         self.enable_scoring = enable_scoring
         self.enable_structured_reporting = enable_structured_reporting
+        
+        # Simple integration - just replace config creation
+        if config is None and use_step_catalog_discovery:
+            try:
+                from .step_catalog_config_provider import StepCatalogConfigProvider
+                self.config_provider = StepCatalogConfigProvider()
+                self.config = self.config_provider.get_config_for_builder(builder_class)
+                
+                if self.verbose:
+                    config_type = type(self.config).__name__
+                    print(f"✅ Config: {config_type} for {builder_class.__name__}")
+            except Exception as e:
+                if self.verbose:
+                    print(f"⚠️  Step catalog config creation failed, using fallback: {e}")
+                self.config = config  # Will be None, handled by existing logic
+        else:
+            self.config = config
+        
+        # All existing initialization remains unchanged
+        self.spec = spec
+        self.contract = contract
+        self.step_name = step_name
 
         # Infer step name if not provided
         if not self.step_name:
@@ -98,7 +119,7 @@ class UniversalStepBuilderTest:
         # Create test suites for each level
         self.interface_tests = InterfaceTests(
             builder_class=builder_class,
-            config=config,
+            config=self.config,
             spec=spec,
             contract=contract,
             step_name=step_name,
@@ -107,7 +128,7 @@ class UniversalStepBuilderTest:
 
         self.specification_tests = SpecificationTests(
             builder_class=builder_class,
-            config=config,
+            config=self.config,
             spec=spec,
             contract=contract,
             step_name=step_name,
@@ -122,7 +143,7 @@ class UniversalStepBuilderTest:
 
             self.step_creation_tests = ProcessingStepCreationTests(
                 builder_class=builder_class,
-                config=config,
+                config=self.config,
                 spec=spec,
                 contract=contract,
                 step_name=step_name,
@@ -131,7 +152,7 @@ class UniversalStepBuilderTest:
         else:
             self.step_creation_tests = StepCreationTests(
                 builder_class=builder_class,
-                config=config,
+                config=self.config,
                 spec=spec,
                 contract=contract,
                 step_name=step_name,
@@ -140,7 +161,7 @@ class UniversalStepBuilderTest:
 
         self.integration_tests = IntegrationTests(
             builder_class=builder_class,
-            config=config,
+            config=self.config,
             spec=spec,
             contract=contract,
             step_name=step_name,

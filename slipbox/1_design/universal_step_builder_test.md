@@ -29,6 +29,7 @@ implementation_status: FULLY_IMPLEMENTED
 
 ### Enhanced Universal Tester Design
 - [Enhanced Universal Step Builder Tester Design](enhanced_universal_step_builder_tester_design.md) - Comprehensive design for step type-aware testing with specialized variants
+- [Universal Step Builder Test Step Catalog Integration](universal_step_builder_test_step_catalog_integration.md) - Step catalog integration design for enhanced configuration discovery ✅ DESIGN_PHASE
 
 ### Pattern Analysis Documents
 - [Processing Step Builder Patterns](processing_step_builder_patterns.md) - Analysis of Processing step implementations
