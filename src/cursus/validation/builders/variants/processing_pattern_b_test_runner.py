@@ -85,6 +85,7 @@ class ProcessingPatternBTestRunner:
         # Use processing-specific test framework
         tester = ProcessingStepBuilderTest(
             builder_class=self.builder_class,
+            verbose=self.verbose,
             enable_scoring=True,
             enable_structured_reporting=True,
         )
@@ -112,6 +113,7 @@ class ProcessingPatternBTestRunner:
         # Use processing-specific test framework (but without Pattern B auto-pass)
         tester = ProcessingStepBuilderTest(
             builder_class=self.builder_class,
+            verbose=self.verbose,
             enable_scoring=True,
             enable_structured_reporting=True,
         )
