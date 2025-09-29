@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from sagemaker.workflow.steps import Step
 
 # Import new components
-from .step_info_detector import StepInfoDetector
 from .mock_factory import StepTypeMockFactory
 
 
@@ -85,9 +84,8 @@ class UniversalStepBuilderTestBase(ABC):
         self.verbose = verbose
         self.test_reporter = test_reporter or (lambda *args, **kwargs: None)
 
-        # Detect step information using new detector
-        self.step_info_detector = StepInfoDetector(builder_class)
-        self.step_info = self.step_info_detector.detect_step_info()
+        # Detect step information using step catalog directly
+        self.step_info = self._get_step_info_from_catalog(builder_class)
 
         # Create mock factory based on step info
         self.mock_factory = StepTypeMockFactory(self.step_info)
@@ -97,6 +95,59 @@ class UniversalStepBuilderTestBase(ABC):
 
         # Configure step type-specific mocks
         self._configure_step_type_mocks()
+
+    def _get_step_info_from_catalog(self, builder_class: Type[StepBuilderBase]) -> Dict[str, Any]:
+        """Get step information directly from step catalog."""
+        class_name = builder_class.__name__
+        
+        try:
+            from ...step_catalog import StepCatalog
+            catalog = StepCatalog(workspace_dirs=None)
+            
+            # Find step name by builder class
+            available_steps = catalog.list_available_steps()
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.registry_data.get("builder_step_name") == class_name:
+                    framework = catalog.detect_framework(step_name)
+                    return {
+                        "builder_class_name": class_name,
+                        "step_name": step_name,
+                        "sagemaker_step_type": step_info.sagemaker_step_type,
+                        "framework": framework,
+                        "is_custom_step": self._is_custom_step(class_name),
+                        "registry_info": step_info.registry_data,
+                    }
+        except Exception:
+            pass  # Fall back to basic analysis
+            
+        # Fallback when step catalog unavailable
+        return {
+            "builder_class_name": class_name,
+            "step_name": None,
+            "sagemaker_step_type": None,
+            "framework": self._detect_framework_basic(class_name),
+            "is_custom_step": self._is_custom_step(class_name),
+            "registry_info": {},
+        }
+
+    def _detect_framework_basic(self, class_name: str) -> Optional[str]:
+        """Basic framework detection from class name."""
+        class_name_lower = class_name.lower()
+        if "xgboost" in class_name_lower:
+            return "xgboost"
+        elif "pytorch" in class_name_lower:
+            return "pytorch"
+        elif "tensorflow" in class_name_lower:
+            return "tensorflow"
+        elif "sklearn" in class_name_lower:
+            return "sklearn"
+        return None
+
+    def _is_custom_step(self, class_name: str) -> bool:
+        """Check if this is a custom step implementation."""
+        custom_step_indicators = ["CradleDataLoading", "MimsModelRegistration", "Custom"]
+        return any(indicator in class_name for indicator in custom_step_indicators)
 
     @abstractmethod
     def get_step_type_specific_tests(self) -> List[str]:

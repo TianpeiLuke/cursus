@@ -30,10 +30,8 @@ from .scoring import StepBuilderScorer, score_builder_results
 from .base_test import UniversalStepBuilderTestBase
 
 # Enhanced universal tester system
-from .test_factory import UniversalStepBuilderTestFactory
-from .step_info_detector import StepInfoDetector
+from .builder_test_factory import UniversalStepBuilderTestFactory
 from .mock_factory import StepTypeMockFactory
-from .generic_test import GenericStepBuilderTest
 from .variants.processing_test import ProcessingStepBuilderTest
 from .variants.training_test import TrainingStepBuilderTest
 from .variants.transform_test import TransformStepBuilderTest
@@ -61,9 +59,7 @@ __all__ = [
     "UniversalStepBuilderTestBase",
     # Enhanced universal tester system
     "UniversalStepBuilderTestFactory",
-    "StepInfoDetector",
     "StepTypeMockFactory",
-    "GenericStepBuilderTest",
     # Step-type-specific test variants
     "ProcessingStepBuilderTest",
     "TrainingStepBuilderTest",

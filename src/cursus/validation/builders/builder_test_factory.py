@@ -4,7 +4,6 @@ Factory for creating appropriate universal step builder test variants.
 
 from typing import Type, Dict, Any, Optional
 from ...core.base.builder_base import StepBuilderBase
-from .step_info_detector import StepInfoDetector
 
 
 class UniversalStepBuilderTestFactory:
@@ -12,6 +11,62 @@ class UniversalStepBuilderTestFactory:
 
     # Variant mapping will be populated as variants are implemented
     VARIANT_MAP = {}
+
+    @classmethod
+    def _get_step_info_from_catalog(cls, builder_class: Type[StepBuilderBase]) -> Dict[str, Any]:
+        """Get step information directly from step catalog."""
+        class_name = builder_class.__name__
+        
+        try:
+            from ...step_catalog import StepCatalog
+            catalog = StepCatalog(workspace_dirs=None)
+            
+            # Find step name by builder class
+            available_steps = catalog.list_available_steps()
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.registry_data.get("builder_step_name") == class_name:
+                    framework = catalog.detect_framework(step_name)
+                    return {
+                        "builder_class_name": class_name,
+                        "step_name": step_name,
+                        "sagemaker_step_type": step_info.sagemaker_step_type,
+                        "framework": framework,
+                        "is_custom_step": cls._is_custom_step(class_name),
+                        "registry_info": step_info.registry_data,
+                    }
+        except Exception:
+            pass  # Fall back to basic analysis
+            
+        # Fallback when step catalog unavailable
+        return {
+            "builder_class_name": class_name,
+            "step_name": None,
+            "sagemaker_step_type": None,
+            "framework": cls._detect_framework_basic(class_name),
+            "is_custom_step": cls._is_custom_step(class_name),
+            "registry_info": {},
+        }
+
+    @classmethod
+    def _detect_framework_basic(cls, class_name: str) -> Optional[str]:
+        """Basic framework detection from class name."""
+        class_name_lower = class_name.lower()
+        if "xgboost" in class_name_lower:
+            return "xgboost"
+        elif "pytorch" in class_name_lower:
+            return "pytorch"
+        elif "tensorflow" in class_name_lower:
+            return "tensorflow"
+        elif "sklearn" in class_name_lower:
+            return "sklearn"
+        return None
+
+    @classmethod
+    def _is_custom_step(cls, class_name: str) -> bool:
+        """Check if this is a custom step implementation."""
+        custom_step_indicators = ["CradleDataLoading", "MimsModelRegistration", "Custom"]
+        return any(indicator in class_name for indicator in custom_step_indicators)
 
     @classmethod
     def _initialize_variants(cls):
@@ -42,10 +97,9 @@ class UniversalStepBuilderTestFactory:
         # Initialize variants if not already done
         cls._initialize_variants()
 
-        # Detect step information
-        detector = StepInfoDetector(builder_class)
-        step_info = detector.detect_step_info()
-
+        # Detect step information using step catalog directly
+        step_info = cls._get_step_info_from_catalog(builder_class)
+        
         # Get SageMaker step type
         sagemaker_step_type = step_info.get("sagemaker_step_type")
 

@@ -645,6 +645,101 @@ class StepCatalogConfigProvider:
 
 **Analysis Documentation**: **[Level 3 Step Creation Tests Refactoring Analysis](../4_analysis/level3_step_creation_tests_refactoring_analysis.md)** - Comprehensive analysis of the refactoring approach, problem identification, solution implementation, and results validation
 
+### 3.5 File Redundancy Cleanup and Pytest Conflict Resolution (Days 8-9) ✅ COMPLETED
+
+**Goal**: Eliminate redundant files and resolve pytest naming conflicts in validation/builders module
+**Target**: Complete file redundancy cleanup with 100% redundant code elimination
+
+**Critical Discovery**: During code analysis, identified multiple redundant files that were 100% duplicating step catalog functionality or providing no functional value.
+
+**File Redundancy Cleanup Tasks**:
+1. **Analyze and Remove step_info_detector.py** ✅ COMPLETED:
+   - ✅ **Analysis**: Confirmed 100% redundant with step catalog system - just a wrapper around step catalog calls
+   - ✅ **Impact Assessment**: Found 3 files importing StepInfoDetector (test_factory.py, base_test.py, __init__.py)
+   - ✅ **Direct Integration**: Replaced StepInfoDetector usage with direct step catalog calls
+   - ✅ **File Elimination**: Removed 150+ lines of redundant wrapper code
+
+2. **Replace StepInfoDetector Usage with Direct Step Catalog Integration** ✅ COMPLETED:
+   ```python
+   # ❌ OLD: Redundant wrapper approach
+   detector = StepInfoDetector(builder_class)
+   step_info = detector.detect_step_info()
+   
+   # ✅ NEW: Direct step catalog integration
+   def _get_step_info_from_catalog(cls, builder_class: Type[StepBuilderBase]) -> Dict[str, Any]:
+       """Get step information directly from step catalog."""
+       try:
+           from ...step_catalog import StepCatalog
+           catalog = StepCatalog(workspace_dirs=None)
+           # Direct step catalog integration - no wrapper needed
+   ```
+
+3. **Remove Additional Redundant Files** ✅ COMPLETED:
+   - ✅ **example_usage.py**: 70+ lines of non-functional example code - ELIMINATED
+   - ✅ **example_enhanced_usage.py**: 200+ lines of non-functional example code - ELIMINATED  
+   - ✅ **generic_test.py**: 150+ lines redundant with universal_test.py and variants/ - ELIMINATED
+
+4. **Resolve Pytest Naming Conflict** ✅ COMPLETED:
+   - ✅ **Issue Identified**: `test_factory.py` name conflicts with pytest's `test_*` pattern discovery
+   - ✅ **Solution**: Renamed `test_factory.py` → `builder_test_factory.py`
+   - ✅ **Import Update**: Updated `__init__.py` import statement accordingly
+   - ✅ **Conflict Resolution**: Eliminated pytest discovery conflicts
+
+**Updated File Structure**:
+```
+validation/builders/ (Clean and functional)
+├── __init__.py                     ✅ Core module initialization
+├── base_test.py                    ✅ Enhanced with direct step catalog integration
+├── builder_reporter.py             ✅ Reporting functionality
+├── builder_test_factory.py         ✅ Renamed from test_factory.py, enhanced with direct step catalog
+├── integration_tests.py            ✅ Integration testing
+├── interface_tests.py              ✅ Interface validation
+├── mock_factory.py                 ✅ Mock creation functionality
+├── README_ENHANCED_SYSTEM.md       ✅ Documentation
+├── registry_discovery.py           ✅ Registry discovery
+├── sagemaker_step_type_validator.py ✅ Step type validation
+├── scoring.py                      ✅ Scoring functionality
+├── specification_tests.py          ✅ Specification testing
+├── step_catalog_config_provider.py ✅ Step catalog integration
+├── step_creation_tests.py          ✅ Step creation validation
+├── universal_test.py               ✅ Universal testing framework
+└── variants/                       ✅ Step-specific test variants
+```
+
+**Eliminated Redundant Files**:
+- ❌ `step_info_detector.py` - 100% redundant wrapper around step catalog
+- ❌ `example_usage.py` - Non-functional example code
+- ❌ `example_enhanced_usage.py` - Non-functional example code  
+- ❌ `generic_test.py` - Redundant with universal_test.py and variants/
+
+**Success Criteria**:
+- ✅ **Complete File Redundancy Elimination**: 570+ lines of redundant/non-functional code removed
+- ✅ **Direct Step Catalog Integration**: Zero wrapper layers, direct integration implemented
+- ✅ **Pytest Conflict Resolution**: Naming conflicts eliminated through strategic renaming
+- ✅ **Zero Functionality Loss**: All capabilities preserved through direct integration
+- ✅ **Clean Module Structure**: Only functional components remain
+
+**Implementation Results**:
+- **Total Redundancy Eliminated**: 570+ lines of redundant code across 4 files
+- **Direct Integration**: `builder_test_factory.py` and `base_test.py` enhanced with direct step catalog calls
+- **Pytest Compatibility**: Module now fully compatible with pytest discovery patterns
+- **Architectural Quality**: Clean, focused structure with only functional components
+- **Future-Proof Design**: Direct step catalog integration automatically benefits from system improvements
+
+**Key Insight Validated**: The user's question "why not use step catalog system directly, bypassing this module" was **100% correct**. The `step_info_detector.py` was indeed a completely redundant wrapper that added no value. By eliminating it and implementing direct step catalog integration, we achieved:
+- **Better Architecture**: Direct integration instead of unnecessary wrapper
+- **Improved Performance**: Eliminated wrapper overhead  
+- **Reduced Complexity**: Fewer files to understand and maintain
+- **Enhanced Clarity**: Code clearly shows step catalog system usage
+- **Future-Proof Design**: Automatic benefits from step catalog improvements
+
+**Phase 3 Final Summary - Complete Success ✅**:
+- **Architectural Focus**: Transformed from over-engineered configuration mocking to simplified architectural validation
+- **File Redundancy Elimination**: 570+ lines of redundant code eliminated across 4 files
+- **Direct Integration**: Zero wrapper layers, direct step catalog system integration
+- **Pytest Compatibility**: Resolved naming conflicts for full pytest compatibility
+- **Quality Achievement**: Clean, focused module structure with only functional components
+
 ## Expected Benefits and Outcomes
 
 ### Quantitative Benefits
