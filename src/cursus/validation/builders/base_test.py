@@ -418,6 +418,51 @@ class UniversalStepBuilderTestBase(ABC):
 
         return builder
 
+    def _create_builder_instance_with_real_config(self) -> StepBuilderBase:
+        """Create a builder instance with real config from step catalog discovery."""
+        # Use provided config if available
+        if self._provided_config:
+            config = self._provided_config
+        else:
+            # Try to get real config from step catalog
+            try:
+                from .step_catalog_config_provider import StepCatalogConfigProvider
+                config_provider = StepCatalogConfigProvider()
+                config = config_provider.get_config_for_builder(self.builder_class)
+                
+                if self.verbose:
+                    config_type = type(config).__name__
+                    print(f"✅ Real config created via step catalog: {config_type} for {self.builder_class.__name__}")
+                    
+            except Exception as e:
+                if self.verbose:
+                    print(f"⚠️  Step catalog config creation failed, using mock: {e}")
+                # Fallback to mock config
+                config = self._create_mock_config()
+
+        # Create builder instance
+        builder = self.builder_class(
+            config=config,
+            sagemaker_session=self.mock_session,
+            role=self.mock_role,
+            registry_manager=self.mock_registry_manager,
+            dependency_resolver=self.mock_dependency_resolver,
+        )
+
+        # If specification was provided, set it on the builder
+        if self._provided_spec:
+            builder.spec = self._provided_spec
+
+        # If contract was provided, set it on the builder
+        if self._provided_contract:
+            builder.contract = self._provided_contract
+
+        # If step name was provided, override the builder's _get_step_name method
+        if self._provided_step_name:
+            builder._get_step_name = lambda *args, **kwargs: self._provided_step_name
+
+        return builder
+
     def _get_required_dependencies_from_spec(
         self, builder: StepBuilderBase
     ) -> List[str]:
@@ -480,9 +525,28 @@ class UniversalStepBuilderTestBase(ABC):
         return str(uri)
 
     def _create_mock_config(self) -> SimpleNamespace:
-        """Create a mock configuration for the builder using the factory."""
-        # Use the mock factory to create step type-specific config
-        return self.mock_factory.create_mock_config()
+        """
+        Create minimal mock configuration focused on architectural validation.
+        
+        This method creates simple mocks that test interface compliance and error handling
+        rather than perfect configuration mocking. Tests should focus on architectural
+        validation, not configuration perfection.
+        """
+        # Create minimal mock that satisfies basic interface requirements
+        mock_config = SimpleNamespace()
+        mock_config.region = "us-east-1"
+        mock_config.pipeline_name = "test-pipeline"
+        mock_config.pipeline_s3_loc = "s3://test-bucket/pipeline"
+        
+        # Add basic methods that builders expect
+        mock_config.get_script_contract = lambda: None
+        mock_config.get_image_uri = lambda: "test-image-uri"
+        mock_config.get_script_path = lambda: "test_script.py"
+        
+        if self.verbose:
+            print(f"✅ Minimal mock config created for architectural validation: {self.builder_class.__name__}")
+        
+        return mock_config
 
     def _create_invalid_config(self) -> SimpleNamespace:
         """Create an invalid configuration for testing error handling."""

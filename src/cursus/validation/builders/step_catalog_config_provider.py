@@ -113,6 +113,69 @@ class StepCatalogConfigProvider:
         base configuration generation capabilities.
         """
         try:
+            # First try to create a proper BasePipelineConfig from step catalog
+            from ...core.base.config_base import BasePipelineConfig
+            
+            # Get base config data from mock factory
+            base_config_data = self._get_base_config_data_from_mock_factory(builder_class)
+            
+            if base_config_data:
+                try:
+                    # Create proper BasePipelineConfig instance
+                    base_config = BasePipelineConfig(**base_config_data)
+                    self.logger.debug(f"✅ Created proper BasePipelineConfig for {builder_class.__name__}")
+                    return base_config
+                except Exception as e:
+                    self.logger.debug(f"Failed to create BasePipelineConfig: {e}")
+            
+            # Fallback to mock factory approach
+            return self._get_base_config_from_mock_factory(builder_class)
+            
+        except Exception as e:
+            self.logger.debug(f"Failed to get base config: {e}")
+            return None
+    
+    def _get_base_config_data_from_mock_factory(self, builder_class: Type) -> Dict[str, Any]:
+        """Extract base config data from mock factory."""
+        try:
+            from .sagemaker_step_type_validator import SageMakerStepTypeValidator
+            from .mock_factory import StepTypeMockFactory
+            
+            # Use the builder class to get base config structure
+            validator = SageMakerStepTypeValidator(builder_class)
+            step_info = validator.get_step_type_info()
+            factory = StepTypeMockFactory(step_info, test_mode=True)
+            
+            # Get mock config and extract base config fields
+            mock_config = factory.create_mock_config()
+            
+            # Extract base config fields with proper defaults
+            base_config_data = {
+                'author': getattr(mock_config, 'author', 'test-author'),
+                'bucket': getattr(mock_config, 'bucket', 'test-bucket'),
+                'role': getattr(mock_config, 'role', 'arn:aws:iam::123456789012:role/MockRole'),
+                'region': getattr(mock_config, 'region', 'NA'),
+                'service_name': getattr(mock_config, 'service_name', 'test-service'),
+                'pipeline_version': getattr(mock_config, 'pipeline_version', '1.0.0'),
+                'model_class': getattr(mock_config, 'model_class', 'test-model'),
+                'current_date': getattr(mock_config, 'current_date', '2024-01-01'),
+                'framework_version': getattr(mock_config, 'framework_version', '1.0'),
+                'py_version': getattr(mock_config, 'py_version', 'py39'),
+                'source_dir': getattr(mock_config, 'source_dir', '/tmp/mock_scripts'),
+                'project_root_folder': getattr(mock_config, 'project_root_folder', '/tmp/mock_project'),  # Required field
+                'pipeline_name': getattr(mock_config, 'pipeline_name', 'test-pipeline'),
+                'pipeline_s3_loc': getattr(mock_config, 'pipeline_s3_loc', 's3://test-bucket/pipeline'),
+            }
+            
+            return base_config_data
+            
+        except Exception as e:
+            self.logger.debug(f"Failed to extract base config data: {e}")
+            return {}
+    
+    def _get_base_config_from_mock_factory(self, builder_class: Type) -> Optional[Any]:
+        """Fallback method to get base config from mock factory."""
+        try:
             # Leverage existing mock factory to create realistic base config
             from .sagemaker_step_type_validator import SageMakerStepTypeValidator
             from .mock_factory import StepTypeMockFactory
@@ -128,32 +191,8 @@ class StepCatalogConfigProvider:
             # Try to extract base config from mock config
             if hasattr(mock_config, 'base_config'):
                 return mock_config.base_config
-            elif hasattr(mock_config, '__dict__'):
-                # Extract base config fields from mock config
-                base_fields = [
-                    'author', 'bucket', 'role', 'region', 'service_name',
-                    'pipeline_version', 'model_class', 'current_date',
-                    'framework_version', 'py_version', 'source_dir',
-                    'project_root_folder', 'pipeline_name', 'pipeline_s3_loc'
-                ]
-                
-                base_config_data = {}
-                for field in base_fields:
-                    if hasattr(mock_config, field):
-                        base_config_data[field] = getattr(mock_config, field)
-                
-                if base_config_data:
-                    # Create base config using extracted data
-                    try:
-                        from ...core.base.config_base import BasePipelineConfig
-                        return BasePipelineConfig(**base_config_data)
-                    except Exception as e:
-                        self.logger.debug(f"Failed to create BasePipelineConfig: {e}")
-                        # Return the mock config itself as fallback
-                        return mock_config
             
-            # If no base config available, return the mock config itself
-            # as it may already be a valid base config
+            # Return the mock config itself as fallback
             return mock_config
             
         except Exception as e:
@@ -181,24 +220,28 @@ class StepCatalogConfigProvider:
             mock_config = factory.create_mock_config()
             
             # Extract configuration data from mock config
+            config_data = {}
             if hasattr(mock_config, '__dict__'):
                 # Convert mock config to dictionary, filtering out methods
                 config_data = {
                     key: value for key, value in mock_config.__dict__.items()
                     if not callable(value) and not key.startswith('_')
                 }
-                return config_data
             elif hasattr(mock_config, 'model_dump'):
                 # Handle Pydantic models
-                return mock_config.model_dump()
-            else:
-                # Fallback: return empty dict - let from_base_config handle defaults
-                return {}
+                config_data = mock_config.model_dump()
+            
+            # Return extracted config data without hard-coded additions
+            return config_data
                 
         except Exception as e:
             self.logger.debug(f"Failed to get config data from mock factory: {e}")
-            # Return empty dict - let from_base_config handle defaults
+            # Return empty dict - let the test handle missing fields gracefully
             return {}
+    
+    # ❌ REMOVED: Hard-coded step-specific configuration method
+    # This violates zero hard-coding principle and creates maintenance burden
+    # Tests should focus on architectural validation, not perfect configuration mocking
     
     def _fallback_to_existing_mock_factory(self, builder_class: Type) -> Any:
         """Fallback to existing mock factory system (reuse existing code)."""
