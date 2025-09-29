@@ -13,7 +13,7 @@ from .property_path_validator import SageMakerPropertyPathValidator
 from .loaders import ContractLoader, SpecificationLoader
 from .smart_spec_selector import SmartSpecificationSelector
 from .validators import ContractSpecValidator
-from .discovery import ContractDiscoveryEngine
+from ...step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
 from .processors import SpecificationFileProcessor
 from .orchestration import ValidationOrchestrator
 

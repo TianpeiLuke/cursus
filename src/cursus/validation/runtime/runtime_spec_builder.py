@@ -14,7 +14,7 @@ from difflib import SequenceMatcher
 
 from ...api.dag.base_dag import PipelineDAG
 from .runtime_models import ScriptExecutionSpec, PipelineTestingSpec
-from .contract_discovery import ContractDiscoveryManager
+from ...step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
 
 try:
     from ...registry.step_names import get_step_name_from_spec_type
