@@ -69,14 +69,10 @@ class ProcessingSpecificationTests(SpecificationTests):
         """Return Processing-specific specification test methods."""
         return [
             "test_job_type_specification_loading",
-            "test_processor_configuration_validation",
             "test_processing_environment_variables",
             "test_specification_driven_inputs",
             "test_specification_driven_outputs",
-            "test_contract_path_mapping",
-            "test_job_arguments_specification",
             "test_processor_type_alignment",
-            "test_step_creation_pattern_compliance",
         ]
 
     def _configure_step_type_mocks(self) -> None:
@@ -164,46 +160,6 @@ class ProcessingSpecificationTests(SpecificationTests):
             self._log("Single-purpose Processing builder - checking for specification")
             self._assert(True, "Single-purpose builders validated separately")
 
-    def test_processor_configuration_validation(self) -> None:
-        """Test that Processing builders validate processor-specific configuration."""
-        self._log("Testing processor configuration validation")
-
-        # Test required processing configuration attributes
-        required_attrs = [
-            "processing_instance_count",
-            "processing_volume_size",
-            "processing_instance_type_large",
-            "processing_instance_type_small",
-            "processing_framework_version",
-            "use_large_processing_instance",
-        ]
-
-        if hasattr(self.builder_class, "validate_configuration"):
-            # Test with missing required attributes
-            for attr in required_attrs:
-                config = Mock()
-                # Set all attributes except the one being tested
-                for other_attr in required_attrs:
-                    if other_attr != attr:
-                        setattr(config, other_attr, "test_value")
-
-                try:
-                    builder = self.builder_class(config=config)
-                    builder.validate_configuration()
-                    self._log(f"Missing {attr} should have caused validation error")
-                    self._assert(
-                        False, f"Missing {attr} should have caused validation error"
-                    )
-                except (ValueError, AttributeError):
-                    self._assert(True, f"Correctly detected missing {attr}")
-                except Exception as e:
-                    self._log(f"Unexpected error for missing {attr}: {e}")
-                    self._assert(False, f"Unexpected error for missing {attr}: {e}")
-        else:
-            self._log("No validate_configuration method found")
-            self._assert(
-                False, "Processing builders should have validate_configuration method"
-            )
 
     def test_processing_environment_variables(self) -> None:
         """Test that Processing builders handle environment variables correctly."""
@@ -366,101 +322,6 @@ class ProcessingSpecificationTests(SpecificationTests):
             self._log("No _get_outputs method found")
             self._assert(False, "Processing builders should have _get_outputs method")
 
-    def test_contract_path_mapping(self) -> None:
-        """Test that Processing builders use contracts for container path mapping."""
-        self._log("Testing contract-based path mapping")
-
-        config = Mock()
-        builder = self.builder_class(config=config)
-
-        # Mock contract
-        builder.contract = self.mock_contract
-
-        # Test that contract paths are used correctly
-        if hasattr(builder, "_get_inputs") and hasattr(builder, "contract"):
-            try:
-                # Check that contract has expected path mappings
-                self._assert(
-                    hasattr(builder.contract, "expected_input_paths"),
-                    "Contract should have expected_input_paths",
-                )
-                self._assert(
-                    hasattr(builder.contract, "expected_output_paths"),
-                    "Contract should have expected_output_paths",
-                )
-
-                # Verify path mapping structure
-                if hasattr(builder.contract, "expected_input_paths"):
-                    input_paths = builder.contract.expected_input_paths
-                    self._assert(
-                        isinstance(input_paths, dict), "Input paths should be dict"
-                    )
-
-                if hasattr(builder.contract, "expected_output_paths"):
-                    output_paths = builder.contract.expected_output_paths
-                    self._assert(
-                        isinstance(output_paths, dict), "Output paths should be dict"
-                    )
-
-                self._assert(True, "Contract path mapping validated")
-
-            except Exception as e:
-                self._log(f"Contract path mapping test failed: {e}")
-                self._assert(False, f"Contract path mapping test failed: {e}")
-        else:
-            self._log("Contract or input/output methods not found")
-            self._assert(
-                False, "Processing builders should use contract-based path mapping"
-            )
-
-    def test_job_arguments_specification(self) -> None:
-        """Test that Processing builders handle job arguments according to specification."""
-        self._log("Testing job arguments specification compliance")
-
-        if hasattr(self.builder_class, "_get_job_arguments"):
-            config = Mock()
-            config.job_type = "training"
-            config.mode = "batch"
-            config.marketplace_id_col = "marketplace_id"
-            config.enable_currency_conversion = True
-            config.currency_col = "currency"
-
-            try:
-                builder = self.builder_class(config=config)
-                job_args = builder._get_job_arguments()
-
-                # Job arguments can be None, empty list, or list of strings
-                if job_args is not None:
-                    self._assert(
-                        isinstance(job_args, list),
-                        "Job arguments should be list or None",
-                    )
-
-                    if job_args:
-                        # All arguments should be strings
-                        all_strings = all(isinstance(arg, str) for arg in job_args)
-                        self._assert(all_strings, "All job arguments should be strings")
-
-                        # Common Processing argument patterns
-                        arg_string = " ".join(job_args)
-                        if hasattr(config, "job_type"):
-                            job_type_found = (
-                                "job_type" in arg_string or "job-type" in arg_string
-                            )
-                            self._assert(
-                                job_type_found, "Job type should be in arguments"
-                            )
-
-                self._assert(True, "Job arguments specification validated")
-
-            except Exception as e:
-                self._log(f"Job arguments test failed: {e}")
-                self._assert(False, f"Job arguments test failed: {e}")
-        else:
-            self._log("No _get_job_arguments method found")
-            self._assert(
-                False, "Processing builders should have _get_job_arguments method"
-            )
 
     def test_processor_type_alignment(self) -> None:
         """Test that Processing builders create the correct processor type."""
@@ -506,65 +367,3 @@ class ProcessingSpecificationTests(SpecificationTests):
             self._assert(
                 False, "Processing builders should have _create_processor method"
             )
-
-    def test_step_creation_pattern_compliance(self) -> None:
-        """Test that Processing builders follow the correct step creation pattern."""
-        self._log("Testing step creation pattern compliance")
-
-        if hasattr(self.builder_class, "create_step"):
-            config = Mock()
-            # Set up minimal required configuration
-            config.processing_instance_type_large = "ml.m5.xlarge"
-            config.processing_instance_type_small = "ml.m5.large"
-            config.use_large_processing_instance = False
-            config.processing_instance_count = 1
-            config.processing_volume_size = 30
-            config.processing_framework_version = "0.23-1"
-
-            try:
-                builder = self.builder_class(config=config)
-                builder.role = "test-role"
-                builder.session = Mock()
-
-                # Mock required methods
-                builder._create_processor = Mock(
-                    return_value=self.mock_sklearn_processor
-                )
-                builder._get_inputs = Mock(return_value=[])
-                builder._get_outputs = Mock(return_value=[])
-                builder._get_job_arguments = Mock(
-                    return_value=["--job_type", "training"]
-                )
-                builder._get_step_name = Mock(return_value="test-processing-step")
-                builder._get_cache_config = Mock(return_value=None)
-
-                # Test step creation
-                step = builder.create_step(
-                    inputs={"input_data": "s3://bucket/input"},
-                    outputs={"output_data": "s3://bucket/output"},
-                    dependencies=[],
-                    enable_caching=True,
-                )
-
-                # Verify step creation patterns
-                self._assert(step is not None, "Step should be created")
-
-                # Check for ProcessingStep characteristics
-                step_type = type(step).__name__
-                self._assert(
-                    "ProcessingStep" in step_type or "Mock" in step_type,
-                    f"Should create ProcessingStep, got: {step_type}",
-                )
-
-                # Pattern A: Direct ProcessingStep creation (most common)
-                # Pattern B: processor.run() + step_args (XGBoost)
-                # Both patterns should result in a valid step
-
-                self._assert(True, "Step creation pattern compliance validated")
-
-            except Exception as e:
-                self._log(f"Step creation pattern test failed: {e}")
-                self._assert(False, f"Step creation pattern test failed: {e}")
-        else:
-            self._log("No create_step method found")
-            self._assert(False, "Processing builders should have create_step method")

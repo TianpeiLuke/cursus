@@ -66,12 +66,8 @@ class ProcessingInterfaceTests(InterfaceTests):
         """Return Processing-specific interface test methods."""
         return [
             "test_processor_creation_method",
-            "test_processing_configuration_attributes",
-            "test_framework_specific_methods",
             "test_step_creation_pattern_compliance",
             "test_processing_input_output_methods",
-            "test_environment_variables_method",
-            "test_job_arguments_method",
         ]
 
     def test_processor_creation_method(self):
@@ -115,47 +111,6 @@ class ProcessingInterfaceTests(InterfaceTests):
         except Exception as e:
             self._assert(False, f"Processor creation failed: {str(e)}")
 
-    def test_processing_configuration_attributes(self):
-        """Test Processing-specific configuration attributes."""
-        builder = self._create_builder_instance()
-
-        # Check required processing configuration attributes
-        required_attrs = [
-            "processing_instance_count",
-            "processing_volume_size",
-            "processing_instance_type_large",
-            "processing_instance_type_small",
-            "processing_framework_version",
-            "use_large_processing_instance",
-        ]
-
-        for attr in required_attrs:
-            if hasattr(builder.config, attr):
-                self._log(f"✓ Processing config has {attr}")
-            else:
-                self._log(f"Warning: Processing config missing {attr}")
-
-    def test_framework_specific_methods(self):
-        """Test framework-specific method implementations."""
-        builder = self._create_builder_instance()
-        framework = self.step_info.get("framework", "").lower()
-
-        # All Processing builders should have these methods
-        required_methods = ["_create_processor", "_get_inputs", "_get_outputs"]
-
-        for method in required_methods:
-            self._assert(
-                hasattr(builder, method) and callable(getattr(builder, method)),
-                f"Processing builder should have {method} method",
-            )
-
-        # Framework-specific method checks
-        if "xgboost" in framework:
-            # XGBoost processors may have additional methods
-            self._log("XGBoost framework detected - checking XGBoost-specific patterns")
-        elif "sklearn" in framework:
-            # SKLearn processors follow standard patterns
-            self._log("SKLearn framework detected - checking SKLearn-specific patterns")
 
     def test_step_creation_pattern_compliance(self):
         """Test step creation pattern compliance based on framework."""
@@ -229,73 +184,3 @@ class ProcessingInterfaceTests(InterfaceTests):
             )
         except Exception as e:
             self._log(f"Could not inspect _get_outputs signature: {str(e)}")
-
-    def test_environment_variables_method(self):
-        """Test Processing-specific environment variables method."""
-        builder = self._create_builder_instance()
-
-        # Check environment variables method
-        self._assert(
-            hasattr(builder, "_get_environment_variables")
-            and callable(builder._get_environment_variables),
-            "Processing builder must have _get_environment_variables method",
-        )
-
-        try:
-            env_vars = builder._get_environment_variables()
-            self._assert(
-                isinstance(env_vars, dict),
-                "Environment variables should be returned as a dictionary",
-            )
-
-            # Check for common Processing environment variables
-            common_env_vars = ["LABEL_FIELD", "JOB_TYPE"]
-            for var in common_env_vars:
-                if var in env_vars:
-                    self._log(f"✓ Found common Processing env var: {var}")
-
-        except Exception as e:
-            self._assert(False, f"Environment variables method failed: {str(e)}")
-
-    def test_job_arguments_method(self):
-        """Test Processing-specific job arguments method."""
-        builder = self._create_builder_instance()
-
-        # Check job arguments method
-        self._assert(
-            hasattr(builder, "_get_job_arguments")
-            and callable(builder._get_job_arguments),
-            "Processing builder must have _get_job_arguments method",
-        )
-
-        try:
-            job_args = builder._get_job_arguments()
-            self._assert(
-                job_args is None or isinstance(job_args, list),
-                "Job arguments should be None or a list",
-            )
-
-            if job_args is not None:
-                # Check job arguments patterns
-                for arg in job_args:
-                    self._assert(
-                        isinstance(arg, str),
-                        f"Job argument should be string, got {type(arg)}",
-                    )
-
-                # Check for common Processing job argument patterns
-                if hasattr(builder.config, "job_type"):
-                    job_type_found = any("job" in arg.lower() for arg in job_args)
-                    if job_type_found:
-                        self._log("✓ Found job_type in job arguments")
-                    else:
-                        self._log(
-                            "Info: No job_type argument found (may use environment variables)"
-                        )
-            else:
-                self._log(
-                    "Processing step uses no job arguments (environment variables only)"
-                )
-
-        except Exception as e:
-            self._assert(False, f"Job arguments method failed: {str(e)}")

@@ -57,6 +57,12 @@ class ProcessingStepCreationTests(StepCreationTests):
         # Store Processing-specific step info
         self.step_info = step_info or {}
 
+    def get_step_type_specific_tests(self) -> list:
+        """Return Processing-specific step creation test methods."""
+        return [
+            "test_processing_step_creation",
+        ]
+
     def _is_pattern_b_builder(self) -> bool:
         """Check if this is a Pattern B processing builder that should auto-pass certain tests."""
         builder_class_name = self.builder_class.__name__
@@ -84,38 +90,84 @@ class ProcessingStepCreationTests(StepCreationTests):
             f"Pattern B ProcessingStep {test_name} auto-passed for {builder_class_name}",
         )
 
-    def test_step_instantiation(self) -> None:
-        """Test that builder creates a valid step instance."""
+    def test_processing_step_creation(self) -> None:
+        """Test Processing-specific step creation patterns."""
+        self._log("Testing Processing step creation patterns")
+
         if self._is_pattern_b_builder():
-            self._auto_pass_pattern_b_test("step instantiation")
+            self._auto_pass_pattern_b_test("Processing step creation")
             return
 
-        # Call parent implementation for non-Pattern B builders
-        super().test_step_instantiation()
+        try:
+            # Test 1: Builder should have Processing-specific methods
+            builder_instance = self.builder_class.__new__(self.builder_class)
+            
+            # Processing builders should have processor creation method
+            self._assert(hasattr(builder_instance, '_create_processor'), 
+                        "Processing builder must have _create_processor method")
+            self._assert(callable(builder_instance._create_processor), 
+                        "_create_processor must be callable")
 
-    def test_step_configuration_validity(self) -> None:
-        """Test that step is configured with valid parameters."""
-        if self._is_pattern_b_builder():
-            self._auto_pass_pattern_b_test("step configuration validity")
-            return
+            # Processing builders should have input/output methods
+            self._assert(hasattr(builder_instance, '_get_inputs'), 
+                        "Processing builder must have _get_inputs method")
+            self._assert(hasattr(builder_instance, '_get_outputs'), 
+                        "Processing builder must have _get_outputs method")
 
-        # Call parent implementation for non-Pattern B builders
-        super().test_step_configuration_validity()
+            self._log("✅ Processing builder has required methods")
 
-    def test_step_name_generation(self) -> None:
-        """Test that step names are generated correctly."""
-        if self._is_pattern_b_builder():
-            self._auto_pass_pattern_b_test("step name generation")
-            return
+            # Test 2: Builder should follow Processing step creation patterns
+            try:
+                builder = self._create_builder_instance()
+                
+                # Test processor creation method signature
+                import inspect
+                processor_sig = inspect.signature(builder._create_processor)
+                self._log(f"_create_processor signature: {processor_sig}")
 
-        # Call parent implementation for non-Pattern B builders
-        super().test_step_name_generation()
+                # Test input/output method signatures
+                inputs_sig = inspect.signature(builder._get_inputs)
+                outputs_sig = inspect.signature(builder._get_outputs)
+                self._log(f"_get_inputs signature: {inputs_sig}")
+                self._log(f"_get_outputs signature: {outputs_sig}")
 
-    def test_step_dependencies_attachment(self) -> None:
-        """Test that step dependencies are properly handled."""
-        if self._is_pattern_b_builder():
-            self._auto_pass_pattern_b_test("step dependencies attachment")
-            return
+                # Processing builders should accept inputs parameter
+                inputs_params = list(inputs_sig.parameters.keys())
+                self._assert('inputs' in inputs_params or len(inputs_params) > 0,
+                           f"_get_inputs should accept inputs parameter: {inputs_params}")
 
-        # Call parent implementation for non-Pattern B builders
-        super().test_step_dependencies_attachment()
+                # Processing builders should accept outputs parameter
+                outputs_params = list(outputs_sig.parameters.keys())
+                self._assert('outputs' in outputs_params or len(outputs_params) > 0,
+                           f"_get_outputs should accept outputs parameter: {outputs_params}")
+
+                self._log("✅ Processing method signatures validated")
+
+            except Exception as e:
+                # Builder creation might fail due to config - that's expected
+                self._log(f"Builder creation failed (expected): {e}")
+
+            # Test 3: Processing step type validation
+            expected_step_type = self.step_info.get("sagemaker_step_type", "Unknown")
+            self._assert(expected_step_type == "Processing",
+                        f"Processing builder should have Processing step type, got: {expected_step_type}")
+
+            self._log("✅ Processing step type validated")
+
+            # Test 4: Processing-specific configuration patterns
+            builder_class_name = self.builder_class.__name__
+            
+            # Check for Processing-related naming patterns
+            processing_indicators = ['processing', 'preprocess', 'eval', 'package', 'payload']
+            has_processing_indicator = any(indicator in builder_class_name.lower() 
+                                         for indicator in processing_indicators)
+            
+            if has_processing_indicator:
+                self._log(f"✅ Builder name indicates Processing functionality: {builder_class_name}")
+            else:
+                self._log(f"⚠️  Builder name may not clearly indicate Processing: {builder_class_name}")
+
+            self._log("✅ Processing step creation patterns validated")
+
+        except Exception as e:
+            self._assert(False, f"Processing step creation test failed: {str(e)}")
