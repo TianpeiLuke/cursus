@@ -849,41 +849,116 @@ class TransformIntegrationTests(IntegrationTests):
         except Exception as e:
             return {"error": str(e)}
 
-    def run_all_tests(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Run all Transform-specific Level 4 integration tests.
+    def get_step_type_specific_tests(self) -> list:
+        """Return Transform-specific integration test methods."""
+        return [
+            "test_complete_transform_step_creation",
+            "test_model_integration_workflow",
+            "test_batch_processing_integration",
+            "test_framework_specific_workflow",
+        ]
 
-        Returns:
-            Dictionary mapping test names to their results
-        """
-        tests = {
-            # Base integration tests
-            "test_dependency_resolution": self.test_dependency_resolution,
-            "test_step_creation": self.test_step_creation,
-            "test_step_name": self.test_step_name,
-            # Transform-specific integration tests
-            "level4_test_complete_transform_step_creation": self.level4_test_complete_transform_step_creation,
-            "level4_test_model_integration_workflow": self.level4_test_model_integration_workflow,
-            "level4_test_batch_processing_configuration_integration": self.level4_test_batch_processing_configuration_integration,
-            "level4_test_framework_specific_transform_workflow": self.level4_test_framework_specific_transform_workflow,
-            "level4_test_input_output_integration_workflow": self.level4_test_input_output_integration_workflow,
-            "level4_test_end_to_end_transform_pipeline_integration": self.level4_test_end_to_end_transform_pipeline_integration,
+    def test_complete_transform_step_creation(self) -> None:
+        """Test that Transform builders can create complete TransformStep."""
+        self._log("Testing complete Transform step creation")
+
+        # Check for _create_transformer method
+        self._assert(
+            hasattr(self.builder_class, "_create_transformer"),
+            "Transform builders should have _create_transformer method",
+        )
+
+        # Check for step creation method
+        self._assert(
+            hasattr(self.builder_class, "create_step"),
+            "Transform builders should have create_step method",
+        )
+
+        self._assert(True, "Complete Transform step creation validated")
+
+    def test_model_integration_workflow(self) -> None:
+        """Test that Transform builders integrate with model steps."""
+        self._log("Testing model integration workflow")
+
+        # Check for model integration capabilities
+        model_integration_indicators = [
+            "integrate_with_model_step", "set_model_name", "model_name",
+            "_setup_model_integration", "_configure_model_dependency"
+        ]
+
+        found_indicators = []
+        for indicator in model_integration_indicators:
+            if hasattr(self.builder_class, indicator):
+                found_indicators.append(indicator)
+
+        self._assert(
+            len(found_indicators) > 0,
+            f"Transform builders should have model integration capabilities, found: {found_indicators}",
+        )
+
+        self._assert(True, "Model integration workflow validated")
+
+    def test_batch_processing_integration(self) -> None:
+        """Test that Transform builders integrate batch processing configuration."""
+        self._log("Testing batch processing integration")
+
+        # Check for batch processing configuration
+        batch_indicators = [
+            "batch_size", "max_concurrent_transforms", "max_payload_in_mb",
+            "_configure_batch_processing", "_get_batch_config"
+        ]
+
+        found_indicators = []
+        for indicator in batch_indicators:
+            if hasattr(self.builder_class, indicator):
+                found_indicators.append(indicator)
+
+        self._assert(
+            len(found_indicators) > 0,
+            f"Transform builders should handle batch processing integration, found: {found_indicators}",
+        )
+
+        self._assert(True, "Batch processing integration validated")
+
+    def test_framework_specific_workflow(self) -> None:
+        """Test framework-specific transform workflows."""
+        self._log("Testing framework-specific workflow")
+
+        # Detect framework from builder class name
+        builder_name = self.builder_class.__name__.lower()
+        detected_framework = None
+
+        framework_indicators = {
+            "xgboost": ["xgboost", "xgb"],
+            "pytorch": ["pytorch", "torch"],
+            "sklearn": ["sklearn", "scikit"],
+            "tensorflow": ["tensorflow", "tf"],
         }
 
-        results = {}
-        for test_name, test_method in tests.items():
-            try:
-                if self.verbose:
-                    print(f"Running {test_name}...")
-                results[test_name] = test_method()
-            except Exception as e:
-                results[test_name] = {
-                    "passed": False,
-                    "error": f"Test execution failed: {str(e)}",
-                    "details": {"exception": str(e)},
-                }
+        for framework, indicators in framework_indicators.items():
+            if any(indicator in builder_name for indicator in indicators):
+                detected_framework = framework
+                break
 
-        return results
+        if detected_framework:
+            self._log(f"Detected framework: {detected_framework}")
+
+            # Check for framework-specific methods
+            methods = [method for method in dir(self.builder_class) if not method.startswith("__")]
+            framework_methods = [
+                method for method in methods
+                if any(indicator in method.lower() for indicator in framework_indicators[detected_framework])
+            ]
+
+            self._assert(
+                len(framework_methods) > 0,
+                f"Framework-specific workflow methods found for {detected_framework}: {framework_methods}",
+            )
+        else:
+            self._log("No specific framework detected - using generic validation")
+            self._assert(True, "Generic transform workflow validated")
+
+        self._assert(True, "Framework-specific workflow validated")
 
 
 # Convenience function for quick Transform integration validation

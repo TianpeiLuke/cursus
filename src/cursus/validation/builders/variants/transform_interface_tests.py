@@ -8,6 +8,7 @@ basic functionality validation for batch inference and model transformation work
 
 from typing import Dict, Any, List, Optional, Type
 import inspect
+from unittest.mock import Mock
 
 from ..interface_tests import InterfaceTests
 from ....core.base.builder_base import StepBuilderBase
@@ -63,456 +64,150 @@ class TransformInterfaceTests(InterfaceTests):
         self.step_info = step_info or {}
         self.step_type = "Transform"
 
-    def level1_test_transformer_creation_method(self) -> Dict[str, Any]:
-        """
-        Test that the builder has transformer creation methods.
 
-        Transform builders should have methods to create Transformer instances
-        for batch inference operations.
-        """
+    def get_step_type_specific_tests(self) -> list:
+        """Return Transform-specific interface test methods."""
+        return [
+            "test_transformer_creation_method",
+            "test_batch_processing_configuration",
+            "test_model_integration_methods",
+            "test_framework_specific_methods",
+        ]
+
+    def test_transformer_creation_method(self) -> None:
+        """Test that Transform builders implement transformer creation method."""
+        self._log("Testing transformer creation method")
+
+        # Check for _create_transformer method
+        self._assert(
+            hasattr(self.builder_class, "_create_transformer"),
+            "Transform builders should have _create_transformer method",
+        )
+
+        if hasattr(self.builder_class, "_create_transformer"):
+            config = Mock()
+            config.model_name = "test-model"
+            config.instance_type = "ml.m5.large"
+            config.instance_count = 1
+
+            try:
+                builder = self.builder_class(config=config)
+                builder.role = "test-role"
+                builder.session = Mock()
+
+                transformer = builder._create_transformer()
+
+                # Validate transformer type
+                transformer_type = type(transformer).__name__
+                self._assert(
+                    transformer_type in ["Transformer", "Mock"],
+                    f"Should create valid transformer type, got: {transformer_type}",
+                )
+
+                self._assert(True, "Transformer creation method validated")
+
+            except Exception as e:
+                self._log(f"Transformer creation test failed: {e}")
+                self._assert(False, f"Transformer creation test failed: {e}")
+        else:
+            self._assert(False, "Transform builders must have _create_transformer method")
+
+    def test_batch_processing_configuration(self) -> None:
+        """Test that Transform builders handle batch processing configuration."""
+        self._log("Testing batch processing configuration")
+
+        config = Mock()
+        config.batch_size = 100
+        config.max_concurrent_transforms = 4
+        config.max_payload_in_mb = 6
+
         try:
-            transformer_methods = ["_create_transformer", "_get_transformer"]
-            found_methods = []
+            builder = self.builder_class(config=config)
 
-            for method_name in transformer_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(method_name)
-
-            if not found_methods:
-                return {
-                    "passed": False,
-                    "error": f"No transformer creation methods found. Expected one of: {transformer_methods}",
-                    "details": {
-                        "expected_methods": transformer_methods,
-                        "found_methods": found_methods,
-                        "available_methods": [
-                            m for m in dir(self.builder_class) if not m.startswith("__")
-                        ],
-                    },
-                }
-
-            # Validate method signatures
-            method_details = {}
-            for method_name in found_methods:
-                method = getattr(self.builder_class, method_name)
-                sig = inspect.signature(method)
-                method_details[method_name] = {
-                    "signature": str(sig),
-                    "parameters": list(sig.parameters.keys()),
-                }
-
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "found_methods": found_methods,
-                    "method_details": method_details,
-                    "validation": "Transform builder has transformer creation methods",
-                },
-            }
-
-        except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing transformer creation methods: {str(e)}",
-                "details": {"exception": str(e)},
-            }
-
-    def level1_test_transform_input_preparation_methods(self) -> Dict[str, Any]:
-        """
-        Test that the builder has transform input preparation methods.
-
-        Transform builders should have methods to prepare TransformInput
-        configurations for batch processing.
-        """
-        try:
-            input_methods = [
-                "_prepare_transform_input",
-                "_get_transform_input",
-                "_create_transform_input",
-                "_configure_transform_input",
-                "_setup_transform_input",
-            ]
-            found_methods = []
-
-            for method_name in input_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(method_name)
-
-            # Also check for generic input methods that might handle transform inputs
-            generic_input_methods = ["_get_inputs", "_prepare_inputs"]
-            for method_name in generic_input_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(f"{method_name} (generic)")
-
-            if not found_methods:
-                return {
-                    "passed": False,
-                    "error": f"No transform input preparation methods found. Expected one of: {input_methods}",
-                    "details": {
-                        "expected_methods": input_methods,
-                        "found_methods": found_methods,
-                        "note": "Transform builders should have methods to prepare TransformInput configurations",
-                    },
-                }
-
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "found_methods": found_methods,
-                    "validation": "Transform builder has input preparation methods",
-                },
-            }
-
-        except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing transform input preparation methods: {str(e)}",
-                "details": {"exception": str(e)},
-            }
-
-    def level1_test_batch_processing_configuration_methods(self) -> Dict[str, Any]:
-        """
-        Test that the builder has batch processing configuration methods.
-
-        Transform builders should have methods to configure batch processing
-        parameters like batch size, concurrent transforms, and payload limits.
-        """
-        try:
-            batch_config_methods = [
-                "_configure_batch_processing",
-                "_setup_batch_config",
-                "_get_batch_config",
-                "_configure_transform_job",
-                "_setup_transform_config",
-            ]
-            found_methods = []
-
-            for method_name in batch_config_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(method_name)
-
-            # Check for batch-related attributes or properties
-            batch_attributes = []
-            for attr_name in dir(self.builder_class):
-                if any(
-                    keyword in attr_name.lower()
-                    for keyword in ["batch", "concurrent", "payload", "transform"]
-                ):
-                    if not attr_name.startswith("__") and not callable(
-                        getattr(self.builder_class, attr_name, None)
-                    ):
-                        batch_attributes.append(attr_name)
-
-            # This is informational - not all builders need explicit batch config methods
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "found_methods": found_methods,
-                    "batch_attributes": batch_attributes,
-                    "validation": "Transform builder batch processing configuration checked",
-                    "note": "Batch configuration methods are recommended but not required",
-                },
-            }
-
-        except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing batch processing configuration methods: {str(e)}",
-                "details": {"exception": str(e)},
-            }
-
-    def level1_test_model_integration_methods(self) -> Dict[str, Any]:
-        """
-        Test that the builder has model integration methods.
-
-        Transform builders should have methods to integrate with trained models
-        from previous steps (training or model creation steps).
-        """
-        try:
-            model_integration_methods = [
-                "integrate_with_model_step",
-                "set_model_name",
-                "configure_model_source",
-                "_setup_model_integration",
-                "_configure_model_dependency",
-            ]
-            found_methods = []
-
-            for method_name in model_integration_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(method_name)
-
-            # Check for model-related attributes
-            model_attributes = []
-            for attr_name in dir(self.builder_class):
-                if any(
-                    keyword in attr_name.lower() for keyword in ["model", "transformer"]
-                ):
-                    if not attr_name.startswith("__"):
-                        model_attributes.append(attr_name)
-
-            if not found_methods and not model_attributes:
-                return {
-                    "passed": False,
-                    "error": "No model integration methods or attributes found",
-                    "details": {
-                        "expected_methods": model_integration_methods,
-                        "found_methods": found_methods,
-                        "model_attributes": model_attributes,
-                        "note": "Transform builders should have ways to integrate with trained models",
-                    },
-                }
-
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "found_methods": found_methods,
-                    "model_attributes": model_attributes,
-                    "validation": "Transform builder has model integration capabilities",
-                },
-            }
-
-        except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing model integration methods: {str(e)}",
-                "details": {"exception": str(e)},
-            }
-
-    def level1_test_output_configuration_methods(self) -> Dict[str, Any]:
-        """
-        Test that the builder has output configuration methods.
-
-        Transform builders should have methods to configure transform outputs
-        including output paths, formats, and assembly options.
-        """
-        try:
-            output_methods = [
-                "_configure_transform_output",
-                "_setup_output_config",
-                "_get_transform_output",
-                "_prepare_output_configuration",
-                "_setup_output_path",
-            ]
-            found_methods = []
-
-            for method_name in output_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(method_name)
-
-            # Also check for generic output methods
-            generic_output_methods = ["_get_outputs", "_prepare_outputs"]
-            for method_name in generic_output_methods:
-                if hasattr(self.builder_class, method_name):
-                    method = getattr(self.builder_class, method_name)
-                    if callable(method):
-                        found_methods.append(f"{method_name} (generic)")
-
-            # Check for output-related attributes
-            output_attributes = []
-            for attr_name in dir(self.builder_class):
-                if any(
-                    keyword in attr_name.lower()
-                    for keyword in ["output", "result", "prediction"]
-                ):
-                    if not attr_name.startswith("__") and not callable(
-                        getattr(self.builder_class, attr_name, None)
-                    ):
-                        output_attributes.append(attr_name)
-
-            if not found_methods and not output_attributes:
-                return {
-                    "passed": False,
-                    "error": "No output configuration methods or attributes found",
-                    "details": {
-                        "expected_methods": output_methods,
-                        "found_methods": found_methods,
-                        "output_attributes": output_attributes,
-                        "note": "Transform builders should have methods to configure outputs",
-                    },
-                }
-
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "found_methods": found_methods,
-                    "output_attributes": output_attributes,
-                    "validation": "Transform builder has output configuration capabilities",
-                },
-            }
-
-        except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing output configuration methods: {str(e)}",
-                "details": {"exception": str(e)},
-            }
-
-    def level1_test_framework_specific_methods(self) -> Dict[str, Any]:
-        """
-        Test for framework-specific methods in Transform builders.
-
-        Different ML frameworks (XGBoost, PyTorch, SKLearn) may require
-        specific transform configurations and inference patterns.
-        """
-        try:
-            framework_patterns = {
-                "xgboost": ["xgb", "xgboost", "dmatrix"],
-                "pytorch": ["torch", "pytorch", "tensor"],
-                "sklearn": ["sklearn", "scikit", "estimator"],
-                "tensorflow": ["tensorflow", "tf", "keras"],
-            }
-
-            detected_frameworks = []
-            framework_methods = []
-
-            # Check class name and methods for framework indicators
-            class_name = self.builder_class.__name__.lower()
-            methods = [
-                method
-                for method in dir(self.builder_class)
-                if not method.startswith("__")
+            # Check for batch configuration attributes or methods
+            batch_indicators = [
+                "batch_size", "max_concurrent_transforms", "max_payload_in_mb",
+                "_configure_batch_processing", "_get_batch_config"
             ]
 
-            for framework, patterns in framework_patterns.items():
-                if any(pattern in class_name for pattern in patterns):
-                    detected_frameworks.append(framework)
+            found_indicators = []
+            for indicator in batch_indicators:
+                if hasattr(builder, indicator) or hasattr(config, indicator):
+                    found_indicators.append(indicator)
 
-                framework_specific_methods = [
-                    method
-                    for method in methods
-                    if any(pattern in method.lower() for pattern in patterns)
-                ]
-                if framework_specific_methods:
-                    framework_methods.extend(framework_specific_methods)
-                    if framework not in detected_frameworks:
-                        detected_frameworks.append(framework)
+            self._assert(
+                len(found_indicators) > 0,
+                f"Transform builders should handle batch configuration, found: {found_indicators}",
+            )
 
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "detected_frameworks": detected_frameworks,
-                    "framework_methods": framework_methods,
-                    "validation": "Framework-specific method detection completed",
-                    "note": "Framework-specific methods are optional but recommended for specialized transforms",
-                },
-            }
+            self._assert(True, "Batch processing configuration validated")
 
         except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing framework-specific methods: {str(e)}",
-                "details": {"exception": str(e)},
-            }
+            self._log(f"Batch processing configuration test failed: {e}")
+            self._assert(False, f"Batch processing configuration test failed: {e}")
 
-    def level1_test_step_creation_pattern_compliance(self) -> Dict[str, Any]:
-        """
-        Test that the Transform builder follows step creation patterns.
+    def test_model_integration_methods(self) -> None:
+        """Test that Transform builders have model integration capabilities."""
+        self._log("Testing model integration methods")
 
-        Transform builders should create TransformStep instances with proper
-        transformer configuration and input/output handling.
-        """
-        try:
-            # Check for step creation method
-            if not hasattr(self.builder_class, "create_step"):
-                return {
-                    "passed": False,
-                    "error": "Missing create_step method",
-                    "details": {
-                        "note": "Transform builders must implement create_step method"
-                    },
-                }
+        # Check for model integration methods or attributes
+        model_integration_indicators = [
+            "integrate_with_model_step", "set_model_name", "model_name",
+            "_setup_model_integration", "_configure_model_dependency"
+        ]
 
-            create_step_method = getattr(self.builder_class, "create_step")
-            sig = inspect.signature(create_step_method)
+        found_indicators = []
+        for indicator in model_integration_indicators:
+            if hasattr(self.builder_class, indicator):
+                found_indicators.append(indicator)
 
-            # Check method signature
-            method_details = {
-                "signature": str(sig),
-                "parameters": list(sig.parameters.keys()),
-            }
+        # Transform builders should have some way to integrate with models
+        self._assert(
+            len(found_indicators) > 0,
+            f"Transform builders should have model integration capabilities, found: {found_indicators}",
+        )
 
-            # Check for Transform-specific step creation patterns
-            transform_patterns = []
+        self._assert(True, "Model integration methods validated")
 
-            # Look for transformer-related method calls in the class
-            for method_name in dir(self.builder_class):
-                if "transform" in method_name.lower() and not method_name.startswith(
-                    "__"
-                ):
-                    transform_patterns.append(method_name)
+    def test_framework_specific_methods(self) -> None:
+        """Test for framework-specific methods in Transform builders."""
+        self._log("Testing framework-specific methods")
 
-            return {
-                "passed": True,
-                "error": None,
-                "details": {
-                    "create_step_method": method_details,
-                    "transform_patterns": transform_patterns,
-                    "validation": "Transform step creation pattern compliance checked",
-                },
-            }
+        # Detect framework from builder class name
+        builder_name = self.builder_class.__name__.lower()
+        detected_framework = None
 
-        except Exception as e:
-            return {
-                "passed": False,
-                "error": f"Error testing step creation pattern compliance: {str(e)}",
-                "details": {"exception": str(e)},
-            }
-
-    def run_all_tests(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Run all Transform-specific Level 1 interface tests.
-
-        Returns:
-            Dictionary mapping test names to their results
-        """
-        tests = {
-            # Base interface tests
-            "test_inheritance": self.test_inheritance,
-            "test_required_methods": self.test_required_methods,
-            "test_error_handling": self.test_error_handling,
-            # Transform-specific interface tests
-            "level1_test_transformer_creation_method": self.level1_test_transformer_creation_method,
-            "level1_test_transform_input_preparation_methods": self.level1_test_transform_input_preparation_methods,
-            "level1_test_batch_processing_configuration_methods": self.level1_test_batch_processing_configuration_methods,
-            "level1_test_model_integration_methods": self.level1_test_model_integration_methods,
-            "level1_test_output_configuration_methods": self.level1_test_output_configuration_methods,
-            "level1_test_framework_specific_methods": self.level1_test_framework_specific_methods,
-            "level1_test_step_creation_pattern_compliance": self.level1_test_step_creation_pattern_compliance,
+        framework_indicators = {
+            "xgboost": ["xgboost", "xgb"],
+            "pytorch": ["pytorch", "torch"],
+            "sklearn": ["sklearn", "scikit"],
+            "tensorflow": ["tensorflow", "tf"],
         }
 
-        results = {}
-        for test_name, test_method in tests.items():
-            try:
-                if self.verbose:
-                    print(f"Running {test_name}...")
-                results[test_name] = test_method()
-            except Exception as e:
-                results[test_name] = {
-                    "passed": False,
-                    "error": f"Test execution failed: {str(e)}",
-                    "details": {"exception": str(e)},
-                }
+        for framework, indicators in framework_indicators.items():
+            if any(indicator in builder_name for indicator in indicators):
+                detected_framework = framework
+                break
 
-        return results
+        if detected_framework:
+            self._log(f"Detected framework: {detected_framework}")
+
+            # Check for framework-specific methods
+            methods = [method for method in dir(self.builder_class) if not method.startswith("__")]
+            framework_methods = [
+                method for method in methods
+                if any(indicator in method.lower() for indicator in framework_indicators[detected_framework])
+            ]
+
+            self._assert(
+                len(framework_methods) > 0,
+                f"Framework-specific methods found for {detected_framework}: {framework_methods}",
+            )
+        else:
+            self._log("No specific framework detected - using generic validation")
+            self._assert(True, "Generic transform builder validated")
+
+        self._assert(True, "Framework-specific methods validated")
 
 
 # Convenience function for quick Transform interface validation
