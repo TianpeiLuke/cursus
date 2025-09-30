@@ -9,7 +9,6 @@ from .builder_test_cli import main as builder_test_main
 from .catalog_cli import main as catalog_main
 from .registry_cli import main as registry_main
 from .runtime_testing_cli import main as runtime_testing_main
-from .validation_cli import main as validation_main
 from .workspace_cli import main as workspace_main
 
 __all__ = ["main"]
@@ -28,12 +27,10 @@ Available commands:
   catalog         - Pipeline catalog management
   registry        - Registry management tools
   runtime-testing - Runtime testing for pipeline scripts
-  validation      - Naming and interface validation
   workspace       - Workspace management tools
 
 Examples:
   python -m cursus.cli runtime-testing test_script my_script.py
-  python -m cursus.cli validation registry
   python -m cursus.cli catalog find --tags training,xgboost
   python -m cursus.cli workspace setup --project my_project
 
@@ -50,7 +47,6 @@ For help with a specific command:
             "catalog",
             "registry",
             "runtime-testing",
-            "validation",
             "workspace",
         ],
         help="CLI command to run",
@@ -85,8 +81,6 @@ For help with a specific command:
             return registry_main()
         elif args.command == "runtime-testing":
             return runtime_testing_main()
-        elif args.command == "validation":
-            return validation_main()
         elif args.command == "workspace":
             return workspace_main()
         else:

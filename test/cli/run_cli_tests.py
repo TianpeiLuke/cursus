@@ -65,7 +65,6 @@ def main():
 
     # Define test modules to run
     test_modules = [
-        ("test_validation_cli", "Validation CLI Tests"),
         ("test_runtime_testing_cli", "Runtime Testing CLI Tests"),
         ("test_alignment_cli", "Alignment CLI Tests"),
         ("test_builder_test_cli", "Builder Test CLI Tests"),

@@ -654,20 +654,29 @@ def validate_all(
         errors = validation_summary["error_scripts"]
 
         click.echo(f"📊 Total Scripts: {total}")
-        click.secho(f"✅ Passed: {passed} ({passed/total*100:.1f}%)", fg="green")
-        click.secho(f"❌ Failed: {failed} ({failed/total*100:.1f}%)", fg="red")
-        click.secho(f"⚠️  Errors: {errors} ({errors/total*100:.1f}%)", fg="yellow")
+        if total > 0:
+            click.secho(f"✅ Passed: {passed} ({passed/total*100:.1f}%)", fg="green")
+            click.secho(f"❌ Failed: {failed} ({failed/total*100:.1f}%)", fg="red")
+            click.secho(f"⚠️  Errors: {errors} ({errors/total*100:.1f}%)", fg="yellow")
+        else:
+            click.secho(f"✅ Passed: {passed} (0.0%)", fg="green")
+            click.secho(f"❌ Failed: {failed} (0.0%)", fg="red")
+            click.secho(f"⚠️  Errors: {errors} (0.0%)", fg="yellow")
 
         if output_dir:
             click.echo(f"\n📁 Reports saved in: {output_dir}")
 
         # Return appropriate exit code
-        if failed > 0 or errors > 0:
+        if total == 0:
+            # Special case: no scripts found should be success
+            click.echo(f"\n🎉 All {passed} scripts passed alignment validation!")
+            return  # Exit successfully without raising exception
+        elif failed > 0 or errors > 0:
             click.echo(f"\n⚠️  {failed + errors} script(s) failed validation.")
             ctx.exit(1)
         else:
             click.echo(f"\n🎉 All {passed} scripts passed alignment validation!")
-            ctx.exit(0)
+            return  # Exit successfully without raising exception
 
     except Exception as e:
         click.echo(f"❌ Fatal error during validation: {e}", err=True)
