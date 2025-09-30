@@ -131,8 +131,8 @@ class TestPipelineCLIBasics:
 class TestListPipelinesCommand:
     """Test list command."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
-    @patch("cursus.cli.pipeline_cli.discover_all_pipelines")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.discover_all_pipelines")
     def test_list_pipelines_basic(self, mock_discover_all, mock_create_manager, mock_pipeline_manager, runner):
         """Test basic list command."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -149,7 +149,7 @@ class TestListPipelinesCommand:
         assert "pytorch_e2e_standard" in result.output
         assert "xgb_mods_e2e_comprehensive" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_list_pipelines_with_framework_filter(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test list command with framework filter."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -161,7 +161,7 @@ class TestListPipelinesCommand:
         assert "xgb_training_simple" in result.output
         mock_pipeline_manager.discover_pipelines.assert_called_with(framework="xgboost")
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_list_pipelines_json_format(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test list command with JSON format."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -172,7 +172,7 @@ class TestListPipelinesCommand:
         assert '"pipelines":' in result.output
         assert '"total":' in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_list_pipelines_with_limit(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test list command with limit."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -182,7 +182,7 @@ class TestListPipelinesCommand:
         assert result.exit_code == 0
         assert "📂 Available Pipelines (2 found):" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_list_pipelines_error_handling(self, mock_create_manager, runner):
         """Test list command error handling."""
         mock_create_manager.side_effect = Exception("Test error")
@@ -197,7 +197,7 @@ class TestListPipelinesCommand:
 class TestDiscoverPipelinesCommand:
     """Test discover command."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_discover_pipelines_by_framework(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test discover command by framework."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -211,7 +211,7 @@ class TestDiscoverPipelinesCommand:
         assert "xgb_e2e_comprehensive" in result.output
         mock_pipeline_manager.discover_pipelines.assert_called_with(framework="xgboost")
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_discover_pipelines_by_use_case(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test discover command by use case."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -221,7 +221,7 @@ class TestDiscoverPipelinesCommand:
         assert result.exit_code == 0
         mock_pipeline_manager.discover_pipelines.assert_called_with(use_case="model training")
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_discover_pipelines_json_format(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test discover command with JSON format."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -244,8 +244,8 @@ class TestDiscoverPipelinesCommand:
 class TestShowPipelineCommand:
     """Test show command."""
 
-    @patch("cursus.cli.pipeline_cli.load_pipeline")
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.load_pipeline")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_show_pipeline_basic(self, mock_create_manager, mock_load_pipeline, mock_pipeline_manager, runner):
         """Test basic show command."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -259,7 +259,7 @@ class TestShowPipelineCommand:
         assert result.exit_code == 0
         assert "📋 Pipeline: xgb_training_simple" in result.output
 
-    @patch("cursus.cli.pipeline_cli.load_pipeline")
+    @patch("cursus.pipeline_catalog.load_pipeline")
     def test_show_pipeline_not_found(self, mock_load_pipeline, runner):
         """Test show command with non-existent pipeline."""
         mock_load_pipeline.side_effect = Exception("Pipeline not found")
@@ -269,8 +269,8 @@ class TestShowPipelineCommand:
         assert result.exit_code == 0
         assert "Pipeline information not available" in result.output
 
-    @patch("cursus.cli.pipeline_cli.load_pipeline")
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.load_pipeline")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_show_pipeline_with_connections(self, mock_create_manager, mock_load_pipeline, mock_pipeline_manager, runner):
         """Test show command with connections."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -282,7 +282,7 @@ class TestShowPipelineCommand:
         assert "🔗 Connections:" in result.output
         assert "Alternatives:" in result.output
 
-    @patch("cursus.cli.pipeline_cli.load_pipeline")
+    @patch("cursus.pipeline_catalog.load_pipeline")
     def test_show_pipeline_json_format(self, mock_load_pipeline, runner):
         """Test show command with JSON format."""
         mock_load_pipeline.return_value = Mock()
@@ -298,7 +298,7 @@ class TestShowPipelineCommand:
 class TestConnectionsCommand:
     """Test connections command."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_show_connections_basic(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test basic connections command."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -310,7 +310,7 @@ class TestConnectionsCommand:
         assert "ALTERNATIVES:" in result.output
         assert "→ xgb_training_evaluation" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_show_connections_json_format(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test connections command with JSON format."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -326,7 +326,7 @@ class TestConnectionsCommand:
 class TestAlternativesCommand:
     """Test alternatives command."""
 
-    @patch("cursus.cli.pipeline_cli.get_pipeline_alternatives")
+    @patch("cursus.pipeline_catalog.get_pipeline_alternatives")
     def test_show_alternatives_basic(self, mock_get_alternatives, runner):
         """Test basic alternatives command."""
         mock_get_alternatives.return_value = ["xgb_training_evaluation", "xgb_training_calibrated"]
@@ -338,7 +338,7 @@ class TestAlternativesCommand:
         assert "xgb_training_evaluation" in result.output
         assert "xgb_training_calibrated" in result.output
 
-    @patch("cursus.cli.pipeline_cli.get_pipeline_alternatives")
+    @patch("cursus.pipeline_catalog.get_pipeline_alternatives")
     def test_show_alternatives_json_format(self, mock_get_alternatives, runner):
         """Test alternatives command with JSON format."""
         mock_get_alternatives.return_value = ["alternative1", "alternative2"]
@@ -349,7 +349,7 @@ class TestAlternativesCommand:
         assert '"pipeline_id": "xgb_training_simple"' in result.output
         assert '"alternatives":' in result.output
 
-    @patch("cursus.cli.pipeline_cli.get_pipeline_alternatives")
+    @patch("cursus.pipeline_catalog.get_pipeline_alternatives")
     def test_show_alternatives_none_found(self, mock_get_alternatives, runner):
         """Test alternatives command with no alternatives."""
         mock_get_alternatives.return_value = []
@@ -364,7 +364,7 @@ class TestAlternativesCommand:
 class TestPathCommand:
     """Test path command."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_find_path_success(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test successful path finding."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -377,7 +377,7 @@ class TestPathCommand:
         assert "End:   target_pipeline" in result.output
         assert "Path length: 3 steps" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_find_path_not_found(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test path finding with no path."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -388,7 +388,7 @@ class TestPathCommand:
         assert result.exit_code == 0
         assert "No connection path found." in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_find_path_json_format(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test path command with JSON format."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -405,7 +405,7 @@ class TestPathCommand:
 class TestRecommendCommand:
     """Test recommend command."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_recommend_pipelines_basic(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test basic recommend command."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -417,7 +417,7 @@ class TestRecommendCommand:
         assert "xgb_e2e_comprehensive (score: 0.95)" in result.output
         assert "Perfect match for use case" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_recommend_pipelines_with_criteria(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test recommend command with additional criteria."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -427,7 +427,7 @@ class TestRecommendCommand:
         assert result.exit_code == 0
         mock_pipeline_manager.get_recommendations.assert_called_with("training", framework="xgboost")
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_recommend_pipelines_json_format(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test recommend command with JSON format."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -438,7 +438,7 @@ class TestRecommendCommand:
         assert '"use_case": "training"' in result.output
         assert '"recommendations":' in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_recommend_pipelines_no_results(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test recommend command with no recommendations."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -454,7 +454,7 @@ class TestRecommendCommand:
 class TestValidateCommand:
     """Test validate command."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_validate_registry_success(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test successful registry validation."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -466,7 +466,7 @@ class TestValidateCommand:
         assert "✅ Registry is valid" in result.output
         assert "Total issues: 0" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_validate_registry_with_issues(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test registry validation with issues."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -488,7 +488,7 @@ class TestValidateCommand:
         assert "error: 1" in result.output
         assert "Missing pipeline file" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_validate_registry_json_format(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test validate command with JSON format."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -504,8 +504,8 @@ class TestValidateCommand:
 class TestStatsCommand:
     """Test stats command."""
 
-    @patch("cursus.cli.pipeline_cli.get_catalog_info")
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.get_catalog_info")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_show_stats_basic(self, mock_create_manager, mock_get_catalog_info, mock_catalog_info, mock_pipeline_manager, runner):
         """Test basic stats command."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -520,7 +520,7 @@ class TestStatsCommand:
         assert "MODS: 2" in result.output
         assert "Shared DAGs: 7" in result.output
 
-    @patch("cursus.cli.pipeline_cli.get_catalog_info")
+    @patch("cursus.pipeline_catalog.get_catalog_info")
     def test_show_stats_json_format(self, mock_get_catalog_info, mock_catalog_info, runner):
         """Test stats command with JSON format."""
         mock_get_catalog_info.return_value = mock_catalog_info
@@ -531,7 +531,7 @@ class TestStatsCommand:
         assert '"total_pipelines": 8' in result.output
         assert '"frameworks":' in result.output
 
-    @patch("cursus.cli.pipeline_cli.get_catalog_info")
+    @patch("cursus.pipeline_catalog.get_catalog_info")
     def test_show_stats_with_error(self, mock_get_catalog_info, runner):
         """Test stats command with error info."""
         mock_get_catalog_info.return_value = {
@@ -551,7 +551,7 @@ class TestStatsCommand:
 class TestCLIErrorHandling:
     """Test CLI error handling and edge cases."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_discover_error_handling(self, mock_create_manager, runner):
         """Test discover command error handling."""
         mock_create_manager.side_effect = Exception("Discovery error")
@@ -561,7 +561,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to discover pipelines: Discovery error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.load_pipeline")
+    @patch("cursus.pipeline_catalog.load_pipeline")
     def test_show_error_handling(self, mock_load_pipeline, runner):
         """Test show command error handling."""
         mock_load_pipeline.side_effect = Exception("Show error")
@@ -571,7 +571,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to show pipeline: Show error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_connections_error_handling(self, mock_create_manager, runner):
         """Test connections command error handling."""
         mock_create_manager.side_effect = Exception("Connections error")
@@ -581,7 +581,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to show connections: Connections error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.get_pipeline_alternatives")
+    @patch("cursus.pipeline_catalog.get_pipeline_alternatives")
     def test_alternatives_error_handling(self, mock_get_alternatives, runner):
         """Test alternatives command error handling."""
         mock_get_alternatives.side_effect = Exception("Alternatives error")
@@ -591,7 +591,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to show alternatives: Alternatives error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_path_error_handling(self, mock_create_manager, runner):
         """Test path command error handling."""
         mock_create_manager.side_effect = Exception("Path error")
@@ -601,7 +601,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to find path: Path error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_recommend_error_handling(self, mock_create_manager, runner):
         """Test recommend command error handling."""
         mock_create_manager.side_effect = Exception("Recommend error")
@@ -611,7 +611,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to get recommendations: Recommend error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_validate_error_handling(self, mock_create_manager, runner):
         """Test validate command error handling."""
         mock_create_manager.side_effect = Exception("Validate error")
@@ -621,7 +621,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "❌ Failed to validate registry: Validate error" in result.output
 
-    @patch("cursus.cli.pipeline_cli.get_catalog_info")
+    @patch("cursus.pipeline_catalog.get_catalog_info")
     def test_stats_error_handling(self, mock_get_catalog_info, runner):
         """Test stats command error handling."""
         mock_get_catalog_info.side_effect = Exception("Stats error")
@@ -636,8 +636,8 @@ class TestCLIErrorHandling:
 class TestCLIIntegrationScenarios:
     """Test realistic CLI usage scenarios."""
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
-    @patch("cursus.cli.pipeline_cli.discover_all_pipelines")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.discover_all_pipelines")
     def test_pipeline_discovery_workflow(self, mock_discover_all, mock_create_manager, mock_pipeline_manager, runner):
         """Test complete pipeline discovery workflow."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -660,7 +660,7 @@ class TestCLIIntegrationScenarios:
         result4 = runner.invoke(pipeline_cli, ["connections", "xgb_training_simple"])
         assert result4.exit_code == 0
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
     def test_pipeline_recommendation_workflow(self, mock_create_manager, mock_pipeline_manager, runner):
         """Test pipeline recommendation workflow."""
         mock_create_manager.return_value = mock_pipeline_manager
@@ -678,8 +678,8 @@ class TestCLIIntegrationScenarios:
         result3 = runner.invoke(pipeline_cli, ["alternatives", "xgb_e2e_comprehensive"])
         assert result3.exit_code == 0
 
-    @patch("cursus.cli.pipeline_cli.create_catalog_manager")
-    @patch("cursus.cli.pipeline_cli.get_catalog_info")
+    @patch("cursus.pipeline_catalog.create_catalog_manager")
+    @patch("cursus.pipeline_catalog.get_catalog_info")
     def test_pipeline_validation_workflow(self, mock_get_catalog_info, mock_create_manager, mock_catalog_info, mock_pipeline_manager, runner):
         """Test pipeline validation workflow."""
         mock_create_manager.return_value = mock_pipeline_manager
