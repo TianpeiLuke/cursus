@@ -11,8 +11,8 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
-from cursus.validation.runtime.contract_discovery import (
-    ContractDiscoveryManager,
+from cursus.step_catalog.adapters.contract_adapter import (
+    ContractDiscoveryManagerAdapter as ContractDiscoveryManager,
     ContractDiscoveryResult,
 )
 from cursus.core.base.contract_base import ScriptContract

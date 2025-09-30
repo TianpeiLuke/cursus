@@ -85,7 +85,7 @@ class TestRuntimeTester:
     @pytest.fixture
     def tester(self, config):
         """Create RuntimeTester instance"""
-        return RuntimeTester(config)
+        return RuntimeTester(config, step_catalog=None)
 
     @pytest.fixture
     def script_specs(self, temp_dir):

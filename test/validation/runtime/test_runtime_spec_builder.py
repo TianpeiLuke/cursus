@@ -39,7 +39,7 @@ class TestPipelineTestingSpecBuilder:
     @pytest.fixture
     def builder(self, temp_dir):
         """Create builder with temporary directory"""
-        return PipelineTestingSpecBuilder(test_data_dir=temp_dir)
+        return PipelineTestingSpecBuilder(test_data_dir=temp_dir, step_catalog=None)
 
     def test_builder_initialization(self):
         """Test PipelineTestingSpecBuilder initialization"""

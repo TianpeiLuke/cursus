@@ -69,6 +69,7 @@ class RuntimeTester:
         config_or_workspace_dir,
         enable_logical_matching: bool = True,
         semantic_threshold: float = 0.7,
+        step_catalog: Optional['StepCatalog'] = None,
     ):
         # Support both new RuntimeTestingConfiguration and old string workspace_dir for backward compatibility
         if isinstance(config_or_workspace_dir, RuntimeTestingConfiguration):
@@ -104,6 +105,364 @@ class RuntimeTester:
             self.path_matcher = None
             self.topological_executor = None
             self.logical_name_tester = None
+
+        # NEW: Step Catalog Integration (Phase 1)
+        self.step_catalog = step_catalog or self._initialize_step_catalog()
+
+    # Phase 1: Step Catalog Integration Methods
+
+    def _initialize_step_catalog(self):
+        """
+        Initialize step catalog with unified workspace resolution.
+        
+        Resolves the conflict between RuntimeTester's config_or_workspace_dir and 
+        StepCatalog's workspace_dirs by creating a unified workspace discovery strategy.
+        
+        Priority order:
+        1. test_data_dir (primary testing workspace)
+        2. RuntimeTester's workspace_dir (secondary testing workspace)
+        3. Additional development workspaces from environment
+        4. Package-only discovery (for deployment scenarios)
+        """
+        try:
+            from ...step_catalog import StepCatalog
+        except ImportError:
+            # Step catalog not available, return None for optional enhancement
+            return None
+        
+        workspace_dirs = []
+        
+        # Priority 1: Use test_data_dir as primary workspace
+        if hasattr(self.builder, 'test_data_dir') and self.builder.test_data_dir:
+            test_workspace = Path(self.builder.test_data_dir) / "scripts"
+            if test_workspace.exists():
+                workspace_dirs.append(test_workspace)
+            else:
+                test_data_path = Path(self.builder.test_data_dir)
+                if test_data_path.exists():
+                    workspace_dirs.append(test_data_path)
+        
+        # Priority 2: Add RuntimeTester's workspace_dir if different
+        if hasattr(self, 'workspace_dir') and self.workspace_dir:
+            runtime_workspace = Path(self.workspace_dir)
+            if runtime_workspace not in workspace_dirs and runtime_workspace.exists():
+                workspace_dirs.append(runtime_workspace)
+        
+        # Priority 3: Add development workspaces from environment
+        dev_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
+        for workspace in dev_workspaces:
+            if workspace and Path(workspace).exists():
+                workspace_path = Path(workspace)
+                if workspace_path not in workspace_dirs:
+                    workspace_dirs.append(workspace_path)
+        
+        # Initialize with unified workspace list or package-only
+        try:
+            return StepCatalog(workspace_dirs=workspace_dirs if workspace_dirs else None)
+        except Exception:
+            # Silently ignore errors for optional enhancement
+            return None
+
+    def _detect_framework_if_needed(self, script_spec: ScriptExecutionSpec) -> Optional[str]:
+        """Simple framework detection using step catalog (optional enhancement)."""
+        if self.step_catalog:
+            try:
+                return self.step_catalog.detect_framework(script_spec.step_name)
+            except Exception:
+                # Silently ignore errors, return None for optional enhancement
+                pass
+        return None
+
+    def _validate_builder_consistency_if_available(self, script_spec: ScriptExecutionSpec) -> List[str]:
+        """Simple builder consistency check using step catalog (optional enhancement)."""
+        warnings = []
+        if self.step_catalog:
+            try:
+                builder_class = self.step_catalog.load_builder_class(script_spec.step_name)
+                if builder_class and hasattr(builder_class, 'get_expected_input_paths'):
+                    expected_inputs = builder_class.get_expected_input_paths()
+                    script_inputs = set(script_spec.input_paths.keys())
+                    missing_inputs = set(expected_inputs) - script_inputs
+                    if missing_inputs:
+                        warnings.append(f"Script missing expected input paths: {missing_inputs}")
+            except Exception:
+                # Silently ignore errors for optional enhancement
+                pass
+        return warnings
+
+    def _discover_pipeline_components_if_needed(self, dag: 'PipelineDAG') -> Dict[str, Dict[str, Any]]:
+        """Simple multi-workspace component discovery using step catalog (optional enhancement)."""
+        if not self.step_catalog:
+            return {}
+            
+        component_map = {}
+        try:
+            workspace_components = self.step_catalog.discover_cross_workspace_components()
+            
+            for node_name in dag.nodes:
+                component_info = {
+                    "node_name": node_name,
+                    "available_workspaces": [],
+                    "script_available": False,
+                    "builder_available": False,
+                    "contract_available": False
+                }
+                
+                # Check each workspace for this component
+                for workspace_id, components in workspace_components.items():
+                    node_components = [c for c in components if node_name in c]
+                    if node_components:
+                        component_info["available_workspaces"].append(workspace_id)
+                        for component in node_components:
+                            if ":script" in component:
+                                component_info["script_available"] = True
+                            elif ":builder" in component:
+                                component_info["builder_available"] = True
+                            elif ":contract" in component:
+                                component_info["contract_available"] = True
+                
+                component_map[node_name] = component_info
+        except Exception:
+            # Silently ignore errors for optional enhancement
+            pass
+        
+        return component_map
+
+    # Phase 2: Enhanced Testing Methods (User Stories Implementation)
+
+    def test_script_with_step_catalog_enhancements(self, script_spec: ScriptExecutionSpec, main_params: Dict[str, Any]) -> ScriptTestResult:
+        """
+        US1: Enhanced script testing with optional step catalog features.
+        
+        Provides framework detection and builder consistency validation when step catalog available,
+        falls back to standard testing when not available.
+        """
+        # Standard script testing (unchanged)
+        result = self.test_script_with_spec(script_spec, main_params)
+        
+        # Optional step catalog enhancements
+        if self.step_catalog and result.success:
+            # Simple framework detection (internal use only)
+            framework = self._detect_framework_if_needed(script_spec)
+            
+            # Simple builder consistency check (internal use only)
+            consistency_warnings = self._validate_builder_consistency_if_available(script_spec)
+            
+            # Note: Step catalog enhancements are performed internally but don't modify
+            # the ScriptTestResult structure to maintain API compatibility
+        
+        return result
+
+    def test_data_compatibility_with_step_catalog_enhancements(self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec) -> DataCompatibilityResult:
+        """
+        US2: Enhanced compatibility testing with optional contract awareness.
+        
+        Uses contract information for enhanced compatibility testing when step catalog available,
+        falls back to standard semantic matching when not available.
+        """
+        # Try contract-aware compatibility first if step catalog available
+        if self.step_catalog:
+            try:
+                contract_a = self.step_catalog.load_contract_class(spec_a.step_name)
+                contract_b = self.step_catalog.load_contract_class(spec_b.step_name)
+                
+                if contract_a and contract_b:
+                    # Use contract information for enhanced compatibility testing
+                    return self._test_contract_aware_compatibility(spec_a, spec_b, contract_a, contract_b)
+            except Exception:
+                # Silently ignore errors and fall back to standard testing
+                pass
+        
+        # Fallback to standard semantic matching
+        return self.test_data_compatibility_with_specs(spec_a, spec_b)
+
+    def test_pipeline_flow_with_step_catalog_enhancements(self, pipeline_spec: PipelineTestingSpec) -> Dict[str, Any]:
+        """
+        US3: Enhanced pipeline testing with optional multi-workspace support.
+        
+        Adds workspace analysis and framework detection when step catalog available,
+        uses standard pipeline testing as base functionality.
+        """
+        # Standard pipeline testing (unchanged)
+        results = self.test_pipeline_flow_with_spec(pipeline_spec)
+        
+        # Optional step catalog enhancements
+        if self.step_catalog:
+            try:
+                # Simple multi-workspace component discovery
+                component_analysis = self._discover_pipeline_components_if_needed(pipeline_spec.dag)
+                if component_analysis:
+                    # Framework analysis for each component
+                    framework_analysis = {}
+                    for node_name in pipeline_spec.dag.nodes:
+                        if node_name in pipeline_spec.script_specs:
+                            script_spec = pipeline_spec.script_specs[node_name]
+                            framework = self._detect_framework_if_needed(script_spec)
+                            if framework:
+                                framework_analysis[node_name] = framework
+                    
+                    results["step_catalog_analysis"] = {
+                        "workspace_analysis": component_analysis,
+                        "framework_analysis": framework_analysis
+                    }
+            except Exception:
+                # Silently ignore errors for optional enhancement
+                pass
+        
+        return results
+
+    def _test_contract_aware_compatibility(self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec, contract_a: Any, contract_b: Any) -> DataCompatibilityResult:
+        """Test compatibility using contract specifications."""
+        try:
+            # Execute script A
+            main_params_a = self.builder.get_script_main_params(spec_a)
+            script_a_result = self.test_script_with_spec(spec_a, main_params_a)
+            
+            if not script_a_result.success:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=[f"Script A failed: {script_a_result.error_message}"]
+                )
+            
+            # Get contract output specifications
+            output_specs = {}
+            if hasattr(contract_a, 'get_output_specifications'):
+                output_specs = contract_a.get_output_specifications()
+            elif hasattr(contract_a, 'get_output_paths'):
+                # Fallback to path-based specifications
+                output_paths = contract_a.get_output_paths()
+                if output_paths:
+                    output_specs = {name: {"type": "data"} for name in output_paths.keys()}
+            
+            # Get contract input specifications
+            input_specs = {}
+            if hasattr(contract_b, 'get_input_specifications'):
+                input_specs = contract_b.get_input_specifications()
+            elif hasattr(contract_b, 'get_input_paths'):
+                # Fallback to path-based specifications
+                input_paths = contract_b.get_input_paths()
+                if input_paths:
+                    input_specs = {name: {"type": "data"} for name in input_paths.keys()}
+            
+            # Match outputs to inputs using contract specifications
+            compatibility_issues = []
+            
+            if output_specs and input_specs:
+                for output_name, output_spec in output_specs.items():
+                    for input_name, input_spec in input_specs.items():
+                        if self._are_contract_specs_compatible(output_spec, input_spec):
+                            # Found compatible pair, test actual data flow
+                            return self._test_contract_data_flow(spec_a, spec_b, output_name, input_name)
+                
+                # No compatible contract specifications found
+                compatibility_issues = [
+                    "No compatible contract specifications found between outputs and inputs",
+                    f"Available outputs: {list(output_specs.keys())}",
+                    f"Available inputs: {list(input_specs.keys())}"
+                ]
+            else:
+                compatibility_issues = ["Contract specifications not available for compatibility testing"]
+            
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=compatibility_issues
+            )
+            
+        except Exception as e:
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=[f"Contract-aware compatibility test failed: {str(e)}"]
+            )
+
+    def _are_contract_specs_compatible(self, output_spec: Dict[str, Any], input_spec: Dict[str, Any]) -> bool:
+        """Check if contract output and input specifications are compatible."""
+        # Simple compatibility check based on type
+        output_type = output_spec.get("type", "unknown")
+        input_type = input_spec.get("type", "unknown")
+        
+        # Basic type compatibility
+        if output_type == input_type:
+            return True
+        
+        # Common compatible types
+        compatible_pairs = [
+            ("data", "dataset"),
+            ("model", "artifact"),
+            ("metrics", "evaluation"),
+            ("processed_data", "data"),
+            ("training_data", "data")
+        ]
+        
+        for out_type, in_type in compatible_pairs:
+            if (output_type == out_type and input_type == in_type) or \
+               (output_type == in_type and input_type == out_type):
+                return True
+        
+        return False
+
+    def _test_contract_data_flow(self, spec_a: ScriptExecutionSpec, spec_b: ScriptExecutionSpec, output_name: str, input_name: str) -> DataCompatibilityResult:
+        """Test actual data flow between scripts using contract information."""
+        try:
+            # Get actual output directory from spec_a
+            output_dir_a = Path(spec_a.output_paths.get(output_name, spec_a.output_paths.get("data_output", "")))
+            output_files = self._find_valid_output_files(output_dir_a)
+            
+            if not output_files:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=[f"No valid output files found for {output_name}"]
+                )
+            
+            # Create modified spec_b with contract-aware input path
+            modified_input_paths = spec_b.input_paths.copy()
+            modified_input_paths[input_name] = str(output_files[0])  # Use first valid output file
+            
+            modified_spec_b = ScriptExecutionSpec(
+                script_name=spec_b.script_name,
+                step_name=spec_b.step_name,
+                script_path=spec_b.script_path,
+                input_paths=modified_input_paths,
+                output_paths=spec_b.output_paths,
+                environ_vars=spec_b.environ_vars,
+                job_args=spec_b.job_args,
+            )
+            
+            # Test script B with contract-aware input
+            main_params_b = self.builder.get_script_main_params(modified_spec_b)
+            script_b_result = self.test_script_with_spec(modified_spec_b, main_params_b)
+            
+            if script_b_result.success:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=True,
+                    compatibility_issues=[],
+                    data_format_a=self._detect_file_format(output_files[0]),
+                    data_format_b=self._detect_file_format(output_files[0]),
+                )
+            else:
+                return DataCompatibilityResult(
+                    script_a=spec_a.script_name,
+                    script_b=spec_b.script_name,
+                    compatible=False,
+                    compatibility_issues=[f"Contract data flow test failed: {script_b_result.error_message}"]
+                )
+                
+        except Exception as e:
+            return DataCompatibilityResult(
+                script_a=spec_a.script_name,
+                script_b=spec_b.script_name,
+                compatible=False,
+                compatibility_issues=[f"Contract data flow test error: {str(e)}"]
+            )
 
     def test_script_with_spec(
         self, script_spec: ScriptExecutionSpec, main_params: Dict[str, Any]

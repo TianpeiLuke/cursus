@@ -46,7 +46,7 @@ class PipelineTestingSpecBuilder:
     4. ScriptExecutionSpec creation with dual identity management
     """
 
-    def __init__(self, test_data_dir: str = "test/integration/runtime"):
+    def __init__(self, test_data_dir: str = "test/integration/runtime", step_catalog: Optional['StepCatalog'] = None):
         self.test_data_dir = Path(test_data_dir)
         self.specs_dir = self.test_data_dir / ".specs"  # ScriptExecutionSpec storage
         self.scripts_dir = self.test_data_dir / "scripts"  # Test script files
@@ -62,6 +62,111 @@ class PipelineTestingSpecBuilder:
         (self.test_data_dir / "input").mkdir(parents=True, exist_ok=True)
         (self.test_data_dir / "output").mkdir(parents=True, exist_ok=True)
         (self.test_data_dir / "results").mkdir(parents=True, exist_ok=True)
+
+        # NEW: Step Catalog Integration (Phase 1)
+        self.step_catalog = step_catalog or self._initialize_step_catalog()
+
+    # Phase 1: Step Catalog Integration Methods
+
+    def _initialize_step_catalog(self):
+        """
+        Initialize step catalog with unified workspace resolution.
+        
+        Priority order:
+        1. test_data_dir (primary testing workspace)
+        2. Additional development workspaces from environment
+        3. Package-only discovery (for deployment scenarios)
+        """
+        try:
+            from ...step_catalog import StepCatalog
+        except ImportError:
+            # Step catalog not available, return None for optional enhancement
+            return None
+        
+        import os
+        workspace_dirs = []
+        
+        # Priority 1: Use test_data_dir as primary workspace
+        if self.test_data_dir:
+            test_workspace = self.test_data_dir / "scripts"
+            if test_workspace.exists():
+                workspace_dirs.append(test_workspace)
+            else:
+                if self.test_data_dir.exists():
+                    workspace_dirs.append(self.test_data_dir)
+        
+        # Priority 2: Add development workspaces from environment
+        dev_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
+        for workspace in dev_workspaces:
+            if workspace and Path(workspace).exists():
+                workspace_path = Path(workspace)
+                if workspace_path not in workspace_dirs:
+                    workspace_dirs.append(workspace_path)
+        
+        # Initialize with unified workspace list or package-only
+        try:
+            return StepCatalog(workspace_dirs=workspace_dirs if workspace_dirs else None)
+        except Exception:
+            # Silently ignore errors for optional enhancement
+            return None
+
+    def _resolve_script_with_step_catalog_if_available(self, node_name: str) -> Optional[ScriptExecutionSpec]:
+        """Simple script resolution using step catalog (optional enhancement)."""
+        if not self.step_catalog:
+            return None
+            
+        try:
+            # Use step catalog's pipeline node resolution
+            step_info = self.step_catalog.resolve_pipeline_node(node_name)
+            
+            if step_info and step_info.file_components.get('script'):
+                script_metadata = step_info.file_components['script']
+                
+                # Get contract-aware paths if available
+                paths = self._get_contract_aware_paths_if_available(node_name, str(self.test_data_dir))
+                
+                spec = ScriptExecutionSpec(
+                    script_name=script_metadata.path.stem,
+                    step_name=node_name,
+                    script_path=str(script_metadata.path),
+                    input_paths=paths["input_paths"] if paths["input_paths"] else self._get_default_input_paths(script_metadata.path.stem),
+                    output_paths=paths["output_paths"] if paths["output_paths"] else self._get_default_output_paths(script_metadata.path.stem),
+                    environ_vars=self._get_default_environ_vars(),
+                    job_args=self._get_default_job_args(script_metadata.path.stem)
+                )
+                
+                return spec
+        except Exception:
+            # Silently ignore errors for optional enhancement
+            pass
+        
+        return None
+    
+    def _get_contract_aware_paths_if_available(self, step_name: str, test_workspace_root: str) -> Dict[str, Dict[str, str]]:
+        """Simple contract-aware path resolution using step catalog (optional enhancement)."""
+        paths = {"input_paths": {}, "output_paths": {}}
+        if self.step_catalog:
+            try:
+                contract = self.step_catalog.load_contract_class(step_name)
+                if contract:
+                    if hasattr(contract, 'get_input_paths'):
+                        contract_inputs = contract.get_input_paths()
+                        if contract_inputs:
+                            paths["input_paths"] = {
+                                name: str(Path(test_workspace_root) / "input" / name)
+                                for name in contract_inputs.keys()
+                            }
+                    if hasattr(contract, 'get_output_paths'):
+                        contract_outputs = contract.get_output_paths()
+                        if contract_outputs:
+                            paths["output_paths"] = {
+                                name: str(Path(test_workspace_root) / "output" / name)
+                                for name in contract_outputs.keys()
+                            }
+            except Exception:
+                # Silently ignore errors for optional enhancement
+                pass
+        return paths
 
     def build_from_dag(
         self, dag: PipelineDAG, validate: bool = True
