@@ -65,12 +65,10 @@ class VisualizedAlignmentValidator:
 
         # Initialize the unified alignment tester
         self.tester = UnifiedAlignmentTester(
-            scripts_dir=scripts_dir,
-            contracts_dir=contracts_dir,
-            specs_dir=specs_dir,
-            builders_dir=builders_dir,
-            configs_dir=configs_dir,
-        )
+        level3_validation_mode="relaxed",
+        step_catalog=None,  # Will create package-only step catalog
+        workspace_dirs=None  # Package-only mode
+    )
 
         # Script names to validate
         self.script_names = [

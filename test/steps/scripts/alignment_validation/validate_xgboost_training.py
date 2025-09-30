@@ -40,13 +40,12 @@ def main():
     print("🔍 Xgboost Training Script Alignment Validation")
     print("=" * 60)
 
-    # Initialize the tester
+    # Initialize the tester with workspace-aware configuration
+    # Use package-only mode to validate core package components
     tester = UnifiedAlignmentTester(
-        scripts_dir=scripts_dir,
-        contracts_dir=contracts_dir,
-        specs_dir=specs_dir,
-        builders_dir=builders_dir,
-        configs_dir=configs_dir,
+        level3_validation_mode="relaxed",
+        step_catalog=None,  # Will create package-only step catalog
+        workspace_dirs=None  # Package-only mode
     )
 
     # Run validation for xgboost_training script

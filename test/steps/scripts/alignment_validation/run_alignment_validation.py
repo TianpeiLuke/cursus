@@ -67,13 +67,12 @@ class ScriptAlignmentValidator:
         self.json_reports_dir.mkdir(exist_ok=True)
         self.html_reports_dir.mkdir(exist_ok=True)
 
-        # Initialize the unified alignment tester with configs directory
+        # Initialize the unified alignment tester with workspace-aware configuration
+        # Use package-only mode (no workspace_dirs) to validate core package components
         self.tester = UnifiedAlignmentTester(
-            scripts_dir=str(self.scripts_dir),
-            contracts_dir=str(self.contracts_dir),
-            specs_dir=str(self.specs_dir),
-            builders_dir=str(self.builders_dir),
-            configs_dir=str(self.configs_dir),
+            level3_validation_mode="relaxed",
+            step_catalog=None,  # Will create package-only step catalog
+            workspace_dirs=None  # Package-only mode
         )
 
         # Note: Script-to-contract mapping is now handled automatically by the 
