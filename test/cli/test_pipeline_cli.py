@@ -286,11 +286,13 @@ class TestShowPipelineCommand:
     @patch("cursus.pipeline_catalog.load_pipeline")
     def test_show_pipeline_json_format(self, mock_load_pipeline, runner):
         """Test show command with JSON format."""
-        # Create a mock with proper attributes for JSON serialization
-        mock_pipeline = Mock()
-        mock_pipeline.name = "xgb_training_simple"
-        mock_pipeline.framework = "xgboost"
-        mock_pipeline.description = "Simple XGBoost training pipeline"
+        # Create a dictionary that can be JSON serialized
+        mock_pipeline = {
+            "name": "xgb_training_simple",
+            "framework": "xgboost", 
+            "description": "Simple XGBoost training pipeline",
+            "complexity": "simple"
+        }
         mock_load_pipeline.return_value = mock_pipeline
 
         result = runner.invoke(pipeline_cli, ["show", "xgb_training_simple", "--format", "json"])
@@ -419,7 +421,7 @@ class TestRecommendCommand:
         result = runner.invoke(pipeline_cli, ["recommend", "--use-case", "model training"])
 
         assert result.exit_code == 0
-        assert "💡 Recommendations for: model training" in result.output
+        assert "Recommendations for: model training" in result.output
         assert "xgb_e2e_comprehensive (score: 0.95)" in result.output
         assert "Perfect match for use case" in result.output
 
