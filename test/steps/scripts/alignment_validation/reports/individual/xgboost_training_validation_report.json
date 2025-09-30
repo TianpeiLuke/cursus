@@ -6,25 +6,14 @@
       {
         "severity": "INFO",
         "category": "path_usage",
-        "message": "Script correctly uses parent directory to construct file path: /opt/ml/input/data/config \u2192 /opt/ml/input/data/config/hyperparameters.json",
+        "message": "Script correctly uses parent directory to construct file path: /opt/ml/code/hyperparams \u2192 /opt/ml/code/hyperparams/hyperparameters.json",
         "details": {
-          "script_path": "/opt/ml/input/data/config",
-          "contract_path": "/opt/ml/input/data/config/hyperparameters.json",
+          "script_path": "/opt/ml/code/hyperparams",
+          "contract_path": "/opt/ml/code/hyperparams/hyperparameters.json",
           "construction_method": "os.path.join",
           "script": "xgboost_training"
         },
         "recommendation": "Path usage pattern is correct - no action needed"
-      },
-      {
-        "severity": "INFO",
-        "category": "file_operations",
-        "message": "Contract declares input not read by script: /opt/ml/input/data/config/hyperparameters.json",
-        "details": {
-          "path": "/opt/ml/input/data/config/hyperparameters.json",
-          "operation": "read",
-          "script": "xgboost_training"
-        },
-        "recommendation": "Either read /opt/ml/input/data/config/hyperparameters.json in script or remove from contract inputs"
       },
       {
         "severity": "INFO",
@@ -34,8 +23,8 @@
           "script": "xgboost_training",
           "testability_parameters": [
             "input_paths",
-            "environ_vars",
             "output_paths",
+            "environ_vars",
             "job_args"
           ]
         },
@@ -90,65 +79,64 @@
     "script_analysis": {
       "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py",
       "path_references": [
-        "path='\\n    Load everything from your pipeline\u2019s XGBoostModelHyperparameters,\\n    plus the two risk-table params this script needs.\\n    ' line_number=77 context='\\nclass XGBoostConfig(XGBoostModelHyperparameters):\\n>>>     \"\"\"\\n    Load everything from your pipeline\u2019s XGBoostModelHyperparameters,\\n    plus the two risk-table params this script needs.' is_hardcoded=True construction_method=None",
-        "path='Loads and validates the hyperparameters JSON file.' line_number=92 context='# -------------------------------------------------------------------------\\ndef load_and_validate_config(hparam_path: str) -> dict:\\n>>>     \"\"\"Loads and validates the hyperparameters JSON file.\"\"\"\\n    try:\\n        with open(hparam_path, \"r\") as f:' is_hardcoded=True construction_method=None",
-        "path='Finds the first supported data file in a directory.' line_number=114 context='\\ndef find_first_data_file(data_dir: str) -> str:\\n>>>     \"\"\"Finds the first supported data file in a directory.\"\"\"\\n    if not os.path.isdir(data_dir):\\n        return None' is_hardcoded=True construction_method=None",
-        "path='.csv' line_number=118 context='        return None\\n    for fname in sorted(os.listdir(data_dir)):\\n>>>         if fname.lower().endswith((\".csv\", \".parquet\", \".json\")):\\n            return os.path.join(data_dir, fname)\\n    return None' is_hardcoded=True construction_method=None",
-        "path='.json' line_number=118 context='        return None\\n    for fname in sorted(os.listdir(data_dir)):\\n>>>         if fname.lower().endswith((\".csv\", \".parquet\", \".json\")):\\n            return os.path.join(data_dir, fname)\\n    return None' is_hardcoded=True construction_method=None",
-        "path='Loads the training, validation, and test datasets.' line_number=123 context='\\ndef load_datasets(input_path: str) -> tuple:\\n>>>     \"\"\"Loads the training, validation, and test datasets.\"\"\"\\n    train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n    val_file = find_first_data_file(os.path.join(input_path, \"val\"))' is_hardcoded=True construction_method=None",
-        "path='train' line_number=124 context='def load_datasets(input_path: str) -> tuple:\\n    \"\"\"Loads the training, validation, and test datasets.\"\"\"\\n>>>     train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n    val_file = find_first_data_file(os.path.join(input_path, \"val\"))\\n    test_file = find_first_data_file(os.path.join(input_path, \"test\"))' is_hardcoded=False construction_method='os.path.join'",
-        "path='val' line_number=125 context='    \"\"\"Loads the training, validation, and test datasets.\"\"\"\\n    train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n>>>     val_file = find_first_data_file(os.path.join(input_path, \"val\"))\\n    test_file = find_first_data_file(os.path.join(input_path, \"test\"))\\n' is_hardcoded=False construction_method='os.path.join'",
-        "path='test' line_number=126 context='    train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n    val_file = find_first_data_file(os.path.join(input_path, \"val\"))\\n>>>     test_file = find_first_data_file(os.path.join(input_path, \"test\"))\\n\\n    if not train_file or not val_file or not test_file:' is_hardcoded=False construction_method='os.path.join'",
-        "path='Training, validation, or test data file not found in the expected subfolders.' line_number=129 context='\\n    if not train_file or not val_file or not test_file:\\n>>>         raise FileNotFoundError(\"Training, validation, or test data file not found in the expected subfolders.\")\\n\\n    train_df = pd.read_parquet(train_file) if train_file.endswith(\\'.parquet\\') else pd.read_csv(train_file)' is_hardcoded=True construction_method=None",
-        "path='Applies numerical imputation to the datasets.' line_number=139 context='\\ndef apply_numerical_imputation(config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple:\\n>>>     \"\"\"Applies numerical imputation to the datasets.\"\"\"\\n    imputer = NumericalVariableImputationProcessor(variables=config[\\'tab_field_list\\'], strategy=\\'mean\\')\\n    imputer.fit(train_df)' is_hardcoded=True construction_method=None",
-        "path='Fits risk tables on training data and applies them to all splits.' line_number=150 context='\\ndef fit_and_apply_risk_tables(config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple:\\n>>>     \"\"\"Fits risk tables on training data and applies them to all splits.\"\"\"\\n    risk_processors = {}\\n    train_df_transformed = train_df.copy()' is_hardcoded=True construction_method=None",
-        "path='xgboost_model.bst' line_number=279 context='    \\n    # Save XGBoost model\\n>>>     model_file = os.path.join(model_path, \"xgboost_model.bst\")\\n    model.save_model(model_file)\\n    logger.info(f\"Saved XGBoost model to {model_file}\")' is_hardcoded=False construction_method='os.path.join'",
-        "path='xgboost_model.bst' line_number=279 context='    \\n    # Save XGBoost model\\n>>>     model_file = os.path.join(model_path, \"xgboost_model.bst\")\\n    model.save_model(model_file)\\n    logger.info(f\"Saved XGBoost model to {model_file}\")' is_hardcoded=True construction_method=None",
-        "path='risk_table_map.pkl' line_number=284 context='\\n    # Save risk tables\\n>>>     risk_map_file = os.path.join(model_path, \"risk_table_map.pkl\")\\n    with open(risk_map_file, \"wb\") as f:\\n        pkl.dump(risk_tables, f)' is_hardcoded=False construction_method='os.path.join'",
-        "path='risk_table_map.pkl' line_number=284 context='\\n    # Save risk tables\\n>>>     risk_map_file = os.path.join(model_path, \"risk_table_map.pkl\")\\n    with open(risk_map_file, \"wb\") as f:\\n        pkl.dump(risk_tables, f)' is_hardcoded=True construction_method=None",
-        "path='impute_dict.pkl' line_number=290 context='    \\n    # Save imputation dictionary\\n>>>     impute_file = os.path.join(model_path, \"impute_dict.pkl\")\\n    with open(impute_file, \"wb\") as f:\\n        pkl.dump(impute_dict, f)' is_hardcoded=False construction_method='os.path.join'",
-        "path='impute_dict.pkl' line_number=290 context='    \\n    # Save imputation dictionary\\n>>>     impute_file = os.path.join(model_path, \"impute_dict.pkl\")\\n    with open(impute_file, \"wb\") as f:\\n        pkl.dump(impute_dict, f)' is_hardcoded=True construction_method=None",
-        "path='feature_importance.json' line_number=296 context='\\n    # Save feature importance\\n>>>     fmap_json = os.path.join(model_path, \"feature_importance.json\")\\n    with open(fmap_json, \"w\") as f:\\n        json.dump(model.get_fscore(), f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
-        "path='feature_importance.json' line_number=296 context='\\n    # Save feature importance\\n>>>     fmap_json = os.path.join(model_path, \"feature_importance.json\")\\n    with open(fmap_json, \"w\") as f:\\n        json.dump(model.get_fscore(), f, indent=2)' is_hardcoded=True construction_method=None",
-        "path='feature_columns.txt' line_number=302 context='    \\n    # Save feature columns with ordering information\\n>>>     feature_columns_file = os.path.join(model_path, \"feature_columns.txt\")\\n    with open(feature_columns_file, \"w\") as f:\\n        # Add a header comment to document the importance of ordering' is_hardcoded=False construction_method='os.path.join'",
-        "path='feature_columns.txt' line_number=302 context='    \\n    # Save feature columns with ordering information\\n>>>     feature_columns_file = os.path.join(model_path, \"feature_columns.txt\")\\n    with open(feature_columns_file, \"w\") as f:\\n        # Add a header comment to document the importance of ordering' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=313 context='\\n    # Save hyperparameters configuration\\n>>>     hyperparameters_file = os.path.join(model_path, \"hyperparameters.json\")\\n    with open(hyperparameters_file, \"w\") as f:\\n        json.dump(config, f, indent=2, sort_keys=True)' is_hardcoded=False construction_method='os.path.join'",
-        "path='hyperparameters.json' line_number=313 context='\\n    # Save hyperparameters configuration\\n>>>     hyperparameters_file = os.path.join(model_path, \"hyperparameters.json\")\\n    with open(hyperparameters_file, \"w\") as f:\\n        json.dump(config, f, indent=2, sort_keys=True)' is_hardcoded=True construction_method=None",
-        "path='metrics.json' line_number=356 context='        logger.info(f\"F1-Score (micro): {metrics[\\'f1_score_micro\\']}\")\\n        logger.info(f\"F1-Score (macro): {metrics[\\'f1_score_macro\\']}\")\\n>>>     with open(os.path.join(out_dir, \"metrics.json\"), \"w\") as f:\\n        json.dump(metrics, f, indent=2)\\n    # preds' is_hardcoded=False construction_method='os.path.join'",
-        "path='metrics.json' line_number=356 context='        logger.info(f\"F1-Score (micro): {metrics[\\'f1_score_micro\\']}\")\\n        logger.info(f\"F1-Score (macro): {metrics[\\'f1_score_macro\\']}\")\\n>>>     with open(os.path.join(out_dir, \"metrics.json\"), \"w\") as f:\\n        json.dump(metrics, f, indent=2)\\n    # preds' is_hardcoded=True construction_method=None",
-        "path='predictions.csv' line_number=361 context='    df = pd.DataFrame({id_col: ids, label_col: y_true})\\n    for i in range(y_prob.shape[1]): df[f\"prob_class_{i}\"] = y_prob[:,i]\\n>>>     df.to_csv(os.path.join(out_dir, \"predictions.csv\"), index=False)\\n\\n' is_hardcoded=False construction_method='os.path.join'",
-        "path='predictions.csv' line_number=361 context='    df = pd.DataFrame({id_col: ids, label_col: y_true})\\n    for i in range(y_prob.shape[1]): df[f\"prob_class_{i}\"] = y_prob[:,i]\\n>>>     df.to_csv(os.path.join(out_dir, \"predictions.csv\"), index=False)\\n\\n' is_hardcoded=True construction_method=None",
-        "path='.3f' line_number=371 context='        auc = roc_auc_score(y_true, score)\\n        plt.figure()\\n>>>         plt.plot(fpr, tpr, label=f\"AUC={auc:.3f}\")\\n        plt.plot([0,1], [0,1], \"--\")\\n        plt.title(f\"{prefix} ROC\")' is_hardcoded=True construction_method=None",
-        "path='roc.jpg' line_number=377 context='        plt.ylabel(\"TPR\")\\n        plt.legend()\\n>>>         plt.savefig(os.path.join(out_dir, f\"{prefix}roc.jpg\"))\\n        plt.close()\\n        precision, recall, _ = precision_recall_curve(y_true, score)' is_hardcoded=True construction_method=None",
-        "path='.3f' line_number=382 context='        ap = average_precision_score(y_true, score)\\n        plt.figure()\\n>>>         plt.plot(recall, precision, label=f\"AP={ap:.3f}\")\\n        plt.title(f\"{prefix} PR\")\\n        plt.xlabel(\"Recall\")' is_hardcoded=True construction_method=None",
-        "path='pr.jpg' line_number=387 context='        plt.ylabel(\"Precision\")\\n        plt.legend()\\n>>>         plt.savefig(os.path.join(out_dir, f\"{prefix}pr.jpg\"))\\n        plt.close()\\n    else:' is_hardcoded=True construction_method=None",
-        "path='.3f' line_number=397 context='                auc = roc_auc_score(y_bin, y_prob[:,i])\\n                plt.figure()\\n>>>                 plt.plot(fpr, tpr, label=f\"AUC={auc:.3f}\")\\n                plt.plot([0,1], [0,1], \"--\")\\n                plt.title(f\"{prefix} class {i} ROC\")' is_hardcoded=True construction_method=None",
-        "path='_roc.jpg' line_number=403 context='                plt.ylabel(\"TPR\")\\n                plt.legend()\\n>>>                 plt.savefig(os.path.join(out_dir, f\"{prefix}class_{i}_roc.jpg\"))\\n                plt.close()\\n                precision, recall, _ = precision_recall_curve(y_bin, y_prob[:,i])' is_hardcoded=True construction_method=None",
-        "path='.3f' line_number=408 context='                ap = average_precision_score(y_bin, y_prob[:,i])\\n                plt.figure()\\n>>>                 plt.plot(recall, precision, label=f\"AP={ap:.3f}\")\\n                plt.title(f\"{prefix} class {i} PR\")\\n                plt.xlabel(\"Recall\")' is_hardcoded=True construction_method=None",
-        "path='_pr.jpg' line_number=413 context='                plt.ylabel(\"Precision\")\\n                plt.legend()\\n>>>                 plt.savefig(os.path.join(out_dir, f\"{prefix}class_{i}_pr.jpg\"))\\n                plt.close()\\n' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/output/data' line_number=417 context='\\n\\n>>> def evaluate_split(name, df, feats, model, cfg, prefix=\"/opt/ml/output/data\"):\\n    is_bin = cfg.get(\"is_binary\", True)\\n    label = cfg[\"label_name\"]' is_hardcoded=True construction_method=None",
-        "path='.tar.gz' line_number=441 context='    plot_curves(y_true,        y_prob, out_metrics, f\"{name}_\", is_bin)\\n\\n>>>     tar = os.path.join(prefix, f\"{name}.tar.gz\")\\n    with tarfile.open(tar, \"w:gz\") as t:\\n        t.add(out_base,    arcname=name)' is_hardcoded=True construction_method=None",
-        "path='\\n    Main function to execute the XGBoost training logic.\\n    \\n    Args:\\n        input_paths: Dictionary of input paths with logical names\\n            - \"input_path\": Directory containing train/val/test data\\n            - \"hyperparameters_s3_uri\": Path to hyperparameters.json file\\n        output_paths: Dictionary of output paths with logical names\\n            - \"model_output\": Directory to save model artifacts\\n            - \"evaluation_output\": Directory to save evaluation outputs\\n        environ_vars: Dictionary of environment variables\\n        job_args: Command line arguments\\n    ' line_number=459 context='    job_args: argparse.Namespace\\n) -> None:\\n>>>     \"\"\"\\n    Main function to execute the XGBoost training logic.\\n    ' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=484 context='            hparam_path = input_paths[\"hyperparameters_s3_uri\"]\\n            # If it\\'s a directory path, append the filename\\n>>>             if not hparam_path.endswith(\"hyperparameters.json\"):\\n                hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:' is_hardcoded=True construction_method=None",
-        "path='hyperparameters.json' line_number=485 context='            # If it\\'s a directory path, append the filename\\n            if not hparam_path.endswith(\"hyperparameters.json\"):\\n>>>                 hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:\\n            # Fallback to default location within input_path' is_hardcoded=False construction_method='os.path.join'",
-        "path='hyperparameters.json' line_number=485 context='            # If it\\'s a directory path, append the filename\\n            if not hparam_path.endswith(\"hyperparameters.json\"):\\n>>>                 hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:\\n            # Fallback to default location within input_path' is_hardcoded=True construction_method=None",
-        "path='config/hyperparameters.json' line_number=488 context='        else:\\n            # Fallback to default location within input_path\\n>>>             hparam_path = os.path.join(data_dir, \"config\", \"hyperparameters.json\")\\n        \\n        logger.info(\"Starting XGBoost training process...\")' is_hardcoded=False construction_method='os.path.join'",
-        "path='hyperparameters.json' line_number=488 context='        else:\\n            # Fallback to default location within input_path\\n>>>             hparam_path = os.path.join(data_dir, \"config\", \"hyperparameters.json\")\\n        \\n        logger.info(\"Starting XGBoost training process...\")' is_hardcoded=True construction_method=None",
-        "path='Starting XGBoost training process...' line_number=490 context='            hparam_path = os.path.join(data_dir, \"config\", \"hyperparameters.json\")\\n        \\n>>>         logger.info(\"Starting XGBoost training process...\")\\n        logger.info(f\"Loading configuration from {hparam_path}\")\\n        config = load_and_validate_config(hparam_path)' is_hardcoded=True construction_method=None",
-        "path='Loading datasets...' line_number=495 context='        logger.info(\"Configuration loaded successfully\")\\n        \\n>>>         logger.info(\"Loading datasets...\")\\n        train_df, val_df, test_df = load_datasets(data_dir)\\n        logger.info(\"Datasets loaded successfully\")' is_hardcoded=True construction_method=None",
-        "path='Starting numerical imputation...' line_number=500 context='        \\n        # Apply numerical imputation\\n>>>         logger.info(\"Starting numerical imputation...\")\\n        train_df, val_df, test_df, impute_dict = apply_numerical_imputation(config, train_df, val_df, test_df)\\n        logger.info(\"Numerical imputation completed\")' is_hardcoded=True construction_method=None",
-        "path='Starting risk table mapping...' line_number=505 context='    \\n        # Apply risk table mapping\\n>>>         logger.info(\"Starting risk table mapping...\")\\n        train_df, val_df, test_df, risk_tables = fit_and_apply_risk_tables(config, train_df, val_df, test_df)\\n        logger.info(\"Risk table mapping completed\")' is_hardcoded=True construction_method=None",
-        "path='Preparing DMatrices for XGBoost...' line_number=509 context='        logger.info(\"Risk table mapping completed\")\\n        \\n>>>         logger.info(\"Preparing DMatrices for XGBoost...\")\\n        dtrain, dval, feature_columns = prepare_dmatrices(config, train_df, val_df)\\n        logger.info(\"DMatrices prepared successfully\")' is_hardcoded=True construction_method=None",
-        "path='Starting model training...' line_number=514 context='        logger.info(f\"Using {len(feature_columns)} features in order: {feature_columns}\")\\n        \\n>>>         logger.info(\"Starting model training...\")\\n        model = train_model(config, dtrain, dval)\\n        logger.info(\"Model training completed\")' is_hardcoded=True construction_method=None",
-        "path='Saving model artifacts...' line_number=518 context='        logger.info(\"Model training completed\")\\n    \\n>>>         logger.info(\"Saving model artifacts...\")\\n        logger.info(f\"Model path: {model_dir}, Output path: {output_dir}\")\\n        logger.info(f\"Output path exists: {os.path.exists(output_dir)}\")' is_hardcoded=True construction_method=None",
-        "path=' does not exist, creating...' line_number=538 context='        logger.info(f\"Checking output directory: {output_dir}\")\\n        if not os.path.exists(output_dir):\\n>>>             logger.warning(f\"Output directory {output_dir} does not exist, creating...\")\\n            os.makedirs(output_dir, exist_ok=True)\\n        ' is_hardcoded=True construction_method=None",
-        "path='All evaluation steps complete.' line_number=559 context='            logger.error(traceback.format_exc())\\n    \\n>>>         logger.info(\"All evaluation steps complete.\")\\n        logger.info(\"====== MAIN EXECUTION COMPLETED SUCCESSFULLY ======\")\\n        logger.info(\"Training script finished successfully.\")' is_hardcoded=True construction_method=None",
-        "path='Training script finished successfully.' line_number=561 context='        logger.info(\"All evaluation steps complete.\")\\n        logger.info(\"====== MAIN EXECUTION COMPLETED SUCCESSFULLY ======\")\\n>>>         logger.info(\"Training script finished successfully.\")\\n    except Exception as e:\\n        logger.error(f\"FATAL ERROR in main execution: {str(e)}\")' is_hardcoded=True construction_method=None",
-        "path='Script starting...' line_number=572 context='# -------------------------------------------------------------------------\\nif __name__ == \"__main__\":\\n>>>     logger.info(\"Script starting...\")\\n    \\n    # Container path constants' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/input/data' line_number=576 context='    # Container path constants\\n    CONTAINER_PATHS = {\\n>>>         \"INPUT_DATA\": \"/opt/ml/input/data\",\\n        \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/model' line_number=577 context='    CONTAINER_PATHS = {\\n        \"INPUT_DATA\": \"/opt/ml/input/data\",\\n>>>         \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n        \"CONFIG_DIR\": \"/opt/ml/input/data/config\"' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/output/data' line_number=578 context='        \"INPUT_DATA\": \"/opt/ml/input/data\",\\n        \"MODEL_DIR\": \"/opt/ml/model\",\\n>>>         \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n        \"CONFIG_DIR\": \"/opt/ml/input/data/config\"\\n    }' is_hardcoded=True construction_method=None",
-        "path='/opt/ml/input/data/config' line_number=579 context='        \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n>>>         \"CONFIG_DIR\": \"/opt/ml/input/data/config\"\\n    }\\n    ' is_hardcoded=True construction_method=None"
+        "path='\\n    Load everything from your pipeline\u2019s XGBoostModelHyperparameters,\\n    plus the two risk-table params this script needs.\\n    ' line_number=81 context='\\nclass XGBoostConfig(XGBoostModelHyperparameters):\\n>>>     \"\"\"\\n    Load everything from your pipeline\u2019s XGBoostModelHyperparameters,\\n    plus the two risk-table params this script needs.' is_hardcoded=True construction_method=None",
+        "path='Loads and validates the hyperparameters JSON file.' line_number=98 context='# -------------------------------------------------------------------------\\ndef load_and_validate_config(hparam_path: str) -> dict:\\n>>>     \"\"\"Loads and validates the hyperparameters JSON file.\"\"\"\\n    try:\\n        with open(hparam_path, \"r\") as f:' is_hardcoded=True construction_method=None",
+        "path='Finds the first supported data file in a directory.' line_number=134 context='\\ndef find_first_data_file(data_dir: str) -> str:\\n>>>     \"\"\"Finds the first supported data file in a directory.\"\"\"\\n    if not os.path.isdir(data_dir):\\n        return None' is_hardcoded=True construction_method=None",
+        "path='.csv' line_number=138 context='        return None\\n    for fname in sorted(os.listdir(data_dir)):\\n>>>         if fname.lower().endswith((\".csv\", \".parquet\", \".json\")):\\n            return os.path.join(data_dir, fname)\\n    return None' is_hardcoded=True construction_method=None",
+        "path='.json' line_number=138 context='        return None\\n    for fname in sorted(os.listdir(data_dir)):\\n>>>         if fname.lower().endswith((\".csv\", \".parquet\", \".json\")):\\n            return os.path.join(data_dir, fname)\\n    return None' is_hardcoded=True construction_method=None",
+        "path='Loads the training, validation, and test datasets.' line_number=144 context='\\ndef load_datasets(input_path: str) -> tuple:\\n>>>     \"\"\"Loads the training, validation, and test datasets.\"\"\"\\n    train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n    val_file = find_first_data_file(os.path.join(input_path, \"val\"))' is_hardcoded=True construction_method=None",
+        "path='train' line_number=145 context='def load_datasets(input_path: str) -> tuple:\\n    \"\"\"Loads the training, validation, and test datasets.\"\"\"\\n>>>     train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n    val_file = find_first_data_file(os.path.join(input_path, \"val\"))\\n    test_file = find_first_data_file(os.path.join(input_path, \"test\"))' is_hardcoded=False construction_method='os.path.join'",
+        "path='val' line_number=146 context='    \"\"\"Loads the training, validation, and test datasets.\"\"\"\\n    train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n>>>     val_file = find_first_data_file(os.path.join(input_path, \"val\"))\\n    test_file = find_first_data_file(os.path.join(input_path, \"test\"))\\n' is_hardcoded=False construction_method='os.path.join'",
+        "path='test' line_number=147 context='    train_file = find_first_data_file(os.path.join(input_path, \"train\"))\\n    val_file = find_first_data_file(os.path.join(input_path, \"val\"))\\n>>>     test_file = find_first_data_file(os.path.join(input_path, \"test\"))\\n\\n    if not train_file or not val_file or not test_file:' is_hardcoded=False construction_method='os.path.join'",
+        "path='Training, validation, or test data file not found in the expected subfolders.' line_number=151 context='    if not train_file or not val_file or not test_file:\\n        raise FileNotFoundError(\\n>>>             \"Training, validation, or test data file not found in the expected subfolders.\"\\n        )\\n' is_hardcoded=True construction_method=None",
+        "path='Applies numerical imputation to the datasets.' line_number=179 context='    config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame\\n) -> tuple:\\n>>>     \"\"\"Applies numerical imputation to the datasets.\"\"\"\\n    imputer = NumericalVariableImputationProcessor(\\n        variables=config[\"tab_field_list\"], strategy=\"mean\"' is_hardcoded=True construction_method=None",
+        "path='Fits risk tables on training data and applies them to all splits.' line_number=200 context='    config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame\\n) -> tuple:\\n>>>     \"\"\"Fits risk tables on training data and applies them to all splits.\"\"\"\\n    risk_processors = {}\\n    train_df_transformed = train_df.copy()' is_hardcoded=True construction_method=None",
+        "path='xgboost_model.bst' line_number=359 context='\\n    # Save XGBoost model\\n>>>     model_file = os.path.join(model_path, \"xgboost_model.bst\")\\n    model.save_model(model_file)\\n    logger.info(f\"Saved XGBoost model to {model_file}\")' is_hardcoded=False construction_method='os.path.join'",
+        "path='xgboost_model.bst' line_number=359 context='\\n    # Save XGBoost model\\n>>>     model_file = os.path.join(model_path, \"xgboost_model.bst\")\\n    model.save_model(model_file)\\n    logger.info(f\"Saved XGBoost model to {model_file}\")' is_hardcoded=True construction_method=None",
+        "path='risk_table_map.pkl' line_number=364 context='\\n    # Save risk tables\\n>>>     risk_map_file = os.path.join(model_path, \"risk_table_map.pkl\")\\n    with open(risk_map_file, \"wb\") as f:\\n        pkl.dump(risk_tables, f)' is_hardcoded=False construction_method='os.path.join'",
+        "path='risk_table_map.pkl' line_number=364 context='\\n    # Save risk tables\\n>>>     risk_map_file = os.path.join(model_path, \"risk_table_map.pkl\")\\n    with open(risk_map_file, \"wb\") as f:\\n        pkl.dump(risk_tables, f)' is_hardcoded=True construction_method=None",
+        "path='impute_dict.pkl' line_number=370 context='\\n    # Save imputation dictionary\\n>>>     impute_file = os.path.join(model_path, \"impute_dict.pkl\")\\n    with open(impute_file, \"wb\") as f:\\n        pkl.dump(impute_dict, f)' is_hardcoded=False construction_method='os.path.join'",
+        "path='impute_dict.pkl' line_number=370 context='\\n    # Save imputation dictionary\\n>>>     impute_file = os.path.join(model_path, \"impute_dict.pkl\")\\n    with open(impute_file, \"wb\") as f:\\n        pkl.dump(impute_dict, f)' is_hardcoded=True construction_method=None",
+        "path='feature_importance.json' line_number=376 context='\\n    # Save feature importance\\n>>>     fmap_json = os.path.join(model_path, \"feature_importance.json\")\\n    with open(fmap_json, \"w\") as f:\\n        json.dump(model.get_fscore(), f, indent=2)' is_hardcoded=False construction_method='os.path.join'",
+        "path='feature_importance.json' line_number=376 context='\\n    # Save feature importance\\n>>>     fmap_json = os.path.join(model_path, \"feature_importance.json\")\\n    with open(fmap_json, \"w\") as f:\\n        json.dump(model.get_fscore(), f, indent=2)' is_hardcoded=True construction_method=None",
+        "path='feature_columns.txt' line_number=382 context='\\n    # Save feature columns with ordering information\\n>>>     feature_columns_file = os.path.join(model_path, \"feature_columns.txt\")\\n    with open(feature_columns_file, \"w\") as f:\\n        # Add a header comment to document the importance of ordering' is_hardcoded=False construction_method='os.path.join'",
+        "path='feature_columns.txt' line_number=382 context='\\n    # Save feature columns with ordering information\\n>>>     feature_columns_file = os.path.join(model_path, \"feature_columns.txt\")\\n    with open(feature_columns_file, \"w\") as f:\\n        # Add a header comment to document the importance of ordering' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=395 context='\\n    # Save hyperparameters configuration\\n>>>     hyperparameters_file = os.path.join(model_path, \"hyperparameters.json\")\\n    with open(hyperparameters_file, \"w\") as f:\\n        json.dump(config, f, indent=2, sort_keys=True)' is_hardcoded=False construction_method='os.path.join'",
+        "path='hyperparameters.json' line_number=395 context='\\n    # Save hyperparameters configuration\\n>>>     hyperparameters_file = os.path.join(model_path, \"hyperparameters.json\")\\n    with open(hyperparameters_file, \"w\") as f:\\n        json.dump(config, f, indent=2, sort_keys=True)' is_hardcoded=True construction_method=None",
+        "path='metrics.json' line_number=448 context='        logger.info(f\"F1-Score (micro): {metrics[\\'f1_score_micro\\']}\")\\n        logger.info(f\"F1-Score (macro): {metrics[\\'f1_score_macro\\']}\")\\n>>>     with open(os.path.join(out_dir, \"metrics.json\"), \"w\") as f:\\n        json.dump(metrics, f, indent=2)\\n    # preds' is_hardcoded=False construction_method='os.path.join'",
+        "path='metrics.json' line_number=448 context='        logger.info(f\"F1-Score (micro): {metrics[\\'f1_score_micro\\']}\")\\n        logger.info(f\"F1-Score (macro): {metrics[\\'f1_score_macro\\']}\")\\n>>>     with open(os.path.join(out_dir, \"metrics.json\"), \"w\") as f:\\n        json.dump(metrics, f, indent=2)\\n    # preds' is_hardcoded=True construction_method=None",
+        "path='predictions.csv' line_number=454 context='    for i in range(y_prob.shape[1]):\\n        df[f\"prob_class_{i}\"] = y_prob[:, i]\\n>>>     df.to_csv(os.path.join(out_dir, \"predictions.csv\"), index=False)\\n\\n' is_hardcoded=False construction_method='os.path.join'",
+        "path='predictions.csv' line_number=454 context='    for i in range(y_prob.shape[1]):\\n        df[f\"prob_class_{i}\"] = y_prob[:, i]\\n>>>     df.to_csv(os.path.join(out_dir, \"predictions.csv\"), index=False)\\n\\n' is_hardcoded=True construction_method=None",
+        "path='.3f' line_number=464 context='        auc = roc_auc_score(y_true, score)\\n        plt.figure()\\n>>>         plt.plot(fpr, tpr, label=f\"AUC={auc:.3f}\")\\n        plt.plot([0, 1], [0, 1], \"--\")\\n        plt.title(f\"{prefix} ROC\")' is_hardcoded=True construction_method=None",
+        "path='roc.jpg' line_number=470 context='        plt.ylabel(\"TPR\")\\n        plt.legend()\\n>>>         plt.savefig(os.path.join(out_dir, f\"{prefix}roc.jpg\"))\\n        plt.close()\\n        precision, recall, _ = precision_recall_curve(y_true, score)' is_hardcoded=True construction_method=None",
+        "path='.3f' line_number=475 context='        ap = average_precision_score(y_true, score)\\n        plt.figure()\\n>>>         plt.plot(recall, precision, label=f\"AP={ap:.3f}\")\\n        plt.title(f\"{prefix} PR\")\\n        plt.xlabel(\"Recall\")' is_hardcoded=True construction_method=None",
+        "path='pr.jpg' line_number=480 context='        plt.ylabel(\"Precision\")\\n        plt.legend()\\n>>>         plt.savefig(os.path.join(out_dir, f\"{prefix}pr.jpg\"))\\n        plt.close()\\n    else:' is_hardcoded=True construction_method=None",
+        "path='.3f' line_number=490 context='                auc = roc_auc_score(y_bin, y_prob[:, i])\\n                plt.figure()\\n>>>                 plt.plot(fpr, tpr, label=f\"AUC={auc:.3f}\")\\n                plt.plot([0, 1], [0, 1], \"--\")\\n                plt.title(f\"{prefix} class {i} ROC\")' is_hardcoded=True construction_method=None",
+        "path='_roc.jpg' line_number=496 context='                plt.ylabel(\"TPR\")\\n                plt.legend()\\n>>>                 plt.savefig(os.path.join(out_dir, f\"{prefix}class_{i}_roc.jpg\"))\\n                plt.close()\\n                precision, recall, _ = precision_recall_curve(y_bin, y_prob[:, i])' is_hardcoded=True construction_method=None",
+        "path='.3f' line_number=501 context='                ap = average_precision_score(y_bin, y_prob[:, i])\\n                plt.figure()\\n>>>                 plt.plot(recall, precision, label=f\"AP={ap:.3f}\")\\n                plt.title(f\"{prefix} class {i} PR\")\\n                plt.xlabel(\"Recall\")' is_hardcoded=True construction_method=None",
+        "path='_pr.jpg' line_number=506 context='                plt.ylabel(\"Precision\")\\n                plt.legend()\\n>>>                 plt.savefig(os.path.join(out_dir, f\"{prefix}class_{i}_pr.jpg\"))\\n                plt.close()\\n' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/output/data' line_number=510 context='\\n\\n>>> def evaluate_split(name, df, feats, model, cfg, prefix=\"/opt/ml/output/data\") -> None:\\n    is_bin = cfg.get(\"is_binary\", True)\\n    label = cfg[\"label_name\"]' is_hardcoded=True construction_method=None",
+        "path='.tar.gz' line_number=534 context='    plot_curves(y_true, y_prob, out_metrics, f\"{name}_\", is_bin)\\n\\n>>>     tar = os.path.join(prefix, f\"{name}.tar.gz\")\\n    with tarfile.open(tar, \"w:gz\") as t:\\n        t.add(out_base, arcname=name)' is_hardcoded=True construction_method=None",
+        "path='\\n    Main function to execute the XGBoost training logic.\\n\\n    Args:\\n        input_paths: Dictionary of input paths with logical names\\n            - \"input_path\": Directory containing train/val/test data\\n            - \"hyperparameters_s3_uri\": Path to hyperparameters directory (now points to /opt/ml/code/hyperparams)\\n        output_paths: Dictionary of output paths with logical names\\n            - \"model_output\": Directory to save model artifacts\\n            - \"evaluation_output\": Directory to save evaluation outputs\\n        environ_vars: Dictionary of environment variables\\n        job_args: Command line arguments\\n    ' line_number=551 context='    job_args: argparse.Namespace,\\n) -> None:\\n>>>     \"\"\"\\n    Main function to execute the XGBoost training logic.\\n' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=576 context='            hparam_path = input_paths[\"hyperparameters_s3_uri\"]\\n            # If it\\'s a directory path, append the filename\\n>>>             if not hparam_path.endswith(\"hyperparameters.json\"):\\n                hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:' is_hardcoded=True construction_method=None",
+        "path='hyperparameters.json' line_number=577 context='            # If it\\'s a directory path, append the filename\\n            if not hparam_path.endswith(\"hyperparameters.json\"):\\n>>>                 hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:\\n            # Fallback to source directory if not provided' is_hardcoded=False construction_method='os.path.join'",
+        "path='hyperparameters.json' line_number=577 context='            # If it\\'s a directory path, append the filename\\n            if not hparam_path.endswith(\"hyperparameters.json\"):\\n>>>                 hparam_path = os.path.join(hparam_path, \"hyperparameters.json\")\\n        else:\\n            # Fallback to source directory if not provided' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/hyperparams/hyperparameters.json' line_number=580 context='        else:\\n            # Fallback to source directory if not provided\\n>>>             hparam_path = \"/opt/ml/code/hyperparams/hyperparameters.json\"\\n\\n        logger.info(\"Starting XGBoost training process...\")' is_hardcoded=True construction_method=None",
+        "path='Starting XGBoost training process...' line_number=582 context='            hparam_path = \"/opt/ml/code/hyperparams/hyperparameters.json\"\\n\\n>>>         logger.info(\"Starting XGBoost training process...\")\\n        logger.info(f\"Loading configuration from {hparam_path}\")\\n        config = load_and_validate_config(hparam_path)' is_hardcoded=True construction_method=None",
+        "path='Loading datasets...' line_number=587 context='        logger.info(\"Configuration loaded successfully\")\\n\\n>>>         logger.info(\"Loading datasets...\")\\n        train_df, val_df, test_df = load_datasets(data_dir)\\n        logger.info(\"Datasets loaded successfully\")' is_hardcoded=True construction_method=None",
+        "path='Starting numerical imputation...' line_number=592 context='\\n        # Apply numerical imputation\\n>>>         logger.info(\"Starting numerical imputation...\")\\n        train_df, val_df, test_df, impute_dict = apply_numerical_imputation(\\n            config, train_df, val_df, test_df' is_hardcoded=True construction_method=None",
+        "path='Starting risk table mapping...' line_number=599 context='\\n        # Apply risk table mapping\\n>>>         logger.info(\"Starting risk table mapping...\")\\n        train_df, val_df, test_df, risk_tables = fit_and_apply_risk_tables(\\n            config, train_df, val_df, test_df' is_hardcoded=True construction_method=None",
+        "path='Preparing DMatrices for XGBoost...' line_number=605 context='        logger.info(\"Risk table mapping completed\")\\n\\n>>>         logger.info(\"Preparing DMatrices for XGBoost...\")\\n        dtrain, dval, feature_columns = prepare_dmatrices(config, train_df, val_df)\\n        logger.info(\"DMatrices prepared successfully\")' is_hardcoded=True construction_method=None",
+        "path='Starting model training...' line_number=612 context='        )\\n\\n>>>         logger.info(\"Starting model training...\")\\n        model = train_model(config, dtrain, dval)\\n        logger.info(\"Model training completed\")' is_hardcoded=True construction_method=None",
+        "path='Saving model artifacts...' line_number=616 context='        logger.info(\"Model training completed\")\\n\\n>>>         logger.info(\"Saving model artifacts...\")\\n        logger.info(f\"Model path: {model_dir}, Output path: {output_dir}\")\\n        logger.info(f\"Output path exists: {os.path.exists(output_dir)}\")' is_hardcoded=True construction_method=None",
+        "path=' does not exist, creating...' line_number=636 context='        logger.info(f\"Checking output directory: {output_dir}\")\\n        if not os.path.exists(output_dir):\\n>>>             logger.warning(f\"Output directory {output_dir} does not exist, creating...\")\\n            os.makedirs(output_dir, exist_ok=True)\\n' is_hardcoded=True construction_method=None",
+        "path='All evaluation steps complete.' line_number=657 context='            logger.error(traceback.format_exc())\\n\\n>>>         logger.info(\"All evaluation steps complete.\")\\n        logger.info(\"====== MAIN EXECUTION COMPLETED SUCCESSFULLY ======\")\\n        logger.info(\"Training script finished successfully.\")' is_hardcoded=True construction_method=None",
+        "path='Training script finished successfully.' line_number=659 context='        logger.info(\"All evaluation steps complete.\")\\n        logger.info(\"====== MAIN EXECUTION COMPLETED SUCCESSFULLY ======\")\\n>>>         logger.info(\"Training script finished successfully.\")\\n    except Exception as e:\\n        logger.error(f\"FATAL ERROR in main execution: {str(e)}\")' is_hardcoded=True construction_method=None",
+        "path='Script starting...' line_number=670 context='# -------------------------------------------------------------------------\\nif __name__ == \"__main__\":\\n>>>     logger.info(\"Script starting...\")\\n\\n    # Container path constants' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/input/data' line_number=674 context='    # Container path constants\\n    CONTAINER_PATHS = {\\n>>>         \"INPUT_DATA\": \"/opt/ml/input/data\",\\n        \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/model' line_number=675 context='    CONTAINER_PATHS = {\\n        \"INPUT_DATA\": \"/opt/ml/input/data\",\\n>>>         \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n        \"CONFIG_DIR\": \"/opt/ml/code/hyperparams\",  # Source directory path' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/output/data' line_number=676 context='        \"INPUT_DATA\": \"/opt/ml/input/data\",\\n        \"MODEL_DIR\": \"/opt/ml/model\",\\n>>>         \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n        \"CONFIG_DIR\": \"/opt/ml/code/hyperparams\",  # Source directory path\\n    }' is_hardcoded=True construction_method=None",
+        "path='/opt/ml/code/hyperparams' line_number=677 context='        \"MODEL_DIR\": \"/opt/ml/model\",\\n        \"OUTPUT_DATA\": \"/opt/ml/output/data\",\\n>>>         \"CONFIG_DIR\": \"/opt/ml/code/hyperparams\",  # Source directory path\\n    }\\n' is_hardcoded=True construction_method=None"
       ],
       "env_var_accesses": [],
       "imports": [
@@ -169,17 +157,17 @@
         "module_name='sklearn.metrics' import_alias=None line_number=18 is_from_import=True imported_items=['roc_auc_score', 'average_precision_score', 'f1_score', 'roc_curve', 'precision_recall_curve']",
         "module_name='processing.risk_table_processor' import_alias=None line_number=30 is_from_import=True imported_items=['RiskTableMappingProcessor']",
         "module_name='processing.numerical_imputation_processor' import_alias=None line_number=31 is_from_import=True imported_items=['NumericalVariableImputationProcessor']",
-        "module_name='pydantic' import_alias=None line_number=73 is_from_import=True imported_items=['BaseModel', 'Field', 'model_validator']",
-        "module_name='hyperparams.hyperparameters_xgboost' import_alias=None line_number=74 is_from_import=True imported_items=['XGBoostModelHyperparameters']"
+        "module_name='pydantic' import_alias=None line_number=76 is_from_import=True imported_items=['BaseModel', 'Field', 'model_validator']",
+        "module_name='hyperparams.hyperparameters_xgboost' import_alias=None line_number=77 is_from_import=True imported_items=['XGBoostModelHyperparameters']"
       ],
       "argument_definitions": [],
       "file_operations": [
-        "file_path='<file_object>' operation_type='read' line_number=95 context='    try:\\n        with open(hparam_path, \"r\") as f:\\n>>>             config = json.load(f)\\n        \\n        required_keys = [\"tab_field_list\", \"cat_field_list\", \"label_name\", \"is_binary\", \"num_classes\"]' mode=None method='json.load'",
-        "file_path='<file_object>' operation_type='write' line_number=286 context='    risk_map_file = os.path.join(model_path, \"risk_table_map.pkl\")\\n    with open(risk_map_file, \"wb\") as f:\\n>>>         pkl.dump(risk_tables, f)\\n    logger.info(f\"Saved consolidated risk table map to {risk_map_file}\")\\n    ' mode=None method='pickle.dump'",
-        "file_path='<file_object>' operation_type='write' line_number=292 context='    impute_file = os.path.join(model_path, \"impute_dict.pkl\")\\n    with open(impute_file, \"wb\") as f:\\n>>>         pkl.dump(impute_dict, f)\\n    logger.info(f\"Saved imputation dictionary to {impute_file}\")\\n' mode=None method='pickle.dump'",
-        "file_path='<file_object>' operation_type='write' line_number=298 context='    fmap_json = os.path.join(model_path, \"feature_importance.json\")\\n    with open(fmap_json, \"w\") as f:\\n>>>         json.dump(model.get_fscore(), f, indent=2)\\n    logger.info(f\"Saved feature importance to {fmap_json}\")\\n    ' mode=None method='json.dump'",
-        "file_path='<file_object>' operation_type='write' line_number=315 context='    hyperparameters_file = os.path.join(model_path, \"hyperparameters.json\")\\n    with open(hyperparameters_file, \"w\") as f:\\n>>>         json.dump(config, f, indent=2, sort_keys=True)\\n    logger.info(f\"Saved hyperparameters configuration to {hyperparameters_file}\")\\n' mode=None method='json.dump'",
-        "file_path='<file_object>' operation_type='write' line_number=357 context='        logger.info(f\"F1-Score (macro): {metrics[\\'f1_score_macro\\']}\")\\n    with open(os.path.join(out_dir, \"metrics.json\"), \"w\") as f:\\n>>>         json.dump(metrics, f, indent=2)\\n    # preds\\n    df = pd.DataFrame({id_col: ids, label_col: y_true})' mode=None method='json.dump'"
+        "file_path='<file_object>' operation_type='read' line_number=101 context='    try:\\n        with open(hparam_path, \"r\") as f:\\n>>>             config = json.load(f)\\n\\n        required_keys = [' mode=None method='json.load'",
+        "file_path='<file_object>' operation_type='write' line_number=366 context='    risk_map_file = os.path.join(model_path, \"risk_table_map.pkl\")\\n    with open(risk_map_file, \"wb\") as f:\\n>>>         pkl.dump(risk_tables, f)\\n    logger.info(f\"Saved consolidated risk table map to {risk_map_file}\")\\n' mode=None method='pickle.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=372 context='    impute_file = os.path.join(model_path, \"impute_dict.pkl\")\\n    with open(impute_file, \"wb\") as f:\\n>>>         pkl.dump(impute_dict, f)\\n    logger.info(f\"Saved imputation dictionary to {impute_file}\")\\n' mode=None method='pickle.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=378 context='    fmap_json = os.path.join(model_path, \"feature_importance.json\")\\n    with open(fmap_json, \"w\") as f:\\n>>>         json.dump(model.get_fscore(), f, indent=2)\\n    logger.info(f\"Saved feature importance to {fmap_json}\")\\n' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=397 context='    hyperparameters_file = os.path.join(model_path, \"hyperparameters.json\")\\n    with open(hyperparameters_file, \"w\") as f:\\n>>>         json.dump(config, f, indent=2, sort_keys=True)\\n    logger.info(f\"Saved hyperparameters configuration to {hyperparameters_file}\")\\n' mode=None method='json.dump'",
+        "file_path='<file_object>' operation_type='write' line_number=449 context='        logger.info(f\"F1-Score (macro): {metrics[\\'f1_score_macro\\']}\")\\n    with open(os.path.join(out_dir, \"metrics.json\"), \"w\") as f:\\n>>>         json.dump(metrics, f, indent=2)\\n    # preds\\n    df = pd.DataFrame({id_col: ids, label_col: y_true})' mode=None method='json.dump'"
       ],
       "step_type": "Training",
       "framework": "xgboost",
@@ -194,7 +182,7 @@
           "path": "/opt/ml/input/data"
         },
         "hyperparameters_s3_uri": {
-          "path": "/opt/ml/input/data/config/hyperparameters.json"
+          "path": "/opt/ml/code/hyperparams/hyperparameters.json"
         }
       },
       "outputs": {
@@ -293,7 +281,7 @@
           "path": "/opt/ml/input/data"
         },
         "hyperparameters_s3_uri": {
-          "path": "/opt/ml/input/data/config/hyperparameters.json"
+          "path": "/opt/ml/code/hyperparams/hyperparameters.json"
         }
       },
       "outputs": {
@@ -334,10 +322,11 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
+              "RiskTableMapping",
               "ProcessingStep",
               "DataLoad",
-              "RiskTableMapping",
-              "TabularPreprocessing"
+              "StratifiedSampling"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -351,7 +340,7 @@
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Hyperparameters configuration file (optional, can be generated internally)"
+            "description": "S3 URI containing hyperparameters configuration file (optional - falls back to source directory)"
           }
         ],
         "outputs": [
@@ -382,10 +371,11 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
+              "TabularPreprocessing",
+              "RiskTableMapping",
               "ProcessingStep",
               "DataLoad",
-              "RiskTableMapping",
-              "TabularPreprocessing"
+              "StratifiedSampling"
             ],
             "data_type": "S3Uri",
             "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -399,7 +389,7 @@
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
-            "description": "Hyperparameters configuration file (optional, can be generated internally)"
+            "description": "S3 URI containing hyperparameters configuration file (optional - falls back to source directory)"
           }
         ],
         "outputs": [
@@ -429,10 +419,11 @@
               "dependency_type": "training_data",
               "required": true,
               "compatible_sources": [
+                "TabularPreprocessing",
+                "RiskTableMapping",
                 "ProcessingStep",
                 "DataLoad",
-                "RiskTableMapping",
-                "TabularPreprocessing"
+                "StratifiedSampling"
               ],
               "data_type": "S3Uri",
               "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -446,7 +437,7 @@
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
-              "description": "Hyperparameters configuration file (optional, can be generated internally)"
+              "description": "S3 URI containing hyperparameters configuration file (optional - falls back to source directory)"
             }
           ],
           "outputs": [
@@ -473,10 +464,11 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
+            "TabularPreprocessing",
+            "RiskTableMapping",
             "ProcessingStep",
             "DataLoad",
-            "RiskTableMapping",
-            "TabularPreprocessing"
+            "StratifiedSampling"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -490,7 +482,7 @@
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
-          "description": "Hyperparameters configuration file (optional, can be generated internally)"
+          "description": "S3 URI containing hyperparameters configuration file (optional - falls back to source directory)"
         }
       },
       "unified_outputs": {
@@ -593,10 +585,11 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
+            "TabularPreprocessing",
+            "RiskTableMapping",
             "ProcessingStep",
             "DataLoad",
-            "RiskTableMapping",
-            "TabularPreprocessing"
+            "StratifiedSampling"
           ],
           "data_type": "S3Uri",
           "description": "Training dataset S3 location with train/val/test subdirectories"
@@ -610,7 +603,7 @@
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
-          "description": "Hyperparameters configuration file (optional, can be generated internally)"
+          "description": "S3 URI containing hyperparameters configuration file (optional - falls back to source directory)"
         }
       ],
       "outputs": [
@@ -635,112 +628,87 @@
     "passed": true,
     "issues": [
       {
-        "severity": "INFO",
-        "category": "config_import",
-        "message": "Builder may not be properly importing configuration class xgboost_trainingConfig",
+        "severity": "WARNING",
+        "category": "configuration_fields",
+        "message": "Required configuration field not accessed in builder: project_root_folder",
         "details": {
-          "config_class": "xgboost_trainingConfig",
+          "field_name": "project_root_folder",
           "builder": "xgboost_training"
         },
-        "recommendation": "Ensure builder imports and uses xgboost_trainingConfig"
+        "recommendation": "Access required field project_root_folder in builder or make it optional"
+      },
+      {
+        "severity": "INFO",
+        "category": "required_field_validation",
+        "message": "Builder has required fields but no explicit validation logic detected",
+        "details": {
+          "required_fields": [
+            "service_name",
+            "author",
+            "hyperparameters",
+            "training_entry_point",
+            "role",
+            "project_root_folder",
+            "pipeline_version",
+            "bucket",
+            "region"
+          ],
+          "builder": "xgboost_training"
+        },
+        "recommendation": "Consider adding explicit validation logic for required configuration fields"
       }
     ],
     "builder_analysis": {
       "config_accesses": [
         {
-          "field_name": "training_entry_point",
+          "field_name": "effective_source_dir",
           "line_number": 134,
           "context": "line_134"
         },
         {
-          "field_name": "source_dir",
-          "line_number": 135,
-          "context": "line_135"
+          "field_name": "training_entry_point",
+          "line_number": 138,
+          "context": "line_138"
         },
         {
           "field_name": "framework_version",
-          "line_number": 136,
-          "context": "line_136"
-        },
-        {
-          "field_name": "py_version",
-          "line_number": 137,
-          "context": "line_137"
-        },
-        {
-          "field_name": "training_instance_type",
-          "line_number": 139,
-          "context": "line_139"
-        },
-        {
-          "field_name": "training_instance_count",
           "line_number": 140,
           "context": "line_140"
         },
         {
-          "field_name": "training_volume_size",
+          "field_name": "py_version",
           "line_number": 141,
           "context": "line_141"
         },
         {
-          "field_name": "env",
-          "line_number": 161,
-          "context": "line_161"
+          "field_name": "training_instance_type",
+          "line_number": 143,
+          "context": "line_143"
+        },
+        {
+          "field_name": "training_instance_count",
+          "line_number": 144,
+          "context": "line_144"
+        },
+        {
+          "field_name": "training_volume_size",
+          "line_number": 145,
+          "context": "line_145"
         },
         {
           "field_name": "env",
-          "line_number": 162,
-          "context": "line_162"
+          "line_number": 165,
+          "context": "line_165"
         },
         {
-          "field_name": "pipeline_s3_loc",
-          "line_number": 345,
-          "context": "line_345"
+          "field_name": "env",
+          "line_number": 166,
+          "context": "line_166"
         },
         {
-          "field_name": "hyperparameters",
-          "line_number": 419,
-          "context": "line_419"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 422,
-          "context": "line_422"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 423,
-          "context": "line_423"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 424,
-          "context": "line_424"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 425,
-          "context": "line_425"
-        },
-        {
-          "field_name": "hyperparameters",
-          "line_number": 426,
-          "context": "line_426"
-        },
-        {
-          "field_name": "hyperparameters_s3_uri",
-          "line_number": 442,
-          "context": "line_442"
-        },
-        {
-          "field_name": "bucket",
-          "line_number": 445,
-          "context": "line_445"
-        },
-        {
-          "field_name": "pipeline_name",
-          "line_number": 446,
-          "context": "line_446"
+          "field_name": "skip_hyperparameters_s3_uri",
+          "line_number": 222,
+          "context": "line_222"
         }
       ],
       "validation_calls": [],
@@ -748,25 +716,22 @@
       "class_definitions": [
         {
           "class_name": "XGBoostTrainingStepBuilder",
-          "line_number": 35,
+          "line_number": 34,
           "base_classes": [
             "StepBuilderBase"
           ],
-          "decorators": [
-            "Call"
-          ]
+          "decorators": []
         }
       ],
       "method_definitions": [
         {
           "method_name": "__init__",
-          "line_number": 42,
+          "line_number": 41,
           "args": [
             "self",
             "config",
             "sagemaker_session",
             "role",
-            "notebook_root",
             "registry_manager",
             "dependency_resolver"
           ],
@@ -775,7 +740,7 @@
         },
         {
           "method_name": "validate_configuration",
-          "line_number": 88,
+          "line_number": 83,
           "args": [
             "self"
           ],
@@ -794,7 +759,7 @@
         },
         {
           "method_name": "_get_environment_variables",
-          "line_number": 148,
+          "line_number": 152,
           "args": [
             "self"
           ],
@@ -803,7 +768,7 @@
         },
         {
           "method_name": "_create_data_channels_from_source",
-          "line_number": 167,
+          "line_number": 171,
           "args": [
             "self",
             "base_path"
@@ -813,7 +778,7 @@
         },
         {
           "method_name": "_get_inputs",
-          "line_number": 189,
+          "line_number": 193,
           "args": [
             "self",
             "inputs"
@@ -823,7 +788,7 @@
         },
         {
           "method_name": "_get_outputs",
-          "line_number": 306,
+          "line_number": 287,
           "args": [
             "self",
             "outputs"
@@ -832,50 +797,8 @@
           "is_async": false
         },
         {
-          "method_name": "_normalize_s3_uri",
-          "line_number": 365,
-          "args": [
-            "self",
-            "uri",
-            "description"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_get_s3_directory_path",
-          "line_number": 388,
-          "args": [
-            "self",
-            "uri",
-            "filename"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_prepare_hyperparameters_file",
-          "line_number": 412,
-          "args": [
-            "self"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
-          "method_name": "_validate_s3_uri",
-          "line_number": 492,
-          "args": [
-            "self",
-            "uri",
-            "description"
-          ],
-          "decorators": [],
-          "is_async": false
-        },
-        {
           "method_name": "create_step",
-          "line_number": 526,
+          "line_number": 356,
           "args": [
             "self"
           ],
@@ -1035,41 +958,217 @@
         },
         {
           "type": "from_import",
-          "module": "registry.builder_registry",
-          "name": "register_builder",
-          "alias": null,
-          "line_number": 21
-        },
-        {
-          "type": "from_import",
           "module": "specs.xgboost_training_spec",
           "name": "XGBOOST_TRAINING_SPEC",
           "alias": null,
-          "line_number": 25
+          "line_number": 24
         },
         {
           "type": "from_import",
           "module": "sagemaker.workflow.functions",
           "name": "Join",
           "alias": null,
-          "line_number": 177
+          "line_number": 181
+        },
+        {
+          "type": "from_import",
+          "module": "sagemaker.workflow.functions",
+          "name": "Join",
+          "alias": null,
+          "line_number": 330
         }
       ],
       "config_class_usage": []
     },
     "config_analysis": {
-      "class_name": "xgboost_trainingConfig",
-      "fields": {},
-      "required_fields": "set()",
-      "optional_fields": "set()",
-      "default_values": {},
-      "load_error": "Configuration class not found in /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/configs/config_xgboost_training_step.py. Available classes: ['Any', 'BaseModel', 'BasePipelineConfig', 'Path', 'XGBoostModelHyperparameters', 'XGBoostTrainingConfig', 'datetime']"
+      "class_name": "XGBoostTrainingConfig",
+      "fields": {
+        "author": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "bucket": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "role": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "region": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "service_name": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "pipeline_version": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "model_class": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "current_date": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "framework_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "py_version": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "source_dir": {
+          "type": "typing.Optional[str]",
+          "required": false
+        },
+        "project_root_folder": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "training_entry_point": {
+          "type": "<class 'str'>",
+          "required": true
+        },
+        "hyperparameters": {
+          "type": "<class 'cursus.steps.hyperparams.hyperparameters_xgboost.XGBoostModelHyperparameters'>",
+          "required": true
+        },
+        "training_instance_type": {
+          "type": "<class 'str'>",
+          "required": false
+        },
+        "training_instance_count": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "training_volume_size": {
+          "type": "<class 'int'>",
+          "required": false
+        },
+        "skip_hyperparameters_s3_uri": {
+          "type": "<class 'bool'>",
+          "required": false
+        },
+        "aws_region": {
+          "type": "property",
+          "required": false
+        },
+        "effective_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "hyperparameter_file": {
+          "type": "property",
+          "required": false
+        },
+        "model_extra": {
+          "type": "property",
+          "required": false
+        },
+        "model_fields_set": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_description": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_name": {
+          "type": "property",
+          "required": false
+        },
+        "pipeline_s3_loc": {
+          "type": "property",
+          "required": false
+        },
+        "resolved_source_dir": {
+          "type": "property",
+          "required": false
+        },
+        "script_contract": {
+          "type": "property",
+          "required": false
+        },
+        "step_catalog": {
+          "type": "property",
+          "required": false
+        }
+      },
+      "required_fields": [
+        "author",
+        "bucket",
+        "role",
+        "region",
+        "service_name",
+        "pipeline_version",
+        "project_root_folder",
+        "training_entry_point",
+        "hyperparameters"
+      ],
+      "optional_fields": [
+        "model_class",
+        "current_date",
+        "framework_version",
+        "py_version",
+        "source_dir",
+        "training_instance_type",
+        "training_instance_count",
+        "training_volume_size",
+        "skip_hyperparameters_s3_uri",
+        "aws_region",
+        "effective_source_dir",
+        "hyperparameter_file",
+        "model_extra",
+        "model_fields_set",
+        "pipeline_description",
+        "pipeline_name",
+        "pipeline_s3_loc",
+        "resolved_source_dir",
+        "script_contract",
+        "step_catalog"
+      ],
+      "default_values": {
+        "author": "PydanticUndefined",
+        "bucket": "PydanticUndefined",
+        "role": "PydanticUndefined",
+        "region": "PydanticUndefined",
+        "service_name": "PydanticUndefined",
+        "pipeline_version": "PydanticUndefined",
+        "model_class": "xgboost",
+        "current_date": "PydanticUndefined",
+        "framework_version": "1.7-1",
+        "py_version": "py3",
+        "source_dir": null,
+        "project_root_folder": "PydanticUndefined",
+        "training_entry_point": "PydanticUndefined",
+        "hyperparameters": "PydanticUndefined",
+        "training_instance_type": "ml.m5.4xlarge",
+        "training_instance_count": 1,
+        "training_volume_size": 30,
+        "skip_hyperparameters_s3_uri": true
+      }
     }
   },
   "overall_status": "PASSING",
+  "scoring": {
+    "overall_score": 100.0,
+    "quality_rating": "Excellent",
+    "level_scores": {
+      "level1_script_contract": 100.0,
+      "level2_contract_spec": 100.0,
+      "level3_spec_dependencies": 100.0,
+      "level4_builder_config": 100.0
+    }
+  },
   "metadata": {
     "script_name": "xgboost_training",
-    "validation_timestamp": "2025-09-07T19:44:50.642816",
+    "validation_timestamp": "2025-09-29T22:16:48.111384",
     "validator_version": "1.0.0",
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_training.py"
   }

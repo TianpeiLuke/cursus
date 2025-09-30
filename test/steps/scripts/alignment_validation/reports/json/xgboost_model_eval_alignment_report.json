@@ -23,9 +23,9 @@
           "script": "xgboost_model_eval",
           "testability_parameters": [
             "job_args",
-            "input_paths",
             "environ_vars",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -511,11 +511,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostModel",
               "DummyTraining",
+              "PyTorchModel",
               "XGBoostTraining",
               "PyTorchTraining",
-              "PyTorchModel"
+              "XGBoostModel"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -525,10 +525,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CurrencyConversion",
-              "CradleDataLoading",
               "TabularPreprocessing",
-              "RiskTableMapping"
+              "CurrencyConversion",
+              "RiskTableMapping",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -562,11 +562,11 @@
             "dependency_type": "model_artifacts",
             "required": true,
             "compatible_sources": [
-              "XGBoostModel",
               "DummyTraining",
+              "PyTorchModel",
               "XGBoostTraining",
               "PyTorchTraining",
-              "PyTorchModel"
+              "XGBoostModel"
             ],
             "data_type": "S3Uri",
             "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -576,10 +576,10 @@
             "dependency_type": "processing_output",
             "required": true,
             "compatible_sources": [
-              "CurrencyConversion",
-              "CradleDataLoading",
               "TabularPreprocessing",
-              "RiskTableMapping"
+              "CurrencyConversion",
+              "RiskTableMapping",
+              "CradleDataLoading"
             ],
             "data_type": "S3Uri",
             "description": "Evaluation dataset for model assessment"
@@ -612,11 +612,11 @@
               "dependency_type": "model_artifacts",
               "required": true,
               "compatible_sources": [
-                "XGBoostModel",
                 "DummyTraining",
+                "PyTorchModel",
                 "XGBoostTraining",
                 "PyTorchTraining",
-                "PyTorchModel"
+                "XGBoostModel"
               ],
               "data_type": "S3Uri",
               "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -626,10 +626,10 @@
               "dependency_type": "processing_output",
               "required": true,
               "compatible_sources": [
-                "CurrencyConversion",
-                "CradleDataLoading",
                 "TabularPreprocessing",
-                "RiskTableMapping"
+                "CurrencyConversion",
+                "RiskTableMapping",
+                "CradleDataLoading"
               ],
               "data_type": "S3Uri",
               "description": "Evaluation dataset for model assessment"
@@ -659,11 +659,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostModel",
             "DummyTraining",
+            "PyTorchModel",
             "XGBoostTraining",
             "PyTorchTraining",
-            "PyTorchModel"
+            "XGBoostModel"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -673,10 +673,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CurrencyConversion",
-            "CradleDataLoading",
             "TabularPreprocessing",
-            "RiskTableMapping"
+            "CurrencyConversion",
+            "RiskTableMapping",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -729,11 +729,11 @@
           "dependency_type": "model_artifacts",
           "required": true,
           "compatible_sources": [
-            "XGBoostModel",
             "DummyTraining",
+            "PyTorchModel",
             "XGBoostTraining",
             "PyTorchTraining",
-            "PyTorchModel"
+            "XGBoostModel"
           ],
           "data_type": "S3Uri",
           "description": "Trained model artifacts to be evaluated (includes hyperparameters.json)"
@@ -743,10 +743,10 @@
           "dependency_type": "processing_output",
           "required": true,
           "compatible_sources": [
-            "CurrencyConversion",
-            "CradleDataLoading",
             "TabularPreprocessing",
-            "RiskTableMapping"
+            "CurrencyConversion",
+            "RiskTableMapping",
+            "CradleDataLoading"
           ],
           "data_type": "S3Uri",
           "description": "Evaluation dataset for model assessment"
@@ -789,14 +789,14 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "hyperparameters",
-            "service_name",
-            "bucket",
-            "role",
-            "project_root_folder",
+            "region",
             "author",
+            "hyperparameters",
             "pipeline_version",
-            "region"
+            "service_name",
+            "project_root_folder",
+            "role",
+            "bucket"
           ],
           "builder": "xgboost_model_eval"
         },
@@ -1316,7 +1316,7 @@
   },
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/xgboost_model_eval.py",
-    "validation_timestamp": "2025-09-28T11:08:48.953924",
+    "validation_timestamp": "2025-09-29T22:16:23.327087",
     "validator_version": "1.0.0"
   }
 }

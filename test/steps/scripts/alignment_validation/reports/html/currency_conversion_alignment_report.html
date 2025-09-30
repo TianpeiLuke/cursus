@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Alignment Validation Report</title>
+    <title>Alignment Validation Report - currency_conversion</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
@@ -12,14 +12,6 @@
         .passing { color: #28a745; }
         .failing { color: #dc3545; }
         .warning { color: #ffc107; }
-        .scoring-section { margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; }
-        .score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
-        .score-card { background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; text-align: center; }
-        .score-excellent { border-left-color: #28a745; }
-        .score-good { border-left-color: #17a2b8; }
-        .score-fair { border-left-color: #ffc107; }
-        .score-poor { border-left-color: #dc3545; }
-        .score-value { font-size: 2em; font-weight: bold; margin: 10px 0; }
         .level-section { margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
         .level-header { background-color: #e9ecef; padding: 10px; font-weight: bold; }
         .test-result { padding: 10px; border-bottom: 1px solid #eee; }
@@ -30,83 +22,41 @@
         .error { border-left: 4px solid #fd7e14; }
         .warning { border-left: 4px solid #ffc107; }
         .info { border-left: 4px solid #17a2b8; }
-        .recommendations { margin: 20px 0; }
-        .recommendation { margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        .high-priority { border-left: 4px solid #dc3545; }
-        .medium-priority { border-left: 4px solid #ffc107; }
-        .low-priority { border-left: 4px solid #28a745; }
+        .metadata { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Alignment Validation Report</h1>
-        <p>Generated: 2025-09-28 11:13:56</p>
+        <h2>Script: currency_conversion</h2>
+        <p>Generated: 2025-09-29T22:16:23.000761</p>
         <p>Overall Status: <span class="passing">PASSING</span></p>
-        <p>Overall Alignment Score: <strong>100.0/100</strong></p>
     </div>
     
     <div class="summary">
         <div class="metric">
-            <h3>100.0%</h3>
-            <p>Pass Rate</p>
-        </div>
-        <div class="metric">
-            <h3>1</h3>
-            <p>Total Tests</p>
-        </div>
-        <div class="metric">
-            <h3>2</h3>
+            <h3>28</h3>
             <p>Total Issues</p>
         </div>
         <div class="metric">
             <h3>0</h3>
             <p>Critical Issues</p>
         </div>
-    </div>
-    
-    <div class="scoring-section">
-        <h2>Alignment Scoring</h2>
-        <div class="score-grid">
-            
-        <div class="score-card score-excellent">
-            <h4>Overall Alignment</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
+        <div class="metric">
+            <h3>0</h3>
+            <p>Error Issues</p>
         </div>
-        
-        <div class="score-card score-excellent">
-            <h4>Script ↔ Contract</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
-        </div>
-                
-        <div class="score-card score-excellent">
-            <h4>Contract ↔ Specification</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
-        </div>
-                
-        <div class="score-card score-excellent">
-            <h4>Specification ↔ Dependencies</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
-        </div>
-                
-        <div class="score-card score-excellent">
-            <h4>Builder ↔ Configuration</h4>
-            <div class="score-value">100.0</div>
-            <p>Excellent</p>
-        </div>
-                
+        <div class="metric">
+            <h3>4</h3>
+            <p>Warning Issues</p>
         </div>
     </div>
     
-    
-        <div class="level-section">
-            <div class="level-header">Level 1: Script ↔ Contract</div>
+    <div class="level-section">
+        <div class="level-header">Alignment Validation Results</div>
         
             <div class="test-result test-passed">
-                <h4>currency_conversion</h4>
+                <h4>Level 1: Script ↔ Contract</h4>
                 <p>Status: PASSED</p>
                 
                 <div class="issue info">
@@ -220,12 +170,9 @@
                 </div>
                 
             </div>
-            </div>
-        <div class="level-section">
-            <div class="level-header">Level 2: Contract ↔ Specification</div>
-        
+            
             <div class="test-result test-passed">
-                <h4>currency_conversion</h4>
+                <h4>Level 2: Contract ↔ Specification</h4>
                 <p>Status: PASSED</p>
                 
                 <div class="issue info">
@@ -249,21 +196,15 @@
                 </div>
                 
             </div>
-            </div>
-        <div class="level-section">
-            <div class="level-header">Level 3: Specification ↔ Dependencies</div>
-        
+            
             <div class="test-result test-passed">
-                <h4>currency_conversion</h4>
+                <h4>Level 3: Specification ↔ Dependencies</h4>
                 <p>Status: PASSED</p>
                 
             </div>
-            </div>
-        <div class="level-section">
-            <div class="level-header">Level 4: Builder ↔ Configuration</div>
-        
+            
             <div class="test-result test-passed">
-                <h4>currency_conversion</h4>
+                <h4>Level 4: Builder ↔ Configuration</h4>
                 <p>Status: PASSED</p>
                 
                 <div class="issue warning">
@@ -277,11 +218,14 @@
                 </div>
                 
             </div>
-            </div>
+            
+    </div>
     
-    <div class="recommendations">
-        <h2>Recommendations</h2>
-        
+    <div class="metadata">
+        <h3>Metadata</h3>
+        <p><strong>Script Path:</strong> /Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/currency_conversion.py</p>
+        <p><strong>Validation Timestamp:</strong> 2025-09-29T22:16:23.000761</p>
+        <p><strong>Validator Version:</strong> 1.0.0</p>
     </div>
 </body>
 </html>

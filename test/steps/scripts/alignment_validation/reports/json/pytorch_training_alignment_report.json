@@ -11,9 +11,9 @@
           "script": "pytorch_training",
           "testability_parameters": [
             "job_args",
-            "input_paths",
             "environ_vars",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -54,8 +54,8 @@
           ],
           "used_parameters": [
             "job_args",
-            "input_paths",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "Either use the testability parameters or remove them from function signature"
@@ -395,9 +395,9 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
-              "DataLoad",
               "TabularPreprocessing",
+              "DataLoad",
+              "RiskTableMapping",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -408,10 +408,10 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
               "ConfigGeneration",
-              "ProcessingStep",
-              "HyperparameterTuning"
+              "HyperparameterTuning",
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "S3 URI containing hyperparameters configuration directory (optional)"
@@ -445,9 +445,9 @@
             "dependency_type": "training_data",
             "required": true,
             "compatible_sources": [
-              "RiskTableMapping",
-              "DataLoad",
               "TabularPreprocessing",
+              "DataLoad",
+              "RiskTableMapping",
               "ProcessingStep"
             ],
             "data_type": "S3Uri",
@@ -458,10 +458,10 @@
             "dependency_type": "hyperparameters",
             "required": false,
             "compatible_sources": [
-              "HyperparameterPrep",
               "ConfigGeneration",
-              "ProcessingStep",
-              "HyperparameterTuning"
+              "HyperparameterTuning",
+              "HyperparameterPrep",
+              "ProcessingStep"
             ],
             "data_type": "S3Uri",
             "description": "S3 URI containing hyperparameters configuration directory (optional)"
@@ -494,9 +494,9 @@
               "dependency_type": "training_data",
               "required": true,
               "compatible_sources": [
-                "RiskTableMapping",
-                "DataLoad",
                 "TabularPreprocessing",
+                "DataLoad",
+                "RiskTableMapping",
                 "ProcessingStep"
               ],
               "data_type": "S3Uri",
@@ -507,10 +507,10 @@
               "dependency_type": "hyperparameters",
               "required": false,
               "compatible_sources": [
-                "HyperparameterPrep",
                 "ConfigGeneration",
-                "ProcessingStep",
-                "HyperparameterTuning"
+                "HyperparameterTuning",
+                "HyperparameterPrep",
+                "ProcessingStep"
               ],
               "data_type": "S3Uri",
               "description": "S3 URI containing hyperparameters configuration directory (optional)"
@@ -540,9 +540,9 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
-            "DataLoad",
             "TabularPreprocessing",
+            "DataLoad",
+            "RiskTableMapping",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -553,10 +553,10 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
             "ConfigGeneration",
-            "ProcessingStep",
-            "HyperparameterTuning"
+            "HyperparameterTuning",
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "S3 URI containing hyperparameters configuration directory (optional)"
@@ -662,9 +662,9 @@
           "dependency_type": "training_data",
           "required": true,
           "compatible_sources": [
-            "RiskTableMapping",
-            "DataLoad",
             "TabularPreprocessing",
+            "DataLoad",
+            "RiskTableMapping",
             "ProcessingStep"
           ],
           "data_type": "S3Uri",
@@ -675,10 +675,10 @@
           "dependency_type": "hyperparameters",
           "required": false,
           "compatible_sources": [
-            "HyperparameterPrep",
             "ConfigGeneration",
-            "ProcessingStep",
-            "HyperparameterTuning"
+            "HyperparameterTuning",
+            "HyperparameterPrep",
+            "ProcessingStep"
           ],
           "data_type": "S3Uri",
           "description": "S3 URI containing hyperparameters configuration directory (optional)"
@@ -721,13 +721,13 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "service_name",
-            "bucket",
-            "role",
-            "project_root_folder",
+            "region",
             "author",
             "pipeline_version",
-            "region"
+            "service_name",
+            "project_root_folder",
+            "role",
+            "bucket"
           ],
           "builder": "pytorch_training"
         },
@@ -1235,7 +1235,7 @@
   },
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/pytorch_training.py",
-    "validation_timestamp": "2025-09-28T11:08:48.839405",
+    "validation_timestamp": "2025-09-29T22:16:23.154024",
     "validator_version": "1.0.0"
   }
 }

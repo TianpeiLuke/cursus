@@ -34,9 +34,9 @@
           "script": "stratified_sampling",
           "testability_parameters": [
             "job_args",
-            "input_paths",
             "environ_vars",
-            "output_paths"
+            "output_paths",
+            "input_paths"
           ]
         },
         "recommendation": "No action needed - script follows testability best practices"
@@ -819,14 +819,14 @@
         "message": "Builder has required fields but no explicit validation logic detected",
         "details": {
           "required_fields": [
-            "service_name",
-            "bucket",
-            "role",
             "strata_column",
-            "project_root_folder",
+            "region",
             "author",
             "pipeline_version",
-            "region"
+            "service_name",
+            "project_root_folder",
+            "role",
+            "bucket"
           ],
           "builder": "stratified_sampling"
         },
@@ -1457,7 +1457,7 @@
   },
   "metadata": {
     "script_path": "/Users/tianpeixie/github_workspace/cursus/src/cursus/steps/scripts/stratified_sampling.py",
-    "validation_timestamp": "2025-09-28T11:08:48.899880",
+    "validation_timestamp": "2025-09-29T22:16:23.267492",
     "validator_version": "1.0.0"
   }
 }
