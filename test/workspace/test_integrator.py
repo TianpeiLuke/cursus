@@ -352,6 +352,8 @@ class TestWorkspaceIntegratorIntegration:
         (source_ws / 'scripts' / 'data_processor.py').write_text('# Data processor script')
         (source_ws / 'contracts' / 'data_processor_contract.py').write_text('# Data processor contract')
         (source_ws / 'specs' / 'data_processor_spec.py').write_text('# Data processor spec')
+        (source_ws / 'builders' / 'data_processor.py').write_text('# Data processor builder')
+        (source_ws / 'configs' / 'data_processor.py').write_text('# Data processor config')
         
         # Create target core structure
         core_dir = temp_dir / "src" / "cursus" / "steps"
@@ -371,13 +373,16 @@ class TestWorkspaceIntegratorIntegration:
         # Mock step catalog
         mock_catalog = MagicMock()
         mock_step_info = MagicMock()
+        mock_step_info.step_name = 'data_processor'
         mock_step_info.workspace_id = 'source_workspace'
         mock_step_info.file_components = {
-            'script': MagicMock(path=source_ws / 'scripts' / 'data_processor.py'),
-            'contract': MagicMock(path=source_ws / 'contracts' / 'data_processor_contract.py'),
-            'spec': MagicMock(path=source_ws / 'specs' / 'data_processor_spec.py')
+            'builder': MagicMock(path=source_ws / 'builders' / 'data_processor.py'),
+            'config': MagicMock(path=source_ws / 'configs' / 'data_processor.py'),
+            'script': MagicMock(path=source_ws / 'scripts' / 'data_processor.py')
         }
         mock_catalog.get_step_info.return_value = mock_step_info
+        mock_catalog.package_root = core_dir.parent  # /tmp/xxx/src/cursus -> /tmp/xxx/src
+        mock_catalog.list_available_steps.return_value = []  # No conflicts in core
         
         integrator = WorkspaceIntegrator(mock_catalog)
         
@@ -387,10 +392,10 @@ class TestWorkspaceIntegratorIntegration:
         
         assert result.success is True
         
-        # Verify files were copied
+        # Verify files were copied (only the files that were actually in the mock)
+        assert (core_dir / 'builders' / 'data_processor.py').exists()
+        assert (core_dir / 'configs' / 'data_processor.py').exists()
         assert (core_dir / 'scripts' / 'data_processor.py').exists()
-        assert (core_dir / 'contracts' / 'data_processor_contract.py').exists()
-        assert (core_dir / 'specs' / 'data_processor_spec.py').exists()
 
     def test_integrator_resilience_to_catalog_failures(self):
         """Test integrator resilience when catalog operations fail."""

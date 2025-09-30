@@ -50,7 +50,11 @@ class WorkspaceManager:
                 Path("/features/recommendation/pipeline_components")
             ])
         """
-        self.workspace_dirs = workspace_dirs or []
+        # Normalize workspace directories to Path objects
+        if workspace_dirs:
+            self.workspace_dirs = [Path(wd) if not isinstance(wd, Path) else wd for wd in workspace_dirs]
+        else:
+            self.workspace_dirs = []
         
         # CORE INTEGRATION: Use step catalog with workspace directories
         self.catalog = StepCatalog(workspace_dirs=self.workspace_dirs)

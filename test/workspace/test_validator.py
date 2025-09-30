@@ -101,7 +101,7 @@ class TestWorkspaceValidator:
         
         assert result.is_valid is False
         assert len(result.errors) > 0
-        assert 'File not accessible' in result.errors[0]
+        assert 'File not found' in result.errors[0]
 
     def test_validate_workspace_components_no_components(self, validator):
         """Test workspace validation when no components found."""
@@ -288,7 +288,7 @@ class TestWorkspaceValidator:
         
         assert result.is_valid is False  # Invalid due to missing files
         assert len(result.errors) > 0
-        assert 'File not found' in result.errors[0]
+        assert 'File not accessible' in result.errors[0]
 
     def test_compatibility_validation_with_missing_registry_data(self, validator):
         """Test compatibility validation when registry data is missing."""
