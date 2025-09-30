@@ -336,25 +336,26 @@ class TestLevelValidation:
 
     def test_discover_scripts(self, tester):
         """Test script discovery."""
-        with patch("pathlib.Path.exists") as mock_exists, patch(
-            "pathlib.Path.glob"
-        ) as mock_glob:
-
-            mock_exists.return_value = True
-            mock_script1 = MagicMock()
-            mock_script1.name = "script1.py"
-            mock_script1.stem = "script1"
-            mock_script2 = MagicMock()
-            mock_script2.name = "script2.py"
-            mock_script2.stem = "script2"
-
-            mock_glob.return_value = [mock_script1, mock_script2]
+        # Mock the step catalog's list_available_steps method and get_step_info
+        with patch.object(tester.step_catalog, "list_available_steps") as mock_list_steps, \
+             patch.object(tester.step_catalog, "get_step_info") as mock_get_step_info:
+            
+            mock_list_steps.return_value = ["script1", "script2"]
+            
+            # Mock step info to indicate these steps have script components
+            def mock_step_info_side_effect(step_name):
+                mock_step_info = MagicMock()
+                mock_step_info.file_components = {"script": MagicMock()}
+                return mock_step_info
+            
+            mock_get_step_info.side_effect = mock_step_info_side_effect
 
             scripts = tester.discover_scripts()
 
             assert len(scripts) == 2
             assert "script1" in scripts
             assert "script2" in scripts
+            mock_list_steps.assert_called_once()
 
 
 if __name__ == "__main__":
