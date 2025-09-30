@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 from ..step_catalog import StepCatalog
+from ..validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 
 logger = logging.getLogger(__name__)
 
