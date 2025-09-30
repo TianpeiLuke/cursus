@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2025-09-29
+
+### Added
+- **Stratified Sampling Step** - New step for stratified data sampling
+  - **StratifiedSampling Step Builder** - Complete step builder for stratified sampling operations
+  - **Stratified Sampling Script** - Processing script for stratified data sampling
+  - **Stratified Sampling Contract** - Contract definition for stratified sampling step
+  - **Step Specification** - Complete step specification for stratified sampling functionality
+
+### Enhanced
+- **Step Catalog System Improvements** - Major enhancements to step catalog architecture
+  - **Universal Step Builder Tester** - Enhanced universal tester with improved step catalog integration
+  - **Builder Test Variants** - Improved builder test variants for processing, createmodel, and training steps
+  - **Step Catalog Mapping** - Enhanced step catalog mapping and discovery capabilities
+  - **Unified Alignment Tester** - Improved alignment testing with better error handling and validation
+
+- **Testing Infrastructure Modernization** - Comprehensive testing system improvements
+  - **Test Execution Refinement** - Refined test execution with better signature handling and error recovery
+  - **Processing Test Variants** - Enhanced processing test variants with improved coverage
+  - **Builder Test Framework** - Simplified and improved builder test framework
+  - **Test Error Resolution** - Systematic resolution of test errors and improved reliability
+
+- **System Architecture Simplification** - Major architectural improvements
+  - **Workspace-Aware System Cleanup** - Removed over-engineered workspace-aware system in favor of step catalog
+  - **Code Redundancy Reduction** - Massive reduction in redundant code and files
+  - **Registry System Consolidation** - Moved registry components to unified location under cursus/registry
+  - **Step Builder Simplification** - Simplified createmodel and transform step builders
+
+### Fixed
+- **Test Infrastructure Stability** - Comprehensive fixes to testing framework
+  - **Test Workspace Issues** - Fixed and cleaned up test workspace configuration
+  - **Alignment Test Errors** - Resolved errors in alignment testing framework
+  - **Processing Test Fixes** - Fixed processing test execution and validation
+  - **Builder Test Reliability** - Improved reliability of builder test execution
+
+- **Code Organization Improvements** - Major cleanup and organization enhancements
+  - **Redundant File Removal** - Removed redundant files and placeholder components
+  - **Import Path Cleanup** - Cleaned up import paths and removed redundant imports
+  - **Registry Organization** - Consolidated registry system and removed duplicate components
+  - **Test File Cleanup** - Removed redundant validation test files and improved organization
+
+### Technical Details
+- **Step Catalog Integration** - Enhanced step catalog system with better mapping and discovery
+- **Testing Framework** - Improved testing framework with better error handling and variant support
+- **Code Reduction** - Significant code reduction through removal of over-engineered components
+- **Architecture Simplification** - Simplified architecture with clearer component boundaries
+- **Registry Consolidation** - Unified registry system with better organization and functionality
+
+### Quality Assurance
+- **Test Reliability** - Improved test reliability with better error handling and recovery
+- **Code Quality** - Enhanced code quality through redundancy removal and simplification
+- **System Stability** - Improved system stability with simplified architecture
+- **Integration Testing** - Better integration testing with enhanced step catalog system
+
+### Performance Improvements
+- **Test Execution Speed** - Improved test execution performance with optimized framework
+- **System Responsiveness** - Enhanced system responsiveness through code simplification
+- **Memory Usage** - Reduced memory footprint through redundant code removal
+- **Build Performance** - Improved build performance with cleaner architecture
+
 ## [1.3.5] - 2025-09-27
 
 ### Fixed
