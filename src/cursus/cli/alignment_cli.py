@@ -9,6 +9,7 @@ This CLI provides comprehensive alignment validation across all four levels:
 4. Builder ↔ Configuration Alignment
 
 The CLI supports both individual script validation and batch validation of all scripts.
+Updated to work with the refactored validation system and step catalog integration.
 """
 
 import sys
@@ -44,12 +45,12 @@ def print_validation_summary(
     click.secho(status, fg=status_color, bold=True)
 
     # Show scoring information if requested
-    if show_scoring:
+    if show_scoring and "scoring" in results:
         try:
-            scorer = AlignmentScorer(results)
-            overall_score = scorer.calculate_overall_score()
-            quality_rating = scorer.get_quality_rating()
-            level_scores = scorer.get_level_scores()
+            scoring_info = results["scoring"]
+            overall_score = scoring_info.get("overall_score", 0.0)
+            quality_rating = scoring_info.get("quality_rating", "Unknown")
+            level_scores = scoring_info.get("level_scores", {})
 
             # Color-code the quality rating
             rating_colors = {
@@ -84,7 +85,7 @@ def print_validation_summary(
 
         except Exception as e:
             if verbose:
-                click.echo(f"⚠️  Could not calculate scoring: {e}")
+                click.echo(f"⚠️  Could not display scoring: {e}")
 
     # Print level-by-level results
     level_names = [
@@ -366,7 +367,6 @@ def generate_html_report(script_name: str, results: Dict[str, Any]) -> str:
     <div class="metadata">
         <h3>Metadata</h3>
         <p><strong>Script Path:</strong> {results.get('metadata', {}).get('script_path', 'Unknown')}</p>
-        <p><strong>Contract Mapping:</strong> {results.get('metadata', {}).get('contract_mapping', 'Unknown')}</p>
         <p><strong>Validation Timestamp:</strong> {timestamp}</p>
         <p><strong>Validator Version:</strong> {results.get('metadata', {}).get('validator_version', 'Unknown')}</p>
     </div>
@@ -387,6 +387,8 @@ def alignment(ctx):
     2. Contract ↔ Specification Alignment
     3. Specification ↔ Dependencies Alignment
     4. Builder ↔ Configuration Alignment
+
+    Updated to work with the refactored validation system and step catalog integration.
     """
     ctx.ensure_object(dict)
 
@@ -394,29 +396,16 @@ def alignment(ctx):
 @alignment.command()
 @click.argument("script_name")
 @click.option(
-    "--scripts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing scripts (default: src/cursus/steps/scripts)",
+    "--workspace-dirs",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Workspace directories to include in validation"
 )
 @click.option(
-    "--contracts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing contracts (default: src/cursus/steps/contracts)",
-)
-@click.option(
-    "--specs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing specifications (default: src/cursus/steps/specs)",
-)
-@click.option(
-    "--builders-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing builders (default: src/cursus/steps/builders)",
-)
-@click.option(
-    "--configs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing configs (default: src/cursus/steps/configs)",
+    "--level3-mode",
+    type=click.Choice(["strict", "relaxed", "permissive"]),
+    default="relaxed",
+    help="Level 3 validation mode"
 )
 @click.option(
     "--output-dir",
@@ -436,11 +425,8 @@ def alignment(ctx):
 def validate(
     ctx,
     script_name,
-    scripts_dir,
-    contracts_dir,
-    specs_dir,
-    builders_dir,
-    configs_dir,
+    workspace_dirs,
+    level3_mode,
     output_dir,
     format,
     verbose,
@@ -455,45 +441,30 @@ def validate(
         cursus alignment validate currency_conversion --verbose
         cursus alignment validate dummy_training --output-dir ./reports --format html
     """
-    # Set default directories if not provided
-    project_root = Path.cwd()
-    # Check if we're already in the src directory
-    if project_root.name == "src":
-        base_path = project_root / "cursus" / "steps"
-    else:
-        base_path = project_root / "src" / "cursus" / "steps"
-
-    if not scripts_dir:
-        scripts_dir = base_path / "scripts"
-    if not contracts_dir:
-        contracts_dir = base_path / "contracts"
-    if not specs_dir:
-        specs_dir = base_path / "specs"
-    if not builders_dir:
-        builders_dir = base_path / "builders"
-    if not configs_dir:
-        configs_dir = base_path / "configs"
-
     if verbose:
         click.echo(f"🔍 Validating script: {script_name}")
-        click.echo(f"📁 Scripts directory: {scripts_dir}")
-        click.echo(f"📁 Contracts directory: {contracts_dir}")
-        click.echo(f"📁 Specifications directory: {specs_dir}")
-        click.echo(f"📁 Builders directory: {builders_dir}")
-        click.echo(f"📁 Configs directory: {configs_dir}")
+        if workspace_dirs:
+            click.echo(f"📁 Workspace directories: {list(workspace_dirs)}")
+        click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
 
     try:
-        # Initialize the unified alignment tester (new signature)
-        tester = UnifiedAlignmentTester()
+        # Initialize the unified alignment tester with workspace support
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
+        tester = UnifiedAlignmentTester(
+            level3_validation_mode=level3_mode,
+            workspace_dirs=workspace_dir_list
+        )
 
         # Run validation
         results = tester.validate_specific_script(script_name)
 
         # Add metadata
         results["metadata"] = {
-            "script_path": str(scripts_dir / f"{script_name}.py"),
+            "script_name": script_name,
             "validation_timestamp": datetime.now().isoformat(),
-            "validator_version": "1.0.0",
+            "validator_version": "2.0.0",
+            "level3_mode": level3_mode,
+            "workspace_dirs": workspace_dir_list or [],
         }
 
         # Print results
@@ -510,7 +481,6 @@ def validate(
         status = results.get("overall_status", "UNKNOWN")
         if status == "PASSING":
             click.echo(f"\n✅ {script_name} passed all alignment validation checks!")
-            # Exit successfully without raising an exception
             sys.exit(0)
         else:
             click.echo(
@@ -522,36 +492,22 @@ def validate(
         click.echo(f"❌ Error validating {script_name}: {e}", err=True)
         if verbose:
             import traceback
-
             traceback.print_exc()
         ctx.exit(1)
 
 
 @alignment.command()
 @click.option(
-    "--scripts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing scripts (default: src/cursus/steps/scripts)",
+    "--workspace-dirs",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Workspace directories to include in validation"
 )
 @click.option(
-    "--contracts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing contracts (default: src/cursus/steps/contracts)",
-)
-@click.option(
-    "--specs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing specifications (default: src/cursus/steps/specs)",
-)
-@click.option(
-    "--builders-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing builders (default: src/cursus/steps/builders)",
-)
-@click.option(
-    "--configs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing configs (default: src/cursus/steps/configs)",
+    "--level3-mode",
+    type=click.Choice(["strict", "relaxed", "permissive"]),
+    default="relaxed",
+    help="Level 3 validation mode"
 )
 @click.option(
     "--output-dir",
@@ -574,66 +530,40 @@ def validate(
 @click.pass_context
 def validate_all(
     ctx,
-    scripts_dir,
-    contracts_dir,
-    specs_dir,
-    builders_dir,
-    configs_dir,
+    workspace_dirs,
+    level3_mode,
     output_dir,
     format,
     verbose,
     continue_on_error,
 ):
     """
-    Validate alignment for all scripts in the scripts directory.
+    Validate alignment for all scripts discovered by the step catalog.
 
-    Discovers all Python scripts and runs comprehensive alignment validation
-    for each one, generating detailed reports.
+    Discovers all Python scripts using the step catalog (workspace-aware) and runs 
+    comprehensive alignment validation for each one, generating detailed reports.
 
     Example:
         cursus alignment validate-all --output-dir ./reports --format both --verbose
     """
     try:
-        # Set default directories if not provided
-        project_root = Path.cwd()
-        # Check if we're already in the src directory
-        if project_root.name == "src":
-            base_path = project_root / "cursus" / "steps"
-        else:
-            base_path = project_root / "src" / "cursus" / "steps"
-
-        if not scripts_dir:
-            scripts_dir = base_path / "scripts"
-        if not contracts_dir:
-            contracts_dir = base_path / "contracts"
-        if not specs_dir:
-            specs_dir = base_path / "specs"
-        if not builders_dir:
-            builders_dir = base_path / "builders"
-        if not configs_dir:
-            configs_dir = base_path / "configs"
-
         click.echo("🚀 Starting Comprehensive Script Alignment Validation")
         if verbose:
-            click.echo(f"📁 Scripts directory: {scripts_dir}")
-            click.echo(f"📁 Contracts directory: {contracts_dir}")
-            click.echo(f"📁 Specifications directory: {specs_dir}")
-            click.echo(f"📁 Builders directory: {builders_dir}")
-            click.echo(f"📁 Configs directory: {configs_dir}")
+            if workspace_dirs:
+                click.echo(f"📁 Workspace directories: {list(workspace_dirs)}")
+            click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
             if output_dir:
                 click.echo(f"📁 Output directory: {output_dir}")
 
-        # Initialize the unified alignment tester (new signature)
-        tester = UnifiedAlignmentTester()
+        # Initialize the unified alignment tester with workspace support
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
+        tester = UnifiedAlignmentTester(
+            level3_validation_mode=level3_mode,
+            workspace_dirs=workspace_dir_list
+        )
 
-        # Discover all scripts
-        scripts = []
-        if scripts_dir.exists():
-            for script_file in scripts_dir.glob("*.py"):
-                if not script_file.name.startswith("__"):
-                    scripts.append(script_file.stem)
-
-        scripts = sorted(scripts)
+        # Discover all scripts using step catalog (workspace-aware)
+        scripts = tester.discover_scripts()
         click.echo(f"\n📋 Discovered {len(scripts)} scripts: {', '.join(scripts)}")
 
         # Validation results summary
@@ -657,13 +587,15 @@ def validate_all(
 
                 # Add metadata
                 results["metadata"] = {
-                    "script_path": str(scripts_dir / f"{script_name}.py"),
+                    "script_name": script_name,
                     "validation_timestamp": datetime.now().isoformat(),
-                    "validator_version": "1.0.0",
+                    "validator_version": "2.0.0",
+                    "level3_mode": level3_mode,
+                    "workspace_dirs": workspace_dir_list or [],
                 }
 
                 # Print results
-                print_validation_summary(results, verbose)
+                print_validation_summary(results, verbose, show_scoring)
 
                 # Save reports if output directory specified
                 if output_dir:
@@ -676,9 +608,7 @@ def validate_all(
                 status = results.get("overall_status", "UNKNOWN")
                 validation_summary["script_results"][script_name] = {
                     "status": status,
-                    "timestamp": results.get("metadata", {}).get(
-                        "validation_timestamp"
-                    ),
+                    "timestamp": results.get("metadata", {}).get("validation_timestamp"),
                 }
 
                 if status == "PASSING":
@@ -698,10 +628,8 @@ def validate_all(
                 }
 
                 if not continue_on_error:
-                    click.echo(
-                        "Stopping validation due to error. Use --continue-on-error to continue."
-                    )
-                    return 1
+                    click.echo("Stopping validation due to error. Use --continue-on-error to continue.")
+                    ctx.exit(1)
 
         # Save overall summary
         if output_dir:
@@ -733,60 +661,18 @@ def validate_all(
         if output_dir:
             click.echo(f"\n📁 Reports saved in: {output_dir}")
 
-        # List scripts by status
-        if passed > 0:
-            passing_scripts = [
-                name
-                for name, result in validation_summary["script_results"].items()
-                if result["status"] == "PASSING"
-            ]
-            click.echo(f"\n✅ PASSING SCRIPTS ({len(passing_scripts)}):")
-            for script in passing_scripts:
-                click.echo(f"   • {script}")
-
-        if failed > 0:
-            failing_scripts = [
-                name
-                for name, result in validation_summary["script_results"].items()
-                if result["status"] == "FAILING"
-            ]
-            click.echo(f"\n❌ FAILING SCRIPTS ({len(failing_scripts)}):")
-            for script in failing_scripts:
-                click.echo(f"   • {script}")
-
-        if errors > 0:
-            error_scripts = [
-                name
-                for name, result in validation_summary["script_results"].items()
-                if result["status"] == "ERROR"
-            ]
-            click.echo(f"\n⚠️  ERROR SCRIPTS ({len(error_scripts)}):")
-            for script in error_scripts:
-                click.echo(f"   • {script}")
-
-        click.echo(f"\n{'='*80}")
-
         # Return appropriate exit code
         if failed > 0 or errors > 0:
-            click.echo(
-                f"\n⚠️  {failed + errors} script(s) failed validation. Please review the issues above."
-            )
+            click.echo(f"\n⚠️  {failed + errors} script(s) failed validation.")
             ctx.exit(1)
         else:
             click.echo(f"\n🎉 All {passed} scripts passed alignment validation!")
             ctx.exit(0)
 
-    except click.exceptions.Exit:
-        # Re-raise Click's Exit exception to preserve proper exit handling
-        raise
-    except SystemExit:
-        # Re-raise SystemExit to preserve exit codes
-        raise
     except Exception as e:
         click.echo(f"❌ Fatal error during validation: {e}", err=True)
         if verbose:
             import traceback
-
             traceback.print_exc()
         ctx.exit(1)
 
@@ -795,29 +681,16 @@ def validate_all(
 @click.argument("script_name")
 @click.argument("level", type=click.IntRange(1, 4))
 @click.option(
-    "--scripts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing scripts (default: src/cursus/steps/scripts)",
+    "--workspace-dirs",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Workspace directories to include in validation"
 )
 @click.option(
-    "--contracts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing contracts (default: src/cursus/steps/contracts)",
-)
-@click.option(
-    "--specs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing specifications (default: src/cursus/steps/specs)",
-)
-@click.option(
-    "--builders-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing builders (default: src/cursus/steps/builders)",
-)
-@click.option(
-    "--configs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing configs (default: src/cursus/steps/configs)",
+    "--level3-mode",
+    type=click.Choice(["strict", "relaxed", "permissive"]),
+    default="relaxed",
+    help="Level 3 validation mode"
 )
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
 @click.pass_context
@@ -825,11 +698,8 @@ def validate_level(
     ctx,
     script_name,
     level,
-    scripts_dir,
-    contracts_dir,
-    specs_dir,
-    builders_dir,
-    configs_dir,
+    workspace_dirs,
+    level3_mode,
     verbose,
 ):
     """
@@ -850,38 +720,19 @@ def validate_level(
     }
 
     try:
-        # Set default directories if not provided
-        project_root = Path.cwd()
-        # Check if we're already in the src directory
-        if project_root.name == "src":
-            base_path = project_root / "cursus" / "steps"
-        else:
-            base_path = project_root / "src" / "cursus" / "steps"
-
-        if not scripts_dir:
-            scripts_dir = base_path / "scripts"
-        if not contracts_dir:
-            contracts_dir = base_path / "contracts"
-        if not specs_dir:
-            specs_dir = base_path / "specs"
-        if not builders_dir:
-            builders_dir = base_path / "builders"
-        if not configs_dir:
-            configs_dir = base_path / "configs"
-
-        click.echo(
-            f"🔍 Validating {script_name} at Level {level} ({level_names[level]})"
-        )
+        click.echo(f"🔍 Validating {script_name} at Level {level} ({level_names[level]})")
 
         if verbose:
-            click.echo(f"📁 Scripts directory: {scripts_dir}")
-            click.echo(f"📁 Contracts directory: {contracts_dir}")
-            click.echo(f"📁 Specifications directory: {specs_dir}")
-            click.echo(f"📁 Builders directory: {builders_dir}")
-            click.echo(f"📁 Configs directory: {configs_dir}")
+            if workspace_dirs:
+                click.echo(f"📁 Workspace directories: {list(workspace_dirs)}")
+            click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
 
-        # Initialize the unified alignment tester (new signature)
-        tester = UnifiedAlignmentTester()
+        # Initialize the unified alignment tester with workspace support
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
+        tester = UnifiedAlignmentTester(
+            level3_validation_mode=level3_mode,
+            workspace_dirs=workspace_dir_list
+        )
 
         # Run validation for specific level
         results = tester.validate_specific_script(script_name)
@@ -932,542 +783,85 @@ def validate_level(
         # Return appropriate exit code
         if level_passed:
             click.echo(f"\n✅ {script_name} passed Level {level} validation!")
-            return 0
+            sys.exit(0)
         else:
-            click.echo(
-                f"\n❌ {script_name} failed Level {level} validation. Please review the issues above."
-            )
-            return 1
+            click.echo(f"\n❌ {script_name} failed Level {level} validation.")
+            ctx.exit(1)
 
     except Exception as e:
         click.echo(f"❌ Error validating {script_name} at Level {level}: {e}", err=True)
         if verbose:
             import traceback
-
-            traceback.print_exc()
-        return 1
-
-
-@alignment.command()
-@click.argument("script_name")
-@click.option(
-    "--scripts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing scripts (default: src/cursus/steps/scripts)",
-)
-@click.option(
-    "--contracts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing contracts (default: src/cursus/steps/contracts)",
-)
-@click.option(
-    "--specs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing specifications (default: src/cursus/steps/specs)",
-)
-@click.option(
-    "--builders-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing builders (default: src/cursus/steps/builders)",
-)
-@click.option(
-    "--configs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing configs (default: src/cursus/steps/configs)",
-)
-@click.option(
-    "--output-dir",
-    "-o",
-    type=click.Path(path_type=Path),
-    required=True,
-    help="Output directory for visualization files (required)",
-)
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
-@click.pass_context
-def visualize(
-    ctx,
-    script_name,
-    scripts_dir,
-    contracts_dir,
-    specs_dir,
-    builders_dir,
-    configs_dir,
-    output_dir,
-    verbose,
-):
-    """
-    Generate visualization charts and scoring reports for a specific script.
-
-    This command runs full alignment validation and generates:
-    - High-resolution PNG chart with scoring breakdown
-    - JSON scoring report with detailed metrics
-    - Enhanced HTML report with scoring integration
-
-    SCRIPT_NAME: Name of the script to validate (without .py extension)
-
-    Example:
-        cursus alignment visualize currency_conversion --output-dir ./visualizations --verbose
-        cursus alignment visualize xgboost_model_evaluation --output-dir ./charts
-    """
-    # Set default directories if not provided
-    project_root = Path.cwd()
-    # Check if we're already in the src directory
-    if project_root.name == "src":
-        base_path = project_root / "cursus" / "steps"
-    else:
-        base_path = project_root / "src" / "cursus" / "steps"
-
-    if not scripts_dir:
-        scripts_dir = base_path / "scripts"
-    if not contracts_dir:
-        contracts_dir = base_path / "contracts"
-    if not specs_dir:
-        specs_dir = base_path / "specs"
-    if not builders_dir:
-        builders_dir = base_path / "builders"
-    if not configs_dir:
-        configs_dir = base_path / "configs"
-
-    if verbose:
-        click.echo(f"🎨 Generating visualization for script: {script_name}")
-        click.echo(f"📁 Scripts directory: {scripts_dir}")
-        click.echo(f"📁 Output directory: {output_dir}")
-
-    try:
-        # Initialize the unified alignment tester
-        tester = UnifiedAlignmentTester(
-            scripts_dir=str(scripts_dir),
-            contracts_dir=str(contracts_dir),
-            specs_dir=str(specs_dir),
-            builders_dir=str(builders_dir),
-            configs_dir=str(configs_dir),
-        )
-
-        # Run validation
-        click.echo("🔍 Running alignment validation...")
-        results = tester.validate_specific_script(script_name)
-
-        # Initialize scorer
-        scorer = AlignmentScorer(results)
-        overall_score = scorer.calculate_overall_score()
-        quality_rating = scorer.get_quality_rating()
-        level_scores = scorer.get_level_scores()
-
-        # Print scoring summary
-        rating_colors = {
-            "Excellent": "green",
-            "Good": "green",
-            "Satisfactory": "yellow",
-            "Needs Work": "yellow",
-            "Poor": "red",
-        }
-        rating_color = rating_colors.get(quality_rating, "white")
-
-        click.echo(f"\n📊 Alignment Scoring Results:")
-        click.echo(f"Overall Score: ", nl=False)
-        click.secho(f"{overall_score:.1f}/100", fg=rating_color, bold=True, nl=False)
-        click.echo(f" (", nl=False)
-        click.secho(quality_rating, fg=rating_color, bold=True, nl=False)
-        click.echo(")")
-
-        if verbose:
-            click.echo("\n📈 Level-by-Level Scores:")
-            level_names = {
-                "level1_script_contract": "Level 1 (Script ↔ Contract)",
-                "level2_contract_spec": "Level 2 (Contract ↔ Specification)",
-                "level3_spec_dependencies": "Level 3 (Specification ↔ Dependencies)",
-                "level4_builder_config": "Level 4 (Builder ↔ Configuration)",
-            }
-
-            for level_key, score in level_scores.items():
-                level_name = level_names.get(level_key, level_key)
-                click.echo(f"  • {level_name}: {score:.1f}/100")
-
-        # Create output directory
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Generate visualization chart
-        click.echo("\n🎨 Generating visualization chart...")
-        chart_path = scorer.generate_chart(
-            output_dir=str(output_dir), script_name=script_name
-        )
-        click.echo(f"📊 Chart saved: {chart_path}")
-
-        # Generate scoring report
-        click.echo("📄 Generating scoring report...")
-        scoring_report = scorer.generate_scoring_report()
-        scoring_file = output_dir / f"{script_name}_alignment_scoring_report.json"
-
-        with open(scoring_file, "w", encoding="utf-8") as f:
-            json.dump(scoring_report, f, indent=2)
-        click.echo(f"📄 Scoring report saved: {scoring_file}")
-
-        # Generate enhanced HTML report
-        click.echo("🌐 Generating enhanced HTML report...")
-        results["metadata"] = {
-            "script_path": str(scripts_dir / f"{script_name}.py"),
-            "validation_timestamp": datetime.now().isoformat(),
-            "validator_version": "1.0.0",
-            "chart_path": str(chart_path),
-            "scoring_report_path": str(scoring_file),
-        }
-
-        html_file = output_dir / f"{script_name}_alignment_report.html"
-        html_content = generate_html_report(script_name, results)
-        with open(html_file, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        click.echo(f"🌐 HTML report saved: {html_file}")
-
-        # Summary
-        click.echo(f"\n✅ Visualization generation complete for {script_name}!")
-        click.echo(f"📁 Files generated in: {output_dir}")
-        click.echo(f"  • Chart: {chart_path.name}")
-        click.echo(f"  • Scoring Report: {scoring_file.name}")
-        click.echo(f"  • HTML Report: {html_file.name}")
-
-        return 0
-
-    except Exception as e:
-        click.echo(
-            f"❌ Error generating visualization for {script_name}: {e}", err=True
-        )
-        if verbose:
-            import traceback
-
             traceback.print_exc()
         ctx.exit(1)
 
 
 @alignment.command()
 @click.option(
-    "--scripts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing scripts (default: src/cursus/steps/scripts)",
+    "--workspace-dirs",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Workspace directories to include in validation"
 )
 @click.option(
-    "--contracts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing contracts (default: src/cursus/steps/contracts)",
-)
-@click.option(
-    "--specs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing specifications (default: src/cursus/steps/specs)",
-)
-@click.option(
-    "--builders-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing builders (default: src/cursus/steps/builders)",
-)
-@click.option(
-    "--configs-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing configs (default: src/cursus/steps/configs)",
-)
-@click.option(
-    "--output-dir",
-    "-o",
-    type=click.Path(path_type=Path),
-    required=True,
-    help="Output directory for visualization files (required)",
-)
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
-@click.option(
-    "--continue-on-error",
-    is_flag=True,
-    help="Continue visualization even if individual scripts fail",
+    "--level3-mode",
+    type=click.Choice(["strict", "relaxed", "permissive"]),
+    default="relaxed",
+    help="Level 3 validation mode"
 )
 @click.pass_context
-def visualize_all(
-    ctx,
-    scripts_dir,
-    contracts_dir,
-    specs_dir,
-    builders_dir,
-    configs_dir,
-    output_dir,
-    verbose,
-    continue_on_error,
-):
-    """
-    Generate visualization charts and scoring reports for all scripts.
-
-    Discovers all Python scripts and generates comprehensive visualizations
-    for each one, including charts, scoring reports, and enhanced HTML reports.
-
-    Example:
-        cursus alignment visualize-all --output-dir ./visualizations --verbose
-    """
-    try:
-        # Set default directories if not provided
-        project_root = Path.cwd()
-        if not scripts_dir:
-            scripts_dir = project_root / "src" / "cursus" / "steps" / "scripts"
-        if not contracts_dir:
-            contracts_dir = project_root / "src" / "cursus" / "steps" / "contracts"
-        if not specs_dir:
-            specs_dir = project_root / "src" / "cursus" / "steps" / "specs"
-        if not builders_dir:
-            builders_dir = project_root / "src" / "cursus" / "steps" / "builders"
-        if not configs_dir:
-            configs_dir = project_root / "src" / "cursus" / "steps" / "configs"
-
-        click.echo("🎨 Starting Comprehensive Alignment Visualization Generation")
-        if verbose:
-            click.echo(f"📁 Scripts directory: {scripts_dir}")
-            click.echo(f"📁 Output directory: {output_dir}")
-
-        # Initialize the unified alignment tester
-        tester = UnifiedAlignmentTester(
-            scripts_dir=str(scripts_dir),
-            contracts_dir=str(contracts_dir),
-            specs_dir=str(specs_dir),
-            builders_dir=str(builders_dir),
-            configs_dir=str(configs_dir),
-        )
-
-        # Discover all scripts
-        scripts = []
-        if scripts_dir.exists():
-            for script_file in scripts_dir.glob("*.py"):
-                if not script_file.name.startswith("__"):
-                    scripts.append(script_file.stem)
-
-        scripts = sorted(scripts)
-        click.echo(f"\n📋 Discovered {len(scripts)} scripts: {', '.join(scripts)}")
-
-        # Create output directory
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Visualization results summary
-        visualization_summary = {
-            "total_scripts": len(scripts),
-            "successful_visualizations": 0,
-            "failed_visualizations": 0,
-            "generation_timestamp": datetime.now().isoformat(),
-            "script_results": {},
-            "overall_statistics": {
-                "total_charts_generated": 0,
-                "total_scoring_reports_generated": 0,
-                "total_html_reports_generated": 0,
-            },
-        }
-
-        # Generate visualizations for each script
-        for script_name in scripts:
-            click.echo(f"\n{'='*60}")
-            click.echo(f"🎨 GENERATING VISUALIZATION: {script_name}")
-            click.echo(f"{'='*60}")
-
-            try:
-                # Run validation
-                results = tester.validate_specific_script(script_name)
-
-                # Initialize scorer
-                scorer = AlignmentScorer(results)
-                overall_score = scorer.calculate_overall_score()
-                quality_rating = scorer.get_quality_rating()
-
-                # Print scoring summary
-                rating_color = {
-                    "Excellent": "green",
-                    "Good": "green",
-                    "Satisfactory": "yellow",
-                    "Needs Work": "yellow",
-                    "Poor": "red",
-                }.get(quality_rating, "white")
-
-                click.echo(f"📊 Score: ", nl=False)
-                click.secho(
-                    f"{overall_score:.1f}/100", fg=rating_color, bold=True, nl=False
-                )
-                click.echo(f" (", nl=False)
-                click.secho(quality_rating, fg=rating_color, bold=True, nl=False)
-                click.echo(")")
-
-                # Generate visualization files
-                chart_path = scorer.generate_chart(
-                    output_dir=str(output_dir), script_name=script_name
-                )
-                scoring_report = scorer.generate_scoring_report()
-
-                # Save scoring report
-                scoring_file = (
-                    output_dir / f"{script_name}_alignment_scoring_report.json"
-                )
-                with open(scoring_file, "w", encoding="utf-8") as f:
-                    json.dump(scoring_report, f, indent=2)
-
-                # Generate enhanced HTML report
-                results["metadata"] = {
-                    "script_path": str(scripts_dir / f"{script_name}.py"),
-                    "validation_timestamp": datetime.now().isoformat(),
-                    "validator_version": "1.0.0",
-                    "chart_path": str(chart_path),
-                    "scoring_report_path": str(scoring_file),
-                }
-
-                html_file = output_dir / f"{script_name}_alignment_report.html"
-                html_content = generate_html_report(script_name, results)
-                with open(html_file, "w", encoding="utf-8") as f:
-                    f.write(html_content)
-
-                click.echo(f"✅ Generated: Chart, Scoring Report, HTML Report")
-
-                # Update summary
-                visualization_summary["successful_visualizations"] += 1
-                visualization_summary["overall_statistics"][
-                    "total_charts_generated"
-                ] += 1
-                visualization_summary["overall_statistics"][
-                    "total_scoring_reports_generated"
-                ] += 1
-                visualization_summary["overall_statistics"][
-                    "total_html_reports_generated"
-                ] += 1
-
-                visualization_summary["script_results"][script_name] = {
-                    "status": "SUCCESS",
-                    "overall_score": overall_score,
-                    "quality_rating": quality_rating,
-                    "chart_path": str(chart_path),
-                    "scoring_report_path": str(scoring_file),
-                    "html_report_path": str(html_file),
-                    "timestamp": datetime.now().isoformat(),
-                }
-
-            except Exception as e:
-                click.echo(
-                    f"❌ Failed to generate visualization for {script_name}: {e}"
-                )
-                visualization_summary["failed_visualizations"] += 1
-                visualization_summary["script_results"][script_name] = {
-                    "status": "ERROR",
-                    "error": str(e),
-                    "timestamp": datetime.now().isoformat(),
-                }
-
-                if not continue_on_error:
-                    click.echo(
-                        "Stopping visualization due to error. Use --continue-on-error to continue."
-                    )
-                    ctx.exit(1)
-
-        # Save visualization summary
-        summary_file = output_dir / "visualization_summary.json"
-        with open(summary_file, "w", encoding="utf-8") as f:
-            json.dump(visualization_summary, f, indent=2)
-        click.echo(f"\n📊 Visualization summary saved: {summary_file}")
-
-        # Print final summary
-        click.echo(f"\n{'='*80}")
-        click.echo("🎯 VISUALIZATION GENERATION SUMMARY")
-        click.echo(f"{'='*80}")
-
-        total = visualization_summary["total_scripts"]
-        successful = visualization_summary["successful_visualizations"]
-        failed = visualization_summary["failed_visualizations"]
-
-        click.echo(f"📊 Total Scripts: {total}")
-        click.secho(
-            f"✅ Successful: {successful} ({successful/total*100:.1f}%)", fg="green"
-        )
-        click.secho(f"❌ Failed: {failed} ({failed/total*100:.1f}%)", fg="red")
-
-        stats = visualization_summary["overall_statistics"]
-        click.echo(f"\n📈 Files Generated:")
-        click.echo(f"  • Charts: {stats['total_charts_generated']}")
-        click.echo(f"  • Scoring Reports: {stats['total_scoring_reports_generated']}")
-        click.echo(f"  • HTML Reports: {stats['total_html_reports_generated']}")
-
-        click.echo(f"\n📁 All files saved in: {output_dir}")
-
-        # Return appropriate exit code
-        if failed > 0:
-            click.echo(f"\n⚠️  {failed} script(s) failed visualization generation.")
-            ctx.exit(1)
-        else:
-            click.echo(f"\n🎉 All {successful} visualizations generated successfully!")
-            ctx.exit(0)
-
-    except click.exceptions.Exit:
-        # Re-raise Click's Exit exception to preserve proper exit handling
-        raise
-    except SystemExit:
-        # Re-raise SystemExit to preserve exit codes
-        raise
-    except Exception as e:
-        click.echo(f"❌ Fatal error during visualization generation: {e}", err=True)
-        if verbose:
-            import traceback
-
-            traceback.print_exc()
-        ctx.exit(1)
-
-
-@alignment.command()
-@click.option(
-    "--scripts-dir",
-    type=click.Path(exists=True, path_type=Path),
-    help="Directory containing scripts (default: src/cursus/steps/scripts)",
-)
-@click.pass_context
-def list_scripts(ctx, scripts_dir):
+def list_scripts(ctx, workspace_dirs, level3_mode):
     """
     List all available scripts that can be validated.
 
-    Discovers all Python scripts in the scripts directory.
+    Discovers all Python scripts using the step catalog (workspace-aware).
 
     Example:
         cursus alignment list-scripts
+        cursus alignment list-scripts --workspace-dirs /path/to/workspace
     """
     try:
-        # Set default directory if not provided
-        project_root = Path.cwd()
-        # Check if we're already in the src directory
-        if project_root.name == "src":
-            base_path = project_root / "cursus" / "steps"
-        else:
-            base_path = project_root / "src" / "cursus" / "steps"
-
-        if not scripts_dir:
-            scripts_dir = base_path / "scripts"
-
         click.echo("📋 Available Scripts for Alignment Validation:")
         click.echo("=" * 50)
 
-        # Discover all scripts
-        scripts = []
-        if scripts_dir.exists():
-            for script_file in scripts_dir.glob("*.py"):
-                if not script_file.name.startswith("__"):
-                    scripts.append(script_file.stem)
+        # Initialize the unified alignment tester with workspace support
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
+        tester = UnifiedAlignmentTester(
+            level3_validation_mode=level3_mode,
+            workspace_dirs=workspace_dir_list
+        )
+
+        # Discover all scripts using step catalog (workspace-aware)
+        scripts = tester.discover_scripts()
 
         if scripts:
-            scripts = sorted(scripts)
             for script in scripts:
-                click.echo(f"  • {script}")
+                # Get workspace context if available
+                try:
+                    context = tester.get_workspace_context(script)
+                    workspace_id = context.get("workspace_id", "core")
+                    click.echo(f"  • {script} (workspace: {workspace_id})")
+                except:
+                    click.echo(f"  • {script}")
 
             click.echo(f"\nTotal: {len(scripts)} scripts found")
+            if workspace_dirs:
+                click.echo(f"Workspace directories: {list(workspace_dirs)}")
+            
             click.echo(f"\nUsage examples:")
-            click.echo(
-                f"  cursus alignment validate {scripts[0]} --verbose --show-scoring"
-            )
+            click.echo(f"  cursus alignment validate {scripts[0]} --verbose --show-scoring")
             click.echo(f"  cursus alignment validate-all --output-dir ./reports")
             click.echo(f"  cursus alignment validate-level {scripts[0]} 1")
-            click.echo(
-                f"  cursus alignment visualize {scripts[0]} --output-dir ./charts --verbose"
-            )
-            click.echo(
-                f"  cursus alignment visualize-all --output-dir ./visualizations"
-            )
         else:
-            click.echo("  No scripts found in the scripts directory.")
-            click.echo(f"  Searched in: {scripts_dir}")
+            click.echo("  No scripts found.")
+            if workspace_dirs:
+                click.echo(f"  Searched in workspace directories: {list(workspace_dirs)}")
+            else:
+                click.echo("  Searched in package-only mode.")
 
     except Exception as e:
         click.echo(f"❌ Error listing scripts: {e}", err=True)
-        return 1
+        ctx.exit(1)
 
 
 def main():

@@ -5,6 +5,8 @@ Command-line interface for the Universal Step Builder Test System.
 This CLI provides easy access to run different levels of tests and variants
 for step builder validation according to the UniversalStepBuilderTestBase architecture.
 Enhanced with scoring, registry discovery, and export capabilities.
+
+Updated to work with the refactored validation system and step catalog integration.
 """
 
 import argparse
@@ -245,6 +247,7 @@ def run_all_tests_with_scoring(
         verbose=verbose,
         enable_scoring=True,
         enable_structured_reporting=enable_structured_reporting,
+        use_step_catalog_discovery=True,  # Enable step catalog integration
     )
     return tester.run_all_tests()
 
@@ -380,7 +383,10 @@ def run_all_tests(
 ) -> Dict[str, Any]:
     """Run all tests (universal test suite)."""
     tester = UniversalStepBuilderTest(
-        builder_class=builder_class, verbose=verbose, enable_scoring=enable_scoring
+        builder_class=builder_class, 
+        verbose=verbose, 
+        enable_scoring=enable_scoring,
+        use_step_catalog_discovery=True,  # Enable step catalog integration
     )
     return tester.run_all_tests()
 
@@ -487,10 +493,10 @@ def main():
         epilog="""
 Examples:
   # Run all tests for a builder with scoring
-  python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --scoring
+  python -m cursus.cli.builder_test_cli all TabularPreprocessingStepBuilder --scoring
   
   # Run tests and export results to JSON
-  python -m cursus.cli.builder_test_cli all src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --export-json results.json
+  python -m cursus.cli.builder_test_cli all TabularPreprocessingStepBuilder --export-json results.json
   
   # Test all builders of a specific SageMaker step type
   python -m cursus.cli.builder_test_cli test-by-type Training --verbose
@@ -502,7 +508,7 @@ Examples:
   python -m cursus.cli.builder_test_cli validate-builder XGBoostTraining
   
   # Run Level 1 tests with scoring
-  python -m cursus.cli.builder_test_cli level 1 src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder --scoring
+  python -m cursus.cli.builder_test_cli level 1 TabularPreprocessingStepBuilder --scoring
         """,
     )
 
@@ -547,7 +553,7 @@ Examples:
     )
     all_parser.add_argument(
         "builder_class",
-        help="Full path to the step builder class (e.g., src.cursus.steps.builders.builder_training_step_xgboost.XGBoostTrainingStepBuilder)",
+        help="Step builder class name (e.g., TabularPreprocessingStepBuilder)",
     )
 
     # Level tests command
@@ -559,7 +565,7 @@ Examples:
         help="Test level to run (1=Interface, 2=Specification, 3=Step Creation, 4=Integration)",
     )
     level_parser.add_argument(
-        "builder_class", help="Full path to the step builder class"
+        "builder_class", help="Step builder class name"
     )
 
     # Variant tests command
@@ -572,7 +578,7 @@ Examples:
         help="Test variant to run",
     )
     variant_parser.add_argument(
-        "builder_class", help="Full path to the step builder class"
+        "builder_class", help="Step builder class name"
     )
 
     # Test by SageMaker type command
@@ -618,7 +624,7 @@ Examples:
             for builder in list_available_builders():
                 print(f"  • {builder}")
             print(
-                "\nNote: This is a basic list. You can test any builder class by providing its full import path."
+                "\nNote: This is a basic list. You can test any builder class by providing its class name."
             )
             return 0
 
