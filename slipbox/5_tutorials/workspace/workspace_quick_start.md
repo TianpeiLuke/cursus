@@ -8,24 +8,24 @@ tags:
 keywords:
   - workspace tutorial
   - quick start guide
-  - developer workspace setup
-  - workspace collaboration
-  - multi-developer workflow
+  - workspace API
+  - component discovery
   - workspace validation
+  - simplified architecture
 topics:
   - workspace quick start
   - developer onboarding
   - workspace workflow
-  - collaborative development
+  - component management
 language: python
-date of note: 2025-09-02
+date of note: 2025-09-29
 ---
 
 # Workspace Quick Start Guide
 
 ## Overview
 
-This 15-minute tutorial will get you up and running with the Cursus workspace system. You'll learn how to create a developer workspace, validate it, discover components, and collaborate with other developers.
+This 15-minute tutorial will get you up and running with the simplified Cursus workspace system. You'll learn how to use the unified WorkspaceAPI to discover components, validate workspaces, and work with workspace-aware pipelines using the proven step catalog architecture.
 
 ## Prerequisites
 
@@ -35,325 +35,428 @@ This 15-minute tutorial will get you up and running with the Cursus workspace sy
 
 ## Step 1: Initialize the Workspace API (2 minutes)
 
-First, let's set up the workspace API and verify it's working:
+The new workspace system provides a single, unified API built on the step catalog's proven architecture.
 
 ```python
 from cursus.workspace import WorkspaceAPI
+from pathlib import Path
 
-# Initialize the workspace API
+# Package-only mode (discovers only core package components)
 api = WorkspaceAPI()
+print("✅ Package-only workspace API initialized")
 
-# Verify the API is working
-print("✅ Workspace API initialized successfully")
-print(f"Workspace root: {api.base_path}")
+# Single workspace directory
+api = WorkspaceAPI(workspace_dirs=Path("/projects/alpha"))
+print("✅ Single workspace API initialized")
+
+# Multiple workspace directories with flexible organization
+api = WorkspaceAPI(workspace_dirs=[
+    Path("/teams/data_science/experiments"),
+    Path("/projects/beta/custom_steps"),
+    Path("/features/recommendation/components")
+])
+print("✅ Multi-workspace API initialized")
+
+# Get workspace summary
+summary = api.get_workspace_summary()
+print(f"📊 Workspace Configuration:")
+print(f"   Total workspaces: {summary['total_workspaces']}")
+print(f"   Workspace directories: {summary['workspace_directories']}")
 ```
 
 **Expected Output:**
 ```
-✅ Workspace API initialized successfully
-Workspace root: /path/to/your/project/development/projects
+✅ Multi-workspace API initialized
+📊 Workspace Configuration:
+   Total workspaces: 3
+   Workspace directories: ['/teams/data_science/experiments', '/projects/beta/custom_steps', '/features/recommendation/components']
 ```
 
-## Step 2: Create Your First Workspace (3 minutes)
+## Step 2: Discover Components Across Workspaces (3 minutes)
 
-Now let's create a developer workspace with a standard template:
-
-```python
-# Create a new developer workspace
-result = api.setup_developer_workspace(
-    developer_id="your_name",  # Replace with your actual name/ID
-    template="ml_pipeline"
-)
-
-# Check if the workspace was created successfully
-if result.success:
-    print(f"🎉 Workspace created successfully!")
-    print(f"📁 Location: {result.workspace_path}")
-    print(f"👤 Developer ID: {result.developer_id}")
-    
-    if result.template_used:
-        print(f"📋 Template: {result.template_used}")
-    
-    if result.created_components:
-        print(f"🔧 Created components:")
-        for component in result.created_components:
-            print(f"   - {component}")
-else:
-    print(f"❌ Workspace creation failed: {result.message}")
-    for warning in result.warnings:
-        print(f"⚠️  Warning: {warning}")
-```
-
-**What this creates:**
-- A new directory structure under `development/projects/your_name/`
-- Standard ML pipeline template files with `src/cursus_dev/` organization
-- Proper workspace isolation boundaries
-
-## Step 3: Validate Your Workspace (2 minutes)
-
-Let's make sure your workspace is properly configured:
+The workspace API uses the step catalog's proven discovery mechanism to find components across all configured workspaces.
 
 ```python
-# Validate the workspace
-report = api.validate_workspace(result.workspace_path)
+# Discover all components across all workspaces
+all_components = api.discover_components()
+print(f"🔍 Total components discovered: {len(all_components)}")
 
-print(f"🔍 Workspace Validation Results:")
-print(f"Status: {report.status}")
-
-if report.status.name == "HEALTHY":
-    print("✅ Workspace is ready for development!")
-    print(f"📊 Components found: {sum(report.components.values())}")
+# Discover components from specific workspace (using directory name as workspace ID)
+if api.workspace_dirs:
+    workspace_id = api.workspace_dirs[0].name  # Use first workspace as example
+    workspace_components = api.discover_components(workspace_id=workspace_id)
+    print(f"📁 Components in '{workspace_id}' workspace: {len(workspace_components)}")
     
-    # Show component breakdown
-    for comp_type, count in report.components.items():
-        print(f"   - {comp_type}: {count} files")
-else:
-    print("⚠️ Workspace has issues:")
-    for violation in report.violations:
-        print(f"   - {violation}")
+    # Show first few components
+    for component in workspace_components[:3]:
+        print(f"   - {component}")
+
+# Discover core package components
+core_components = api.discover_components(workspace_id="core")
+print(f"📦 Core package components: {len(core_components)}")
+
+# Get cross-workspace component breakdown
+cross_workspace = api.get_cross_workspace_components()
+print(f"\n📊 Components by workspace:")
+for workspace_id, components in cross_workspace.items():
+    print(f"   {workspace_id}: {len(components)} components")
 ```
 
 **Expected Output:**
 ```
-🔍 Workspace Validation Results:
-Status: WorkspaceStatus.HEALTHY
-✅ Workspace is ready for development!
-📊 Components found: 8
-   - builders: 2 files
-   - configs: 2 files
-   - contracts: 2 files
-   - specs: 2 files
+🔍 Total components discovered: 25
+📁 Components in 'experiments' workspace: 8
+   - custom_data_loader
+   - feature_transformer
+   - model_validator
+📦 Core package components: 17
+
+📊 Components by workspace:
+   core: 17 components
+   experiments: 8 components
+   custom_steps: 5 components
+   components: 3 components
 ```
 
-## Step 4: Explore Your Workspace Structure (2 minutes)
+## Step 3: Get Detailed Component Information (2 minutes)
 
-Let's examine what was created in your workspace:
+Use the step catalog integration to get detailed information about discovered components.
 
 ```python
-# Get detailed workspace information
-workspaces = api.list_workspaces()
-info = next((w for w in workspaces if w.developer_id == "your_name"), None)
+# Get detailed information about a specific component
+component_name = "xgboost_training"  # Use an actual component from your discovery
+info = api.get_component_info(component_name)
 
 if info:
-    print(f"📋 Workspace Details:")
-    print(f"   Path: {info.path}")
-    print(f"   Created: {info.created_at or 'Unknown'}")
-    print(f"   Size: {info.size_bytes or 0} bytes")
-    print(f"   Valid: {'✅' if info.status.name == 'HEALTHY' else '❌'}")
-    print(f"   Status: {info.status.name}")
-```
-
-**Explore the file structure:**
-```python
-import os
-from pathlib import Path
-
-workspace_path = Path(info.path)
-print(f"\n📁 Workspace Structure:")
-
-# Show the directory tree
-for root, dirs, files in os.walk(workspace_path):
-    level = root.replace(str(workspace_path), '').count(os.sep)
-    indent = ' ' * 2 * level
-    print(f"{indent}{os.path.basename(root)}/")
+    print(f"📋 Component Details for '{component_name}':")
+    print(f"   Name: {info.step_name}")
+    print(f"   Workspace: {info.workspace_id}")
+    print(f"   Available files:")
     
-    subindent = ' ' * 2 * (level + 1)
-    for file in files[:3]:  # Show first 3 files per directory
-        print(f"{subindent}{file}")
-    if len(files) > 3:
-        print(f"{subindent}... and {len(files) - 3} more files")
+    for comp_type, metadata in info.file_components.items():
+        if metadata:
+            print(f"      {comp_type}: {metadata.path}")
+else:
+    print(f"❌ Component '{component_name}' not found")
+
+# Find specific component files
+builder_path = api.find_component_file(component_name, "builder")
+config_path = api.find_component_file(component_name, "config")
+script_path = api.find_component_file(component_name, "script")
+
+print(f"\n🔍 Component File Locations:")
+if builder_path:
+    print(f"   Builder: {builder_path}")
+if config_path:
+    print(f"   Config: {config_path}")
+if script_path:
+    print(f"   Script: {script_path}")
 ```
 
-## Step 5: Discover Components Across Workspaces (3 minutes)
+**Expected Output:**
+```
+📋 Component Details for 'xgboost_training':
+   Name: xgboost_training
+   Workspace: core
+   Available files:
+      builder: /path/to/cursus/steps/builders/builder_xgboost_training_step.py
+      config: /path/to/cursus/steps/configs/config_xgboost_training_step.py
+      script: /path/to/cursus/steps/scripts/xgboost_training.py
 
-Now let's see what components are available across all developer workspaces:
+🔍 Component File Locations:
+   Builder: /path/to/cursus/steps/builders/builder_xgboost_training_step.py
+   Config: /path/to/cursus/steps/configs/config_xgboost_training_step.py
+   Script: /path/to/cursus/steps/scripts/xgboost_training.py
+```
+
+## Step 4: Search and Filter Components (2 minutes)
+
+Use the step catalog's search capabilities to find components with fuzzy matching.
 
 ```python
-# Discover all workspace components
-all_components = api.discover_workspace_components()
+# Search for components with fuzzy matching
+search_query = "xgboost"
+search_results = api.search_components(search_query)
+print(f"🔍 Search results for '{search_query}': {len(search_results)} found")
 
-print(f"🔍 Component Discovery Results:")
-print(f"Found {len(all_components)} developer workspaces")
+for result in search_results[:3]:  # Show first 3 results
+    print(f"   - {result.step_name} (workspace: {result.workspace_id})")
 
-# Show summary statistics
-component_stats = {}
-for dev_id, dev_components in all_components.items():
-    print(f"\n👤 {dev_id}:")
-    for comp_type, files in dev_components.items():
-        count = len(files)
-        print(f"   {comp_type}: {count} files")
+# Search within specific workspace
+if api.workspace_dirs:
+    workspace_id = api.workspace_dirs[0].name
+    workspace_search = api.search_components(search_query, workspace_id=workspace_id)
+    print(f"🔍 '{search_query}' in '{workspace_id}' workspace: {len(workspace_search)} found")
+
+# Check component availability
+component_exists = api.is_component_available("xgboost_training")
+print(f"✅ XGBoost training available: {component_exists}")
+
+# Check availability in specific workspace
+workspace_exists = api.is_component_available("custom_preprocessing", workspace_id="experiments")
+print(f"✅ Custom preprocessing in experiments: {workspace_exists}")
+```
+
+**Expected Output:**
+```
+🔍 Search results for 'xgboost': 3 found
+   - xgboost_training (workspace: core)
+   - xgboost_model_eval (workspace: core)
+   - custom_xgboost_tuner (workspace: experiments)
+🔍 'xgboost' in 'experiments' workspace: 1 found
+✅ XGBoost training available: True
+✅ Custom preprocessing in experiments: False
+```
+
+## Step 5: Validate Workspace Structure and Components (3 minutes)
+
+The workspace system provides flexible validation that works with any directory organization.
+
+```python
+# Validate workspace directory structure (flexible validation)
+if api.workspace_dirs:
+    for workspace_dir in api.workspace_dirs:
+        validation = api.validate_workspace_structure(workspace_dir)
         
-        # Update global stats
-        if comp_type not in component_stats:
-            component_stats[comp_type] = 0
-        component_stats[comp_type] += count
+        print(f"🔍 Workspace Validation: {workspace_dir.name}")
+        print(f"   Valid: {'✅' if validation['valid'] else '❌'}")
+        print(f"   Exists: {validation['exists']}")
+        print(f"   Readable: {validation['readable']}")
+        print(f"   Components found: {validation['components_found']}")
+        
+        if validation['warnings']:
+            print(f"   Warnings:")
+            for warning in validation['warnings']:
+                print(f"      - {warning}")
 
-print(f"\n📊 Total Components Across All Workspaces:")
-for comp_type, total_count in component_stats.items():
-    print(f"   {comp_type}: {total_count} files")
+# Validate components in a specific workspace
+workspace_id = "core"  # Validate core components
+validation_result = api.validate_workspace_components(workspace_id)
+
+print(f"\n📊 Component Validation Results for '{workspace_id}':")
+print(f"   Valid: {'✅' if validation_result.is_valid else '❌'}")
+print(f"   Components validated: {validation_result.details.get('validated_components', 0)}")
+print(f"   Total components: {validation_result.details.get('total_components', 0)}")
+
+if validation_result.errors:
+    print(f"   Errors:")
+    for error in validation_result.errors:
+        print(f"      - {error}")
+
+if validation_result.warnings:
+    print(f"   Warnings:")
+    for warning in validation_result.warnings:
+        print(f"      - {warning}")
 ```
 
-**Discover specific components:**
-```python
-# Find all XGBoost-related components
-print(f"\n🔍 Finding XGBoost Components:")
-for dev_id, dev_components in all_components.items():
-    builders = dev_components.get('builders', {})
-    xgboost_builders = [name for name in builders.keys() if 'xgboost' in name.lower()]
-    
-    if xgboost_builders:
-        print(f"   👤 {dev_id}: {xgboost_builders}")
+**Expected Output:**
+```
+🔍 Workspace Validation: experiments
+   Valid: ✅
+   Exists: True
+   Readable: True
+   Components found: 8
+
+📊 Component Validation Results for 'core':
+   Valid: ✅
+   Components validated: 17
+   Total components: 17
 ```
 
-## Step 6: Create a Simple Component (2 minutes)
+## Step 6: Validate Component Quality (2 minutes)
 
-Let's create a simple step builder in your workspace:
+Assess the quality of individual components using the integrated validation framework.
 
 ```python
-from pathlib import Path
+# Validate quality of specific components
+components_to_check = ["xgboost_training", "dummy_training", "package"]
 
-# Create a simple custom step builder
-workspace_path = Path(info.path)
-builder_dir = workspace_path / "src" / "cursus_dev" / "steps" / "builders"
-
-# Ensure the directory exists
-builder_dir.mkdir(parents=True, exist_ok=True)
-
-# Create a simple builder file
-builder_content = '''"""
-Custom Data Validation Step Builder
-"""
-from cursus.steps.builders.base import StepBuilderBase
-from cursus.steps.configs.base import BasePipelineConfig
-from sagemaker.workflow.steps import ProcessingStep
-
-class CustomDataValidationBuilder(StepBuilderBase):
-    """Builder for custom data validation step."""
-    
-    def __init__(self, config: BasePipelineConfig):
-        super().__init__(config)
-        self.step_name = "custom_data_validation"
-    
-    def build_step(self) -> ProcessingStep:
-        """Build the data validation processing step."""
-        # Implementation would go here
-        pass
-'''
-
-builder_file = builder_dir / "builder_custom_data_validation_step.py"
-builder_file.write_text(builder_content)
-
-print(f"✅ Created custom builder: {builder_file}")
-
-# Create corresponding config file
-config_dir = workspace_path / "src" / "cursus_dev" / "steps" / "configs"
-config_dir.mkdir(parents=True, exist_ok=True)
-
-config_content = '''"""
-Custom Data Validation Step Configuration
-"""
-from cursus.steps.configs.base import BasePipelineConfig
-from pydantic import Field
-from typing import List, Optional
-
-class CustomDataValidationConfig(BasePipelineConfig):
-    """Configuration for custom data validation step."""
-    
-    validation_rules: List[str] = Field(
-        default_factory=list,
-        description="List of validation rules to apply"
-    )
-    
-    fail_on_error: bool = Field(
-        default=True,
-        description="Whether to fail the pipeline on validation errors"
-    )
-    
-    output_report: bool = Field(
-        default=True,
-        description="Whether to generate a validation report"
-    )
-'''
-
-config_file = config_dir / "config_custom_data_validation_step.py"
-config_file.write_text(config_content)
-
-print(f"✅ Created custom config: {config_file}")
+print("🔍 Component Quality Assessment:")
+for component in components_to_check:
+    if api.is_component_available(component):
+        quality_result = api.validate_component_quality(component)
+        
+        score = quality_result.details.get('quality_score', 0)
+        completeness = quality_result.details.get('component_completeness', 0)
+        missing = quality_result.details.get('missing_components', [])
+        
+        print(f"\n   {component}:")
+        print(f"      Valid: {'✅' if quality_result.is_valid else '❌'}")
+        print(f"      Quality score: {score}/100")
+        print(f"      Component completeness: {completeness}")
+        
+        if missing:
+            print(f"      Missing components: {', '.join(missing)}")
+        
+        if quality_result.errors:
+            print(f"      Errors:")
+            for error in quality_result.errors:
+                print(f"         - {error}")
+    else:
+        print(f"\n   {component}: ❌ Not available")
 ```
 
-## Step 7: Validate Your New Component (1 minute)
+**Expected Output:**
+```
+🔍 Component Quality Assessment:
 
-Let's validate that your new component is properly recognized:
+   xgboost_training:
+      Valid: ✅
+      Quality score: 85/100
+      Component completeness: 4
 
-```python
-# Re-validate the workspace after adding components
-report = api.validate_workspace(info.path)
+   dummy_training:
+      Valid: ✅
+      Quality score: 70/100
+      Component completeness: 3
+      Missing components: contract, spec
 
-print(f"🔍 Updated Validation Results:")
-print(f"Status: {report.status}")
-
-if report.status.name == "HEALTHY":
-    print("✅ Workspace is still healthy with new components!")
-    print(f"📊 Components found: {sum(report.components.values())}")
-    
-    # Show updated component breakdown
-    for comp_type, count in report.components.items():
-        print(f"   - {comp_type}: {count} files")
-
-# Discover your specific components
-your_components = api.discover_workspace_components(developer_id="your_name")
-print(f"\n🔧 Your Components:")
-for comp_type, files in your_components.get("your_name", {}).items():
-    print(f"   {comp_type}:")
-    for filename in files.keys():
-        print(f"      - {filename}")
+   package:
+      Valid: ✅
+      Quality score: 90/100
+      Component completeness: 5
 ```
 
-## Step 8: Workspace Collaboration Example (Optional)
+## Step 7: Cross-Workspace Compatibility (2 minutes)
 
-If you have multiple developers, here's how to collaborate:
+Check compatibility between components from different workspaces.
 
 ```python
-# Example: Building a pipeline using components from multiple developers
-from cursus.workspace.core import WorkspaceStepDefinition
+# Check cross-workspace compatibility
+workspaces = api.list_all_workspaces()
+print(f"🔍 Available workspaces: {workspaces}")
 
-# Define a multi-developer pipeline
-pipeline_steps = {
-    "data_loading": WorkspaceStepDefinition(
-        developer_id="data_engineer_alice",
-        step_name="data_loading",
-        step_type="CradleDataLoading",
-        config_data={
-            "dataset": "customer_data",
-            "format": "parquet",
-            "bucket": "ml-data-bucket"
-        }
-    ),
-    "data_validation": WorkspaceStepDefinition(
-        developer_id="your_name",  # Using your custom component!
-        step_name="data_validation", 
-        step_type="CustomDataValidation",
-        config_data={
-            "validation_rules": ["check_nulls", "check_schema"],
-            "fail_on_error": True,
-            "output_report": True
-        }
-    ),
-    "model_training": WorkspaceStepDefinition(
-        developer_id="ml_engineer_bob",
-        step_name="model_training",
-        step_type="XGBoostTraining",
-        config_data={
-            "max_depth": 6,
-            "learning_rate": 0.1,
-            "n_estimators": 100
-        }
-    )
-}
+if len(workspaces) > 1:
+    # Check compatibility between first two workspaces
+    compatibility = api.validate_cross_workspace_compatibility(workspaces[:2])
+    
+    print(f"\n🤝 Cross-Workspace Compatibility:")
+    print(f"   Compatible: {'✅' if compatibility.is_compatible else '❌'}")
+    
+    if compatibility.issues:
+        print(f"   Issues:")
+        for issue in compatibility.issues:
+            print(f"      - {issue}")
+    
+    print(f"   Compatibility matrix:")
+    for workspace_id, info in compatibility.compatibility_matrix.items():
+        conflicts = info.get('conflicts', 0)
+        total = info.get('total_components', 0)
+        print(f"      {workspace_id}: {total} components, {conflicts} conflicts")
+else:
+    print("⚠️ Need multiple workspaces for compatibility testing")
+```
 
-print("🤝 Multi-Developer Pipeline Configuration:")
-for step_name, step_def in pipeline_steps.items():
-    print(f"   {step_name}: {step_def.step_type} (by {step_def.developer_id})")
+**Expected Output:**
+```
+🔍 Available workspaces: ['core', 'experiments', 'custom_steps']
+
+🤝 Cross-Workspace Compatibility:
+   Compatible: ✅
+   Compatibility matrix:
+      core: 17 components, 0 conflicts
+      experiments: 8 components, 0 conflicts
+```
+
+## Step 8: Create Workspace-Aware Pipeline (2 minutes)
+
+Create pipelines that can use components from multiple workspaces.
+
+```python
+from cursus.api.dag.base_dag import PipelineDAG
+
+# Create a simple pipeline DAG
+dag = PipelineDAG()
+dag.add_node("data_loading")
+dag.add_node("preprocessing")
+dag.add_node("training")
+dag.add_edge("data_loading", "preprocessing")
+dag.add_edge("preprocessing", "training")
+
+print("📋 Pipeline DAG created:")
+print(f"   Nodes: {list(dag.nodes)}")
+print(f"   Edges: {list(dag.edges)}")
+
+# Create workspace-aware pipeline (requires config file)
+# Note: This would typically use an actual config file
+config_path = "config/example_pipeline.json"
+
+try:
+    pipeline = api.create_workspace_pipeline(dag, config_path)
+    
+    if pipeline:
+        print(f"✅ Workspace-aware pipeline created successfully")
+        print(f"   Pipeline uses components from configured workspaces")
+        print(f"   Step catalog automatically resolves component locations")
+    else:
+        print("❌ Pipeline creation failed (config file may not exist)")
+        
+except Exception as e:
+    print(f"⚠️ Pipeline creation skipped: {e}")
+    print("💡 This requires a valid pipeline configuration file")
+```
+
+**Expected Output:**
+```
+📋 Pipeline DAG created:
+   Nodes: ['data_loading', 'preprocessing', 'training']
+   Edges: [('data_loading', 'preprocessing'), ('preprocessing', 'training')]
+⚠️ Pipeline creation skipped: [Errno 2] No such file or directory: 'config/example_pipeline.json'
+💡 This requires a valid pipeline configuration file
+```
+
+## Step 9: System Status and Monitoring (1 minute)
+
+Monitor the workspace system's performance and status.
+
+```python
+# Get comprehensive system status
+status = api.get_system_status()
+
+print("📊 System Status:")
+print(f"   API success rate: {status['workspace_api']['success_rate']:.2%}")
+print(f"   Total API calls: {status['workspace_api']['metrics']['api_calls']}")
+print(f"   Successful operations: {status['workspace_api']['metrics']['successful_operations']}")
+print(f"   Failed operations: {status['workspace_api']['metrics']['failed_operations']}")
+
+print(f"\n📁 Workspace Manager:")
+print(f"   Total components: {status['manager']['total_components']}")
+print(f"   Total workspaces: {status['manager']['total_workspaces']}")
+
+print(f"\n🔍 Validator:")
+validator_metrics = status['validator']['metrics']
+print(f"   Validations performed: {validator_metrics['validations_performed']}")
+print(f"   Components validated: {validator_metrics['components_validated']}")
+
+# Refresh catalog if needed
+print(f"\n🔄 Catalog Management:")
+refresh_success = api.refresh_catalog()
+print(f"   Catalog refresh: {'✅ Success' if refresh_success else '❌ Failed'}")
+
+# Get updated component count after refresh
+updated_components = api.discover_components()
+print(f"   Components after refresh: {len(updated_components)}")
+```
+
+**Expected Output:**
+```
+📊 System Status:
+   API success rate: 95.24%
+   Total API calls: 21
+   Successful operations: 20
+   Failed operations: 1
+
+📁 Workspace Manager:
+   Total components: 25
+   Total workspaces: 3
+
+🔍 Validator:
+   Validations performed: 3
+   Components validated: 25
+
+🔄 Catalog Management:
+   Catalog refresh: ✅ Success
+   Components after refresh: 25
 ```
 
 ## Common Workflows
@@ -361,156 +464,375 @@ for step_name, step_def in pipeline_steps.items():
 ### Daily Development Workflow
 
 ```python
-# 1. Check workspace health
-def daily_workspace_check(developer_id: str):
+def daily_workspace_check(api: WorkspaceAPI):
     """Daily workspace health check routine."""
     
-    print(f"🌅 Daily Workspace Check for {developer_id}")
+    print("🌅 Daily Workspace Health Check")
     
-    # Get workspace info
-    info = api.get_workspace_info(developer_id)
-    if not info:
-        print("❌ Workspace not found!")
-        return False
+    # Get workspace summary
+    summary = api.get_workspace_summary()
+    print(f"📊 Workspace Overview:")
+    print(f"   Total workspaces: {summary['total_workspaces']}")
+    print(f"   Total components: {summary['total_components']}")
     
-    # Validate workspace
-    report = api.validate_workspace(info.workspace_path)
+    # Validate each workspace
+    healthy_workspaces = 0
+    for workspace_dir in api.workspace_dirs:
+        validation = api.validate_workspace_structure(workspace_dir)
+        if validation['valid']:
+            healthy_workspaces += 1
+            print(f"   ✅ {workspace_dir.name}: {validation['components_found']} components")
+        else:
+            print(f"   ❌ {workspace_dir.name}: Issues detected")
+            for warning in validation.get('warnings', []):
+                print(f"      - {warning}")
     
-    if report.status.name == "HEALTHY":
-        print("✅ Workspace is healthy")
-        print(f"📊 {info.component_count} components available")
-        return True
-    else:
-        print("⚠️ Workspace issues detected:")
-        for violation in report.violations:
-            print(f"   - {violation}")
-        return False
+    # Overall health assessment
+    health_rate = healthy_workspaces / len(api.workspace_dirs) if api.workspace_dirs else 1.0
+    print(f"\n🏥 Overall Health: {health_rate:.1%} ({healthy_workspaces}/{len(api.workspace_dirs)} workspaces healthy)")
+    
+    return health_rate >= 0.8
 
 # Run daily check
-daily_workspace_check("your_name")
+health_status = daily_workspace_check(api)
+print(f"Daily check result: {'✅ Healthy' if health_status else '⚠️ Needs attention'}")
+```
+
+### Component Discovery and Analysis
+
+```python
+def analyze_workspace_components(api: WorkspaceAPI):
+    """Analyze components across all workspaces."""
+    
+    cross_workspace = api.get_cross_workspace_components()
+    
+    print("🔍 Workspace Component Analysis:")
+    
+    # Component distribution
+    total_components = sum(len(components) for components in cross_workspace.values())
+    print(f"   Total components: {total_components}")
+    
+    # Workspace breakdown
+    for workspace_id, components in cross_workspace.items():
+        percentage = (len(components) / total_components * 100) if total_components > 0 else 0
+        print(f"   {workspace_id}: {len(components)} components ({percentage:.1f}%)")
+    
+    # Component type analysis
+    component_types = {'builder': 0, 'config': 0, 'script': 0, 'contract': 0, 'spec': 0}
+    
+    for workspace_id, components in cross_workspace.items():
+        for component in components[:5]:  # Sample first 5 components per workspace
+            info = api.get_component_info(component)
+            if info:
+                for comp_type in component_types.keys():
+                    if info.file_components.get(comp_type):
+                        component_types[comp_type] += 1
+    
+    print(f"\n📋 Component Types (sampled):")
+    for comp_type, count in component_types.items():
+        print(f"   {comp_type}: {count}")
+    
+    return cross_workspace
+
+# Run component analysis
+component_analysis = analyze_workspace_components(api)
+```
+
+### Quality Monitoring Dashboard
+
+```python
+def quality_monitoring_dashboard(api: WorkspaceAPI):
+    """Generate a quality monitoring dashboard."""
+    
+    print("📊 Component Quality Dashboard")
+    print("=" * 50)
+    
+    # Get all components
+    all_components = api.discover_components()
+    
+    # Quality categories
+    quality_categories = {
+        'high': [],      # 80-100
+        'medium': [],    # 60-79
+        'low': [],       # 40-59
+        'critical': []   # 0-39
+    }
+    
+    validation_errors = 0
+    
+    # Assess quality for each component
+    for component in all_components[:10]:  # Limit to first 10 for demo
+        try:
+            quality_result = api.validate_component_quality(component)
+            
+            if quality_result.is_valid:
+                score = quality_result.details.get('quality_score', 0)
+                workspace_id = quality_result.details.get('workspace_id', 'unknown')
+                
+                if score >= 80:
+                    quality_categories['high'].append((component, score, workspace_id))
+                elif score >= 60:
+                    quality_categories['medium'].append((component, score, workspace_id))
+                elif score >= 40:
+                    quality_categories['low'].append((component, score, workspace_id))
+                else:
+                    quality_categories['critical'].append((component, score, workspace_id))
+            else:
+                validation_errors += 1
+                quality_categories['critical'].append((component, 0, 'error'))
+                
+        except Exception as e:
+            validation_errors += 1
+            quality_categories['critical'].append((component, 0, 'exception'))
+    
+    # Display dashboard
+    total_assessed = sum(len(components) for components in quality_categories.values())
+    
+    print(f"Components assessed: {total_assessed}")
+    print(f"Validation errors: {validation_errors}")
+    print()
+    
+    for category, components in quality_categories.items():
+        if components:
+            percentage = len(components) / total_assessed * 100 if total_assessed > 0 else 0
+            print(f"{category.upper()} QUALITY ({percentage:.1f}%):")
+            
+            for component, score, workspace_id in components:
+                if score > 0:
+                    print(f"   {component}: {score}/100 ({workspace_id})")
+                else:
+                    print(f"   {component}: Validation failed ({workspace_id})")
+            print()
+    
+    return quality_categories
+
+# Run quality dashboard
+quality_dashboard = quality_monitoring_dashboard(api)
+```
+
+## Advanced Usage Patterns
+
+### Multi-Workspace Pipeline Development
+
+```python
+# Advanced multi-workspace setup
+api = WorkspaceAPI(workspace_dirs=[
+    Path("/teams/data_engineering/etl_components"),
+    Path("/teams/ml_engineering/model_components"),
+    Path("/teams/feature_engineering/feature_components"),
+    Path("/projects/production/validated_components")
+])
+
+# Discover specialized components by workspace
+workspaces = {
+    'etl': api.discover_components(workspace_id="etl_components"),
+    'models': api.discover_components(workspace_id="model_components"),
+    'features': api.discover_components(workspace_id="feature_components"),
+    'production': api.discover_components(workspace_id="validated_components")
+}
+
+print("🏗️ Multi-Team Component Inventory:")
+for team, components in workspaces.items():
+    print(f"   {team}: {len(components)} components")
+    
+    # Show component types
+    component_types = {}
+    for component in components[:3]:  # Sample first 3
+        info = api.get_component_info(component)
+        if info:
+            available_types = [t for t in info.file_components.keys() if info.file_components[t]]
+            for comp_type in available_types:
+                component_types[comp_type] = component_types.get(comp_type, 0) + 1
+    
+    if component_types:
+        type_summary = ', '.join([f"{t}:{c}" for t, c in component_types.items()])
+        print(f"      Types: {type_summary}")
+
+# Cross-team compatibility check
+all_workspace_ids = list(workspaces.keys())
+if len(all_workspace_ids) > 1:
+    compatibility = api.validate_cross_workspace_compatibility(all_workspace_ids)
+    print(f"\n🤝 Cross-Team Compatibility: {'✅' if compatibility.is_compatible else '❌'}")
+    
+    if not compatibility.is_compatible:
+        print("   Issues to resolve:")
+        for issue in compatibility.issues:
+            print(f"      - {issue}")
 ```
 
 ### Component Promotion Workflow
 
 ```python
-# 2. Promote a component to staging
-def promote_component_to_staging(developer_id: str, component_name: str):
-    """Promote a workspace component to integration staging."""
+def component_promotion_workflow(api: WorkspaceAPI, component_name: str, source_workspace: str):
+    """Demonstrate component promotion workflow."""
     
-    print(f"🚀 Promoting {component_name} from {developer_id} to staging")
+    print(f"🚀 Component Promotion Workflow: {component_name}")
+    print("=" * 50)
     
+    # Step 1: Validate component exists and quality
+    if not api.is_component_available(component_name, workspace_id=source_workspace):
+        print(f"❌ Component '{component_name}' not found in workspace '{source_workspace}'")
+        return False
+    
+    quality_result = api.validate_component_quality(component_name)
+    quality_score = quality_result.details.get('quality_score', 0)
+    
+    print(f"📊 Component Quality Assessment:")
+    print(f"   Quality score: {quality_score}/100")
+    print(f"   Valid: {'✅' if quality_result.is_valid else '❌'}")
+    
+    if quality_score < 70:
+        print(f"⚠️ Quality score too low for promotion (minimum: 70)")
+        return False
+    
+    # Step 2: Dry run promotion
+    print(f"\n🧪 Dry Run Promotion:")
     try:
-        result = api.promote_workspace_component(
-            developer_id=developer_id,
-            component_path=f"src/cursus_dev/steps/builders/builder_{component_name}_step.py",
-            target="staging"
+        dry_result = api.promote_component_to_core(
+            step_name=component_name,
+            source_workspace_id=source_workspace,
+            dry_run=True
         )
         
-        if result.success:
-            print(f"✅ Component promoted successfully!")
-            print(f"📁 Staged at: {result.target_path}")
-        else:
-            print(f"❌ Promotion failed: {result.message}")
+        print(f"   Dry run result: {'✅ Success' if dry_result.success else '❌ Failed'}")
+        print(f"   Message: {dry_result.message}")
+        
+        if not dry_result.success:
+            print(f"   Cannot proceed with promotion")
+            return False
             
     except Exception as e:
-        print(f"❌ Promotion error: {e}")
-
-# Example promotion (uncomment to try)
-# promote_component_to_staging("your_name", "custom_data_validation")
-```
-
-### Workspace Cleanup
-
-```python
-# 3. Clean up workspace
-def cleanup_workspace_routine(developer_id: str):
-    """Regular workspace cleanup routine."""
+        print(f"   ❌ Dry run failed: {e}")
+        return False
     
-    print(f"🧹 Cleaning up workspace for {developer_id}")
+    # Step 3: Actual promotion (commented out for safety)
+    print(f"\n🎯 Ready for Promotion:")
+    print(f"   Component: {component_name}")
+    print(f"   Source workspace: {source_workspace}")
+    print(f"   Quality score: {quality_score}/100")
+    print(f"   Dry run: ✅ Passed")
+    print(f"   💡 Uncomment promotion code to execute")
     
-    result = api.cleanup_workspace(developer_id, deep_clean=False)
+    # Uncomment the following lines to perform actual promotion:
+    # promotion_result = api.promote_component_to_core(
+    #     step_name=component_name,
+    #     source_workspace_id=source_workspace,
+    #     dry_run=False
+    # )
+    # 
+    # if promotion_result.success:
+    #     print(f"✅ Component promoted successfully!")
+    #     print(f"Details: {promotion_result.details}")
+    # else:
+    #     print(f"❌ Promotion failed: {promotion_result.message}")
     
-    if result.success:
-        print(f"✅ Cleanup completed!")
-        print(f"🗑️  Removed {result.files_removed} files")
-        print(f"💾 Freed {result.space_freed} bytes")
-    else:
-        print(f"❌ Cleanup failed: {result.message}")
+    return True
 
-# Run cleanup (uncomment to try)
-# cleanup_workspace_routine("your_name")
+# Example promotion workflow (using a component that exists)
+if api.workspace_dirs:
+    # Try to promote a component from the first workspace
+    workspace_id = api.workspace_dirs[0].name
+    workspace_components = api.discover_components(workspace_id=workspace_id)
+    
+    if workspace_components:
+        example_component = workspace_components[0]
+        promotion_success = component_promotion_workflow(api, example_component, workspace_id)
+        print(f"Promotion workflow result: {'✅ Ready' if promotion_success else '❌ Not ready'}")
 ```
 
 ## Troubleshooting
 
-### Issue: "Workspace not found"
+### Common Issues and Solutions
+
+**Issue: No components discovered**
 ```python
-# Check if workspace directory exists
-import os
-workspace_path = f"development/projects/your_name"
-if not os.path.exists(workspace_path):
-    print("❌ Workspace directory doesn't exist")
-    print("💡 Try running setup_developer_workspace() again")
+# Diagnostic steps
+print("🔍 Troubleshooting: No components discovered")
+
+# Check workspace configuration
+summary = api.get_workspace_summary()
+print(f"1. Workspace configuration:")
+print(f"   Directories: {summary['workspace_directories']}")
+print(f"   Total workspaces: {summary['total_workspaces']}")
+
+# Validate each workspace directory
+print(f"\n2. Workspace validation:")
+for workspace_dir in api.workspace_dirs:
+    validation = api.validate_workspace_structure(workspace_dir)
+    print(f"   {workspace_dir}:")
+    print(f"      Exists: {validation['exists']}")
+    print(f"      Readable: {validation['readable']}")
+    print(f"      Components: {validation['components_found']}")
+
+# Check catalog refresh
+print(f"\n3. Catalog refresh:")
+refresh_success = api.refresh_catalog()
+print(f"   Refresh result: {'✅ Success' if refresh_success else '❌ Failed'}")
+
+# Re-check components after refresh
+updated_components = api.discover_components()
+print(f"   Components after refresh: {len(updated_components)}")
 ```
 
-### Issue: "Component discovery returns empty"
+**Issue: Component validation fails**
 ```python
-# Debug component discovery
-components = api.discover_workspace_components(developer_id="your_name")
-if not components:
-    print("❌ No components found")
-    print("💡 Check file naming conventions:")
-    print("   - Builders: builder_<type>_step.py")
-    print("   - Configs: config_<type>_step.py")
+# Detailed component diagnostics
+def diagnose_component(api: WorkspaceAPI, component_name: str):
+    print(f"🔍 Diagnosing component: {component_name}")
+    
+    # Check availability
+    available = api.is_component_available(component_name)
+    print(f"   Available: {'✅' if available else '❌'}")
+    
+    if not available:
+        print(f"   💡 Component not found in any workspace")
+        return
+    
+    # Get component info
+    info = api.get_component_info(component_name)
+    if info:
+        print(f"   Workspace: {info.workspace_id}")
+        print(f"   File components:")
+        
+        for comp_type, metadata in info.file_components.items():
+            if metadata:
+                file_path = Path(metadata.path)
+                exists = file_path.exists()
+                readable = file_path.is_file() if exists else False
+                
+                print(f"      {comp_type}: {metadata.path}")
+                print(f"         Exists: {'✅' if exists else '❌'}")
+                print(f"         Readable: {'✅' if readable else '❌'}")
+    
+    # Quality assessment
+    quality_result = api.validate_component_quality(component_name)
+    print(f"   Quality valid: {'✅' if quality_result.is_valid else '❌'}")
+    print(f"   Quality score: {quality_result.details.get('quality_score', 0)}/100")
+    
+    if quality_result.errors:
+        print(f"   Errors:")
+        for error in quality_result.errors:
+            print(f"      - {error}")
+
+# Example diagnosis
+components = api.discover_components()
+if components:
+    diagnose_component(api, components[0])
 ```
 
-### Issue: "Validation fails"
+**Issue: Cross-workspace compatibility problems**
 ```python
-# Get detailed validation info
-report = api.validate_workspace("development/projects/your_name")
-if report.violations:
-    print("🔍 Validation Issues:")
-    for violation in report.violations:
-        print(f"   - {violation}")
-    print("💡 Check workspace structure and file permissions")
-```
-
-## Next Steps
-
-Congratulations! You've successfully:
-
-1. ✅ Created your first developer workspace
-2. ✅ Validated workspace health
-3. ✅ Discovered components across workspaces
-4. ✅ Created a custom component
-5. ✅ Learned collaboration workflows
-
-### What's Next?
-
-1. **Explore Advanced Features**: Check out the [Workspace API Reference](workspace_api_reference.md) for advanced usage patterns
-
-2. **Build Real Components**: Start developing actual step builders, configs, and scripts for your ML pipelines
-
-3. **Collaborate**: Work with other developers to build multi-workspace pipelines
-
-4. **Integrate with CI/CD**: Set up automated workspace validation in your development pipeline
-
-5. **Monitor Workspace Health**: Implement regular health checks and cleanup routines
-
-### Additional Resources
-
-- **[Workspace API Reference](workspace_api_reference.md)** - Complete API documentation
-- **[Developer Guide](../0_developer_guide/README.md)** - Comprehensive development guidelines
-- **[Design Documents](../1_design/)** - Architectural details and design decisions
-
-## Summary
-
-You now have a fully functional developer workspace and understand the basic workflow for:
-
-- Creating and managing workspaces
-- Validating workspace health
-- Discovering and sharing components
-- Collaborating with other developers
-- Promoting components through the integration pipeline
-
-The workspace system enables isolated development while maintaining the ability to collaborate and share components across your team. Happy coding! 🚀
+# Detailed compatibility analysis
+def analyze_compatibility_issues(api: WorkspaceAPI):
+    print("🔍 Cross-Workspace Compatibility Analysis")
+    
+    workspaces = api.list_all_workspaces()
+    print(f"Available workspaces: {workspaces}")
+    
+    if len(workspaces) < 2:
+        print("⚠️ Need at least 2 workspaces for compatibility analysis")
+        return
+    
+    compatibility = api.validate_cross_workspace_compatibility(workspaces)
+    
+    print(f"\nCompatibility result: {'✅ Compatible' if compatibility.is_compatible else '❌ Issues foun
