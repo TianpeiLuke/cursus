@@ -140,8 +140,6 @@ def list_steps(workspace: Optional[str], conflicts_only: bool, include_source: b
         from ..registry import (
             get_all_step_names,
             get_workspace_context,
-            has_workspace_conflicts,
-            list_available_workspaces,
         )
 
         effective_workspace = workspace or get_workspace_context()
@@ -303,8 +301,8 @@ def resolve_step(step_name: str, workspace: Optional[str], framework: Optional[s
 
             if result.resolved:
                 click.echo(f"✅ Step resolved successfully")
-                click.echo(f"   📂 Source: {result.source_registry}")
-                click.echo(f"   🔧 Strategy: {result.resolution_strategy}")
+                click.echo(f"   � Source: {result.source_registry}")
+                click.echo(f"   � Strategy: {result.resolution_strategy}")
                 if result.selected_definition:
                     click.echo(
                         f"   📝 Config: {result.selected_definition.config_class}"
@@ -751,7 +749,7 @@ class ExampleCustomStepConfig(BasePipelineConfig):
 
 def main():
     """Main entry point for registry CLI."""
-    registry_cli()
+    return registry_cli()
 
 
 if __name__ == "__main__":

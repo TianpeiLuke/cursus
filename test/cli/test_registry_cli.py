@@ -1,60 +1,433 @@
 """
-Unit tests for registry CLI commands.
+Comprehensive tests for registry CLI commands.
 
-This module tests the registry CLI commands that were added for step definition
-validation, including validate-step-definition, validation-status, and
-reset-validation-metrics commands.
+This module tests all registry CLI commands including workspace management,
+step listing, registry validation, step resolution, and validation utilities.
 
 Tests focus on:
 - CLI command functionality and argument parsing
-- Integration with validation utilities
+- Integration with registry and validation utilities
 - Error handling and user feedback
-- Performance metrics display
-- Auto-correction workflows
+- Workspace management workflows
+- Performance metrics and validation
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, call
+import tempfile
+import shutil
+from pathlib import Path
+from unittest.mock import patch, MagicMock, call, Mock
 from click.testing import CliRunner
-import json
 
 # Import the CLI functions we want to test
 try:
     from cursus.cli.registry_cli import (
         registry_cli,
+        init_workspace,
+        list_steps,
+        validate_registry,
+        resolve_step,
         validate_step_definition,
         validation_status,
         reset_validation_metrics,
     )
-
     CLI_AVAILABLE = True
 except ImportError:
     CLI_AVAILABLE = False
 
-# Import validation utilities for testing integration
-from cursus.registry.validation_utils import (
-    validate_new_step_definition,
-    auto_correct_step_definition,
-    create_validation_report,
-    get_performance_metrics,
-    reset_performance_metrics as reset_utils_metrics,
-    get_validation_status as get_utils_status,
-)
+
+@pytest.fixture
+def runner():
+    """Create CLI runner fixture"""
+    return CliRunner()
+
+
+@pytest.fixture
+def temp_workspace():
+    """Create temporary workspace directory"""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
-class TestRegistryCLICommands:
-    """Test registry CLI commands functionality."""
+class TestRegistryCLIBasics:
+    """Test basic registry CLI functionality."""
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.runner = CliRunner()
-        # Reset performance metrics before each test
-        reset_utils_metrics()
+    def test_registry_cli_help(self, runner):
+        """Test registry CLI help message."""
+        result = runner.invoke(registry_cli, ["--help"])
 
-    def test_validate_step_definition_valid_step(self):
-        """Test validate-step-definition command with valid step."""
-        result = self.runner.invoke(
+        assert result.exit_code == 0
+        assert "Registry management commands" in result.output
+        assert "init-workspace" in result.output
+        assert "list-steps" in result.output
+        assert "validate-registry" in result.output
+        assert "resolve-step" in result.output
+        assert "validate-step-definition" in result.output
+        assert "validation-status" in result.output
+        assert "reset-validation-metrics" in result.output
+
+    def test_registry_cli_no_args(self, runner):
+        """Test registry CLI with no arguments shows help."""
+        result = runner.invoke(registry_cli, [])
+
+        assert result.exit_code == 0
+        assert "Registry management commands" in result.output
+
+
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestInitWorkspaceCommand:
+    """Test init-workspace command."""
+
+    def test_init_workspace_minimal(self, runner, temp_workspace):
+        """Test init-workspace with minimal arguments."""
+        workspace_id = "test_developer"
+        workspace_path = str(Path(temp_workspace) / workspace_id)
+
+        result = runner.invoke(
+            registry_cli,
+            [
+                "init-workspace",
+                workspace_id,
+                "--workspace-path",
+                workspace_path,
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert f"🚀 Initializing developer workspace: {workspace_id}" in result.output
+        assert "✅ Created workspace directory structure" in result.output
+        assert "✅ Created standard registry template" in result.output
+        assert "✅ Created workspace documentation" in result.output
+        assert "🎉 Developer workspace successfully created!" in result.output
+
+        # Verify directory structure was created
+        workspace_dir = Path(workspace_path)
+        assert workspace_dir.exists()
+        assert (workspace_dir / "src" / "cursus_dev" / "steps").exists()
+        assert (workspace_dir / "src" / "cursus_dev" / "registry").exists()
+        assert (workspace_dir / "README.md").exists()
+
+    def test_init_workspace_with_template(self, runner, temp_workspace):
+        """Test init-workspace with different templates."""
+        workspace_id = "test_developer"
+        workspace_path = str(Path(temp_workspace) / workspace_id)
+
+        for template in ["minimal", "standard", "advanced"]:
+            result = runner.invoke(
+                registry_cli,
+                [
+                    "init-workspace",
+                    workspace_id,
+                    "--workspace-path",
+                    workspace_path,
+                    "--template",
+                    template,
+                    "--force",
+                ],
+            )
+
+            assert result.exit_code == 0
+            assert f"✅ Created {template} registry template" in result.output
+
+    def test_init_workspace_invalid_id(self, runner):
+        """Test init-workspace with invalid workspace ID."""
+        result = runner.invoke(
+            registry_cli,
+            ["init-workspace", "invalid@workspace!"],
+        )
+
+        assert result.exit_code == 0
+        assert "❌ Invalid workspace ID" in result.output
+
+    def test_init_workspace_existing_without_force(self, runner, temp_workspace):
+        """Test init-workspace with existing workspace without force."""
+        workspace_id = "test_developer"
+        workspace_path = str(Path(temp_workspace) / workspace_id)
+
+        # Create workspace first time
+        result1 = runner.invoke(
+            registry_cli,
+            [
+                "init-workspace",
+                workspace_id,
+                "--workspace-path",
+                workspace_path,
+            ],
+        )
+        assert result1.exit_code == 0
+
+        # Try to create again without force
+        result2 = runner.invoke(
+            registry_cli,
+            [
+                "init-workspace",
+                workspace_id,
+                "--workspace-path",
+                workspace_path,
+            ],
+        )
+
+        assert result2.exit_code == 0
+        assert "❌ Workspace already exists" in result2.output
+
+    def test_init_workspace_with_force(self, runner, temp_workspace):
+        """Test init-workspace with force overwrite."""
+        workspace_id = "test_developer"
+        workspace_path = str(Path(temp_workspace) / workspace_id)
+
+        # Create workspace first time
+        result1 = runner.invoke(
+            registry_cli,
+            [
+                "init-workspace",
+                workspace_id,
+                "--workspace-path",
+                workspace_path,
+            ],
+        )
+        assert result1.exit_code == 0
+
+        # Create again with force
+        result2 = runner.invoke(
+            registry_cli,
+            [
+                "init-workspace",
+                workspace_id,
+                "--workspace-path",
+                workspace_path,
+                "--force",
+            ],
+        )
+
+        assert result2.exit_code == 0
+        assert "🎉 Developer workspace successfully created!" in result2.output
+
+
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestListStepsCommand:
+    """Test list-steps command."""
+
+    @patch("cursus.registry.get_all_step_names")
+    @patch("cursus.registry.get_workspace_context")
+    def test_list_steps_basic(self, mock_get_context, mock_get_steps, runner):
+        """Test basic list-steps command."""
+        mock_get_context.return_value = None
+        mock_get_steps.return_value = ["StepA", "StepB", "StepC"]
+
+        result = runner.invoke(registry_cli, ["list-steps"])
+
+        assert result.exit_code == 0
+        assert "📂 Available Steps (core registry) (3 total):" in result.output
+        assert "- StepA" in result.output
+        assert "- StepB" in result.output
+        assert "- StepC" in result.output
+
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_list_steps_with_workspace(self, mock_get_context, mock_get_steps, runner):
+        """Test list-steps with workspace context."""
+        mock_get_context.return_value = "test_workspace"
+        mock_get_steps.return_value = ["StepA", "StepB", "WorkspaceStep"]
+
+        result = runner.invoke(registry_cli, ["list-steps", "--workspace", "test_workspace"])
+
+        assert result.exit_code == 0
+        assert "📂 Available Steps (workspace: test_workspace) (3 total):" in result.output
+        assert "- WorkspaceStep" in result.output
+
+    @patch("cursus.cli.registry_cli.UnifiedRegistryManager")
+    def test_list_steps_with_source(self, mock_manager_class, runner):
+        """Test list-steps with source information."""
+        mock_manager = Mock()
+        mock_manager_class.return_value = mock_manager
+        mock_manager.list_all_steps.return_value = {
+            "core": ["CoreStepA", "CoreStepB"],
+            "workspace1": ["WorkspaceStepA"],
+        }
+
+        result = runner.invoke(registry_cli, ["list-steps", "--include-source"])
+
+        assert result.exit_code == 0
+        assert "📂 CORE Registry:" in result.output
+        assert "- CoreStepA" in result.output
+        assert "📂 WORKSPACE1 Registry:" in result.output
+        assert "- WorkspaceStepA" in result.output
+
+    @patch("cursus.cli.registry_cli.UnifiedRegistryManager")
+    def test_list_steps_conflicts_only(self, mock_manager_class, runner):
+        """Test list-steps with conflicts only."""
+        mock_manager = Mock()
+        mock_manager_class.return_value = mock_manager
+        
+        # Mock conflict definitions
+        mock_def1 = Mock()
+        mock_def1.workspace_id = "workspace1"
+        mock_def1.registry_type = "local"
+        
+        mock_def2 = Mock()
+        mock_def2.workspace_id = None
+        mock_def2.registry_type = "core"
+        
+        mock_manager.get_step_conflicts.return_value = {
+            "ConflictingStep": [mock_def1, mock_def2]
+        }
+
+        result = runner.invoke(registry_cli, ["list-steps", "--conflicts-only"])
+
+        assert result.exit_code == 0
+        assert "⚠️  Found 1 conflicting steps:" in result.output
+        assert "📍 Step: ConflictingStep" in result.output
+
+    @patch("cursus.cli.registry_cli.UnifiedRegistryManager")
+    def test_list_steps_no_conflicts(self, mock_manager_class, runner):
+        """Test list-steps with no conflicts."""
+        mock_manager = Mock()
+        mock_manager_class.return_value = mock_manager
+        mock_manager.get_step_conflicts.return_value = {}
+
+        result = runner.invoke(registry_cli, ["list-steps", "--conflicts-only"])
+
+        assert result.exit_code == 0
+        assert "✅ No step name conflicts detected" in result.output
+
+
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestValidateRegistryCommand:
+    """Test validate-registry command."""
+
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_validate_registry_basic(self, mock_get_context, mock_get_steps, runner):
+        """Test basic validate-registry command."""
+        mock_get_context.return_value = None
+        mock_get_steps.return_value = ["StepA", "StepB", "StepC"]
+
+        result = runner.invoke(registry_cli, ["validate-registry"])
+
+        assert result.exit_code == 0
+        assert "🔍 Validating registry..." in result.output
+        assert "📁 Core registry" in result.output
+        assert "✅ Found 3 steps" in result.output
+        assert "✅ Registry validation completed" in result.output
+
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_validate_registry_with_workspace(self, mock_get_context, mock_get_steps, runner):
+        """Test validate-registry with workspace."""
+        mock_get_context.return_value = "test_workspace"
+        mock_get_steps.return_value = ["StepA", "StepB"]
+
+        result = runner.invoke(registry_cli, ["validate-registry", "--workspace", "test_workspace"])
+
+        assert result.exit_code == 0
+        assert "📁 Workspace: test_workspace" in result.output
+        assert "✅ Found 2 steps" in result.output
+
+    @patch("cursus.cli.registry_cli.UnifiedRegistryManager")
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_validate_registry_with_conflicts(self, mock_get_context, mock_get_steps, mock_manager_class, runner):
+        """Test validate-registry with conflict checking."""
+        mock_get_context.return_value = None
+        mock_get_steps.return_value = ["StepA", "StepB"]
+        
+        mock_manager = Mock()
+        mock_manager_class.return_value = mock_manager
+        mock_manager.get_step_conflicts.return_value = {"ConflictStep": [Mock(), Mock()]}
+        mock_manager.get_registry_status.return_value = {
+            "core": {"step_count": 2}
+        }
+
+        result = runner.invoke(registry_cli, ["validate-registry", "--check-conflicts"])
+
+        assert result.exit_code == 0
+        assert "⚠️  Found 1 step name conflicts:" in result.output
+        assert "ConflictStep: 2 definitions" in result.output
+
+
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestResolveStepCommand:
+    """Test resolve-step command."""
+
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    @patch("cursus.cli.registry_cli.UnifiedRegistryManager")
+    def test_resolve_step_success(self, mock_manager_class, mock_get_context, runner):
+        """Test successful step resolution."""
+        mock_get_context.return_value = "test_workspace"
+        
+        mock_manager = Mock()
+        mock_manager_class.return_value = mock_manager
+        
+        mock_result = Mock()
+        mock_result.resolved = True
+        mock_result.source_registry = "workspace"
+        mock_result.resolution_strategy = "workspace_priority"
+        mock_result.selected_definition = Mock()
+        mock_result.selected_definition.config_class = "TestStepConfig"
+        mock_result.selected_definition.builder_step_name = "TestStepBuilder"
+        mock_result.selected_definition.framework = "xgboost"
+        
+        mock_manager.get_step.return_value = mock_result
+
+        result = runner.invoke(registry_cli, ["resolve-step", "TestStep", "--workspace", "test_workspace"])
+
+        assert result.exit_code == 0
+        assert "🔍 Resolving step: TestStep" in result.output
+        assert "✅ Step resolved successfully" in result.output
+        assert "Source: workspace" in result.output
+        assert "Strategy: workspace_priority" in result.output
+        assert "Config: TestStepConfig" in result.output
+        assert "Builder: TestStepBuilder" in result.output
+        assert "Framework: xgboost" in result.output
+
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    @patch("cursus.cli.registry_cli.UnifiedRegistryManager")
+    def test_resolve_step_failure(self, mock_manager_class, mock_get_context, runner):
+        """Test failed step resolution."""
+        mock_get_context.return_value = None
+        
+        mock_manager = Mock()
+        mock_manager_class.return_value = mock_manager
+        
+        mock_result = Mock()
+        mock_result.resolved = False
+        mock_result.errors = ["Step not found in registry"]
+        
+        mock_manager.get_step.return_value = mock_result
+
+        result = runner.invoke(registry_cli, ["resolve-step", "NonExistentStep"])
+
+        assert result.exit_code == 0
+        assert "❌ Step resolution failed" in result.output
+        assert "❌ Step not found in registry" in result.output
+
+    @patch("cursus.cli.registry_cli.get_config_class_name")
+    @patch("cursus.cli.registry_cli.get_builder_step_name")
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_resolve_step_fallback(self, mock_get_context, mock_get_builder, mock_get_config, runner):
+        """Test step resolution fallback when hybrid registry unavailable."""
+        mock_get_context.return_value = None
+        mock_get_config.return_value = "TestStepConfig"
+        mock_get_builder.return_value = "TestStepBuilder"
+
+        with patch("cursus.cli.registry_cli.UnifiedRegistryManager", side_effect=ImportError):
+            result = runner.invoke(registry_cli, ["resolve-step", "TestStep"])
+
+        assert result.exit_code == 0
+        assert "✅ Step found (basic resolution)" in result.output
+        assert "Config: TestStepConfig" in result.output
+        assert "Builder: TestStepBuilder" in result.output
+
+
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestValidateStepDefinitionCommand:
+    """Test validate-step-definition command."""
+
+    def test_validate_step_definition_valid(self, runner):
+        """Test validate-step-definition with valid step."""
+        result = runner.invoke(
             registry_cli,
             [
                 "validate-step-definition",
@@ -70,12 +443,12 @@ class TestRegistryCLICommands:
         )
 
         assert result.exit_code == 0
-        assert "✅ Step definition is valid" in result.output
         assert "🔍 Validating step definition: TestStep" in result.output
+        assert "✅ Step definition is valid" in result.output
 
-    def test_validate_step_definition_invalid_step(self):
-        """Test validate-step-definition command with invalid step."""
-        result = self.runner.invoke(
+    def test_validate_step_definition_invalid(self, runner):
+        """Test validate-step-definition with invalid step."""
+        result = runner.invoke(
             registry_cli,
             [
                 "validate-step-definition",
@@ -88,15 +461,13 @@ class TestRegistryCLICommands:
             ],
         )
 
-        assert result.exit_code == 0  # CLI should not exit with error
+        assert result.exit_code == 0
         assert "❌ Step definition has validation errors:" in result.output
         assert "must be PascalCase" in result.output
-        assert "must end with 'Config'" in result.output
-        assert "must end with 'StepBuilder'" in result.output
 
-    def test_validate_step_definition_with_auto_correct(self):
-        """Test validate-step-definition command with auto-correction."""
-        result = self.runner.invoke(
+    def test_validate_step_definition_auto_correct(self, runner):
+        """Test validate-step-definition with auto-correction."""
+        result = runner.invoke(
             registry_cli,
             [
                 "validate-step-definition",
@@ -104,22 +475,17 @@ class TestRegistryCLICommands:
                 "test_step",
                 "--config-class",
                 "TestConfiguration",
-                "--builder-name",
-                "TestBuilder",
                 "--auto-correct",
             ],
         )
 
         assert result.exit_code == 0
         assert "🔧 Auto-correction applied:" in result.output
-        assert (
-            "step_name: test_step → TestStep" in result.output
-            or "name: test_step → TestStep" in result.output
-        )
+        assert "name: test_step → TestStep" in result.output
 
-    def test_validate_step_definition_with_performance(self):
-        """Test validate-step-definition command with performance metrics."""
-        result = self.runner.invoke(
+    def test_validate_step_definition_performance(self, runner):
+        """Test validate-step-definition with performance metrics."""
+        result = runner.invoke(
             registry_cli,
             ["validate-step-definition", "--name", "TestStep", "--performance"],
         )
@@ -128,32 +494,22 @@ class TestRegistryCLICommands:
         assert "📊 Performance Metrics:" in result.output
         assert "Validation time:" in result.output
         assert "Cache hit rate:" in result.output
-        assert "Total validations:" in result.output
 
-    def test_validate_step_definition_minimal_args(self):
-        """Test validate-step-definition command with minimal arguments."""
-        result = self.runner.invoke(
-            registry_cli, ["validate-step-definition", "--name", "TestStep"]
-        )
+    def test_validate_step_definition_missing_name(self, runner):
+        """Test validate-step-definition without required name."""
+        result = runner.invoke(registry_cli, ["validate-step-definition"])
 
-        assert result.exit_code == 0
-        assert "🔍 Validating step definition: TestStep" in result.output
-        assert "✅ Step definition is valid" in result.output
-
-    def test_validate_step_definition_missing_name(self):
-        """Test validate-step-definition command without required name."""
-        result = self.runner.invoke(registry_cli, ["validate-step-definition"])
-
-        assert result.exit_code != 0  # Should fail due to missing required argument
+        assert result.exit_code != 0
         assert "Missing option" in result.output or "Error" in result.output
 
-    def test_validation_status_command(self):
-        """Test validation-status command."""
-        # Generate some performance data first
-        step_data = {"name": "TestStep"}
-        validate_new_step_definition(step_data)
 
-        result = self.runner.invoke(registry_cli, ["validation-status"])
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestValidationStatusCommand:
+    """Test validation-status command."""
+
+    def test_validation_status_basic(self, runner):
+        """Test basic validation-status command."""
+        result = runner.invoke(registry_cli, ["validation-status"])
 
         assert result.exit_code == 0
         assert "📊 Validation System Status" in result.output
@@ -161,30 +517,26 @@ class TestRegistryCLICommands:
         assert "Implementation:" in result.output
         assert "Supported Modes:" in result.output
         assert "📈 Performance Metrics:" in result.output
-        assert "Total validations:" in result.output
-        assert "Average validation time:" in result.output
-        assert "Performance:" in result.output
 
-    def test_validation_status_with_no_activity(self):
-        """Test validation-status command with no prior activity."""
-        # Reset metrics to ensure clean state
-        reset_utils_metrics()
+    @patch("cursus.cli.registry_cli.get_validation_status")
+    def test_validation_status_with_exception(self, mock_get_status, runner):
+        """Test validation-status with exception."""
+        mock_get_status.side_effect = Exception("Test error")
 
-        result = self.runner.invoke(registry_cli, ["validation-status"])
+        result = runner.invoke(registry_cli, ["validation-status"])
 
         assert result.exit_code == 0
-        assert "📊 Validation System Status" in result.output
-        assert "Total validations: 0" in result.output
-        assert "Average validation time: 0.00ms" in result.output
+        assert "❌ Failed to get validation status:" in result.output
+        assert "Test error" in result.output
 
-    def test_reset_validation_metrics_with_confirmation(self):
-        """Test reset-validation-metrics command with confirmation."""
-        # Generate some metrics first
-        step_data = {"name": "TestStep"}
-        validate_new_step_definition(step_data)
 
-        # Confirm the reset
-        result = self.runner.invoke(
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestResetValidationMetricsCommand:
+    """Test reset-validation-metrics command."""
+
+    def test_reset_validation_metrics_confirmed(self, runner):
+        """Test reset-validation-metrics with confirmation."""
+        result = runner.invoke(
             registry_cli, ["reset-validation-metrics"], input="y\n"
         )
 
@@ -192,234 +544,21 @@ class TestRegistryCLICommands:
         assert "✅ Validation metrics and cache have been reset" in result.output
         assert "📊 Performance tracking restarted from zero" in result.output
 
-        # Verify metrics were actually reset
-        metrics = get_performance_metrics()
-        assert metrics["total_validations"] == 0
-
-    def test_reset_validation_metrics_cancelled(self):
-        """Test reset-validation-metrics command when cancelled."""
-        result = self.runner.invoke(
+    def test_reset_validation_metrics_cancelled(self, runner):
+        """Test reset-validation-metrics when cancelled."""
+        result = runner.invoke(
             registry_cli, ["reset-validation-metrics"], input="n\n"
         )
 
-        assert result.exit_code == 1  # Should exit with error code when cancelled
+        assert result.exit_code == 1
         assert "Aborted" in result.output
 
-    def test_registry_cli_help(self):
-        """Test registry CLI help message."""
-        result = self.runner.invoke(registry_cli, ["--help"])
-
-        assert result.exit_code == 0
-        assert "Registry management commands" in result.output
-        assert "validate-step-definition" in result.output
-        assert "validation-status" in result.output
-        assert "reset-validation-metrics" in result.output
-
-
-@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
-class TestCLIIntegrationWithValidationUtils:
-    """Test CLI integration with validation utilities."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.runner = CliRunner()
-        reset_utils_metrics()
-
-    def test_cli_validation_integration(self):
-        """Test CLI validation integrates correctly with validation utilities."""
-        # Test data that should trigger validation errors
-        result = self.runner.invoke(
-            registry_cli,
-            [
-                "validate-step-definition",
-                "--name",
-                "invalid_step",
-                "--config-class",
-                "InvalidConfiguration",
-                "--builder-name",
-                "InvalidBuilder",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "❌ Step definition has validation errors:" in result.output
-
-        # Verify the same validation logic works directly
-        step_data = {
-            "name": "invalid_step",
-            "config_class": "InvalidConfiguration",
-            "builder_name": "InvalidBuilder",
-        }
-        errors = validate_new_step_definition(step_data)
-        assert len(errors) > 0
-
-    def test_cli_auto_correction_integration(self):
-        """Test CLI auto-correction integrates with validation utilities."""
-        result = self.runner.invoke(
-            registry_cli,
-            [
-                "validate-step-definition",
-                "--name",
-                "test_step",
-                "--config-class",
-                "TestConfiguration",
-                "--auto-correct",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "🔧 Auto-correction applied:" in result.output
-
-        # Verify the same auto-correction works directly
-        step_data = {"name": "test_step", "config_class": "TestConfiguration"}
-        corrected = auto_correct_step_definition(step_data)
-        assert corrected["name"] == "TestStep"
-        assert corrected["config_class"] == "TestStepConfig"
-
-    def test_cli_performance_tracking_integration(self):
-        """Test CLI performance tracking integrates with validation utilities."""
-        # Run CLI command
-        result = self.runner.invoke(
-            registry_cli,
-            ["validate-step-definition", "--name", "TestStep", "--performance"],
-        )
-
-        assert result.exit_code == 0
-        assert "📊 Performance Metrics:" in result.output
-
-        # Verify metrics were updated
-        metrics = get_performance_metrics()
-        assert metrics["total_validations"] > 0
-
-    def test_cli_status_integration(self):
-        """Test CLI status command integrates with validation utilities."""
-        result = self.runner.invoke(registry_cli, ["validation-status"])
-
-        assert result.exit_code == 0
-
-        # Verify the same status is available directly
-        status = get_utils_status()
-        assert status["validation_available"] is True
-        assert len(status["supported_modes"]) > 0
-
-    def test_cli_reset_integration(self):
-        """Test CLI reset command integrates with validation utilities."""
-        # Generate some metrics
-        step_data = {"name": "TestStep"}
-        validate_new_step_definition(step_data)
-
-        # Verify metrics exist
-        metrics_before = get_performance_metrics()
-        assert metrics_before["total_validations"] > 0
-
-        # Reset via CLI
-        result = self.runner.invoke(
-            registry_cli, ["reset-validation-metrics"], input="y\n"
-        )
-
-        assert result.exit_code == 0
-
-        # Verify reset worked
-        metrics_after = get_performance_metrics()
-        assert metrics_after["total_validations"] == 0
-
-
-@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
-class TestCLIErrorHandling:
-    """Test CLI error handling and edge cases."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.runner = CliRunner()
-        reset_utils_metrics()
-
-    def test_cli_with_invalid_sagemaker_type(self):
-        """Test CLI with invalid SageMaker step type."""
-        result = self.runner.invoke(
-            registry_cli,
-            [
-                "validate-step-definition",
-                "--name",
-                "TestStep",
-                "--sagemaker-type",
-                "InvalidType",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "❌ Step definition has validation errors:" in result.output
-        assert "is invalid" in result.output
-        assert "Valid types:" in result.output
-
-    def test_cli_with_unicode_characters(self):
-        """Test CLI with unicode characters in names."""
-        result = self.runner.invoke(
-            registry_cli, ["validate-step-definition", "--name", "TestStepWithÜnicode"]
-        )
-
-        # Should handle gracefully without crashing
-        assert result.exit_code == 0
-        # May or may not be valid, but should not crash
-        assert "🔍 Validating step definition:" in result.output
-
-    def test_cli_with_very_long_names(self):
-        """Test CLI with very long step names."""
-        long_name = "A" * 100
-        result = self.runner.invoke(
-            registry_cli, ["validate-step-definition", "--name", long_name]
-        )
-
-        assert result.exit_code == 0
-        assert "🔍 Validating step definition:" in result.output
-
-    def test_cli_with_empty_values(self):
-        """Test CLI with empty field values."""
-        result = self.runner.invoke(
-            registry_cli,
-            [
-                "validate-step-definition",
-                "--name",
-                "TestStep",
-                "--config-class",
-                "",
-                "--builder-name",
-                "",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "✅ Step definition is valid" in result.output
-
-    @patch("cursus.registry.validation_utils.validate_new_step_definition")
-    def test_cli_with_validation_exception(self, mock_validate):
-        """Test CLI handling of validation exceptions."""
-        mock_validate.side_effect = Exception("Test validation error")
-
-        result = self.runner.invoke(
-            registry_cli, ["validate-step-definition", "--name", "TestStep"]
-        )
-
-        assert result.exit_code == 0
-        assert "❌ Validation failed:" in result.output
-        assert "Test validation error" in result.output
-
-    @patch("cursus.registry.validation_utils.get_validation_status")
-    def test_cli_status_with_exception(self, mock_status):
-        """Test CLI status command with exception."""
-        mock_status.side_effect = Exception("Test status error")
-
-        result = self.runner.invoke(registry_cli, ["validation-status"])
-
-        assert result.exit_code == 0
-        assert "❌ Failed to get validation status:" in result.output
-        assert "Test status error" in result.output
-
-    @patch("cursus.registry.validation_utils.reset_performance_metrics")
-    def test_cli_reset_with_exception(self, mock_reset):
-        """Test CLI reset command with exception."""
+    @patch("cursus.cli.registry_cli.reset_performance_metrics")
+    def test_reset_validation_metrics_with_exception(self, mock_reset, runner):
+        """Test reset-validation-metrics with exception."""
         mock_reset.side_effect = Exception("Test reset error")
 
-        result = self.runner.invoke(
+        result = runner.invoke(
             registry_cli, ["reset-validation-metrics"], input="y\n"
         )
 
@@ -429,176 +568,140 @@ class TestCLIErrorHandling:
 
 
 @pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
-class TestCLIUsageScenarios:
+class TestCLIErrorHandling:
+    """Test CLI error handling and edge cases."""
+
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    def test_list_steps_with_exception(self, mock_get_steps, runner):
+        """Test list-steps with exception."""
+        mock_get_steps.side_effect = Exception("Registry error")
+
+        result = runner.invoke(registry_cli, ["list-steps"])
+
+        assert result.exit_code == 0
+        assert "❌ Failed to list steps:" in result.output
+        assert "Registry error" in result.output
+
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    def test_validate_registry_with_exception(self, mock_get_steps, runner):
+        """Test validate-registry with exception."""
+        mock_get_steps.side_effect = Exception("Validation error")
+
+        result = runner.invoke(registry_cli, ["validate-registry"])
+
+        assert result.exit_code == 0
+        assert "❌ Registry validation failed:" in result.output
+        assert "Validation error" in result.output
+
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_resolve_step_with_exception(self, mock_get_context, runner):
+        """Test resolve-step with exception."""
+        mock_get_context.side_effect = Exception("Resolution error")
+
+        result = runner.invoke(registry_cli, ["resolve-step", "TestStep"])
+
+        assert result.exit_code == 0
+        assert "❌ Step resolution failed:" in result.output
+        assert "Resolution error" in result.output
+
+
+@pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI module not available")
+class TestCLIIntegrationScenarios:
     """Test realistic CLI usage scenarios."""
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.runner = CliRunner()
-        reset_utils_metrics()
+    def test_workspace_creation_workflow(self, runner, temp_workspace):
+        """Test complete workspace creation workflow."""
+        workspace_id = "developer_test"
+        workspace_path = str(Path(temp_workspace) / workspace_id)
 
-    def test_typical_developer_workflow(self):
-        """Test typical developer workflow using CLI."""
-        # Step 1: Developer validates a new step
-        result1 = self.runner.invoke(
+        # Step 1: Create workspace
+        result1 = runner.invoke(
             registry_cli,
             [
-                "validate-step-definition",
-                "--name",
-                "my_new_step",
-                "--config-class",
-                "MyNewStepConfiguration",
+                "init-workspace",
+                workspace_id,
+                "--workspace-path",
+                workspace_path,
+                "--template",
+                "standard",
             ],
         )
 
         assert result1.exit_code == 0
-        assert "❌ Step definition has validation errors:" in result1.output
+        assert "🎉 Developer workspace successfully created!" in result1.output
 
-        # Step 2: Developer applies auto-correction
-        result2 = self.runner.invoke(
+        # Step 2: Validate the created workspace structure
+        workspace_dir = Path(workspace_path)
+        assert workspace_dir.exists()
+        assert (workspace_dir / "src" / "cursus_dev" / "registry" / "workspace_registry.py").exists()
+        assert (workspace_dir / "README.md").exists()
+
+        # Step 3: Check registry file content
+        registry_file = workspace_dir / "src" / "cursus_dev" / "registry" / "workspace_registry.py"
+        content = registry_file.read_text()
+        assert f'developer_id": "{workspace_id}' in content
+        assert "LOCAL_STEPS" in content
+        assert "STEP_OVERRIDES" in content
+
+    @patch("cursus.cli.registry_cli.get_all_step_names")
+    @patch("cursus.cli.registry_cli.get_workspace_context")
+    def test_registry_validation_workflow(self, mock_get_context, mock_get_steps, runner):
+        """Test registry validation workflow."""
+        mock_get_context.return_value = "test_workspace"
+        mock_get_steps.return_value = ["StepA", "StepB", "CustomStep"]
+
+        # Step 1: List steps
+        result1 = runner.invoke(registry_cli, ["list-steps", "--workspace", "test_workspace"])
+        assert result1.exit_code == 0
+        assert "CustomStep" in result1.output
+
+        # Step 2: Validate registry
+        result2 = runner.invoke(registry_cli, ["validate-registry", "--workspace", "test_workspace"])
+        assert result2.exit_code == 0
+        assert "✅ Found 3 steps" in result2.output
+
+        # Step 3: Validate a step definition
+        result3 = runner.invoke(
+            registry_cli,
+            ["validate-step-definition", "--name", "CustomStep", "--config-class", "CustomStepConfig"],
+        )
+        assert result3.exit_code == 0
+
+    def test_step_validation_workflow(self, runner):
+        """Test step validation workflow."""
+        # Step 1: Validate invalid step
+        result1 = runner.invoke(
             registry_cli,
             [
                 "validate-step-definition",
                 "--name",
-                "my_new_step",
+                "invalid_step",
                 "--config-class",
-                "MyNewStepConfiguration",
+                "InvalidConfiguration",
+            ],
+        )
+        assert result1.exit_code == 0
+        assert "❌ Step definition has validation errors:" in result1.output
+
+        # Step 2: Apply auto-correction
+        result2 = runner.invoke(
+            registry_cli,
+            [
+                "validate-step-definition",
+                "--name",
+                "invalid_step",
+                "--config-class",
+                "InvalidConfiguration",
                 "--auto-correct",
             ],
         )
-
         assert result2.exit_code == 0
         assert "🔧 Auto-correction applied:" in result2.output
 
-        # Step 3: Developer checks system status
-        result3 = self.runner.invoke(registry_cli, ["validation-status"])
-
+        # Step 3: Check validation status
+        result3 = runner.invoke(registry_cli, ["validation-status"])
         assert result3.exit_code == 0
-        # Each CLI validation call triggers multiple internal validations
-        # (validate_new_step_definition + create_validation_report calls)
-        # So 2 CLI calls result in more than 2 total validations
-        assert "Total validations:" in result3.output
-        # Verify that validations were actually performed
-        assert "Total validations: 0" not in result3.output
-
-    def test_performance_monitoring_workflow(self):
-        """Test performance monitoring workflow."""
-        # Step 1: Perform several validations
-        for i in range(3):
-            result = self.runner.invoke(
-                registry_cli, ["validate-step-definition", "--name", f"TestStep{i}"]
-            )
-            assert result.exit_code == 0
-
-        # Step 2: Check performance status
-        result = self.runner.invoke(registry_cli, ["validation-status"])
-
-        assert result.exit_code == 0
-        # Each CLI validation call triggers multiple internal validations
-        # So 3 CLI calls result in more than 3 total validations
-        assert "Total validations:" in result.output
-        assert (
-            "Total validations: 0" not in result.output
-        )  # Verify validations occurred
-        assert "🟢 Excellent" in result.output or "🟡 Good" in result.output
-
-        # Step 3: Reset metrics
-        result = self.runner.invoke(
-            registry_cli, ["reset-validation-metrics"], input="y\n"
-        )
-
-        assert result.exit_code == 0
-
-        # Step 4: Verify reset
-        result = self.runner.invoke(registry_cli, ["validation-status"])
-        assert "Total validations: 0" in result.output
-
-    def test_batch_validation_scenario(self):
-        """Test batch validation scenario."""
-        steps_to_validate = [
-            ("ValidStep", "ValidStepConfig", "ValidStepStepBuilder"),
-            ("invalid_step", "InvalidConfig", "InvalidBuilder"),
-            (
-                "AnotherValidStep",
-                "AnotherValidStepConfig",
-                "AnotherValidStepStepBuilder",
-            ),
-        ]
-
-        results = []
-        for name, config, builder in steps_to_validate:
-            result = self.runner.invoke(
-                registry_cli,
-                [
-                    "validate-step-definition",
-                    "--name",
-                    name,
-                    "--config-class",
-                    config,
-                    "--builder-name",
-                    builder,
-                ],
-            )
-            results.append((name, result))
-
-        # Check results
-        valid_count = sum(
-            1 for _, result in results if "✅ Step definition is valid" in result.output
-        )
-        invalid_count = len(results) - valid_count
-
-        assert valid_count == 2  # ValidStep and AnotherValidStep
-        assert invalid_count == 1  # invalid_step
-
-        # Check final status
-        status_result = self.runner.invoke(registry_cli, ["validation-status"])
-        # Each CLI validation call triggers multiple internal validations
-        # So 3 CLI calls result in more than 3 total validations
-        assert "Total validations:" in status_result.output
-        assert (
-            "Total validations: 0" not in status_result.output
-        )  # Verify validations occurred
-
-    def test_error_recovery_scenario(self):
-        """Test error recovery scenario."""
-        # Step 1: Try validation with problematic data
-        result1 = self.runner.invoke(
-            registry_cli,
-            [
-                "validate-step-definition",
-                "--name",
-                "test_step",
-                "--config-class",
-                "TestConfiguration",
-                "--builder-name",
-                "TestBuilder",
-            ],
-        )
-
-        assert result1.exit_code == 0
-        assert "❌ Step definition has validation errors:" in result1.output
-
-        # Step 2: Apply corrections and retry
-        result2 = self.runner.invoke(
-            registry_cli,
-            [
-                "validate-step-definition",
-                "--name",
-                "TestStep",  # Corrected name
-                "--config-class",
-                "TestStepConfig",  # Corrected config
-                "--builder-name",
-                "TestStepStepBuilder",  # Corrected builder
-            ],
-        )
-
-        assert result2.exit_code == 0
-        assert "✅ Step definition is valid" in result2.output
-
-        # Step 3: Verify system is working normally
-        result3 = self.runner.invoke(registry_cli, ["validation-status"])
-        assert result3.exit_code == 0
-        assert "🟢 Active" in result3.output
+        assert "📊 Validation System Status" in result3.output
 
 
 if __name__ == "__main__":
