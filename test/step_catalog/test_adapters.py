@@ -289,27 +289,34 @@ class TestWorkspaceDiscoveryManagerAdapter:
         assert "scripts" in components
         assert "contracts" in components
     
-    def test_resolve_cross_workspace_dependencies(self, mock_workspace_root, mock_step_info):
-        """Test resolving cross-workspace dependencies with correct signature."""
+    def test_enhanced_discover_components_functionality(self, mock_workspace_root, mock_step_info):
+        """Test enhanced discover_components method with all component types."""
         adapter = WorkspaceDiscoveryManagerAdapter(mock_workspace_root)
         
-        # The method expects a pipeline definition dictionary
-        pipeline_definition = {
-            "steps": [
-                {
-                    "step_name": "test_step",
-                    "workspace_id": "core",
-                    "dependencies": []
-                }
-            ]
-        }
+        # Mock the catalog to return test data
+        adapter.catalog.list_available_steps = Mock(return_value=["test_step"])
+        adapter.catalog.get_step_info = Mock(return_value=mock_step_info)
         
-        result = adapter.resolve_cross_workspace_dependencies(pipeline_definition)
+        # Test discovery with None (should focus on core workspace)
+        result = adapter.discover_components()
         
         assert isinstance(result, dict)
-        assert "pipeline_definition" in result
-        assert "resolved_dependencies" in result
-        assert "dependency_graph" in result
+        assert "builders" in result
+        assert "configs" in result
+        assert "contracts" in result
+        assert "specs" in result
+        assert "scripts" in result
+        assert "metadata" in result
+        
+        # Check metadata structure
+        metadata = result["metadata"]
+        assert "discovery_timestamp" in metadata
+        assert "total_components" in metadata
+        assert "workspaces_scanned" in metadata
+        assert "component_counts" in metadata
+        
+        # Should focus on core workspace when no constraints specified
+        assert "core" in metadata["workspaces_scanned"]
 
 
 class TestHybridFileResolverAdapter:

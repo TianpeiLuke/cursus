@@ -904,7 +904,9 @@ class TestIntegrationScenarios:
             
             # Mock package root to prevent finding real cursus package
             with patch.object(StepCatalog, '_find_package_root', return_value=workspace_root / "src" / "cursus"):
-                catalog = StepCatalog(workspace_root)
+                # Configure workspace directories to point directly to the steps directory
+                workspace_dirs = [workspace_root / "development" / "projects" / "alpha" / "src" / "cursus_dev" / "steps"]
+                catalog = StepCatalog(workspace_dirs)
                 
                 # Mock the _load_registry_data method to prevent loading real registry data
                 with patch.object(catalog, '_load_registry_data'):
@@ -914,7 +916,7 @@ class TestIntegrationScenarios:
                 # Should discover both core and workspace steps
                 all_steps = catalog.list_available_steps()
                 core_steps = catalog.list_available_steps(workspace_id="core")
-                workspace_steps = catalog.list_available_steps(workspace_id="alpha")
+                workspace_steps = catalog.list_available_steps(workspace_id="steps")  # Workspace ID is "steps" (directory name)
                 
                 assert "core_step" in all_steps
                 assert "custom_step" in all_steps

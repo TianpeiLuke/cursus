@@ -135,7 +135,9 @@ class DataPreprocessingConfig(BaseModel):
         """Test complete step discovery workflow."""
         # Mock package root to point to our test workspace
         with patch.object(StepCatalog, '_find_package_root', return_value=realistic_workspace / "src" / "cursus"):
-            catalog = create_step_catalog(realistic_workspace, use_unified=True)
+            # Configure workspace directories to point directly to the steps directory
+            workspace_dirs = [realistic_workspace / "development" / "projects" / "alpha" / "src" / "cursus_dev" / "steps"]
+            catalog = create_step_catalog(workspace_dirs, use_unified=True)
             
             # Mock registry to avoid import issues
             mock_registry = {
@@ -170,7 +172,7 @@ class DataPreprocessingConfig(BaseModel):
                 assert "custom_preprocessing" in all_steps
                 
                 core_steps = catalog.list_available_steps(workspace_id="core")
-                workspace_steps = catalog.list_available_steps(workspace_id="alpha")
+                workspace_steps = catalog.list_available_steps(workspace_id="steps")  # Workspace ID is "steps" (directory name)
                 
                 assert "data_preprocessing" in core_steps
                 assert "model_training" in core_steps
