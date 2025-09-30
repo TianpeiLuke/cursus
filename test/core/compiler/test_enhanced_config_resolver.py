@@ -9,7 +9,7 @@ job types, and to use metadata from the configuration file.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from cursus.core.compiler.config_resolver import StepConfigResolver
+from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from cursus.core.compiler.exceptions import (
     ResolutionError,
     AmbiguityError,

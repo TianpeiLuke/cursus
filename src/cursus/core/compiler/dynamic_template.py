@@ -18,7 +18,7 @@ from ..base import StepBuilderBase, BasePipelineConfig
 # Import PipelineTemplateBase directly - circular import should be resolved by now
 from ..assembler.pipeline_template_base import PipelineTemplateBase
 
-from .config_resolver import StepConfigResolver
+from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from ...step_catalog import StepCatalog
 from .validation import ValidationEngine
 from .exceptions import ConfigurationError, ValidationError

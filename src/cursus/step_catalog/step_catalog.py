@@ -69,19 +69,20 @@ class StepCatalog:
         Args:
             workspace_dirs: Optional workspace directory(ies) for workspace-aware discovery.
                            Can be a single Path or list of Paths.
-                           Each should contain development/projects/ structure.
+                           Each should point directly to a directory containing scripts/, contracts/, 
+                           specs/, builders/, configs/ subdirectories.
                            If None, only discovers package components.
         
         Examples:
             # Package-only discovery (works in all deployment scenarios)
             catalog = StepCatalog()
             
-            # Single workspace directory
-            catalog = StepCatalog(workspace_dirs=Path("/path/to/workspace"))
+            # Single workspace directory (points directly to steps directory)
+            catalog = StepCatalog(workspace_dirs=Path("/path/to/my_workspace_steps"))
             
             # Multiple workspace directories
             catalog = StepCatalog(workspace_dirs=[
-                Path("/workspace1"), Path("/workspace2")
+                Path("/workspace1/steps"), Path("/workspace2/steps")
             ])
         """
         # Initialize logger first (needed by discovery components)
@@ -759,16 +760,9 @@ class StepCatalog:
                     self.logger.warning(f"Workspace directory does not exist: {workspace_path}")
                     continue
                 
-                # Look for development/projects/ structure
-                dev_projects_dir = workspace_path / "development" / "projects"
-                if dev_projects_dir.exists():
-                    for project_dir in dev_projects_dir.iterdir():
-                        if project_dir.is_dir():
-                            workspace_steps_dir = project_dir / "src" / "cursus_dev" / "steps"
-                            if workspace_steps_dir.exists():
-                                self._discover_workspace_components_in_dir(project_dir.name, workspace_steps_dir)
-                else:
-                    self.logger.warning(f"Workspace directory missing development/projects structure: {workspace_path}")
+                # Simplified structure: workspace_dir points directly to directory containing scripts/, contracts/, etc.
+                workspace_id = workspace_path.name  # Use directory name as workspace ID
+                self._discover_workspace_components_in_dir(workspace_id, workspace_path)
                     
             except Exception as e:
                 self.logger.error(f"Error discovering workspace components in {workspace_dir}: {e}")

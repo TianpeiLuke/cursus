@@ -20,7 +20,7 @@ from cursus.core.compiler.dag_compiler import (
     SECURITY_GROUP_ID,
     VPC_SUBNET,
 )
-from cursus.core.compiler.config_resolver import StepConfigResolver
+from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from cursus.step_catalog.step_catalog import StepCatalog
 from cursus.core.base.config_base import BasePipelineConfig
 from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase

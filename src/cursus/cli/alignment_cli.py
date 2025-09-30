@@ -483,14 +483,8 @@ def validate(
         click.echo(f"📁 Configs directory: {configs_dir}")
 
     try:
-        # Initialize the unified alignment tester
-        tester = UnifiedAlignmentTester(
-            scripts_dir=str(scripts_dir),
-            contracts_dir=str(contracts_dir),
-            specs_dir=str(specs_dir),
-            builders_dir=str(builders_dir),
-            configs_dir=str(configs_dir),
-        )
+        # Initialize the unified alignment tester (new signature)
+        tester = UnifiedAlignmentTester()
 
         # Run validation
         results = tester.validate_specific_script(script_name)
@@ -629,14 +623,8 @@ def validate_all(
             if output_dir:
                 click.echo(f"📁 Output directory: {output_dir}")
 
-        # Initialize the unified alignment tester
-        tester = UnifiedAlignmentTester(
-            scripts_dir=str(scripts_dir),
-            contracts_dir=str(contracts_dir),
-            specs_dir=str(specs_dir),
-            builders_dir=str(builders_dir),
-            configs_dir=str(configs_dir),
-        )
+        # Initialize the unified alignment tester (new signature)
+        tester = UnifiedAlignmentTester()
 
         # Discover all scripts
         scripts = []
@@ -892,14 +880,8 @@ def validate_level(
             click.echo(f"📁 Builders directory: {builders_dir}")
             click.echo(f"📁 Configs directory: {configs_dir}")
 
-        # Initialize the unified alignment tester
-        tester = UnifiedAlignmentTester(
-            scripts_dir=str(scripts_dir),
-            contracts_dir=str(contracts_dir),
-            specs_dir=str(specs_dir),
-            builders_dir=str(builders_dir),
-            configs_dir=str(configs_dir),
-        )
+        # Initialize the unified alignment tester (new signature)
+        tester = UnifiedAlignmentTester()
 
         # Run validation for specific level
         results = tester.validate_specific_script(script_name)

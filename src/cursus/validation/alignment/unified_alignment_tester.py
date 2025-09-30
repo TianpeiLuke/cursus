@@ -40,11 +40,6 @@ class UnifiedAlignmentTester:
 
     def __init__(
         self,
-        scripts_dir: str = "src/cursus/steps/scripts",
-        contracts_dir: str = "src/cursus/steps/contracts",
-        specs_dir: str = "src/cursus/steps/specs",
-        builders_dir: str = "src/cursus/steps/builders",
-        configs_dir: str = "src/cursus/steps/configs",
         level3_validation_mode: str = "relaxed",
         step_catalog: Optional[Any] = None,
         workspace_dirs: Optional[List[str]] = None,
@@ -53,21 +48,10 @@ class UnifiedAlignmentTester:
         Initialize the unified alignment tester.
 
         Args:
-            scripts_dir: Directory containing processing scripts
-            contracts_dir: Directory containing script contracts
-            specs_dir: Directory containing step specifications
-            builders_dir: Directory containing step builders
-            configs_dir: Directory containing step configurations
             level3_validation_mode: Level 3 validation mode ('strict', 'relaxed', 'permissive')
             step_catalog: Optional StepCatalog instance for workspace-aware validation
             workspace_dirs: Optional list of workspace directories for workspace-aware validation
         """
-        self.scripts_dir = Path(scripts_dir).resolve()
-        self.contracts_dir = Path(contracts_dir).resolve()
-        self.specs_dir = Path(specs_dir).resolve()
-        self.builders_dir = Path(builders_dir).resolve()
-        self.configs_dir = Path(configs_dir).resolve()
-        
         # Store step catalog for workspace-aware validation
         if step_catalog is not None:
             self.step_catalog = step_catalog
@@ -88,6 +72,9 @@ class UnifiedAlignmentTester:
             except ImportError:
                 self.step_catalog = None
 
+        # Dynamically discover directories from step catalog
+        self._discover_component_directories()
+
         # Configure Level 3 validation based on mode
         if level3_validation_mode == "strict":
             level3_config = Level3ValidationConfig.create_strict_config()
@@ -101,15 +88,15 @@ class UnifiedAlignmentTester:
                 f"⚠️  Unknown Level 3 validation mode '{level3_validation_mode}', using 'relaxed' mode"
             )
 
-        # Initialize level-specific testers
+        # Initialize level-specific testers with default directories
         self.level1_tester = ScriptContractAlignmentTester(
-            scripts_dir, contracts_dir, builders_dir
+            str(self.scripts_dir), str(self.contracts_dir), str(self.builders_dir)
         )
         self.level2_tester = ContractSpecificationAlignmentTester(
-            contracts_dir, specs_dir
+            str(self.contracts_dir), str(self.specs_dir)
         )
         self.level3_tester = SpecificationDependencyAlignmentTester(
-            specs_dir, level3_config
+            str(self.specs_dir), level3_config
         )
         self.level4_tester = BuilderConfigurationAlignmentTester(
             str(self.builders_dir), str(self.configs_dir)
@@ -127,6 +114,112 @@ class UnifiedAlignmentTester:
 
         # Phase 3 Enhancement: Step Type Enhancement System
         self.step_type_enhancement_router = StepTypeEnhancementRouter()
+
+    def _discover_component_directories(self):
+        """
+        Dynamically discover component directories from step catalog.
+        
+        Uses step catalog to find actual directory structure, supporting both:
+        - Package mode: src/cursus/steps/{component_type}/
+        - Workspace mode: workspace_dir/{component_type}/
+        """
+        try:
+            if self.step_catalog is not None:
+                # Try to discover directories from step catalog
+                discovered_dirs = self._get_directories_from_step_catalog()
+                if discovered_dirs:
+                    self.scripts_dir = discovered_dirs.get('scripts', Path("src/cursus/steps/scripts"))
+                    self.contracts_dir = discovered_dirs.get('contracts', Path("src/cursus/steps/contracts"))
+                    self.specs_dir = discovered_dirs.get('specs', Path("src/cursus/steps/specs"))
+                    self.builders_dir = discovered_dirs.get('builders', Path("src/cursus/steps/builders"))
+                    self.configs_dir = discovered_dirs.get('configs', Path("src/cursus/steps/configs"))
+                    return
+            
+            # Fallback to default package structure
+            self._set_default_directories()
+            
+        except Exception as e:
+            print(f"⚠️  Error discovering component directories: {e}")
+            # Fallback to default directories
+            self._set_default_directories()
+
+    def _get_directories_from_step_catalog(self) -> Optional[Dict[str, Path]]:
+        """
+        Extract component directories from step catalog's discovered structure.
+        
+        Returns:
+            Dictionary mapping component types to their directories, or None if not discoverable
+        """
+        try:
+            # Get a sample step to understand directory structure
+            available_steps = self.step_catalog.list_available_steps()
+            if not available_steps:
+                return None
+            
+            # Find a step with multiple components to understand structure
+            directories = {}
+            component_types = ['scripts', 'contracts', 'specs', 'builders', 'configs']
+            
+            for step_name in available_steps:
+                step_info = self.step_catalog.get_step_info(step_name)
+                if not step_info:
+                    continue
+                
+                # Extract directory paths from file components
+                for component_type_singular, metadata in step_info.file_components.items():
+                    if metadata and metadata.path:
+                        # Map singular to plural form
+                        component_type_plural = self._get_plural_component_type(component_type_singular)
+                        if component_type_plural in component_types:
+                            # Get parent directory (should be the component type directory)
+                            component_dir = metadata.path.parent
+                            directories[component_type_plural] = component_dir
+                
+                # If we found directories for most component types, we're good
+                if len(directories) >= 3:
+                    break
+            
+            # Fill in missing directories by inferring from discovered structure
+            if directories:
+                # Use any discovered directory as base to infer others
+                base_dir = None
+                for dir_path in directories.values():
+                    # Find the parent directory that contains component subdirectories
+                    potential_base = dir_path.parent
+                    if any((potential_base / comp_type).exists() for comp_type in component_types):
+                        base_dir = potential_base
+                        break
+                
+                if base_dir:
+                    # Fill in missing component directories
+                    for comp_type in component_types:
+                        if comp_type not in directories:
+                            directories[comp_type] = base_dir / comp_type
+            
+            return directories if directories else None
+            
+        except Exception as e:
+            print(f"⚠️  Error extracting directories from step catalog: {e}")
+            return None
+
+    def _get_plural_component_type(self, singular: str) -> str:
+        """Convert singular component type to plural form."""
+        mapping = {
+            'script': 'scripts',
+            'contract': 'contracts', 
+            'spec': 'specs',
+            'builder': 'builders',
+            'config': 'configs'
+        }
+        return mapping.get(singular, singular)
+
+    def _set_default_directories(self):
+        """Set default package directories."""
+        self.scripts_dir = Path("src/cursus/steps/scripts").resolve()
+        self.contracts_dir = Path("src/cursus/steps/contracts").resolve()
+        self.specs_dir = Path("src/cursus/steps/specs").resolve()
+        self.builders_dir = Path("src/cursus/steps/builders").resolve()
+        self.configs_dir = Path("src/cursus/steps/configs").resolve()
 
     def run_full_validation(
         self,
@@ -696,61 +789,175 @@ class UnifiedAlignmentTester:
         return results
 
     def discover_scripts(self) -> List[str]:
-        """Discover all Python scripts using step catalog with fallback."""
-        # Try using step catalog first
+        """Discover all Python scripts using step catalog (workspace-aware)."""
         try:
-            catalog = self._get_step_catalog()
-            if catalog:
-                scripts_with_components = self._discover_scripts_with_catalog(catalog)
-                if scripts_with_components:
-                    return sorted(scripts_with_components)
-                            
-        except ImportError:
-            pass  # Fall back to legacy method
-        except Exception:
-            pass  # Fall back to legacy method
-
-        # FALLBACK METHOD: Legacy file system discovery
-        return self._discover_scripts_legacy()
-
-    def _get_step_catalog(self):
-        """Get step catalog instance with unified initialization logic."""
-        # Use provided step catalog if available (workspace-aware validation)
-        if self.step_catalog is not None:
-            return self.step_catalog
-            
-        # Fallback: Create package-only step catalog
-        from ...step_catalog import StepCatalog
-        
-        # ✅ PORTABLE: Package-only discovery for script discovery
-        # Works in PyPI, source, and submodule scenarios
-        # StepCatalog autonomously finds package root regardless of deployment
-        return StepCatalog(workspace_dirs=None)  # None for package-only discovery
+            if self.step_catalog:
+                return self._discover_scripts_with_catalog(self.step_catalog)
+            else:
+                # Fallback to legacy method if no step catalog available
+                return self._discover_scripts_legacy()
+        except Exception as e:
+            print(f"⚠️  Error discovering scripts: {e}")
+            return self._discover_scripts_legacy()
 
     def _discover_scripts_with_catalog(self, catalog) -> List[str]:
-        """Discover scripts using step catalog."""
-        # Get all available steps from catalog
-        available_steps = catalog.list_available_steps()
-        
-        # Filter steps that have script components
-        scripts_with_components = []
-        for step_name in available_steps:
-            step_info = catalog.get_step_info(step_name)
-            if step_info and step_info.file_components.get('script'):
-                scripts_with_components.append(step_name)
-        
-        return scripts_with_components
+        """Discover scripts using step catalog (workspace-aware)."""
+        try:
+            # Get all available steps from catalog (includes workspace steps)
+            available_steps = catalog.list_available_steps()
+            
+            # Filter steps that have script components
+            scripts_with_components = []
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('script'):
+                    scripts_with_components.append(step_name)
+            
+            return sorted(scripts_with_components)
+        except Exception as e:
+            print(f"⚠️  Error discovering scripts with catalog: {e}")
+            return []
 
     def _discover_scripts_legacy(self) -> List[str]:
-        """Discover scripts using legacy file system discovery."""
+        """Discover scripts using legacy file system discovery (fallback only)."""
         scripts = []
-
-        if self.scripts_dir.exists():
-            for script_file in self.scripts_dir.glob("*.py"):
-                if not script_file.name.startswith("__"):
-                    scripts.append(script_file.stem)
-
+        try:
+            if self.scripts_dir.exists():
+                for script_file in self.scripts_dir.glob("*.py"):
+                    if not script_file.name.startswith("__"):
+                        scripts.append(script_file.stem)
+        except Exception as e:
+            print(f"⚠️  Error in legacy script discovery: {e}")
+        
         return sorted(scripts)
+
+    def discover_contracts(self) -> List[str]:
+        """Discover all contract files using step catalog (workspace-aware)."""
+        try:
+            if self.step_catalog:
+                return self._discover_contracts_with_catalog(self.step_catalog)
+            else:
+                return self._discover_contracts_legacy()
+        except Exception as e:
+            print(f"⚠️  Error discovering contracts: {e}")
+            return self._discover_contracts_legacy()
+
+    def _discover_contracts_with_catalog(self, catalog) -> List[str]:
+        """Discover contracts using step catalog (workspace-aware)."""
+        try:
+            available_steps = catalog.list_available_steps()
+            
+            contracts_with_components = []
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('contract'):
+                    contracts_with_components.append(step_name)
+            
+            return sorted(contracts_with_components)
+        except Exception as e:
+            print(f"⚠️  Error discovering contracts with catalog: {e}")
+            return []
+
+    def _discover_contracts_legacy(self) -> List[str]:
+        """Discover contracts using legacy file system discovery (fallback only)."""
+        contracts = []
+        try:
+            if self.contracts_dir.exists():
+                for contract_file in self.contracts_dir.glob("*_contract.py"):
+                    if not contract_file.name.startswith("__"):
+                        # Remove _contract.py suffix to get step name
+                        step_name = contract_file.stem[:-9]  # Remove '_contract'
+                        contracts.append(step_name)
+        except Exception as e:
+            print(f"⚠️  Error in legacy contract discovery: {e}")
+        
+        return sorted(contracts)
+
+    def discover_specs(self) -> List[str]:
+        """Discover all specification files using step catalog (workspace-aware)."""
+        try:
+            if self.step_catalog:
+                return self._discover_specs_with_catalog(self.step_catalog)
+            else:
+                return self._discover_specs_legacy()
+        except Exception as e:
+            print(f"⚠️  Error discovering specs: {e}")
+            return self._discover_specs_legacy()
+
+    def _discover_specs_with_catalog(self, catalog) -> List[str]:
+        """Discover specs using step catalog (workspace-aware)."""
+        try:
+            available_steps = catalog.list_available_steps()
+            
+            specs_with_components = []
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('spec'):
+                    specs_with_components.append(step_name)
+            
+            return sorted(specs_with_components)
+        except Exception as e:
+            print(f"⚠️  Error discovering specs with catalog: {e}")
+            return []
+
+    def _discover_specs_legacy(self) -> List[str]:
+        """Discover specs using legacy file system discovery (fallback only)."""
+        specs = []
+        try:
+            if self.specs_dir.exists():
+                for spec_file in self.specs_dir.glob("*_spec.py"):
+                    if not spec_file.name.startswith("__"):
+                        # Remove _spec.py suffix to get step name
+                        step_name = spec_file.stem[:-5]  # Remove '_spec'
+                        specs.append(step_name)
+        except Exception as e:
+            print(f"⚠️  Error in legacy spec discovery: {e}")
+        
+        return sorted(specs)
+
+    def discover_builders(self) -> List[str]:
+        """Discover all builder files using step catalog (workspace-aware)."""
+        try:
+            if self.step_catalog:
+                return self._discover_builders_with_catalog(self.step_catalog)
+            else:
+                return self._discover_builders_legacy()
+        except Exception as e:
+            print(f"⚠️  Error discovering builders: {e}")
+            return self._discover_builders_legacy()
+
+    def _discover_builders_with_catalog(self, catalog) -> List[str]:
+        """Discover builders using step catalog (workspace-aware)."""
+        try:
+            available_steps = catalog.list_available_steps()
+            
+            builders_with_components = []
+            for step_name in available_steps:
+                step_info = catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('builder'):
+                    builders_with_components.append(step_name)
+            
+            return sorted(builders_with_components)
+        except Exception as e:
+            print(f"⚠️  Error discovering builders with catalog: {e}")
+            return []
+
+    def _discover_builders_legacy(self) -> List[str]:
+        """Discover builders using legacy file system discovery (fallback only)."""
+        builders = []
+        try:
+            if self.builders_dir.exists():
+                for builder_file in self.builders_dir.glob("builder_*_step.py"):
+                    if not builder_file.name.startswith("__"):
+                        # Extract step name from builder_*_step.py pattern
+                        filename = builder_file.stem
+                        if filename.startswith("builder_") and filename.endswith("_step"):
+                            step_name = filename[8:-5]  # Remove 'builder_' and '_step'
+                            builders.append(step_name)
+        except Exception as e:
+            print(f"⚠️  Error in legacy builder discovery: {e}")
+        
+        return sorted(builders)
 
     def get_alignment_status_matrix(self) -> Dict[str, Dict[str, str]]:
         """
@@ -795,34 +1002,178 @@ class UnifiedAlignmentTester:
 
         return matrix
 
+    def get_step_info_from_catalog(self, step_name: str) -> Optional[Any]:
+        """
+        Get step information from step catalog (workspace-aware).
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            StepInfo object or None if not found
+        """
+        try:
+            if self.step_catalog:
+                return self.step_catalog.get_step_info(step_name)
+            return None
+        except Exception as e:
+            print(f"⚠️  Error getting step info for {step_name}: {e}")
+            return None
+
+    def get_component_path_from_catalog(self, step_name: str, component_type: str) -> Optional[Path]:
+        """
+        Get component file path from step catalog (workspace-aware).
+        
+        Args:
+            step_name: Name of the step
+            component_type: Type of component ('script', 'contract', 'spec', 'builder', 'config')
+            
+        Returns:
+            Path to component file or None if not found
+        """
+        try:
+            step_info = self.get_step_info_from_catalog(step_name)
+            if step_info and step_info.file_components.get(component_type):
+                return step_info.file_components[component_type].path
+            return None
+        except Exception as e:
+            print(f"⚠️  Error getting {component_type} path for {step_name}: {e}")
+            return None
+
+    def get_workspace_context(self, step_name: str) -> Dict[str, Any]:
+        """
+        Get workspace context for a step (workspace-aware).
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            Dictionary with workspace context information
+        """
+        context = {
+            "workspace_id": None,
+            "is_workspace_component": False,
+            "component_paths": {},
+            "registry_data": {}
+        }
+        
+        try:
+            step_info = self.get_step_info_from_catalog(step_name)
+            if step_info:
+                context["workspace_id"] = step_info.workspace_id
+                context["is_workspace_component"] = step_info.workspace_id != "core"
+                context["registry_data"] = step_info.registry_data
+                
+                # Get all component paths
+                for comp_type, metadata in step_info.file_components.items():
+                    if metadata and metadata.path:
+                        context["component_paths"][comp_type] = str(metadata.path)
+                        
+        except Exception as e:
+            print(f"⚠️  Error getting workspace context for {step_name}: {e}")
+            
+        return context
+
+    def validate_cross_workspace_compatibility(self, step_names: List[str]) -> Dict[str, Any]:
+        """
+        Validate compatibility across workspace components.
+        
+        Args:
+            step_names: List of step names to validate
+            
+        Returns:
+            Compatibility validation results
+        """
+        results = {
+            "compatible": True,
+            "issues": [],
+            "workspace_distribution": {},
+            "recommendations": []
+        }
+        
+        try:
+            if not self.step_catalog:
+                results["issues"].append("Step catalog not available for cross-workspace validation")
+                results["compatible"] = False
+                return results
+            
+            # Group steps by workspace
+            workspace_groups = {}
+            for step_name in step_names:
+                context = self.get_workspace_context(step_name)
+                workspace_id = context["workspace_id"] or "core"
+                
+                if workspace_id not in workspace_groups:
+                    workspace_groups[workspace_id] = []
+                workspace_groups[workspace_id].append(step_name)
+            
+            results["workspace_distribution"] = workspace_groups
+            
+            # Check for potential compatibility issues
+            if len(workspace_groups) > 1:
+                results["recommendations"].append(
+                    "Multiple workspaces detected. Ensure component versions are compatible."
+                )
+                
+                # Check for duplicate step names across workspaces
+                step_counts = {}
+                for workspace_id, steps in workspace_groups.items():
+                    for step in steps:
+                        base_name = step.split('_')[0] if '_' in step else step
+                        if base_name not in step_counts:
+                            step_counts[base_name] = []
+                        step_counts[base_name].append((step, workspace_id))
+                
+                for base_name, occurrences in step_counts.items():
+                    if len(occurrences) > 1:
+                        workspaces = [occ[1] for occ in occurrences]
+                        results["issues"].append(
+                            f"Step '{base_name}' found in multiple workspaces: {workspaces}"
+                        )
+                        results["compatible"] = False
+                        
+        except Exception as e:
+            results["issues"].append(f"Cross-workspace validation error: {e}")
+            results["compatible"] = False
+            
+        return results
+
     def _add_step_type_context_to_issues(
         self, script_name: str, validation_result: ValidationResult
     ):
         """
-        Phase 1 Enhancement: Add step type context to validation issues.
+        Enhanced step type context with workspace awareness.
 
         Args:
             script_name: Name of the script being validated
             validation_result: ValidationResult to enhance with step type context
         """
         try:
-            # Detect step type from registry
+            # Get workspace context from step catalog
+            workspace_context = self.get_workspace_context(script_name)
+            
+            # Detect step type from registry (enhanced with workspace context)
             step_type = detect_step_type_from_registry(script_name)
-
-            # Detect framework if possible (requires script analysis)
+            
+            # Try to get framework from step catalog first, then script analysis
             framework = None
-            try:
-                # Try to get framework from script analysis if available
-                script_path = self.scripts_dir / f"{script_name}.py"
-                if script_path.exists():
-                    from .framework_patterns import detect_framework_from_script_content
-
-                    with open(script_path, "r", encoding="utf-8") as f:
-                        script_content = f.read()
-                    framework = detect_framework_from_script_content(script_content)
-            except Exception as e:
-                # Framework detection is optional, continue without it
-                print(f"⚠️  Framework detection failed for {script_name}: {e}")
+            if self.step_catalog:
+                framework = self.step_catalog.detect_framework(script_name)
+            
+            # Fallback to script analysis if catalog doesn't have framework info
+            if not framework:
+                try:
+                    script_path = self.get_component_path_from_catalog(script_name, 'script')
+                    if not script_path:
+                        script_path = self.scripts_dir / f"{script_name}.py"
+                    
+                    if script_path and script_path.exists():
+                        from .framework_patterns import detect_framework_from_script_content
+                        with open(script_path, "r", encoding="utf-8") as f:
+                            script_content = f.read()
+                        framework = detect_framework_from_script_content(script_content)
+                except Exception as e:
+                    print(f"⚠️  Framework detection failed for {script_name}: {e}")
 
             # Add step type context to existing issues
             for issue in validation_result.issues:
@@ -848,11 +1199,51 @@ class UnifiedAlignmentTester:
                         step_type_issue
                     )
 
-            # Add step type information to validation result details
+            # Add enhanced context to validation result details
             validation_result.details["step_type"] = step_type
+            validation_result.details["workspace_context"] = workspace_context
             if framework:
                 validation_result.details["framework"] = framework
 
         except Exception as e:
             # Step type enhancement is optional, don't fail validation if it fails
             print(f"⚠️  Step type enhancement failed for {script_name}: {e}")
+
+    def get_workspace_validation_summary(self) -> Dict[str, Any]:
+        """
+        Get workspace-aware validation summary.
+        
+        Returns:
+            Summary with workspace-specific information
+        """
+        summary = self.get_validation_summary()
+        
+        try:
+            if self.step_catalog:
+                # Add workspace-specific information
+                workspace_info = {}
+                
+                # Get workspace distribution
+                all_steps = self.discover_scripts()
+                workspace_distribution = {}
+                
+                for step_name in all_steps:
+                    context = self.get_workspace_context(step_name)
+                    workspace_id = context["workspace_id"] or "core"
+                    
+                    if workspace_id not in workspace_distribution:
+                        workspace_distribution[workspace_id] = 0
+                    workspace_distribution[workspace_id] += 1
+                
+                workspace_info["workspace_distribution"] = workspace_distribution
+                workspace_info["total_workspaces"] = len(workspace_distribution)
+                workspace_info["has_workspace_components"] = any(
+                    ws_id != "core" for ws_id in workspace_distribution.keys()
+                )
+                
+                summary["workspace_info"] = workspace_info
+                
+        except Exception as e:
+            print(f"⚠️  Error generating workspace validation summary: {e}")
+            
+        return summary

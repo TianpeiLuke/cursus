@@ -12,7 +12,7 @@ from . import PipelineDAG
 from ...core.base.config_base import BasePipelineConfig
 from ...core.base.contract_base import ScriptContract
 from ...core.base.specification_base import StepSpecification
-from ...core.compiler.config_resolver import StepConfigResolver
+from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from ...core.compiler.exceptions import ConfigurationError
 from ...registry.step_names import (
     get_canonical_name_from_file_name,

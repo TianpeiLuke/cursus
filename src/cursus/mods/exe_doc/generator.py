@@ -13,7 +13,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 
 from ...api.dag.base_dag import PipelineDAG
 from ...core.base import BasePipelineConfig
-from ...core.compiler.config_resolver import StepConfigResolver
+from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from .base import (
     ExecutionDocumentHelper,
     ExecutionDocumentGenerationError,

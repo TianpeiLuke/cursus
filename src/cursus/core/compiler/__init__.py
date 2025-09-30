@@ -6,7 +6,7 @@ directly into executable SageMaker pipelines without requiring custom template c
 """
 
 from .dag_compiler import compile_dag_to_pipeline, PipelineDAGCompiler
-from .config_resolver import StepConfigResolver
+from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from .validation import (
     ValidationResult,
     ResolutionPreview,

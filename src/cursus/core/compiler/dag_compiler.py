@@ -44,7 +44,7 @@ except ImportError:
         subnets=[VPC_SUBNET],
         encrypt_inter_container_traffic=True,
     )
-from .config_resolver import StepConfigResolver
+from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from ...step_catalog import StepCatalog
 from .validation import (
     ValidationResult,

@@ -97,13 +97,17 @@ from .deps import (
     SemanticMatcher,
     create_pipeline_components,
 )
-from ..workspace.core import (
-    WorkspaceStepDefinition,
-    WorkspacePipelineDefinition,
-    WorkspaceComponentRegistry,
-    WorkspacePipelineAssembler,
-    WorkspaceDAGCompiler,
-)
+# Workspace components now available through new simplified workspace system
+try:
+    from ..workspace import (
+        WorkspaceManager,
+        WorkspaceValidator,
+        WorkspaceIntegrator,
+        WorkspaceAPI,
+    )
+    _workspace_available = True
+except ImportError:
+    _workspace_available = False
 
 __all__ = [
     # Base classes
@@ -176,10 +180,9 @@ __all__ = [
     "create_dependency_resolver",
     "SemanticMatcher",
     "create_pipeline_components",
-    # Workspace components
-    "WorkspaceStepDefinition",
-    "WorkspacePipelineDefinition",
-    "WorkspaceComponentRegistry",
-    "WorkspacePipelineAssembler",
-    "WorkspaceDAGCompiler",
+    # Workspace components (new simplified system)
+    "WorkspaceManager",
+    "WorkspaceValidator", 
+    "WorkspaceIntegrator",
+    "WorkspaceAPI",
 ]

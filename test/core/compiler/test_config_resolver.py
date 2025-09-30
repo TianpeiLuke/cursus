@@ -9,7 +9,7 @@ using different resolution strategies.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from cursus.core.compiler.config_resolver import StepConfigResolver
+from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
 from cursus.core.base.config_base import BasePipelineConfig
 
 
