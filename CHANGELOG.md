@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **System Architecture Simplification** - Major architectural improvements
   - **Workspace-Aware System Cleanup** - Removed over-engineered workspace-aware system in favor of step catalog
+  - **Workspace Module Redesign** - Completely removed cursus.workspaces and redesigned a simplified workspace module using step catalog system
   - **Code Redundancy Reduction** - Massive reduction in redundant code and files
   - **Registry System Consolidation** - Moved registry components to unified location under cursus/registry
   - **Step Builder Simplification** - Simplified createmodel and transform step builders
