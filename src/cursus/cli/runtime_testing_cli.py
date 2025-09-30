@@ -1,8 +1,9 @@
-"""Simplified command-line interface for pipeline runtime testing."""
+"""Enhanced command-line interface for pipeline runtime testing with step catalog integration."""
 
 import click
 import json
 import sys
+import os
 from pathlib import Path
 
 from ..validation.runtime.runtime_testing import RuntimeTester
@@ -13,6 +14,14 @@ from ..validation.runtime.runtime_models import (
 )
 from ..validation.runtime.runtime_spec_builder import PipelineTestingSpecBuilder
 from ..api.dag.base_dag import PipelineDAG
+
+# Optional step catalog import
+try:
+    from ..step_catalog import StepCatalog
+    STEP_CATALOG_AVAILABLE = True
+except ImportError:
+    StepCatalog = None
+    STEP_CATALOG_AVAILABLE = False
 
 
 @click.group()
@@ -34,21 +43,49 @@ def runtime():
     help="Workspace directory for test execution",
 )
 @click.option(
+    "--step-catalog/--no-step-catalog",
+    default=True,
+    help="Enable/disable step catalog integration for enhanced testing",
+)
+@click.option(
+    "--workspace-dirs",
+    help="Comma-separated list of additional workspace directories for step catalog",
+)
+@click.option(
     "--output-format",
     default="text",
     type=click.Choice(["text", "json"]),
     help="Output format for results",
 )
-def test_script(script_name: str, workspace_dir: str, output_format: str):
-    """Test a single script functionality
+def test_script(script_name: str, workspace_dir: str, step_catalog: bool, workspace_dirs: str, output_format: str):
+    """Test a single script functionality with optional step catalog enhancements
 
     SCRIPT_NAME: Name of the script to test
     """
 
     try:
-        # Initialize RuntimeTester and PipelineTestingSpecBuilder
-        tester = RuntimeTester(workspace_dir)
-        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
+        # Initialize step catalog if requested and available
+        step_catalog_instance = None
+        if step_catalog and STEP_CATALOG_AVAILABLE:
+            workspace_list = [Path(workspace_dir)]
+            if workspace_dirs:
+                workspace_list.extend([Path(w.strip()) for w in workspace_dirs.split(',')])
+            
+            # Add environment workspaces
+            env_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
+            for workspace in env_workspaces:
+                if workspace and Path(workspace).exists():
+                    workspace_list.append(Path(workspace))
+            
+            try:
+                step_catalog_instance = StepCatalog(workspace_dirs=workspace_list)
+            except Exception:
+                # Silently ignore step catalog initialization errors
+                pass
+
+        # Initialize RuntimeTester and PipelineTestingSpecBuilder with step catalog
+        tester = RuntimeTester(workspace_dir, step_catalog=step_catalog_instance)
+        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir, step_catalog=step_catalog_instance)
         
         # Build ScriptExecutionSpec for the script using node resolution
         script_spec = builder.resolve_script_execution_spec_from_node(script_name)
@@ -56,8 +93,11 @@ def test_script(script_name: str, workspace_dir: str, output_format: str):
         # Get main function parameters
         main_params = builder.get_script_main_params(script_spec)
         
-        # Test the script
-        result = tester.test_script_with_spec(script_spec, main_params)
+        # Test the script with step catalog enhancements if available
+        if step_catalog_instance:
+            result = tester.test_script_with_step_catalog_enhancements(script_spec, main_params)
+        else:
+            result = tester.test_script_with_spec(script_spec, main_params)
 
         if output_format == "json":
             click.echo(json.dumps(result.model_dump(), indent=2))
@@ -72,6 +112,22 @@ def test_script(script_name: str, workspace_dir: str, output_format: str):
             click.echo(
                 f"Has main function: {'Yes' if result.has_main_function else 'No'}"
             )
+            
+            # Show step catalog enhancements if available
+            if step_catalog_instance:
+                click.echo(f"Step catalog: {'Enabled' if step_catalog_instance else 'Disabled'}")
+                
+                # Show framework detection if available
+                framework = tester._detect_framework_if_needed(script_spec)
+                if framework:
+                    click.echo(f"Detected framework: {framework}")
+                
+                # Show builder consistency warnings if available
+                warnings = tester._validate_builder_consistency_if_available(script_spec)
+                if warnings:
+                    click.echo("Builder consistency warnings:")
+                    for warning in warnings:
+                        click.echo(f"  - {warning}")
 
             if result.error_message:
                 click.echo(f"Error: {result.error_message}")
@@ -91,12 +147,21 @@ def test_script(script_name: str, workspace_dir: str, output_format: str):
     help="Workspace directory for test execution",
 )
 @click.option(
+    "--step-catalog/--no-step-catalog",
+    default=True,
+    help="Enable/disable step catalog integration for enhanced pipeline testing",
+)
+@click.option(
+    "--workspace-dirs",
+    help="Comma-separated list of additional workspace directories for step catalog",
+)
+@click.option(
     "--output-format",
     default="text",
     type=click.Choice(["text", "json"]),
     help="Output format for results",
 )
-def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
+def test_pipeline(pipeline_config: str, workspace_dir: str, step_catalog: bool, workspace_dirs: str, output_format: str):
     """Test complete pipeline flow
 
     PIPELINE_CONFIG: Path to pipeline configuration file (JSON)
@@ -112,9 +177,28 @@ def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
         with open(config_path) as f:
             config_data = json.load(f)
 
-        # Initialize RuntimeTester and PipelineTestingSpecBuilder
-        tester = RuntimeTester(workspace_dir)
-        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
+        # Initialize step catalog if requested and available
+        step_catalog_instance = None
+        if step_catalog and STEP_CATALOG_AVAILABLE:
+            workspace_list = [Path(workspace_dir)]
+            if workspace_dirs:
+                workspace_list.extend([Path(w.strip()) for w in workspace_dirs.split(',')])
+            
+            # Add environment workspaces
+            env_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
+            for workspace in env_workspaces:
+                if workspace and Path(workspace).exists():
+                    workspace_list.append(Path(workspace))
+            
+            try:
+                step_catalog_instance = StepCatalog(workspace_dirs=workspace_list)
+            except Exception:
+                # Silently ignore step catalog initialization errors
+                pass
+
+        # Initialize RuntimeTester and PipelineTestingSpecBuilder with step catalog
+        tester = RuntimeTester(workspace_dir, step_catalog=step_catalog_instance)
+        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir, step_catalog=step_catalog_instance)
         
         # Create PipelineDAG from config data
         # Assuming config_data has 'nodes' and 'edges' fields
@@ -134,8 +218,11 @@ def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
         # Build PipelineTestingSpec from DAG
         pipeline_spec = builder.build_from_dag(dag, validate=False)
         
-        # Test the pipeline
-        results = tester.test_pipeline_flow_with_spec(pipeline_spec)
+        # Test the pipeline with step catalog enhancements if available
+        if step_catalog_instance:
+            results = tester.test_pipeline_flow_with_step_catalog_enhancements(pipeline_spec)
+        else:
+            results = tester.test_pipeline_flow_with_spec(pipeline_spec)
 
         if output_format == "json":
             # Convert Pydantic models to dict for JSON serialization
@@ -212,31 +299,62 @@ def test_pipeline(pipeline_config: str, workspace_dir: str, output_format: str):
     help="Workspace directory for test execution",
 )
 @click.option(
+    "--step-catalog/--no-step-catalog",
+    default=True,
+    help="Enable/disable step catalog integration for enhanced compatibility testing",
+)
+@click.option(
+    "--workspace-dirs",
+    help="Comma-separated list of additional workspace directories for step catalog",
+)
+@click.option(
     "--output-format",
     default="text",
     type=click.Choice(["text", "json"]),
     help="Output format for results",
 )
 def test_compatibility(
-    script_a: str, script_b: str, workspace_dir: str, output_format: str
+    script_a: str, script_b: str, workspace_dir: str, step_catalog: bool, workspace_dirs: str, output_format: str
 ):
-    """Test data compatibility between two scripts
+    """Test data compatibility between two scripts with optional step catalog enhancements
 
     SCRIPT_A: First script name
     SCRIPT_B: Second script name
     """
 
     try:
-        # Initialize RuntimeTester and PipelineTestingSpecBuilder
-        tester = RuntimeTester(workspace_dir)
-        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir)
+        # Initialize step catalog if requested and available
+        step_catalog_instance = None
+        if step_catalog and STEP_CATALOG_AVAILABLE:
+            workspace_list = [Path(workspace_dir)]
+            if workspace_dirs:
+                workspace_list.extend([Path(w.strip()) for w in workspace_dirs.split(',')])
+            
+            # Add environment workspaces
+            env_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
+            for workspace in env_workspaces:
+                if workspace and Path(workspace).exists():
+                    workspace_list.append(Path(workspace))
+            
+            try:
+                step_catalog_instance = StepCatalog(workspace_dirs=workspace_list)
+            except Exception:
+                # Silently ignore step catalog initialization errors
+                pass
+
+        # Initialize RuntimeTester and PipelineTestingSpecBuilder with step catalog
+        tester = RuntimeTester(workspace_dir, step_catalog=step_catalog_instance)
+        builder = PipelineTestingSpecBuilder(test_data_dir=workspace_dir, step_catalog=step_catalog_instance)
         
         # Build ScriptExecutionSpecs for both scripts using node resolution
         spec_a = builder.resolve_script_execution_spec_from_node(script_a)
         spec_b = builder.resolve_script_execution_spec_from_node(script_b)
         
-        # Test data compatibility using current API
-        result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
+        # Test data compatibility with step catalog enhancements if available
+        if step_catalog_instance:
+            result = tester.test_data_compatibility_with_step_catalog_enhancements(spec_a, spec_b)
+        else:
+            result = tester.test_data_compatibility_with_specs(spec_a, spec_b)
 
         if output_format == "json":
             click.echo(json.dumps(result.model_dump(), indent=2))
