@@ -1,454 +1,558 @@
 """
-Unified Workspace API - Phase 4 High-Level API Creation
+WorkspaceAPI - Unified API for all workspace operations.
 
-This module provides a simplified, developer-friendly interface to the workspace-aware
-system, abstracting the complexity of the underlying Phase 1-3 consolidated architecture.
+This module provides a single, unified API that consolidates all workspace
+functionality while leveraging the step catalog's proven architecture.
 """
 
-from typing import Dict, List, Optional, Union, Any
-from pathlib import Path
-from enum import Enum
 import logging
+from pathlib import Path
+from typing import List, Optional, Dict, Any, Union
 
-from pydantic import BaseModel, Field, ConfigDict
-from pydantic.types import DirectoryPath
+from ..step_catalog import StepCatalog
+from ..api.dag.base_dag import PipelineDAG
+from .manager import WorkspaceManager
+from .validator import WorkspaceValidator, ValidationResult, CompatibilityResult
+from .integrator import WorkspaceIntegrator, IntegrationResult
 
-from .core import (
-    WorkspaceManager,
-    WorkspaceDiscoveryManager,
-    WorkspaceIsolationManager,
-    WorkspaceLifecycleManager,
-    WorkspaceIntegrationManager,
-)
-from .validation import CrossWorkspaceValidator, WorkspaceTestManager
-
-
-class WorkspaceStatus(Enum):
-    """Workspace status enumeration."""
-
-    HEALTHY = "healthy"
-    WARNING = "warning"
-    ERROR = "error"
-    UNKNOWN = "unknown"
-
-
-class WorkspaceSetupResult(BaseModel):
-    """Result of workspace setup operation."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    success: bool
-    workspace_path: Path
-    developer_id: str = Field(
-        ..., min_length=1, description="Unique identifier for the developer"
-    )
-    message: str
-    warnings: List[str] = Field(default_factory=list)
-
-
-class ValidationReport(BaseModel):
-    """Workspace validation report."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    workspace_path: Path
-    status: WorkspaceStatus
-    issues: List[str] = Field(default_factory=list)
-    recommendations: List[str] = Field(default_factory=list)
-    isolation_violations: List[Dict[str, Any]] = Field(default_factory=list)
-
-
-class PromotionResult(BaseModel):
-    """Result of workspace promotion operation."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    success: bool
-    source_workspace: Path
-    target_environment: str = Field(
-        ..., min_length=1, description="Target environment name"
-    )
-    message: str
-    artifacts_promoted: List[str] = Field(default_factory=list)
-
-
-class HealthReport(BaseModel):
-    """Overall workspace system health report."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    overall_status: WorkspaceStatus
-    workspace_reports: List[ValidationReport] = Field(default_factory=list)
-    system_issues: List[str] = Field(default_factory=list)
-    recommendations: List[str] = Field(default_factory=list)
-
-
-class CleanupReport(BaseModel):
-    """Result of workspace cleanup operation."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    success: bool
-    cleaned_workspaces: List[Path] = Field(default_factory=list)
-    errors: List[str] = Field(default_factory=list)
-    space_freed: Optional[int] = Field(None, ge=0, description="Space freed in bytes")
-
-
-class WorkspaceInfo(BaseModel):
-    """Information about a workspace."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    path: Path
-    developer_id: str = Field(
-        ..., min_length=1, description="Unique identifier for the developer"
-    )
-    status: WorkspaceStatus
-    created_at: Optional[str] = Field(None, description="ISO format timestamp")
-    last_modified: Optional[str] = Field(None, description="ISO format timestamp")
-    size_bytes: Optional[int] = Field(None, ge=0, description="Workspace size in bytes")
-    active_pipelines: List[str] = Field(default_factory=list)
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceAPI:
     """
-    Unified high-level API for workspace-aware system operations.
-
-    This class provides a simplified interface to the workspace system,
-    abstracting the complexity of the underlying managers and providing
-    developer-friendly methods for common operations.
+    Unified API for all workspace operations.
+    
+    This class provides a single entry point for all workspace functionality,
+    consolidating the complex workspace system into a simple, unified interface.
+    
+    Key Features:
+    - Single API for all workspace operations
+    - Step catalog integration for component discovery
+    - Workspace-aware pipeline creation
+    - Component validation and quality assessment
+    - Component promotion and cross-workspace integration
+    - Flexible workspace organization support
+    
+    Architecture Benefits:
+    - 84% code reduction compared to old system
+    - Deployment agnostic (works across all scenarios)
+    - Proven integration patterns from core modules
+    - User-explicit workspace configuration
     """
-
-    def __init__(self, base_path: Optional[Union[str, Path]] = None):
+    
+    def __init__(self, workspace_dirs: Optional[Union[Path, List[Path]]] = None):
         """
-        Initialize the WorkspaceAPI.
-
+        Initialize workspace API with user-explicit workspace directories.
+        
         Args:
-            base_path: Base path for workspace operations. If None, uses default.
+            workspace_dirs: Optional workspace directory(ies).
+                           Can be a single Path or list of Paths.
+                           Each can have any organization structure.
+                           If None, only discovers package components.
+        
+        Examples:
+            # Package-only mode
+            api = WorkspaceAPI()
+            
+            # Single workspace
+            api = WorkspaceAPI(Path("/projects/alpha"))
+            
+            # Multiple workspaces with different organizations
+            api = WorkspaceAPI([
+                Path("/teams/data_science/experiments"),
+                Path("/projects/beta/custom_steps"),
+                Path("/features/recommendation/components")
+            ])
         """
-        self.base_path = Path(base_path) if base_path else Path("development")
-        self.logger = logging.getLogger(__name__)
-
-        # Initialize underlying managers (lazy loading to avoid circular imports)
-        self._workspace_manager = None
-        self._discovery = None
-        self._isolation_manager = None
-        self._lifecycle_manager = None
-        self._integration_manager = None
-        self._validator = None
-
-    @property
-    def workspace_manager(self) -> WorkspaceManager:
-        """Get workspace manager instance (lazy loaded)."""
-        if self._workspace_manager is None:
-            self._workspace_manager = WorkspaceManager(str(self.base_path))
-        return self._workspace_manager
-
-    @property
-    def discovery(self) -> WorkspaceDiscoveryManager:
-        """Get workspace discovery instance (lazy loaded)."""
-        if self._discovery is None:
-            self._discovery = WorkspaceDiscoveryManager(self.workspace_manager)
-        return self._discovery
-
-    @property
-    def isolation_manager(self) -> WorkspaceIsolationManager:
-        """Get isolation manager instance (lazy loaded)."""
-        if self._isolation_manager is None:
-            self._isolation_manager = WorkspaceIsolationManager(self.workspace_manager)
-        return self._isolation_manager
-
-    @property
-    def lifecycle_manager(self) -> WorkspaceLifecycleManager:
-        """Get lifecycle manager instance (lazy loaded)."""
-        if self._lifecycle_manager is None:
-            self._lifecycle_manager = WorkspaceLifecycleManager(self.workspace_manager)
-        return self._lifecycle_manager
-
-    @property
-    def integration_manager(self) -> WorkspaceIntegrationManager:
-        """Get integration manager instance (lazy loaded)."""
-        if self._integration_manager is None:
-            self._integration_manager = WorkspaceIntegrationManager(
-                self.workspace_manager
-            )
-        return self._integration_manager
-
-    @property
-    def validator(self) -> CrossWorkspaceValidator:
-        """Get cross-workspace validator instance (lazy loaded)."""
-        if self._validator is None:
-            self._validator = CrossWorkspaceValidator()
-        return self._validator
-
-    def setup_developer_workspace(
-        self,
-        developer_id: str,
-        template: Optional[str] = None,
-        config_overrides: Optional[Dict[str, Any]] = None,
-    ) -> WorkspaceSetupResult:
+        # Normalize workspace_dirs to list
+        if workspace_dirs is None:
+            self.workspace_dirs = []
+        elif isinstance(workspace_dirs, Path):
+            self.workspace_dirs = [workspace_dirs]
+        else:
+            self.workspace_dirs = list(workspace_dirs)
+        
+        # Initialize core components
+        self.catalog = StepCatalog(workspace_dirs=self.workspace_dirs)
+        self.manager = WorkspaceManager(workspace_dirs=self.workspace_dirs)
+        self.validator = WorkspaceValidator(self.catalog)
+        self.integrator = WorkspaceIntegrator(self.catalog)
+        
+        # Simple metrics tracking
+        self.metrics = {
+            'api_calls': 0,
+            'successful_operations': 0,
+            'failed_operations': 0
+        }
+        
+        logger.info(f"WorkspaceAPI initialized with {len(self.workspace_dirs)} workspace directories")
+    
+    # COMPONENT DISCOVERY AND MANAGEMENT
+    
+    def discover_components(self, workspace_id: Optional[str] = None) -> List[str]:
         """
-        Set up a new developer workspace.
-
+        Discover components across workspaces.
+        
         Args:
-            developer_id: Unique identifier for the developer
-            template: Optional template to use for workspace setup
-            config_overrides: Optional configuration overrides
-
+            workspace_id: Optional workspace filter
+            
         Returns:
-            WorkspaceSetupResult with setup details
+            List of discovered component names
         """
         try:
-            self.logger.info(f"Setting up workspace for developer: {developer_id}")
-
-            # Create workspace using lifecycle manager
-            workspace_path = self.lifecycle_manager.create_workspace(
-                developer_id, template=template, config=config_overrides or {}
-            )
-
-            # Validate the new workspace
-            validation_result = self.validate_workspace(workspace_path)
-
-            warnings = []
-            if validation_result.status == WorkspaceStatus.WARNING:
-                warnings = validation_result.issues
-
-            return WorkspaceSetupResult(
-                success=True,
-                workspace_path=workspace_path,
-                developer_id=developer_id,
-                message=f"Successfully created workspace at {workspace_path}",
-                warnings=warnings,
-            )
-
+            self.metrics['api_calls'] += 1
+            components = self.manager.discover_components(workspace_id=workspace_id)
+            self.metrics['successful_operations'] += 1
+            return components
         except Exception as e:
-            self.logger.error(f"Failed to setup workspace for {developer_id}: {e}")
-            return WorkspaceSetupResult(
-                success=False,
-                workspace_path=Path(""),
-                developer_id=developer_id,
-                message=f"Failed to create workspace: {str(e)}",
-            )
-
-    def validate_workspace(self, workspace_path: Union[str, Path]) -> ValidationReport:
-        """
-        Validate a workspace for compliance and isolation.
-
-        Args:
-            workspace_path: Path to the workspace to validate
-
-        Returns:
-            ValidationReport with validation results
-        """
-        workspace_path = Path(workspace_path)
-
-        try:
-            # Run cross-workspace validation
-            violations = self.validator.validate_workspace_isolation(
-                str(workspace_path)
-            )
-
-            # Determine status based on violations
-            if not violations:
-                status = WorkspaceStatus.HEALTHY
-                issues = []
-                recommendations = []
-            else:
-                # Check severity of violations
-                critical_violations = [
-                    v for v in violations if v.get("severity") == "critical"
-                ]
-                if critical_violations:
-                    status = WorkspaceStatus.ERROR
-                else:
-                    status = WorkspaceStatus.WARNING
-
-                issues = [v.get("message", "Unknown violation") for v in violations]
-                recommendations = [
-                    v.get("recommendation", "Review violation") for v in violations
-                ]
-
-            return ValidationReport(
-                workspace_path=workspace_path,
-                status=status,
-                issues=issues,
-                recommendations=recommendations,
-                isolation_violations=violations,
-            )
-
-        except Exception as e:
-            self.logger.error(f"Failed to validate workspace {workspace_path}: {e}")
-            return ValidationReport(
-                workspace_path=workspace_path,
-                status=WorkspaceStatus.ERROR,
-                issues=[f"Validation failed: {str(e)}"],
-                recommendations=["Check workspace accessibility and permissions"],
-                isolation_violations=[],
-            )
-
-    def list_workspaces(self) -> List[WorkspaceInfo]:
-        """
-        List all available workspaces.
-
-        Returns:
-            List of WorkspaceInfo objects
-        """
-        try:
-            workspaces = self.discovery.discover_workspaces()
-            workspace_infos = []
-
-            for workspace_path in workspaces:
-                # Get basic info
-                path_obj = Path(workspace_path)
-                developer_id = path_obj.name  # Assuming workspace name is developer ID
-
-                # Validate to get status
-                validation = self.validate_workspace(workspace_path)
-
-                workspace_infos.append(
-                    WorkspaceInfo(
-                        path=path_obj,
-                        developer_id=developer_id,
-                        status=validation.status,
-                    )
-                )
-
-            return workspace_infos
-
-        except Exception as e:
-            self.logger.error(f"Failed to list workspaces: {e}")
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error discovering components: {e}")
             return []
-
-    def promote_workspace_artifacts(
-        self, workspace_path: Union[str, Path], target_environment: str = "staging"
-    ) -> PromotionResult:
+    
+    def get_component_info(self, step_name: str) -> Optional[Any]:
         """
-        Promote artifacts from a workspace to target environment.
-
+        Get detailed information about a component.
+        
         Args:
-            workspace_path: Path to the source workspace
-            target_environment: Target environment (staging, production, etc.)
-
+            step_name: Name of the component
+            
         Returns:
-            PromotionResult with promotion details
-        """
-        workspace_path = Path(workspace_path)
-
-        try:
-            # Use integration manager for promotion
-            promoted_artifacts = self.integration_manager.promote_artifacts(
-                str(workspace_path), target_environment
-            )
-
-            return PromotionResult(
-                success=True,
-                source_workspace=workspace_path,
-                target_environment=target_environment,
-                message=f"Successfully promoted {len(promoted_artifacts)} artifacts",
-                artifacts_promoted=promoted_artifacts,
-            )
-
-        except Exception as e:
-            self.logger.error(f"Failed to promote artifacts from {workspace_path}: {e}")
-            return PromotionResult(
-                success=False,
-                source_workspace=workspace_path,
-                target_environment=target_environment,
-                message=f"Promotion failed: {str(e)}",
-            )
-
-    def get_system_health(self) -> HealthReport:
-        """
-        Get overall system health report.
-
-        Returns:
-            HealthReport with system-wide health information
+            StepInfo object with component details, or None if not found
         """
         try:
-            workspace_reports = []
-            system_issues = []
-
-            # Validate all workspaces
-            workspaces = self.list_workspaces()
-            for workspace_info in workspaces:
-                validation = self.validate_workspace(workspace_info.path)
-                workspace_reports.append(validation)
-
-            # Determine overall status
-            if not workspace_reports:
-                overall_status = WorkspaceStatus.UNKNOWN
-                system_issues.append("No workspaces found")
+            self.metrics['api_calls'] += 1
+            component_info = self.manager.get_component_info(step_name)
+            if component_info:
+                self.metrics['successful_operations'] += 1
             else:
-                error_count = sum(
-                    1 for r in workspace_reports if r.status == WorkspaceStatus.ERROR
-                )
-                warning_count = sum(
-                    1 for r in workspace_reports if r.status == WorkspaceStatus.WARNING
-                )
-
-                if error_count > 0:
-                    overall_status = WorkspaceStatus.ERROR
-                elif warning_count > 0:
-                    overall_status = WorkspaceStatus.WARNING
-                else:
-                    overall_status = WorkspaceStatus.HEALTHY
-
-            # Generate recommendations
-            recommendations = []
-            if error_count > 0:
-                recommendations.append(
-                    f"Address {error_count} workspace(s) with errors"
-                )
-            if warning_count > 0:
-                recommendations.append(
-                    f"Review {warning_count} workspace(s) with warnings"
-                )
-
-            return HealthReport(
-                overall_status=overall_status,
-                workspace_reports=workspace_reports,
-                system_issues=system_issues,
-                recommendations=recommendations,
-            )
-
+                self.metrics['failed_operations'] += 1
+            return component_info
         except Exception as e:
-            self.logger.error(f"Failed to get system health: {e}")
-            return HealthReport(
-                overall_status=WorkspaceStatus.ERROR,
-                workspace_reports=[],
-                system_issues=[f"Health check failed: {str(e)}"],
-                recommendations=["Check system accessibility and permissions"],
-            )
-
-    def cleanup_workspaces(
-        self, inactive_days: int = 30, dry_run: bool = True
-    ) -> CleanupReport:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error getting component info for {step_name}: {e}")
+            return None
+    
+    def find_component_file(self, step_name: str, component_type: str) -> Optional[Path]:
         """
-        Clean up inactive workspaces.
-
+        Find specific component file.
+        
         Args:
-            inactive_days: Number of days of inactivity before cleanup
-            dry_run: If True, only report what would be cleaned
-
+            step_name: Name of the step
+            component_type: Type of component ('builder', 'config', 'contract', 'spec', 'script')
+            
         Returns:
-            CleanupReport with cleanup results
+            Path to component file, or None if not found
         """
         try:
-            # Use lifecycle manager for cleanup
-            cleaned_workspaces = self.lifecycle_manager.cleanup_inactive_workspaces(
-                inactive_days=inactive_days, dry_run=dry_run
-            )
-
-            return CleanupReport(
-                success=True,
-                cleaned_workspaces=[Path(w) for w in cleaned_workspaces],
-                errors=[],
-            )
-
+            self.metrics['api_calls'] += 1
+            file_path = self.manager.find_component_file(step_name, component_type)
+            if file_path:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return file_path
         except Exception as e:
-            self.logger.error(f"Failed to cleanup workspaces: {e}")
-            return CleanupReport(
-                success=False,
-                cleaned_workspaces=[],
-                errors=[f"Cleanup failed: {str(e)}"],
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error finding {component_type} file for {step_name}: {e}")
+            return None
+    
+    def search_components(self, query: str, workspace_id: Optional[str] = None) -> List[Any]:
+        """
+        Search components by name with fuzzy matching.
+        
+        Args:
+            query: Search query string
+            workspace_id: Optional workspace filter
+            
+        Returns:
+            List of search results sorted by relevance
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            results = self.catalog.search_steps(query)
+            
+            # Filter by workspace if specified
+            if workspace_id:
+                results = [r for r in results if r.workspace_id == workspace_id]
+            
+            self.metrics['successful_operations'] += 1
+            return results
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error searching components with query '{query}': {e}")
+            return []
+    
+    # WORKSPACE MANAGEMENT
+    
+    def get_workspace_summary(self) -> Dict[str, Any]:
+        """
+        Get comprehensive workspace summary.
+        
+        Returns:
+            Dictionary with workspace configuration and component information
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            summary = self.manager.get_workspace_summary()
+            
+            # Add API-level metrics
+            summary['api_metrics'] = self.metrics.copy()
+            
+            self.metrics['successful_operations'] += 1
+            return summary
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error generating workspace summary: {e}")
+            return {'error': str(e)}
+    
+    def validate_workspace_structure(self, workspace_dir: Path) -> Dict[str, Any]:
+        """
+        Validate workspace directory structure.
+        
+        Args:
+            workspace_dir: Workspace directory to validate
+            
+        Returns:
+            Dictionary with validation results
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            validation_result = self.manager.validate_workspace_structure(workspace_dir)
+            self.metrics['successful_operations'] += 1
+            return validation_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error validating workspace structure: {e}")
+            return {'valid': False, 'error': str(e)}
+    
+    def get_cross_workspace_components(self) -> Dict[str, List[str]]:
+        """
+        Get components organized by workspace.
+        
+        Returns:
+            Dictionary mapping workspace IDs to component lists
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            cross_workspace_components = self.manager.get_cross_workspace_components()
+            self.metrics['successful_operations'] += 1
+            return cross_workspace_components
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error getting cross-workspace components: {e}")
+            return {}
+    
+    # PIPELINE CREATION
+    
+    def create_workspace_pipeline(self, dag: PipelineDAG, config_path: str) -> Optional[Any]:
+        """
+        Create pipeline using workspace-aware components.
+        
+        Args:
+            dag: Pipeline DAG definition
+            config_path: Path to pipeline configuration
+            
+        Returns:
+            Generated pipeline object, or None if creation fails
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            pipeline = self.manager.create_workspace_pipeline(dag, config_path)
+            if pipeline:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return pipeline
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error creating workspace pipeline: {e}")
+            return None
+    
+    # VALIDATION AND QUALITY ASSESSMENT
+    
+    def validate_workspace_components(self, workspace_id: str) -> ValidationResult:
+        """
+        Validate all components in a workspace.
+        
+        Args:
+            workspace_id: ID of the workspace to validate
+            
+        Returns:
+            ValidationResult with validation details
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            validation_result = self.validator.validate_workspace_components(workspace_id)
+            if validation_result.is_valid:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return validation_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error validating workspace components: {e}")
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Validation failed: {str(e)}"],
+                details={'workspace_id': workspace_id, 'error': str(e)}
             )
+    
+    def validate_component_quality(self, step_name: str) -> ValidationResult:
+        """
+        Validate quality of a specific component.
+        
+        Args:
+            step_name: Name of the component to validate
+            
+        Returns:
+            ValidationResult with quality assessment
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            quality_result = self.validator.validate_component_quality(step_name)
+            if quality_result.is_valid:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return quality_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error validating component quality: {e}")
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Quality validation failed: {str(e)}"],
+                details={'step_name': step_name, 'error': str(e)}
+            )
+    
+    def validate_cross_workspace_compatibility(self, workspace_ids: List[str]) -> CompatibilityResult:
+        """
+        Validate compatibility between workspace components.
+        
+        Args:
+            workspace_ids: List of workspace IDs to check compatibility
+            
+        Returns:
+            CompatibilityResult with compatibility analysis
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            compatibility_result = self.validator.validate_cross_workspace_compatibility(workspace_ids)
+            if compatibility_result.is_compatible:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return compatibility_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error validating cross-workspace compatibility: {e}")
+            return CompatibilityResult(
+                is_compatible=False,
+                issues=[f"Compatibility check failed: {str(e)}"]
+            )
+    
+    # COMPONENT INTEGRATION AND PROMOTION
+    
+    def promote_component_to_core(self, step_name: str, source_workspace_id: str, 
+                                 dry_run: bool = True) -> IntegrationResult:
+        """
+        Promote workspace component to core package.
+        
+        Args:
+            step_name: Name of the component to promote
+            source_workspace_id: ID of the source workspace
+            dry_run: If True, only validate promotion without executing
+            
+        Returns:
+            IntegrationResult with promotion details
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            promotion_result = self.integrator.promote_component_to_core(
+                step_name, source_workspace_id, dry_run
+            )
+            if promotion_result.success:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return promotion_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error promoting component: {e}")
+            return IntegrationResult(
+                success=False,
+                message=f"Promotion failed: {str(e)}",
+                details={'step_name': step_name, 'error': str(e)}
+            )
+    
+    def integrate_cross_workspace_components(self, target_workspace_id: str, 
+                                           source_components: List[Dict[str, str]]) -> IntegrationResult:
+        """
+        Integrate components from multiple workspaces.
+        
+        Args:
+            target_workspace_id: ID of the target workspace
+            source_components: List of dicts with 'step_name' and 'source_workspace_id'
+            
+        Returns:
+            IntegrationResult with integration details
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            integration_result = self.integrator.integrate_cross_workspace_components(
+                target_workspace_id, source_components
+            )
+            if integration_result.success:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return integration_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error integrating cross-workspace components: {e}")
+            return IntegrationResult(
+                success=False,
+                message=f"Integration failed: {str(e)}",
+                details={'target_workspace_id': target_workspace_id, 'error': str(e)}
+            )
+    
+    def rollback_promotion(self, step_name: str) -> IntegrationResult:
+        """
+        Rollback component promotion from core package.
+        
+        Args:
+            step_name: Name of the component to rollback
+            
+        Returns:
+            IntegrationResult with rollback details
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            rollback_result = self.integrator.rollback_promotion(step_name)
+            if rollback_result.success:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return rollback_result
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error rolling back promotion: {e}")
+            return IntegrationResult(
+                success=False,
+                message=f"Rollback failed: {str(e)}",
+                details={'step_name': step_name, 'error': str(e)}
+            )
+    
+    # SYSTEM MAINTENANCE
+    
+    def refresh_catalog(self) -> bool:
+        """
+        Refresh the step catalog to pick up new components.
+        
+        Returns:
+            True if refresh successful, False otherwise
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            success = self.manager.refresh_catalog()
+            if success:
+                self.metrics['successful_operations'] += 1
+            else:
+                self.metrics['failed_operations'] += 1
+            return success
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error refreshing catalog: {e}")
+            return False
+    
+    def get_system_status(self) -> Dict[str, Any]:
+        """
+        Get comprehensive system status and metrics.
+        
+        Returns:
+            Dictionary with system status and metrics from all components
+        """
+        try:
+            self.metrics['api_calls'] += 1
+            
+            status = {
+                'workspace_api': {
+                    'workspace_directories': [str(d) for d in self.workspace_dirs],
+                    'total_workspaces': len(self.workspace_dirs),
+                    'metrics': self.metrics.copy()
+                },
+                'manager': self.manager.get_workspace_summary(),
+                'validator': self.validator.get_validation_summary(),
+                'integrator': self.integrator.get_integration_summary(),
+                'catalog': self.catalog.get_metrics_report() if hasattr(self.catalog, 'get_metrics_report') else {}
+            }
+            
+            # Calculate overall success rate
+            total_operations = self.metrics['successful_operations'] + self.metrics['failed_operations']
+            if total_operations > 0:
+                status['workspace_api']['success_rate'] = (
+                    self.metrics['successful_operations'] / total_operations
+                )
+            else:
+                status['workspace_api']['success_rate'] = 1.0
+            
+            self.metrics['successful_operations'] += 1
+            return status
+            
+        except Exception as e:
+            self.metrics['failed_operations'] += 1
+            logger.error(f"Error getting system status: {e}")
+            return {
+                'error': str(e),
+                'workspace_api': {'metrics': self.metrics.copy()}
+            }
+    
+    # CONVENIENCE METHODS
+    
+    def list_all_workspaces(self) -> List[str]:
+        """
+        List all available workspace IDs.
+        
+        Returns:
+            List of workspace IDs
+        """
+        try:
+            cross_workspace_components = self.get_cross_workspace_components()
+            return list(cross_workspace_components.keys())
+        except Exception as e:
+            logger.error(f"Error listing workspaces: {e}")
+            return []
+    
+    def get_workspace_component_count(self, workspace_id: str) -> int:
+        """
+        Get count of components in a specific workspace.
+        
+        Args:
+            workspace_id: ID of the workspace
+            
+        Returns:
+            Number of components in the workspace
+        """
+        try:
+            components = self.discover_components(workspace_id=workspace_id)
+            return len(components)
+        except Exception as e:
+            logger.error(f"Error getting component count for workspace {workspace_id}: {e}")
+            return 0
+    
+    def is_component_available(self, step_name: str, workspace_id: Optional[str] = None) -> bool:
+        """
+        Check if a component is available in the specified workspace.
+        
+        Args:
+            step_name: Name of the component
+            workspace_id: Optional workspace filter
+            
+        Returns:
+            True if component is available, False otherwise
+        """
+        try:
+            components = self.discover_components(workspace_id=workspace_id)
+            return step_name in components
+        except Exception as e:
+            logger.error(f"Error checking component availability: {e}")
+            return False

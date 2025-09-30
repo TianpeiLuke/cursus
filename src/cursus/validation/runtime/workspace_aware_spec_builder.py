@@ -332,17 +332,15 @@ class WorkspaceAwarePipelineTestingSpecBuilder(PipelineTestingSpecBuilder):
 
         # Try to get workspace system status
         try:
-            from cursus.workspace.api import WorkspaceAPI
-            from cursus.workspace.core import WorkspaceDiscoveryManager
+            from cursus.workspace import WorkspaceAPI
 
-            discovery_manager = WorkspaceDiscoveryManager()
-            workspaces = discovery_manager.discover_workspaces(
-                max_depth=self.max_workspace_depth
-            )
+            # Use new simplified workspace API
+            api = WorkspaceAPI()
+            workspaces = api.list_all_workspaces()
 
             status["workspace_system_available"] = True
             status["discovered_workspaces"] = len(workspaces)
-            status["workspace_names"] = [ws.name for ws in workspaces]
+            status["workspace_names"] = workspaces
 
         except ImportError:
             status["workspace_system_available"] = False
@@ -432,13 +430,11 @@ class WorkspaceAwarePipelineTestingSpecBuilder(PipelineTestingSpecBuilder):
 
         # Check workspace discovery system
         try:
-            from cursus.workspace.api import WorkspaceAPI
-            from cursus.workspace.core import WorkspaceDiscoveryManager
+            from cursus.workspace import WorkspaceAPI
 
-            discovery_manager = WorkspaceDiscoveryManager()
-            workspaces = discovery_manager.discover_workspaces(
-                max_depth=self.max_workspace_depth
-            )
+            # Use new simplified workspace API
+            api = WorkspaceAPI()
+            workspaces = api.list_all_workspaces()
 
             if not workspaces:
                 validation["warnings"].append("No workspaces discovered")

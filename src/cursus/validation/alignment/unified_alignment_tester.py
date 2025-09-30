@@ -46,6 +46,8 @@ class UnifiedAlignmentTester:
         builders_dir: str = "src/cursus/steps/builders",
         configs_dir: str = "src/cursus/steps/configs",
         level3_validation_mode: str = "relaxed",
+        step_catalog: Optional[Any] = None,
+        workspace_dirs: Optional[List[str]] = None,
     ):
         """
         Initialize the unified alignment tester.
@@ -57,12 +59,34 @@ class UnifiedAlignmentTester:
             builders_dir: Directory containing step builders
             configs_dir: Directory containing step configurations
             level3_validation_mode: Level 3 validation mode ('strict', 'relaxed', 'permissive')
+            step_catalog: Optional StepCatalog instance for workspace-aware validation
+            workspace_dirs: Optional list of workspace directories for workspace-aware validation
         """
         self.scripts_dir = Path(scripts_dir).resolve()
         self.contracts_dir = Path(contracts_dir).resolve()
         self.specs_dir = Path(specs_dir).resolve()
         self.builders_dir = Path(builders_dir).resolve()
         self.configs_dir = Path(configs_dir).resolve()
+        
+        # Store step catalog for workspace-aware validation
+        if step_catalog is not None:
+            self.step_catalog = step_catalog
+        elif workspace_dirs is not None:
+            # Create step catalog with provided workspace directories
+            try:
+                from ...step_catalog import StepCatalog
+                # Convert string paths to Path objects
+                workspace_paths = [Path(wd) for wd in workspace_dirs]
+                self.step_catalog = StepCatalog(workspace_dirs=workspace_paths)
+            except ImportError:
+                self.step_catalog = None
+        else:
+            # Fallback: Create package-only step catalog
+            try:
+                from ...step_catalog import StepCatalog
+                self.step_catalog = StepCatalog(workspace_dirs=None)
+            except ImportError:
+                self.step_catalog = None
 
         # Configure Level 3 validation based on mode
         if level3_validation_mode == "strict":
@@ -691,6 +715,11 @@ class UnifiedAlignmentTester:
 
     def _get_step_catalog(self):
         """Get step catalog instance with unified initialization logic."""
+        # Use provided step catalog if available (workspace-aware validation)
+        if self.step_catalog is not None:
+            return self.step_catalog
+            
+        # Fallback: Create package-only step catalog
         from ...step_catalog import StepCatalog
         
         # ✅ PORTABLE: Package-only discovery for script discovery
