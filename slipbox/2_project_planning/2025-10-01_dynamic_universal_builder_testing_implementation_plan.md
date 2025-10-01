@@ -174,7 +174,7 @@ def get_builders_by_step_type(self, step_type: str) -> Dict[str, Type]:
 #### Add Results Storage Helper (Days 4-5)
 
 ```python
-# Add to src/cursus/validation/builders/test_results_storage.py
+# Add to src/cursus/validation/builders/results_storage.py
 
 from datetime import datetime
 from pathlib import Path
@@ -323,7 +323,7 @@ def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_typ
             export_results_to_json(results, export_json)
         else:
             # Auto-save results
-            from ..validation.builders.test_results_storage import TestResultsStorage
+            from ..validation.builders.results_storage import TestResultsStorage
             output_path = TestResultsStorage.save_test_results(results, "all_builders", step_type)
             click.echo(f"📁 Results automatically saved to: {output_path}")
             
@@ -381,7 +381,7 @@ def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: 
         if export_json:
             export_results_to_json(export_data, export_json)
         else:
-            from ..validation.builders.test_results_storage import TestResultsStorage
+            from ..validation.builders.results_storage import TestResultsStorage
             output_path = TestResultsStorage.save_test_results(export_data, "single_builder", canonical_name)
             click.echo(f"📁 Results automatically saved to: {output_path}")
             

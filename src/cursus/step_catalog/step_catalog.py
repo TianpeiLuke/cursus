@@ -1047,3 +1047,59 @@ class StepCatalog:
             'total_steps_indexed': len(self._step_index),
             'total_workspaces': len(self._workspace_steps)
         }
+    
+    # PHASE 1 ENHANCEMENT: Dynamic Builder Discovery Methods
+    def get_all_builders(self) -> Dict[str, Type]:
+        """
+        Get all available builders with canonical names.
+        
+        This method provides comprehensive builder discovery for dynamic testing
+        without requiring hard-coded maintenance.
+        
+        Returns:
+            Dict mapping canonical names to builder classes
+        """
+        try:
+            all_steps = self.list_available_steps()
+            builders = {}
+            
+            for step_name in all_steps:
+                builder_class = self.load_builder_class(step_name)
+                if builder_class:
+                    builders[step_name] = builder_class
+            
+            self.logger.debug(f"Discovered {len(builders)} builders via step catalog")
+            return builders
+            
+        except Exception as e:
+            self.logger.error(f"Error getting all builders: {e}")
+            return {}
+    
+    def get_builders_by_step_type(self, step_type: str) -> Dict[str, Type]:
+        """
+        Get builders filtered by SageMaker step type.
+        
+        This method enables step-type-specific testing by filtering builders
+        based on their registered SageMaker step type.
+        
+        Args:
+            step_type: SageMaker step type (Processing, Training, Transform, CreateModel, etc.)
+            
+        Returns:
+            Dict mapping canonical names to builder classes for the step type
+        """
+        try:
+            all_builders = self.get_all_builders()
+            step_builders = {}
+            
+            for step_name, builder_class in all_builders.items():
+                step_info = self.get_step_info(step_name)
+                if step_info and step_info.registry_data.get('sagemaker_step_type') == step_type:
+                    step_builders[step_name] = builder_class
+            
+            self.logger.debug(f"Found {len(step_builders)} builders for step type '{step_type}'")
+            return step_builders
+            
+        except Exception as e:
+            self.logger.error(f"Error getting builders for step type {step_type}: {e}")
+            return {}
