@@ -62,10 +62,6 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         description="Entry point script for model metrics computation.",
     )
 
-    job_type: str = Field(
-        default="evaluation",
-        description="Type of metrics computation job (e.g., 'evaluation', 'validation', 'testing').",
-    )
 
     amount_field: Optional[str] = Field(
         default="order_amount",
@@ -142,16 +138,6 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             )
         return v.lower()
 
-    @field_validator("job_type")
-    @classmethod
-    def validate_job_type(cls, v: str) -> str:
-        """Validate job type is supported."""
-        valid_job_types = {"evaluation", "validation", "testing", "calibration", "training"}
-        if v.lower() not in valid_job_types:
-            raise ValueError(
-                f"job_type must be one of {valid_job_types}, got '{v}'"
-            )
-        return v.lower()
 
     @field_validator("dollar_recall_fpr", "count_recall_cutoff")
     @classmethod
@@ -276,7 +262,6 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             "label_name": self.label_name,
             # Tier 2 - System Inputs with Defaults
             "processing_entry_point": self.processing_entry_point,
-            "job_type": self.job_type,
             "input_format": self.input_format,
             "compute_dollar_recall": self.compute_dollar_recall,
             "compute_count_recall": self.compute_count_recall,

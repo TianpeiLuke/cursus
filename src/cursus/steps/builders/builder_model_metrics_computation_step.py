@@ -86,7 +86,6 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
             "processing_entry_point",
             "id_name",
             "label_name",
-            "job_type",
             "processing_instance_count",
             "processing_volume_size",
         ]
@@ -100,10 +99,6 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
                     f"ModelMetricsComputationConfig missing required attribute: {attr}"
                 )
 
-        # Validate job_type
-        valid_job_types = {"evaluation", "validation", "testing", "calibration", "training"}
-        if self.config.job_type not in valid_job_types:
-            raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
         # Validate input format
         valid_formats = {"auto", "csv", "parquet", "json"}
@@ -311,10 +306,10 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
             if logical_name in outputs:
                 destination = outputs[logical_name]
             else:
-                # Generate destination from config including job_type
+                # Generate destination from config
                 from sagemaker.workflow.functions import Join
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "model_metrics_computation", self.config.job_type, logical_name])
+                destination = Join(on="/", values=[base_output_path, "model_metrics_computation", logical_name])
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -360,21 +355,15 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
             env=self._get_environment_variables(),
         )
 
-    def _get_job_arguments(self) -> List[str]:
+    def _get_job_arguments(self) -> Optional[List[str]]:
         """
         Constructs the list of command-line arguments to be passed to the processing script.
 
-        This implementation uses job_type from the configuration.
-
         Returns:
-            A list of strings representing the command-line arguments.
+            None since no arguments are needed for model metrics computation
         """
-        # Get job_type from configuration
-        job_type = self.config.job_type
-        self.log_info("Setting job_type argument to: %s", job_type)
-
-        # Return job_type argument
-        return ["--job_type", job_type]
+        self.log_info("No command-line arguments needed for model metrics computation script")
+        return None
 
     def create_step(self, **kwargs) -> ProcessingStep:
         """

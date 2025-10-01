@@ -733,8 +733,7 @@ def main(
     generate_plots = environ_vars.get("GENERATE_PLOTS", "true").lower() == "true"
 
     # Log job info
-    job_type = job_args.job_type
-    logger.info(f"Running model metrics computation with job_type: {job_type}")
+    logger.info("Running model metrics computation")
 
     # Ensure output directories exist
     os.makedirs(output_metrics_dir, exist_ok=True)
@@ -826,7 +825,6 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--job_type", type=str, required=True)
     args = parser.parse_args()
 
     # Set up paths using contract-defined paths only
