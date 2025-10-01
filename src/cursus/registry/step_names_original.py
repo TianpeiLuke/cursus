@@ -103,6 +103,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Model metrics computation step for comprehensive performance evaluation",
     },
+    "ModelWikiGenerator": {
+        "config_class": "ModelWikiGeneratorConfig",
+        "builder_step_name": "ModelWikiGeneratorStepBuilder",
+        "spec_type": "ModelWikiGenerator",
+        "sagemaker_step_type": "Processing",
+        "description": "Model wiki generator step for automated documentation creation",
+    },
     # Model Steps
     "PyTorchModel": {
         "config_class": "PyTorchModelConfig",
