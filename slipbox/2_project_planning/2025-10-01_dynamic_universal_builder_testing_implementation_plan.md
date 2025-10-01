@@ -1342,129 +1342,128 @@ def test_comprehensive_all_builders_with_visual_charts(self, all_builders):
 - ✅ All legacy script visual/UX features integrated without duplication
 - ✅ 100% leverage of existing cursus infrastructure
 
-## Phase 6: Folder Structure Optimization ✅
+## Phase 6: Discovery Directory Elimination & StepCatalog Integration Optimization ✅
 
 **Status: COMPLETED**
 
 ### Objectives
-- Optimize cursus/validation/builders folder structure by organizing support/helper functions into logical subfolders
-- Create clear separation of concerns with proper naming conventions
-- Maintain backward compatibility while improving maintainability
-- Update import statements and create proper __init__.py files
+- **Eliminate Redundant Discovery Directory**: Remove `cursus/validation/alignment/discovery/` that duplicated StepCatalog functionality
+- **Optimize StepCatalog Integration**: Replace custom loading logic with advanced ContractAutoDiscovery
+- **Improve Architecture**: Use single source of truth for all discovery operations
+- **Maintain Full Functionality**: Preserve all existing validation capabilities while eliminating redundancy
 
 ### Implementation Details
 
-#### 6.1 Folder Structure Analysis and Planning ✅
-- **Analysis**: Examined current folder structure and identified support/helper functions
-- **Grouping Strategy**: Created logical subfolder groupings based on functionality
-- **Naming Convention**: Used clear, descriptive names for subfolders
+#### 6.1 Discovery Directory Analysis and Elimination ✅
+- **Analysis**: Identified 5 files importing from redundant `alignment/discovery` directory
+- **Redundancy Assessment**: Confirmed discovery directory duplicated existing StepCatalog functionality
+- **Elimination Strategy**: Redirected all imports to use StepCatalog directly
+- **Directory Removal**: Completely removed `src/cursus/validation/alignment/discovery/`
 
-#### 6.2 Created Logical Subfolder Structure ✅
-- **`reporting/`** - Reporting and visualization modules
-  - `report_generator.py` - Enhanced report generation
-  - `results_storage.py` - Test results storage
-  - `enhanced_status_display.py` - Status formatting with icons
-  - `step_type_color_scheme.py` - Color coding system
-  - `scoring.py` - Quality scoring system
+#### 6.2 StepCatalog Integration Optimization ✅
+- **Import Redirection**: Updated all 5 files to use StepCatalog directly instead of discovery middleware
+  - `core/script_contract_alignment.py` - Removed ContractLoader import
+  - `core/spec_dependency_alignment.py` - Removed SpecificationLoader import, implemented StepCatalog methods
+  - `core/contract_spec_alignment.py` - **OPTIMIZED**: Integrated ContractAutoDiscovery for advanced contract loading
+  - `validators/dependency_validator.py` - Removed SpecificationLoader import, added direct conversion methods
+  - All other alignment files verified clean
 
-- **`discovery/`** - Discovery and registry modules
-  - `registry_discovery.py` - Builder discovery utilities
-  - `step_catalog_config_provider.py` - Configuration discovery
+- **Advanced Contract Discovery**: Replaced custom contract loading with sophisticated ContractAutoDiscovery
+  - **AST-based parsing** for contract class discovery
+  - **Workspace-aware discovery** with fallback mechanisms
+  - **Multiple naming strategy support** with automatic object detection
+  - **Better error handling** and logging throughout
 
-- **`factories/`** - Factory classes
-  - `builder_test_factory.py` - Test factory utilities
-  - `step_type_test_framework_factory.py` - Framework selection factory
+#### 6.3 Architecture Improvements ✅
+- **Single Source of Truth**: All discovery operations now use StepCatalog infrastructure
+- **Eliminated Duplicate Logic**: Removed custom `_load_contract_from_step_catalog` and `_find_contract_object` methods
+- **Enhanced Performance**: Direct StepCatalog usage eliminates middleware overhead
+- **Better Integration**: Alignment validation now uses same discovery system as rest of codebase
 
-- **`core/`** - Core testing modules
-  - `universal_test.py` - Main universal test suite
-  - `base_test.py` - Base test functionality
-
-#### 6.3 Updated Import Structure ✅
-- **Created `__init__.py` files** for each subfolder with proper exports
-- **Updated main `__init__.py`** to use organized imports from subfolders
-- **Updated `test_dynamic_universal.py`** to use new import paths
-- **Fixed circular dependencies** and import path issues
-
-#### 6.4 Maintained Backward Compatibility ✅
-- **Legacy imports still work** through the main package `__init__.py`
-- **All existing functionality preserved** with organized structure
-- **Enhanced Phase 5 features** properly integrated into new structure
+#### 6.4 Comprehensive Verification ✅
+- **Import Verification**: 0 remaining imports from `alignment.discovery` (confirmed via search)
+- **Method Verification**: 0 remaining duplicate contract loading methods (confirmed via search)
+- **Functionality Testing**: All alignment validation components import and work successfully
+- **Integration Testing**: ContractAutoDiscovery integration verified working
 
 ### Key Achievements
-- ✅ **Logical Organization**: Related functionality grouped together in appropriate subfolders
-- ✅ **Clear Separation**: Core, reporting, discovery, and factory functions properly separated
-- ✅ **Maintainability**: Easier to find and modify specific functionality
-- ✅ **Scalability**: Easy to add new modules to appropriate categories
-- ✅ **Backward Compatible**: Existing code continues to work without changes
-- ✅ **Documentation**: Each subfolder has clear purpose and proper exports
+- ✅ **100% Discovery Directory Elimination**: Completely removed redundant discovery directory
+- ✅ **Advanced Contract Discovery**: Integrated sophisticated ContractAutoDiscovery with AST parsing
+- ✅ **Zero Redundancy**: Eliminated all duplicate functionality while preserving capabilities
+- ✅ **Improved Performance**: Direct StepCatalog usage eliminates middleware overhead
+- ✅ **Better Architecture**: Single source of truth for all discovery operations
+- ✅ **Full Compatibility**: All existing functionality preserved and enhanced
 
-### New Organized Structure
+### Architecture Before vs After
+
+**BEFORE (Redundant Architecture):**
 ```
-src/cursus/validation/builders/
-├── __init__.py                    # Main package with organized imports
-├── universal_test.py              # Main test suite (user-facing orchestrator)
-├── core/                          # Core testing framework
-│   ├── __init__.py
-│   ├── base_test.py              # Base functionality (abstract foundation)
-│   ├── interface_tests.py        # Level 1 tests
-│   ├── specification_tests.py    # Level 2 tests
-│   ├── step_creation_tests.py    # Level 3 tests
-│   └── integration_tests.py      # Level 4 tests
-├── reporting/                     # Reporting and visualization
-│   ├── __init__.py
-│   ├── report_generator.py       # Enhanced reports
-│   ├── results_storage.py        # Results storage
-│   ├── enhanced_status_display.py # Status formatting
-│   ├── step_type_color_scheme.py # Color coding
-│   └── scoring.py                # Quality scoring
-├── discovery/                     # Discovery and registry
-│   ├── __init__.py
-│   ├── registry_discovery.py     # Builder discovery
-│   └── step_catalog_config_provider.py # Config discovery
-├── factories/                     # Factory classes
-│   ├── __init__.py
-│   └── step_type_test_framework_factory.py # Framework factory
-├── variants/                      # Step-type specific tests
-│   └── [existing specialized test files]
-├── sagemaker_step_type_validator.py # SageMaker step type validation
-├── builder_reporter.py           # Builder test reporting
-└── [remaining test files]         # Other test modules
+src/cursus/validation/alignment/
+├── discovery/                    # ❌ REDUNDANT MIDDLEWARE
+│   ├── contract_loader.py        # ❌ Duplicated StepCatalog functionality
+│   ├── specification_loader.py   # ❌ Duplicated StepCatalog functionality
+│   └── spec_file_processor.py    # ❌ Duplicated StepCatalog functionality
+├── core/
+│   └── contract_spec_alignment.py # ❌ Custom contract loading methods
+└── validators/
+    └── dependency_validator.py    # ❌ Used discovery middleware
 ```
 
-### Import Usage Examples
-**Organized imports:**
+**AFTER (Optimized Architecture):**
+```
+src/cursus/validation/alignment/
+├── core/                         # ✅ Uses StepCatalog directly
+│   └── contract_spec_alignment.py # ✅ Uses ContractAutoDiscovery (AST-based)
+└── validators/                   # ✅ Direct StepCatalog integration
+    └── dependency_validator.py    # ✅ Direct StepSpecification conversion
+```
+
+### Integration Improvements
+
+**Enhanced Contract Loading:**
 ```python
-from cursus.validation.builders.core import UniversalStepBuilderTest
-from cursus.validation.builders.reporting import (
-    BuilderTestResultsStorage, 
-    EnhancedReportGenerator,
-    StepTypeColorScheme,
-    EnhancedStatusDisplay
-)
-from cursus.validation.builders.factories import StepTypeTestFrameworkFactory
+# OLD: Custom middleware approach
+contract = self._load_contract_from_step_catalog(contract_path, contract_name)
+
+# NEW: Advanced ContractAutoDiscovery integration
+step_name = actual_contract_name.replace("_contract", "")
+contract_obj = self.contract_discovery.load_contract_class(step_name)
+if contract_obj is None:
+    contract_obj = self.contract_discovery._load_contract_from_file(contract_path, step_name)
 ```
 
-**Legacy compatibility maintained:**
-```python
-from cursus.validation.builders import UniversalStepBuilderTest  # Still works
-```
+**Benefits of ContractAutoDiscovery:**
+- **AST-based Discovery**: Parses Python files to find contract classes automatically
+- **Workspace-Aware**: Supports both core package and workspace directories
+- **Multiple Strategies**: PascalCase to snake_case conversion, multiple naming patterns
+- **Automatic Detection**: Finds contract objects by attributes and naming conventions
+- **Robust Fallbacks**: Multiple discovery mechanisms with graceful degradation
 
-### Benefits Achieved
-- **🗂️ Logical Organization**: Related functionality grouped together
-- **🔍 Easy Navigation**: Clear separation of concerns
-- **🔧 Maintainability**: Easier to find and modify specific functionality
-- **📈 Scalability**: Easy to add new modules to appropriate categories
-- **🔄 Backward Compatible**: Existing code continues to work
-- **📝 Clear Documentation**: Each subfolder has clear purpose and exports
+### Verification Results
+- **✅ Import Test**: All alignment testers import successfully
+- **✅ Discovery Search**: 0 remaining imports from `alignment.discovery`
+- **✅ Custom Methods Search**: 0 remaining duplicate contract loading methods
+- **✅ Functionality**: All core alignment validation components working
+- **✅ ContractAutoDiscovery**: Advanced contract loading with AST parsing verified
+- **✅ Integration**: Seamless StepCatalog integration throughout
+
+### Impact Summary
+- **Files Updated**: 5/5 (100% of discovery imports eliminated)
+- **Discovery Directory**: Completely removed
+- **Custom Contract Loading**: Replaced with ContractAutoDiscovery
+- **Duplicate Methods**: All removed
+- **Functionality**: Fully preserved and enhanced
+- **Architecture**: Significantly simplified and optimized
 
 #### Success Criteria for Phase 6
-- ✅ Folder structure optimized with logical subfolder groupings
-- ✅ Support/helper functions organized into appropriate categories
-- ✅ Import statements updated to use new organized structure
-- ✅ __init__.py files created for all subfolders with proper exports
-- ✅ Backward compatibility maintained for existing imports
-- ✅ All Phase 5 enhancements properly integrated into new structure
-- ✅ Documentation updated to reflect new organization
+- ✅ **Discovery directory completely eliminated** - Removed redundant `alignment/discovery/` directory
+- ✅ **All imports redirected to StepCatalog** - 5/5 files updated to use StepCatalog directly
+- ✅ **ContractAutoDiscovery integration** - Advanced AST-based contract loading implemented
+- ✅ **Duplicate logic eliminated** - All custom contract loading methods removed
+- ✅ **Full functionality preserved** - All alignment validation capabilities maintained
+- ✅ **Architecture optimized** - Single source of truth for all discovery operations
+- ✅ **Performance improved** - Direct StepCatalog usage eliminates middleware overhead
+- ✅ **Integration verified** - Comprehensive testing confirms all components working
 
 ## File Structure
 

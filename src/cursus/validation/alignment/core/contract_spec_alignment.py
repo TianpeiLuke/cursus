@@ -50,7 +50,15 @@ class ContractSpecificationAlignmentTester:
 
         # Initialize StepCatalog for loading
         from ....step_catalog import StepCatalog
+        from ....step_catalog.contract_discovery import ContractAutoDiscovery
         self.step_catalog = StepCatalog(workspace_dirs=None)
+        
+        # Initialize ContractAutoDiscovery for advanced contract loading
+        package_root = Path(__file__).parent.parent.parent.parent
+        self.contract_discovery = ContractAutoDiscovery(
+            package_root=package_root,
+            workspace_dirs=[]  # Can be extended for workspace support
+        )
 
         # Initialize smart specification selector
         self.smart_spec_selector = SmartSpecificationSelector()
@@ -152,11 +160,22 @@ class ContractSpecificationAlignmentTester:
         # e.g., "xgboost_model_eval_contract.py" -> "xgboost_model_eval_contract"
         actual_contract_name = contract_path.stem
 
-        # Load contract using StepCatalog
+        # Load contract using ContractAutoDiscovery
         try:
-            contract = self._load_contract_from_step_catalog(
-                contract_path, actual_contract_name
-            )
+            # Extract step name from contract name (remove _contract suffix)
+            step_name = actual_contract_name.replace("_contract", "")
+            contract_obj = self.contract_discovery.load_contract_class(step_name)
+            
+            if contract_obj is None:
+                # Fallback to file-based loading if auto-discovery fails
+                contract_obj = self.contract_discovery._load_contract_from_file(contract_path, step_name)
+            
+            if contract_obj is None:
+                raise ValueError(f"No contract object found for {step_name}")
+            
+            # Convert contract object to dictionary format
+            contract = self._contract_to_dict(contract_obj, step_name)
+            
         except Exception as e:
             return {
                 "passed": False,
@@ -298,88 +317,7 @@ class ContractSpecificationAlignmentTester:
         discovery_engine = ContractDiscoveryEngine(str(self.contracts_dir))
         return discovery_engine.discover_contracts_with_scripts()
 
-    def _load_contract_from_step_catalog(self, contract_path: Path, contract_name: str) -> Dict[str, Any]:
-        """Load contract from Python file using StepCatalog approach."""
-        import sys
-        import importlib.util
-        
-        try:
-            # Add the project root to sys.path temporarily to handle relative imports
-            project_root = str(contract_path.parent.parent.parent.parent)
-            src_root = str(contract_path.parent.parent.parent)
-            contract_dir = str(contract_path.parent)
-
-            paths_to_add = [project_root, src_root, contract_dir]
-            added_paths = []
-
-            for path in paths_to_add:
-                if path not in sys.path:
-                    sys.path.insert(0, path)
-                    added_paths.append(path)
-
-            try:
-                # Load the module
-                spec = importlib.util.spec_from_file_location(
-                    f"{contract_name}_contract", contract_path
-                )
-                if spec is None or spec.loader is None:
-                    raise ImportError(
-                        f"Could not load contract module from {contract_path}"
-                    )
-
-                module = importlib.util.module_from_spec(spec)
-                module.__package__ = "cursus.steps.contracts"
-                spec.loader.exec_module(module)
-            finally:
-                # Remove added paths from sys.path
-                for path in added_paths:
-                    if path in sys.path:
-                        sys.path.remove(path)
-
-            # Look for the contract object - try multiple naming patterns
-            contract_obj = self._find_contract_object(module, contract_name)
-
-            if contract_obj is None:
-                raise AttributeError(f"No contract object found in {contract_path}")
-
-            # Convert ScriptContract object to dictionary format
-            return self._contract_to_dict(contract_obj, contract_name)
-
-        except Exception as e:
-            raise Exception(f"Failed to load Python contract from {contract_path}: {str(e)}")
-
-    def _find_contract_object(self, module, contract_name: str):
-        """Find the contract object in the loaded module using multiple naming patterns."""
-        # Try various naming patterns
-        possible_names = [
-            f"{contract_name.upper()}_CONTRACT",
-            f"{contract_name}_CONTRACT",
-            f"{contract_name}_contract",
-            "CONTRACT",
-            "contract",
-        ]
-
-        # Also try to find any variable ending with _CONTRACT
-        for attr_name in dir(module):
-            if attr_name.endswith("_CONTRACT") and not attr_name.startswith("_"):
-                possible_names.append(attr_name)
-
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_names = []
-        for name in possible_names:
-            if name not in seen:
-                seen.add(name)
-                unique_names.append(name)
-
-        for name in unique_names:
-            if hasattr(module, name):
-                contract_obj = getattr(module, name)
-                # Verify it's actually a contract object
-                if hasattr(contract_obj, "entry_point"):
-                    return contract_obj
-
-        return None
+    # Contract loading methods removed - now using ContractAutoDiscovery directly
 
     def _contract_to_dict(self, contract_obj, contract_name: str) -> Dict[str, Any]:
         """Convert ScriptContract object to dictionary format."""
