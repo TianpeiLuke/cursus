@@ -28,7 +28,7 @@ from .factories.step_type_enhancement_router import StepTypeEnhancementRouter
 from .core.script_contract_alignment import ScriptContractAlignmentTester
 from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
 from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
-from .utils.level3_validation_config import Level3ValidationConfig, ValidationMode
+from .core.level3_validation_config import Level3ValidationConfig, ValidationMode
 from .core.builder_config_alignment import BuilderConfigurationAlignmentTester
 
 

@@ -71,7 +71,7 @@ from .utils import (
 )
 
 # Level 3 validation configuration
-from .level3_validation_config import (
+from ..core.level3_validation_config import (
     Level3ValidationConfig,
     ValidationMode,
 )

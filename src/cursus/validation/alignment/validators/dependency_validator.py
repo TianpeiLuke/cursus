@@ -9,7 +9,7 @@ import logging
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
-from ..utils.level3_validation_config import Level3ValidationConfig
+from ..core.level3_validation_config import Level3ValidationConfig
 from ....registry.step_names import (
     get_step_name_from_spec_type,
     get_canonical_name_from_file_name,

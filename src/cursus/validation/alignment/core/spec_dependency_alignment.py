@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..validators.dependency_classifier import DependencyPatternClassifier, DependencyPattern
-from ..utils.level3_validation_config import Level3ValidationConfig, ValidationMode
+from .level3_validation_config import Level3ValidationConfig, ValidationMode
 from ..discovery import SpecificationLoader
 from ..validators import DependencyValidator
 from ....core.deps.factory import create_pipeline_components
