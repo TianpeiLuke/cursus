@@ -12,8 +12,8 @@ import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
-from ..analysis.script_analyzer import ScriptAnalyzer
-from ..analysis.builder_argument_extractor import extract_builder_arguments
+from ..analyzer.script_analyzer import ScriptAnalyzer
+from ..analyzer.builder_argument_extractor import extract_builder_arguments
 from ..validators.testability_validator import TestabilityPatternValidator
 from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 from ..factories.step_type_detection import (

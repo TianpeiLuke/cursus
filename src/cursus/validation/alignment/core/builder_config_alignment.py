@@ -11,7 +11,7 @@ import importlib.util
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ..analysis import ConfigurationAnalyzer, BuilderCodeAnalyzer
+from ..analyzer import ConfigurationAnalyzer, BuilderCodeAnalyzer
 from ..patterns import PatternRecognizer
 from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 from ....step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver
