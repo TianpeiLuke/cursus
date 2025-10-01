@@ -10,13 +10,15 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from ..utils.alignment_utils import (
+from ..utils.core_models import (
     AlignmentIssue,
     SeverityLevel,
-    AlignmentLevel,
+    create_alignment_issue,
+)
+from ..utils.utils import (
+    format_alignment_issue,
     group_issues_by_severity,
     get_highest_severity,
-    format_alignment_issue,
 )
 from .alignment_scorer import AlignmentScorer
 

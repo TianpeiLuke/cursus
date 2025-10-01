@@ -4,13 +4,15 @@ Test suite for alignment utility functions.
 
 import pytest
 
-from cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.utils.utils import (
     normalize_path,
     is_sagemaker_path,
     extract_logical_name_from_path,
     format_alignment_issue,
     group_issues_by_severity,
     get_highest_severity,
+)
+from cursus.validation.alignment import (
     create_alignment_issue,
     SeverityLevel,
     AlignmentLevel,

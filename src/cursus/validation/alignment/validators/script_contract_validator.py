@@ -9,10 +9,12 @@ import os
 from typing import Dict, Any, List, Optional, Set
 from pathlib import Path
 
-from ..utils.alignment_utils import (
+from ..utils.utils import (
     normalize_path,
     extract_logical_name_from_path,
     is_sagemaker_path,
+)
+from ..factories.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
 )

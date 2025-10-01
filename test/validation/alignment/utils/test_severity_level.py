@@ -4,7 +4,7 @@ Test suite for SeverityLevel enum.
 
 import pytest
 
-from cursus.validation.alignment.alignment_utils import SeverityLevel
+from cursus.validation.alignment import SeverityLevel
 
 
 class TestSeverityLevel:

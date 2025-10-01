@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from cursus.validation.alignment.alignment_reporter import ValidationResult
-from cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.utils import (
     AlignmentIssue,
     SeverityLevel,
     AlignmentLevel,

@@ -15,15 +15,17 @@ from pathlib import Path
 from ..analysis.script_analyzer import ScriptAnalyzer
 from ..analysis.builder_argument_extractor import extract_builder_arguments
 from ..validators.testability_validator import TestabilityPatternValidator
-from ..utils.alignment_utils import (
-    FlexibleFileResolver,
+from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
+from ..factories.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
+)
+from ..utils.core_models import (
     create_step_type_aware_alignment_issue,
     SeverityLevel,
-    normalize_path,
 )
-from ..loaders import ContractLoader
+from ..utils.utils import normalize_path
+from ..discovery import ContractLoader
 from ..validators import ScriptContractValidator
 from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
 

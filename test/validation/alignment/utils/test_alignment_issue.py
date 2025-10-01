@@ -4,7 +4,7 @@ Test suite for AlignmentIssue model.
 
 import pytest
 
-from cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment import (
     AlignmentIssue,
     SeverityLevel,
     AlignmentLevel,

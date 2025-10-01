@@ -10,13 +10,15 @@ import os
 from typing import List, Dict, Any, Optional, Set
 from pathlib import Path
 
-from ..utils.alignment_utils import (
+from ..utils.script_analysis_models import (
     PathReference,
     EnvVarAccess,
     ImportStatement,
     ArgumentDefinition,
     PathConstruction,
     FileOperation,
+)
+from ..factories.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
 )

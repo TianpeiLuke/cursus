@@ -8,14 +8,14 @@ Ensures logical names, data types, and dependencies are consistent.
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ..utils.alignment_utils import FlexibleFileResolver
+from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 from ..validators.property_path_validator import SageMakerPropertyPathValidator
-from ..loaders import ContractLoader, SpecificationLoader
+from ..discovery import ContractLoader, SpecificationLoader
 from ..factories.smart_spec_selector import SmartSpecificationSelector
 from ..validators import ContractSpecValidator
 from ....step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
-from ..processors import SpecificationFileProcessor
-from ..orchestration import ValidationOrchestrator
+from ..discovery import SpecificationFileProcessor
+from .validation_orchestrator import ValidationOrchestrator
 
 
 class ContractSpecificationAlignmentTester:

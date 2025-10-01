@@ -9,7 +9,7 @@ import re
 from typing import List, Dict, Set, Optional, Tuple, Any
 from collections import defaultdict
 
-from ..utils.alignment_utils import ImportStatement
+from ..utils.script_analysis_models import ImportStatement
 
 
 class ImportAnalyzer:

@@ -4,7 +4,7 @@ Test suite for PathReference model.
 
 import pytest
 
-from cursus.validation.alignment.alignment_utils import PathReference
+from cursus.validation.alignment.utils.script_analysis_models import PathReference
 
 
 class TestPathReference:

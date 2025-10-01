@@ -10,10 +10,12 @@ import re
 from typing import List, Dict, Set, Optional, Tuple, Any
 from pathlib import Path
 
-from ..utils.alignment_utils import (
+from ..utils.script_analysis_models import (
     PathReference,
     PathConstruction,
     FileOperation,
+)
+from ..utils.utils import (
     normalize_path,
     extract_logical_name_from_path,
     is_sagemaker_path,

@@ -1,11 +1,54 @@
 """
-Pattern Recognition for Alignment Validation
+Pattern Recognition Module
 
-This package contains pattern recognition engines that identify acceptable
-architectural patterns and filter false positives in validation results.
+This module contains pattern recognition and framework detection components
+for the alignment validation system. It identifies common patterns in code,
+configurations, and project structures to enhance validation accuracy.
+
+Components:
+- framework_patterns.py: Framework detection patterns (XGBoost, PyTorch, etc.)
+- pattern_recognizer.py: General pattern recognition utilities and algorithms
+
+Pattern Recognition Features:
+- Framework detection from imports and code patterns
+- Project structure pattern analysis
+- Configuration pattern matching
+- Code style and convention detection
+- Naming pattern recognition for component relationships
 """
 
-from .pattern_recognizer import PatternRecognizer
-from ....step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver
+# Framework detection
+from .framework_patterns import (
+    detect_framework_from_imports,
+    detect_framework_from_script_content,
+    get_framework_patterns,
+    get_all_framework_patterns,
+    detect_training_patterns,
+    detect_xgboost_patterns,
+    detect_pytorch_patterns,
+    detect_sklearn_patterns,
+    detect_pandas_patterns,
+)
 
-__all__ = ["PatternRecognizer", "HybridFileResolver"]
+# General pattern recognition
+from .pattern_recognizer import (
+    PatternRecognizer,
+    ValidationPatternFilter,
+)
+
+__all__ = [
+    # Framework detection
+    "detect_framework_from_imports",
+    "detect_framework_from_script_content", 
+    "get_framework_patterns",
+    "get_all_framework_patterns",
+    "detect_training_patterns",
+    "detect_xgboost_patterns",
+    "detect_pytorch_patterns",
+    "detect_sklearn_patterns",
+    "detect_pandas_patterns",
+    
+    # Pattern recognition
+    "PatternRecognizer",
+    "ValidationPatternFilter",
+]

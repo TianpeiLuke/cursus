@@ -9,9 +9,9 @@ import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ..utils.alignment_utils import DependencyPatternClassifier, DependencyPattern
+from ..validators.dependency_classifier import DependencyPatternClassifier, DependencyPattern
 from ..utils.level3_validation_config import Level3ValidationConfig, ValidationMode
-from ..loaders import SpecificationLoader
+from ..discovery import SpecificationLoader
 from ..validators import DependencyValidator
 from ....core.deps.factory import create_pipeline_components
 from ....core.base.specification_base import (

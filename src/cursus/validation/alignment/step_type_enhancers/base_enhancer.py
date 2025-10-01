@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
-from ..utils.alignment_utils import detect_framework_from_imports
+from ..factories.step_type_detection import detect_framework_from_imports
 
 
 class BaseStepEnhancer(ABC):

@@ -12,10 +12,10 @@ import ast
 import sys
 from pathlib import Path
 
-from cursus.validation.alignment.testability_validator import (
+from cursus.validation.alignment import (
     TestabilityPatternValidator,
+    SeverityLevel,
 )
-from cursus.validation.alignment.alignment_utils import SeverityLevel
 
 
 class TestTestabilityPatternValidator:

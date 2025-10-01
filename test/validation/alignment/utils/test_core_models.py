@@ -5,13 +5,15 @@ Test suite for core alignment models including StepTypeAwareAlignmentIssue.
 import pytest
 from unittest.mock import Mock
 
-from cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment import (
     SeverityLevel,
     AlignmentLevel,
-    AlignmentIssue,
-    StepTypeAwareAlignmentIssue,
     create_alignment_issue,
     create_step_type_aware_alignment_issue,
+)
+from cursus.validation.alignment.utils.core_models import (
+    AlignmentIssue,
+    StepTypeAwareAlignmentIssue,
 )
 
 

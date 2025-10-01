@@ -13,14 +13,16 @@ from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
 from .reporting.alignment_reporter import AlignmentReport, ValidationResult
-from .utils.alignment_utils import (
+from .utils.core_models import (
     SeverityLevel,
     AlignmentLevel,
     create_alignment_issue,
-    detect_step_type_from_registry,
-    detect_framework_from_imports,
     StepTypeAwareAlignmentIssue,
     create_step_type_aware_alignment_issue,
+)
+from .factories.step_type_detection import (
+    detect_step_type_from_registry,
+    detect_framework_from_imports,
 )
 from .factories.step_type_enhancement_router import StepTypeEnhancementRouter
 from .core.script_contract_alignment import ScriptContractAlignmentTester

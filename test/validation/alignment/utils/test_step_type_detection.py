@@ -5,13 +5,13 @@ Test suite for step type detection functionality.
 import pytest
 from unittest.mock import Mock, patch
 
-from cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.factories.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
     detect_step_type_from_script_patterns,
     get_step_type_context,
-    ImportStatement,
 )
+from cursus.validation.alignment.utils.script_analysis_models import ImportStatement
 
 
 class TestStepTypeDetection:

@@ -6,11 +6,11 @@ import pytest
 from datetime import datetime
 
 from cursus.validation.alignment.alignment_reporter import ValidationResult
-from cursus.validation.alignment.alignment_utils import (
-    AlignmentIssue,
+from cursus.validation.alignment import (
     SeverityLevel,
     AlignmentLevel,
 )
+from cursus.validation.alignment.utils.core_models import AlignmentIssue
 
 
 @pytest.fixture

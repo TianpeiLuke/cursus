@@ -8,7 +8,7 @@ Provides step type-specific validation requirements and coordinates enhancement 
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 
-from ..utils.alignment_utils import detect_step_type_from_registry
+from .step_type_detection import detect_step_type_from_registry
 
 
 class StepTypeEnhancementRouter:

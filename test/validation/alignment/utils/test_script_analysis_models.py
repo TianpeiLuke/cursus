@@ -4,7 +4,7 @@ Test suite for script analysis models.
 
 import pytest
 
-from cursus.validation.alignment.alignment_utils import (
+from cursus.validation.alignment.utils.script_analysis_models import (
     PathReference,
     EnvVarAccess,
     ImportStatement,
