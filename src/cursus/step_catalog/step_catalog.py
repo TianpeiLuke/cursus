@@ -538,6 +538,75 @@ class StepCatalog:
             self.logger.error(f"Error loading specification for {step_name}: {e}")
             return None
     
+    def find_specs_by_contract(self, contract_name: str) -> Dict[str, Any]:
+        """
+        Find all specifications that reference a specific contract.
+        
+        This method enables contract-specification alignment validation by finding
+        specifications that are associated with a given contract name.
+        
+        Args:
+            contract_name: Name of the contract to find specifications for
+            
+        Returns:
+            Dictionary mapping spec names to specification instances
+        """
+        try:
+            if self.spec_discovery:
+                return self.spec_discovery.find_specs_by_contract(contract_name)
+            else:
+                self.logger.warning(f"SpecAutoDiscovery not available, cannot find specs for contract {contract_name}")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error finding specs for contract {contract_name}: {e}")
+            return {}
+    
+    def serialize_spec(self, spec_instance: Any) -> Dict[str, Any]:
+        """
+        Convert specification instance to dictionary format.
+        
+        This method provides standardized serialization of StepSpecification objects
+        for use in validation and alignment testing.
+        
+        Args:
+            spec_instance: StepSpecification instance to serialize
+            
+        Returns:
+            Dictionary representation of the specification
+        """
+        try:
+            if self.spec_discovery:
+                return self.spec_discovery.serialize_spec(spec_instance)
+            else:
+                self.logger.warning("SpecAutoDiscovery not available, cannot serialize specification")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error serializing specification: {e}")
+            return {}
+    
+    def get_spec_job_type_variants(self, base_step_name: str) -> List[str]:
+        """
+        Get all job type variants for a base step name from specifications.
+        
+        This method discovers different job type variants (training, validation, testing, etc.)
+        for a given base step name by examining specification file naming patterns.
+        
+        Args:
+            base_step_name: Base name of the step
+            
+        Returns:
+            List of job type variants found
+        """
+        try:
+            if self.spec_discovery:
+                return self.spec_discovery.get_job_type_variants(base_step_name)
+            else:
+                self.logger.warning(f"SpecAutoDiscovery not available, cannot get job type variants for {base_step_name}")
+                return []
+        except Exception as e:
+            self.logger.error(f"Error getting spec job type variants for {base_step_name}: {e}")
+            return []
+    
     # Additional utility methods for job type variants
     def get_job_type_variants(self, base_step_name: str) -> List[str]:
         """

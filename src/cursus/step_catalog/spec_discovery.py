@@ -340,6 +340,284 @@ class SpecAutoDiscovery:
             self.logger.warning(f"Error loading spec from file {spec_file}: {e}")
             return None
     
+    def find_specs_by_contract(self, contract_name: str) -> Dict[str, Any]:
+        """
+        Find all specifications that reference a specific contract.
+        
+        This method enables contract-specification alignment validation by finding
+        specifications that are associated with a given contract name.
+        
+        Args:
+            contract_name: Name of the contract to find specifications for
+            
+        Returns:
+            Dictionary mapping spec names to specification instances
+        """
+        try:
+            matching_specs = {}
+            
+            # Search core package specs
+            core_spec_dir = self.package_root / "steps" / "specs"
+            if core_spec_dir.exists():
+                core_matches = self._find_specs_by_contract_in_dir(core_spec_dir, contract_name)
+                matching_specs.update(core_matches)
+            
+            # Search workspace specs
+            if self.workspace_dirs:
+                for workspace_dir in self.workspace_dirs:
+                    workspace_matches = self._find_specs_by_contract_in_workspace(workspace_dir, contract_name)
+                    matching_specs.update(workspace_matches)
+            
+            self.logger.debug(f"Found {len(matching_specs)} specifications for contract '{contract_name}'")
+            return matching_specs
+            
+        except Exception as e:
+            self.logger.error(f"Error finding specs for contract {contract_name}: {e}")
+            return {}
+    
+    def serialize_spec(self, spec_instance: Any) -> Dict[str, Any]:
+        """
+        Convert specification instance to dictionary format.
+        
+        This method provides standardized serialization of StepSpecification objects
+        for use in validation and alignment testing.
+        
+        Args:
+            spec_instance: StepSpecification instance to serialize
+            
+        Returns:
+            Dictionary representation of the specification
+        """
+        try:
+            if not self._is_spec_instance(spec_instance):
+                raise ValueError("Object is not a valid specification instance")
+            
+            # Serialize dependencies
+            dependencies = []
+            if hasattr(spec_instance, 'dependencies') and spec_instance.dependencies:
+                for dep_name, dep_spec in spec_instance.dependencies.items():
+                    dependencies.append({
+                        "logical_name": dep_spec.logical_name,
+                        "dependency_type": (
+                            dep_spec.dependency_type.value
+                            if hasattr(dep_spec.dependency_type, "value")
+                            else str(dep_spec.dependency_type)
+                        ),
+                        "required": dep_spec.required,
+                        "compatible_sources": dep_spec.compatible_sources,
+                        "data_type": dep_spec.data_type,
+                        "description": dep_spec.description,
+                    })
+            
+            # Serialize outputs
+            outputs = []
+            if hasattr(spec_instance, 'outputs') and spec_instance.outputs:
+                for out_name, out_spec in spec_instance.outputs.items():
+                    outputs.append({
+                        "logical_name": out_spec.logical_name,
+                        "output_type": (
+                            out_spec.output_type.value
+                            if hasattr(out_spec.output_type, "value")
+                            else str(out_spec.output_type)
+                        ),
+                        "property_path": out_spec.property_path,
+                        "data_type": out_spec.data_type,
+                        "description": out_spec.description,
+                    })
+            
+            return {
+                "step_type": spec_instance.step_type,
+                "node_type": (
+                    spec_instance.node_type.value
+                    if hasattr(spec_instance.node_type, "value")
+                    else str(spec_instance.node_type)
+                ),
+                "dependencies": dependencies,
+                "outputs": outputs,
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error serializing specification: {e}")
+            return {}
+    
+    def get_job_type_variants(self, base_step_name: str) -> List[str]:
+        """
+        Get all job type variants for a base step name.
+        
+        This method discovers different job type variants (training, validation, testing, etc.)
+        for a given base step name by examining specification file naming patterns.
+        
+        Args:
+            base_step_name: Base name of the step
+            
+        Returns:
+            List of job type variants found
+        """
+        try:
+            variants = []
+            base_name_lower = base_step_name.lower()
+            
+            # Search core package specs
+            core_spec_dir = self.package_root / "steps" / "specs"
+            if core_spec_dir.exists():
+                core_variants = self._find_job_type_variants_in_dir(core_spec_dir, base_name_lower)
+                variants.extend(core_variants)
+            
+            # Search workspace specs
+            if self.workspace_dirs:
+                for workspace_dir in self.workspace_dirs:
+                    workspace_variants = self._find_job_type_variants_in_workspace(workspace_dir, base_name_lower)
+                    variants.extend(workspace_variants)
+            
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_variants = []
+            for variant in variants:
+                if variant not in seen:
+                    seen.add(variant)
+                    unique_variants.append(variant)
+            
+            self.logger.debug(f"Found job type variants for '{base_step_name}': {unique_variants}")
+            return unique_variants
+            
+        except Exception as e:
+            self.logger.error(f"Error finding job type variants for {base_step_name}: {e}")
+            return []
+    
+    def _find_specs_by_contract_in_dir(self, spec_dir: Path, contract_name: str) -> Dict[str, Any]:
+        """Find specifications that reference a contract in a specific directory."""
+        matching_specs = {}
+        
+        try:
+            for py_file in spec_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                try:
+                    if self._spec_file_references_contract(py_file, contract_name):
+                        # Load the specification from this file
+                        spec_instance = self._load_spec_from_file(py_file, contract_name)
+                        if spec_instance:
+                            spec_key = py_file.stem
+                            matching_specs[spec_key] = spec_instance
+                            self.logger.debug(f"Found matching spec: {spec_key} for contract {contract_name}")
+                
+                except Exception as e:
+                    self.logger.warning(f"Error checking spec file {py_file} for contract {contract_name}: {e}")
+                    continue
+        
+        except Exception as e:
+            self.logger.error(f"Error scanning directory {spec_dir} for contract {contract_name}: {e}")
+        
+        return matching_specs
+    
+    def _find_specs_by_contract_in_workspace(self, workspace_dir: Path, contract_name: str) -> Dict[str, Any]:
+        """Find specifications that reference a contract in workspace directories."""
+        matching_specs = {}
+        
+        try:
+            projects_dir = workspace_dir / "development" / "projects"
+            if not projects_dir.exists():
+                return matching_specs
+            
+            for project_dir in projects_dir.iterdir():
+                if project_dir.is_dir():
+                    spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
+                    if spec_dir.exists():
+                        project_matches = self._find_specs_by_contract_in_dir(spec_dir, contract_name)
+                        matching_specs.update(project_matches)
+        
+        except Exception as e:
+            self.logger.error(f"Error scanning workspace {workspace_dir} for contract {contract_name}: {e}")
+        
+        return matching_specs
+    
+    def _spec_file_references_contract(self, spec_file: Path, contract_name: str) -> bool:
+        """Check if a specification file references a specific contract."""
+        try:
+            # Use naming convention approach as the primary method
+            spec_name = spec_file.stem.replace("_spec", "")
+            
+            # Remove job type suffix if present
+            parts = spec_name.split("_")
+            if len(parts) > 1:
+                potential_job_types = ["training", "validation", "testing", "calibration", "model"]
+                if parts[-1] in potential_job_types:
+                    spec_name = "_".join(parts[:-1])
+            
+            contract_base = contract_name.lower().replace("_contract", "")
+            
+            # Check if the step type matches the contract name
+            if contract_base in spec_name.lower() or spec_name.lower() in contract_base:
+                return True
+            
+            # Additional check: look for contract references in the file content
+            try:
+                with open(spec_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    # Simple string search for contract references
+                    if contract_name.lower() in content.lower() or contract_base in content.lower():
+                        return True
+            except Exception:
+                pass  # If file reading fails, rely on naming convention
+            
+            return False
+            
+        except Exception as e:
+            self.logger.warning(f"Error checking if {spec_file} references contract {contract_name}: {e}")
+            return False
+    
+    def _find_job_type_variants_in_dir(self, spec_dir: Path, base_name_lower: str) -> List[str]:
+        """Find job type variants in a specific directory."""
+        variants = []
+        
+        try:
+            for py_file in spec_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                spec_name = py_file.stem.replace("_spec", "")
+                
+                # Check if this spec file matches the base step name
+                if base_name_lower in spec_name.lower():
+                    # Extract potential job type
+                    parts = spec_name.split("_")
+                    if len(parts) > 1:
+                        potential_job_type = parts[-1].lower()
+                        known_job_types = ["training", "validation", "testing", "calibration", "model"]
+                        if potential_job_type in known_job_types:
+                            variants.append(potential_job_type)
+                        else:
+                            variants.append("default")
+                    else:
+                        variants.append("default")
+        
+        except Exception as e:
+            self.logger.error(f"Error finding job type variants in {spec_dir}: {e}")
+        
+        return variants
+    
+    def _find_job_type_variants_in_workspace(self, workspace_dir: Path, base_name_lower: str) -> List[str]:
+        """Find job type variants in workspace directories."""
+        variants = []
+        
+        try:
+            projects_dir = workspace_dir / "development" / "projects"
+            if not projects_dir.exists():
+                return variants
+            
+            for project_dir in projects_dir.iterdir():
+                if project_dir.is_dir():
+                    spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
+                    if spec_dir.exists():
+                        project_variants = self._find_job_type_variants_in_dir(spec_dir, base_name_lower)
+                        variants.extend(project_variants)
+        
+        except Exception as e:
+            self.logger.error(f"Error finding job type variants in workspace {workspace_dir}: {e}")
+        
+        return variants
+
     def _file_to_relative_module_path(self, file_path: Path) -> Optional[str]:
         """
         Convert file path to relative module path for use with importlib.import_module.
