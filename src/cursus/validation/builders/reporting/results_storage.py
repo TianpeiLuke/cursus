@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TestResultsStorage:
+class BuilderTestResultsStorage:
     """
     Helper class for saving test results to organized directory structure.
     
@@ -41,7 +41,7 @@ class TestResultsStorage:
         """
         try:
             # Create results directory structure
-            results_dir = TestResultsStorage.get_results_directory()
+            results_dir = BuilderTestResultsStorage.get_results_directory()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
             if command_type == "all_builders":
@@ -93,7 +93,7 @@ class TestResultsStorage:
         if they don't already exist.
         """
         try:
-            results_dir = TestResultsStorage.get_results_directory()
+            results_dir = BuilderTestResultsStorage.get_results_directory()
             
             # Create subdirectories
             (results_dir / "all_builders").mkdir(parents=True, exist_ok=True)
@@ -124,7 +124,7 @@ class TestResultsStorage:
             Dictionary with lists of result files by type
         """
         try:
-            results_dir = TestResultsStorage.get_results_directory()
+            results_dir = BuilderTestResultsStorage.get_results_directory()
             saved_results = {
                 'all_builders': [],
                 'single_builder': []
@@ -203,7 +203,7 @@ class TestResultsStorage:
             Number of files deleted
         """
         try:
-            results_dir = TestResultsStorage.get_results_directory()
+            results_dir = BuilderTestResultsStorage.get_results_directory()
             if not results_dir.exists():
                 return 0
             

@@ -3,7 +3,7 @@ Factory for creating appropriate universal step builder test variants.
 """
 
 from typing import Type, Dict, Any, Optional
-from ...core.base.builder_base import StepBuilderBase
+from ....core.base.builder_base import StepBuilderBase
 
 
 class UniversalStepBuilderTestFactory:
@@ -18,7 +18,7 @@ class UniversalStepBuilderTestFactory:
         class_name = builder_class.__name__
         
         try:
-            from ...step_catalog import StepCatalog
+            from ....step_catalog import StepCatalog
             catalog = StepCatalog(workspace_dirs=None)
             
             # Find step name by builder class
@@ -74,7 +74,7 @@ class UniversalStepBuilderTestFactory:
         if not cls.VARIANT_MAP:
             # Import and register Processing variant
             try:
-                from .variants.processing_test import ProcessingStepBuilderTest
+                from ..variants.processing_test import ProcessingStepBuilderTest
 
                 cls.register_variant("Processing", ProcessingStepBuilderTest)
             except ImportError:

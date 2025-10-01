@@ -13,25 +13,25 @@ from pathlib import Path
 import json
 
 # Import base classes for type hints
-from ...core.base.builder_base import StepBuilderBase
-from ...core.base.specification_base import StepSpecification
-from ...core.base.contract_base import ScriptContract
-from ...core.base.config_base import BaseModel as ConfigBase
+from ....core.base.builder_base import StepBuilderBase
+from ....core.base.specification_base import StepSpecification
+from ....core.base.contract_base import ScriptContract
+from ....core.base.config_base import BaseModel as ConfigBase
 
 # Import test levels
-from .interface_tests import InterfaceTests
-from .specification_tests import SpecificationTests
-from .step_creation_tests import StepCreationTests
-from .integration_tests import IntegrationTests
-from .sagemaker_step_type_validator import SageMakerStepTypeValidator
+from ..interface_tests import InterfaceTests
+from ..specification_tests import SpecificationTests
+from ..step_creation_tests import StepCreationTests
+from ..integration_tests import IntegrationTests
+from ..sagemaker_step_type_validator import SageMakerStepTypeValidator
 from .base_test import StepName
 
 # Import scoring and reporting
-from .scoring import StepBuilderScorer, LEVEL_WEIGHTS, RATING_LEVELS
-from ...registry.step_names import STEP_NAMES
+from ..reporting.scoring import StepBuilderScorer, LEVEL_WEIGHTS, RATING_LEVELS
+from ....registry.step_names import STEP_NAMES
 
 # Import registry discovery utilities
-from .registry_discovery import RegistryStepDiscovery
+from ..discovery.registry_discovery import RegistryStepDiscovery
 
 
 class UniversalStepBuilderTest:
@@ -93,7 +93,7 @@ class UniversalStepBuilderTest:
         # Simple integration - just replace config creation
         if config is None and use_step_catalog_discovery:
             try:
-                from .step_catalog_config_provider import StepCatalogConfigProvider
+                from ..discovery.step_catalog_config_provider import StepCatalogConfigProvider
                 self.config_provider = StepCatalogConfigProvider()
                 self.config = self.config_provider.get_config_for_builder(builder_class)
                 
@@ -137,7 +137,7 @@ class UniversalStepBuilderTest:
 
         # Use processing-specific test variant for Processing step builders
         if self._is_processing_step_builder():
-            from .variants.processing_step_creation_tests import (
+            from ..variants.processing_step_creation_tests import (
                 ProcessingStepCreationTests,
             )
 

@@ -729,6 +729,181 @@ def list_builders():
         sys.exit(1)
 
 
+# PHASE 2 ENHANCEMENT: Dynamic Discovery Commands
+@builder_test.command("test-all-discovered")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
+@click.option("--scoring", is_flag=True, help="Enable quality scoring")
+@click.option("--export-json", type=click.Path(), help="Export results to JSON file")
+@click.option("--step-type", help="Filter by SageMaker step type")
+def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_type: str):
+    """Test all builders discovered via step catalog."""
+    try:
+        click.echo("🔍 Discovering builders via step catalog...")
+        
+        from ..step_catalog import StepCatalog
+        catalog = StepCatalog(workspace_dirs=None)
+        
+        if step_type:
+            builders = catalog.get_builders_by_step_type(step_type)
+            click.echo(f"Found {len(builders)} {step_type} builders")
+        else:
+            builders = catalog.get_all_builders()
+            click.echo(f"Found {len(builders)} total builders")
+        
+        if not builders:
+            click.echo("❌ No builders found")
+            return
+        
+        click.echo(f"\n🧪 Testing {len(builders)} builders...")
+        
+        # Test all builders
+        results = {}
+        for i, (step_name, builder_class) in enumerate(builders.items(), 1):
+            click.echo(f"\n[{i}/{len(builders)}] Testing {step_name}...")
+            
+            try:
+                tester = UniversalStepBuilderTest(
+                    builder_class=builder_class,
+                    step_name=step_name,
+                    verbose=verbose,
+                    enable_scoring=scoring,
+                    enable_structured_reporting=True,
+                    use_step_catalog_discovery=True
+                )
+                
+                test_results = tester.run_all_tests()
+                results[step_name] = test_results
+                
+                # Quick status report
+                if 'test_results' in test_results:
+                    raw_results = test_results['test_results']
+                    total_tests = len(raw_results)
+                    passed_tests = sum(1 for r in raw_results.values() if r.get('passed', False))
+                    pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+                    
+                    status_icon = "✅" if pass_rate >= 80 else "⚠️" if pass_rate >= 60 else "❌"
+                    click.echo(f"  {status_icon} {step_name}: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)")
+                    
+                    if scoring and 'scoring' in test_results:
+                        score = test_results['scoring'].get('overall', {}).get('score', 0)
+                        rating = test_results['scoring'].get('overall', {}).get('rating', 'Unknown')
+                        click.echo(f"  📊 Quality Score: {score:.1f}/100 ({rating})")
+                
+            except Exception as e:
+                click.echo(f"  ❌ {step_name}: Failed with error: {e}")
+                results[step_name] = {'error': str(e)}
+        
+        # Generate comprehensive report
+        total_builders = len(results)
+        successful_tests = sum(1 for r in results.values() if 'error' not in r)
+        success_rate = (successful_tests / total_builders * 100) if total_builders > 0 else 0
+        
+        click.echo(f"\n📊 OVERALL SUMMARY:")
+        click.echo(f"   Builders Tested: {total_builders}")
+        click.echo(f"   Successful Tests: {successful_tests} ({success_rate:.1f}%)")
+        
+        # Export or auto-save results
+        if export_json:
+            export_results_to_json(results, export_json)
+        else:
+            # Auto-save results
+            from ..validation.builders.results_storage import BuilderTestResultsStorage
+            output_path = BuilderTestResultsStorage.save_test_results(results, "all_builders", step_type)
+            click.echo(f"📁 Results automatically saved to: {output_path}")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@builder_test.command("test-single")
+@click.argument("canonical_name")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
+@click.option("--scoring", is_flag=True, help="Enable quality scoring")
+@click.option("--export-json", type=click.Path(), help="Export results to JSON file")
+def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: str):
+    """Test single builder by canonical name."""
+    try:
+        click.echo(f"🔍 Looking for builder: {canonical_name}")
+        
+        from ..step_catalog import StepCatalog
+        catalog = StepCatalog(workspace_dirs=None)
+        builder_class = catalog.load_builder_class(canonical_name)
+        
+        if not builder_class:
+            click.echo(f"❌ No builder found for: {canonical_name}")
+            # Show available builders
+            all_builders = catalog.get_all_builders()
+            available = sorted(all_builders.keys())
+            click.echo(f"Available builders: {', '.join(available[:10])}")
+            if len(available) > 10:
+                click.echo(f"... and {len(available) - 10} more")
+            sys.exit(1)
+        
+        click.echo(f"✅ Found builder: {builder_class.__name__}")
+        click.echo(f"\n🧪 Testing {canonical_name}...")
+        
+        # Run tests
+        tester = UniversalStepBuilderTest(
+            builder_class=builder_class,
+            step_name=canonical_name,
+            verbose=verbose,
+            enable_scoring=scoring,
+            enable_structured_reporting=True,
+            use_step_catalog_discovery=True
+        )
+        
+        results = tester.run_all_tests()
+        
+        # Print results
+        if scoring and "test_results" in results:
+            print_enhanced_results(results, verbose)
+        else:
+            print_test_results(results, verbose, show_scoring=scoring)
+        
+        # Export or auto-save results
+        export_data = {canonical_name: results}
+        if export_json:
+            export_results_to_json(export_data, export_json)
+        else:
+            from ..validation.builders.results_storage import BuilderTestResultsStorage
+            output_path = BuilderTestResultsStorage.save_test_results(export_data, "single_builder", canonical_name)
+            click.echo(f"📁 Results automatically saved to: {output_path}")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@builder_test.command("list-discovered")
+@click.option("--step-type", help="Filter by SageMaker step type")
+def list_discovered(step_type: str):
+    """List builders discovered via step catalog."""
+    try:
+        click.echo("📋 Builders discovered via step catalog:")
+        click.echo("=" * 50)
+        
+        from ..step_catalog import StepCatalog
+        catalog = StepCatalog(workspace_dirs=None)
+        
+        if step_type:
+            builders = catalog.get_builders_by_step_type(step_type)
+            click.echo(f"Filtered by step type: {step_type}")
+        else:
+            builders = catalog.get_all_builders()
+        
+        if builders:
+            for step_name, builder_class in sorted(builders.items()):
+                click.echo(f"  • {step_name} → {builder_class.__name__}")
+            click.echo(f"\nTotal: {len(builders)} builders")
+        else:
+            click.echo("No builders found")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
 def main():
     """Main entry point for builder test CLI."""
     builder_test()

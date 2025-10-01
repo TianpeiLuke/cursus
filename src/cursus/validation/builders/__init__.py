@@ -21,24 +21,28 @@ Usage:
     results = tester.run_all_tests()
 """
 
-from .universal_test import UniversalStepBuilderTest
+# Core testing framework
+from .core import UniversalStepBuilderTest
 from .interface_tests import InterfaceTests
 from .specification_tests import SpecificationTests
 from .step_creation_tests import StepCreationTests
 from .integration_tests import IntegrationTests
-from .scoring import StepBuilderScorer, score_builder_results
-from .base_test import UniversalStepBuilderTestBase
 
-# Enhanced universal tester system
-from .builder_test_factory import UniversalStepBuilderTestFactory
-# Removed StepTypeMockFactory - redundant system eliminated
-from .variants.processing_test import ProcessingStepBuilderTest
-from .variants.training_test import TrainingStepBuilderTest
-from .variants.transform_test import TransformStepBuilderTest
-from .variants.createmodel_test import CreateModelStepBuilderTest
+# Reporting and visualization
+from .reporting import (
+    StepBuilderScorer, 
+    score_builder_results,
+    BuilderTestResultsStorage,
+    EnhancedReportGenerator,
+    StepTypeColorScheme,
+    EnhancedStatusDisplay
+)
 
-# Registry-based discovery utilities
-from .registry_discovery import (
+# Factory classes
+from .factories import StepTypeTestFrameworkFactory
+
+# Discovery utilities
+from .discovery import (
     RegistryStepDiscovery,
     get_training_steps_from_registry,
     get_transform_steps_from_registry,
@@ -47,6 +51,18 @@ from .registry_discovery import (
     get_builder_class_path,
     load_builder_class,
 )
+
+# Step-type-specific test variants
+from .variants.processing_test import ProcessingStepBuilderTest
+from .variants.training_test import TrainingStepBuilderTest
+from .variants.transform_test import TransformStepBuilderTest
+from .variants.createmodel_test import CreateModelStepBuilderTest
+
+# Legacy compatibility
+try:
+    from .core.base_test import UniversalStepBuilderTestBase
+except ImportError:
+    UniversalStepBuilderTestBase = None
 
 __all__ = [
     "UniversalStepBuilderTest",
