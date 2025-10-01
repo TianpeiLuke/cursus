@@ -32,7 +32,7 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
             logical_name="data_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=["TabularPreprocessing", "ProcessingStep"],
+            compatible_sources=["TabularPreprocessing", "MissingValueImputation", "ProcessingStep"],
             semantic_keywords=[
                 "training",
                 "train",
@@ -42,7 +42,7 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
                 "tabular",
             ],
             data_type="S3Uri",
-            description="Preprocessed training data from tabular preprocessing step",
+            description="Preprocessed training data from tabular preprocessing or missing value imputation step",
         ),
         # Hyperparameters are optional as they can be generated internally,
         # but we still support external hyperparameters being provided

@@ -32,7 +32,7 @@ RISK_TABLE_MAPPING_VALIDATION_SPEC = StepSpecification(
             logical_name="data_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=["TabularPreprocessing", "ProcessingStep"],
+            compatible_sources=["TabularPreprocessing", "MissingValueImputation", "ProcessingStep"],
             semantic_keywords=[
                 "validation",
                 "val",
