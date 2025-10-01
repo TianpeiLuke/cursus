@@ -12,10 +12,10 @@ import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
-from .static_analysis.script_analyzer import ScriptAnalyzer
-from .static_analysis.builder_analyzer import extract_builder_arguments
-from .testability_validator import TestabilityPatternValidator
-from .alignment_utils import (
+from ..analysis.script_analyzer import ScriptAnalyzer
+from ..analysis.builder_argument_extractor import extract_builder_arguments
+from ..validators.testability_validator import TestabilityPatternValidator
+from ..utils.alignment_utils import (
     FlexibleFileResolver,
     detect_step_type_from_registry,
     detect_framework_from_imports,
@@ -23,9 +23,9 @@ from .alignment_utils import (
     SeverityLevel,
     normalize_path,
 )
-from .loaders import ContractLoader
-from .validators import ScriptContractValidator
-from .framework_patterns import detect_training_patterns, detect_xgboost_patterns
+from ..loaders import ContractLoader
+from ..validators import ScriptContractValidator
+from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
 
 
 class ScriptContractAlignmentTester:

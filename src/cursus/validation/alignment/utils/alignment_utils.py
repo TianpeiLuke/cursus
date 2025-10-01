@@ -27,13 +27,13 @@ from .script_analysis_models import (
 )
 
 # Dependency classification
-from .dependency_classifier import DependencyPattern, DependencyPatternClassifier
+from ..validators.dependency_classifier import DependencyPattern, DependencyPatternClassifier
 
 # File resolution
-from ...step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
+from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 
 # Step type detection
-from .step_type_detection import (
+from ..factories.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
     detect_step_type_from_script_patterns,

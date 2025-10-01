@@ -10,7 +10,7 @@ import re
 from typing import List, Dict, Set, Optional, Tuple, Any
 from pathlib import Path
 
-from ..alignment_utils import (
+from ..utils.alignment_utils import (
     PathReference,
     PathConstruction,
     FileOperation,

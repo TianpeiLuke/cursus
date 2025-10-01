@@ -11,11 +11,11 @@ import importlib.util
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from .analyzers import ConfigurationAnalyzer, BuilderCodeAnalyzer
-from .patterns import PatternRecognizer
-from .alignment_utils import FlexibleFileResolver
-from ...step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver
-from ...registry.step_names import STEP_NAMES, get_step_name_from_spec_type
+from ..analyzers import ConfigurationAnalyzer, BuilderCodeAnalyzer
+from ..patterns import PatternRecognizer
+from ..utils.alignment_utils import FlexibleFileResolver
+from ....step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver
+from ....registry.step_names import STEP_NAMES, get_step_name_from_spec_type
 
 
 class BuilderConfigurationAlignmentTester:

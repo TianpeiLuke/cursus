@@ -12,7 +12,7 @@ import os
 from typing import List, Dict, Any, Optional, Set, Tuple
 from pathlib import Path
 
-from .alignment_utils import (
+from ..utils.alignment_utils import (
     SeverityLevel,
     AlignmentIssue,
     create_alignment_issue,

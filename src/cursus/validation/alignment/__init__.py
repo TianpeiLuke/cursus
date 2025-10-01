@@ -12,12 +12,12 @@ The alignment validation covers four levels:
 """
 
 from .unified_alignment_tester import UnifiedAlignmentTester
-from .alignment_reporter import AlignmentReport, ValidationResult, AlignmentIssue
-from .script_contract_alignment import ScriptContractAlignmentTester
-from .contract_spec_alignment import ContractSpecificationAlignmentTester
-from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
-from .builder_config_alignment import BuilderConfigurationAlignmentTester
-from .testability_validator import TestabilityPatternValidator
+from .reporting.alignment_reporter import AlignmentReport, ValidationResult, AlignmentIssue
+from .core.script_contract_alignment import ScriptContractAlignmentTester
+from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
+from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
+from .core.builder_config_alignment import BuilderConfigurationAlignmentTester
+from .validators.testability_validator import TestabilityPatternValidator
 
 __all__ = [
     "UnifiedAlignmentTester",

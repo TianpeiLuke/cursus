@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from .base_enhancer import BaseStepEnhancer
-from ..framework_patterns import (
+from ..patterns.framework_patterns import (
     detect_training_patterns,
     detect_xgboost_patterns,
     detect_pytorch_patterns,

@@ -8,7 +8,7 @@ Provides step type-specific validation requirements and coordinates enhancement 
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 
-from .alignment_utils import detect_step_type_from_registry
+from ..utils.alignment_utils import detect_step_type_from_registry
 
 
 class StepTypeEnhancementRouter:
@@ -105,7 +105,7 @@ class StepTypeEnhancementRouter:
                 except (ImportError, AttributeError) as e:
                     # If enhancer cannot be loaded, use base enhancer
                     try:
-                        from .step_type_enhancers.base_enhancer import BaseStepEnhancer
+                        from ..step_type_enhancers.base_enhancer import BaseStepEnhancer
 
                         self._enhancers[step_type] = BaseStepEnhancer(step_type)
                     except ImportError:

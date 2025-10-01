@@ -22,7 +22,7 @@ Usage:
 """
 
 # Core testing framework
-from .core import UniversalStepBuilderTest
+from .universal_test import UniversalStepBuilderTest
 from .core.interface_tests import InterfaceTests
 from .core.specification_tests import SpecificationTests
 from .core.step_creation_tests import StepCreationTests

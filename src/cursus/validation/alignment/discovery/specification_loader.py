@@ -11,7 +11,7 @@ import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ..alignment_utils import FlexibleFileResolver
+from ..utils.alignment_utils import FlexibleFileResolver
 from ....core.base.specification_base import (
     StepSpecification,
     DependencySpec,

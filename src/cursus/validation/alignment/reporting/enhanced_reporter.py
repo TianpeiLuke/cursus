@@ -14,7 +14,7 @@ import statistics
 
 from .alignment_reporter import AlignmentReport, ValidationResult, AlignmentSummary
 from .alignment_scorer import AlignmentScorer
-from ..shared.chart_utils import (
+from ...shared.chart_utils import (
     create_score_bar_chart,
     create_comparison_chart,
     create_trend_chart,

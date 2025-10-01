@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 from ..validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-from ..validation.alignment.alignment_scorer import AlignmentScorer
+from ..validation.alignment.reporting.alignment_scorer import AlignmentScorer
 
 
 def print_validation_summary(

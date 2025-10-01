@@ -658,10 +658,10 @@ class ProcessingStepEnhancer(BaseStepEnhancer):
         script_analysis = self._create_script_analysis_from_content(script_content)
 
         # Detect patterns in script analysis
-        from ..framework_patterns import detect_pandas_patterns, detect_sklearn_patterns
+        from ..patterns.framework_patterns import detect_pandas_patterns, detect_sklearn_patterns
 
         # Detect framework from content directly
-        from ..framework_patterns import detect_framework_from_script_content
+        from ..patterns.framework_patterns import detect_framework_from_script_content
 
         framework = detect_framework_from_script_content(script_content)
 

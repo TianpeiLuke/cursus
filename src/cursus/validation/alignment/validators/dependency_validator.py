@@ -9,7 +9,7 @@ import logging
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
-from ..level3_validation_config import Level3ValidationConfig
+from ..utils.level3_validation_config import Level3ValidationConfig
 from ....registry.step_names import (
     get_step_name_from_spec_type,
     get_canonical_name_from_file_name,
@@ -475,7 +475,7 @@ class DependencyValidator:
 
     def _populate_resolver_registry(self, all_specs: Dict[str, Dict[str, Any]]):
         """Populate the dependency resolver registry with all specifications using canonical names."""
-        from ..loaders.specification_loader import SpecificationLoader
+        from ..discovery.specification_loader import SpecificationLoader
 
         # Create a temporary loader for dict conversion
         temp_loader = SpecificationLoader("")

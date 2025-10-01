@@ -23,8 +23,8 @@ from ..validation.builders.core.specification_tests import SpecificationTests
 from ..validation.builders.core.step_creation_tests import StepCreationTests
 from ..validation.builders.core.integration_tests import IntegrationTests
 from ..validation.builders.variants.processing_test import ProcessingStepBuilderTest
-from ..validation.builders.registry_discovery import RegistryStepDiscovery
-from ..validation.builders.scoring import StepBuilderScorer
+from ..validation.builders.discovery.registry_discovery import RegistryStepDiscovery
+from ..validation.builders.reporting.scoring import StepBuilderScorer
 
 
 def print_test_results(

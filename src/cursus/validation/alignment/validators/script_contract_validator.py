@@ -9,7 +9,7 @@ import os
 from typing import Dict, Any, List, Optional, Set
 from pathlib import Path
 
-from ..alignment_utils import (
+from ..utils.alignment_utils import (
     normalize_path,
     extract_logical_name_from_path,
     is_sagemaker_path,

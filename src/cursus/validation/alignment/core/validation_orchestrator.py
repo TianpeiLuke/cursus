@@ -169,7 +169,7 @@ class ValidationOrchestrator:
             
             # Fallback to legacy discovery during transition period
             if self.contract_discovery and self.contracts_dir:
-                from ..alignment_utils import FlexibleFileResolver
+                from ..utils.alignment_utils import FlexibleFileResolver
                 base_directories = {
                     "contracts": str(self.contracts_dir),
                     "specs": str(self.specs_dir) if self.specs_dir else "",

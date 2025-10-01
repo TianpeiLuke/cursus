@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from .alignment_utils import (
+from ..utils.alignment_utils import (
     AlignmentIssue,
     SeverityLevel,
     AlignmentLevel,

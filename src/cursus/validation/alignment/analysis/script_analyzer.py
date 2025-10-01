@@ -10,7 +10,7 @@ import os
 from typing import List, Dict, Any, Optional, Set
 from pathlib import Path
 
-from ..alignment_utils import (
+from ..utils.alignment_utils import (
     PathReference,
     EnvVarAccess,
     ImportStatement,
@@ -20,7 +20,7 @@ from ..alignment_utils import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
 )
-from ..framework_patterns import detect_training_patterns
+from ..patterns.framework_patterns import detect_training_patterns
 
 
 class ScriptAnalyzer:

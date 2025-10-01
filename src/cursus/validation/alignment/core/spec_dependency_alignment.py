@@ -9,17 +9,17 @@ import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from .alignment_utils import DependencyPatternClassifier, DependencyPattern
-from .level3_validation_config import Level3ValidationConfig, ValidationMode
-from .loaders import SpecificationLoader
-from .validators import DependencyValidator
-from ...core.deps.factory import create_pipeline_components
-from ...core.base.specification_base import (
+from ..utils.alignment_utils import DependencyPatternClassifier, DependencyPattern
+from ..utils.level3_validation_config import Level3ValidationConfig, ValidationMode
+from ..loaders import SpecificationLoader
+from ..validators import DependencyValidator
+from ....core.deps.factory import create_pipeline_components
+from ....core.base.specification_base import (
     StepSpecification,
     DependencySpec,
     OutputSpec,
 )
-from ...registry.step_names import (
+from ....registry.step_names import (
     get_step_name_from_spec_type,
     get_canonical_name_from_file_name,
 )
@@ -293,7 +293,7 @@ class SpecificationDependencyAlignmentTester:
         Returns:
             List of canonical step names from the production registry
         """
-        from ...registry.step_names import get_all_step_names
+        from ....registry.step_names import get_all_step_names
 
         # Get canonical step names from the production registry (single source of truth)
         canonical_names = get_all_step_names()

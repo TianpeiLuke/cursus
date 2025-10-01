@@ -12,8 +12,8 @@ import os
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
-from .alignment_reporter import AlignmentReport, ValidationResult
-from .alignment_utils import (
+from .reporting.alignment_reporter import AlignmentReport, ValidationResult
+from .utils.alignment_utils import (
     SeverityLevel,
     AlignmentLevel,
     create_alignment_issue,
@@ -22,12 +22,12 @@ from .alignment_utils import (
     StepTypeAwareAlignmentIssue,
     create_step_type_aware_alignment_issue,
 )
-from .step_type_enhancement_router import StepTypeEnhancementRouter
-from .script_contract_alignment import ScriptContractAlignmentTester
-from .contract_spec_alignment import ContractSpecificationAlignmentTester
-from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
-from .level3_validation_config import Level3ValidationConfig, ValidationMode
-from .builder_config_alignment import BuilderConfigurationAlignmentTester
+from .factories.step_type_enhancement_router import StepTypeEnhancementRouter
+from .core.script_contract_alignment import ScriptContractAlignmentTester
+from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
+from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
+from .utils.level3_validation_config import Level3ValidationConfig, ValidationMode
+from .core.builder_config_alignment import BuilderConfigurationAlignmentTester
 
 
 class UnifiedAlignmentTester:
@@ -1168,7 +1168,7 @@ class UnifiedAlignmentTester:
                         script_path = self.scripts_dir / f"{script_name}.py"
                     
                     if script_path and script_path.exists():
-                        from .framework_patterns import detect_framework_from_script_content
+                        from .patterns.framework_patterns import detect_framework_from_script_content
                         with open(script_path, "r", encoding="utf-8") as f:
                             script_content = f.read()
                         framework = detect_framework_from_script_content(script_content)
