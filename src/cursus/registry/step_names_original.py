@@ -52,6 +52,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Risk table mapping step for categorical features",
     },
+    "MissingValueImputation": {
+        "config_class": "MissingValueImputationConfig",
+        "builder_step_name": "MissingValueImputationStepBuilder",
+        "spec_type": "MissingValueImputation",
+        "sagemaker_step_type": "Processing",
+        "description": "Missing value imputation step using statistical methods (mean, median, mode, constant) with pandas-safe values",
+    },
     "CurrencyConversion": {
         "config_class": "CurrencyConversionConfig",
         "builder_step_name": "CurrencyConversionStepBuilder",

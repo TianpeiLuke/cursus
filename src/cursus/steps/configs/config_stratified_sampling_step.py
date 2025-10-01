@@ -89,38 +89,11 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
     # These are fields calculated from other fields
     # They are private with public read-only property access
 
-    _full_script_path: Optional[str] = PrivateAttr(default=None)
-
     model_config = ProcessingStepConfigBase.model_config.copy()
     model_config.update({"arbitrary_types_allowed": True, "validate_assignment": True})
 
     # ===== Properties for Derived Fields =====
-
-    @property
-    def full_script_path(self) -> Optional[str]:
-        """
-        Get full path to the stratified sampling script.
-
-        Returns:
-            Full path to the script
-        """
-        if self._full_script_path is None:
-            # Get effective source directory
-            source_dir = self.effective_source_dir
-            if source_dir is None:
-                return None
-
-            # Combine with entry point
-            if source_dir.startswith("s3://"):
-                self._full_script_path = (
-                    f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
-                )
-            else:
-                self._full_script_path = str(
-                    Path(source_dir) / self.processing_entry_point
-                )
-
-        return self._full_script_path
+    # (No derived properties needed - base class handles script path)
 
     # ===== Validators =====
 
@@ -200,18 +173,6 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         # Call parent validator first
         super().initialize_derived_fields()
 
-        # Initialize full script path if possible
-        source_dir = self.effective_source_dir
-        if source_dir is not None:
-            if source_dir.startswith("s3://"):
-                self._full_script_path = (
-                    f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
-                )
-            else:
-                self._full_script_path = str(
-                    Path(source_dir) / self.processing_entry_point
-                )
-
         return self
 
     # ===== Script Contract =====
@@ -256,16 +217,3 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **sampling_fields}
 
         return init_fields
-
-    # ===== Serialization =====
-
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        """Override model_dump to include derived properties."""
-        # Get base fields first
-        data = super().model_dump(**kwargs)
-
-        # Add derived properties
-        if self.full_script_path:
-            data["full_script_path"] = self.full_script_path
-
-        return data
