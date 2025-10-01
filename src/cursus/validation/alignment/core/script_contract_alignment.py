@@ -25,7 +25,6 @@ from ..utils.core_models import (
     SeverityLevel,
 )
 from ..utils.utils import normalize_path
-from ..discovery import ContractLoader
 from ..validators import ScriptContractValidator
 from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
 
@@ -67,9 +66,12 @@ class ScriptContractAlignmentTester:
         # Initialize testability validator
         self.testability_validator = TestabilityPatternValidator()
 
-        # Initialize contract loader and validator
-        self.contract_loader = ContractLoader(str(self.contracts_dir))
+        # Initialize validator
         self.script_validator = ScriptContractValidator()
+        
+        # Initialize StepCatalog for contract loading
+        from ....step_catalog import StepCatalog
+        self.step_catalog = StepCatalog(workspace_dirs=None)
 
         # Build entry_point to contract file mapping (kept as fallback)
         self._entry_point_to_contract = self._build_entry_point_mapping()

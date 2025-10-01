@@ -11,7 +11,6 @@ from pathlib import Path
 
 from ..validators.dependency_classifier import DependencyPatternClassifier, DependencyPattern
 from .level3_validation_config import Level3ValidationConfig, ValidationMode
-from ..discovery import SpecificationLoader
 from ..validators import DependencyValidator
 from ....core.deps.factory import create_pipeline_components
 from ....core.base.specification_base import (
@@ -54,7 +53,8 @@ class SpecificationDependencyAlignmentTester:
         )
 
         # Initialize extracted components
-        self.spec_loader = SpecificationLoader(str(self.specs_dir))
+        from ....step_catalog import StepCatalog
+        self.step_catalog = StepCatalog(workspace_dirs=None)
         self.dependency_validator = DependencyValidator(self.config)
 
         # Initialize the dependency pattern classifier
@@ -565,25 +565,217 @@ class SpecificationDependencyAlignmentTester:
         )
 
     def _find_specification_files(self, spec_name: str) -> List[Path]:
-        """Find all specification files for a specification using extracted component."""
-        return self.spec_loader.find_specification_files(spec_name)
+        """Find all specification files for a specification using StepCatalog."""
+        spec_files = []
+        
+        # Try using step catalog first
+        try:
+            step_info = self.step_catalog.get_step_info(spec_name)
+            if step_info and step_info.file_components.get('spec'):
+                spec_metadata = step_info.file_components['spec']
+                if spec_metadata and spec_metadata.path:
+                    spec_files.append(spec_metadata.path)
+                    
+                    # Look for job type variants in the same directory
+                    spec_dir = spec_metadata.path.parent
+                    base_name = spec_metadata.path.stem.replace("_spec", "")
+                    
+                    for job_type in ["training", "validation", "testing", "calibration"]:
+                        variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
+                        if variant_file.exists() and variant_file not in spec_files:
+                            spec_files.append(variant_file)
+                            
+        except Exception:
+            pass  # Fall back to direct file search
+
+        # FALLBACK METHOD: Direct file matching if catalog unavailable
+        if not spec_files:
+            # First, look for generic spec file
+            direct_spec_file = self.specs_dir / f"{spec_name}_spec.py"
+            if direct_spec_file.exists():
+                spec_files.append(direct_spec_file)
+
+            # Always look for job type variants, regardless of whether generic file exists
+            for job_type in ["training", "validation", "testing", "calibration"]:
+                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
+                if variant_file.exists() and variant_file not in spec_files:
+                    spec_files.append(variant_file)
+
+        return spec_files
 
     def _extract_job_type_from_spec_file(self, spec_file: Path) -> str:
-        """Extract job type from specification file name using extracted component."""
-        return self.spec_loader.extract_job_type_from_spec_file(spec_file)
+        """Extract job type from specification file name."""
+        # Pattern: {spec_name}_{job_type}_spec.py or {spec_name}_spec.py
+        stem = spec_file.stem
+        parts = stem.split("_")
+        if len(parts) >= 3 and parts[-1] == "spec":
+            return parts[-2]  # job_type is second to last part
+        return "default"
 
     def _load_specification_from_python(
         self, spec_path: Path, spec_name: str, job_type: str
     ) -> Dict[str, Any]:
-        """Load specification from Python file using extracted component."""
-        return self.spec_loader.load_specification_from_python(
-            spec_path, spec_name, job_type
-        )
+        """Load specification from Python file using StepCatalog."""
+        import sys
+        import importlib.util
+        
+        try:
+            # Add the project root to sys.path temporarily to handle relative imports
+            project_root = str(spec_path.parent.parent.parent.parent)
+            src_root = str(spec_path.parent.parent.parent)
+            specs_dir = str(spec_path.parent)
+
+            paths_to_add = [project_root, src_root, specs_dir]
+            added_paths = []
+
+            for path in paths_to_add:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+                    added_paths.append(path)
+
+            try:
+                # Load the module
+                spec = importlib.util.spec_from_file_location(
+                    f"{spec_path.stem}", spec_path
+                )
+                if spec is None or spec.loader is None:
+                    raise ImportError(
+                        f"Could not load specification module from {spec_path}"
+                    )
+
+                module = importlib.util.module_from_spec(spec)
+                module.__package__ = "cursus.steps.specs"
+                spec.loader.exec_module(module)
+            finally:
+                # Remove added paths from sys.path
+                for path in added_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+
+            # Find spec constant
+            possible_names = [
+                f"{spec_name.upper()}_{job_type.upper()}_SPEC",
+                f"{spec_name.upper()}_SPEC",
+                f"{job_type.upper()}_SPEC",
+            ]
+
+            # Add dynamic discovery - scan for any constants ending with _SPEC
+            spec_constants = [
+                name
+                for name in dir(module)
+                if name.endswith("_SPEC") and not name.startswith("_")
+            ]
+            possible_names.extend(spec_constants)
+
+            spec_obj = None
+            for spec_var_name in possible_names:
+                if hasattr(module, spec_var_name):
+                    spec_obj = getattr(module, spec_var_name)
+                    break
+
+            if spec_obj is None:
+                raise ValueError(
+                    f"No specification constant found in {spec_path}. Tried: {possible_names}"
+                )
+
+            # Convert StepSpecification object to dictionary
+            return self._step_specification_to_dict(spec_obj)
+
+        except Exception as e:
+            raise ValueError(f"Failed to load specification from {spec_path}: {str(e)}")
+
+    def _step_specification_to_dict(self, spec_obj: StepSpecification) -> Dict[str, Any]:
+        """Convert StepSpecification object to dictionary representation."""
+        dependencies = []
+        for dep_name, dep_spec in spec_obj.dependencies.items():
+            dependencies.append(
+                {
+                    "logical_name": dep_spec.logical_name,
+                    "dependency_type": (
+                        dep_spec.dependency_type.value
+                        if hasattr(dep_spec.dependency_type, "value")
+                        else str(dep_spec.dependency_type)
+                    ),
+                    "required": dep_spec.required,
+                    "compatible_sources": dep_spec.compatible_sources,
+                    "data_type": dep_spec.data_type,
+                    "description": dep_spec.description,
+                }
+            )
+
+        outputs = []
+        for out_name, out_spec in spec_obj.outputs.items():
+            outputs.append(
+                {
+                    "logical_name": out_spec.logical_name,
+                    "output_type": (
+                        out_spec.output_type.value
+                        if hasattr(out_spec.output_type, "value")
+                        else str(out_spec.output_type)
+                    ),
+                    "property_path": out_spec.property_path,
+                    "data_type": out_spec.data_type,
+                    "description": out_spec.description,
+                }
+            )
+
+        return {
+            "step_type": spec_obj.step_type,
+            "node_type": (
+                spec_obj.node_type.value
+                if hasattr(spec_obj.node_type, "value")
+                else str(spec_obj.node_type)
+            ),
+            "dependencies": dependencies,
+            "outputs": outputs,
+        }
 
     def _load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
-        """Load all specification files using extracted component."""
-        return self.spec_loader.load_all_specifications()
+        """Load all specification files using StepCatalog."""
+        all_specs = {}
+
+        if self.specs_dir.exists():
+            for spec_file in self.specs_dir.glob("*_spec.py"):
+                spec_name = spec_file.stem.replace("_spec", "")
+                # Remove job type suffix if present
+                parts = spec_name.split("_")
+                if len(parts) > 1:
+                    # Try to identify if last part is a job type
+                    potential_job_types = [
+                        "training",
+                        "validation",
+                        "testing",
+                        "calibration",
+                    ]
+                    if parts[-1] in potential_job_types:
+                        spec_name = "_".join(parts[:-1])
+
+                if spec_name not in all_specs:
+                    try:
+                        job_type = self._extract_job_type_from_spec_file(spec_file)
+                        spec = self._load_specification_from_python(
+                            spec_file, spec_name, job_type
+                        )
+                        all_specs[spec_name] = spec
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to load specification {spec_name} from {spec_file}: {e}"
+                        )
+                        continue
+
+        return all_specs
 
     def _discover_specifications(self) -> List[str]:
-        """Discover all specification files using extracted component."""
-        return self.spec_loader.discover_specifications()
+        """Discover all specification files using StepCatalog."""
+        specifications = set()
+
+        if self.specs_dir.exists():
+            for spec_file in self.specs_dir.glob("*_spec.py"):
+                if spec_file.name.startswith("__"):
+                    continue
+
+                # Use the actual file name (without .py extension) as the spec name
+                spec_name = spec_file.stem.replace("_spec", "")
+                specifications.add(spec_name)
+
+        return sorted(list(specifications))

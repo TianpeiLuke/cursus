@@ -10,11 +10,9 @@ from pathlib import Path
 
 from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 from ..validators.property_path_validator import SageMakerPropertyPathValidator
-from ..discovery import ContractLoader, SpecificationLoader
 from ..factories.smart_spec_selector import SmartSpecificationSelector
 from ..validators import ContractSpecValidator
 from ....step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
-from ..discovery import SpecificationFileProcessor
 from .validation_orchestrator import ValidationOrchestrator
 
 
@@ -50,9 +48,9 @@ class ContractSpecificationAlignmentTester:
         # Initialize property path validator
         self.property_path_validator = SageMakerPropertyPathValidator()
 
-        # Initialize loaders
-        self.contract_loader = ContractLoader(str(self.contracts_dir))
-        self.spec_loader = SpecificationLoader(str(self.specs_dir))
+        # Initialize StepCatalog for loading
+        from ....step_catalog import StepCatalog
+        self.step_catalog = StepCatalog(workspace_dirs=None)
 
         # Initialize smart specification selector
         self.smart_spec_selector = SmartSpecificationSelector()
@@ -154,9 +152,9 @@ class ContractSpecificationAlignmentTester:
         # e.g., "xgboost_model_eval_contract.py" -> "xgboost_model_eval_contract"
         actual_contract_name = contract_path.stem
 
-        # Load contract from Python file
+        # Load contract using StepCatalog
         try:
-            contract = self.contract_loader.load_contract(
+            contract = self._load_contract_from_step_catalog(
                 contract_path, actual_contract_name
             )
         except Exception as e:
@@ -172,10 +170,8 @@ class ContractSpecificationAlignmentTester:
                 ],
             }
 
-        # Find specification files using the actual contract name
-        spec_files = self.spec_loader.find_specifications_by_contract(
-            actual_contract_name
-        )
+        # Find specification files using StepCatalog
+        spec_files = self._find_specifications_by_contract(actual_contract_name)
 
         if not spec_files:
             return {
@@ -190,11 +186,11 @@ class ContractSpecificationAlignmentTester:
                 ],
             }
 
-        # Load specifications from Python files
+        # Load specifications using StepCatalog
         specifications = {}
-        for spec_file, spec_info in spec_files.items():
+        for spec_file in spec_files:
             try:
-                spec = self.spec_loader.load_specification(spec_file, spec_info)
+                spec = self._load_specification_from_step_catalog(spec_file, actual_contract_name)
                 # Use the spec file name as the key since job type comes from config, not spec
                 spec_key = spec_file.stem
                 specifications[spec_key] = spec
@@ -301,6 +297,285 @@ class ContractSpecificationAlignmentTester:
         # Use ContractDiscoveryEngine for robust contract discovery
         discovery_engine = ContractDiscoveryEngine(str(self.contracts_dir))
         return discovery_engine.discover_contracts_with_scripts()
+
+    def _load_contract_from_step_catalog(self, contract_path: Path, contract_name: str) -> Dict[str, Any]:
+        """Load contract from Python file using StepCatalog approach."""
+        import sys
+        import importlib.util
+        
+        try:
+            # Add the project root to sys.path temporarily to handle relative imports
+            project_root = str(contract_path.parent.parent.parent.parent)
+            src_root = str(contract_path.parent.parent.parent)
+            contract_dir = str(contract_path.parent)
+
+            paths_to_add = [project_root, src_root, contract_dir]
+            added_paths = []
+
+            for path in paths_to_add:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+                    added_paths.append(path)
+
+            try:
+                # Load the module
+                spec = importlib.util.spec_from_file_location(
+                    f"{contract_name}_contract", contract_path
+                )
+                if spec is None or spec.loader is None:
+                    raise ImportError(
+                        f"Could not load contract module from {contract_path}"
+                    )
+
+                module = importlib.util.module_from_spec(spec)
+                module.__package__ = "cursus.steps.contracts"
+                spec.loader.exec_module(module)
+            finally:
+                # Remove added paths from sys.path
+                for path in added_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+
+            # Look for the contract object - try multiple naming patterns
+            contract_obj = self._find_contract_object(module, contract_name)
+
+            if contract_obj is None:
+                raise AttributeError(f"No contract object found in {contract_path}")
+
+            # Convert ScriptContract object to dictionary format
+            return self._contract_to_dict(contract_obj, contract_name)
+
+        except Exception as e:
+            raise Exception(f"Failed to load Python contract from {contract_path}: {str(e)}")
+
+    def _find_contract_object(self, module, contract_name: str):
+        """Find the contract object in the loaded module using multiple naming patterns."""
+        # Try various naming patterns
+        possible_names = [
+            f"{contract_name.upper()}_CONTRACT",
+            f"{contract_name}_CONTRACT",
+            f"{contract_name}_contract",
+            "CONTRACT",
+            "contract",
+        ]
+
+        # Also try to find any variable ending with _CONTRACT
+        for attr_name in dir(module):
+            if attr_name.endswith("_CONTRACT") and not attr_name.startswith("_"):
+                possible_names.append(attr_name)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_names = []
+        for name in possible_names:
+            if name not in seen:
+                seen.add(name)
+                unique_names.append(name)
+
+        for name in unique_names:
+            if hasattr(module, name):
+                contract_obj = getattr(module, name)
+                # Verify it's actually a contract object
+                if hasattr(contract_obj, "entry_point"):
+                    return contract_obj
+
+        return None
+
+    def _contract_to_dict(self, contract_obj, contract_name: str) -> Dict[str, Any]:
+        """Convert ScriptContract object to dictionary format."""
+        contract_dict = {
+            "entry_point": getattr(contract_obj, "entry_point", f"{contract_name}.py"),
+            "inputs": {},
+            "outputs": {},
+            "arguments": {},
+            "environment_variables": {
+                "required": getattr(contract_obj, "required_env_vars", []),
+                "optional": getattr(contract_obj, "optional_env_vars", {}),
+            },
+            "description": getattr(contract_obj, "description", ""),
+            "framework_requirements": getattr(contract_obj, "framework_requirements", {}),
+        }
+
+        # Convert expected_input_paths to inputs format
+        if hasattr(contract_obj, "expected_input_paths"):
+            for logical_name, path in contract_obj.expected_input_paths.items():
+                contract_dict["inputs"][logical_name] = {"path": path}
+
+        # Convert expected_output_paths to outputs format
+        if hasattr(contract_obj, "expected_output_paths"):
+            for logical_name, path in contract_obj.expected_output_paths.items():
+                contract_dict["outputs"][logical_name] = {"path": path}
+
+        # Convert expected_arguments to arguments format
+        if hasattr(contract_obj, "expected_arguments"):
+            for arg_name, default_value in contract_obj.expected_arguments.items():
+                contract_dict["arguments"][arg_name] = {
+                    "default": default_value,
+                    "required": default_value is None,
+                }
+
+        return contract_dict
+
+    def _find_specifications_by_contract(self, contract_name: str) -> List[Path]:
+        """Find specification files that reference a specific contract using StepCatalog."""
+        matching_specs = []
+
+        if not self.specs_dir.exists():
+            return matching_specs
+
+        # Search through all specification files
+        for spec_file in self.specs_dir.glob("*_spec.py"):
+            if spec_file.name.startswith("__"):
+                continue
+
+            try:
+                # Check if this specification references the contract
+                if self._specification_references_contract(spec_file, contract_name):
+                    matching_specs.append(spec_file)
+
+            except Exception:
+                continue
+
+        return matching_specs
+
+    def _specification_references_contract(self, spec_file: Path, contract_name: str) -> bool:
+        """Check if a specification references a specific contract."""
+        # Use naming convention approach as the primary method
+        spec_name = spec_file.stem.replace("_spec", "")
+        
+        # Remove job type suffix if present
+        parts = spec_name.split("_")
+        if len(parts) > 1:
+            potential_job_types = ["training", "validation", "testing", "calibration"]
+            if parts[-1] in potential_job_types:
+                spec_name = "_".join(parts[:-1])
+
+        contract_base = contract_name.lower().replace("_contract", "")
+
+        # Check if the step type matches the contract name
+        if contract_base in spec_name.lower() or spec_name.lower() in contract_base:
+            return True
+
+        return False
+
+    def _load_specification_from_step_catalog(self, spec_file: Path, contract_name: str) -> Dict[str, Any]:
+        """Load specification from Python file using StepCatalog approach."""
+        import sys
+        import importlib.util
+        
+        try:
+            # Add the project root to sys.path temporarily to handle relative imports
+            project_root = str(spec_file.parent.parent.parent.parent)
+            src_root = str(spec_file.parent.parent.parent)
+            specs_dir = str(spec_file.parent)
+
+            paths_to_add = [project_root, src_root, specs_dir]
+            added_paths = []
+
+            for path in paths_to_add:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+                    added_paths.append(path)
+
+            try:
+                # Load the module
+                spec = importlib.util.spec_from_file_location(
+                    f"{spec_file.stem}", spec_file
+                )
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not load specification module from {spec_file}")
+
+                module = importlib.util.module_from_spec(spec)
+                module.__package__ = "cursus.steps.specs"
+                spec.loader.exec_module(module)
+            finally:
+                # Remove added paths from sys.path
+                for path in added_paths:
+                    if path in sys.path:
+                        sys.path.remove(path)
+
+            # Find spec constant
+            spec_name = spec_file.stem.replace("_spec", "")
+            job_type = self._extract_job_type_from_spec_file(spec_file)
+            
+            possible_names = [
+                f"{spec_name.upper()}_{job_type.upper()}_SPEC",
+                f"{spec_name.upper()}_SPEC",
+                f"{job_type.upper()}_SPEC",
+            ]
+
+            # Add dynamic discovery - scan for any constants ending with _SPEC
+            spec_constants = [
+                name for name in dir(module)
+                if name.endswith("_SPEC") and not name.startswith("_")
+            ]
+            possible_names.extend(spec_constants)
+
+            spec_obj = None
+            for spec_var_name in possible_names:
+                if hasattr(module, spec_var_name):
+                    spec_obj = getattr(module, spec_var_name)
+                    break
+
+            if spec_obj is None:
+                raise ValueError(f"No specification constant found in {spec_file}. Tried: {possible_names}")
+
+            # Convert StepSpecification object to dictionary
+            return self._step_specification_to_dict(spec_obj)
+
+        except Exception as e:
+            raise ValueError(f"Failed to load specification from {spec_file}: {str(e)}")
+
+    def _extract_job_type_from_spec_file(self, spec_file: Path) -> str:
+        """Extract job type from specification file name."""
+        # Pattern: {spec_name}_{job_type}_spec.py or {spec_name}_spec.py
+        stem = spec_file.stem
+        parts = stem.split("_")
+        if len(parts) >= 3 and parts[-1] == "spec":
+            return parts[-2]  # job_type is second to last part
+        return "default"
+
+    def _step_specification_to_dict(self, spec_obj) -> Dict[str, Any]:
+        """Convert StepSpecification object to dictionary representation."""
+        dependencies = []
+        for dep_name, dep_spec in spec_obj.dependencies.items():
+            dependencies.append({
+                "logical_name": dep_spec.logical_name,
+                "dependency_type": (
+                    dep_spec.dependency_type.value
+                    if hasattr(dep_spec.dependency_type, "value")
+                    else str(dep_spec.dependency_type)
+                ),
+                "required": dep_spec.required,
+                "compatible_sources": dep_spec.compatible_sources,
+                "data_type": dep_spec.data_type,
+                "description": dep_spec.description,
+            })
+
+        outputs = []
+        for out_name, out_spec in spec_obj.outputs.items():
+            outputs.append({
+                "logical_name": out_spec.logical_name,
+                "output_type": (
+                    out_spec.output_type.value
+                    if hasattr(out_spec.output_type, "value")
+                    else str(out_spec.output_type)
+                ),
+                "property_path": out_spec.property_path,
+                "data_type": out_spec.data_type,
+                "description": out_spec.description,
+            })
+
+        return {
+            "step_type": spec_obj.step_type,
+            "node_type": (
+                spec_obj.node_type.value
+                if hasattr(spec_obj.node_type, "value")
+                else str(spec_obj.node_type)
+            ),
+            "dependencies": dependencies,
+            "outputs": outputs,
+        }
 
     def _validate_property_paths(
         self, specification: Dict[str, Any], contract_name: str

@@ -475,10 +475,7 @@ class DependencyValidator:
 
     def _populate_resolver_registry(self, all_specs: Dict[str, Dict[str, Any]]):
         """Populate the dependency resolver registry with all specifications using canonical names."""
-        from ..discovery.specification_loader import SpecificationLoader
-
-        # Create a temporary loader for dict conversion
-        temp_loader = SpecificationLoader("")
+        from ....core.base.specification_base import DependencySpec, OutputSpec
 
         for spec_name, spec_dict in all_specs.items():
             try:
@@ -486,7 +483,7 @@ class DependencyValidator:
                 canonical_name = self._get_canonical_step_name(spec_name)
 
                 # Convert dict back to StepSpecification object
-                step_spec = temp_loader.dict_to_step_specification(spec_dict)
+                step_spec = self._dict_to_step_specification(spec_dict)
 
                 # Register with canonical name
                 self.dependency_resolver.register_specification(
@@ -498,3 +495,47 @@ class DependencyValidator:
 
             except Exception as e:
                 logger.warning(f"Failed to register {spec_name} with resolver: {e}")
+
+    def _dict_to_step_specification(self, spec_dict: Dict[str, Any]) -> StepSpecification:
+        """Convert specification dictionary back to StepSpecification object."""
+        from ....core.base.specification_base import DependencySpec, OutputSpec
+        
+        # Convert dependencies
+        dependencies = {}
+        for dep in spec_dict.get("dependencies", []):
+            # Create DependencySpec using keyword arguments
+            dep_data = {
+                "logical_name": dep["logical_name"],
+                "dependency_type": dep["dependency_type"],
+                "required": dep["required"],
+                "compatible_sources": dep.get("compatible_sources", []),
+                "data_type": dep["data_type"],
+                "description": dep.get("description", ""),
+                "semantic_keywords": dep.get("semantic_keywords", []),
+            }
+            dep_spec = DependencySpec(**dep_data)
+            dependencies[dep["logical_name"]] = dep_spec
+
+        # Convert outputs
+        outputs = {}
+        for out in spec_dict.get("outputs", []):
+            # Create OutputSpec using keyword arguments
+            out_data = {
+                "logical_name": out["logical_name"],
+                "output_type": out["output_type"],
+                "property_path": out["property_path"],
+                "data_type": out["data_type"],
+                "description": out.get("description", ""),
+                "aliases": out.get("aliases", []),
+            }
+            out_spec = OutputSpec(**out_data)
+            outputs[out["logical_name"]] = out_spec
+
+        # Create StepSpecification using keyword arguments
+        spec_data = {
+            "step_type": spec_dict["step_type"],
+            "node_type": spec_dict["node_type"],
+            "dependencies": dependencies,
+            "outputs": outputs,
+        }
+        return StepSpecification(**spec_data)
