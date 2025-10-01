@@ -6,7 +6,7 @@ behavior, including Pattern B auto-pass logic for builders that use processor.ru
 """
 
 from typing import Dict, Any, List, Union, Optional
-from ..step_creation_tests import StepCreationTests
+from ..core.step_creation_tests import StepCreationTests
 
 
 class ProcessingStepCreationTests(StepCreationTests):

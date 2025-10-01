@@ -9,7 +9,7 @@ batch processing configuration validation for model inference workflows.
 from typing import Dict, Any, List, Optional, Type
 import os
 
-from ..specification_tests import SpecificationTests
+from ..core.specification_tests import SpecificationTests
 from ....core.base.builder_base import StepBuilderBase
 
 

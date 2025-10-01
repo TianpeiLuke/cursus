@@ -6,7 +6,7 @@ for builder testing frameworks.
 """
 
 from .base_test import *
-from .universal_test import UniversalStepBuilderTest
+from ..universal_test import UniversalStepBuilderTest
 
 __all__ = [
     'UniversalStepBuilderTest'

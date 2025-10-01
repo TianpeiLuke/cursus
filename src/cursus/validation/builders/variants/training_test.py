@@ -125,7 +125,7 @@ class TrainingStepBuilderTest(UniversalStepBuilderTest):
         )
 
         # Level 3: Training Integration Tests (using base step creation tests)
-        from ..step_creation_tests import StepCreationTests
+        from ..core.step_creation_tests import StepCreationTests
         self.level3_tester = StepCreationTests(
             builder_class=self.builder_class,
             config=self._provided_config,

@@ -11,8 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from ...core.base.builder_base import StepBuilderBase
-from ...registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
+from ....core.base.builder_base import StepBuilderBase
+from ....registry.step_names import get_steps_by_sagemaker_type, STEP_NAMES
 
 
 class BuilderTestIssue(BaseModel):
@@ -727,7 +727,7 @@ class BuilderTestReporter:
         )
 
         # Import locally to avoid circular import
-        from .universal_test import UniversalStepBuilderTest
+        from ..universal_test import UniversalStepBuilderTest
 
         # Run universal tests with scoring enabled
         tester = UniversalStepBuilderTest(
@@ -935,7 +935,7 @@ class BuilderTestReporter:
         try:
             # Use StepCatalog's built-in builder discovery mechanism
             if not hasattr(self, '_step_catalog'):
-                from ...step_catalog.step_catalog import StepCatalog
+                from ....step_catalog.step_catalog import StepCatalog
                 self._step_catalog = StepCatalog()
             
             builder_class = self._step_catalog.load_builder_class(step_name)

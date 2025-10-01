@@ -9,7 +9,7 @@ framework-specific deployment patterns, and model integration workflows.
 from typing import Dict, Any, List, Optional
 from unittest.mock import Mock
 
-from ..integration_tests import IntegrationTests
+from ..core.integration_tests import IntegrationTests
 
 
 class CreateModelIntegrationTests(IntegrationTests):

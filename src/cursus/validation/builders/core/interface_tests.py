@@ -40,7 +40,7 @@ class InterfaceTests(UniversalStepBuilderTestBase):
 
     def test_inheritance(self) -> None:
         """Test that the builder inherits from StepBuilderBase."""
-        from ...core.base.builder_base import StepBuilderBase
+        from ....core.base.builder_base import StepBuilderBase
 
         self._assert(
             issubclass(self.builder_class, StepBuilderBase),
@@ -130,7 +130,7 @@ class InterfaceTests(UniversalStepBuilderTestBase):
         else:
             # Try to check if class is in the step catalog
             try:
-                from ...step_catalog import StepCatalog
+                from ....step_catalog import StepCatalog
 
                 catalog = StepCatalog(workspace_dirs=None)  # Package-only discovery
 
@@ -164,7 +164,7 @@ class InterfaceTests(UniversalStepBuilderTestBase):
 
                     # Try to get builder using step catalog mapping
                     try:
-                        from ...step_catalog.mapping import StepCatalogMapping
+                        from ....step_catalog.mapping import StepCatalogMapping
                         mapping = StepCatalogMapping(catalog)
                         builder_class = mapping.get_builder_for_step_type(step_type)
                         if builder_class == self.builder_class:

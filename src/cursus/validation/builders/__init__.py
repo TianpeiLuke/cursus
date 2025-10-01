@@ -23,10 +23,10 @@ Usage:
 
 # Core testing framework
 from .core import UniversalStepBuilderTest
-from .interface_tests import InterfaceTests
-from .specification_tests import SpecificationTests
-from .step_creation_tests import StepCreationTests
-from .integration_tests import IntegrationTests
+from .core.interface_tests import InterfaceTests
+from .core.specification_tests import SpecificationTests
+from .core.step_creation_tests import StepCreationTests
+from .core.integration_tests import IntegrationTests
 
 # Reporting and visualization
 from .reporting import (

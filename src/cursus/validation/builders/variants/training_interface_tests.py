@@ -13,7 +13,7 @@ These tests focus on Training step interface and inheritance validation:
 from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch
 
-from ..interface_tests import InterfaceTests
+from ..core.interface_tests import InterfaceTests
 
 
 class TrainingInterfaceTests(InterfaceTests):

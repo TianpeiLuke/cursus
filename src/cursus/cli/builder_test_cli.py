@@ -18,10 +18,10 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Type
 
 from ..validation.builders.universal_test import UniversalStepBuilderTest
-from ..validation.builders.interface_tests import InterfaceTests
-from ..validation.builders.specification_tests import SpecificationTests
-from ..validation.builders.step_creation_tests import StepCreationTests
-from ..validation.builders.integration_tests import IntegrationTests
+from ..validation.builders.core.interface_tests import InterfaceTests
+from ..validation.builders.core.specification_tests import SpecificationTests
+from ..validation.builders.core.step_creation_tests import StepCreationTests
+from ..validation.builders.core.integration_tests import IntegrationTests
 from ..validation.builders.variants.processing_test import ProcessingStepBuilderTest
 from ..validation.builders.registry_discovery import RegistryStepDiscovery
 from ..validation.builders.scoring import StepBuilderScorer

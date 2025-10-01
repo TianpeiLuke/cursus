@@ -1402,10 +1402,14 @@ def test_comprehensive_all_builders_with_visual_charts(self, all_builders):
 ```
 src/cursus/validation/builders/
 ├── __init__.py                    # Main package with organized imports
+├── universal_test.py              # Main test suite (user-facing orchestrator)
 ├── core/                          # Core testing framework
 │   ├── __init__.py
-│   ├── universal_test.py          # Main test suite
-│   └── base_test.py              # Base functionality
+│   ├── base_test.py              # Base functionality (abstract foundation)
+│   ├── interface_tests.py        # Level 1 tests
+│   ├── specification_tests.py    # Level 2 tests
+│   ├── step_creation_tests.py    # Level 3 tests
+│   └── integration_tests.py      # Level 4 tests
 ├── reporting/                     # Reporting and visualization
 │   ├── __init__.py
 │   ├── report_generator.py       # Enhanced reports
@@ -1419,11 +1423,12 @@ src/cursus/validation/builders/
 │   └── step_catalog_config_provider.py # Config discovery
 ├── factories/                     # Factory classes
 │   ├── __init__.py
-│   ├── builder_test_factory.py   # Test factories
 │   └── step_type_test_framework_factory.py # Framework factory
 ├── variants/                      # Step-type specific tests
 │   └── [existing specialized test files]
-└── [remaining core test files]    # Interface, specification, etc.
+├── sagemaker_step_type_validator.py # SageMaker step type validation
+├── builder_reporter.py           # Builder test reporting
+└── [remaining test files]         # Other test modules
 ```
 
 ### Import Usage Examples

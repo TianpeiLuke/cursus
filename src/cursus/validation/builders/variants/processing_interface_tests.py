@@ -10,7 +10,7 @@ These tests focus on Processing-specific interface requirements:
 """
 
 from typing import Dict, Any, Optional
-from ..interface_tests import InterfaceTests
+from ..core.interface_tests import InterfaceTests
 
 
 class ProcessingInterfaceTests(InterfaceTests):

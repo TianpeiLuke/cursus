@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .processing_test import ProcessingStepBuilderTest
 from ..universal_test import UniversalStepBuilderTest
-from ..registry_discovery import load_builder_class
+from ..discovery.registry_discovery import load_builder_class
 from ....core.base.builder_base import StepBuilderBase
 
 

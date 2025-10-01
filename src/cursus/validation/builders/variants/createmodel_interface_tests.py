@@ -9,7 +9,7 @@ framework-specific configuration, and container image setup.
 from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch
 
-from ..interface_tests import InterfaceTests
+from ..core.interface_tests import InterfaceTests
 
 
 class CreateModelInterfaceTests(InterfaceTests):

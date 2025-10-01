@@ -12,7 +12,7 @@ These tests focus on Processing step system integration and end-to-end functiona
 from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch, MagicMock
 
-from ..integration_tests import IntegrationTests
+from ..core.integration_tests import IntegrationTests
 
 
 class ProcessingIntegrationTests(IntegrationTests):

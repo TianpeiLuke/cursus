@@ -46,13 +46,13 @@ class StepTypeTestFrameworkFactory:
                     pass
             
             # Fallback to universal test
-            from ..core.universal_test import UniversalStepBuilderTest
+            from ..universal_test import UniversalStepBuilderTest
             return UniversalStepBuilderTest(builder_class, step_name=canonical_name, **kwargs)
                 
         except Exception as e:
             print(f"Warning: Could not create specialized framework for {canonical_name} ({step_type}): {e}")
             # Fallback to universal test
-            from ..core.universal_test import UniversalStepBuilderTest
+            from ..universal_test import UniversalStepBuilderTest
             return UniversalStepBuilderTest(builder_class, step_name=canonical_name, **kwargs)
     
     @staticmethod

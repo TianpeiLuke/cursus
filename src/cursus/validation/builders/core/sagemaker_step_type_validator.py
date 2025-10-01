@@ -8,8 +8,8 @@ import logging
 import inspect
 from abc import ABC, abstractmethod
 
-from ...core.base.builder_base import StepBuilderBase
-from ...registry.step_names import get_sagemaker_step_type, validate_sagemaker_step_type
+from ....core.base.builder_base import StepBuilderBase
+from ....registry.step_names import get_sagemaker_step_type, validate_sagemaker_step_type
 from .base_test import ValidationViolation, ValidationLevel
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class SageMakerStepTypeValidator:
         """Detect step name from builder class name using step catalog with legacy fallback."""
         # Try using step catalog first
         try:
-            from ...step_catalog import StepCatalog
+            from ....step_catalog import StepCatalog
             
             # PORTABLE: Package-only discovery (works in all deployment scenarios)
             catalog = StepCatalog(workspace_dirs=None)
@@ -94,7 +94,7 @@ class SageMakerStepTypeValidator:
                 break
 
         # Try to find matching step name in registry
-        from ...registry.step_names import STEP_NAMES
+        from ....registry.step_names import STEP_NAMES
 
         for step_name, info in STEP_NAMES.items():
             if (

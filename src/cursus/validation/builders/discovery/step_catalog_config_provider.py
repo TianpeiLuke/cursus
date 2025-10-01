@@ -37,7 +37,7 @@ class StepCatalogConfigProvider:
         """Lazy-loaded step catalog instance."""
         if self._step_catalog is None:
             try:
-                from ...step_catalog import StepCatalog
+                from ....step_catalog import StepCatalog
                 self._step_catalog = StepCatalog(workspace_dirs=None)
             except ImportError as e:
                 self.logger.debug(f"Step catalog not available: {e}")
@@ -114,7 +114,7 @@ class StepCatalogConfigProvider:
     def _get_base_config(self) -> Optional[Any]:
         """Get base pipeline config with minimal required fields."""
         try:
-            from ...core.base.config_base import BasePipelineConfig
+            from ....core.base.config_base import BasePipelineConfig
             
             # Create minimal base config with only required fields
             base_config_data = {
@@ -174,7 +174,7 @@ class StepCatalogConfigProvider:
         
         # Fallback: Try registry directly
         try:
-            from ...registry.step_names import get_builder_step_names
+            from ....registry.step_names import get_builder_step_names
             builder_step_names = get_builder_step_names()
             for step_name, registered_builder_name in builder_step_names.items():
                 if registered_builder_name == builder_name:
@@ -187,7 +187,7 @@ class StepCatalogConfigProvider:
     def _get_sagemaker_type_from_registry(self, step_name: str) -> Optional[str]:
         """Get SageMaker type from registry (authoritative source)."""
         try:
-            from ...registry.step_names import get_sagemaker_step_type
+            from ....registry.step_names import get_sagemaker_step_type
             return get_sagemaker_step_type(step_name)
         except Exception as e:
             self.logger.debug(f"Registry SageMaker type lookup failed for {step_name}: {e}")

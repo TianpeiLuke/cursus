@@ -33,13 +33,13 @@ class ValidationViolation(BaseModel):
 
 
 # Import base classes for type hints
-from ...core.base.builder_base import StepBuilderBase
-from ...core.base.specification_base import StepSpecification
-from ...core.base.contract_base import ScriptContract
-from ...core.base.config_base import BaseModel as ConfigBase
+from ....core.base.builder_base import StepBuilderBase
+from ....core.base.specification_base import StepSpecification
+from ....core.base.contract_base import ScriptContract
+from ....core.base.config_base import BaseModel as ConfigBase
 
 # Step name is string type from the registry
-from ...registry.step_names import STEP_NAMES
+from ....registry.step_names import STEP_NAMES
 
 StepName = str  # Step names are stored as string keys in STEP_NAMES dictionary
 
@@ -100,7 +100,7 @@ class UniversalStepBuilderTestBase(ABC):
         class_name = builder_class.__name__
         
         try:
-            from ...step_catalog import StepCatalog
+            from ....step_catalog import StepCatalog
             catalog = StepCatalog(workspace_dirs=None)
             
             # Find step name by builder class
@@ -476,7 +476,7 @@ class UniversalStepBuilderTestBase(ABC):
         else:
             # Try to get real config from step catalog
             try:
-                from .step_catalog_config_provider import StepCatalogConfigProvider
+                from ..discovery.step_catalog_config_provider import StepCatalogConfigProvider
                 config_provider = StepCatalogConfigProvider()
                 config = config_provider.get_config_for_builder(self.builder_class)
                 

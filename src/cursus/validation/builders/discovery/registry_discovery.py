@@ -10,8 +10,8 @@ import importlib
 from typing import Dict, List, Tuple, Optional, Type, Any
 from pathlib import Path
 
-from ...registry.step_names import STEP_NAMES, get_steps_by_sagemaker_type
-from ...core.base.builder_base import StepBuilderBase
+from ....registry.step_names import STEP_NAMES, get_steps_by_sagemaker_type
+from ....core.base.builder_base import StepBuilderBase
 
 
 class RegistryStepDiscovery:
@@ -100,7 +100,7 @@ class RegistryStepDiscovery:
         """
         # Use step catalog for discovery
         try:
-            from ...step_catalog import StepCatalog
+            from ....step_catalog import StepCatalog
             
             # ✅ PORTABLE: Package-only discovery for builder class paths
             # Works in PyPI, source, and submodule scenarios
@@ -140,7 +140,7 @@ class RegistryStepDiscovery:
         """
         # Use step catalog for loading
         try:
-            from ...step_catalog import StepCatalog
+            from ....step_catalog import StepCatalog
             
             # ✅ PORTABLE: Package-only discovery for builder class loading
             # Works in PyPI, source, and submodule scenarios
@@ -255,7 +255,7 @@ class RegistryStepDiscovery:
 
             # Use StepCatalog for validation instead of manual importlib
             try:
-                from ...step_catalog import StepCatalog
+                from ....step_catalog import StepCatalog
                 
                 catalog = StepCatalog(workspace_dirs=None)  # Package-only discovery
                 builder_class = catalog.load_builder_class(step_name)

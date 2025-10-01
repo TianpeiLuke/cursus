@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional, Type
 import inspect
 from unittest.mock import Mock
 
-from ..interface_tests import InterfaceTests
+from ..core.interface_tests import InterfaceTests
 from ....core.base.builder_base import StepBuilderBase
 
 

@@ -13,7 +13,7 @@ import json
 from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch
 
-from ..specification_tests import SpecificationTests
+from ..core.specification_tests import SpecificationTests
 
 
 class ProcessingSpecificationTests(SpecificationTests):

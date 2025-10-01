@@ -9,7 +9,7 @@ model integration workflows, and end-to-end batch processing validation.
 from typing import Dict, Any, List, Optional, Type
 from unittest.mock import Mock, MagicMock
 
-from ..integration_tests import IntegrationTests
+from ..core.integration_tests import IntegrationTests
 from ....core.base.builder_base import StepBuilderBase
 
 
