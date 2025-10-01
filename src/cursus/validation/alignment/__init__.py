@@ -45,6 +45,7 @@ from .validators.dependency_validator import DependencyValidator
 from .utils.core_models import (
     SeverityLevel,
     AlignmentLevel,
+    AlignmentIssue,
     create_alignment_issue,
     create_step_type_aware_alignment_issue,
 )
@@ -74,6 +75,7 @@ __all__ = [
     # Utilities
     "SeverityLevel",
     "AlignmentLevel",
+    "AlignmentIssue",
     "create_alignment_issue",
     "create_step_type_aware_alignment_issue",
 ]

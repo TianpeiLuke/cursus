@@ -4,7 +4,7 @@ Test suite for AlignmentLevel enum.
 
 import pytest
 
-from cursus.validation.alignment import AlignmentLevel
+from cursus.validation.alignment.core_models import AlignmentLevel
 
 
 class TestAlignmentLevel:

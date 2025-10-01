@@ -13,12 +13,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..
 
 from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 from cursus.validation.alignment.alignment_reporter import ValidationResult
-from cursus.validation.alignment import (
+from cursus.validation.alignment.core_models import (
     AlignmentIssue,
     SeverityLevel,
     AlignmentLevel,
 )
-
 
 class TestFullValidation:
     """Test full validation functionality in UnifiedAlignmentTester."""
