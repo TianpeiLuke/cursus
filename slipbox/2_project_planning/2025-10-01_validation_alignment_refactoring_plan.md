@@ -2022,7 +2022,7 @@ Based on step_type_specific_rules analysis and actual script patterns:
 
 ### **Phase 6: Testing and Integration (3 Days)**
 
-#### **5.1 Comprehensive Testing Strategy**
+#### **6.1 Comprehensive Testing Strategy**
 ```python
 # Test configuration system
 def test_validation_ruleset_configuration():
@@ -2049,7 +2049,7 @@ def test_backward_compatibility():
     # Test parameter compatibility
 ```
 
-#### **5.2 Performance Testing**
+#### **6.2 Performance Testing**
 ```python
 def test_performance_improvements():
     # Measure validation time before/after refactoring
@@ -2058,7 +2058,7 @@ def test_performance_improvements():
     # Verify no regression in validation quality
 ```
 
-#### **5.3 Integration Testing**
+#### **6.3 Integration Testing**
 ```python
 def test_step_catalog_integration():
     # Test registry integration works
