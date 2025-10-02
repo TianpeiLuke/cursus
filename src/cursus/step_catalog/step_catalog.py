@@ -661,6 +661,93 @@ class StepCatalog:
             self.logger.error(f"Error getting spec job type variants for {base_step_name}: {e}")
             return []
     
+    # PHASE 2 ENHANCEMENT: Smart Specification Integration - Delegation Methods
+    def create_unified_specification(self, contract_name: str) -> Dict[str, Any]:
+        """
+        Create unified specification from multiple variants using smart selection.
+        
+        This method delegates to SpecAutoDiscovery for smart specification handling,
+        integrating SmartSpecificationSelector functionality:
+        - Multi-variant specification discovery
+        - Union of dependencies and outputs from all variants
+        - Smart validation logic with detailed feedback
+        - Primary specification selection (training > generic > first available)
+        
+        Args:
+            contract_name: Name of the contract to find specifications for
+            
+        Returns:
+            Unified specification model with metadata
+        """
+        try:
+            if self.spec_discovery:
+                return self.spec_discovery.create_unified_specification(contract_name)
+            else:
+                self.logger.warning(f"SpecAutoDiscovery not available, cannot create unified specification for {contract_name}")
+                return {
+                    "primary_spec": {},
+                    "variants": {},
+                    "unified_dependencies": {},
+                    "unified_outputs": {},
+                    "dependency_sources": {},
+                    "output_sources": {},
+                    "variant_count": 0,
+                }
+        except Exception as e:
+            self.logger.error(f"Error creating unified specification for {contract_name}: {e}")
+            return {
+                "primary_spec": {},
+                "variants": {},
+                "unified_dependencies": {},
+                "unified_outputs": {},
+                "dependency_sources": {},
+                "output_sources": {},
+                "variant_count": 0,
+            }
+    
+    def validate_logical_names_smart(self, contract: Dict[str, Any], contract_name: str) -> List[Dict[str, Any]]:
+        """
+        Smart validation using multi-variant specification logic.
+        
+        This method delegates to SpecAutoDiscovery for smart validation,
+        implementing the core Smart Specification Selection validation:
+        - Contract input is valid if it exists in ANY variant
+        - Contract must cover intersection of REQUIRED dependencies
+        - Provides detailed feedback about which variants need what
+        
+        Args:
+            contract: Contract dictionary
+            contract_name: Name of the contract
+            
+        Returns:
+            List of validation issues
+        """
+        try:
+            if self.spec_discovery:
+                return self.spec_discovery.validate_logical_names_smart(contract, contract_name)
+            else:
+                self.logger.warning(f"SpecAutoDiscovery not available, cannot perform smart validation for {contract_name}")
+                return [
+                    {
+                        "severity": "ERROR",
+                        "category": "spec_discovery_unavailable",
+                        "message": f"SpecAutoDiscovery not available for smart validation of contract {contract_name}",
+                        "details": {"contract": contract_name},
+                        "recommendation": "Check SpecAutoDiscovery initialization",
+                    }
+                ]
+        except Exception as e:
+            self.logger.error(f"Error in smart validation for {contract_name}: {e}")
+            return [
+                {
+                    "severity": "ERROR",
+                    "category": "smart_validation_error",
+                    "message": f"Smart validation failed for contract {contract_name}: {str(e)}",
+                    "details": {"contract": contract_name, "error": str(e)},
+                    "recommendation": "Check contract and specification files for errors",
+                }
+            ]
+    
     def serialize_contract(self, contract_instance: Any) -> Dict[str, Any]:
         """
         Convert contract instance to dictionary format.

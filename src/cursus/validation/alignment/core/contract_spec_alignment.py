@@ -9,7 +9,8 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..validators.property_path_validator import SageMakerPropertyPathValidator
-from ..factories.smart_spec_selector import SmartSpecificationSelector
+# PHASE 2 ENHANCEMENT: Use StepCatalog instead of SmartSpecificationSelector
+# SmartSpecificationSelector functionality has been integrated into SpecAutoDiscovery
 from ..validators import ContractSpecValidator
 from ....step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
 from .validation_orchestrator import ValidationOrchestrator
@@ -40,8 +41,8 @@ class ContractSpecificationAlignmentTester:
         from ....step_catalog import StepCatalog
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
-        # Initialize smart specification selector
-        self.smart_spec_selector = SmartSpecificationSelector()
+        # PHASE 2 ENHANCEMENT: SmartSpecificationSelector functionality now integrated into StepCatalog
+        # No separate smart_spec_selector needed - using StepCatalog methods directly
 
         # Initialize validator
         self.validator = ContractSpecValidator()
@@ -170,17 +171,16 @@ class ContractSpecificationAlignmentTester:
         
         specifications = spec_dicts
 
-        # SMART SPECIFICATION SELECTION: Create unified specification model
-        unified_spec = self.smart_spec_selector.create_unified_specification(
-            specifications, script_or_contract_name
-        )
+        # PHASE 2 ENHANCEMENT: Use StepCatalog smart specification methods
+        # Create unified specification model using StepCatalog
+        unified_spec = self.step_catalog.create_unified_specification(script_or_contract_name)
 
         # Perform alignment validation against unified specification
         all_issues = []
 
-        # Validate logical name alignment using smart multi-variant logic
-        logical_issues = self.smart_spec_selector.validate_logical_names_smart(
-            contract, unified_spec, script_or_contract_name
+        # Validate logical name alignment using smart multi-variant logic from StepCatalog
+        logical_issues = self.step_catalog.validate_logical_names_smart(
+            contract, script_or_contract_name
         )
         all_issues.extend(logical_issues)
 
