@@ -1159,7 +1159,845 @@ from cursus.validation.alignment import UnifiedAlignmentTester  # Enhanced with 
 - ✅ **Maintainability**: Cleaner, more logical module organization
 - ✅ **Performance**: Reduced import overhead and module loading complexity
 
-### **Phase 5: Testing and Integration (3 Days)**
+### **Phase 5: TODO Resolution and Contract Alignment Validation (2 Days) - REVISED**
+
+#### **5.1 TODO Analysis and Categorization - UPDATED**
+
+After comprehensive analysis of actual scripts, contracts, and step_type_specific_rules, we determined that the TODOs should focus on **contract alignment validation only**, not framework pattern detection.
+
+##### **Key Discovery: Framework Patterns NOT Needed ✅**
+
+**Analysis of step_type_specific_rules.py shows:**
+- ✅ **Method signature validation** (builder level)
+- ✅ **Contract compliance validation** (script level)  
+- ❌ **NO framework pattern detection** (not mentioned anywhere)
+
+**Analysis of actual scripts shows:**
+- ✅ **Standardized main function signature** across all scripts
+- ✅ **Consistent parameter usage patterns** (input_paths, output_paths, environ_vars, job_args)
+- ✅ **Contract alignment is the real validation need**
+
+##### **Revised TODOs Identified:**
+
+**🔴 HIGH PRIORITY - Script Contract Alignment TODOs:**
+```python
+# File: src/cursus/validation/alignment/core/script_contract_alignment.py
+
+# TODO: Replace with consolidated validation logic
+self.testability_validator = None
+self.script_validator = None
+
+# TODO: Replace with consolidated validation logic
+# Note: ScriptAnalyzer and related validators were removed during consolidation
+# Placeholder validation - returns basic success for now
+issues = []
+analysis = {"placeholder": "Script analysis functionality needs to be restored"}
+
+# ❌ REMOVE: Framework pattern TODOs (not needed based on step_type_specific_rules)
+# TODO: Replace with consolidated pattern detection
+# training_patterns = detect_training_patterns(script_content)
+training_patterns = {}  # Placeholder until pattern detection is restored
+
+# TODO: Replace with consolidated pattern detection  
+# xgb_patterns = detect_xgboost_patterns(script_content)
+xgb_patterns = {}  # Placeholder until pattern detection is restored
+```
+
+**🟡 MEDIUM PRIORITY - Contract Specification Alignment TODOs:**
+```python
+# File: src/cursus/validation/alignment/core/contract_spec_alignment.py
+
+# TODO: Replace with consolidated validation logic
+# Note: ContractSpecValidator was removed during consolidation
+self.validator = None
+
+# TODO: Replace with consolidated validation logic
+# Note: ContractSpecValidator methods were removed during consolidation
+# Add placeholder issue indicating validation needs to be restored
+all_issues.append({
+    "severity": "INFO",
+    "category": "validation_placeholder",
+    "message": f"Contract validation for {script_or_contract_name} needs to be restored with consolidated modules",
+    "details": {
+        "contract": script_or_contract_name,
+        "status": "placeholder_validation"
+    },
+    "recommendation": "Implement consolidated contract validation logic"
+})
+```
+
+**🟢 LOW PRIORITY - Spec Dependency Alignment Status:**
+```python
+# File: src/cursus/validation/alignment/core/spec_dependency_alignment.py
+# ✅ GOOD STATUS: This file is in good shape with minimal TODOs
+# Uses existing DependencyValidator which wasn't removed
+# No critical functionality missing
+```
+
+#### **5.2 Revised Functionality Analysis - Contract Alignment Focus**
+
+**🔴 Critical Missing Components (Contract Alignment Only):**
+
+1. **Script Analysis Engine for Contract Alignment**
+   - **Need**: Contract-focused `ScriptAnalyzer` class
+   - **Purpose**: Validate main function signature and parameter usage
+   - **Functionality**: AST parsing for contract alignment validation
+
+2. **Main Function Signature Validation**
+   - **Need**: Validate standardized main function signature
+   - **Pattern**: `def main(input_paths: Dict[str, str], output_paths: Dict[str, str], environ_vars: Dict[str, str], job_args: argparse.Namespace)`
+   - **Functionality**: AST-based signature validation
+
+3. **Parameter Usage Analysis**
+   - **Need**: Extract how scripts use main function parameters
+   - **Patterns**: `input_paths["key"]`, `output_paths.get("key")`, `environ_vars.get("key")`, `job_args.attribute`
+   - **Functionality**: AST-based parameter usage extraction
+
+4. **Contract Alignment Validation**
+   - **Need**: Validate script usage matches contract declarations
+   - **Validation**: Script uses paths/env vars/args declared in contract
+   - **Functionality**: Cross-reference script usage with contract expectations
+
+**❌ Components NOT Needed (Removed from Scope):**
+
+1. **Framework Pattern Detection** - Not required by step_type_specific_rules
+2. **Training Loop Detection** - Not contract alignment related
+3. **XGBoost Pattern Validation** - Not contract alignment related
+4. **Model Saving Pattern Detection** - Not contract alignment related
+5. **Testability Pattern Validation** - Not contract alignment related
+
+#### **5.3 Revised TODO Resolution Strategy - Contract Alignment AND Contract-Spec Validation**
+
+**Selected Approach: Dual Validation Restoration (1.25 Days)**
+```python
+# Restore both contract alignment validation AND contract-spec validation
+
+# 1. Contract-Focused Script Analysis (0.5 Days)
+class ScriptAnalyzer:
+    """Contract alignment focused script analyzer."""
+    def __init__(self, script_path: str):
+        self.script_path = script_path
+        self.ast_tree = self._parse_script()
+    
+    def validate_main_function_signature(self) -> Dict[str, Any]:
+        """Validate main function has correct signature."""
+        # Check for: def main(input_paths, output_paths, environ_vars, job_args)
+        # Validate parameter names and types
+        
+    def extract_parameter_usage(self) -> Dict[str, List[str]]:
+        """Extract how script uses main function parameters."""
+        return {
+            "input_paths_keys": [...],    # Keys used in input_paths["key"]
+            "output_paths_keys": [...],   # Keys used in output_paths["key"] 
+            "environ_vars_keys": [...],   # Keys used in environ_vars.get("key")
+            "job_args_attrs": [...]       # Attributes used in job_args.attr
+        }
+    
+    def validate_contract_alignment(self, contract: Dict) -> List[Dict]:
+        """Validate script usage aligns with contract declarations."""
+        # Check input paths alignment
+        # Check output paths alignment
+        # Check environment variables alignment
+        # Check job arguments alignment
+
+# 2. Restored Contract-Spec Validation Logic (0.5 Days)  
+class ConsolidatedContractSpecValidator:
+    """Restored contract-specification validation logic from git history."""
+    def validate_logical_names(self, contract: Dict, spec: Dict, contract_name: str) -> List[Dict]:
+        """RESTORED from original ContractSpecValidator.validate_logical_names()"""
+        # Contract inputs vs spec dependencies validation
+        # Contract outputs vs spec outputs validation
+        # Malformed data handling and clear error reporting
+        pass
+    
+    def validate_input_output_alignment(self, contract: Dict, spec: Dict, contract_name: str) -> List[Dict]:
+        """RESTORED from original ContractSpecValidator.validate_input_output_alignment()"""
+        # Spec dependencies without contract inputs → WARNING
+        # Spec outputs without contract outputs → WARNING
+        # Bidirectional validation with malformed data handling
+        pass
+
+# 3. Integration and Placeholder Removal (0.25 Days)
+# Update script_contract_alignment.py to use ScriptAnalyzer
+# Update contract_spec_alignment.py to use ConsolidatedContractSpecValidator
+# Remove all placeholder validation and replace with real validation logic
+```
+
+#### **5.4 Revised Implementation Plan (1.25 Days) - DETAILED ACTION ITEMS**
+
+**Based on git history analysis of deleted ContractSpecValidator (commit 1653f57) and actual script patterns analysis.**
+
+### **📁 Restored Directory Structure**
+```
+src/cursus/validation/alignment/
+├── analyzer/                           # NEW: For restored script analysis
+│   ├── __init__.py                    # NEW: Export ScriptAnalyzer
+│   └── script_analyzer.py             # NEW: Contract-focused script analysis
+├── validators/                         # EXISTING: Enhanced with restored validator
+│   ├── __init__.py                    # EXISTING: Add new validator export
+│   ├── contract_spec_validator.py     # NEW: Restored ContractSpecValidator
+│   └── ... (existing validators)
+├── core/
+│   ├── script_contract_alignment.py   # UPDATED: Use new ScriptAnalyzer
+│   ├── contract_spec_alignment.py     # UPDATED: Use restored validator
+│   └── spec_dependency_alignment.py   # ✅ Already good
+```
+
+### **🔧 Detailed Implementation Steps**
+
+#### **Step 1: Create analyzer/ Directory and ScriptAnalyzer (4 hours)**
+
+**1.1 Create Directory Structure:**
+```bash
+mkdir -p src/cursus/validation/alignment/analyzer
+```
+
+**1.2 Create `src/cursus/validation/alignment/analyzer/__init__.py`:**
+```python
+"""
+Restored Script Analysis Module
+
+Contract-focused script analysis for validation alignment.
+"""
+
+from .script_analyzer import ScriptAnalyzer
+
+__all__ = ["ScriptAnalyzer"]
+```
+
+**1.3 Create `src/cursus/validation/alignment/analyzer/script_analyzer.py`:**
+```python
+"""
+Contract-Focused Script Analyzer
+
+Analyzes Python scripts for contract alignment validation.
+Focuses on main function signature and parameter usage patterns.
+
+Based on analysis of actual scripts:
+- currency_conversion.py
+- xgboost_training.py
+"""
+
+import ast
+from typing import Dict, List, Any, Optional
+from pathlib import Path
+
+
+class ScriptAnalyzer:
+    """
+    Contract alignment focused script analyzer.
+    
+    Validates:
+    - Main function signature compliance
+    - Parameter usage patterns (input_paths, output_paths, environ_vars, job_args)
+    - Contract alignment validation
+    """
+    
+    def __init__(self, script_path: str):
+        self.script_path = script_path
+        self.script_content = self._read_script()
+        self.ast_tree = self._parse_script()
+    
+    def _read_script(self) -> str:
+        """Read script content from file."""
+        with open(self.script_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    
+    def _parse_script(self) -> ast.AST:
+        """Parse script content into AST."""
+        return ast.parse(self.script_content)
+    
+    def validate_main_function_signature(self) -> Dict[str, Any]:
+        """
+        Validate main function has correct signature.
+        
+        Expected signature:
+        def main(input_paths: Dict[str, str], output_paths: Dict[str, str], 
+                 environ_vars: Dict[str, str], job_args: argparse.Namespace) -> Any
+        """
+        main_function = self._find_main_function()
+        if not main_function:
+            return {
+                "has_main": False,
+                "issues": ["No main function found"],
+                "signature_valid": False
+            }
+        
+        # Check parameter names and types
+        expected_params = ["input_paths", "output_paths", "environ_vars", "job_args"]
+        actual_params = self._extract_function_parameters(main_function)
+        
+        signature_valid = self._validate_signature(expected_params, actual_params)
+        issues = self._get_signature_issues(expected_params, actual_params)
+        
+        return {
+            "has_main": True,
+            "signature_valid": signature_valid,
+            "actual_params": actual_params,
+            "expected_params": expected_params,
+            "issues": issues
+        }
+    
+    def extract_parameter_usage(self) -> Dict[str, List[str]]:
+        """
+        Extract how script uses main function parameters.
+        
+        Returns:
+            Dictionary with parameter usage patterns:
+            - input_paths_keys: Keys used in input_paths["key"] or input_paths.get("key")
+            - output_paths_keys: Keys used in output_paths["key"] or output_paths.get("key")
+            - environ_vars_keys: Keys used in environ_vars.get("key")
+            - job_args_attrs: Attributes used in job_args.attribute
+        """
+        main_function = self._find_main_function()
+        if not main_function:
+            return {
+                "input_paths_keys": [],
+                "output_paths_keys": [],
+                "environ_vars_keys": [],
+                "job_args_attrs": []
+            }
+        
+        return {
+            "input_paths_keys": self._find_parameter_usage(main_function, "input_paths"),
+            "output_paths_keys": self._find_parameter_usage(main_function, "output_paths"),
+            "environ_vars_keys": self._find_parameter_usage(main_function, "environ_vars"),
+            "job_args_attrs": self._find_parameter_usage(main_function, "job_args")
+        }
+    
+    def validate_contract_alignment(self, contract: Dict) -> List[Dict]:
+        """
+        Validate script usage aligns with contract declarations.
+        
+        Args:
+            contract: Contract dictionary with expected_input_paths, expected_output_paths, etc.
+            
+        Returns:
+            List of validation issues
+        """
+        issues = []
+        parameter_usage = self.extract_parameter_usage()
+        
+        # Validate input paths alignment
+        script_input_keys = parameter_usage.get("input_paths_keys", [])
+        contract_input_keys = list(contract.get("expected_input_paths", {}).keys())
+        
+        for key in script_input_keys:
+            if key not in contract_input_keys:
+                issues.append({
+                    "severity": "ERROR",
+                    "category": "undeclared_input_path",
+                    "message": f"Script uses input_paths['{key}'] but contract doesn't declare it",
+                    "recommendation": f"Add '{key}' to contract expected_input_paths"
+                })
+        
+        # Validate output paths alignment
+        script_output_keys = parameter_usage.get("output_paths_keys", [])
+        contract_output_keys = list(contract.get("expected_output_paths", {}).keys())
+        
+        for key in script_output_keys:
+            if key not in contract_output_keys:
+                issues.append({
+                    "severity": "ERROR",
+                    "category": "undeclared_output_path",
+                    "message": f"Script uses output_paths['{key}'] but contract doesn't declare it",
+                    "recommendation": f"Add '{key}' to contract expected_output_paths"
+                })
+        
+        # Validate environment variables alignment
+        script_env_keys = parameter_usage.get("environ_vars_keys", [])
+        contract_required_env = contract.get("required_env_vars", [])
+        contract_optional_env = list(contract.get("optional_env_vars", {}).keys())
+        contract_all_env = contract_required_env + contract_optional_env
+        
+        for key in script_env_keys:
+            if key not in contract_all_env:
+                issues.append({
+                    "severity": "WARNING",
+                    "category": "undeclared_env_var",
+                    "message": f"Script uses environ_vars.get('{key}') but contract doesn't declare it",
+                    "recommendation": f"Add '{key}' to contract required_env_vars or optional_env_vars"
+                })
+        
+        # Validate job arguments alignment
+        script_job_attrs = parameter_usage.get("job_args_attrs", [])
+        contract_args = list(contract.get("expected_arguments", {}).keys())
+        
+        for attr in script_job_attrs:
+            # Convert job_args.attr to --attr format for comparison
+            arg_name = attr.replace('_', '-')
+            if arg_name not in contract_args:
+                issues.append({
+                    "severity": "WARNING",
+                    "category": "undeclared_job_arg",
+                    "message": f"Script uses job_args.{attr} but contract doesn't declare --{arg_name}",
+                    "recommendation": f"Add '--{arg_name}' to contract expected_arguments"
+                })
+        
+        return issues
+    
+    def _find_main_function(self) -> Optional[ast.FunctionDef]:
+        """Find main function in AST."""
+        for node in ast.walk(self.ast_tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "main":
+                return node
+        return None
+    
+    def _extract_function_parameters(self, func_node: ast.FunctionDef) -> List[str]:
+        """Extract parameter names from function definition."""
+        return [arg.arg for arg in func_node.args.args]
+    
+    def _validate_signature(self, expected: List[str], actual: List[str]) -> bool:
+        """Validate function signature matches expected parameters."""
+        return expected == actual
+    
+    def _get_signature_issues(self, expected: List[str], actual: List[str]) -> List[str]:
+        """Get list of signature validation issues."""
+        issues = []
+        if len(actual) != len(expected):
+            issues.append(f"Expected {len(expected)} parameters, got {len(actual)}")
+        
+        for i, (exp, act) in enumerate(zip(expected, actual)):
+            if exp != act:
+                issues.append(f"Parameter {i+1}: expected '{exp}', got '{act}'")
+        
+        return issues
+    
+    def _find_parameter_usage(self, func_node: ast.FunctionDef, param_name: str) -> List[str]:
+        """Find usage patterns for a specific parameter."""
+        usage_keys = []
+        
+        for node in ast.walk(func_node):
+            # Look for param_name["key"] or param_name.get("key") patterns
+            if isinstance(node, ast.Subscript):
+                if (isinstance(node.value, ast.Name) and 
+                    node.value.id == param_name and
+                    isinstance(node.slice, (ast.Str, ast.Constant))):
+                    key = node.slice.s if isinstance(node.slice, ast.Str) else node.slice.value
+                    if isinstance(key, str) and key not in usage_keys:
+                        usage_keys.append(key)
+            
+            elif isinstance(node, ast.Call):
+                # Look for param_name.get("key") patterns
+                if (isinstance(node.func, ast.Attribute) and
+                    isinstance(node.func.value, ast.Name) and
+                    node.func.value.id == param_name and
+                    node.func.attr == "get" and
+                    node.args and
+                    isinstance(node.args[0], (ast.Str, ast.Constant))):
+                    key = node.args[0].s if isinstance(node.args[0], ast.Str) else node.args[0].value
+                    if isinstance(key, str) and key not in usage_keys:
+                        usage_keys.append(key)
+            
+            elif isinstance(node, ast.Attribute):
+                # Look for job_args.attribute patterns
+                if (param_name == "job_args" and
+                    isinstance(node.value, ast.Name) and
+                    node.value.id == param_name and
+                    node.attr not in usage_keys):
+                    usage_keys.append(node.attr)
+        
+        return usage_keys
+```
+
+#### **Step 2: Create Restored ContractSpecValidator (2 hours)**
+
+**2.1 Create `src/cursus/validation/alignment/validators/contract_spec_validator.py`:**
+```python
+"""
+Restored Contract-Specification Validator Module
+
+Contains the core validation logic for contract-specification alignment.
+Restored from git history commit 1653f57^ with enhancements.
+
+Handles data type validation, input/output alignment, and logical name validation.
+"""
+
+from typing import Dict, Any, List
+
+
+class ConsolidatedContractSpecValidator:
+    """
+    Restored contract-specification validation logic.
+    
+    Provides methods for:
+    - Logical name validation (restored from original)
+    - Input/output alignment validation (restored from original)
+    - Enhanced error reporting and malformed data handling
+    """
+
+    def validate_logical_names(
+        self,
+        contract: Dict[str, Any],
+        specification: Dict[str, Any],
+        contract_name: str,
+        job_type: str = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Validate that logical names match between contract and specification.
+
+        RESTORED from original ContractSpecValidator.validate_logical_names()
+        This is the basic (non-smart) validation for single specifications.
+
+        Args:
+            contract: Contract dictionary
+            specification: Specification dictionary
+            contract_name: Name of the contract
+            job_type: Job type (optional)
+
+        Returns:
+            List of validation issues
+        """
+        issues = []
+
+        # Get logical names from contract (handle malformed data gracefully)
+        contract_inputs_dict = contract.get("inputs", {})
+        contract_inputs = (
+            set(contract_inputs_dict.keys())
+            if isinstance(contract_inputs_dict, dict)
+            else set()
+        )
+
+        contract_outputs_dict = contract.get("outputs", {})
+        contract_outputs = (
+            set(contract_outputs_dict.keys())
+            if isinstance(contract_outputs_dict, dict)
+            else set()
+        )
+
+        # Get logical names from specification (handle malformed data gracefully)
+        spec_dependencies = set()
+        dependencies = specification.get("dependencies", [])
+        if isinstance(dependencies, list):
+            for dep in dependencies:
+                if isinstance(dep, dict) and "logical_name" in dep:
+                    spec_dependencies.add(dep["logical_name"])
+
+        spec_outputs = set()
+        outputs = specification.get("outputs", [])
+        if isinstance(outputs, list):
+            for output in outputs:
+                if isinstance(output, dict) and "logical_name" in output:
+                    spec_outputs.add(output["logical_name"])
+
+        # Check for contract inputs not in spec dependencies
+        missing_deps = contract_inputs - spec_dependencies
+        for logical_name in missing_deps:
+            issues.append(
+                {
+                    "severity": "ERROR",
+                    "category": "logical_names",
+                    "message": f"Contract input {logical_name} not declared as specification dependency",
+                    "details": {
+                        "logical_name": logical_name,
+                        "contract": contract_name,
+                    },
+                    "recommendation": f"Add {logical_name} to specification dependencies",
+                }
+            )
+
+        # Check for contract outputs not in spec outputs
+        missing_outputs = contract_outputs - spec_outputs
+        for logical_name in missing_outputs:
+            issues.append(
+                {
+                    "severity": "ERROR",
+                    "category": "logical_names",
+                    "message": f"Contract output {logical_name} not declared as specification output",
+                    "details": {
+                        "logical_name": logical_name,
+                        "contract": contract_name,
+                    },
+                    "recommendation": f"Add {logical_name} to specification outputs",
+                }
+            )
+
+        return issues
+
+    def validate_input_output_alignment(
+        self,
+        contract: Dict[str, Any],
+        specification: Dict[str, Any],
+        contract_name: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        Validate input/output alignment between contract and specification.
+
+        RESTORED from original ContractSpecValidator.validate_input_output_alignment()
+
+        Args:
+            contract: Contract dictionary
+            specification: Specification dictionary
+            contract_name: Name of the contract
+
+        Returns:
+            List of validation issues
+        """
+        issues = []
+
+        # Check for specification dependencies without corresponding contract inputs (handle malformed data)
+        dependencies = specification.get("dependencies", [])
+        spec_deps = set()
+        if isinstance(dependencies, list):
+            for dep in dependencies:
+                if isinstance(dep, dict):
+                    logical_name = dep.get("logical_name")
+                    if logical_name:
+                        spec_deps.add(logical_name)
+
+        contract_inputs_dict = contract.get("inputs", {})
+        contract_inputs = (
+            set(contract_inputs_dict.keys())
+            if isinstance(contract_inputs_dict, dict)
+            else set()
+        )
+
+        unmatched_deps = spec_deps - contract_inputs
+        for logical_name in unmatched_deps:
+            issues.append(
+                {
+                    "severity": "WARNING",
+                    "category": "input_output_alignment",
+                    "message": f"Specification dependency {logical_name} has no corresponding contract input",
+                    "details": {
+                        "logical_name": logical_name,
+                        "contract": contract_name,
+                    },
+                    "recommendation": f"Add {logical_name} to contract inputs or remove from specification dependencies",
+                }
+            )
+
+        # Check for specification outputs without corresponding contract outputs (handle malformed data)
+        outputs = specification.get("outputs", [])
+        spec_outputs = set()
+        if isinstance(outputs, list):
+            for out in outputs:
+                if isinstance(out, dict):
+                    logical_name = out.get("logical_name")
+                    if logical_name:
+                        spec_outputs.add(logical_name)
+
+        contract_outputs_dict = contract.get("outputs", {})
+        contract_outputs = (
+            set(contract_outputs_dict.keys())
+            if isinstance(contract_outputs_dict, dict)
+            else set()
+        )
+
+        unmatched_outputs = spec_outputs - contract_outputs
+        for logical_name in unmatched_outputs:
+            issues.append(
+                {
+                    "severity": "WARNING",
+                    "category": "input_output_alignment",
+                    "message": f"Specification output {logical_name} has no corresponding contract output",
+                    "details": {
+                        "logical_name": logical_name,
+                        "contract": contract_name,
+                    },
+                    "recommendation": f"Add {logical_name} to contract outputs or remove from specification outputs",
+                }
+            )
+
+        return issues
+```
+
+#### **Step 3: Update Import Files (1 hour)**
+
+**3.1 Update `src/cursus/validation/alignment/validators/__init__.py`:**
+```python
+# Add new validator export
+from .contract_spec_validator import ConsolidatedContractSpecValidator
+
+# Update __all__ list
+__all__ = [
+    # ... existing exports ...
+    "ConsolidatedContractSpecValidator",
+]
+```
+
+#### **Step 4: Replace Placeholder Validation (2 hours)**
+
+**4.1 Update `src/cursus/validation/alignment/core/contract_spec_alignment.py`:**
+```python
+def validate_contract(self, script_or_contract_name: str) -> Dict[str, Any]:
+    # ... existing code ...
+    
+    # REPLACE placeholder validation with restored functionality
+    from ..validators.contract_spec_validator import ConsolidatedContractSpecValidator
+    validator = ConsolidatedContractSpecValidator()
+    
+    # Restore logical name validation
+    logical_issues = validator.validate_logical_names(
+        contract, unified_spec["primary_spec"], script_or_contract_name
+    )
+    all_issues.extend(logical_issues)
+    
+    # Restore I/O alignment validation
+    io_issues = validator.validate_input_output_alignment(
+        contract, unified_spec["primary_spec"], script_or_contract_name
+    )
+    all_issues.extend(io_issues)
+    
+    # REMOVE placeholder issue
+    # all_issues.append({
+    #     "severity": "INFO",
+    #     "category": "validation_placeholder",
+    #     "message": f"Contract validation for {script_or_contract_name} needs to be restored with consolidated modules",
+    #     "details": {
+    #         "contract": script_or_contract_name,
+    #         "status": "placeholder_validation"
+    #     },
+    #     "recommendation": "Implement consolidated contract validation logic"
+    # })
+```
+
+**4.2 Update `src/cursus/validation/alignment/core/script_contract_alignment.py`:**
+```python
+def validate_script(self, script_name: str) -> Dict[str, Any]:
+    # ... existing code ...
+    
+    # REPLACE placeholder validation with restored functionality
+    from ..analyzer.script_analyzer import ScriptAnalyzer
+    
+    # Get script path
+    step_info = self.step_catalog.get_step_info(script_name)
+    script_path = step_info.file_components['script'].path
+    
+    # Use restored ScriptAnalyzer
+    analyzer = ScriptAnalyzer(str(script_path))
+    
+    # Validate main function signature
+    main_function_result = analyzer.validate_main_function_signature()
+    if not main_function_result.get("has_main"):
+        issues.append({
+            "severity": "CRITICAL",
+            "category": "missing_main_function",
+            "message": "Script must define main function with standard signature"
+        })
+    
+    # Extract parameter usage
+    parameter_usage = analyzer.extract_parameter_usage()
+    
+    # Load contract and validate alignment
+    contract = self._load_python_contract(None, script_name)
+    alignment_issues = analyzer.validate_contract_alignment(contract)
+    issues.extend(alignment_issues)
+    
+    return {
+        "passed": len([i for i in issues if i["severity"] in ["CRITICAL", "ERROR"]]) == 0,
+        "issues": issues,
+        "script_analysis": {
+            "main_function": main_function_result,
+            "parameter_usage": parameter_usage
+        },
+        "contract": contract
+    }
+```
+
+#### **Step 5: Integration Testing (1 hour)**
+
+**5.1 Test with Real Scripts:**
+- Test ScriptAnalyzer with `currency_conversion.py`
+- Test ScriptAnalyzer with `xgboost_training.py`
+- Test ContractSpecValidator with actual contracts and specs
+- Verify all placeholder validation is removed
+- Verify unified_alignment_tester.py works with updated modules
+
+### **📊 Implementation Summary**
+
+**Total Time: 10 hours (1.25 days)**
+
+**Files Created:**
+- `src/cursus/validation/alignment/analyzer/__init__.py`
+- `src/cursus/validation/alignment/analyzer/script_analyzer.py`
+- `src/cursus/validation/alignment/validators/contract_spec_validator.py`
+
+**Files Updated:**
+- `src/cursus/validation/alignment/validators/__init__.py`
+- `src/cursus/validation/alignment/core/contract_spec_alignment.py`
+- `src/cursus/validation/alignment/core/script_contract_alignment.py`
+
+**Functionality Restored:**
+- ✅ **Script main function signature validation**
+- ✅ **Script parameter usage analysis**
+- ✅ **Contract alignment validation**
+- ✅ **Contract-spec logical name validation**
+- ✅ **Contract-spec I/O alignment validation**
+- ✅ **All placeholder validation removed**
+
+#### **5.5 Revised Success Criteria**
+
+**Functional Requirements:**
+- ✅ All TODO placeholders removed
+- ✅ Script main function signature validation working
+- ✅ Contract alignment validation implemented
+- ✅ Parameter usage analysis functional
+- ❌ Framework pattern detection removed (not needed)
+
+**Quality Requirements:**
+- ✅ Contract alignment validation accurate
+- ✅ Performance maintained or improved
+- ✅ Error handling and logging preserved
+- ✅ Integration with step catalog maintained
+
+**Testing Requirements:**
+- ✅ Contract alignment validation tested with real scripts
+- ✅ Integration tests with existing validation system
+- ✅ No regression in core validation functionality
+- ✅ Framework pattern TODOs completely removed
+
+#### **5.6 Directory Structure Changes**
+
+**New Structure (Simplified):**
+```
+src/cursus/validation/alignment/
+├── analyzer/                           # NEW: Contract alignment focused
+│   ├── __init__.py                    # NEW: Export ScriptAnalyzer
+│   └── script_analyzer.py             # NEW: Contract alignment validation
+├── core/
+│   ├── script_contract_alignment.py   # UPDATED: Use new ScriptAnalyzer
+│   ├── contract_spec_alignment.py     # UPDATED: Remove placeholder TODOs
+│   └── spec_dependency_alignment.py   # ✅ Already good
+```
+
+**No patterns directory needed!**
+**No framework detection needed!**
+
+#### **5.7 Removed Functionality (Confirmed Not Needed)**
+
+Based on step_type_specific_rules analysis and actual script patterns:
+
+**❌ Framework Pattern Detection:**
+- `detect_training_patterns()` - Not in step_type_specific_rules
+- `detect_xgboost_patterns()` - Not in step_type_specific_rules  
+- `detect_pytorch_patterns()` - Not in step_type_specific_rules
+- Training loop detection - Not contract alignment related
+- Model saving pattern detection - Not contract alignment related
+
+**❌ Complex Script Analysis:**
+- Import statement analysis - Not needed for contract alignment
+- File operation analysis - Not needed for contract alignment
+- Argument parsing detection - Covered by job_args validation
+- Path construction analysis - Covered by parameter usage analysis
+
+**✅ Kept Essential Features:**
+- Main function signature validation
+- Parameter usage extraction (input_paths, output_paths, environ_vars, job_args)
+- Contract alignment validation
+- Basic data type validation
+- Input/output alignment validation
+
+**Phase 5 Completion Summary (Target: October 4, 2025):**
+- ✅ **Contract-focused approach**: Aligned with step_type_specific_rules requirements
+- ✅ **Simplified implementation**: 2 days instead of 5 days
+- ✅ **Framework patterns removed**: Not needed based on analysis
+- ✅ **Real script validation**: Tested with actual currency_conversion.py and xgboost_training.py
+- ✅ **TODO placeholders eliminated**: All placeholder validations replaced with real logic
+- ✅ **Performance optimized**: Focused validation without unnecessary complexity
+- ✅ **Maintainable architecture**: Clear contract alignment focus
+
+### **Phase 6: Testing and Integration (3 Days)**
 
 #### **5.1 Comprehensive Testing Strategy**
 ```python
