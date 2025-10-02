@@ -233,7 +233,7 @@ class BuilderAutoDiscovery:
             self.logger.debug(f"Found {len(self._package_builders)} package builders")
     
     def _discover_workspace_builders(self):
-        """Discover builders in workspace directories."""
+        """Discover builders in workspace directories with simplified structure."""
         for workspace_dir in self.workspace_dirs:
             try:
                 workspace_path = Path(workspace_dir)
@@ -241,21 +241,17 @@ class BuilderAutoDiscovery:
                     self.logger.warning(f"Workspace directory does not exist: {workspace_path}")
                     continue
                 
-                # Look for development/projects/ structure
-                dev_projects_dir = workspace_path / "development" / "projects"
-                if dev_projects_dir.exists():
-                    for project_dir in dev_projects_dir.iterdir():
-                        if project_dir.is_dir():
-                            workspace_builders_dir = project_dir / "src" / "cursus_dev" / "steps" / "builders"
-                            if workspace_builders_dir.exists():
-                                project_builders = self._scan_builder_directory(
-                                    workspace_builders_dir, project_dir.name
-                                )
-                                if project_builders:
-                                    self._workspace_builders[project_dir.name] = project_builders
-                                    self.logger.debug(f"Found {len(project_builders)} builders in workspace {project_dir.name}")
+                # Simplified structure: workspace_dir directly contains builders/
+                workspace_builders_dir = workspace_path / "builders"
+                if workspace_builders_dir.exists():
+                    workspace_builders = self._scan_builder_directory(
+                        workspace_builders_dir, workspace_path.name
+                    )
+                    if workspace_builders:
+                        self._workspace_builders[workspace_path.name] = workspace_builders
+                        self.logger.debug(f"Found {len(workspace_builders)} builders in workspace {workspace_path.name}")
                 else:
-                    self.logger.warning(f"Workspace directory missing development/projects structure: {workspace_path}")
+                    self.logger.debug(f"No builders directory found in workspace: {workspace_path}")
                     
             except Exception as e:
                 self.logger.error(f"Error discovering workspace builders in {workspace_dir}: {e}")

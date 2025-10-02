@@ -266,56 +266,38 @@ class SpecAutoDiscovery:
         return False
     
     def _discover_workspace_specs(self, workspace_dir: Path, project_id: Optional[str] = None) -> Dict[str, Any]:
-        """Discover specification instances in a workspace directory."""
+        """Discover specification instances in a workspace directory with simplified structure."""
         discovered = {}
-        projects_dir = workspace_dir / "development" / "projects"
         
-        if not projects_dir.exists():
-            return discovered
-        
-        if project_id:
-            # Search specific project
-            project_dir = projects_dir / project_id
-            if project_dir.exists():
-                spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
-                if spec_dir.exists():
-                    discovered.update(self._scan_spec_directory(spec_dir))
-        else:
-            # Search all projects
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
-                    if spec_dir.exists():
-                        discovered.update(self._scan_spec_directory(spec_dir))
+        # Simplified structure: workspace_dir directly contains specs/
+        spec_dir = workspace_dir / "specs"
+        if spec_dir.exists():
+            discovered.update(self._scan_spec_directory(spec_dir))
         
         return discovered
     
     def _try_workspace_spec_import(self, step_name: str, workspace_dir: Path) -> Optional[Any]:
-        """Try to import specification from workspace directory."""
+        """Try to import specification from workspace directory with simplified structure."""
         try:
-            projects_dir = workspace_dir / "development" / "projects"
-            if not projects_dir.exists():
+            # Simplified structure: workspace_dir directly contains specs/
+            spec_dir = workspace_dir / "specs"
+            if not spec_dir.exists():
                 return None
             
-            # Search all projects for the spec
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
-                    if spec_dir.exists():
-                        # Look for spec files matching the step name
-                        spec_patterns = [
-                            f"{step_name.lower()}_spec.py",
-                            f"{step_name.lower()}_model_spec.py",
-                            f"{step_name.lower()}_training_spec.py"
-                        ]
-                        
-                        for pattern in spec_patterns:
-                            spec_file = spec_dir / pattern
-                            if spec_file.exists():
-                                # Use file-based loading for workspace specs
-                                spec_instance = self._load_spec_from_file(spec_file, step_name)
-                                if spec_instance:
-                                    return spec_instance
+            # Look for spec files matching the step name
+            spec_patterns = [
+                f"{step_name.lower()}_spec.py",
+                f"{step_name.lower()}_model_spec.py",
+                f"{step_name.lower()}_training_spec.py"
+            ]
+            
+            for pattern in spec_patterns:
+                spec_file = spec_dir / pattern
+                if spec_file.exists():
+                    # Use file-based loading for workspace specs
+                    spec_instance = self._load_spec_from_file(spec_file, step_name)
+                    if spec_instance:
+                        return spec_instance
             
             return None
             
@@ -512,20 +494,15 @@ class SpecAutoDiscovery:
         return matching_specs
     
     def _find_specs_by_contract_in_workspace(self, workspace_dir: Path, contract_name: str) -> Dict[str, Any]:
-        """Find specifications that reference a contract in workspace directories."""
+        """Find specifications that reference a contract in workspace directories with simplified structure."""
         matching_specs = {}
         
         try:
-            projects_dir = workspace_dir / "development" / "projects"
-            if not projects_dir.exists():
-                return matching_specs
-            
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
-                    if spec_dir.exists():
-                        project_matches = self._find_specs_by_contract_in_dir(spec_dir, contract_name)
-                        matching_specs.update(project_matches)
+            # Simplified structure: workspace_dir directly contains specs/
+            spec_dir = workspace_dir / "specs"
+            if spec_dir.exists():
+                workspace_matches = self._find_specs_by_contract_in_dir(spec_dir, contract_name)
+                matching_specs.update(workspace_matches)
         
         except Exception as e:
             self.logger.error(f"Error scanning workspace {workspace_dir} for contract {contract_name}: {e}")
@@ -598,20 +575,15 @@ class SpecAutoDiscovery:
         return variants
     
     def _find_job_type_variants_in_workspace(self, workspace_dir: Path, base_name_lower: str) -> List[str]:
-        """Find job type variants in workspace directories."""
+        """Find job type variants in workspace directories with simplified structure."""
         variants = []
         
         try:
-            projects_dir = workspace_dir / "development" / "projects"
-            if not projects_dir.exists():
-                return variants
-            
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    spec_dir = project_dir / "src" / "cursus_dev" / "steps" / "specs"
-                    if spec_dir.exists():
-                        project_variants = self._find_job_type_variants_in_dir(spec_dir, base_name_lower)
-                        variants.extend(project_variants)
+            # Simplified structure: workspace_dir directly contains specs/
+            spec_dir = workspace_dir / "specs"
+            if spec_dir.exists():
+                workspace_variants = self._find_job_type_variants_in_dir(spec_dir, base_name_lower)
+                variants.extend(workspace_variants)
         
         except Exception as e:
             self.logger.error(f"Error finding job type variants in workspace {workspace_dir}: {e}")

@@ -215,52 +215,24 @@ class ConfigAutoDiscovery:
         return False
 
     def _discover_workspace_configs(self, workspace_dir: Path, project_id: Optional[str] = None) -> Dict[str, Type]:
-        """Discover config classes in a workspace directory."""
+        """Discover config classes in a workspace directory with simplified structure."""
         discovered = {}
-        projects_dir = workspace_dir / "development" / "projects"
         
-        if not projects_dir.exists():
-            return discovered
-        
-        if project_id:
-            # Search specific project
-            project_dir = projects_dir / project_id
-            if project_dir.exists():
-                config_dir = project_dir / "src" / "cursus_dev" / "steps" / "configs"
-                if config_dir.exists():
-                    discovered.update(self._scan_config_directory(config_dir))
-        else:
-            # Search all projects
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    config_dir = project_dir / "src" / "cursus_dev" / "steps" / "configs"
-                    if config_dir.exists():
-                        discovered.update(self._scan_config_directory(config_dir))
+        # Simplified structure: workspace_dir directly contains configs/
+        config_dir = workspace_dir / "configs"
+        if config_dir.exists():
+            discovered.update(self._scan_config_directory(config_dir))
         
         return discovered
 
     def _discover_workspace_hyperparams(self, workspace_dir: Path, project_id: Optional[str] = None) -> Dict[str, Type]:
-        """Discover hyperparameter classes in a workspace directory."""
+        """Discover hyperparameter classes in a workspace directory with simplified structure."""
         discovered = {}
-        projects_dir = workspace_dir / "development" / "projects"
         
-        if not projects_dir.exists():
-            return discovered
-        
-        if project_id:
-            # Search specific project
-            project_dir = projects_dir / project_id
-            if project_dir.exists():
-                hyperparams_dir = project_dir / "src" / "cursus_dev" / "steps" / "hyperparams"
-                if hyperparams_dir.exists():
-                    discovered.update(self._scan_hyperparams_directory(hyperparams_dir))
-        else:
-            # Search all projects
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    hyperparams_dir = project_dir / "src" / "cursus_dev" / "steps" / "hyperparams"
-                    if hyperparams_dir.exists():
-                        discovered.update(self._scan_hyperparams_directory(hyperparams_dir))
+        # Simplified structure: workspace_dir directly contains hyperparams/
+        hyperparams_dir = workspace_dir / "hyperparams"
+        if hyperparams_dir.exists():
+            discovered.update(self._scan_hyperparams_directory(hyperparams_dir))
         
         return discovered
 
