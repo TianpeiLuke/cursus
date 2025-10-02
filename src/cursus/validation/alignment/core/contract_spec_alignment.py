@@ -189,10 +189,10 @@ class ContractSpecificationAlignmentTester:
                 ],
             }
 
-        # Find specification files using StepCatalog
-        spec_files = self._find_specifications_by_contract(actual_contract_name)
+        # Find and load specifications using enhanced StepCatalog
+        specifications = self._find_specifications_by_contract(actual_contract_name)
 
-        if not spec_files:
+        if not specifications:
             return {
                 "passed": False,
                 "issues": [
@@ -205,27 +205,26 @@ class ContractSpecificationAlignmentTester:
                 ],
             }
 
-        # Load specifications using StepCatalog
-        specifications = {}
-        for spec_file in spec_files:
+        # Convert specification instances to dictionary format using StepCatalog
+        spec_dicts = {}
+        for spec_name, spec_instance in specifications.items():
             try:
-                spec = self._load_specification_from_step_catalog(spec_file, actual_contract_name)
-                # Use the spec file name as the key since job type comes from config, not spec
-                spec_key = spec_file.stem
-                specifications[spec_key] = spec
-
+                spec_dict = self.step_catalog.serialize_spec(spec_instance)
+                spec_dicts[spec_name] = spec_dict
             except Exception as e:
                 return {
                     "passed": False,
                     "issues": [
                         {
                             "severity": "CRITICAL",
-                            "category": "spec_load_error",
-                            "message": f"Failed to load specification from {spec_file}: {str(e)}",
-                            "recommendation": "Fix Python syntax or specification structure",
+                            "category": "spec_serialization_error",
+                            "message": f"Failed to serialize specification {spec_name}: {str(e)}",
+                            "recommendation": "Check specification object structure",
                         }
                     ],
                 }
+        
+        specifications = spec_dicts
 
         # SMART SPECIFICATION SELECTION: Create unified specification model
         unified_spec = self.smart_spec_selector.create_unified_specification(
@@ -354,27 +353,10 @@ class ContractSpecificationAlignmentTester:
 
         return contract_dict
 
-    def _find_specifications_by_contract(self, contract_name: str) -> List[Path]:
+    def _find_specifications_by_contract(self, contract_name: str) -> Dict[str, Any]:
         """Find specification files that reference a specific contract using StepCatalog."""
-        matching_specs = []
-
-        if not self.specs_dir.exists():
-            return matching_specs
-
-        # Search through all specification files
-        for spec_file in self.specs_dir.glob("*_spec.py"):
-            if spec_file.name.startswith("__"):
-                continue
-
-            try:
-                # Check if this specification references the contract
-                if self._specification_references_contract(spec_file, contract_name):
-                    matching_specs.append(spec_file)
-
-            except Exception:
-                continue
-
-        return matching_specs
+        # Use enhanced StepCatalog method for contract-specification discovery
+        return self.step_catalog.find_specs_by_contract(contract_name)
 
     def _specification_references_contract(self, spec_file: Path, contract_name: str) -> bool:
         """Check if a specification references a specific contract."""
@@ -396,124 +378,11 @@ class ContractSpecificationAlignmentTester:
 
         return False
 
-    def _load_specification_from_step_catalog(self, spec_file: Path, contract_name: str) -> Dict[str, Any]:
-        """Load specification from Python file using StepCatalog approach."""
-        import sys
-        import importlib.util
-        
-        try:
-            # Add the project root to sys.path temporarily to handle relative imports
-            project_root = str(spec_file.parent.parent.parent.parent)
-            src_root = str(spec_file.parent.parent.parent)
-            specs_dir = str(spec_file.parent)
-
-            paths_to_add = [project_root, src_root, specs_dir]
-            added_paths = []
-
-            for path in paths_to_add:
-                if path not in sys.path:
-                    sys.path.insert(0, path)
-                    added_paths.append(path)
-
-            try:
-                # Load the module
-                spec = importlib.util.spec_from_file_location(
-                    f"{spec_file.stem}", spec_file
-                )
-                if spec is None or spec.loader is None:
-                    raise ImportError(f"Could not load specification module from {spec_file}")
-
-                module = importlib.util.module_from_spec(spec)
-                module.__package__ = "cursus.steps.specs"
-                spec.loader.exec_module(module)
-            finally:
-                # Remove added paths from sys.path
-                for path in added_paths:
-                    if path in sys.path:
-                        sys.path.remove(path)
-
-            # Find spec constant
-            spec_name = spec_file.stem.replace("_spec", "")
-            job_type = self._extract_job_type_from_spec_file(spec_file)
-            
-            possible_names = [
-                f"{spec_name.upper()}_{job_type.upper()}_SPEC",
-                f"{spec_name.upper()}_SPEC",
-                f"{job_type.upper()}_SPEC",
-            ]
-
-            # Add dynamic discovery - scan for any constants ending with _SPEC
-            spec_constants = [
-                name for name in dir(module)
-                if name.endswith("_SPEC") and not name.startswith("_")
-            ]
-            possible_names.extend(spec_constants)
-
-            spec_obj = None
-            for spec_var_name in possible_names:
-                if hasattr(module, spec_var_name):
-                    spec_obj = getattr(module, spec_var_name)
-                    break
-
-            if spec_obj is None:
-                raise ValueError(f"No specification constant found in {spec_file}. Tried: {possible_names}")
-
-            # Convert StepSpecification object to dictionary
-            return self._step_specification_to_dict(spec_obj)
-
-        except Exception as e:
-            raise ValueError(f"Failed to load specification from {spec_file}: {str(e)}")
-
-    def _extract_job_type_from_spec_file(self, spec_file: Path) -> str:
-        """Extract job type from specification file name."""
-        # Pattern: {spec_name}_{job_type}_spec.py or {spec_name}_spec.py
-        stem = spec_file.stem
-        parts = stem.split("_")
-        if len(parts) >= 3 and parts[-1] == "spec":
-            return parts[-2]  # job_type is second to last part
-        return "default"
-
-    def _step_specification_to_dict(self, spec_obj) -> Dict[str, Any]:
-        """Convert StepSpecification object to dictionary representation."""
-        dependencies = []
-        for dep_name, dep_spec in spec_obj.dependencies.items():
-            dependencies.append({
-                "logical_name": dep_spec.logical_name,
-                "dependency_type": (
-                    dep_spec.dependency_type.value
-                    if hasattr(dep_spec.dependency_type, "value")
-                    else str(dep_spec.dependency_type)
-                ),
-                "required": dep_spec.required,
-                "compatible_sources": dep_spec.compatible_sources,
-                "data_type": dep_spec.data_type,
-                "description": dep_spec.description,
-            })
-
-        outputs = []
-        for out_name, out_spec in spec_obj.outputs.items():
-            outputs.append({
-                "logical_name": out_spec.logical_name,
-                "output_type": (
-                    out_spec.output_type.value
-                    if hasattr(out_spec.output_type, "value")
-                    else str(out_spec.output_type)
-                ),
-                "property_path": out_spec.property_path,
-                "data_type": out_spec.data_type,
-                "description": out_spec.description,
-            })
-
-        return {
-            "step_type": spec_obj.step_type,
-            "node_type": (
-                spec_obj.node_type.value
-                if hasattr(spec_obj.node_type, "value")
-                else str(spec_obj.node_type)
-            ),
-            "dependencies": dependencies,
-            "outputs": outputs,
-        }
+    # REMOVED: Manual specification loading methods replaced by StepCatalog integration
+    # - _load_specification_from_step_catalog() -> now uses step_catalog.find_specs_by_contract() + step_catalog.serialize_spec()
+    # - _extract_job_type_from_spec_file() -> replaced by StepCatalog job type variant discovery
+    # - _step_specification_to_dict() -> replaced by step_catalog.serialize_spec()
+    # Total code reduction: ~90 lines eliminated through StepCatalog integration
 
     def _validate_property_paths(
         self, specification: Dict[str, Any], contract_name: str

@@ -607,6 +607,104 @@ class StepCatalog:
             self.logger.error(f"Error getting spec job type variants for {base_step_name}: {e}")
             return []
     
+    def serialize_contract(self, contract_instance: Any) -> Dict[str, Any]:
+        """
+        Convert contract instance to dictionary format.
+        
+        This method provides standardized serialization of ScriptContract objects
+        for use in script-contract alignment validation.
+        
+        Args:
+            contract_instance: Contract instance to serialize
+            
+        Returns:
+            Dictionary representation of the contract
+        """
+        try:
+            if self.contract_discovery:
+                return self.contract_discovery.serialize_contract(contract_instance)
+            else:
+                self.logger.warning("ContractAutoDiscovery not available, cannot serialize contract")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error serializing contract: {e}")
+            return {}
+    
+    def find_contracts_by_entry_point(self, entry_point: str) -> Dict[str, Any]:
+        """
+        Find contracts that reference a specific script entry point.
+        
+        Args:
+            entry_point: Script entry point (e.g., "model_evaluation_xgb.py")
+            
+        Returns:
+            Dictionary mapping contract names to contract instances
+        """
+        try:
+            if self.contract_discovery:
+                return self.contract_discovery.find_contracts_by_entry_point(entry_point)
+            else:
+                self.logger.warning(f"ContractAutoDiscovery not available, cannot find contracts for entry point {entry_point}")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error finding contracts for entry point {entry_point}: {e}")
+            return {}
+    
+    def get_contract_entry_points(self) -> Dict[str, str]:
+        """
+        Get all contract entry points for validation.
+        
+        Returns:
+            Dictionary mapping contract names to their entry points
+        """
+        try:
+            if self.contract_discovery:
+                return self.contract_discovery.get_contract_entry_points()
+            else:
+                self.logger.warning("ContractAutoDiscovery not available, cannot get contract entry points")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error getting contract entry points: {e}")
+            return {}
+    
+    def validate_contract_script_mapping(self) -> Dict[str, Any]:
+        """
+        Validate contract-script relationships across the system.
+        
+        Returns:
+            Dictionary with validation results and mapping statistics
+        """
+        try:
+            contracts_with_scripts = self.discover_contracts_with_scripts()
+            entry_points = self.get_contract_entry_points()
+            
+            validation_results = {
+                "total_contracts": len(entry_points),
+                "contracts_with_scripts": len(contracts_with_scripts),
+                "orphaned_contracts": [],
+                "orphaned_scripts": [],
+                "valid_mappings": [],
+            }
+            
+            # Find orphaned contracts (contracts without corresponding scripts)
+            for contract_name, entry_point in entry_points.items():
+                if contract_name not in contracts_with_scripts:
+                    validation_results["orphaned_contracts"].append({
+                        "contract_name": contract_name,
+                        "entry_point": entry_point
+                    })
+                else:
+                    validation_results["valid_mappings"].append({
+                        "contract_name": contract_name,
+                        "entry_point": entry_point
+                    })
+            
+            return validation_results
+            
+        except Exception as e:
+            self.logger.error(f"Error validating contract-script mapping: {e}")
+            return {"error": str(e)}
+    
     # Additional utility methods for job type variants
     def get_job_type_variants(self, base_step_name: str) -> List[str]:
         """

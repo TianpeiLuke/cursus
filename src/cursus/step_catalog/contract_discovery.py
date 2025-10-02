@@ -215,25 +215,12 @@ class ContractAutoDiscovery:
     def _discover_workspace_contracts(self, workspace_dir: Path, project_id: Optional[str] = None) -> Dict[str, Type]:
         """Discover contract classes in a workspace directory."""
         discovered = {}
-        projects_dir = workspace_dir / "development" / "projects"
         
-        if not projects_dir.exists():
-            return discovered
-        
-        if project_id:
-            # Search specific project
-            project_dir = projects_dir / project_id
-            if project_dir.exists():
-                contract_dir = project_dir / "src" / "cursus_dev" / "steps" / "contracts"
-                if contract_dir.exists():
-                    discovered.update(self._scan_contract_directory(contract_dir))
-        else:
-            # Search all projects
-            for project_dir in projects_dir.iterdir():
-                if project_dir.is_dir():
-                    contract_dir = project_dir / "src" / "cursus_dev" / "steps" / "contracts"
-                    if contract_dir.exists():
-                        discovered.update(self._scan_contract_directory(contract_dir))
+        # Assume workspace_dir already points to the equivalent of cursus/steps structure
+        # e.g., workspace_dir = /path/to/workspace/development/projects/src/cursus_dev/steps
+        contract_dir = workspace_dir / "contracts"
+        if contract_dir.exists():
+            discovered.update(self._scan_contract_directory(contract_dir))
         
         return discovered
     
@@ -388,26 +375,17 @@ class ContractAutoDiscovery:
             Contract object or None if not found
         """
         try:
-            # Look for contract files in workspace projects
-            projects_dir = workspace_dir / "development" / "projects"
-            if not projects_dir.exists():
-                return None
-            
-            # Search all projects for the contract
-            for project_dir in projects_dir.iterdir():
-                if not project_dir.is_dir():
-                    continue
-                
-                contract_file = project_dir / "src" / "cursus_dev" / "steps" / "contracts" / f"{step_name}_contract.py"
-                if contract_file.exists():
-                    try:
-                        # Load contract using file-based import
-                        contract = self._load_contract_from_file(contract_file, step_name)
-                        if contract:
-                            return contract
-                    except Exception as e:
-                        self.logger.warning(f"Failed to load workspace contract from {contract_file}: {e}")
-                        continue
+            # Assume workspace_dir already points to the equivalent of cursus/steps structure
+            # e.g., workspace_dir = /path/to/workspace/development/projects/src/cursus_dev/steps
+            contract_file = workspace_dir / "contracts" / f"{step_name}_contract.py"
+            if contract_file.exists():
+                try:
+                    # Load contract using file-based import
+                    contract = self._load_contract_from_file(contract_file, step_name)
+                    if contract:
+                        return contract
+                except Exception as e:
+                    self.logger.warning(f"Failed to load workspace contract from {contract_file}: {e}")
             
             return None
             
@@ -452,3 +430,258 @@ class ContractAutoDiscovery:
         except Exception as e:
             self.logger.warning(f"Failed to load contract from {contract_path}: {e}")
             return None
+    
+    def serialize_contract(self, contract_instance: Any) -> Dict[str, Any]:
+        """
+        Convert contract instance to dictionary format.
+        
+        This method provides standardized serialization of ScriptContract objects
+        for use in script-contract alignment validation, following the same pattern
+        as SpecAutoDiscovery.serialize_spec().
+        
+        Args:
+            contract_instance: Contract instance to serialize
+            
+        Returns:
+            Dictionary representation of the contract
+        """
+        try:
+            if not self._is_contract_instance(contract_instance):
+                raise ValueError("Object is not a valid contract instance")
+            
+            # Serialize contract fields using helper methods
+            return {
+                "entry_point": getattr(contract_instance, "entry_point", ""),
+                "inputs": self._serialize_contract_inputs(contract_instance),
+                "outputs": self._serialize_contract_outputs(contract_instance),
+                "arguments": self._serialize_contract_arguments(contract_instance),
+                "environment_variables": {
+                    "required": getattr(contract_instance, "required_env_vars", []),
+                    "optional": getattr(contract_instance, "optional_env_vars", {}),
+                },
+                "description": getattr(contract_instance, "description", ""),
+                "framework_requirements": getattr(contract_instance, "framework_requirements", {}),
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error serializing contract: {e}")
+            return {}
+    
+    def find_contracts_by_entry_point(self, entry_point: str) -> Dict[str, Any]:
+        """
+        Find contracts that reference a specific script entry point.
+        
+        This method enables script-contract alignment validation by finding
+        contracts that are associated with a given script entry point.
+        
+        Args:
+            entry_point: Script entry point (e.g., "model_evaluation_xgb.py")
+            
+        Returns:
+            Dictionary mapping contract names to contract instances
+        """
+        try:
+            matching_contracts = {}
+            
+            # Search core package contracts
+            core_contract_dir = self.package_root / "steps" / "contracts"
+            if core_contract_dir.exists():
+                core_matches = self._find_contracts_by_entry_point_in_dir(core_contract_dir, entry_point)
+                matching_contracts.update(core_matches)
+            
+            # Search workspace contracts
+            if self.workspace_dirs:
+                for workspace_dir in self.workspace_dirs:
+                    workspace_matches = self._find_contracts_by_entry_point_in_workspace(workspace_dir, entry_point)
+                    matching_contracts.update(workspace_matches)
+            
+            self.logger.debug(f"Found {len(matching_contracts)} contracts for entry point '{entry_point}'")
+            return matching_contracts
+            
+        except Exception as e:
+            self.logger.error(f"Error finding contracts for entry point {entry_point}: {e}")
+            return {}
+    
+    def get_contract_entry_points(self) -> Dict[str, str]:
+        """
+        Get all contract entry points for validation.
+        
+        Returns:
+            Dictionary mapping contract names to their entry points
+        """
+        try:
+            entry_points = {}
+            
+            # Scan core contracts
+            core_contract_dir = self.package_root / "steps" / "contracts"
+            if core_contract_dir.exists():
+                core_entry_points = self._extract_entry_points_from_dir(core_contract_dir)
+                entry_points.update(core_entry_points)
+            
+            # Scan workspace contracts
+            if self.workspace_dirs:
+                for workspace_dir in self.workspace_dirs:
+                    workspace_entry_points = self._extract_entry_points_from_workspace(workspace_dir)
+                    entry_points.update(workspace_entry_points)
+            
+            self.logger.debug(f"Found {len(entry_points)} contract entry points")
+            return entry_points
+            
+        except Exception as e:
+            self.logger.error(f"Error getting contract entry points: {e}")
+            return {}
+    
+    def _is_contract_instance(self, obj: Any) -> bool:
+        """Check if an object is a valid contract instance."""
+        try:
+            # Check if it has the expected attributes of a contract
+            return (hasattr(obj, 'entry_point') or 
+                   hasattr(obj, 'expected_input_paths') or 
+                   hasattr(obj, 'expected_output_paths'))
+        except Exception:
+            return False
+    
+    def _serialize_contract_inputs(self, contract_instance: Any) -> Dict[str, Any]:
+        """Serialize contract input specifications."""
+        inputs = {}
+        try:
+            if hasattr(contract_instance, 'expected_input_paths'):
+                for logical_name, path in contract_instance.expected_input_paths.items():
+                    inputs[logical_name] = {"path": path}
+        except Exception as e:
+            self.logger.warning(f"Error serializing contract inputs: {e}")
+        return inputs
+    
+    def _serialize_contract_outputs(self, contract_instance: Any) -> Dict[str, Any]:
+        """Serialize contract output specifications."""
+        outputs = {}
+        try:
+            if hasattr(contract_instance, 'expected_output_paths'):
+                for logical_name, path in contract_instance.expected_output_paths.items():
+                    outputs[logical_name] = {"path": path}
+        except Exception as e:
+            self.logger.warning(f"Error serializing contract outputs: {e}")
+        return outputs
+    
+    def _serialize_contract_arguments(self, contract_instance: Any) -> Dict[str, Any]:
+        """Serialize contract argument specifications."""
+        arguments = {}
+        try:
+            if hasattr(contract_instance, 'expected_arguments'):
+                for arg_name, default_value in contract_instance.expected_arguments.items():
+                    arguments[arg_name] = {
+                        "default": default_value,
+                        "required": default_value is None,
+                    }
+        except Exception as e:
+            self.logger.warning(f"Error serializing contract arguments: {e}")
+        return arguments
+    
+    def _find_contracts_by_entry_point_in_dir(self, contract_dir: Path, entry_point: str) -> Dict[str, Any]:
+        """Find contracts that reference an entry point in a specific directory."""
+        matching_contracts = {}
+        
+        try:
+            for py_file in contract_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                try:
+                    if self._contract_file_references_entry_point(py_file, entry_point):
+                        # Load the contract from this file
+                        step_name = py_file.stem.replace("_contract", "")
+                        contract_instance = self._load_contract_from_file(py_file, step_name)
+                        if contract_instance:
+                            contract_key = py_file.stem
+                            matching_contracts[contract_key] = contract_instance
+                            self.logger.debug(f"Found matching contract: {contract_key} for entry point {entry_point}")
+                
+                except Exception as e:
+                    self.logger.warning(f"Error checking contract file {py_file} for entry point {entry_point}: {e}")
+                    continue
+        
+        except Exception as e:
+            self.logger.error(f"Error scanning directory {contract_dir} for entry point {entry_point}: {e}")
+        
+        return matching_contracts
+    
+    def _find_contracts_by_entry_point_in_workspace(self, workspace_dir: Path, entry_point: str) -> Dict[str, Any]:
+        """Find contracts that reference an entry point in workspace directories."""
+        matching_contracts = {}
+        
+        try:
+            # Assume workspace_dir already points to the equivalent of cursus/steps structure
+            # e.g., workspace_dir = /path/to/workspace/development/projects/src/cursus_dev/steps
+            contract_dir = workspace_dir / "contracts"
+            if contract_dir.exists():
+                workspace_matches = self._find_contracts_by_entry_point_in_dir(contract_dir, entry_point)
+                matching_contracts.update(workspace_matches)
+        
+        except Exception as e:
+            self.logger.error(f"Error scanning workspace {workspace_dir} for entry point {entry_point}: {e}")
+        
+        return matching_contracts
+    
+    def _contract_file_references_entry_point(self, contract_file: Path, entry_point: str) -> bool:
+        """Check if a contract file references a specific entry point."""
+        try:
+            with open(contract_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Simple string search for entry point references
+                if entry_point in content:
+                    return True
+                
+                # Also check for entry point without extension
+                entry_point_base = entry_point.replace('.py', '')
+                if entry_point_base in content:
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.warning(f"Error checking if {contract_file} references entry point {entry_point}: {e}")
+            return False
+    
+    def _extract_entry_points_from_dir(self, contract_dir: Path) -> Dict[str, str]:
+        """Extract entry points from contracts in a specific directory."""
+        entry_points = {}
+        
+        try:
+            for py_file in contract_dir.glob("*.py"):
+                if py_file.name.startswith("__"):
+                    continue
+                
+                try:
+                    # Load the contract from this file
+                    step_name = py_file.stem.replace("_contract", "")
+                    contract_instance = self._load_contract_from_file(py_file, step_name)
+                    if contract_instance and hasattr(contract_instance, 'entry_point'):
+                        contract_key = py_file.stem
+                        entry_points[contract_key] = contract_instance.entry_point
+                        self.logger.debug(f"Found entry point: {contract_instance.entry_point} for contract {contract_key}")
+                
+                except Exception as e:
+                    self.logger.warning(f"Error extracting entry point from contract file {py_file}: {e}")
+                    continue
+        
+        except Exception as e:
+            self.logger.error(f"Error extracting entry points from directory {contract_dir}: {e}")
+        
+        return entry_points
+    
+    def _extract_entry_points_from_workspace(self, workspace_dir: Path) -> Dict[str, str]:
+        """Extract entry points from contracts in workspace directories."""
+        entry_points = {}
+        
+        try:
+            # Assume workspace_dir already points to the equivalent of cursus/steps structure
+            # e.g., workspace_dir = /path/to/workspace/development/projects/src/cursus_dev/steps
+            contract_dir = workspace_dir / "contracts"
+            if contract_dir.exists():
+                workspace_entry_points = self._extract_entry_points_from_dir(contract_dir)
+                entry_points.update(workspace_entry_points)
+        
+        except Exception as e:
+            self.logger.error(f"Error extracting entry points from workspace {workspace_dir}: {e}")
+        
+        return entry_points
