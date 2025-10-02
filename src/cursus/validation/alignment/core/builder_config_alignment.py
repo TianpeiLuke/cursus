@@ -5,17 +5,11 @@ Validates alignment between step builders and their configuration requirements.
 Ensures builders properly handle configuration fields and validation.
 """
 
-import sys
-import ast
-import importlib.util
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..analyzer import ConfigurationAnalyzer, BuilderCodeAnalyzer
 from ..patterns import PatternRecognizer
-from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
-from ....step_catalog.adapters.file_resolver import HybridFileResolverAdapter as HybridFileResolver
-from ....registry.step_names import STEP_NAMES, get_step_name_from_spec_type
 
 
 class BuilderConfigurationAlignmentTester:
@@ -29,45 +23,21 @@ class BuilderConfigurationAlignmentTester:
     - Configuration schema matches usage
     """
 
-    def __init__(self, builders_dir: str, configs_dir: str):
+    def __init__(self, workspace_dirs: Optional[List[Path]] = None):
         """
         Initialize the builder-configuration alignment tester.
 
         Args:
-            builders_dir: Directory containing step builders
-            configs_dir: Directory containing step configurations
+            workspace_dirs: Optional list of workspace directories for workspace-aware discovery
         """
-        self.builders_dir = Path(builders_dir)
-        self.configs_dir = Path(configs_dir)
-
-        # Initialize base directories for all resolvers
-        base_directories = {
-            "contracts": str(self.builders_dir.parent / "contracts"),
-            "specs": str(self.builders_dir.parent / "specs"),
-            "builders": str(self.builders_dir),
-            "configs": str(self.configs_dir),
-        }
+        # Initialize StepCatalog with workspace-aware discovery
+        from ....step_catalog import StepCatalog
+        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
         # Initialize extracted components
-        self.config_analyzer = ConfigurationAnalyzer(str(self.configs_dir))
+        self.config_analyzer = ConfigurationAnalyzer()
         self.builder_analyzer = BuilderCodeAnalyzer()
         self.pattern_recognizer = PatternRecognizer()
-        
-        # Initialize StepCatalog for unified discovery
-        from ....step_catalog import StepCatalog
-        self.step_catalog = StepCatalog(workspace_dirs=None)
-        
-        # Use modern HybridFileResolverAdapter with workspace root (expects Path, not dict)
-        workspace_root = self.builders_dir.parent  # src/cursus/steps
-        self.file_resolver = HybridFileResolver(workspace_root)
-
-        # Keep FlexibleFileResolver for backward compatibility
-        self.flexible_resolver = FlexibleFileResolver(base_directories)
-
-        # Add the project root to Python path for imports
-        project_root = self.builders_dir.parent.parent.parent
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
 
     def validate_all_builders(
         self, target_scripts: Optional[List[str]] = None
@@ -87,7 +57,7 @@ class BuilderConfigurationAlignmentTester:
         if target_scripts:
             builders_to_validate = target_scripts
         else:
-            builders_to_validate = self._discover_builders()
+            builders_to_validate = self.step_catalog.list_available_builders()
 
         for builder_name in builders_to_validate:
             try:
@@ -118,75 +88,57 @@ class BuilderConfigurationAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        # Use hybrid approach for builder file resolution
-        builder_path_str = self._find_builder_file_hybrid(builder_name)
-
-        # Check if builder file exists
-        if not builder_path_str:
+        # Use StepCatalog to discover builder class directly
+        try:
+            builder_class = self.step_catalog.load_builder_class(builder_name)
+            if not builder_class:
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "missing_builder",
+                            "message": f"Builder class not found for {builder_name}",
+                            "details": {
+                                "builder_name": builder_name,
+                                "discovery_method": "StepCatalog.load_builder_class()",
+                            },
+                            "recommendation": f"Create builder class for {builder_name} or check naming patterns",
+                        }
+                    ],
+                }
+        except Exception as e:
             return {
                 "passed": False,
                 "issues": [
                     {
                         "severity": "CRITICAL",
-                        "category": "missing_file",
-                        "message": f"Builder file not found for {builder_name}",
-                        "details": {
-                            "searched_patterns": [
-                                f"builder_{builder_name}_step.py",
-                                "FlexibleFileResolver patterns",
-                                "Fuzzy matching",
-                            ],
-                            "search_directory": str(self.builders_dir),
-                        },
-                        "recommendation": f"Create builder file builder_{builder_name}_step.py",
+                        "category": "builder_load_error",
+                        "message": f"Failed to load builder class: {str(e)}",
+                        "recommendation": "Fix Python syntax or builder class structure",
                     }
                 ],
             }
 
-        builder_path = Path(builder_path_str)
-
-        # Use hybrid approach for config file resolution
-        config_path_str = self._find_config_file_hybrid(builder_name)
-
-        # Check if config file exists
-        if not config_path_str:
-            # Get detailed diagnostics from FlexibleFileResolver
-            available_files_report = self.flexible_resolver.get_available_files_report()
-            config_report = available_files_report.get("configs", {})
-
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "ERROR",
-                        "category": "missing_configuration",
-                        "message": f"Configuration file not found for {builder_name}",
-                        "details": {
-                            "builder_name": builder_name,
-                            "search_directory": str(self.configs_dir),
-                            "available_config_files": config_report.get(
-                                "discovered_files", []
-                            ),
-                            "available_base_names": config_report.get("base_names", []),
-                            "total_configs_found": config_report.get("count", 0),
-                            "resolver_strategies": [
-                                "Exact match",
-                                "Normalized matching (preprocess↔preprocessing, eval↔evaluation, xgb↔xgboost)",
-                                "Fuzzy matching (80% similarity threshold)",
-                            ],
-                        },
-                        "recommendation": f"Check if config file exists with correct naming pattern, or create config_{builder_name}_step.py",
-                    }
-                ],
-            }
-
-        config_path = Path(config_path_str)
-
-        # Load configuration using extracted component
+        # Use StepCatalog to discover config class directly
         try:
-            config_analysis = self.config_analyzer.load_config_from_python(
-                config_path, builder_name
-            )
+            config_class = self.step_catalog.load_config_class(builder_name)
+            if not config_class:
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "ERROR",
+                            "category": "missing_configuration",
+                            "message": f"Configuration class not found for {builder_name}",
+                            "details": {
+                                "builder_name": builder_name,
+                                "discovery_method": "StepCatalog.load_config_class()",
+                            },
+                            "recommendation": f"Create configuration class for {builder_name} or check naming patterns",
+                        }
+                    ],
+                }
         except Exception as e:
             return {
                 "passed": False,
@@ -194,15 +146,31 @@ class BuilderConfigurationAlignmentTester:
                     {
                         "severity": "CRITICAL",
                         "category": "config_load_error",
-                        "message": f"Failed to load configuration: {str(e)}",
-                        "recommendation": "Fix Python syntax or configuration structure in config file",
+                        "message": f"Failed to load configuration class: {str(e)}",
+                        "recommendation": "Fix Python syntax or configuration class structure",
                     }
                 ],
             }
 
-        # Analyze builder code using extracted component
+        # Analyze configuration class using extracted component
         try:
-            builder_analysis = self.builder_analyzer.analyze_builder_file(builder_path)
+            config_analysis = self.config_analyzer.analyze_config_class(config_class)
+        except Exception as e:
+            return {
+                "passed": False,
+                "issues": [
+                    {
+                        "severity": "CRITICAL",
+                        "category": "config_analysis_error",
+                        "message": f"Failed to analyze configuration class: {str(e)}",
+                        "recommendation": "Fix configuration class structure or implementation",
+                    }
+                ],
+            }
+
+        # Analyze builder class using extracted component
+        try:
+            builder_analysis = self.builder_analyzer.analyze_builder_class(builder_class)
         except Exception as e:
             return {
                 "passed": False,
@@ -210,8 +178,8 @@ class BuilderConfigurationAlignmentTester:
                     {
                         "severity": "CRITICAL",
                         "category": "builder_analysis_error",
-                        "message": f"Failed to analyze builder: {str(e)}",
-                        "recommendation": "Fix syntax errors in builder file",
+                        "message": f"Failed to analyze builder class: {str(e)}",
+                        "recommendation": "Fix builder class structure or implementation",
                     }
                 ],
             }
@@ -468,180 +436,3 @@ class BuilderConfigurationAlignmentTester:
             )
 
         return issues
-
-    def _find_builder_file_hybrid(self, builder_name: str) -> Optional[str]:
-        """
-        Modern builder file resolution using step catalog.
-
-        Priority:
-        1. Step catalog lookup for superior discovery
-        2. Standard pattern fallback: builder_{builder_name}_step.py
-
-        Args:
-            builder_name: Name of the builder to find
-
-        Returns:
-            Path to the builder file or None if not found
-        """
-        # Strategy 1: Use modern step catalog for superior discovery
-        try:
-            step_info = self.file_resolver.catalog.get_step_info(builder_name)
-            if step_info and step_info.file_components.get('builder'):
-                builder_path = step_info.file_components['builder'].path
-                if builder_path.exists():
-                    return str(builder_path)
-        except Exception as e:
-            # Continue with fallback if catalog lookup fails
-            pass
-
-        # Strategy 2: Try standard naming convention as fallback
-        standard_path = self.builders_dir / f"builder_{builder_name}_step.py"
-        if standard_path.exists():
-            return str(standard_path)
-
-        # Strategy 3: Return None if nothing found
-        return None
-
-    def _get_canonical_step_name(self, script_name: str) -> str:
-        """
-        Convert script name to canonical step name using production registry logic.
-
-        This uses the same approach as Level-3 validator to ensure consistency
-        with the production system's mapping logic.
-
-        Args:
-            script_name: Script name (e.g., 'mims_package', 'model_evaluation_xgb')
-
-        Returns:
-            Canonical step name (e.g., 'Package', 'XGBoostModelEval')
-        """
-        # Convert script name to spec_type format (same as Level-3)
-        parts = script_name.split("_")
-
-        # Handle job type variants
-        job_type_suffixes = ["training", "validation", "testing", "calibration"]
-        job_type = None
-        base_parts = parts
-
-        if len(parts) > 1 and parts[-1] in job_type_suffixes:
-            job_type = parts[-1]
-            base_parts = parts[:-1]
-
-        # Convert to PascalCase for spec_type
-        spec_type_base = "".join(word.capitalize() for word in base_parts)
-
-        if job_type:
-            spec_type = f"{spec_type_base}_{job_type.capitalize()}"
-        else:
-            spec_type = spec_type_base
-
-        # Use production function to get canonical name (strips job type suffix)
-        try:
-            canonical_name = get_step_name_from_spec_type(spec_type)
-            return canonical_name
-        except Exception:
-            # Fallback: return the base spec_type without job type suffix
-            return spec_type_base
-
-    def _get_config_name_from_canonical(self, canonical_name: str) -> str:
-        """
-        Get config file base name from canonical step name using production registry.
-
-        Uses the STEP_NAMES registry to find the config class name,
-        then derives the config file name from that.
-
-        Args:
-            canonical_name: Canonical step name (e.g., 'Package', 'XGBoostModelEval')
-
-        Returns:
-            Config file base name (e.g., 'package', 'model_eval_step_xgboost')
-        """
-        # Get config class name from STEP_NAMES registry
-        if canonical_name in STEP_NAMES:
-            config_class = STEP_NAMES[canonical_name]["config_class"]
-
-            # Convert config class name to file name
-            # e.g., 'PackageConfig' -> 'package'
-            # e.g., 'XGBoostModelEvalConfig' -> 'model_eval_step_xgboost'
-
-            # Remove 'Config' suffix
-            if config_class.endswith("Config"):
-                base_name = config_class[:-6]  # Remove 'Config'
-            else:
-                base_name = config_class
-
-            # Convert CamelCase to snake_case
-            import re
-
-            snake_case = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", base_name)
-            snake_case = re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case).lower()
-            return snake_case
-
-        # Fallback if not in registry
-        import re
-
-        snake_case = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", canonical_name)
-        snake_case = re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case).lower()
-        return snake_case
-
-    def _find_config_file_hybrid(self, builder_name: str) -> Optional[str]:
-        """
-        Modern config file resolution using step catalog.
-
-        Priority:
-        1. Step catalog lookup for superior discovery
-        2. Production registry mapping: script_name -> canonical_name -> config_name
-        3. Standard pattern: config_{builder_name}_step.py
-
-        Args:
-            builder_name: Name of the builder to find config for
-
-        Returns:
-            Path to the config file or None if not found
-        """
-        # Strategy 1: Use modern step catalog for superior discovery
-        try:
-            step_info = self.file_resolver.catalog.get_step_info(builder_name)
-            if step_info and step_info.file_components.get('config'):
-                config_path = step_info.file_components['config'].path
-                if config_path.exists():
-                    return str(config_path)
-        except Exception as e:
-            # Continue with fallback if catalog lookup fails
-            pass
-
-        # Strategy 2: Use production registry mapping as fallback
-        try:
-            canonical_name = self._get_canonical_step_name(builder_name)
-            config_base_name = self._get_config_name_from_canonical(canonical_name)
-            registry_path = self.configs_dir / f"config_{config_base_name}_step.py"
-            if registry_path.exists():
-                return str(registry_path)
-        except Exception:
-            # Continue with other strategies if registry mapping fails
-            pass
-
-        # Strategy 3: Try standard naming convention as final fallback
-        standard_path = self.configs_dir / f"config_{builder_name}_step.py"
-        if standard_path.exists():
-            return str(standard_path)
-
-        # Strategy 4: Return None if nothing found
-        return None
-
-    def _discover_builders(self) -> List[str]:
-        """Discover all builder files in the builders directory."""
-        builders = []
-
-        if self.builders_dir.exists():
-            for builder_file in self.builders_dir.glob("builder_*_step.py"):
-                if not builder_file.name.startswith("__"):
-                    # Extract builder name from builder_*_step.py pattern
-                    stem = builder_file.stem
-                    if stem.startswith("builder_") and stem.endswith("_step"):
-                        builder_name = stem[
-                            8:-5
-                        ]  # Remove 'builder_' prefix and '_step' suffix
-                        builders.append(builder_name)
-
-        return sorted(builders)

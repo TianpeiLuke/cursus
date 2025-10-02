@@ -222,6 +222,39 @@ class StepCatalog:
             self.logger.error(f"Error listing steps for workspace {workspace_id}: {e}")
             return []
     
+    def list_steps_with_specs(self, workspace_id: Optional[str] = None, 
+                            job_type: Optional[str] = None) -> List[str]:
+        """
+        List all steps that have specification components.
+        
+        This method filters available steps to only return those that have
+        specification file components, which is useful for validation frameworks
+        that need to work specifically with steps that have specifications.
+        
+        Args:
+            workspace_id: Optional workspace filter
+            job_type: Optional job type filter
+            
+        Returns:
+            List of step names that have specification components
+        """
+        try:
+            # Get all available steps with optional filtering
+            available_steps = self.list_available_steps(workspace_id, job_type)
+            
+            # Filter to only steps that have specification components
+            steps_with_specs = []
+            for step_name in available_steps:
+                step_info = self.get_step_info(step_name)
+                if step_info and step_info.file_components.get('spec'):
+                    steps_with_specs.append(step_name)
+            
+            return sorted(steps_with_specs)
+            
+        except Exception as e:
+            self.logger.error(f"Error listing steps with specs for workspace {workspace_id}: {e}")
+            return []
+    
     # US4: Efficient Scaling (Simple but effective search)
     def search_steps(self, query: str, job_type: Optional[str] = None) -> List[StepSearchResult]:
         """

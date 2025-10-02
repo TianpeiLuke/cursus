@@ -5,24 +5,15 @@ Validates alignment between processing scripts and their contracts.
 Ensures scripts use paths, environment variables, and arguments as declared in contracts.
 """
 
-import os
-import json
-import sys
-import importlib.util
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
 from ..analyzer.script_analyzer import ScriptAnalyzer
 from ..analyzer.builder_argument_extractor import extract_builder_arguments
 from ..validators.testability_validator import TestabilityPatternValidator
-from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 from ..factories.step_type_detection import (
     detect_step_type_from_registry,
     detect_framework_from_imports,
-)
-from ..utils.core_models import (
-    create_step_type_aware_alignment_issue,
-    SeverityLevel,
 )
 from ..utils.utils import normalize_path
 from ..validators import ScriptContractValidator
@@ -40,41 +31,23 @@ class ScriptContractAlignmentTester:
     - File operations match declared inputs/outputs
     """
 
-    def __init__(
-        self, scripts_dir: str, contracts_dir: str, builders_dir: Optional[str] = None
-    ):
+    def __init__(self, workspace_dirs: Optional[List[Path]] = None):
         """
         Initialize the script-contract alignment tester.
 
         Args:
-            scripts_dir: Directory containing processing scripts
-            contracts_dir: Directory containing script contracts
-            builders_dir: Optional directory containing step builders for enhanced validation
+            workspace_dirs: Optional list of workspace directories for workspace-aware discovery.
+                          If not provided, uses package root for discovery.
         """
-        self.scripts_dir = Path(scripts_dir)
-        self.contracts_dir = Path(contracts_dir)
-        self.builders_dir = Path(builders_dir) if builders_dir else None
-
-        # Initialize FlexibleFileResolver for robust file discovery
-        base_directories = {
-            "contracts": str(self.contracts_dir),
-            "builders": str(self.builders_dir) if self.builders_dir else "",
-            "scripts": str(self.scripts_dir),
-        }
-        self.file_resolver = FlexibleFileResolver(base_directories)
+        # Initialize StepCatalog with workspace-aware discovery
+        from ....step_catalog import StepCatalog
+        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
         # Initialize testability validator
         self.testability_validator = TestabilityPatternValidator()
 
         # Initialize validator
         self.script_validator = ScriptContractValidator()
-        
-        # Initialize StepCatalog for contract loading
-        from ....step_catalog import StepCatalog
-        self.step_catalog = StepCatalog(workspace_dirs=None)
-
-        # Build entry_point to contract file mapping (kept as fallback)
-        self._entry_point_to_contract = self._build_entry_point_mapping()
 
     def validate_all_scripts(
         self, target_scripts: Optional[List[str]] = None
@@ -125,72 +98,53 @@ class ScriptContractAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        script_path = self.scripts_dir / f"{script_name}.py"
-
-        # Hybrid approach: Try entry_point mapping first, then FlexibleFileResolver as fallback
-        contract_file_path = self._find_contract_file_hybrid(script_name)
-
-        # Check if files exist
-        if not script_path.exists():
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "CRITICAL",
-                        "category": "missing_file",
-                        "message": f"Script file not found: {script_path}",
-                        "recommendation": f"Create the script file {script_name}.py",
-                    }
-                ],
-            }
-
-        if not contract_file_path:
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "ERROR",
-                        "category": "missing_contract",
-                        "message": f"Contract file not found for script: {script_name}",
-                        "details": {
-                            "script": script_name,
-                            "searched_methods": [
-                                "Entry point mapping from contract files",
-                                "FlexibleFileResolver pattern matching",
-                                f"Naming convention: {script_name}_contract.py",
-                            ],
-                        },
-                        "recommendation": f"Create contract file for {script_name} or check naming patterns",
-                    }
-                ],
-            }
-
-        contract_path = Path(contract_file_path)
-        if not contract_path.exists():
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "ERROR",
-                        "category": "missing_contract",
-                        "message": f"Contract file not found: {contract_path}",
-                        "recommendation": f"Create contract file {contract_path.name}",
-                    }
-                ],
-            }
-
-        # Load contract from Python module
+        # Use StepCatalog to get script information
         try:
-            contract = self._load_python_contract(contract_path, script_name)
+            step_info = self.step_catalog.get_step_info(script_name)
+            if not step_info or not step_info.file_components.get('script'):
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "missing_file",
+                            "message": f"Script file not found for: {script_name}",
+                            "recommendation": f"Create the script file {script_name}.py",
+                        }
+                    ],
+                }
+            
+            script_path = step_info.file_components['script'].path
         except Exception as e:
             return {
                 "passed": False,
                 "issues": [
                     {
                         "severity": "CRITICAL",
-                        "category": "contract_parse_error",
-                        "message": f"Failed to load contract: {str(e)}",
-                        "recommendation": "Fix Python syntax in contract file",
+                        "category": "script_discovery_error",
+                        "message": f"Failed to discover script: {str(e)}",
+                        "recommendation": "Check script naming patterns and StepCatalog configuration",
+                    }
+                ],
+            }
+
+        # Load contract using StepCatalog
+        try:
+            contract = self._load_python_contract(None, script_name)
+        except Exception as e:
+            return {
+                "passed": False,
+                "issues": [
+                    {
+                        "severity": "ERROR",
+                        "category": "missing_contract",
+                        "message": f"Contract not found for script: {script_name}",
+                        "details": {
+                            "script": script_name,
+                            "error": str(e),
+                            "discovery_method": "StepCatalog.load_contract_class()",
+                        },
+                        "recommendation": f"Create contract class for {script_name} or check naming patterns",
                     }
                 ],
             }
@@ -215,16 +169,16 @@ class ScriptContractAlignmentTester:
         # Perform alignment validation
         issues = []
 
-        # Get builder arguments if builders directory is available
+        # Get builder arguments using StepCatalog
         builder_args = set()
-        if self.builders_dir:
-            try:
-                builder_args = extract_builder_arguments(
-                    script_name, str(self.builders_dir)
-                )
-            except Exception as e:
-                # Log warning but continue validation
-                pass
+        try:
+            builder_class = self.step_catalog.load_builder_class(script_name)
+            if builder_class:
+                # Extract arguments from builder class if available
+                builder_args = extract_builder_arguments(script_name, builder_class)
+        except Exception as e:
+            # Log warning but continue validation
+            pass
 
         # Validate path usage
         # Get node_type from specification (dummy_training is SOURCE)
@@ -326,36 +280,6 @@ class ScriptContractAlignmentTester:
         except Exception as e:
             raise Exception(f"Failed to load contract for {script_name}: {str(e)}")
 
-    def _find_contract_file_hybrid(self, script_name: str) -> Optional[str]:
-        """
-        Hybrid approach to find contract file: try entry_point mapping first, then FlexibleFileResolver as fallback.
-
-        Args:
-            script_name: Name of the script to find contract for
-
-        Returns:
-            Path to contract file or None if not found
-        """
-        script_filename = f"{script_name}.py"
-
-        # Method 1: Try entry_point mapping (authoritative source)
-        if script_filename in self._entry_point_to_contract:
-            contract_filename = self._entry_point_to_contract[script_filename]
-            contract_path = self.contracts_dir / contract_filename
-            if contract_path.exists():
-                return str(contract_path)
-
-        # Method 2: Try FlexibleFileResolver as fallback (pattern matching)
-        flexible_path = self.file_resolver.find_contract_file(script_name)
-        if flexible_path and Path(flexible_path).exists():
-            return flexible_path
-
-        # Method 3: Try naming convention as final fallback
-        conventional_path = self.contracts_dir / f"{script_name}_contract.py"
-        if conventional_path.exists():
-            return str(conventional_path)
-
-        return None
 
     def _resolve_logical_name_from_contract(
         self, path: str, contract: Dict[str, Any]
@@ -409,13 +333,8 @@ class ScriptContractAlignmentTester:
             # Use StepCatalog to discover contracts with scripts
             return self.step_catalog.discover_contracts_with_scripts()
         except Exception as e:
-            # Fallback to manual discovery if StepCatalog fails
-            scripts = []
-            if self.scripts_dir.exists():
-                for script_file in self.scripts_dir.glob("*.py"):
-                    if not script_file.name.startswith("__"):
-                        scripts.append(script_file.stem)
-            return sorted(scripts)
+            # Fallback to empty list if StepCatalog fails
+            return []
 
     def _enhance_with_step_type_validation(
         self, script_name: str, analysis: Dict[str, Any], contract: Dict[str, Any]
@@ -479,11 +398,15 @@ class ScriptContractAlignmentTester:
         """
         issues = []
 
-        # Get script content for pattern analysis
-        script_path = self.scripts_dir / f"{script_name}.py"
+        # Get script content for pattern analysis using StepCatalog
         try:
-            with open(script_path, "r", encoding="utf-8") as f:
-                script_content = f.read()
+            step_info = self.step_catalog.get_step_info(script_name)
+            if step_info and step_info.file_components.get('script'):
+                script_path = step_info.file_components['script'].path
+                with open(script_path, "r", encoding="utf-8") as f:
+                    script_content = f.read()
+            else:
+                return issues  # Can't analyze patterns without script content
         except Exception:
             return issues  # Can't analyze patterns without script content
 

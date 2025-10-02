@@ -74,8 +74,8 @@ class UnifiedAlignmentTester:
             except ImportError:
                 self.step_catalog = None
 
-        # Dynamically discover directories from step catalog
-        self._discover_component_directories()
+        # Note: Directory discovery removed - using StepCatalog exclusively
+        # All component discovery now handled by individual alignment testers via StepCatalog
 
         # Configure Level 3 validation based on mode
         if level3_validation_mode == "strict":
@@ -90,18 +90,20 @@ class UnifiedAlignmentTester:
                 f"⚠️  Unknown Level 3 validation mode '{level3_validation_mode}', using 'relaxed' mode"
             )
 
-        # Initialize level-specific testers with default directories
+        # Initialize level-specific testers with workspace-aware configuration
+        workspace_paths = [Path(wd) for wd in workspace_dirs] if workspace_dirs else None
+        
         self.level1_tester = ScriptContractAlignmentTester(
-            str(self.scripts_dir), str(self.contracts_dir), str(self.builders_dir)
+            workspace_dirs=workspace_paths
         )
         self.level2_tester = ContractSpecificationAlignmentTester(
-            str(self.contracts_dir), str(self.specs_dir)
+            workspace_dirs=workspace_paths
         )
         self.level3_tester = SpecificationDependencyAlignmentTester(
-            str(self.specs_dir), level3_config
+            validation_config=level3_config, workspace_dirs=workspace_paths
         )
         self.level4_tester = BuilderConfigurationAlignmentTester(
-            str(self.builders_dir), str(self.configs_dir)
+            workspace_dirs=workspace_paths
         )
 
         self.report = AlignmentReport()
@@ -117,111 +119,6 @@ class UnifiedAlignmentTester:
         # Phase 3 Enhancement: Step Type Enhancement System
         self.step_type_enhancement_router = StepTypeEnhancementRouter()
 
-    def _discover_component_directories(self):
-        """
-        Dynamically discover component directories from step catalog.
-        
-        Uses step catalog to find actual directory structure, supporting both:
-        - Package mode: src/cursus/steps/{component_type}/
-        - Workspace mode: workspace_dir/{component_type}/
-        """
-        try:
-            if self.step_catalog is not None:
-                # Try to discover directories from step catalog
-                discovered_dirs = self._get_directories_from_step_catalog()
-                if discovered_dirs:
-                    self.scripts_dir = discovered_dirs.get('scripts', Path("src/cursus/steps/scripts"))
-                    self.contracts_dir = discovered_dirs.get('contracts', Path("src/cursus/steps/contracts"))
-                    self.specs_dir = discovered_dirs.get('specs', Path("src/cursus/steps/specs"))
-                    self.builders_dir = discovered_dirs.get('builders', Path("src/cursus/steps/builders"))
-                    self.configs_dir = discovered_dirs.get('configs', Path("src/cursus/steps/configs"))
-                    return
-            
-            # Fallback to default package structure
-            self._set_default_directories()
-            
-        except Exception as e:
-            print(f"⚠️  Error discovering component directories: {e}")
-            # Fallback to default directories
-            self._set_default_directories()
-
-    def _get_directories_from_step_catalog(self) -> Optional[Dict[str, Path]]:
-        """
-        Extract component directories from step catalog's discovered structure.
-        
-        Returns:
-            Dictionary mapping component types to their directories, or None if not discoverable
-        """
-        try:
-            # Get a sample step to understand directory structure
-            available_steps = self.step_catalog.list_available_steps()
-            if not available_steps:
-                return None
-            
-            # Find a step with multiple components to understand structure
-            directories = {}
-            component_types = ['scripts', 'contracts', 'specs', 'builders', 'configs']
-            
-            for step_name in available_steps:
-                step_info = self.step_catalog.get_step_info(step_name)
-                if not step_info:
-                    continue
-                
-                # Extract directory paths from file components
-                for component_type_singular, metadata in step_info.file_components.items():
-                    if metadata and metadata.path:
-                        # Map singular to plural form
-                        component_type_plural = self._get_plural_component_type(component_type_singular)
-                        if component_type_plural in component_types:
-                            # Get parent directory (should be the component type directory)
-                            component_dir = metadata.path.parent
-                            directories[component_type_plural] = component_dir
-                
-                # If we found directories for most component types, we're good
-                if len(directories) >= 3:
-                    break
-            
-            # Fill in missing directories by inferring from discovered structure
-            if directories:
-                # Use any discovered directory as base to infer others
-                base_dir = None
-                for dir_path in directories.values():
-                    # Find the parent directory that contains component subdirectories
-                    potential_base = dir_path.parent
-                    if any((potential_base / comp_type).exists() for comp_type in component_types):
-                        base_dir = potential_base
-                        break
-                
-                if base_dir:
-                    # Fill in missing component directories
-                    for comp_type in component_types:
-                        if comp_type not in directories:
-                            directories[comp_type] = base_dir / comp_type
-            
-            return directories if directories else None
-            
-        except Exception as e:
-            print(f"⚠️  Error extracting directories from step catalog: {e}")
-            return None
-
-    def _get_plural_component_type(self, singular: str) -> str:
-        """Convert singular component type to plural form."""
-        mapping = {
-            'script': 'scripts',
-            'contract': 'contracts', 
-            'spec': 'specs',
-            'builder': 'builders',
-            'config': 'configs'
-        }
-        return mapping.get(singular, singular)
-
-    def _set_default_directories(self):
-        """Set default package directories."""
-        self.scripts_dir = Path("src/cursus/steps/scripts").resolve()
-        self.contracts_dir = Path("src/cursus/steps/contracts").resolve()
-        self.specs_dir = Path("src/cursus/steps/specs").resolve()
-        self.builders_dir = Path("src/cursus/steps/builders").resolve()
-        self.configs_dir = Path("src/cursus/steps/configs").resolve()
 
     def run_full_validation(
         self,
@@ -824,8 +721,10 @@ class UnifiedAlignmentTester:
         """Discover scripts using legacy file system discovery (fallback only)."""
         scripts = []
         try:
-            if self.scripts_dir.exists():
-                for script_file in self.scripts_dir.glob("*.py"):
+            # Use default package structure as fallback
+            scripts_dir = Path("src/cursus/steps/scripts").resolve()
+            if scripts_dir.exists():
+                for script_file in scripts_dir.glob("*.py"):
                     if not script_file.name.startswith("__"):
                         scripts.append(script_file.stem)
         except Exception as e:
@@ -839,10 +738,11 @@ class UnifiedAlignmentTester:
             if self.step_catalog:
                 return self._discover_contracts_with_catalog(self.step_catalog)
             else:
-                return self._discover_contracts_legacy()
+                print("⚠️  No StepCatalog available for contract discovery")
+                return []
         except Exception as e:
             print(f"⚠️  Error discovering contracts: {e}")
-            return self._discover_contracts_legacy()
+            return []
 
     def _discover_contracts_with_catalog(self, catalog) -> List[str]:
         """Discover contracts using step catalog (workspace-aware)."""
@@ -860,20 +760,6 @@ class UnifiedAlignmentTester:
             print(f"⚠️  Error discovering contracts with catalog: {e}")
             return []
 
-    def _discover_contracts_legacy(self) -> List[str]:
-        """Discover contracts using legacy file system discovery (fallback only)."""
-        contracts = []
-        try:
-            if self.contracts_dir.exists():
-                for contract_file in self.contracts_dir.glob("*_contract.py"):
-                    if not contract_file.name.startswith("__"):
-                        # Remove _contract.py suffix to get step name
-                        step_name = contract_file.stem[:-9]  # Remove '_contract'
-                        contracts.append(step_name)
-        except Exception as e:
-            print(f"⚠️  Error in legacy contract discovery: {e}")
-        
-        return sorted(contracts)
 
     def discover_specs(self) -> List[str]:
         """Discover all specification files using step catalog (workspace-aware)."""
@@ -881,10 +767,11 @@ class UnifiedAlignmentTester:
             if self.step_catalog:
                 return self._discover_specs_with_catalog(self.step_catalog)
             else:
-                return self._discover_specs_legacy()
+                print("⚠️  No StepCatalog available for spec discovery")
+                return []
         except Exception as e:
             print(f"⚠️  Error discovering specs: {e}")
-            return self._discover_specs_legacy()
+            return []
 
     def _discover_specs_with_catalog(self, catalog) -> List[str]:
         """Discover specs using step catalog (workspace-aware)."""
@@ -902,20 +789,6 @@ class UnifiedAlignmentTester:
             print(f"⚠️  Error discovering specs with catalog: {e}")
             return []
 
-    def _discover_specs_legacy(self) -> List[str]:
-        """Discover specs using legacy file system discovery (fallback only)."""
-        specs = []
-        try:
-            if self.specs_dir.exists():
-                for spec_file in self.specs_dir.glob("*_spec.py"):
-                    if not spec_file.name.startswith("__"):
-                        # Remove _spec.py suffix to get step name
-                        step_name = spec_file.stem[:-5]  # Remove '_spec'
-                        specs.append(step_name)
-        except Exception as e:
-            print(f"⚠️  Error in legacy spec discovery: {e}")
-        
-        return sorted(specs)
 
     def discover_builders(self) -> List[str]:
         """Discover all builder files using step catalog (workspace-aware)."""
@@ -923,10 +796,11 @@ class UnifiedAlignmentTester:
             if self.step_catalog:
                 return self._discover_builders_with_catalog(self.step_catalog)
             else:
-                return self._discover_builders_legacy()
+                print("⚠️  No StepCatalog available for builder discovery")
+                return []
         except Exception as e:
             print(f"⚠️  Error discovering builders: {e}")
-            return self._discover_builders_legacy()
+            return []
 
     def _discover_builders_with_catalog(self, catalog) -> List[str]:
         """Discover builders using step catalog (workspace-aware)."""
@@ -944,22 +818,6 @@ class UnifiedAlignmentTester:
             print(f"⚠️  Error discovering builders with catalog: {e}")
             return []
 
-    def _discover_builders_legacy(self) -> List[str]:
-        """Discover builders using legacy file system discovery (fallback only)."""
-        builders = []
-        try:
-            if self.builders_dir.exists():
-                for builder_file in self.builders_dir.glob("builder_*_step.py"):
-                    if not builder_file.name.startswith("__"):
-                        # Extract step name from builder_*_step.py pattern
-                        filename = builder_file.stem
-                        if filename.startswith("builder_") and filename.endswith("_step"):
-                            step_name = filename[8:-5]  # Remove 'builder_' and '_step'
-                            builders.append(step_name)
-        except Exception as e:
-            print(f"⚠️  Error in legacy builder discovery: {e}")
-        
-        return sorted(builders)
 
     def get_alignment_status_matrix(self) -> Dict[str, Dict[str, str]]:
         """

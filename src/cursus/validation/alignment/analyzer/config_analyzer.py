@@ -22,136 +22,15 @@ class ConfigurationAnalyzer:
     - Required/optional field classification
     """
 
-    def __init__(self, configs_dir: str):
+    def __init__(self):
         """
         Initialize the configuration analyzer.
-
-        Args:
-            configs_dir: Directory containing configuration files
+        
+        This analyzer works with configuration classes directly,
+        eliminating the need for directory-based discovery.
         """
-        self.configs_dir = Path(configs_dir)
+        pass
 
-    def load_config_from_python(
-        self, config_path: Path, builder_name: str
-    ) -> Dict[str, Any]:
-        """
-        Load configuration from Python file with robust import handling.
-
-        Args:
-            config_path: Path to the configuration file
-            builder_name: Name of the builder (for class name inference)
-
-        Returns:
-            Configuration analysis dictionary
-        """
-        try:
-            # Try to import the module directly
-            module_name = f"config_{builder_name}_step"
-
-            # Add both the configs directory and the project root to sys.path temporarily
-            configs_dir_str = str(self.configs_dir)
-            project_root_str = str(self.configs_dir.parent.parent.parent)
-
-            paths_to_add = []
-            if configs_dir_str not in sys.path:
-                sys.path.insert(0, configs_dir_str)
-                paths_to_add.append(configs_dir_str)
-            if project_root_str not in sys.path:
-                sys.path.insert(0, project_root_str)
-                paths_to_add.append(project_root_str)
-
-            try:
-                spec = importlib.util.spec_from_file_location(module_name, config_path)
-                module = importlib.util.module_from_spec(spec)
-
-                # Set up the module's __package__ to help with relative imports
-                # Use the correct package path based on the project structure
-                module.__package__ = "cursus.steps.configs"
-
-                # Add the module to sys.modules with the correct package structure
-                sys.modules[module_name] = module
-                sys.modules[f"cursus.steps.configs.{module_name}"] = module
-
-                spec.loader.exec_module(module)
-            finally:
-                # Clean up sys.path
-                for path in paths_to_add:
-                    if path in sys.path:
-                        sys.path.remove(path)
-
-            # Use systematic approach with step registry
-            config_class = None
-            config_class_name = None
-
-            # Strategy 1: Use step registry to get the correct config class name
-            try:
-                # Import the registry functions - use absolute import path
-                project_root = str(self.configs_dir.parent.parent.parent)
-                if project_root not in sys.path:
-                    sys.path.insert(0, project_root)
-
-                from ....registry.step_names import (
-                    get_canonical_name_from_file_name,
-                    get_config_class_name,
-                )
-
-                # Get canonical step name from builder name (script name)
-                canonical_name = get_canonical_name_from_file_name(builder_name)
-
-                # Get the correct config class name from registry
-                registry_config_class_name = get_config_class_name(canonical_name)
-
-                # Try to find this class in the module
-                if hasattr(module, registry_config_class_name):
-                    config_class = getattr(module, registry_config_class_name)
-                    config_class_name = registry_config_class_name
-
-            except Exception as registry_error:
-                # If registry approach fails, fall back to pattern matching
-                pass
-
-            # Strategy 2: Fallback to pattern matching if registry approach failed
-            if config_class is None:
-                possible_names = [
-                    f"{builder_name.title().replace('_', '')}Config",
-                    f"{''.join(word.capitalize() for word in builder_name.split('_'))}Config",
-                    f"{''.join(word.capitalize() for word in builder_name.split('_'))}StepConfig",  # StepConfig pattern
-                    f"CurrencyConversionConfig",  # Specific case
-                    f"DummyTrainingConfig",  # Specific case
-                    f"BatchTransformStepConfig",  # Specific case
-                    f"XGBoostModelEvalConfig",  # Specific case for xgboost_model_evaluation
-                ]
-
-                for name in possible_names:
-                    if hasattr(module, name):
-                        config_class = getattr(module, name)
-                        config_class_name = name
-                        break
-
-            if config_class is None:
-                # List all classes in the module for debugging
-                classes = [
-                    name
-                    for name in dir(module)
-                    if isinstance(getattr(module, name), type)
-                ]
-                raise ValueError(
-                    f"Configuration class not found in {config_path}. Available classes: {classes}"
-                )
-
-            # Analyze the configuration class
-            return self.analyze_config_class(config_class, config_class_name)
-
-        except Exception as e:
-            # Return a simplified analysis if we can't load the module
-            return {
-                "class_name": f"{builder_name}Config",
-                "fields": {},
-                "required_fields": set(),
-                "optional_fields": set(),
-                "default_values": {},
-                "load_error": str(e),
-            }
 
     def analyze_config_class(self, config_class, class_name: str) -> Dict[str, Any]:
         """

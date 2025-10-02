@@ -8,7 +8,6 @@ Ensures logical names, data types, and dependencies are consistent.
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 from ..validators.property_path_validator import SageMakerPropertyPathValidator
 from ..factories.smart_spec_selector import SmartSpecificationSelector
 from ..validators import ContractSpecValidator
@@ -27,38 +26,19 @@ class ContractSpecificationAlignmentTester:
     - Dependencies are properly declared
     """
 
-    def __init__(self, contracts_dir: str, specs_dir: str):
+    def __init__(self, workspace_dirs: Optional[List[Path]] = None):
         """
         Initialize the contract-specification alignment tester.
 
         Args:
-            contracts_dir: Directory containing script contracts
-            specs_dir: Directory containing step specifications
+            workspace_dirs: Optional list of workspace directories for workspace-aware discovery
         """
-        self.contracts_dir = Path(contracts_dir)
-        self.specs_dir = Path(specs_dir)
-
-        # Initialize FlexibleFileResolver for robust file discovery
-        base_directories = {
-            "contracts": str(self.contracts_dir),
-            "specs": str(self.specs_dir),
-        }
-        self.file_resolver = FlexibleFileResolver(base_directories)
-
         # Initialize property path validator
         self.property_path_validator = SageMakerPropertyPathValidator()
 
-        # Initialize StepCatalog for loading
+        # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
-        from ....step_catalog.contract_discovery import ContractAutoDiscovery
-        self.step_catalog = StepCatalog(workspace_dirs=None)
-        
-        # Initialize ContractAutoDiscovery for advanced contract loading
-        package_root = Path(__file__).parent.parent.parent.parent
-        self.contract_discovery = ContractAutoDiscovery(
-            package_root=package_root,
-            workspace_dirs=[]  # Can be extended for workspace support
-        )
+        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
         # Initialize smart specification selector
         self.smart_spec_selector = SmartSpecificationSelector()
@@ -108,7 +88,7 @@ class ContractSpecificationAlignmentTester:
 
     def validate_contract(self, script_or_contract_name: str) -> Dict[str, Any]:
         """
-        Validate alignment for a specific contract using Smart Specification Selection.
+        Validate alignment for a specific contract using StepCatalog.
 
         Args:
             script_or_contract_name: Name of the script or contract to validate
@@ -116,65 +96,29 @@ class ContractSpecificationAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        # Use FlexibleFileResolver to find the correct contract file
-        contract_file_path = self.file_resolver.find_contract_file(
-            script_or_contract_name
-        )
-
-        # Check if contract file exists
-        if not contract_file_path:
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "CRITICAL",
-                        "category": "missing_file",
-                        "message": f"Contract file not found for script: {script_or_contract_name}",
-                        "details": {
-                            "script": script_or_contract_name,
-                            "searched_patterns": [
-                                f"{script_or_contract_name}_contract.py",
-                                "Known naming patterns from FlexibleFileResolver",
-                            ],
-                        },
-                        "recommendation": f"Create contract file for {script_or_contract_name} or check naming patterns",
-                    }
-                ],
-            }
-
-        contract_path = Path(contract_file_path)
-        if not contract_path.exists():
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "CRITICAL",
-                        "category": "missing_file",
-                        "message": f"Contract file not found: {contract_path}",
-                        "recommendation": f"Create the contract file {contract_path.name}",
-                    }
-                ],
-            }
-
-        # Extract the actual contract name from the file path
-        # e.g., "xgboost_model_eval_contract.py" -> "xgboost_model_eval_contract"
-        actual_contract_name = contract_path.stem
-
-        # Load contract using ContractAutoDiscovery
+        # Load contract using StepCatalog
         try:
-            # Extract step name from contract name (remove _contract suffix)
-            step_name = actual_contract_name.replace("_contract", "")
-            contract_obj = self.contract_discovery.load_contract_class(step_name)
+            contract_obj = self.step_catalog.load_contract_class(script_or_contract_name)
             
             if contract_obj is None:
-                # Fallback to file-based loading if auto-discovery fails
-                contract_obj = self.contract_discovery._load_contract_from_file(contract_path, step_name)
-            
-            if contract_obj is None:
-                raise ValueError(f"No contract object found for {step_name}")
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "missing_file",
+                            "message": f"Contract not found for script: {script_or_contract_name}",
+                            "details": {
+                                "script": script_or_contract_name,
+                                "discovery_method": "StepCatalog.load_contract_class()",
+                            },
+                            "recommendation": f"Create contract for {script_or_contract_name} or check StepCatalog configuration",
+                        }
+                    ],
+                }
             
             # Convert contract object to dictionary format
-            contract = self._contract_to_dict(contract_obj, step_name)
+            contract = self._contract_to_dict(contract_obj, script_or_contract_name)
             
         except Exception as e:
             return {
@@ -184,13 +128,13 @@ class ContractSpecificationAlignmentTester:
                         "severity": "CRITICAL",
                         "category": "contract_load_error",
                         "message": f"Failed to load contract: {str(e)}",
-                        "recommendation": "Fix Python syntax or contract structure in contract file",
+                        "recommendation": "Fix contract structure or StepCatalog configuration",
                     }
                 ],
             }
 
         # Find and load specifications using enhanced StepCatalog
-        specifications = self._find_specifications_by_contract(actual_contract_name)
+        specifications = self._find_specifications_by_contract(script_or_contract_name)
 
         if not specifications:
             return {
@@ -199,8 +143,8 @@ class ContractSpecificationAlignmentTester:
                     {
                         "severity": "ERROR",
                         "category": "missing_specification",
-                        "message": f"No specification files found for {actual_contract_name}",
-                        "recommendation": f"Create specification files that reference {actual_contract_name}",
+                        "message": f"No specification files found for {script_or_contract_name}",
+                        "recommendation": f"Create specification files that reference {script_or_contract_name}",
                     }
                 ],
             }
@@ -228,7 +172,7 @@ class ContractSpecificationAlignmentTester:
 
         # SMART SPECIFICATION SELECTION: Create unified specification model
         unified_spec = self.smart_spec_selector.create_unified_specification(
-            specifications, actual_contract_name
+            specifications, script_or_contract_name
         )
 
         # Perform alignment validation against unified specification
@@ -236,25 +180,25 @@ class ContractSpecificationAlignmentTester:
 
         # Validate logical name alignment using smart multi-variant logic
         logical_issues = self.smart_spec_selector.validate_logical_names_smart(
-            contract, unified_spec, actual_contract_name
+            contract, unified_spec, script_or_contract_name
         )
         all_issues.extend(logical_issues)
 
         # Validate data type consistency
         type_issues = self.validator.validate_data_types(
-            contract, unified_spec["primary_spec"], actual_contract_name
+            contract, unified_spec["primary_spec"], script_or_contract_name
         )
         all_issues.extend(type_issues)
 
         # Validate input/output alignment
         io_issues = self.validator.validate_input_output_alignment(
-            contract, unified_spec["primary_spec"], actual_contract_name
+            contract, unified_spec["primary_spec"], script_or_contract_name
         )
         all_issues.extend(io_issues)
 
         # NEW: Validate property path references (Level 2 enhancement)
         property_path_issues = self._validate_property_paths(
-            unified_spec["primary_spec"], actual_contract_name
+            unified_spec["primary_spec"], script_or_contract_name
         )
         all_issues.extend(property_path_issues)
 
@@ -290,31 +234,15 @@ class ContractSpecificationAlignmentTester:
     # - _extract_job_type_from_spec_name -> SpecificationFileProcessor
     # - _validate_logical_names_smart -> SmartSpecificationSelector
 
-    def _discover_contracts(self) -> List[str]:
-        """Discover all contract files in the contracts directory."""
-        contracts = []
-
-        if self.contracts_dir.exists():
-            for contract_file in self.contracts_dir.glob("*_contract.py"):
-                if not contract_file.name.startswith("__"):
-                    contract_name = contract_file.stem.replace("_contract", "")
-                    contracts.append(contract_name)
-
-        return sorted(contracts)
-
     def _discover_contracts_with_scripts(self) -> List[str]:
         """
-        Discover contracts that have corresponding scripts by checking their entry_point field.
-
-        This method uses the ContractDiscoveryEngine to find contracts that have
-        corresponding scripts, preventing validation errors for contracts without scripts.
+        Discover contracts that have corresponding scripts using StepCatalog.
 
         Returns:
             List of contract names that have corresponding scripts
         """
-        # Use ContractDiscoveryEngine for robust contract discovery
-        discovery_engine = ContractDiscoveryEngine(str(self.contracts_dir))
-        return discovery_engine.discover_contracts_with_scripts()
+        # Use StepCatalog for contract discovery
+        return self.step_catalog.get_contract_entry_points()
 
     # Contract loading methods removed - now using ContractAutoDiscovery directly
 
@@ -358,25 +286,6 @@ class ContractSpecificationAlignmentTester:
         # Use enhanced StepCatalog method for contract-specification discovery
         return self.step_catalog.find_specs_by_contract(contract_name)
 
-    def _specification_references_contract(self, spec_file: Path, contract_name: str) -> bool:
-        """Check if a specification references a specific contract."""
-        # Use naming convention approach as the primary method
-        spec_name = spec_file.stem.replace("_spec", "")
-        
-        # Remove job type suffix if present
-        parts = spec_name.split("_")
-        if len(parts) > 1:
-            potential_job_types = ["training", "validation", "testing", "calibration"]
-            if parts[-1] in potential_job_types:
-                spec_name = "_".join(parts[:-1])
-
-        contract_base = contract_name.lower().replace("_contract", "")
-
-        # Check if the step type matches the contract name
-        if contract_base in spec_name.lower() or spec_name.lower() in contract_base:
-            return True
-
-        return False
 
     # REMOVED: Manual specification loading methods replaced by StepCatalog integration
     # - _load_specification_from_step_catalog() -> now uses step_catalog.find_specs_by_contract() + step_catalog.serialize_spec()

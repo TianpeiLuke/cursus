@@ -38,33 +38,21 @@ class SpecificationDependencyAlignmentTester:
     """
 
     def __init__(
-        self, specs_dir: str, validation_config: Level3ValidationConfig = None, workspace_dirs: Optional[List[Path]] = None
+        self, validation_config: Level3ValidationConfig = None, workspace_dirs: Optional[List[Path]] = None
     ):
         """
         Initialize the specification-dependency alignment tester.
 
         Args:
-            specs_dir: Directory containing step specifications
             validation_config: Configuration for validation thresholds and behavior
             workspace_dirs: Optional list of workspace directories for workspace-aware discovery
         """
-        self.specs_dir = Path(specs_dir)
         self.config = (
             validation_config or Level3ValidationConfig.create_relaxed_config()
         )
 
-        # Initialize extracted components with workspace-aware discovery
+        # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
-        
-        # If workspace_dirs not provided, try to infer from specs_dir
-        if workspace_dirs is None and self.specs_dir.exists():
-            # Check if specs_dir is part of a workspace structure
-            potential_workspace = self.specs_dir.parent
-            if potential_workspace.name in ['specs'] and (potential_workspace.parent / 'contracts').exists():
-                # specs_dir appears to be workspace_dir/specs, use parent as workspace
-                workspace_dirs = [potential_workspace.parent]
-                logger.info(f"Inferred workspace directory: {potential_workspace.parent}")
-        
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
         self.dependency_validator = DependencyValidator(self.config)
 
@@ -88,6 +76,8 @@ class SpecificationDependencyAlignmentTester:
     ) -> Dict[str, Dict[str, Any]]:
         """
         Validate alignment for all specifications or specified target scripts.
+        
+        This method uses StepCatalog's bulk loading for efficiency.
 
         Args:
             target_scripts: Specific scripts to validate (None for all)
@@ -97,11 +87,52 @@ class SpecificationDependencyAlignmentTester:
         """
         results = {}
 
+        # Load all specifications at once for efficiency
+        try:
+            all_specs = self.step_catalog.load_all_specifications()
+        except Exception as e:
+            logger.error(f"Failed to load specifications via StepCatalog: {e}")
+            # Fallback to individual loading
+            return self._validate_all_specifications_fallback(target_scripts)
+
+        # Filter to target scripts if specified
+        if target_scripts:
+            specs_to_validate = {name: spec for name, spec in all_specs.items() 
+                               if name in target_scripts}
+        else:
+            specs_to_validate = all_specs
+
+        # Validate each specification using the object-based method
+        for spec_name, spec_dict in specs_to_validate.items():
+            try:
+                result = self.validate_specification_object(spec_dict, spec_name)
+                results[spec_name] = result
+            except Exception as e:
+                results[spec_name] = {
+                    "passed": False,
+                    "error": str(e),
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "validation_error",
+                            "message": f"Failed to validate specification {spec_name}: {str(e)}",
+                        }
+                    ],
+                }
+
+        return results
+    
+    def _validate_all_specifications_fallback(
+        self, target_scripts: Optional[List[str]] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """Fallback method using individual specification loading."""
+        results = {}
+        
         # Discover specifications to validate
         if target_scripts:
             specs_to_validate = target_scripts
         else:
-            specs_to_validate = self._discover_specifications()
+            specs_to_validate = self.step_catalog.list_steps_with_specs()
 
         for spec_name in specs_to_validate:
             try:
@@ -132,113 +163,100 @@ class SpecificationDependencyAlignmentTester:
         Returns:
             Validation result dictionary
         """
-        # Find specification files (multiple files for different job types)
-        spec_files = self._find_specification_files(spec_name)
-
-        if not spec_files:
-            # Check if variant-specific files exist before reporting missing generic file
-            variant_files = []
-            job_type_suffixes = ["training", "validation", "testing", "calibration"]
+        # Load specification using StepCatalog with built-in error handling
+        spec_obj = self.step_catalog.load_spec_class(spec_name)
+        if not spec_obj:
+            return self._create_missing_spec_error(spec_name)
+        
+        # Serialize specification
+        try:
+            specification = self.step_catalog.serialize_spec(spec_obj)
+        except Exception as e:
+            return self._create_serialization_error(spec_name, str(e))
+        
+        # Perform validation using the simplified validation method
+        return self.validate_specification_object(specification, spec_name)
+    
+    def validate_specification_object(self, specification: Dict[str, Any], spec_name: str = None) -> Dict[str, Any]:
+        """
+        Validate a pre-loaded specification object.
+        
+        Args:
+            specification: Serialized specification dictionary
+            spec_name: Optional specification name for context
             
-            for job_type in job_type_suffixes:
-                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
-                if variant_file.exists():
-                    variant_files.append(variant_file)
-            
-            if variant_files:
-                # Variant files exist but weren't found by the loader - this is a loader issue
-                return {
-                    "passed": False,
-                    "issues": [
-                        {
-                            "severity": "ERROR",
-                            "category": "spec_loader_error",
-                            "message": f"Variant specification files found but not loaded: {[f.name for f in variant_files]}",
-                            "details": {
-                                "found_variants": [str(f) for f in variant_files],
-                                "spec_name": spec_name,
-                            },
-                            "recommendation": f"Check specification loader configuration for {spec_name}",
-                        }
-                    ],
-                }
-            else:
-                # No files found at all - report missing specification
-                return {
-                    "passed": False,
-                    "issues": [
-                        {
-                            "severity": "CRITICAL",
-                            "category": "missing_file",
-                            "message": f'No specification files found for {spec_name}. Expected either {spec_name}_spec.py or variant files like {spec_name}_training_spec.py',
-                            "details": {
-                                "spec_name": spec_name,
-                                "expected_generic": f"{spec_name}_spec.py",
-                                "expected_variants": [f"{spec_name}_{jt}_spec.py" for jt in job_type_suffixes],
-                            },
-                            "recommendation": f"Create specification file(s) for {spec_name}",
-                        }
-                    ],
-                }
-
-        # Load specifications from Python files
-        specifications = {}
-        for spec_file in spec_files:
-            try:
-                job_type = self._extract_job_type_from_spec_file(spec_file)
-                spec = self._load_specification_from_python(
-                    spec_file, spec_name, job_type
-                )
-                specifications[job_type] = spec
-            except Exception as e:
-                return {
-                    "passed": False,
-                    "issues": [
-                        {
-                            "severity": "CRITICAL",
-                            "category": "spec_parse_error",
-                            "message": f"Failed to parse specification from {spec_file}: {str(e)}",
-                            "recommendation": "Fix Python syntax or specification structure",
-                        }
-                    ],
-                }
-
-        # Use the first specification for validation (they should be consistent)
-        specification = next(iter(specifications.values()))
-
-        # Load all specifications for dependency resolution
+        Returns:
+            Validation result dictionary
+        """
+        # Load all specifications for dependency resolution (cached by StepCatalog)
         all_specs = self._load_all_specifications()
-
+        
         # Perform alignment validation
         issues = []
-
+        
         # Validate dependency resolution
         resolution_issues = self._validate_dependency_resolution(
-            specification, all_specs, spec_name
+            specification, all_specs, spec_name or "unknown"
         )
         issues.extend(resolution_issues)
-
+        
         # Validate circular dependencies
         circular_issues = self._validate_circular_dependencies(
-            specification, all_specs, spec_name
+            specification, all_specs, spec_name or "unknown"
         )
         issues.extend(circular_issues)
-
+        
         # Validate data type consistency
         type_issues = self._validate_dependency_data_types(
-            specification, all_specs, spec_name
+            specification, all_specs, spec_name or "unknown"
         )
         issues.extend(type_issues)
-
+        
         # Determine overall pass/fail status
         has_critical_or_error = any(
             issue["severity"] in ["CRITICAL", "ERROR"] for issue in issues
         )
-
+        
         return {
             "passed": not has_critical_or_error,
             "issues": issues,
             "specification": specification,
+        }
+    
+    def _create_missing_spec_error(self, spec_name: str) -> Dict[str, Any]:
+        """Create standardized error response for missing specifications."""
+        return {
+            "passed": False,
+            "issues": [
+                {
+                    "severity": "CRITICAL",
+                    "category": "spec_not_found",
+                    "message": f"No specification found for {spec_name} via StepCatalog",
+                    "details": {
+                        "spec_name": spec_name,
+                        "discovery_method": "StepCatalog.load_spec_class()",
+                    },
+                    "recommendation": f"Create specification for {spec_name} or check StepCatalog configuration",
+                }
+            ],
+        }
+    
+    def _create_serialization_error(self, spec_name: str, error_msg: str) -> Dict[str, Any]:
+        """Create standardized error response for serialization failures."""
+        return {
+            "passed": False,
+            "issues": [
+                {
+                    "severity": "CRITICAL",
+                    "category": "spec_serialization_error",
+                    "message": f"Failed to serialize specification for {spec_name}: {error_msg}",
+                    "details": {
+                        "spec_name": spec_name,
+                        "error": error_msg,
+                    },
+                    "recommendation": "Fix specification structure or StepCatalog serialization",
+                }
+            ],
         }
 
     def _validate_dependency_resolution(
@@ -312,92 +330,13 @@ class SpecificationDependencyAlignmentTester:
         logger.debug(f"Available canonical step names from registry: {canonical_names}")
         return canonical_names
 
-    def _get_canonical_step_name(self, spec_file_name: str) -> str:
-        """
-        Convert specification file name to canonical step name using the registry.
-
-        Uses the centralized FILE_NAME_TO_CANONICAL mapping as the single source of truth.
-
-        Args:
-            spec_file_name: File-based specification name (e.g., "dummy_training", "model_calibration", "model_evaluation_xgb")
-
-        Returns:
-            Canonical step name from the registry
-        """
-        try:
-            # Use the centralized registry mapping (single source of truth)
-            canonical_name = get_canonical_name_from_file_name(spec_file_name)
-            logger.debug(
-                f"Mapped spec file '{spec_file_name}' -> canonical '{canonical_name}' (registry)"
-            )
-            return canonical_name
-        except ValueError as e:
-            logger.debug(f"Registry mapping failed for '{spec_file_name}': {e}")
-
-        # Fallback: Try to load the specification file and get the step_type directly
-        try:
-            spec_files = self._find_specification_files(spec_file_name)
-            if spec_files:
-                spec_file = spec_files[0]  # Use the first file found
-                job_type = self._extract_job_type_from_spec_file(spec_file)
-                spec_dict = self._load_specification_from_python(
-                    spec_file, spec_file_name, job_type
-                )
-
-                # Get the step_type from the loaded specification
-                step_type = spec_dict.get("step_type")
-                if step_type:
-                    # Use the production function to get canonical name from step_type
-                    canonical_name = get_step_name_from_spec_type(step_type)
-                    logger.debug(
-                        f"Mapped spec file '{spec_file_name}' -> step_type '{step_type}' -> canonical '{canonical_name}' (fallback)"
-                    )
-                    return canonical_name
-        except Exception as e:
-            logger.debug(
-                f"Could not load specification file for '{spec_file_name}': {e}"
-            )
-
-        # Final fallback: Convert file name to spec_type format and try registry lookup
-        parts = spec_file_name.split("_")
-
-        # Handle job type variants
-        job_type_suffixes = ["training", "validation", "testing", "calibration"]
-        job_type = None
-        base_parts = parts
-
-        if len(parts) > 1 and parts[-1] in job_type_suffixes:
-            job_type = parts[-1]
-            base_parts = parts[:-1]
-
-        # Convert to PascalCase for spec_type
-        spec_type_base = "".join(word.capitalize() for word in base_parts)
-
-        if job_type:
-            spec_type = f"{spec_type_base}_{job_type.capitalize()}"
-        else:
-            spec_type = spec_type_base
-
-        # Use production function to get canonical name (strips job type suffix)
-        try:
-            canonical_name = get_step_name_from_spec_type(spec_type)
-            logger.debug(
-                f"Mapped spec file '{spec_file_name}' -> spec_type '{spec_type}' -> canonical '{canonical_name}' (final fallback)"
-            )
-            return canonical_name
-        except Exception as e:
-            # Ultimate fallback: return the base spec_type without job type suffix
-            logger.warning(
-                f"Failed to get canonical name for '{spec_file_name}' via all methods: {e}"
-            )
-            return spec_type_base
 
     def _populate_resolver_registry(self, all_specs: Dict[str, Dict[str, Any]]):
         """Populate the dependency resolver registry with all specifications using canonical names."""
         for spec_name, spec_dict in all_specs.items():
             try:
-                # Convert file-based spec name to canonical step name
-                canonical_name = self._get_canonical_step_name(spec_name)
+                # Convert file-based spec name to canonical step name using registry
+                canonical_name = get_canonical_name_from_file_name(spec_name)
 
                 # Convert dict back to StepSpecification object
                 step_spec = self._dict_to_step_specification(spec_dict)
@@ -473,7 +412,7 @@ class SpecificationDependencyAlignmentTester:
         available_steps = []
         for spec_name in all_specs.keys():
             try:
-                canonical_name = self._get_canonical_step_name(spec_name)
+                canonical_name = get_canonical_name_from_file_name(spec_name)
                 available_steps.append(canonical_name)
             except Exception as e:
                 logger.warning(f"Could not get canonical name for {spec_name}: {e}")
@@ -575,47 +514,7 @@ class SpecificationDependencyAlignmentTester:
             specification, all_specs, spec_name
         )
 
-    def _find_specification_files(self, spec_name: str) -> List[str]:
-        """Find all specification job type variants using StepCatalog."""
-        try:
-            # Use StepCatalog to get job type variants
-            return self.step_catalog.get_spec_job_type_variants(spec_name)
-        except Exception as e:
-            # Fallback to default if StepCatalog fails
-            return ["default"]
 
-    def _extract_job_type_from_spec_file(self, spec_file: Path) -> str:
-        """Extract job type from specification file name."""
-        # Pattern: {spec_name}_{job_type}_spec.py or {spec_name}_spec.py
-        stem = spec_file.stem
-        parts = stem.split("_")
-        if len(parts) >= 3 and parts[-1] == "spec":
-            return parts[-2]  # job_type is second to last part
-        return "default"
-
-    def _load_specification_from_python(
-        self, spec_path: Path, spec_name: str, job_type: str
-    ) -> Dict[str, Any]:
-        """Load specification using StepCatalog for advanced specification loading."""
-        try:
-            # Use StepCatalog for specification loading
-            spec_obj = self.step_catalog.load_spec_class(spec_name)
-            if spec_obj:
-                # Use StepCatalog for specification serialization
-                return self.step_catalog.serialize_spec(spec_obj)
-            else:
-                raise ValueError(f"No specification found for: {spec_name}")
-                
-        except Exception as e:
-            raise ValueError(f"Failed to load specification for {spec_name}: {str(e)}")
-
-    def _step_specification_to_dict(self, spec_obj: StepSpecification) -> Dict[str, Any]:
-        """Convert StepSpecification object to dictionary using StepCatalog."""
-        try:
-            # Use StepCatalog for specification serialization
-            return self.step_catalog.serialize_spec(spec_obj)
-        except Exception as e:
-            raise ValueError(f"Failed to serialize specification: {str(e)}")
 
     def _load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
         """Load all specification files using StepCatalog's load_all_specifications method."""
@@ -640,74 +539,6 @@ class SpecificationDependencyAlignmentTester:
             return self._load_all_specifications_legacy()
     
     def _load_all_specifications_legacy(self) -> Dict[str, Dict[str, Any]]:
-        """Legacy fallback method for loading specifications via direct file scanning."""
-        all_specs = {}
-
-        if self.specs_dir.exists():
-            for spec_file in self.specs_dir.glob("*_spec.py"):
-                spec_name = spec_file.stem.replace("_spec", "")
-                # Remove job type suffix if present
-                parts = spec_name.split("_")
-                if len(parts) > 1:
-                    # Try to identify if last part is a job type
-                    potential_job_types = [
-                        "training",
-                        "validation",
-                        "testing",
-                        "calibration",
-                    ]
-                    if parts[-1] in potential_job_types:
-                        spec_name = "_".join(parts[:-1])
-
-                if spec_name not in all_specs:
-                    try:
-                        job_type = self._extract_job_type_from_spec_file(spec_file)
-                        spec = self._load_specification_from_python(
-                            spec_file, spec_name, job_type
-                        )
-                        all_specs[spec_name] = spec
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to load specification {spec_name} from {spec_file}: {e}"
-                        )
-                        continue
-
-        return all_specs
-
-    def _discover_specifications(self) -> List[str]:
-        """Discover all specification files using StepCatalog unified discovery."""
-        try:
-            # Use StepCatalog's unified discovery to get all available steps
-            available_steps = self.step_catalog.list_available_steps()
-            
-            # Filter to only steps that have specification components
-            specifications = set()
-            for step_name in available_steps:
-                step_info = self.step_catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('spec'):
-                    specifications.add(step_name)
-            
-            logger.info(f"Discovered {len(specifications)} specifications via StepCatalog")
-            return sorted(list(specifications))
-            
-        except Exception as e:
-            logger.error(f"StepCatalog specification discovery failed: {e}")
-            
-            # Fallback to legacy file system scanning
-            logger.warning("Falling back to legacy file system specification discovery")
-            return self._discover_specifications_legacy()
-    
-    def _discover_specifications_legacy(self) -> List[str]:
-        """Legacy fallback method for discovering specifications via direct file scanning."""
-        specifications = set()
-
-        if self.specs_dir.exists():
-            for spec_file in self.specs_dir.glob("*_spec.py"):
-                if spec_file.name.startswith("__"):
-                    continue
-
-                # Use the actual file name (without .py extension) as the spec name
-                spec_name = spec_file.stem.replace("_spec", "")
-                specifications.add(spec_name)
-
-        return sorted(list(specifications))
+        """Legacy fallback method - returns empty dict since we rely on StepCatalog."""
+        logger.warning("Legacy fallback called - StepCatalog should handle all specification loading")
+        return {}
