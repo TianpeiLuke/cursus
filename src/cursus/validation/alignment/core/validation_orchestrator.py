@@ -201,42 +201,24 @@ class ValidationOrchestrator:
         self, contract_name: str
     ) -> Dict[str, Dict[str, Any]]:
         """
-        Discover and load all specifications for a contract using StepCatalog (PHASE 4.2 INTEGRATION).
+        Discover and load all specifications for a contract using enhanced StepCatalog methods.
         
         DESIGN PRINCIPLES: Uses catalog for discovery, maintains loading business logic.
         """
         specifications = {}
 
         try:
-            # PHASE 4.2: Use StepCatalog for specification discovery
-            step_info = self.catalog.get_step_info(contract_name)
-            if step_info and step_info.file_components.get('spec'):
-                spec_metadata = step_info.file_components['spec']
-                if spec_metadata and self.spec_loader:
-                    try:
-                        # Load specification using existing business logic
-                        spec = self.spec_loader.load_specification(
-                            spec_metadata.path, 
-                            {"contract_name": contract_name}
-                        )
-                        specifications[spec_metadata.path.stem] = spec
-                    except Exception as e:
-                        print(f"⚠️  Failed to load specification from {spec_metadata.path}: {str(e)}")
-
-            # Fallback to legacy discovery during transition period
-            if not specifications and self.spec_loader:
+            # PHASE 3.4: Use enhanced StepCatalog methods for specification discovery
+            spec_instances = self.catalog.find_specs_by_contract(contract_name)
+            
+            for spec_name, spec_instance in spec_instances.items():
                 try:
-                    spec_files = self.spec_loader.find_specifications_by_contract(contract_name)
-                    for spec_file, spec_info in spec_files.items():
-                        try:
-                            spec = self.spec_loader.load_specification(spec_file, spec_info)
-                            spec_key = spec_file.stem
-                            specifications[spec_key] = spec
-                        except Exception as e:
-                            print(f"⚠️  Failed to load specification from {spec_file}: {str(e)}")
-                            continue
+                    # Use StepCatalog for specification serialization
+                    spec_dict = self.catalog.serialize_spec(spec_instance)
+                    specifications[spec_name] = spec_dict
                 except Exception as e:
-                    print(f"⚠️  Error in legacy specification discovery for {contract_name}: {str(e)}")
+                    print(f"⚠️  Failed to serialize specification {spec_name}: {str(e)}")
+                    continue
 
             return specifications
 

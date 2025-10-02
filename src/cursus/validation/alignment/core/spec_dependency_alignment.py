@@ -564,44 +564,14 @@ class SpecificationDependencyAlignmentTester:
             specification, all_specs, spec_name
         )
 
-    def _find_specification_files(self, spec_name: str) -> List[Path]:
-        """Find all specification files for a specification using StepCatalog."""
-        spec_files = []
-        
-        # Try using step catalog first
+    def _find_specification_files(self, spec_name: str) -> List[str]:
+        """Find all specification job type variants using StepCatalog."""
         try:
-            step_info = self.step_catalog.get_step_info(spec_name)
-            if step_info and step_info.file_components.get('spec'):
-                spec_metadata = step_info.file_components['spec']
-                if spec_metadata and spec_metadata.path:
-                    spec_files.append(spec_metadata.path)
-                    
-                    # Look for job type variants in the same directory
-                    spec_dir = spec_metadata.path.parent
-                    base_name = spec_metadata.path.stem.replace("_spec", "")
-                    
-                    for job_type in ["training", "validation", "testing", "calibration"]:
-                        variant_file = spec_dir / f"{base_name}_{job_type}_spec.py"
-                        if variant_file.exists() and variant_file not in spec_files:
-                            spec_files.append(variant_file)
-                            
-        except Exception:
-            pass  # Fall back to direct file search
-
-        # FALLBACK METHOD: Direct file matching if catalog unavailable
-        if not spec_files:
-            # First, look for generic spec file
-            direct_spec_file = self.specs_dir / f"{spec_name}_spec.py"
-            if direct_spec_file.exists():
-                spec_files.append(direct_spec_file)
-
-            # Always look for job type variants, regardless of whether generic file exists
-            for job_type in ["training", "validation", "testing", "calibration"]:
-                variant_file = self.specs_dir / f"{spec_name}_{job_type}_spec.py"
-                if variant_file.exists() and variant_file not in spec_files:
-                    spec_files.append(variant_file)
-
-        return spec_files
+            # Use StepCatalog to get job type variants
+            return self.step_catalog.get_spec_job_type_variants(spec_name)
+        except Exception as e:
+            # Fallback to default if StepCatalog fails
+            return ["default"]
 
     def _extract_job_type_from_spec_file(self, spec_file: Path) -> str:
         """Extract job type from specification file name."""
@@ -615,120 +585,26 @@ class SpecificationDependencyAlignmentTester:
     def _load_specification_from_python(
         self, spec_path: Path, spec_name: str, job_type: str
     ) -> Dict[str, Any]:
-        """Load specification from Python file using StepCatalog."""
-        import sys
-        import importlib.util
-        
+        """Load specification using StepCatalog for advanced specification loading."""
         try:
-            # Add the project root to sys.path temporarily to handle relative imports
-            project_root = str(spec_path.parent.parent.parent.parent)
-            src_root = str(spec_path.parent.parent.parent)
-            specs_dir = str(spec_path.parent)
-
-            paths_to_add = [project_root, src_root, specs_dir]
-            added_paths = []
-
-            for path in paths_to_add:
-                if path not in sys.path:
-                    sys.path.insert(0, path)
-                    added_paths.append(path)
-
-            try:
-                # Load the module
-                spec = importlib.util.spec_from_file_location(
-                    f"{spec_path.stem}", spec_path
-                )
-                if spec is None or spec.loader is None:
-                    raise ImportError(
-                        f"Could not load specification module from {spec_path}"
-                    )
-
-                module = importlib.util.module_from_spec(spec)
-                module.__package__ = "cursus.steps.specs"
-                spec.loader.exec_module(module)
-            finally:
-                # Remove added paths from sys.path
-                for path in added_paths:
-                    if path in sys.path:
-                        sys.path.remove(path)
-
-            # Find spec constant
-            possible_names = [
-                f"{spec_name.upper()}_{job_type.upper()}_SPEC",
-                f"{spec_name.upper()}_SPEC",
-                f"{job_type.upper()}_SPEC",
-            ]
-
-            # Add dynamic discovery - scan for any constants ending with _SPEC
-            spec_constants = [
-                name
-                for name in dir(module)
-                if name.endswith("_SPEC") and not name.startswith("_")
-            ]
-            possible_names.extend(spec_constants)
-
-            spec_obj = None
-            for spec_var_name in possible_names:
-                if hasattr(module, spec_var_name):
-                    spec_obj = getattr(module, spec_var_name)
-                    break
-
-            if spec_obj is None:
-                raise ValueError(
-                    f"No specification constant found in {spec_path}. Tried: {possible_names}"
-                )
-
-            # Convert StepSpecification object to dictionary
-            return self._step_specification_to_dict(spec_obj)
-
+            # Use StepCatalog for specification loading
+            spec_obj = self.step_catalog.load_spec_class(spec_name)
+            if spec_obj:
+                # Use StepCatalog for specification serialization
+                return self.step_catalog.serialize_spec(spec_obj)
+            else:
+                raise ValueError(f"No specification found for: {spec_name}")
+                
         except Exception as e:
-            raise ValueError(f"Failed to load specification from {spec_path}: {str(e)}")
+            raise ValueError(f"Failed to load specification for {spec_name}: {str(e)}")
 
     def _step_specification_to_dict(self, spec_obj: StepSpecification) -> Dict[str, Any]:
-        """Convert StepSpecification object to dictionary representation."""
-        dependencies = []
-        for dep_name, dep_spec in spec_obj.dependencies.items():
-            dependencies.append(
-                {
-                    "logical_name": dep_spec.logical_name,
-                    "dependency_type": (
-                        dep_spec.dependency_type.value
-                        if hasattr(dep_spec.dependency_type, "value")
-                        else str(dep_spec.dependency_type)
-                    ),
-                    "required": dep_spec.required,
-                    "compatible_sources": dep_spec.compatible_sources,
-                    "data_type": dep_spec.data_type,
-                    "description": dep_spec.description,
-                }
-            )
-
-        outputs = []
-        for out_name, out_spec in spec_obj.outputs.items():
-            outputs.append(
-                {
-                    "logical_name": out_spec.logical_name,
-                    "output_type": (
-                        out_spec.output_type.value
-                        if hasattr(out_spec.output_type, "value")
-                        else str(out_spec.output_type)
-                    ),
-                    "property_path": out_spec.property_path,
-                    "data_type": out_spec.data_type,
-                    "description": out_spec.description,
-                }
-            )
-
-        return {
-            "step_type": spec_obj.step_type,
-            "node_type": (
-                spec_obj.node_type.value
-                if hasattr(spec_obj.node_type, "value")
-                else str(spec_obj.node_type)
-            ),
-            "dependencies": dependencies,
-            "outputs": outputs,
-        }
+        """Convert StepSpecification object to dictionary using StepCatalog."""
+        try:
+            # Use StepCatalog for specification serialization
+            return self.step_catalog.serialize_spec(spec_obj)
+        except Exception as e:
+            raise ValueError(f"Failed to serialize specification: {str(e)}")
 
     def _load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
         """Load all specification files using StepCatalog."""

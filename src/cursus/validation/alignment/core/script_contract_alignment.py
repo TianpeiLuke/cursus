@@ -313,128 +313,18 @@ class ScriptContractAlignmentTester:
     def _load_python_contract(
         self, contract_path: Path, script_name: str
     ) -> Dict[str, Any]:
-        """Load contract from Python module and convert to dictionary format."""
+        """Load contract using StepCatalog for advanced contract loading."""
         try:
-            # Add the project root to sys.path temporarily to handle relative imports
-            # Go up to the project root (where src/ is located)
-            project_root = str(
-                contract_path.parent.parent.parent.parent
-            )  # Go up to project root
-            src_root = str(contract_path.parent.parent.parent)  # Go up to src/ level
-            contract_dir = str(contract_path.parent)
-
-            paths_to_add = [project_root, src_root, contract_dir]
-            added_paths = []
-
-            for path in paths_to_add:
-                if path not in sys.path:
-                    sys.path.insert(0, path)
-                    added_paths.append(path)
-
-            try:
-                # Load the module
-                spec = importlib.util.spec_from_file_location(
-                    f"{script_name}_contract", contract_path
-                )
-                if spec is None or spec.loader is None:
-                    raise ImportError(
-                        f"Could not load contract module from {contract_path}"
-                    )
-
-                module = importlib.util.module_from_spec(spec)
-
-                # Set the module's package to handle relative imports
-                module.__package__ = "cursus.steps.contracts"
-
-                spec.loader.exec_module(module)
-            finally:
-                # Remove added paths from sys.path
-                for path in added_paths:
-                    if path in sys.path:
-                        sys.path.remove(path)
-
-            # Look for the contract object - try multiple naming patterns
-            contract_obj = None
-
-            # Try various naming patterns
-            possible_names = [
-                f"{script_name.upper()}_CONTRACT",
-                f"{script_name}_CONTRACT",
-                f"{script_name}_contract",
-                "MODEL_EVALUATION_CONTRACT",  # Specific for model_evaluation_xgb
-                "CONTRACT",
-                "contract",
-            ]
-
-            # Also try to find any variable ending with _CONTRACT
-            for attr_name in dir(module):
-                if attr_name.endswith("_CONTRACT") and not attr_name.startswith("_"):
-                    possible_names.append(attr_name)
-
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_names = []
-            for name in possible_names:
-                if name not in seen:
-                    seen.add(name)
-                    unique_names.append(name)
-
-            for name in unique_names:
-                if hasattr(module, name):
-                    contract_obj = getattr(module, name)
-                    # Verify it's actually a contract object
-                    if hasattr(contract_obj, "entry_point"):
-                        break
-                    else:
-                        contract_obj = None
-
-            if contract_obj is None:
-                raise AttributeError(
-                    f"No contract object found in {contract_path}. Tried: {unique_names}"
-                )
-
-            # Convert ScriptContract object to dictionary format
-            contract_dict = {
-                "entry_point": getattr(
-                    contract_obj, "entry_point", f"{script_name}.py"
-                ),
-                "inputs": {},
-                "outputs": {},
-                "arguments": {},
-                "environment_variables": {
-                    "required": getattr(contract_obj, "required_env_vars", []),
-                    "optional": getattr(contract_obj, "optional_env_vars", {}),
-                },
-                "description": getattr(contract_obj, "description", ""),
-                "framework_requirements": getattr(
-                    contract_obj, "framework_requirements", {}
-                ),
-            }
-
-            # Convert expected_input_paths to inputs format
-            if hasattr(contract_obj, "expected_input_paths"):
-                for logical_name, path in contract_obj.expected_input_paths.items():
-                    contract_dict["inputs"][logical_name] = {"path": path}
-
-            # Convert expected_output_paths to outputs format
-            if hasattr(contract_obj, "expected_output_paths"):
-                for logical_name, path in contract_obj.expected_output_paths.items():
-                    contract_dict["outputs"][logical_name] = {"path": path}
-
-            # Convert expected_arguments to arguments format
-            if hasattr(contract_obj, "expected_arguments"):
-                for arg_name, default_value in contract_obj.expected_arguments.items():
-                    contract_dict["arguments"][arg_name] = {
-                        "default": default_value,
-                        "required": default_value is None,
-                    }
-
-            return contract_dict
-
+            # Use StepCatalog for contract loading
+            contract_obj = self.step_catalog.load_contract_class(script_name)
+            if contract_obj:
+                # Use StepCatalog for contract serialization
+                return self.step_catalog.serialize_contract(contract_obj)
+            else:
+                raise AttributeError(f"No contract found for script: {script_name}")
+                
         except Exception as e:
-            raise Exception(
-                f"Failed to load Python contract from {contract_path}: {str(e)}"
-            )
+            raise Exception(f"Failed to load contract for {script_name}: {str(e)}")
 
     def _find_contract_file_hybrid(self, script_name: str) -> Optional[str]:
         """
@@ -501,96 +391,31 @@ class ScriptContractAlignmentTester:
 
     def _build_entry_point_mapping(self) -> Dict[str, str]:
         """
-        Build a mapping from entry_point values to contract file names.
+        Build a mapping from entry_point values to contract file names using StepCatalog.
 
         Returns:
             Dictionary mapping entry_point (script filename) to contract filename
         """
-        mapping = {}
-
-        if not self.contracts_dir.exists():
-            return mapping
-
-        # Scan all contract files
-        for contract_file in self.contracts_dir.glob("*_contract.py"):
-            if contract_file.name.startswith("__"):
-                continue
-
-            try:
-                # Extract entry_point from contract
-                entry_point = self._extract_entry_point_from_contract(contract_file)
-                if entry_point:
-                    mapping[entry_point] = contract_file.name
-            except Exception:
-                # Skip contracts that can't be loaded
-                continue
-
-        return mapping
-
-    def _extract_entry_point_from_contract(self, contract_path: Path) -> Optional[str]:
-        """
-        Extract the entry_point value from a contract file.
-
-        Args:
-            contract_path: Path to the contract file
-
-        Returns:
-            Entry point value or None if not found
-        """
         try:
-            # Add the project root to sys.path temporarily
-            project_root = str(contract_path.parent.parent.parent.parent)
-            src_root = str(contract_path.parent.parent.parent)
-            contract_dir = str(contract_path.parent)
-
-            paths_to_add = [project_root, src_root, contract_dir]
-            added_paths = []
-
-            for path in paths_to_add:
-                if path not in sys.path:
-                    sys.path.insert(0, path)
-                    added_paths.append(path)
-
-            try:
-                # Load the module
-                spec = importlib.util.spec_from_file_location(
-                    f"contract_{contract_path.stem}", contract_path
-                )
-                if spec is None or spec.loader is None:
-                    return None
-
-                module = importlib.util.module_from_spec(spec)
-                module.__package__ = "cursus.steps.contracts"
-                spec.loader.exec_module(module)
-
-                # Look for contract objects and extract entry_point
-                for attr_name in dir(module):
-                    if attr_name.endswith("_CONTRACT") or attr_name == "CONTRACT":
-                        contract_obj = getattr(module, attr_name)
-                        if hasattr(contract_obj, "entry_point"):
-                            return contract_obj.entry_point
-
-                return None
-
-            finally:
-                # Clean up sys.path
-                for path in added_paths:
-                    if path in sys.path:
-                        sys.path.remove(path)
-
-        except Exception:
-            return None
+            # Use StepCatalog for contract entry point discovery
+            return self.step_catalog.get_contract_entry_points()
+        except Exception as e:
+            # Fallback to empty mapping if StepCatalog fails
+            return {}
 
     def _discover_scripts(self) -> List[str]:
-        """Discover all Python scripts in the scripts directory."""
-        scripts = []
-
-        if self.scripts_dir.exists():
-            for script_file in self.scripts_dir.glob("*.py"):
-                if not script_file.name.startswith("__"):
-                    scripts.append(script_file.stem)
-
-        return sorted(scripts)
+        """Discover scripts that have corresponding contracts using StepCatalog."""
+        try:
+            # Use StepCatalog to discover contracts with scripts
+            return self.step_catalog.discover_contracts_with_scripts()
+        except Exception as e:
+            # Fallback to manual discovery if StepCatalog fails
+            scripts = []
+            if self.scripts_dir.exists():
+                for script_file in self.scripts_dir.glob("*.py"):
+                    if not script_file.name.startswith("__"):
+                        scripts.append(script_file.stem)
+            return sorted(scripts)
 
     def _enhance_with_step_type_validation(
         self, script_name: str, analysis: Dict[str, Any], contract: Dict[str, Any]

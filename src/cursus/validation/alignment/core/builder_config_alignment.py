@@ -53,6 +53,10 @@ class BuilderConfigurationAlignmentTester:
         self.builder_analyzer = BuilderCodeAnalyzer()
         self.pattern_recognizer = PatternRecognizer()
         
+        # Initialize StepCatalog for unified discovery
+        from ....step_catalog import StepCatalog
+        self.step_catalog = StepCatalog(workspace_dirs=None)
+        
         # Use modern HybridFileResolverAdapter with workspace root (expects Path, not dict)
         workspace_root = self.builders_dir.parent  # src/cursus/steps
         self.file_resolver = HybridFileResolver(workspace_root)
