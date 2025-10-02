@@ -25,10 +25,20 @@ class WorkspaceDiscoveryManagerAdapter:
     """
     
     def __init__(self, workspace_root: Path):
-        """Initialize with workspace root (updated for test compatibility)."""
+        """Initialize with workspace root using simplified structure assumption."""
         self.workspace_root = workspace_root
-        # PORTABLE: Use workspace-aware discovery for workspace discovery
-        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
+        
+        # Simplified structure: workspace_root directly contains workspace directories
+        # Each workspace directory directly contains component directories (contracts/, builders/, etc.)
+        workspace_dirs = []
+        if workspace_root.exists():
+            # Add all subdirectories as potential workspace directories
+            for item in workspace_root.iterdir():
+                if item.is_dir() and not item.name.startswith('.'):
+                    workspace_dirs.append(item)
+        
+        # PORTABLE: Use workspace-aware discovery with simplified structure
+        self.catalog = StepCatalog(workspace_dirs=workspace_dirs)
         self.logger = logging.getLogger(__name__)
         
         # Legacy compatibility attributes
@@ -38,7 +48,7 @@ class WorkspaceDiscoveryManagerAdapter:
         self.cache_expiry = 300
     
     def discover_workspaces(self, workspace_root: Path) -> Dict[str, Any]:
-        """Legacy method: discover available workspaces."""
+        """Legacy method: discover available workspaces with simplified structure."""
         try:
             discovery_result = {
                 "workspace_root": str(workspace_root),
@@ -51,41 +61,39 @@ class WorkspaceDiscoveryManagerAdapter:
                 },
             }
             
-            # Discover developer workspaces
-            developers_dir = workspace_root / "developers"
-            if developers_dir.exists():
-                for item in developers_dir.iterdir():
-                    if item.is_dir():
-                        # Count components in this workspace
-                        component_count = self._count_workspace_components(item)
-                        
-                        workspace_info = {
-                            "workspace_id": item.name,
-                            "workspace_path": str(item),
-                            "developer_id": item.name,
-                            "workspace_type": "developer",
-                            "component_count": component_count,
-                        }
-                        discovery_result["workspaces"].append(workspace_info)
+            # Simplified structure: Use configured workspace directories directly
+            # This aligns with our assumption that workspace_dirs directly contain component directories
+            for workspace_dir in self.catalog.workspace_dirs:
+                if workspace_dir.exists():
+                    # Count components in this workspace using simplified structure
+                    component_count = self._count_workspace_components(workspace_dir)
+                    
+                    # Determine workspace type based on directory name or path
+                    workspace_type = "shared" if workspace_dir.name == "shared" else "developer"
+                    
+                    workspace_info = {
+                        "workspace_id": workspace_dir.name,
+                        "workspace_path": str(workspace_dir),
+                        "developer_id": workspace_dir.name if workspace_type == "developer" else None,
+                        "workspace_type": workspace_type,
+                        "component_count": component_count,
+                    }
+                    discovery_result["workspaces"].append(workspace_info)
+                    
+                    if workspace_type == "developer":
                         discovery_result["summary"]["total_developers"] += 1
-                        discovery_result["summary"]["total_components"] += component_count
-            
-            # Discover shared workspace
-            shared_dir = workspace_root / "shared"
-            if shared_dir.exists():
-                component_count = self._count_workspace_components(shared_dir)
-                
-                shared_workspace = {
-                    "workspace_id": "shared",
-                    "workspace_path": str(shared_dir),
-                    "developer_id": None,
-                    "workspace_type": "shared",
-                    "component_count": component_count,
-                }
-                discovery_result["workspaces"].append(shared_workspace)
-                discovery_result["summary"]["total_components"] += component_count
+                    
+                    discovery_result["summary"]["total_components"] += component_count
             
             discovery_result["summary"]["total_workspaces"] = len(discovery_result["workspaces"])
+            
+            # Update workspace types summary
+            for workspace in discovery_result["workspaces"]:
+                workspace_type = workspace["workspace_type"]
+                if workspace_type not in discovery_result["summary"]["workspace_types"]:
+                    discovery_result["summary"]["workspace_types"][workspace_type] = 0
+                discovery_result["summary"]["workspace_types"][workspace_type] += 1
+            
             return discovery_result
             
         except Exception as e:
@@ -93,36 +101,15 @@ class WorkspaceDiscoveryManagerAdapter:
             return {"error": str(e)}
     
     def _count_workspace_components(self, workspace_path: Path) -> int:
-        """Count components in a workspace directory."""
+        """Count components in a workspace directory with simplified structure."""
         try:
             component_count = 0
-            cursus_dev_path = workspace_path / "src" / "cursus_dev" / "steps"
             
-            if cursus_dev_path.exists():
-                # Count builders
-                builders_path = cursus_dev_path / "builders"
-                if builders_path.exists():
-                    component_count += len([f for f in builders_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
-                
-                # Count configs
-                configs_path = cursus_dev_path / "configs"
-                if configs_path.exists():
-                    component_count += len([f for f in configs_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
-                
-                # Count contracts
-                contracts_path = cursus_dev_path / "contracts"
-                if contracts_path.exists():
-                    component_count += len([f for f in contracts_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
-                
-                # Count specs
-                specs_path = cursus_dev_path / "specs"
-                if specs_path.exists():
-                    component_count += len([f for f in specs_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
-                
-                # Count scripts
-                scripts_path = cursus_dev_path / "scripts"
-                if scripts_path.exists():
-                    component_count += len([f for f in scripts_path.glob("*.py") if f.is_file() and not f.name.startswith("__")])
+            # Simplified structure: workspace_path directly contains component directories
+            for component_type in ["builders", "configs", "contracts", "specs", "scripts"]:
+                component_dir = workspace_path / component_type
+                if component_dir.exists():
+                    component_count += len([f for f in component_dir.glob("*.py") if f.is_file() and not f.name.startswith("__")])
             
             return component_count
             
@@ -299,7 +286,7 @@ class WorkspaceDiscoveryManagerAdapter:
     
     def _find_workspace_path(self, workspace_id: str) -> Optional[Path]:
         """
-        Find the filesystem path for a workspace ID.
+        Find the filesystem path for a workspace ID with fully simplified structure.
         
         Args:
             workspace_id: ID of the workspace
@@ -308,26 +295,16 @@ class WorkspaceDiscoveryManagerAdapter:
             Path to workspace directory, or None if not found
         """
         try:
-            # Check if workspace_id matches any of our configured workspace directories
+            # Primary approach: Check configured workspace directories directly
+            # This aligns with our simplified structure where workspace_dirs directly contain component directories
             for workspace_dir in self.catalog.workspace_dirs:
                 if workspace_dir.name == workspace_id:
                     return workspace_dir
             
-            # Check traditional workspace structure
-            developers_dir = self.workspace_root / "developers" / workspace_id
-            if developers_dir.exists():
-                # Look for src/cursus_dev/steps structure
-                steps_dir = developers_dir / "src" / "cursus_dev" / "steps"
-                if steps_dir.exists():
-                    return steps_dir
-            
-            # Check shared workspace
-            if workspace_id == "shared":
-                shared_dir = self.workspace_root / "shared"
-                if shared_dir.exists():
-                    steps_dir = shared_dir / "src" / "cursus_dev" / "steps"
-                    if steps_dir.exists():
-                        return steps_dir
+            # Fallback: If workspace_id matches a configured workspace directory by path matching
+            for workspace_dir in self.catalog.workspace_dirs:
+                if workspace_id in str(workspace_dir):
+                    return workspace_dir
             
             return None
             
@@ -439,23 +416,14 @@ class WorkspaceDiscoveryManagerAdapter:
         return mock_loader
     
     def list_available_developers(self) -> List[str]:
-        """Legacy method: list available developers."""
+        """Legacy method: list available developers with simplified structure."""
         try:
-            if not self.workspace_root:
-                return []
-            
             developers = []
-            developers_dir = self.workspace_root / "developers"
             
-            if developers_dir.exists():
-                for item in developers_dir.iterdir():
-                    if item.is_dir():
-                        developers.append(item.name)
-            
-            # Add shared workspace if it exists
-            shared_dir = self.workspace_root / "shared"
-            if shared_dir.exists():
-                developers.append("shared")
+            # Simplified structure: Use configured workspace directories directly
+            for workspace_dir in self.catalog.workspace_dirs:
+                if workspace_dir.exists():
+                    developers.append(workspace_dir.name)
             
             return sorted(developers)
             
@@ -464,29 +432,25 @@ class WorkspaceDiscoveryManagerAdapter:
             return []
     
     def get_workspace_info(self, workspace_id: Optional[str] = None, developer_id: Optional[str] = None) -> Dict[str, Any]:
-        """Legacy method: get workspace info."""
+        """Legacy method: get workspace info with simplified structure."""
         try:
-            if not self.workspace_root:
-                return {"error": "No workspace root configured"}
-            
             target_id = workspace_id or developer_id
             if target_id:
-                if target_id == "shared":
-                    workspace_path = self.workspace_root / "shared"
-                else:
-                    workspace_path = self.workspace_root / "developers" / target_id
+                # Simplified structure: Find workspace using direct workspace directory access
+                workspace_path = self._find_workspace_path(target_id)
                 
-                if workspace_path.exists():
+                if workspace_path and workspace_path.exists():
+                    workspace_type = "shared" if target_id == "shared" else "developer"
                     return {
                         "workspace_id": target_id,
                         "workspace_path": str(workspace_path),
-                        "workspace_type": "shared" if target_id == "shared" else "developer",
+                        "workspace_type": workspace_type,
                         "exists": True
                     }
                 else:
                     return {"error": f"Workspace not found: {target_id}"}
             
-            # Return info for all workspaces
+            # Return info for all workspaces using simplified discovery
             return self.discover_workspaces(self.workspace_root)
             
         except Exception as e:

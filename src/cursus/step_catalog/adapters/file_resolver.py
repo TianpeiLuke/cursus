@@ -298,24 +298,24 @@ class DeveloperWorkspaceFileResolverAdapter(FlexibleFileResolverAdapter):
                 raise ValueError(f"Developer workspace does not exist: {dev_path}")
     
     def _setup_workspace_paths(self):
-        """Set up workspace-specific directory paths for legacy compatibility."""
+        """Set up workspace-specific directory paths with simplified structure."""
         if self.workspace_mode and self.developer_id:
-            # Developer workspace paths
-            dev_base = self.workspace_root / "developers" / self.developer_id / "src" / "cursus_dev" / "steps"
-            self.contracts_dir = dev_base / "contracts"
-            self.specs_dir = dev_base / "specs"
-            self.builders_dir = dev_base / "builders"
-            self.scripts_dir = dev_base / "scripts"
-            self.configs_dir = dev_base / "configs"
+            # Simplified structure: workspace directories directly contain component directories
+            dev_workspace = self.workspace_root / "developers" / self.developer_id
+            self.contracts_dir = dev_workspace / "contracts"
+            self.specs_dir = dev_workspace / "specs"
+            self.builders_dir = dev_workspace / "builders"
+            self.scripts_dir = dev_workspace / "scripts"
+            self.configs_dir = dev_workspace / "configs"
             
-            # Shared workspace paths (for fallback)
+            # Shared workspace paths (for fallback) with simplified structure
             if self.enable_shared_fallback:
-                shared_base = self.workspace_root / "shared" / "src" / "cursus_dev" / "steps"
-                self.shared_contracts_dir = shared_base / "contracts"
-                self.shared_specs_dir = shared_base / "specs"
-                self.shared_builders_dir = shared_base / "builders"
-                self.shared_scripts_dir = shared_base / "scripts"
-                self.shared_configs_dir = shared_base / "configs"
+                shared_workspace = self.workspace_root / "shared"
+                self.shared_contracts_dir = shared_workspace / "contracts"
+                self.shared_specs_dir = shared_workspace / "specs"
+                self.shared_builders_dir = shared_workspace / "builders"
+                self.shared_scripts_dir = shared_workspace / "scripts"
+                self.shared_configs_dir = shared_workspace / "configs"
         else:
             # Single workspace mode - no specific paths
             self.contracts_dir = None
