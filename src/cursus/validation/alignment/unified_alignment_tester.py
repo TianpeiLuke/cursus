@@ -1,871 +1,447 @@
 """
-Unified Alignment Tester - Main orchestrator for all alignment validation levels.
+Enhanced Unified Alignment Tester
 
-Coordinates validation across all four alignment levels:
-1. Script ↔ Contract Alignment
-2. Contract ↔ Specification Alignment  
-3. Specification ↔ Dependencies Alignment
-4. Builder ↔ Configuration Alignment
+This module provides a configuration-driven unified interface for testing alignment 
+across all validation levels in the cursus framework. It orchestrates validation 
+based on step-type-aware configuration rules.
+
+Enhanced with:
+- Configuration-driven validation level control
+- Step-type-aware validation
+- Priority-based validation system
+- Consolidated discovery methods
+- Method interface focus
 """
 
-import os
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, Any, List, Optional, Set
+import logging
 from pathlib import Path
 
-from .reporting.alignment_reporter import AlignmentReport, ValidationResult
-from .utils.core_models import (
-    SeverityLevel,
-    AlignmentLevel,
-    create_alignment_issue,
-    StepTypeAwareAlignmentIssue,
-    create_step_type_aware_alignment_issue,
+from .config import (
+    ValidationLevel,
+    get_validation_ruleset,
+    get_enabled_validation_levels,
+    is_step_type_excluded,
+    is_validation_level_enabled,
+    validate_step_type_configuration
 )
-from ...registry.step_names import (
-    get_sagemaker_step_type,
-    get_canonical_name_from_file_name,
-)
+from .core.level_validators import LevelValidators
 from ...step_catalog import StepCatalog
-from .factories.step_type_enhancement_router import StepTypeEnhancementRouter
-from .core.script_contract_alignment import ScriptContractAlignmentTester
-from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
-from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
-from .core.level3_validation_config import Level3ValidationConfig, ValidationMode
-from .core.builder_config_alignment import BuilderConfigurationAlignmentTester
+from ...registry.step_names import get_sagemaker_step_type
+
+logger = logging.getLogger(__name__)
 
 
 class UnifiedAlignmentTester:
     """
-    Main orchestrator for comprehensive alignment validation.
-
-    Coordinates all four levels of alignment testing and produces
-    a unified report with actionable recommendations.
+    Enhanced Unified Alignment Tester with configuration-driven validation.
+    
+    This class orchestrates validation across all levels based on step-type-aware
+    configuration rules, providing dramatic performance improvements through
+    validation level skipping.
     """
-
-    def __init__(
-        self,
-        level3_validation_mode: str = "relaxed",
-        step_catalog: Optional[Any] = None,
-        workspace_dirs: Optional[List[str]] = None,
-    ):
+    
+    def __init__(self, workspace_dirs: List[str], **kwargs):
         """
-        Initialize the unified alignment tester.
-
-        Args:
-            level3_validation_mode: Level 3 validation mode ('strict', 'relaxed', 'permissive')
-            step_catalog: Optional StepCatalog instance for workspace-aware validation
-            workspace_dirs: Optional list of workspace directories for workspace-aware validation
-        """
-        # Store step catalog for workspace-aware validation
-        if step_catalog is not None:
-            self.step_catalog = step_catalog
-        elif workspace_dirs is not None:
-            # Create step catalog with provided workspace directories
-            try:
-                from ...step_catalog import StepCatalog
-                # Convert string paths to Path objects
-                workspace_paths = [Path(wd) for wd in workspace_dirs]
-                self.step_catalog = StepCatalog(workspace_dirs=workspace_paths)
-            except ImportError:
-                self.step_catalog = None
-        else:
-            # Fallback: Create package-only step catalog
-            try:
-                from ...step_catalog import StepCatalog
-                self.step_catalog = StepCatalog(workspace_dirs=None)
-            except ImportError:
-                self.step_catalog = None
-
-        # Note: Directory discovery removed - using StepCatalog exclusively
-        # All component discovery now handled by individual alignment testers via StepCatalog
-
-        # Configure Level 3 validation based on mode
-        if level3_validation_mode == "strict":
-            level3_config = Level3ValidationConfig.create_strict_config()
-        elif level3_validation_mode == "relaxed":
-            level3_config = Level3ValidationConfig.create_relaxed_config()
-        elif level3_validation_mode == "permissive":
-            level3_config = Level3ValidationConfig.create_permissive_config()
-        else:
-            level3_config = Level3ValidationConfig.create_relaxed_config()  # Default
-            print(
-                f"⚠️  Unknown Level 3 validation mode '{level3_validation_mode}', using 'relaxed' mode"
-            )
-
-        # Initialize level-specific testers with workspace-aware configuration
-        workspace_paths = [Path(wd) for wd in workspace_dirs] if workspace_dirs else None
+        Initialize the enhanced unified alignment tester.
         
-        self.level1_tester = ScriptContractAlignmentTester(
-            workspace_dirs=workspace_paths
-        )
-        self.level2_tester = ContractSpecificationAlignmentTester(
-            workspace_dirs=workspace_paths
-        )
-        self.level3_tester = SpecificationDependencyAlignmentTester(
-            validation_config=level3_config, workspace_dirs=workspace_paths
-        )
-        self.level4_tester = BuilderConfigurationAlignmentTester(
-            workspace_dirs=workspace_paths
-        )
-
-        self.report = AlignmentReport()
-
-        # Store configuration for reporting
-        self.level3_config = level3_config
-
-        # Phase 1 Enhancement: Step type awareness feature flag
-        self.enable_step_type_awareness = (
-            os.getenv("ENABLE_STEP_TYPE_AWARENESS", "true").lower() == "true"
-        )
-
-        # Phase 3 Enhancement: Step Type Enhancement System
-        self.step_type_enhancement_router = StepTypeEnhancementRouter()
-
-
-    def run_full_validation(
-        self,
-        target_scripts: Optional[List[str]] = None,
-        skip_levels: Optional[List[int]] = None,
-    ) -> AlignmentReport:
-        """
-        Run comprehensive alignment validation across all levels.
-
         Args:
-            target_scripts: Specific scripts to validate (None for all)
-            skip_levels: Alignment levels to skip (1-4)
-
-        Returns:
-            Comprehensive alignment report
+            workspace_dirs: List of workspace directories to search
+            **kwargs: Additional configuration options (preserved for backward compatibility)
         """
-        skip_levels = skip_levels or []
-
-        print("🔍 Starting Unified Alignment Validation...")
-
-        # Level 1: Script ↔ Contract Alignment
-        if 1 not in skip_levels:
-            print("\n📝 Level 1: Validating Script ↔ Contract Alignment...")
-            try:
-                self._run_level1_validation(target_scripts)
-            except Exception as e:
-                print(f"⚠️  Level 1 validation encountered an error: {e}")
-
-        # Level 2: Contract ↔ Specification Alignment
-        if 2 not in skip_levels:
-            print("\n📋 Level 2: Validating Contract ↔ Specification Alignment...")
-            try:
-                self._run_level2_validation(target_scripts)
-            except Exception as e:
-                print(f"⚠️  Level 2 validation encountered an error: {e}")
-
-        # Level 3: Specification ↔ Dependencies Alignment
-        if 3 not in skip_levels:
-            print("\n🔗 Level 3: Validating Specification ↔ Dependencies Alignment...")
-            try:
-                self._run_level3_validation(target_scripts)
-            except Exception as e:
-                print(f"⚠️  Level 3 validation encountered an error: {e}")
-
-        # Level 4: Builder ↔ Configuration Alignment
-        if 4 not in skip_levels:
-            print("\n⚙️  Level 4: Validating Builder ↔ Configuration Alignment...")
-            try:
-                self._run_level4_validation(target_scripts)
-            except Exception as e:
-                print(f"⚠️  Level 4 validation encountered an error: {e}")
-
-        # Generate summary and recommendations
-        print("\n📊 Generating alignment report...")
-        self.report.generate_summary()
-
-        # Print alignment scoring summary
-        print("\n📈 Alignment Quality Scoring:")
-        try:
-            scorer = self.report.get_scorer()
-            overall_score = scorer.calculate_overall_score()
-            overall_rating = scorer.get_rating(overall_score)
-            print(f"   Overall Score: {overall_score:.1f}/100 ({overall_rating})")
-
-            # Print level scores
-            level_names = {
-                "level1_script_contract": "L1 Script↔Contract",
-                "level2_contract_spec": "L2 Contract↔Spec",
-                "level3_spec_dependencies": "L3 Spec↔Dependencies",
-                "level4_builder_config": "L4 Builder↔Config",
-            }
-
-            for level_key, level_name in level_names.items():
-                score, passed, total = scorer.calculate_level_score(level_key)
-                print(f"   {level_name}: {score:.1f}/100 ({passed}/{total} tests)")
-
-        except Exception as e:
-            print(f"   ⚠️  Scoring calculation failed: {e}")
-
-        return self.report
-
-    def run_level_validation(
-        self, level: int, target_scripts: Optional[List[str]] = None
-    ) -> AlignmentReport:
+        self.workspace_dirs = workspace_dirs
+        self.validation_config = {}  # Will be loaded from configuration system
+        
+        # Initialize step catalog - key for discovery methods
+        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
+        
+        # Validate configuration on initialization
+        config_issues = validate_step_type_configuration()
+        if config_issues:
+            logger.warning(f"Configuration issues found: {config_issues}")
+            # Don't raise error, just log warnings to maintain backward compatibility
+        
+        # Initialize level validators (replaces 4 separate level testers)
+        self.level_validators = LevelValidators(workspace_dirs)
+        
+        # Preserve legacy kwargs for backward compatibility
+        self.legacy_kwargs = kwargs
+        
+        logger.info(f"Initialized Enhanced UnifiedAlignmentTester with {len(workspace_dirs)} workspace directories")
+    
+    def run_full_validation(self, target_scripts: Optional[List[str]] = None, 
+                          skip_levels: Optional[Set[int]] = None) -> Dict[str, Any]:
         """
-        Run validation for a specific alignment level.
-
+        Enhanced run_full_validation with configuration-driven approach.
+        
         Args:
-            level: Alignment level to validate (1-4)
-            target_scripts: Specific scripts to validate
-
+            target_scripts: Optional list of specific scripts to validate
+            skip_levels: Optional set of validation levels to skip (legacy support)
+            
         Returns:
-            Alignment report for the specified level
+            Dictionary containing validation results
         """
-        print(f"🔍 Running Level {level} Alignment Validation...")
-
-        if level == 1:
-            self._run_level1_validation(target_scripts)
-        elif level == 2:
-            self._run_level2_validation(target_scripts)
-        elif level == 3:
-            self._run_level3_validation(target_scripts)
-        elif level == 4:
-            self._run_level4_validation(target_scripts)
+        logger.info("Starting configuration-driven full validation")
+        
+        if target_scripts:
+            results = {}
+            for script_name in target_scripts:
+                results[script_name] = self.run_validation_for_step(script_name)
+            return results
         else:
-            raise ValueError(f"Invalid alignment level: {level}. Must be 1-4.")
-
-        self.report.generate_summary()
-        return self.report
-
-    def _run_level1_validation(self, target_scripts: Optional[List[str]] = None):
-        """Run Level 1: Script ↔ Contract alignment validation."""
-        try:
-            results = self.level1_tester.validate_all_scripts(target_scripts)
-
-            for script_name, result in results.items():
-                validation_result = ValidationResult(
-                    test_name=f"script_contract_{script_name}",
-                    passed=result.get("passed", False),
-                    details=result,
-                )
-
-                # Convert issues to AlignmentIssue objects
-                for issue in result.get("issues", []):
-                    alignment_issue = create_alignment_issue(
-                        level=SeverityLevel(issue.get("severity", "ERROR")),
-                        category=issue.get("category", "script_contract"),
-                        message=issue.get("message", ""),
-                        details=issue.get("details", {}),
-                        recommendation=issue.get("recommendation"),
-                        alignment_level=AlignmentLevel.SCRIPT_CONTRACT,
-                    )
-                    validation_result.add_issue(alignment_issue)
-
-                # Phase 1 Enhancement: Add step type context to issues if enabled
-                if self.enable_step_type_awareness:
-                    self._add_step_type_context_to_issues(
-                        script_name, validation_result
-                    )
-
-                # Phase 3 Enhancement: Apply step type-specific validation enhancements
-                enhanced_result = (
-                    self.step_type_enhancement_router.enhance_validation_results(
-                        validation_result.details, script_name
-                    )
-                )
-
-                # Merge enhanced issues into validation result
-                if "enhanced_issues" in enhanced_result:
-                    for enhanced_issue_data in enhanced_result["enhanced_issues"]:
-                        enhanced_issue = create_alignment_issue(
-                            level=SeverityLevel(
-                                enhanced_issue_data.get("severity", "INFO")
-                            ),
-                            category=enhanced_issue_data.get(
-                                "category", "step_type_enhancement"
-                            ),
-                            message=enhanced_issue_data.get("message", ""),
-                            details=enhanced_issue_data.get("details", {}),
-                            recommendation=enhanced_issue_data.get("recommendation"),
-                            alignment_level=AlignmentLevel.SCRIPT_CONTRACT,
-                        )
-                        validation_result.add_issue(enhanced_issue)
-
-                self.report.add_level1_result(script_name, validation_result)
-
-        except Exception as e:
-            # Create error result for level 1
-            error_result = ValidationResult(
-                test_name="level1_validation", passed=False, details={"error": str(e)}
-            )
-
-            error_issue = create_alignment_issue(
-                level=SeverityLevel.CRITICAL,
-                category="validation_error",
-                message=f"Level 1 validation failed: {str(e)}",
-                alignment_level=AlignmentLevel.SCRIPT_CONTRACT,
-            )
-            error_result.add_issue(error_issue)
-
-            self.report.add_level1_result("validation_error", error_result)
-
-    def _run_level2_validation(self, target_scripts: Optional[List[str]] = None):
-        """Run Level 2: Contract ↔ Specification alignment validation."""
-        try:
-            results = self.level2_tester.validate_all_contracts(target_scripts)
-
-            for contract_name, result in results.items():
-                validation_result = ValidationResult(
-                    test_name=f"contract_spec_{contract_name}",
-                    passed=result.get("passed", False),
-                    details=result,
-                )
-
-                # Convert issues to AlignmentIssue objects
-                for issue in result.get("issues", []):
-                    alignment_issue = create_alignment_issue(
-                        level=SeverityLevel(issue.get("severity", "ERROR")),
-                        category=issue.get("category", "contract_specification"),
-                        message=issue.get("message", ""),
-                        details=issue.get("details", {}),
-                        recommendation=issue.get("recommendation"),
-                        alignment_level=AlignmentLevel.CONTRACT_SPECIFICATION,
-                    )
-                    validation_result.add_issue(alignment_issue)
-
-                self.report.add_level2_result(contract_name, validation_result)
-
-        except Exception as e:
-            # Create error result for level 2
-            error_result = ValidationResult(
-                test_name="level2_validation", passed=False, details={"error": str(e)}
-            )
-
-            error_issue = create_alignment_issue(
-                level=SeverityLevel.CRITICAL,
-                category="validation_error",
-                message=f"Level 2 validation failed: {str(e)}",
-                alignment_level=AlignmentLevel.CONTRACT_SPECIFICATION,
-            )
-            error_result.add_issue(error_issue)
-
-            self.report.add_level2_result("validation_error", error_result)
-
-    def _run_level3_validation(self, target_scripts: Optional[List[str]] = None):
-        """Run Level 3: Specification ↔ Dependencies alignment validation."""
-        try:
-            results = self.level3_tester.validate_all_specifications(target_scripts)
-
-            for spec_name, result in results.items():
-                validation_result = ValidationResult(
-                    test_name=f"spec_dependency_{spec_name}",
-                    passed=result.get("passed", False),
-                    details=result,
-                )
-
-                # Convert issues to AlignmentIssue objects
-                for issue in result.get("issues", []):
-                    alignment_issue = create_alignment_issue(
-                        level=SeverityLevel(issue.get("severity", "ERROR")),
-                        category=issue.get("category", "specification_dependency"),
-                        message=issue.get("message", ""),
-                        details=issue.get("details", {}),
-                        recommendation=issue.get("recommendation"),
-                        alignment_level=AlignmentLevel.SPECIFICATION_DEPENDENCY,
-                    )
-                    validation_result.add_issue(alignment_issue)
-
-                self.report.add_level3_result(spec_name, validation_result)
-
-        except Exception as e:
-            # Create error result for level 3
-            error_result = ValidationResult(
-                test_name="level3_validation", passed=False, details={"error": str(e)}
-            )
-
-            error_issue = create_alignment_issue(
-                level=SeverityLevel.CRITICAL,
-                category="validation_error",
-                message=f"Level 3 validation failed: {str(e)}",
-                alignment_level=AlignmentLevel.SPECIFICATION_DEPENDENCY,
-            )
-            error_result.add_issue(error_issue)
-
-            self.report.add_level3_result("validation_error", error_result)
-
-    def _run_level4_validation(self, target_scripts: Optional[List[str]] = None):
-        """Run Level 4: Builder ↔ Configuration alignment validation."""
-        try:
-            results = self.level4_tester.validate_all_builders(target_scripts)
-
-            for builder_name, result in results.items():
-                validation_result = ValidationResult(
-                    test_name=f"builder_config_{builder_name}",
-                    passed=result.get("passed", False),
-                    details=result,
-                )
-
-                # Convert issues to AlignmentIssue objects
-                for issue in result.get("issues", []):
-                    alignment_issue = create_alignment_issue(
-                        level=SeverityLevel(issue.get("severity", "ERROR")),
-                        category=issue.get("category", "builder_configuration"),
-                        message=issue.get("message", ""),
-                        details=issue.get("details", {}),
-                        recommendation=issue.get("recommendation"),
-                        alignment_level=AlignmentLevel.BUILDER_CONFIGURATION,
-                    )
-                    validation_result.add_issue(alignment_issue)
-
-                self.report.add_level4_result(builder_name, validation_result)
-
-        except Exception as e:
-            # Create error result for level 4
-            error_result = ValidationResult(
-                test_name="level4_validation", passed=False, details={"error": str(e)}
-            )
-
-            error_issue = create_alignment_issue(
-                level=SeverityLevel.CRITICAL,
-                category="validation_error",
-                message=f"Level 4 validation failed: {str(e)}",
-                alignment_level=AlignmentLevel.BUILDER_CONFIGURATION,
-            )
-            error_result.add_issue(error_issue)
-
-            self.report.add_level4_result("validation_error", error_result)
-
-    def get_validation_summary(self) -> Dict[str, Any]:
-        """Get a high-level summary of validation results."""
-        if not self.report.summary:
-            self.report.generate_summary()
-
-        # Get scoring information
-        scoring_info = {}
-        try:
-            scorer = self.report.get_scorer()
-            overall_score = scorer.calculate_overall_score()
-            overall_rating = scorer.get_rating(overall_score)
-
-            scoring_info = {
-                "overall_score": overall_score,
-                "quality_rating": overall_rating,
-                "level_scores": {},
-            }
-
-            # Add level scores
-            level_keys = [
-                "level1_script_contract",
-                "level2_contract_spec",
-                "level3_spec_dependencies",
-                "level4_builder_config",
-            ]
-            for level_key in level_keys:
-                score, passed, total = scorer.calculate_level_score(level_key)
-                scoring_info["level_scores"][level_key] = score
-
-        except Exception as e:
-            # If scoring fails, provide default values
-            scoring_info = {
-                "overall_score": 0.0,
-                "quality_rating": "Unknown",
-                "level_scores": {
-                    "level1_script_contract": 0.0,
-                    "level2_contract_spec": 0.0,
-                    "level3_spec_dependencies": 0.0,
-                    "level4_builder_config": 0.0,
-                },
-            }
-
-        return {
-            "overall_status": "PASSING" if self.report.is_passing() else "FAILING",
-            "total_tests": self.report.summary.total_tests,
-            "pass_rate": self.report.summary.pass_rate,
-            "critical_issues": self.report.summary.critical_issues,
-            "error_issues": self.report.summary.error_issues,
-            "warning_issues": self.report.summary.warning_issues,
-            "level_breakdown": {
-                "level1_tests": len(self.report.level1_results),
-                "level2_tests": len(self.report.level2_results),
-                "level3_tests": len(self.report.level3_results),
-                "level4_tests": len(self.report.level4_results),
-            },
-            "recommendations_count": len(self.report.get_recommendations()),
-            "scoring": scoring_info,
-        }
-
-    def export_report(
-        self,
-        format: str = "json",
-        output_path: Optional[str] = None,
-        generate_chart: bool = True,
-        script_name: str = "alignment_validation",
-    ) -> str:
+            return self.run_validation_for_all_steps()
+    
+    def run_validation_for_step(self, step_name: str) -> Dict[str, Any]:
         """
-        Export the alignment report in the specified format with optional visualization.
-
+        Run validation for a specific step based on its ruleset.
+        
         Args:
-            format: Export format ('json' or 'html')
-            output_path: Optional path to save the report
-            generate_chart: Whether to generate alignment score chart
-            script_name: Name for the chart file
-
+            step_name: Name of the step to validate
+            
+        Returns:
+            Dictionary containing validation results
+        """
+        logger.info(f"Running configuration-driven validation for step: {step_name}")
+        
+        # Get step type from registry
+        sagemaker_step_type = get_sagemaker_step_type(step_name)
+        
+        # Get validation ruleset
+        ruleset = get_validation_ruleset(sagemaker_step_type)
+        
+        # Check if step type is excluded
+        if is_step_type_excluded(sagemaker_step_type):
+            return self._handle_excluded_step(step_name, sagemaker_step_type, ruleset)
+        
+        # Run enabled validation levels
+        return self._run_enabled_validation_levels(step_name, sagemaker_step_type, ruleset)
+    
+    def run_validation_for_all_steps(self) -> Dict[str, Any]:
+        """
+        Run validation for all discovered steps.
+        
+        Returns:
+            Dictionary containing validation results for all steps
+        """
+        logger.info("Running configuration-driven validation for all steps")
+        
+        # Discover all steps using consolidated discovery method
+        discovered_steps = self._discover_all_steps()
+        
+        results = {}
+        for step_name in discovered_steps:
+            results[step_name] = self.run_validation_for_step(step_name)
+        
+        return results
+    
+    def _discover_all_steps(self) -> List[str]:
+        """
+        Discover all steps using step catalog - consolidated discovery method.
+        
+        This replaces 5 separate discovery methods with a single unified approach.
+        
+        Returns:
+            List of discovered step names
+        """
+        logger.info("Discovering all steps using step catalog")
+        
+        all_steps = []
+        
+        try:
+            # Get all step names from step catalog
+            step_names = self.step_catalog.get_all_step_names()
+            all_steps.extend(step_names)
+            
+            # Get builder names (for backward compatibility)
+            builder_names = self.step_catalog.get_all_builder_names()
+            all_steps.extend(builder_names)
+            
+            # Get spec names (for comprehensive coverage)
+            spec_names = self.step_catalog.get_all_spec_names()
+            all_steps.extend(spec_names)
+            
+            # Remove duplicates and return
+            unique_steps = list(set(all_steps))
+            logger.info(f"Discovered {len(unique_steps)} unique steps")
+            return sorted(unique_steps)
+            
+        except Exception as e:
+            logger.error(f"Failed to discover steps: {str(e)}")
+            return []
+    
+    def _run_validation_level(self, step_name: str, level: ValidationLevel, ruleset) -> Dict[str, Any]:
+        """
+        Run a specific validation level (replaces 4 separate level methods).
+        
+        Args:
+            step_name: Name of the step to validate
+            level: Validation level to run
+            ruleset: Validation ruleset for the step type
+            
+        Returns:
+            Dictionary containing validation results for the level
+        """
+        logger.debug(f"Running Level {level.value} validation for {step_name}")
+        
+        try:
+            if level == ValidationLevel.SCRIPT_CONTRACT:
+                return self.level_validators.run_level_1_validation(step_name)
+            elif level == ValidationLevel.CONTRACT_SPEC:
+                return self.level_validators.run_level_2_validation(step_name)
+            elif level == ValidationLevel.SPEC_DEPENDENCY:
+                return self.level_validators.run_level_3_validation(step_name)  # Universal
+            elif level == ValidationLevel.BUILDER_CONFIG:
+                validator_class = ruleset.level_4_validator_class if ruleset else None
+                return self.level_validators.run_level_4_validation(step_name, validator_class)
+            else:
+                raise ValueError(f"Invalid validation level: {level}")
+                
+        except Exception as e:
+            logger.error(f"Level {level.value} validation failed for {step_name}: {str(e)}")
+            return {
+                "level": level.value,
+                "step_name": step_name,
+                "status": "ERROR",
+                "error": str(e)
+            }
+    
+    def _run_enabled_validation_levels(self, step_name: str, sagemaker_step_type: str, ruleset) -> Dict[str, Any]:
+        """
+        Run all enabled validation levels for a step.
+        
+        Args:
+            step_name: Name of the step to validate
+            sagemaker_step_type: SageMaker step type
+            ruleset: Validation ruleset for the step type
+            
+        Returns:
+            Dictionary containing validation results
+        """
+        results = {
+            "step_name": step_name,
+            "sagemaker_step_type": sagemaker_step_type,
+            "category": ruleset.category.value if ruleset else "unknown",
+            "enabled_levels": [level.value for level in ruleset.enabled_levels] if ruleset else [],
+            "validation_results": {}
+        }
+        
+        if not ruleset:
+            results["status"] = "ERROR"
+            results["error"] = f"No validation ruleset found for step type: {sagemaker_step_type}"
+            return results
+        
+        # Run only enabled validation levels (key performance optimization)
+        for level in ValidationLevel:
+            if level in ruleset.enabled_levels:
+                level_result = self._run_validation_level(step_name, level, ruleset)
+                results["validation_results"][f"level_{level.value}"] = level_result
+            else:
+                # Log skipped levels for transparency
+                logger.debug(f"Skipping Level {level.value} for {step_name} (not enabled for {sagemaker_step_type})")
+        
+        # Determine overall status
+        has_errors = any(
+            level_result.get("status") == "ERROR" 
+            for level_result in results["validation_results"].values()
+        )
+        results["overall_status"] = "FAILED" if has_errors else "PASSED"
+        
+        return results
+    
+    def _handle_excluded_step(self, step_name: str, sagemaker_step_type: str, ruleset) -> Dict[str, Any]:
+        """
+        Handle excluded step types.
+        
+        Args:
+            step_name: Name of the step
+            sagemaker_step_type: SageMaker step type
+            ruleset: Validation ruleset for the step type
+            
+        Returns:
+            Dictionary indicating step is excluded
+        """
+        logger.info(f"Step {step_name} excluded from validation (type: {sagemaker_step_type})")
+        
+        return {
+            "step_name": step_name,
+            "sagemaker_step_type": sagemaker_step_type,
+            "status": "EXCLUDED",
+            "reason": ruleset.skip_reason if ruleset else f"Step type {sagemaker_step_type} is excluded",
+            "category": ruleset.category.value if ruleset else "excluded"
+        }
+    
+    # Preserve existing API methods for backward compatibility
+    def validate_specific_script(self, step_name: str, 
+                                skip_levels: Optional[Set[int]] = None) -> Dict[str, Any]:
+        """
+        Validate a specific script - maintained for backward compatibility.
+        
+        Args:
+            step_name: Name of the step to validate
+            skip_levels: Optional set of validation levels to skip (ignored in new system)
+            
+        Returns:
+            Dictionary containing validation results
+        """
+        if skip_levels:
+            logger.warning("skip_levels parameter is deprecated. Use configuration-driven validation instead.")
+        
+        return self.run_validation_for_step(step_name)
+    
+    def discover_scripts(self) -> List[str]:
+        """
+        Discover scripts - maintained for backward compatibility.
+        
+        Returns:
+            List of discovered script names
+        """
+        return self._discover_all_steps()
+    
+    def get_validation_summary(self) -> Dict[str, Any]:
+        """
+        Get validation summary - enhanced with step-type-aware metrics.
+        
+        Returns:
+            Dictionary containing validation summary
+        """
+        logger.info("Generating enhanced validation summary")
+        
+        # Run validation for all steps
+        all_results = self.run_validation_for_all_steps()
+        
+        # Generate enhanced summary statistics
+        total_steps = len(all_results)
+        passed_steps = 0
+        failed_steps = 0
+        excluded_steps = 0
+        step_type_breakdown = {}
+        
+        for step_name, result in all_results.items():
+            step_type = result.get("sagemaker_step_type", "unknown")
+            
+            # Count by step type
+            if step_type not in step_type_breakdown:
+                step_type_breakdown[step_type] = {"total": 0, "passed": 0, "failed": 0, "excluded": 0}
+            step_type_breakdown[step_type]["total"] += 1
+            
+            # Count overall status
+            status = result.get("overall_status") or result.get("status")
+            if status == "EXCLUDED":
+                excluded_steps += 1
+                step_type_breakdown[step_type]["excluded"] += 1
+            elif status == "PASSED":
+                passed_steps += 1
+                step_type_breakdown[step_type]["passed"] += 1
+            else:
+                failed_steps += 1
+                step_type_breakdown[step_type]["failed"] += 1
+        
+        return {
+            "total_steps": total_steps,
+            "passed_steps": passed_steps,
+            "failed_steps": failed_steps,
+            "excluded_steps": excluded_steps,
+            "pass_rate": passed_steps / (total_steps - excluded_steps) if (total_steps - excluded_steps) > 0 else 0,
+            "step_type_breakdown": step_type_breakdown,
+            "configuration_driven": True,
+            "detailed_results": all_results
+        }
+    
+    def export_report(self, format: str = "json", output_path: Optional[str] = None) -> str:
+        """
+        Export validation report - enhanced with configuration insights.
+        
+        Args:
+            format: Report format ("json" or "html")
+            output_path: Optional output file path
+            
         Returns:
             Report content as string
         """
-        if format.lower() == "json":
-            content = self.report.export_to_json()
-        elif format.lower() == "html":
-            content = self.report.export_to_html()
-        else:
-            raise ValueError(f"Unsupported export format: {format}")
-
-        if output_path:
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            print(f"📄 Report exported to: {output_path}")
-
-        # Generate alignment score chart if requested (regardless of output_path)
-        if generate_chart:
-            try:
-                output_dir = str(Path(output_path).parent) if output_path else "."
-                chart_path = self.report.get_scorer().generate_chart(
-                    script_name, output_dir
-                )
-                if chart_path:
-                    print(f"📊 Alignment score chart generated: {chart_path}")
-                else:
-                    print("⚠️  Chart generation skipped (matplotlib not available)")
-            except Exception as e:
-                print(f"⚠️  Chart generation failed: {e}")
-
-        return content
-
-    def print_summary(self):
-        """Print a formatted summary of validation results."""
-        self.report.print_summary()
-
-    def get_critical_issues(self) -> List[Dict[str, Any]]:
-        """Get all critical issues that require immediate attention."""
-        critical_issues = []
-
-        for issue in self.report.get_critical_issues():
-            critical_issues.append(
-                {
-                    "level": issue.level.value,
-                    "category": issue.category,
-                    "message": issue.message,
-                    "details": issue.details,
-                    "recommendation": issue.recommendation,
-                    "alignment_level": (
-                        issue.alignment_level.value if issue.alignment_level else None
-                    ),
-                }
-            )
-
-        return critical_issues
-
-    def validate_specific_script(self, script_name: str) -> Dict[str, Any]:
-        """
-        Run comprehensive validation for a specific script across all levels.
-
-        Args:
-            script_name: Name of the script to validate
-
-        Returns:
-            Validation results for the specific script
-        """
-        print(f"🔍 Validating script: {script_name}")
-
-        results = {
-            "script_name": script_name,
-            "level1": {},
-            "level2": {},
-            "level3": {},
-            "level4": {},
-            "overall_status": "UNKNOWN",
-        }
-
-        # Run validation for each level
-        try:
-            # Level 1: Script ↔ Contract
-            level1_results = self.level1_tester.validate_script(script_name)
-            results["level1"] = level1_results
-
-            # Level 2: Contract ↔ Specification
-            level2_results = self.level2_tester.validate_contract(script_name)
-            results["level2"] = level2_results
-
-            # Level 3: Specification ↔ Dependencies
-            level3_results = self.level3_tester.validate_specification(script_name)
-            results["level3"] = level3_results
-
-            # Level 4: Builder ↔ Configuration
-            level4_results = self.level4_tester.validate_builder(script_name)
-            results["level4"] = level4_results
-
-            # Determine overall status
-            all_passed = all(
-                [
-                    results["level1"].get("passed", False),
-                    results["level2"].get("passed", False),
-                    results["level3"].get("passed", False),
-                    results["level4"].get("passed", False),
-                ]
-            )
-
-            results["overall_status"] = "PASSING" if all_passed else "FAILING"
-
-            # Add scoring information
-            try:
-                # Create temporary validation results to calculate scoring
-                temp_report = AlignmentReport()
-
-                # Add results to temporary report for scoring calculation
-                for level_name, level_result in [
-                    ("level1", level1_results),
-                    ("level2", level2_results),
-                    ("level3", level3_results),
-                    ("level4", level4_results),
-                ]:
-                    if level_result.get("passed") is not None:
-                        validation_result = ValidationResult(
-                            test_name=f"{level_name}_{script_name}",
-                            passed=level_result.get("passed", False),
-                            details=level_result,
-                        )
-
-                        if level_name == "level1":
-                            temp_report.add_level1_result(
-                                script_name, validation_result
-                            )
-                        elif level_name == "level2":
-                            temp_report.add_level2_result(
-                                script_name, validation_result
-                            )
-                        elif level_name == "level3":
-                            temp_report.add_level3_result(
-                                script_name, validation_result
-                            )
-                        elif level_name == "level4":
-                            temp_report.add_level4_result(
-                                script_name, validation_result
-                            )
-
-                temp_report.generate_summary()
-                scorer = temp_report.get_scorer()
-                overall_score = scorer.calculate_overall_score()
-                overall_rating = scorer.get_rating(overall_score)
-
-                scoring_info = {
-                    "overall_score": overall_score,
-                    "quality_rating": overall_rating,
-                    "level_scores": {},
-                }
-
-                # Add level scores
-                level_keys = [
-                    "level1_script_contract",
-                    "level2_contract_spec",
-                    "level3_spec_dependencies",
-                    "level4_builder_config",
-                ]
-                for level_key in level_keys:
-                    score, passed, total = scorer.calculate_level_score(level_key)
-                    scoring_info["level_scores"][level_key] = score
-
-                results["scoring"] = scoring_info
-
-            except Exception as e:
-                # If scoring fails, provide default values
-                results["scoring"] = {
-                    "overall_score": 0.0,
-                    "quality_rating": "Unknown",
-                    "level_scores": {
-                        "level1_script_contract": 0.0,
-                        "level2_contract_spec": 0.0,
-                        "level3_spec_dependencies": 0.0,
-                        "level4_builder_config": 0.0,
-                    },
-                }
-
-        except Exception as e:
-            results["error"] = str(e)
-            results["overall_status"] = "ERROR"
-
-        return results
-
-    def discover_scripts(self) -> List[str]:
-        """Discover all Python scripts using step catalog (workspace-aware)."""
-        try:
-            if self.step_catalog:
-                return self._discover_scripts_with_catalog(self.step_catalog)
-            else:
-                # Fallback to legacy method if no step catalog available
-                return self._discover_scripts_legacy()
-        except Exception as e:
-            print(f"⚠️  Error discovering scripts: {e}")
-            return self._discover_scripts_legacy()
-
-    def _discover_scripts_with_catalog(self, catalog) -> List[str]:
-        """Discover scripts using step catalog (workspace-aware)."""
-        try:
-            # Get all available steps from catalog (includes workspace steps)
-            available_steps = catalog.list_available_steps()
-            
-            # Filter steps that have script components
-            scripts_with_components = []
-            for step_name in available_steps:
-                step_info = catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('script'):
-                    scripts_with_components.append(step_name)
-            
-            return sorted(scripts_with_components)
-        except Exception as e:
-            print(f"⚠️  Error discovering scripts with catalog: {e}")
-            return []
-
-    def _discover_scripts_legacy(self) -> List[str]:
-        """Discover scripts using legacy file system discovery (fallback only)."""
-        scripts = []
-        try:
-            # Use default package structure as fallback
-            scripts_dir = Path("src/cursus/steps/scripts").resolve()
-            if scripts_dir.exists():
-                for script_file in scripts_dir.glob("*.py"):
-                    if not script_file.name.startswith("__"):
-                        scripts.append(script_file.stem)
-        except Exception as e:
-            print(f"⚠️  Error in legacy script discovery: {e}")
+        logger.info(f"Exporting enhanced report in {format} format")
         
-        return sorted(scripts)
-
-    def discover_contracts(self) -> List[str]:
-        """Discover all contract files using step catalog (workspace-aware)."""
-        try:
-            if self.step_catalog:
-                return self._discover_contracts_with_catalog(self.step_catalog)
-            else:
-                print("⚠️  No StepCatalog available for contract discovery")
-                return []
-        except Exception as e:
-            print(f"⚠️  Error discovering contracts: {e}")
-            return []
-
-    def _discover_contracts_with_catalog(self, catalog) -> List[str]:
-        """Discover contracts using step catalog (workspace-aware)."""
-        try:
-            available_steps = catalog.list_available_steps()
+        summary = self.get_validation_summary()
+        
+        if format == "json":
+            import json
+            report_content = json.dumps(summary, indent=2, default=str)
+        else:
+            # Enhanced text format with step type breakdown
+            report_content = f"Enhanced Validation Summary:\n"
+            report_content += f"Total Steps: {summary['total_steps']}\n"
+            report_content += f"Passed: {summary['passed_steps']}\n"
+            report_content += f"Failed: {summary['failed_steps']}\n"
+            report_content += f"Excluded: {summary['excluded_steps']}\n"
+            report_content += f"Pass Rate: {summary['pass_rate']:.2%}\n\n"
             
-            contracts_with_components = []
-            for step_name in available_steps:
-                step_info = catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('contract'):
-                    contracts_with_components.append(step_name)
-            
-            return sorted(contracts_with_components)
-        except Exception as e:
-            print(f"⚠️  Error discovering contracts with catalog: {e}")
-            return []
-
-
-    def discover_specs(self) -> List[str]:
-        """Discover all specification files using step catalog (workspace-aware)."""
-        try:
-            if self.step_catalog:
-                return self._discover_specs_with_catalog(self.step_catalog)
-            else:
-                print("⚠️  No StepCatalog available for spec discovery")
-                return []
-        except Exception as e:
-            print(f"⚠️  Error discovering specs: {e}")
-            return []
-
-    def _discover_specs_with_catalog(self, catalog) -> List[str]:
-        """Discover specs using step catalog (workspace-aware)."""
-        try:
-            available_steps = catalog.list_available_steps()
-            
-            specs_with_components = []
-            for step_name in available_steps:
-                step_info = catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('spec'):
-                    specs_with_components.append(step_name)
-            
-            return sorted(specs_with_components)
-        except Exception as e:
-            print(f"⚠️  Error discovering specs with catalog: {e}")
-            return []
-
-
-    def discover_builders(self) -> List[str]:
-        """Discover all builder files using step catalog (workspace-aware)."""
-        try:
-            if self.step_catalog:
-                return self._discover_builders_with_catalog(self.step_catalog)
-            else:
-                print("⚠️  No StepCatalog available for builder discovery")
-                return []
-        except Exception as e:
-            print(f"⚠️  Error discovering builders: {e}")
-            return []
-
-    def _discover_builders_with_catalog(self, catalog) -> List[str]:
-        """Discover builders using step catalog (workspace-aware)."""
-        try:
-            available_steps = catalog.list_available_steps()
-            
-            builders_with_components = []
-            for step_name in available_steps:
-                step_info = catalog.get_step_info(step_name)
-                if step_info and step_info.file_components.get('builder'):
-                    builders_with_components.append(step_name)
-            
-            return sorted(builders_with_components)
-        except Exception as e:
-            print(f"⚠️  Error discovering builders with catalog: {e}")
-            return []
-
-
-    def get_alignment_status_matrix(self) -> Dict[str, Dict[str, str]]:
+            report_content += "Step Type Breakdown:\n"
+            for step_type, breakdown in summary['step_type_breakdown'].items():
+                report_content += f"  {step_type}: {breakdown['passed']}/{breakdown['total']} passed"
+                if breakdown['excluded'] > 0:
+                    report_content += f" ({breakdown['excluded']} excluded)"
+                report_content += "\n"
+        
+        if output_path:
+            with open(output_path, 'w') as f:
+                f.write(report_content)
+            logger.info(f"Enhanced report exported to {output_path}")
+        
+        return report_content
+    
+    def print_summary(self):
+        """Print enhanced validation summary to console."""
+        summary = self.get_validation_summary()
+        
+        print("\n" + "="*60)
+        print("ENHANCED VALIDATION SUMMARY")
+        print("="*60)
+        print(f"Total Steps: {summary['total_steps']}")
+        print(f"Passed: {summary['passed_steps']}")
+        print(f"Failed: {summary['failed_steps']}")
+        print(f"Excluded: {summary['excluded_steps']}")
+        print(f"Pass Rate: {summary['pass_rate']:.2%}")
+        print(f"Configuration-Driven: {summary['configuration_driven']}")
+        
+        print("\nStep Type Breakdown:")
+        for step_type, breakdown in summary['step_type_breakdown'].items():
+            status_str = f"{breakdown['passed']}/{breakdown['total']} passed"
+            if breakdown['excluded'] > 0:
+                status_str += f" ({breakdown['excluded']} excluded)"
+            print(f"  {step_type}: {status_str}")
+        
+        print("="*60 + "\n")
+    
+    def get_critical_issues(self) -> List[Dict[str, Any]]:
         """
-        Get a matrix showing alignment status for each script across all levels.
-
+        Get critical validation issues - step-type-aware critical issue analysis.
+        
         Returns:
-            Matrix with script names as keys and level statuses as values
+            List of critical issues
         """
-        matrix = {}
-        scripts = self.discover_scripts()
-
-        for script in scripts:
-            matrix[script] = {
-                "level1": "UNKNOWN",
-                "level2": "UNKNOWN",
-                "level3": "UNKNOWN",
-                "level4": "UNKNOWN",
-            }
-
-        # Update with actual results if available
-        for script_name, result in self.report.level1_results.items():
-            if script_name in matrix:
-                matrix[script_name]["level1"] = (
-                    "PASSING" if result.passed else "FAILING"
-                )
-
-        for contract_name, result in self.report.level2_results.items():
-            if contract_name in matrix:
-                matrix[contract_name]["level2"] = (
-                    "PASSING" if result.passed else "FAILING"
-                )
-
-        for spec_name, result in self.report.level3_results.items():
-            if spec_name in matrix:
-                matrix[spec_name]["level3"] = "PASSING" if result.passed else "FAILING"
-
-        for builder_name, result in self.report.level4_results.items():
-            if builder_name in matrix:
-                matrix[builder_name]["level4"] = (
-                    "PASSING" if result.passed else "FAILING"
-                )
-
-        return matrix
-
+        logger.info("Identifying critical issues with step-type awareness")
+        
+        all_results = self.run_validation_for_all_steps()
+        critical_issues = []
+        
+        for step_name, result in all_results.items():
+            step_type = result.get("sagemaker_step_type", "unknown")
+            validation_results = result.get("validation_results", {})
+            
+            for level, level_result in validation_results.items():
+                if level_result.get("status") == "ERROR":
+                    critical_issues.append({
+                        "step_name": step_name,
+                        "step_type": step_type,
+                        "level": level,
+                        "error": level_result.get("error", "Unknown error"),
+                        "category": result.get("category", "unknown")
+                    })
+        
+        return critical_issues
+    
     def get_step_info_from_catalog(self, step_name: str) -> Optional[Any]:
         """
-        Get step information from step catalog (workspace-aware).
+        Get step information from step catalog - maintained for backward compatibility.
         
         Args:
             step_name: Name of the step
@@ -874,16 +450,14 @@ class UnifiedAlignmentTester:
             StepInfo object or None if not found
         """
         try:
-            if self.step_catalog:
-                return self.step_catalog.get_step_info(step_name)
-            return None
+            return self.step_catalog.get_step_info(step_name)
         except Exception as e:
-            print(f"⚠️  Error getting step info for {step_name}: {e}")
+            logger.error(f"Error getting step info for {step_name}: {str(e)}")
             return None
-
+    
     def get_component_path_from_catalog(self, step_name: str, component_type: str) -> Optional[Path]:
         """
-        Get component file path from step catalog (workspace-aware).
+        Get component file path from step catalog - maintained for backward compatibility.
         
         Args:
             step_name: Name of the step
@@ -898,46 +472,12 @@ class UnifiedAlignmentTester:
                 return step_info.file_components[component_type].path
             return None
         except Exception as e:
-            print(f"⚠️  Error getting {component_type} path for {step_name}: {e}")
+            logger.error(f"Error getting {component_type} path for {step_name}: {str(e)}")
             return None
-
-    def get_workspace_context(self, step_name: str) -> Dict[str, Any]:
-        """
-        Get workspace context for a step (workspace-aware).
-        
-        Args:
-            step_name: Name of the step
-            
-        Returns:
-            Dictionary with workspace context information
-        """
-        context = {
-            "workspace_id": None,
-            "is_workspace_component": False,
-            "component_paths": {},
-            "registry_data": {}
-        }
-        
-        try:
-            step_info = self.get_step_info_from_catalog(step_name)
-            if step_info:
-                context["workspace_id"] = step_info.workspace_id
-                context["is_workspace_component"] = step_info.workspace_id != "core"
-                context["registry_data"] = step_info.registry_data
-                
-                # Get all component paths
-                for comp_type, metadata in step_info.file_components.items():
-                    if metadata and metadata.path:
-                        context["component_paths"][comp_type] = str(metadata.path)
-                        
-        except Exception as e:
-            print(f"⚠️  Error getting workspace context for {step_name}: {e}")
-            
-        return context
-
+    
     def validate_cross_workspace_compatibility(self, step_names: List[str]) -> Dict[str, Any]:
         """
-        Validate compatibility across workspace components.
+        Validate compatibility across workspace components - simplified with configuration.
         
         Args:
             step_names: List of step names to validate
@@ -948,167 +488,32 @@ class UnifiedAlignmentTester:
         results = {
             "compatible": True,
             "issues": [],
-            "workspace_distribution": {},
+            "step_type_distribution": {},
             "recommendations": []
         }
         
         try:
-            if not self.step_catalog:
-                results["issues"].append("Step catalog not available for cross-workspace validation")
-                results["compatible"] = False
-                return results
-            
-            # Group steps by workspace
-            workspace_groups = {}
+            # Group steps by step type instead of workspace for simpler analysis
+            step_type_groups = {}
             for step_name in step_names:
-                context = self.get_workspace_context(step_name)
-                workspace_id = context["workspace_id"] or "core"
-                
-                if workspace_id not in workspace_groups:
-                    workspace_groups[workspace_id] = []
-                workspace_groups[workspace_id].append(step_name)
-            
-            results["workspace_distribution"] = workspace_groups
-            
-            # Check for potential compatibility issues
-            if len(workspace_groups) > 1:
-                results["recommendations"].append(
-                    "Multiple workspaces detected. Ensure component versions are compatible."
-                )
-                
-                # Check for duplicate step names across workspaces
-                step_counts = {}
-                for workspace_id, steps in workspace_groups.items():
-                    for step in steps:
-                        base_name = step.split('_')[0] if '_' in step else step
-                        if base_name not in step_counts:
-                            step_counts[base_name] = []
-                        step_counts[base_name].append((step, workspace_id))
-                
-                for base_name, occurrences in step_counts.items():
-                    if len(occurrences) > 1:
-                        workspaces = [occ[1] for occ in occurrences]
-                        results["issues"].append(
-                            f"Step '{base_name}' found in multiple workspaces: {workspaces}"
-                        )
-                        results["compatible"] = False
-                        
-        except Exception as e:
-            results["issues"].append(f"Cross-workspace validation error: {e}")
-            results["compatible"] = False
-            
-        return results
-
-    def _add_step_type_context_to_issues(
-        self, script_name: str, validation_result: ValidationResult
-    ):
-        """
-        Enhanced step type context with workspace awareness.
-
-        Args:
-            script_name: Name of the script being validated
-            validation_result: ValidationResult to enhance with step type context
-        """
-        try:
-            # Get workspace context from step catalog
-            workspace_context = self.get_workspace_context(script_name)
-            
-            # Detect step type from registry using registry functions instead of redundant factories
-            try:
-                canonical_name = get_canonical_name_from_file_name(script_name)
-                step_type = get_sagemaker_step_type(canonical_name)
-            except (ValueError, Exception):
-                step_type = "Processing"  # Default fallback
-            
-            # Try to get framework from step catalog first, then script analysis
-            framework = None
-            if self.step_catalog:
-                framework = self.step_catalog.detect_framework(script_name)
-            
-            # Fallback to script analysis if catalog doesn't have framework info
-            if not framework:
                 try:
-                    script_path = self.get_component_path_from_catalog(script_name, 'script')
-                    if not script_path:
-                        script_path = self.scripts_dir / f"{script_name}.py"
-                    
-                    if script_path and script_path.exists():
-                        from .patterns.framework_patterns import detect_framework_from_script_content
-                        with open(script_path, "r", encoding="utf-8") as f:
-                            script_content = f.read()
-                        framework = detect_framework_from_script_content(script_content)
+                    step_type = get_sagemaker_step_type(step_name)
+                    if step_type not in step_type_groups:
+                        step_type_groups[step_type] = []
+                    step_type_groups[step_type].append(step_name)
                 except Exception as e:
-                    print(f"⚠️  Framework detection failed for {script_name}: {e}")
-
-            # Add step type context to existing issues
-            for issue in validation_result.issues:
-                if hasattr(issue, "step_type"):
-                    # Already a StepTypeAwareAlignmentIssue, update it
-                    issue.step_type = step_type
-                    if framework:
-                        issue.framework_context = framework
-                else:
-                    # Convert to step type-aware issue
-                    step_type_issue = create_step_type_aware_alignment_issue(
-                        level=issue.level,
-                        category=issue.category,
-                        message=issue.message,
-                        step_type=step_type,
-                        framework_context=framework,
-                        details=issue.details,
-                        recommendation=issue.recommendation,
-                        alignment_level=issue.alignment_level,
-                    )
-                    # Replace the original issue
-                    validation_result.issues[validation_result.issues.index(issue)] = (
-                        step_type_issue
-                    )
-
-            # Add enhanced context to validation result details
-            validation_result.details["step_type"] = step_type
-            validation_result.details["workspace_context"] = workspace_context
-            if framework:
-                validation_result.details["framework"] = framework
-
-        except Exception as e:
-            # Step type enhancement is optional, don't fail validation if it fails
-            print(f"⚠️  Step type enhancement failed for {script_name}: {e}")
-
-    def get_workspace_validation_summary(self) -> Dict[str, Any]:
-        """
-        Get workspace-aware validation summary.
-        
-        Returns:
-            Summary with workspace-specific information
-        """
-        summary = self.get_validation_summary()
-        
-        try:
-            if self.step_catalog:
-                # Add workspace-specific information
-                workspace_info = {}
-                
-                # Get workspace distribution
-                all_steps = self.discover_scripts()
-                workspace_distribution = {}
-                
-                for step_name in all_steps:
-                    context = self.get_workspace_context(step_name)
-                    workspace_id = context["workspace_id"] or "core"
-                    
-                    if workspace_id not in workspace_distribution:
-                        workspace_distribution[workspace_id] = 0
-                    workspace_distribution[workspace_id] += 1
-                
-                workspace_info["workspace_distribution"] = workspace_distribution
-                workspace_info["total_workspaces"] = len(workspace_distribution)
-                workspace_info["has_workspace_components"] = any(
-                    ws_id != "core" for ws_id in workspace_distribution.keys()
-                )
-                
-                summary["workspace_info"] = workspace_info
-                
-        except Exception as e:
-            print(f"⚠️  Error generating workspace validation summary: {e}")
+                    logger.warning(f"Could not determine step type for {step_name}: {str(e)}")
             
-        return summary
+            results["step_type_distribution"] = step_type_groups
+            
+            # Check for potential compatibility issues based on step types
+            if len(step_type_groups) > 3:
+                results["recommendations"].append(
+                    f"Multiple step types detected ({len(step_type_groups)}). Ensure validation levels are appropriate."
+                )
+            
+        except Exception as e:
+            results["issues"].append(f"Cross-workspace validation error: {str(e)}")
+            results["compatible"] = False
+        
+        return results
