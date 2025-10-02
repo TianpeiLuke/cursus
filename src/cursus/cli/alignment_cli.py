@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 from ..validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
-from ..validation.alignment.reporting.alignment_scorer import AlignmentScorer
+# Note: AlignmentScorer removed in refactored system - scoring integrated into UnifiedAlignmentTester
 
 
 def print_validation_summary(
@@ -449,11 +449,8 @@ def validate(
 
     try:
         # Initialize the unified alignment tester with workspace support
-        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
-        tester = UnifiedAlignmentTester(
-            level3_validation_mode=level3_mode,
-            workspace_dirs=workspace_dir_list
-        )
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else []
+        tester = UnifiedAlignmentTester(workspace_dirs=workspace_dir_list)
 
         # Run validation
         results = tester.validate_specific_script(script_name)
@@ -556,11 +553,8 @@ def validate_all(
                 click.echo(f"📁 Output directory: {output_dir}")
 
         # Initialize the unified alignment tester with workspace support
-        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
-        tester = UnifiedAlignmentTester(
-            level3_validation_mode=level3_mode,
-            workspace_dirs=workspace_dir_list
-        )
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else []
+        tester = UnifiedAlignmentTester(workspace_dirs=workspace_dir_list)
 
         # Discover all scripts using step catalog (workspace-aware)
         scripts = tester.discover_scripts()
@@ -737,11 +731,8 @@ def validate_level(
             click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
 
         # Initialize the unified alignment tester with workspace support
-        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
-        tester = UnifiedAlignmentTester(
-            level3_validation_mode=level3_mode,
-            workspace_dirs=workspace_dir_list
-        )
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else []
+        tester = UnifiedAlignmentTester(workspace_dirs=workspace_dir_list)
 
         # Run validation for specific level
         results = tester.validate_specific_script(script_name)
@@ -834,24 +825,15 @@ def list_scripts(ctx, workspace_dirs, level3_mode):
         click.echo("=" * 50)
 
         # Initialize the unified alignment tester with workspace support
-        workspace_dir_list = list(workspace_dirs) if workspace_dirs else None
-        tester = UnifiedAlignmentTester(
-            level3_validation_mode=level3_mode,
-            workspace_dirs=workspace_dir_list
-        )
+        workspace_dir_list = list(workspace_dirs) if workspace_dirs else []
+        tester = UnifiedAlignmentTester(workspace_dirs=workspace_dir_list)
 
         # Discover all scripts using step catalog (workspace-aware)
         scripts = tester.discover_scripts()
 
         if scripts:
             for script in scripts:
-                # Get workspace context if available
-                try:
-                    context = tester.get_workspace_context(script)
-                    workspace_id = context.get("workspace_id", "core")
-                    click.echo(f"  • {script} (workspace: {workspace_id})")
-                except:
-                    click.echo(f"  • {script}")
+                click.echo(f"  • {script}")
 
             click.echo(f"\nTotal: {len(scripts)} scripts found")
             if workspace_dirs:
