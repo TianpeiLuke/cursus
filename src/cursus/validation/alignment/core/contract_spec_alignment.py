@@ -183,29 +183,21 @@ class ContractSpecificationAlignmentTester:
         )
         all_issues.extend(logical_issues)
 
-        # TODO: Replace with consolidated validation logic
-        # Note: ContractSpecValidator methods were removed during consolidation
-        # type_issues = self.validator.validate_data_types(
-        #     contract, unified_spec["primary_spec"], script_or_contract_name
-        # )
-        # all_issues.extend(type_issues)
-
-        # io_issues = self.validator.validate_input_output_alignment(
-        #     contract, unified_spec["primary_spec"], script_or_contract_name
-        # )
-        # all_issues.extend(io_issues)
+        # RESTORED: Use consolidated validation logic with restored ContractSpecValidator
+        from ..validators.contract_spec_validator import ConsolidatedContractSpecValidator
+        validator = ConsolidatedContractSpecValidator()
         
-        # Add placeholder issue indicating validation needs to be restored
-        all_issues.append({
-            "severity": "INFO",
-            "category": "validation_placeholder",
-            "message": f"Contract validation for {script_or_contract_name} needs to be restored with consolidated modules",
-            "details": {
-                "contract": script_or_contract_name,
-                "status": "placeholder_validation"
-            },
-            "recommendation": "Implement consolidated contract validation logic"
-        })
+        # Restore logical name validation
+        logical_name_issues = validator.validate_logical_names(
+            contract, unified_spec["primary_spec"], script_or_contract_name
+        )
+        all_issues.extend(logical_name_issues)
+        
+        # Restore I/O alignment validation
+        io_alignment_issues = validator.validate_input_output_alignment(
+            contract, unified_spec["primary_spec"], script_or_contract_name
+        )
+        all_issues.extend(io_alignment_issues)
 
         # NEW: Validate property path references (Level 2 enhancement)
         property_path_issues = self._validate_property_paths(

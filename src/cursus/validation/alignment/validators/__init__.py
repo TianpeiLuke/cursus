@@ -30,6 +30,8 @@ from .dependency_validator import DependencyValidator
 
 from .property_path_validator import SageMakerPropertyPathValidator
 
+from .contract_spec_validator import ConsolidatedContractSpecValidator
+
 # Note: This validator was also removed during consolidation
 # from .testability_validator import TestabilityPatternValidator
 
@@ -37,4 +39,6 @@ __all__ = [
     # Core validators (remaining after consolidation)
     "DependencyValidator",
     "SageMakerPropertyPathValidator",
+    # Restored validators
+    "ConsolidatedContractSpecValidator",
 ]

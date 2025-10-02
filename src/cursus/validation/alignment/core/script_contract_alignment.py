@@ -154,24 +154,58 @@ class ScriptContractAlignmentTester:
                 ],
             }
 
-        # TODO: Replace with consolidated validation logic
-        # Note: ScriptAnalyzer and related validators were removed during consolidation
+        # RESTORED: Use consolidated validation logic with restored ScriptAnalyzer
+        from ..analyzer.script_analyzer import ScriptAnalyzer
         
-        # Placeholder validation - returns basic success for now
-        issues = []
-        analysis = {"placeholder": "Script analysis functionality needs to be restored"}
+        # Use restored ScriptAnalyzer for contract alignment validation
+        analyzer = ScriptAnalyzer(str(script_path))
         
-        # Add a placeholder issue indicating the validation needs to be restored
-        issues.append({
-            "severity": "INFO",
-            "category": "validation_placeholder",
-            "message": f"Script validation for {script_name} needs to be restored with consolidated modules",
-            "details": {
-                "script": script_name,
-                "status": "placeholder_validation"
-            },
-            "recommendation": "Implement consolidated script validation logic"
-        })
+        # Validate main function signature
+        main_function_result = analyzer.validate_main_function_signature()
+        if not main_function_result.get("has_main"):
+            issues = [{
+                "severity": "CRITICAL",
+                "category": "missing_main_function",
+                "message": "Script must define main function with standard signature",
+                "details": {
+                    "script": script_name,
+                    "expected_signature": "def main(input_paths, output_paths, environ_vars, job_args)"
+                },
+                "recommendation": "Add main function with standard signature"
+            }]
+        elif not main_function_result.get("signature_valid"):
+            issues = [{
+                "severity": "ERROR",
+                "category": "invalid_main_signature",
+                "message": "Main function signature does not match expected format",
+                "details": {
+                    "script": script_name,
+                    "actual_params": main_function_result.get("actual_params", []),
+                    "expected_params": main_function_result.get("expected_params", []),
+                    "issues": main_function_result.get("issues", [])
+                },
+                "recommendation": "Fix main function signature to match: def main(input_paths, output_paths, environ_vars, job_args)"
+            }]
+        else:
+            issues = []
+        
+        # Extract parameter usage
+        parameter_usage = analyzer.extract_parameter_usage()
+        
+        # Validate contract alignment
+        alignment_issues = analyzer.validate_contract_alignment(contract)
+        issues.extend(alignment_issues)
+        
+        # Create analysis results
+        analysis = {
+            "main_function": main_function_result,
+            "parameter_usage": parameter_usage,
+            "contract_alignment": {
+                "total_issues": len(alignment_issues),
+                "error_count": len([i for i in alignment_issues if i["severity"] == "ERROR"]),
+                "warning_count": len([i for i in alignment_issues if i["severity"] == "WARNING"])
+            }
+        }
 
         # Phase 2 Enhancement: Add step type-specific validation
         try:
