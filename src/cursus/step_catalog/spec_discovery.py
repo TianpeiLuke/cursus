@@ -422,6 +422,45 @@ class SpecAutoDiscovery:
             self.logger.error(f"Error serializing specification: {e}")
             return {}
     
+    def load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Load all specification instances from both package and workspace directories.
+        
+        This method provides comprehensive specification loading for validation frameworks
+        and dependency analysis tools. It discovers and loads all available specifications,
+        serializing them to dictionary format for easy consumption.
+        
+        Returns:
+            Dictionary mapping step names to serialized specification dictionaries
+        """
+        try:
+            all_specs = {}
+            
+            # Discover all specification instances
+            discovered_specs = self.discover_spec_classes()
+            
+            # Serialize each specification to dictionary format
+            for spec_name, spec_instance in discovered_specs.items():
+                try:
+                    if self._is_spec_instance(spec_instance):
+                        serialized_spec = self.serialize_spec(spec_instance)
+                        if serialized_spec:
+                            all_specs[spec_name] = serialized_spec
+                            self.logger.debug(f"Loaded and serialized specification: {spec_name}")
+                    else:
+                        self.logger.warning(f"Invalid specification instance for {spec_name}")
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error serializing specification {spec_name}: {e}")
+                    continue
+            
+            self.logger.info(f"Successfully loaded {len(all_specs)} specifications")
+            return all_specs
+            
+        except Exception as e:
+            self.logger.error(f"Error loading all specifications: {e}")
+            return {}
+    
     def get_job_type_variants(self, base_step_name: str) -> List[str]:
         """
         Get all job type variants for a base step name.

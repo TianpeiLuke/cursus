@@ -38,7 +38,7 @@ class SpecificationDependencyAlignmentTester:
     """
 
     def __init__(
-        self, specs_dir: str, validation_config: Level3ValidationConfig = None
+        self, specs_dir: str, validation_config: Level3ValidationConfig = None, workspace_dirs: Optional[List[Path]] = None
     ):
         """
         Initialize the specification-dependency alignment tester.
@@ -46,15 +46,26 @@ class SpecificationDependencyAlignmentTester:
         Args:
             specs_dir: Directory containing step specifications
             validation_config: Configuration for validation thresholds and behavior
+            workspace_dirs: Optional list of workspace directories for workspace-aware discovery
         """
         self.specs_dir = Path(specs_dir)
         self.config = (
             validation_config or Level3ValidationConfig.create_relaxed_config()
         )
 
-        # Initialize extracted components
+        # Initialize extracted components with workspace-aware discovery
         from ....step_catalog import StepCatalog
-        self.step_catalog = StepCatalog(workspace_dirs=None)
+        
+        # If workspace_dirs not provided, try to infer from specs_dir
+        if workspace_dirs is None and self.specs_dir.exists():
+            # Check if specs_dir is part of a workspace structure
+            potential_workspace = self.specs_dir.parent
+            if potential_workspace.name in ['specs'] and (potential_workspace.parent / 'contracts').exists():
+                # specs_dir appears to be workspace_dir/specs, use parent as workspace
+                workspace_dirs = [potential_workspace.parent]
+                logger.info(f"Inferred workspace directory: {potential_workspace.parent}")
+        
+        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
         self.dependency_validator = DependencyValidator(self.config)
 
         # Initialize the dependency pattern classifier
@@ -607,7 +618,29 @@ class SpecificationDependencyAlignmentTester:
             raise ValueError(f"Failed to serialize specification: {str(e)}")
 
     def _load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
-        """Load all specification files using StepCatalog."""
+        """Load all specification files using StepCatalog's load_all_specifications method."""
+        try:
+            # Use StepCatalog's dedicated load_all_specifications method
+            all_specs = self.step_catalog.load_all_specifications()
+            
+            if all_specs:
+                logger.info(f"Loaded {len(all_specs)} specifications using StepCatalog.load_all_specifications()")
+                return all_specs
+            else:
+                logger.warning("StepCatalog.load_all_specifications() returned empty results")
+                # Fallback to legacy file system scanning
+                logger.warning("Falling back to legacy file system scanning")
+                return self._load_all_specifications_legacy()
+            
+        except Exception as e:
+            logger.error(f"StepCatalog.load_all_specifications() failed: {e}")
+            
+            # Fallback to legacy file system scanning if StepCatalog fails
+            logger.warning("Falling back to legacy file system scanning")
+            return self._load_all_specifications_legacy()
+    
+    def _load_all_specifications_legacy(self) -> Dict[str, Dict[str, Any]]:
+        """Legacy fallback method for loading specifications via direct file scanning."""
         all_specs = {}
 
         if self.specs_dir.exists():
@@ -642,7 +675,30 @@ class SpecificationDependencyAlignmentTester:
         return all_specs
 
     def _discover_specifications(self) -> List[str]:
-        """Discover all specification files using StepCatalog."""
+        """Discover all specification files using StepCatalog unified discovery."""
+        try:
+            # Use StepCatalog's unified discovery to get all available steps
+            available_steps = self.step_catalog.list_available_steps()
+            
+            # Filter to only steps that have specification components
+            specifications = set()
+            for step_name in available_steps:
+                step_info = self.step_catalog.get_step_info(step_name)
+                if step_info and step_info.file_components.get('spec'):
+                    specifications.add(step_name)
+            
+            logger.info(f"Discovered {len(specifications)} specifications via StepCatalog")
+            return sorted(list(specifications))
+            
+        except Exception as e:
+            logger.error(f"StepCatalog specification discovery failed: {e}")
+            
+            # Fallback to legacy file system scanning
+            logger.warning("Falling back to legacy file system specification discovery")
+            return self._discover_specifications_legacy()
+    
+    def _discover_specifications_legacy(self) -> List[str]:
+        """Legacy fallback method for discovering specifications via direct file scanning."""
         specifications = set()
 
         if self.specs_dir.exists():

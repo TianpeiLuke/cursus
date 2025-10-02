@@ -584,6 +584,27 @@ class StepCatalog:
             self.logger.error(f"Error serializing specification: {e}")
             return {}
     
+    def load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Load all specification instances from both package and workspace directories.
+        
+        This method provides comprehensive specification loading for validation frameworks
+        and dependency analysis tools. It discovers and loads all available specifications,
+        serializing them to dictionary format for easy consumption.
+        
+        Returns:
+            Dictionary mapping step names to serialized specification dictionaries
+        """
+        try:
+            if self.spec_discovery:
+                return self.spec_discovery.load_all_specifications()
+            else:
+                self.logger.warning("SpecAutoDiscovery not available, cannot load all specifications")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error loading all specifications: {e}")
+            return {}
+    
     def get_spec_job_type_variants(self, base_step_name: str) -> List[str]:
         """
         Get all job type variants for a base step name from specifications.

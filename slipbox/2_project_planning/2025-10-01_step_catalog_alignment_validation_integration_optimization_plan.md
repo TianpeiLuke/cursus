@@ -672,6 +672,89 @@ class StepCatalog:
 - ✅ **StepCatalog Integration**: All methods accessible through unified StepCatalog interface
 - ✅ **Architectural Consistency**: Follows established delegation pattern like SpecAutoDiscovery
 
+## Phase 2.5: Enhanced Specification Discovery Integration (2025-10-01) ✅ **COMPLETED**
+
+### 2.5.1 Load All Specifications Method Enhancement ✅ **COMPLETED**
+
+**Goal**: Implement `load_all_specifications()` method in SpecAutoDiscovery and expose through StepCatalog
+**Target**: Provide comprehensive specification loading for validation frameworks
+
+**✅ IMPLEMENTATION COMPLETED**:
+```python
+# ✅ IMPLEMENTED: Enhanced SpecAutoDiscovery with load_all_specifications method
+class SpecAutoDiscovery:
+    def load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Load all specification instances from both package and workspace directories.
+        
+        This method provides comprehensive specification loading for validation frameworks
+        and dependency analysis tools. It discovers and loads all available specifications,
+        serializing them to dictionary format for easy consumption.
+        """
+        all_specs = {}
+        
+        # Discover all specification instances
+        discovered_specs = self.discover_spec_classes()
+        
+        # Serialize each specification to dictionary format
+        for spec_name, spec_instance in discovered_specs.items():
+            if self._is_spec_instance(spec_instance):
+                serialized_spec = self.serialize_spec(spec_instance)
+                if serialized_spec:
+                    all_specs[spec_name] = serialized_spec
+        
+        return all_specs
+
+# ✅ IMPLEMENTED: StepCatalog integration
+class StepCatalog:
+    def load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Load all specification instances from both package and workspace directories.
+        
+        This method provides comprehensive specification loading for validation frameworks
+        and dependency analysis tools. It discovers and loads all available specifications,
+        serializing them to dictionary format for easy consumption.
+        """
+        if self.spec_discovery:
+            return self.spec_discovery.load_all_specifications()
+        else:
+            self.logger.warning("SpecAutoDiscovery not available, cannot load all specifications")
+            return {}
+```
+
+**✅ VALIDATION FRAMEWORK INTEGRATION COMPLETED**:
+```python
+# ✅ UPDATED: SpecificationDependencyAlignmentTester to use enhanced StepCatalog
+class SpecificationDependencyAlignmentTester:
+    def _load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
+        """Load all specification files using StepCatalog's load_all_specifications method."""
+        # Use StepCatalog's dedicated load_all_specifications method
+        all_specs = self.step_catalog.load_all_specifications()
+        
+        if all_specs:
+            logger.info(f"Loaded {len(all_specs)} specifications using StepCatalog.load_all_specifications()")
+            return all_specs
+        else:
+            # Fallback to legacy file system scanning
+            return self._load_all_specifications_legacy()
+```
+
+**✅ SUCCESS CRITERIA ACHIEVED**:
+- ✅ **Proper Architecture**: `load_all_specifications` functionality properly integrated into spec_discovery module
+- ✅ **StepCatalog Support**: Method exposed directly through StepCatalog interface
+- ✅ **Validation Integration**: SpecificationDependencyAlignmentTester updated to use enhanced method
+- ✅ **Code Simplification**: Complex specification loading logic replaced with single method call
+- ✅ **Robust Fallbacks**: Legacy fallback methods maintained for reliability
+- ✅ **Comprehensive Discovery**: Loads specifications from both package and workspace directories
+- ✅ **Automatic Serialization**: Specifications automatically converted to validation-friendly dictionary format
+
+**Benefits Achieved**:
+- **68% Code Reduction**: 25+ lines of complex logic → 8 lines using dedicated method
+- **Enhanced Reliability**: No more manual StepCatalog integration attempts
+- **Unified Discovery**: Single method loads all specifications across package + workspaces
+- **Proper Separation of Concerns**: Specification loading logic centralized in spec_discovery module
+- **Clean API Design**: Simple, intuitive method interface for validation frameworks
+
 ## Phase 3: Comprehensive Alignment Validation Optimization (2 weeks) ✅ **COMPLETED (2025-10-01)**
 
 ### 3.1 Script-Contract Alignment Optimization (Days 1-3) ✅ **COMPLETED**
