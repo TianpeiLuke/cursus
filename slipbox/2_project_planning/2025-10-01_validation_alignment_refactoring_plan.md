@@ -293,6 +293,84 @@ def validate_step_type_configuration() -> List[str]:
 - ✅ **Documentation**: Comprehensive docstrings and configuration examples
 - ✅ **Validation**: Configuration consistency validation with error reporting
 
+### **Phase 1.5: Builder Method Validation Rules (2 Days) - ✅ COMPLETED**
+
+#### **1.5.1 Create Universal Builder Validation Rules - ✅ COMPLETED**
+**File**: `src/cursus/validation/alignment/config/universal_builder_rules.py`
+
+Based on analysis of actual step builders in the codebase, this module defines the universal validation rules that ALL step builders must implement, regardless of their specific SageMaker step type.
+
+**Key Features:**
+- **Universal Methods**: 5 required methods all builders must implement
+  - `validate_configuration()` - Step-specific configuration validation
+  - `_get_inputs()` - Transform logical inputs to step-specific format
+  - `_get_outputs()` - Transform logical outputs to step-specific format  
+  - `create_step()` - Create the final SageMaker pipeline step
+  - `_get_environment_variables()` - Override base class for step-specific env vars
+
+- **Inherited Methods**: 5 methods inherited from StepBuilderBase
+  - Optional overrides: `_get_job_arguments()`
+  - Final methods: `_get_cache_config()`, `_generate_job_name()`, `_get_step_name()`, `_get_base_output_path()`
+
+- **Method Categories**: Enum-based categorization for validation control
+  - `REQUIRED_ABSTRACT` - Must be implemented by all builders
+  - `REQUIRED_OVERRIDE` - Must override base class method
+  - `INHERITED_OPTIONAL` - Can optionally override base class
+  - `INHERITED_FINAL` - Should not be overridden
+
+- **Implementation Patterns**: Common patterns observed in actual builders
+  - Initialization, validation, input processing, output processing, step creation
+
+#### **1.5.2 Create Step-Type-Specific Validation Rules - ✅ COMPLETED**
+**File**: `src/cursus/validation/alignment/config/step_type_specific_rules.py`
+
+Based on analysis of actual step builders, this module defines validation rules specific to different SageMaker step types, capturing the unique methods each step type requires.
+
+**Step Types Covered:**
+- **Training Steps**: `_create_estimator()` method required
+  - Return types: `Dict[str, TrainingInput]` for inputs, `str` for outputs
+  - Examples: XGBoostTraining, PyTorchTraining
+
+- **Processing Steps**: `_create_processor()` method required
+  - Optional: `_get_job_arguments()` override for command-line args
+  - Return types: `List[ProcessingInput]` for inputs, `List[ProcessingOutput]` for outputs
+  - Examples: TabularPreprocessing, FeatureEngineering
+
+- **CreateModel Steps**: `_create_model()` method required
+  - Optional: `_get_image_uri()` for container image URI generation
+  - Return types: `Dict[str, Any]` for inputs, `None` for outputs (handled automatically)
+  - Examples: XGBoostModel, PyTorchModel
+
+- **Transform Steps**: `_create_transformer()` method required
+- **RegisterModel Steps**: `_create_model_package()` method required
+- **Lambda Steps**: `_create_lambda_function()` method required
+- **Excluded Types**: Base, Utility (no validation needed)
+
+**Key Features:**
+- **Step Type Categories**: Enum-based categorization matching validation levels
+- **Method Specifications**: Detailed signatures, return types, implementation patterns
+- **Validation Specifics**: Step-type-specific validation requirements
+- **API Functions**: 15+ functions for querying step-type-specific rules
+
+#### **1.5.3 Update Configuration Module Integration - ✅ COMPLETED**
+**File**: `src/cursus/validation/alignment/config/__init__.py`
+
+Updated the configuration module to expose both universal and step-type-specific validation rules through a unified API.
+
+**New Exports:**
+- `UNIVERSAL_BUILDER_VALIDATION_RULES` - Complete universal validation ruleset
+- `STEP_TYPE_SPECIFIC_VALIDATION_RULES` - Complete step-type-specific rulesets
+- `UniversalMethodCategory` - Enum for method categorization
+- 15+ API functions for querying validation rules
+
+**Deliverables:**
+- ✅ Universal builder validation rules with 5 required methods
+- ✅ Step-type-specific rules for 7 SageMaker step types  
+- ✅ Method categorization system with 4 categories
+- ✅ Comprehensive API functions for rule queries
+- ✅ Integration with existing configuration system
+- ✅ Based on actual codebase analysis, not theoretical requirements
+
 ### **Phase 2: Core Refactoring (5 Days)**
 
 #### **2.1 Rewrite UnifiedAlignmentTester with Configuration-Driven Design**
