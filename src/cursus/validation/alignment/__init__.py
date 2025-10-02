@@ -10,16 +10,12 @@ The alignment validation covers four levels:
 3. Specification ↔ Dependencies Alignment
 4. Builder ↔ Configuration Alignment
 
-Optimized Structure:
-- analysis/: All analysis components (AST parsing, imports, paths, etc.)
+Consolidated Structure (Post Phase 4):
+- config/: Configuration and validation rulesets
 - core/: Core alignment testers for each level
-- discovery/: Data loading, file processing, and orchestration
-- factories/: Factory classes for component selection
-- patterns/: Pattern recognition and framework detection
-- reporting/: Reporting, scoring, and visualization
-- step_type_enhancers/: Step-type specific enhancement logic
-- utils/: Utilities, models, and configuration
-- validators/: Validation logic and rules
+- reporting/: Consolidated reporting and scoring (validation_reporter.py)
+- utils/: Consolidated utilities and models (validation_models.py)
+- validators/: Remaining validation logic and rules
 """
 
 # Main orchestrator
@@ -29,25 +25,39 @@ from .unified_alignment_tester import UnifiedAlignmentTester
 from .core.script_contract_alignment import ScriptContractAlignmentTester
 from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
 from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
-from .core.builder_config_alignment import BuilderConfigurationAlignmentTester
 
-# Reporting components
-from .reporting.alignment_reporter import AlignmentReport, ValidationResult, AlignmentSummary
-from .reporting.alignment_scorer import AlignmentScorer
-from .reporting.enhanced_reporter import EnhancedAlignmentReport
+# Consolidated reporting components
+from .reporting import (
+    ValidationReporter,
+    ReportingConfig,
+    generate_quick_report,
+    print_validation_summary,
+    calculate_validation_scores,
+)
 
-# Key validators
-from .validators.testability_validator import TestabilityPatternValidator
-from .validators.contract_spec_validator import ContractSpecValidator
-from .validators.dependency_validator import DependencyValidator
+# Remaining validators
+from .validators import (
+    DependencyValidator,
+    SageMakerPropertyPathValidator,
+)
 
-# Utilities
-from .utils.core_models import (
-    SeverityLevel,
-    AlignmentLevel,
-    AlignmentIssue,
-    create_alignment_issue,
-    create_step_type_aware_alignment_issue,
+# Consolidated utilities and models
+from .utils import (
+    ValidationLevel,
+    ValidationStatus,
+    IssueLevel,
+    RuleType,
+    ValidationIssue,
+    ValidationResult,
+    ValidationSummary,
+    MethodValidationInfo,
+    StepValidationContext,
+    create_validation_issue,
+    create_validation_result,
+    merge_validation_results,
+    filter_issues_by_level,
+    group_issues_by_method,
+    format_validation_summary,
 )
 
 __all__ = [
@@ -58,24 +68,32 @@ __all__ = [
     "ScriptContractAlignmentTester",
     "ContractSpecificationAlignmentTester", 
     "SpecificationDependencyAlignmentTester",
-    "BuilderConfigurationAlignmentTester",
     
-    # Reporting
-    "AlignmentReport",
-    "ValidationResult",
-    "AlignmentSummary",
-    "AlignmentScorer",
-    "EnhancedAlignmentReport",
+    # Consolidated reporting
+    "ValidationReporter",
+    "ReportingConfig",
+    "generate_quick_report",
+    "print_validation_summary",
+    "calculate_validation_scores",
     
-    # Validators
-    "TestabilityPatternValidator",
-    "ContractSpecValidator",
+    # Remaining validators
     "DependencyValidator",
+    "SageMakerPropertyPathValidator",
     
-    # Utilities
-    "SeverityLevel",
-    "AlignmentLevel",
-    "AlignmentIssue",
-    "create_alignment_issue",
-    "create_step_type_aware_alignment_issue",
+    # Consolidated utilities and models
+    "ValidationLevel",
+    "ValidationStatus",
+    "IssueLevel",
+    "RuleType",
+    "ValidationIssue",
+    "ValidationResult",
+    "ValidationSummary",
+    "MethodValidationInfo",
+    "StepValidationContext",
+    "create_validation_issue",
+    "create_validation_result",
+    "merge_validation_results",
+    "filter_issues_by_level",
+    "group_issues_by_method",
+    "format_validation_summary",
 ]

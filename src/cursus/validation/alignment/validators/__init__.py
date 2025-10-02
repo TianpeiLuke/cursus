@@ -22,31 +22,19 @@ Validation Features:
 """
 
 # Core validators
-from .contract_spec_validator import ContractSpecValidator
-
-from .script_contract_validator import ScriptContractValidator
+# Note: These validators were removed during consolidation
+# from .contract_spec_validator import ContractSpecValidator
+# from .script_contract_validator import ScriptContractValidator
 
 from .dependency_validator import DependencyValidator
 
 from .property_path_validator import SageMakerPropertyPathValidator
 
-from .testability_validator import TestabilityPatternValidator
-
-# Specialized validators
-from .dependency_classifier import (
-    DependencyPatternClassifier,
-    DependencyPattern,
-)
+# Note: This validator was also removed during consolidation
+# from .testability_validator import TestabilityPatternValidator
 
 __all__ = [
-    # Core validators
-    "ContractSpecValidator",
-    "ScriptContractValidator", 
+    # Core validators (remaining after consolidation)
     "DependencyValidator",
     "SageMakerPropertyPathValidator",
-    "TestabilityPatternValidator",
-    
-    # Specialized validators
-    "DependencyPatternClassifier",
-    "DependencyPattern",
 ]

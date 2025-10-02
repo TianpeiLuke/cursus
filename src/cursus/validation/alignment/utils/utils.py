@@ -6,7 +6,7 @@ Provides common utility functions used across alignment validation components.
 
 import os
 from typing import List, Optional, Dict, Any
-from .core_models import AlignmentIssue, SeverityLevel
+from .validation_models import ValidationIssue, IssueLevel
 
 
 def normalize_path(path: str) -> str:
@@ -77,21 +77,21 @@ def is_sagemaker_path(path: str) -> bool:
     return any(normalized_path.startswith(prefix) for prefix in sagemaker_prefixes)
 
 
-def format_alignment_issue(issue: AlignmentIssue) -> str:
+def format_alignment_issue(issue: ValidationIssue) -> str:
     """
-    Format an alignment issue for display.
+    Format a validation issue for display.
 
     Args:
-        issue: The alignment issue to format
+        issue: The validation issue to format
 
     Returns:
         Formatted string representation
     """
     level_emoji = {
-        SeverityLevel.INFO: "ℹ️",
-        SeverityLevel.WARNING: "⚠️",
-        SeverityLevel.ERROR: "❌",
-        SeverityLevel.CRITICAL: "🚨",
+        IssueLevel.INFO: "ℹ️",
+        IssueLevel.WARNING: "⚠️",
+        IssueLevel.ERROR: "❌",
+        IssueLevel.CRITICAL: "🚨",
     }
 
     emoji = level_emoji.get(issue.level, "")
@@ -109,18 +109,18 @@ def format_alignment_issue(issue: AlignmentIssue) -> str:
 
 
 def group_issues_by_severity(
-    issues: List[AlignmentIssue],
-) -> Dict[SeverityLevel, List[AlignmentIssue]]:
+    issues: List[ValidationIssue],
+) -> Dict[IssueLevel, List[ValidationIssue]]:
     """
-    Group alignment issues by severity level.
+    Group validation issues by severity level.
 
     Args:
-        issues: List of alignment issues
+        issues: List of validation issues
 
     Returns:
         Dictionary mapping severity levels to lists of issues
     """
-    grouped = {level: [] for level in SeverityLevel}
+    grouped = {level: [] for level in IssueLevel}
 
     for issue in issues:
         grouped[issue.level].append(issue)
@@ -128,12 +128,12 @@ def group_issues_by_severity(
     return grouped
 
 
-def get_highest_severity(issues: List[AlignmentIssue]) -> Optional[SeverityLevel]:
+def get_highest_severity(issues: List[ValidationIssue]) -> Optional[IssueLevel]:
     """
     Get the highest severity level among a list of issues.
 
     Args:
-        issues: List of alignment issues
+        issues: List of validation issues
 
     Returns:
         Highest severity level or None if no issues
@@ -142,10 +142,10 @@ def get_highest_severity(issues: List[AlignmentIssue]) -> Optional[SeverityLevel
         return None
 
     severity_order = [
-        SeverityLevel.CRITICAL,
-        SeverityLevel.ERROR,
-        SeverityLevel.WARNING,
-        SeverityLevel.INFO,
+        IssueLevel.CRITICAL,
+        IssueLevel.ERROR,
+        IssueLevel.WARNING,
+        IssueLevel.INFO,
     ]
 
     for severity in severity_order:
@@ -180,12 +180,12 @@ def validate_environment_setup() -> List[str]:
     return issues
 
 
-def get_validation_summary_stats(issues: List[AlignmentIssue]) -> Dict[str, Any]:
+def get_validation_summary_stats(issues: List[ValidationIssue]) -> Dict[str, Any]:
     """
     Get summary statistics for a list of validation issues.
 
     Args:
-        issues: List of alignment issues
+        issues: List of validation issues
 
     Returns:
         Dictionary with summary statistics
@@ -193,7 +193,7 @@ def get_validation_summary_stats(issues: List[AlignmentIssue]) -> Dict[str, Any]
     if not issues:
         return {
             "total_issues": 0,
-            "by_severity": {level.value: 0 for level in SeverityLevel},
+            "by_severity": {level.value: 0 for level in IssueLevel},
             "highest_severity": None,
             "has_critical": False,
             "has_errors": False,
@@ -204,8 +204,8 @@ def get_validation_summary_stats(issues: List[AlignmentIssue]) -> Dict[str, Any]
 
     return {
         "total_issues": len(issues),
-        "by_severity": {level.value: len(grouped[level]) for level in SeverityLevel},
+        "by_severity": {level.value: len(grouped[level]) for level in IssueLevel},
         "highest_severity": highest.value if highest else None,
-        "has_critical": len(grouped[SeverityLevel.CRITICAL]) > 0,
-        "has_errors": len(grouped[SeverityLevel.ERROR]) > 0,
+        "has_critical": len(grouped[IssueLevel.CRITICAL]) > 0,
+        "has_errors": len(grouped[IssueLevel.ERROR]) > 0,
     }

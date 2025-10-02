@@ -6,47 +6,34 @@ for the alignment validation system. It provides comprehensive reporting
 capabilities with quality scoring and visual representations.
 
 Components:
-- alignment_reporter.py: Core reporting classes and validation result management
-- alignment_scorer.py: Quality scoring algorithms and rating systems
-- enhanced_reporter.py: Enhanced reporting with advanced formatting and exports
+- validation_reporter.py: Consolidated reporting with comprehensive functionality
 
 Reporting Features:
 - Comprehensive validation result aggregation
 - Quality scoring with weighted metrics
-- Multiple export formats (JSON, HTML, etc.)
+- Multiple export formats (JSON, HTML, text)
 - Visual chart generation for score visualization
 - Issue categorization and severity analysis
 - Actionable recommendations generation
+- Consolidated functionality from multiple previous reporters
 """
 
-# Core reporting
-from .alignment_reporter import (
-    AlignmentReport,
-    ValidationResult,
-    AlignmentSummary,
-)
-
-# Scoring system
-from .alignment_scorer import (
-    AlignmentScorer,
-    score_alignment_results,
-)
-
-# Enhanced reporting
-from .enhanced_reporter import (
-    EnhancedAlignmentReport,
+# Consolidated reporting - replaces alignment_reporter, alignment_scorer, enhanced_reporter
+from .validation_reporter import (
+    ValidationReporter,
+    ReportingConfig,
+    generate_quick_report,
+    print_validation_summary,
+    calculate_validation_scores,
 )
 
 __all__ = [
-    # Core reporting
-    "AlignmentReport",
-    "ValidationResult", 
-    "AlignmentSummary",
+    # Consolidated reporting
+    "ValidationReporter",
+    "ReportingConfig",
     
-    # Scoring
-    "AlignmentScorer",
-    "score_alignment_results",
-    
-    # Enhanced reporting
-    "EnhancedAlignmentReport",
+    # Convenience functions
+    "generate_quick_report",
+    "print_validation_summary", 
+    "calculate_validation_scores",
 ]

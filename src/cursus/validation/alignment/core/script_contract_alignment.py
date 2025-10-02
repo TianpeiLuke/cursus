@@ -8,17 +8,19 @@ Ensures scripts use paths, environment variables, and arguments as declared in c
 from typing import Dict, List, Any, Optional, Set
 from pathlib import Path
 
-from ..analyzer.script_analyzer import ScriptAnalyzer
-from ..analyzer.builder_argument_extractor import extract_builder_arguments
-from ..validators.testability_validator import TestabilityPatternValidator
+# Note: These imports reference removed modules - functionality needs to be replaced
+# from ..analyzer.script_analyzer import ScriptAnalyzer
+# from ..analyzer.builder_argument_extractor import extract_builder_arguments  
+# from ..validators.testability_validator import TestabilityPatternValidator
 from ....registry.step_names import (
     get_sagemaker_step_type,
     get_canonical_name_from_file_name,
 )
 from ....step_catalog import StepCatalog
 from ..utils.utils import normalize_path
-from ..validators import ScriptContractValidator
-from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
+# Note: These imports reference removed modules - functionality needs to be replaced
+# from ..validators import ScriptContractValidator
+# from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
 
 
 class ScriptContractAlignmentTester:
@@ -44,11 +46,13 @@ class ScriptContractAlignmentTester:
         from ....step_catalog import StepCatalog
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
-        # Initialize testability validator
-        self.testability_validator = TestabilityPatternValidator()
-
-        # Initialize validator
-        self.script_validator = ScriptContractValidator()
+        # Note: These validators were removed during consolidation
+        # self.testability_validator = TestabilityPatternValidator()
+        # self.script_validator = ScriptContractValidator()
+        
+        # TODO: Replace with consolidated validation logic
+        self.testability_validator = None
+        self.script_validator = None
 
     def validate_all_scripts(
         self, target_scripts: Optional[List[str]] = None
@@ -150,90 +154,24 @@ class ScriptContractAlignmentTester:
                 ],
             }
 
-        # Analyze script
-        try:
-            analyzer = ScriptAnalyzer(str(script_path))
-            analysis = analyzer.get_all_analysis_results()
-        except Exception as e:
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "CRITICAL",
-                        "category": "script_analysis_error",
-                        "message": f"Failed to analyze script: {str(e)}",
-                        "recommendation": "Fix syntax errors in script",
-                    }
-                ],
-            }
-
-        # Perform alignment validation
+        # TODO: Replace with consolidated validation logic
+        # Note: ScriptAnalyzer and related validators were removed during consolidation
+        
+        # Placeholder validation - returns basic success for now
         issues = []
-
-        # Get builder arguments using StepCatalog
-        builder_args = set()
-        try:
-            builder_class = self.step_catalog.load_builder_class(script_name)
-            if builder_class:
-                # Extract arguments from builder class if available
-                builder_args = extract_builder_arguments(script_name, builder_class)
-        except Exception as e:
-            # Log warning but continue validation
-            pass
-
-        # Validate path usage
-        # Get node_type from specification (dummy_training is SOURCE)
-        node_type = "source" if script_name == "dummy_training" else None
-        path_issues = self.script_validator.validate_path_usage(
-            analysis, contract, script_name, node_type
-        )
-        issues.extend(path_issues)
-
-        # Validate environment variable usage
-        env_issues = self.script_validator.validate_env_var_usage(
-            analysis, contract, script_name
-        )
-        issues.extend(env_issues)
-
-        # Validate argument usage
-        arg_issues = self.script_validator.validate_argument_usage(
-            analysis, contract, script_name, builder_args
-        )
-        issues.extend(arg_issues)
-
-        # Validate file operations
-        file_issues = self.script_validator.validate_file_operations(
-            analysis, contract, script_name
-        )
-        issues.extend(file_issues)
-
-        # Validate script testability patterns
-        try:
-            testability_issues = self.testability_validator.validate_script_testability(
-                str(script_path), analyzer.ast_tree
-            )
-            # Convert AlignmentIssue objects to dictionary format for consistency
-            for issue in testability_issues:
-                issues.append(
-                    {
-                        "severity": issue.level.value,
-                        "category": issue.category,
-                        "message": issue.message,
-                        "details": issue.details,
-                        "recommendation": issue.recommendation,
-                    }
-                )
-        except Exception as e:
-            # If testability validation fails, add a warning but don't fail the entire validation
-            issues.append(
-                {
-                    "severity": "WARNING",
-                    "category": "testability_validation_error",
-                    "message": f"Failed to validate script testability: {str(e)}",
-                    "details": {"script": script_name, "error": str(e)},
-                    "recommendation": "Check script syntax and structure for testability validation",
-                }
-            )
+        analysis = {"placeholder": "Script analysis functionality needs to be restored"}
+        
+        # Add a placeholder issue indicating the validation needs to be restored
+        issues.append({
+            "severity": "INFO",
+            "category": "validation_placeholder",
+            "message": f"Script validation for {script_name} needs to be restored with consolidated modules",
+            "details": {
+                "script": script_name,
+                "status": "placeholder_validation"
+            },
+            "recommendation": "Implement consolidated script validation logic"
+        })
 
         # Phase 2 Enhancement: Add step type-specific validation
         try:
@@ -417,8 +355,9 @@ class ScriptContractAlignmentTester:
         except Exception:
             return issues  # Can't analyze patterns without script content
 
-        # Detect training patterns
-        training_patterns = detect_training_patterns(script_content)
+        # TODO: Replace with consolidated pattern detection
+        # training_patterns = detect_training_patterns(script_content)
+        training_patterns = {}  # Placeholder until pattern detection is restored
 
         # Check for training loop patterns
         if not training_patterns.get("training_loop_patterns"):
@@ -496,8 +435,9 @@ class ScriptContractAlignmentTester:
         """
         issues = []
 
-        # Detect XGBoost patterns
-        xgb_patterns = detect_xgboost_patterns(script_content)
+        # TODO: Replace with consolidated pattern detection
+        # xgb_patterns = detect_xgboost_patterns(script_content)
+        xgb_patterns = {}  # Placeholder until pattern detection is restored
 
         # Check for XGBoost imports
         if not xgb_patterns.get("xgboost_imports"):

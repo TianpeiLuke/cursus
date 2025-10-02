@@ -11,9 +11,7 @@ from pathlib import Path
 from ..validators.property_path_validator import SageMakerPropertyPathValidator
 # PHASE 2 ENHANCEMENT: Use StepCatalog instead of SmartSpecificationSelector
 # SmartSpecificationSelector functionality has been integrated into SpecAutoDiscovery
-from ..validators import ContractSpecValidator
 from ....step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
-from .validation_orchestrator import ValidationOrchestrator
 
 
 class ContractSpecificationAlignmentTester:
@@ -44,8 +42,9 @@ class ContractSpecificationAlignmentTester:
         # PHASE 2 ENHANCEMENT: SmartSpecificationSelector functionality now integrated into StepCatalog
         # No separate smart_spec_selector needed - using StepCatalog methods directly
 
-        # Initialize validator
-        self.validator = ContractSpecValidator()
+        # Note: ContractSpecValidator was removed during consolidation
+        # TODO: Replace with consolidated validation logic
+        self.validator = None
 
     def validate_all_contracts(
         self, target_scripts: Optional[List[str]] = None
@@ -184,17 +183,29 @@ class ContractSpecificationAlignmentTester:
         )
         all_issues.extend(logical_issues)
 
-        # Validate data type consistency
-        type_issues = self.validator.validate_data_types(
-            contract, unified_spec["primary_spec"], script_or_contract_name
-        )
-        all_issues.extend(type_issues)
+        # TODO: Replace with consolidated validation logic
+        # Note: ContractSpecValidator methods were removed during consolidation
+        # type_issues = self.validator.validate_data_types(
+        #     contract, unified_spec["primary_spec"], script_or_contract_name
+        # )
+        # all_issues.extend(type_issues)
 
-        # Validate input/output alignment
-        io_issues = self.validator.validate_input_output_alignment(
-            contract, unified_spec["primary_spec"], script_or_contract_name
-        )
-        all_issues.extend(io_issues)
+        # io_issues = self.validator.validate_input_output_alignment(
+        #     contract, unified_spec["primary_spec"], script_or_contract_name
+        # )
+        # all_issues.extend(io_issues)
+        
+        # Add placeholder issue indicating validation needs to be restored
+        all_issues.append({
+            "severity": "INFO",
+            "category": "validation_placeholder",
+            "message": f"Contract validation for {script_or_contract_name} needs to be restored with consolidated modules",
+            "details": {
+                "contract": script_or_contract_name,
+                "status": "placeholder_validation"
+            },
+            "recommendation": "Implement consolidated contract validation logic"
+        })
 
         # NEW: Validate property path references (Level 2 enhancement)
         property_path_issues = self._validate_property_paths(

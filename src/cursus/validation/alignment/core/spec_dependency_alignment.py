@@ -9,7 +9,6 @@ import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ..validators.dependency_classifier import DependencyPatternClassifier, DependencyPattern
 from .level3_validation_config import Level3ValidationConfig, ValidationMode
 from ..validators import DependencyValidator
 from ....core.deps.factory import create_pipeline_components
@@ -56,8 +55,6 @@ class SpecificationDependencyAlignmentTester:
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
         self.dependency_validator = DependencyValidator(self.config)
 
-        # Initialize the dependency pattern classifier
-        self.dependency_classifier = DependencyPatternClassifier()
 
         # Initialize dependency resolver components
         self.pipeline_components = create_pipeline_components("level3_validation")

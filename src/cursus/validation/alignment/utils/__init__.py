@@ -20,32 +20,30 @@ Utility Features:
 - Configuration validation and defaults
 """
 
-# Core models and enums
-from .core_models import (
-    SeverityLevel,
-    AlignmentLevel,
-    AlignmentIssue,
-    StepTypeAwareAlignmentIssue,
+# Core models and enums - now from consolidated validation_models
+from .validation_models import (
+    ValidationLevel,
+    ValidationStatus,
+    IssueLevel,
+    RuleType,
+    ValidationIssue,
     ValidationResult,
-    create_alignment_issue,
-    create_step_type_aware_alignment_issue,
+    ValidationSummary,
+    MethodValidationInfo,
+    StepValidationContext,
+    create_validation_issue,
+    create_validation_result,
+    merge_validation_results,
+    filter_issues_by_level,
+    group_issues_by_method,
+    format_validation_summary,
 )
 
-# Script analysis models
-from .script_analysis_models import (
-    PathReference,
-    EnvVarAccess,
-    ImportStatement,
-    ArgumentDefinition,
-    PathConstruction,
-    FileOperation,
-)
-
-# Dependency classification
-from ..validators.dependency_classifier import (
-    DependencyPattern,
-    DependencyPatternClassifier,
-)
+# Note: Dependency classification was removed during consolidation
+# from ..validators.dependency_classifier import (
+#     DependencyPattern,
+#     DependencyPatternClassifier,
+# )
 
 # File resolution
 from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
@@ -76,25 +74,23 @@ from ..core.level3_validation_config import (
 )
 
 __all__ = [
-    # Core utilities
-    "SeverityLevel",
-    "AlignmentLevel", 
-    "AlignmentIssue",
-    "StepTypeAwareAlignmentIssue",
-    "create_alignment_issue",
-    "create_step_type_aware_alignment_issue",
+    # Core validation models - consolidated
+    "ValidationLevel",
+    "ValidationStatus",
+    "IssueLevel",
+    "RuleType",
+    "ValidationIssue",
+    "ValidationResult",
+    "ValidationSummary",
+    "MethodValidationInfo",
+    "StepValidationContext",
+    "create_validation_issue",
+    "create_validation_result",
+    "merge_validation_results",
+    "filter_issues_by_level",
+    "group_issues_by_method",
+    "format_validation_summary",
     
-    # Script analysis models
-    "PathReference",
-    "EnvVarAccess",
-    "ImportStatement",
-    "ArgumentDefinition",
-    "PathConstruction",
-    "FileOperation",
-    
-    # Dependency classification
-    "DependencyPattern",
-    "DependencyPatternClassifier",
     
     # File resolution
     "FlexibleFileResolver",

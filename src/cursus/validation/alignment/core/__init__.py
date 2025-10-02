@@ -27,7 +27,6 @@ from .contract_spec_alignment import ContractSpecificationAlignmentTester
 from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
 
 # Level 4: Builder ↔ Configuration Alignment
-from .builder_config_alignment import BuilderConfigurationAlignmentTester
 
 __all__ = [
     # Level 1
@@ -38,7 +37,4 @@ __all__ = [
     
     # Level 3
     "SpecificationDependencyAlignmentTester",
-    
-    # Level 4
-    "BuilderConfigurationAlignmentTester",
 ]
