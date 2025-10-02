@@ -107,9 +107,10 @@ src/cursus/validation/alignment/
 ├── config/
 │   └── validation_ruleset.py              # Centralized configuration
 ├── core/
-│   ├── configurable_unified_tester.py     # Main orchestrator
 │   ├── level_validators.py                # Level-specific validation logic
-│   └── step_type_validator.py             # Step-type-aware validation
+│   ├── script_contract_alignment.py       # Level 1 validation (existing)
+│   ├── contract_spec_alignment.py         # Level 2 validation (existing)
+│   └── spec_dependency_alignment.py       # Level 3 validation (existing)
 ├── validators/
 │   ├── method_interface_validator.py      # Method interface compliance
 │   ├── processing_step_validator.py       # Processing-specific validation
@@ -121,7 +122,7 @@ src/cursus/validation/alignment/
 │   └── validation_utils.py                # Utilities and helpers
 ├── reporting/
 │   └── validation_reporter.py             # Reporting and scoring
-└── unified_alignment_tester.py            # Backward compatibility wrapper
+└── unified_alignment_tester.py            # Enhanced main orchestrator
 ```
 
 ### **Key Architectural Principles**
@@ -150,7 +151,7 @@ VALIDATION_RULESETS = {
 
 #### **2. Step-Type-Aware Validation**
 ```python
-class ConfigurableUnifiedAlignmentTester:
+class UnifiedAlignmentTester:
     def run_validation_for_step(self, step_name: str):
         # Get step type from registry
         sagemaker_step_type = get_sagemaker_step_type(step_name)
@@ -294,21 +295,98 @@ def validate_step_type_configuration() -> List[str]:
 
 ### **Phase 2: Core Refactoring (5 Days)**
 
-#### **2.1 Create Configurable Unified Tester**
-**File**: `src/cursus/validation/alignment/core/configurable_unified_tester.py`
+#### **2.1 Rewrite UnifiedAlignmentTester with Configuration-Driven Design**
+**File**: `src/cursus/validation/alignment/unified_alignment_tester.py`
 
+##### **Method Analysis & Cleanup Strategy**
+
+**Current UnifiedAlignmentTester Analysis:**
+- **Total Methods**: 32 methods analyzed
+- **Keep & Enhance**: 8 core methods (25%)
+- **Modify/Simplify**: 12 methods (37.5%)
+- **Remove/Replace**: 12 methods (37.5%)
+
+##### **🟢 KEEP & ENHANCE (8 methods) - Core API**
 ```python
-class ConfigurableUnifiedAlignmentTester:
-    """Enhanced Unified Alignment Tester with ruleset-based configuration."""
+# Essential API methods to preserve with configuration-driven enhancements
+def __init__(self, workspace_dirs: List[str], **kwargs)  # Enhanced with validation ruleset
+def run_full_validation(self, target_scripts=None, skip_levels=None)  # Configuration-driven level skipping
+def validate_specific_script(self, step_name: str)  # Step-type-aware validation
+def get_validation_summary(self)  # Enhanced with step-type-aware metrics
+def export_report(self, format="json", output_path=None)  # Enhanced with configuration insights
+def print_summary(self)  # Enhanced with step type breakdown
+def get_critical_issues(self)  # Step-type-aware critical issue analysis
+def discover_scripts(self)  # Enhanced with step type classification
+```
+
+##### **🟡 MODIFY/SIMPLIFY (12 methods) - Simplified Implementation**
+```python
+# Methods to simplify or consolidate
+def run_level_validation(self, level: int)  # Use configuration-driven approach
+def _run_level1_validation(self)  # → Consolidate into _run_validation_level()
+def _run_level2_validation(self)  # → Consolidate into _run_validation_level()
+def _run_level3_validation(self)  # → Consolidate into _run_validation_level()
+def _run_level4_validation(self)  # → Consolidate into _run_validation_level()
+def discover_contracts(self)  # → Consolidate into _discover_all_steps()
+def discover_specs(self)  # → Consolidate into _discover_all_steps()
+def discover_builders(self)  # → Consolidate into _discover_all_steps()
+def get_alignment_status_matrix(self)  # Simplify with configuration-aware matrix
+def get_step_info_from_catalog(self, step_name: str)  # Keep as utility, enhance with step type info
+def get_component_path_from_catalog(self, step_name: str, component_type: str)  # Keep as utility
+def validate_cross_workspace_compatibility(self, step_names: List[str])  # Simplify with configuration
+```
+
+##### **🔴 REMOVE/REPLACE (12 methods) - Redundant or Over-Engineered**
+```python
+# Methods to remove or replace with simpler alternatives
+def _discover_scripts_with_catalog(self)  # → Remove: Redundant with consolidated discovery
+def _discover_scripts_legacy(self)  # → Remove: Legacy fallback no longer needed
+def _discover_contracts_with_catalog(self)  # → Remove: Redundant with consolidated discovery
+def _discover_specs_with_catalog(self)  # → Remove: Redundant with consolidated discovery
+def _discover_builders_with_catalog(self)  # → Remove: Redundant with consolidated discovery
+def get_workspace_context(self, step_name: str)  # → Remove: Over-engineered, use simple registry lookup
+def get_workspace_validation_summary(self)  # → Remove: Merge into get_validation_summary()
+def _add_step_type_context_to_issues(self)  # → Remove: Over-engineered, use simple registry lookup
+
+# Instance variables to remove/replace
+self.level1_tester, self.level2_tester, etc.  # → Replace with single self.level_validators
+self.step_type_enhancement_router  # → Remove: Over-engineered, use configuration system
+self.level3_config  # → Remove: Over-engineered, use validation rulesets
+self.enable_step_type_awareness  # → Remove: Always enabled through configuration
+```
+
+##### **Enhanced Implementation**
+```python
+class UnifiedAlignmentTester:
+    """Enhanced Unified Alignment Tester with configuration-driven validation."""
     
-    def __init__(self, workspace_dirs: List[str]):
+    def __init__(self, workspace_dirs: List[str], **kwargs):
         self.workspace_dirs = workspace_dirs
         self.validation_config = VALIDATION_RULESETS
+        
+        # Initialize step catalog - key for discovery methods
+        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
         
         # Validate configuration on initialization
         config_issues = validate_step_type_configuration()
         if config_issues:
             raise ValueError(f"Configuration issues: {config_issues}")
+        
+        # Initialize level validators (replaces 4 separate level testers)
+        self.level_validators = LevelValidators(workspace_dirs)
+        
+        # Preserve legacy kwargs for backward compatibility
+        self.legacy_kwargs = kwargs
+    
+    def run_full_validation(self, target_scripts=None, skip_levels=None):
+        """Enhanced run_full_validation with configuration-driven approach."""
+        if target_scripts:
+            results = {}
+            for script_name in target_scripts:
+                results[script_name] = self.run_validation_for_step(script_name)
+            return results
+        else:
+            return self.run_validation_for_all_steps()
     
     def run_validation_for_step(self, step_name: str) -> Dict[str, Any]:
         """Run validation for a specific step based on its ruleset."""
@@ -325,17 +403,98 @@ class ConfigurableUnifiedAlignmentTester:
         # Run enabled validation levels
         return self._run_enabled_validation_levels(step_name, sagemaker_step_type, ruleset)
     
+    def run_validation_for_all_steps(self) -> Dict[str, Any]:
+        """Run validation for all discovered steps."""
+        # Discover all steps using step catalog
+        discovered_steps = self._discover_all_steps()
+        
+        results = {}
+        for step_name in discovered_steps:
+            results[step_name] = self.run_validation_for_step(step_name)
+        
+        return results
+    
+    def _discover_all_steps(self) -> List[str]:
+        """Discover all steps using step catalog - key for discovery methods."""
+        # Consolidated discovery method (replaces 5 separate discovery methods)
+        all_steps = []
+        
+        # Get all step names from step catalog
+        step_names = self.step_catalog.get_all_step_names()
+        all_steps.extend(step_names)
+        
+        # Get builder names (for backward compatibility)
+        builder_names = self.step_catalog.get_all_builder_names()
+        all_steps.extend(builder_names)
+        
+        # Get spec names (for comprehensive coverage)
+        spec_names = self.step_catalog.get_all_spec_names()
+        all_steps.extend(spec_names)
+        
+        # Remove duplicates and return
+        return list(set(all_steps))
+    
     def _run_validation_level(self, step_name: str, level: ValidationLevel, ruleset: ValidationRuleset):
-        """Run a specific validation level."""
+        """Run a specific validation level (replaces 4 separate level methods)."""
         if level == ValidationLevel.SCRIPT_CONTRACT:
-            return self._run_level_1_validation(step_name)
+            return self.level_validators.run_level_1_validation(step_name)
         elif level == ValidationLevel.CONTRACT_SPEC:
-            return self._run_level_2_validation(step_name)
+            return self.level_validators.run_level_2_validation(step_name)
         elif level == ValidationLevel.SPEC_DEPENDENCY:
-            return self._run_level_3_validation(step_name)  # Universal
+            return self.level_validators.run_level_3_validation(step_name)  # Universal
         elif level == ValidationLevel.BUILDER_CONFIG:
-            return self._run_level_4_validation(step_name, ruleset.level_4_validator_class)
+            return self.level_validators.run_level_4_validation(step_name, ruleset.level_4_validator_class)
+    
+    def _run_enabled_validation_levels(self, step_name: str, sagemaker_step_type: str, ruleset: ValidationRuleset):
+        """Run all enabled validation levels for a step."""
+        results = {
+            "step_name": step_name,
+            "sagemaker_step_type": sagemaker_step_type,
+            "category": ruleset.category.value,
+            "enabled_levels": [level.value for level in ruleset.enabled_levels],
+            "validation_results": {}
+        }
+        
+        for level in ValidationLevel:
+            if level in ruleset.enabled_levels:
+                try:
+                    level_result = self._run_validation_level(step_name, level, ruleset)
+                    results["validation_results"][f"level_{level.value}"] = level_result
+                except Exception as e:
+                    results["validation_results"][f"level_{level.value}"] = {
+                        "status": "ERROR",
+                        "error": str(e)
+                    }
+        
+        return results
+    
+    def _handle_excluded_step(self, step_name: str, sagemaker_step_type: str, ruleset: ValidationRuleset):
+        """Handle excluded step types."""
+        return {
+            "step_name": step_name,
+            "sagemaker_step_type": sagemaker_step_type,
+            "status": "EXCLUDED",
+            "reason": ruleset.skip_reason,
+            "category": ruleset.category.value
+        }
+    
+    # Preserve existing API methods for backward compatibility
+    def discover_scripts(self):
+        """Discover scripts - maintained for backward compatibility."""
+        return self._discover_all_steps()
+    
+    def get_validation_summary(self):
+        """Get validation summary - maintained for backward compatibility."""
+        all_results = self.run_validation_for_all_steps()
+        return self._generate_summary(all_results)
 ```
+
+##### **Method Reduction Summary**
+- **From 32 methods to 20 methods** (37.5% reduction)
+- **Eliminated 5 redundant discovery methods** → 1 consolidated method
+- **Consolidated 4 level validation methods** → 1 unified method
+- **Removed over-engineered features** (enhancement router, feature flags, complex configs)
+- **Preserved all core API methods** with enhanced functionality
 
 #### **2.2 Create Level Validators**
 **File**: `src/cursus/validation/alignment/core/level_validators.py`
@@ -558,8 +717,7 @@ MODULES_TO_REMOVE = [
 **Keep and Enhance (8 modules):**
 ```python
 MODULES_TO_KEEP_AND_ENHANCE = [
-    # Core modules (3 modules)
-    "core/configurable_unified_tester.py",     # → New main orchestrator
+    # Core modules (4 modules)
     "core/level_validators.py",                 # → Consolidated validation logic
     "core/script_contract_alignment.py",       # → Keep for Level 1 validation
     "core/contract_spec_alignment.py",         # → Keep for Level 2 validation
@@ -580,8 +738,8 @@ MODULES_TO_KEEP_AND_ENHANCE = [
     "utils/validation_utils.py",               # → Essential utilities only
     "reporting/validation_reporter.py",        # → Consolidated reporting
     
-    # Backward compatibility (1 module)
-    "unified_alignment_tester.py"              # → Backward compatibility wrapper
+    # Enhanced main orchestrator (1 module)
+    "unified_alignment_tester.py"              # → Enhanced with configuration-driven validation
 ]
 ```
 
@@ -598,42 +756,12 @@ from cursus.validation.alignment.validators.script_contract_validator import Scr
 # AFTER: Importing from consolidated modules
 from cursus.validation.alignment.validators.method_interface_validator import MethodInterfaceValidator
 from cursus.validation.alignment.validators.processing_step_validator import ProcessingStepBuilderValidator
-from cursus.validation.alignment.core.configurable_unified_tester import ConfigurableUnifiedAlignmentTester
-```
-
-#### **4.4 Backward Compatibility Wrapper**
-```python
-# src/cursus/validation/alignment/unified_alignment_tester.py
-class UnifiedAlignmentTester:
-    """Backward compatibility wrapper for existing API."""
-    
-    def __init__(self, workspace_dirs: List[str], **kwargs):
-        # Initialize new configurable tester internally
-        self.configurable_tester = ConfigurableUnifiedAlignmentTester(workspace_dirs)
-        
-        # Preserve old initialization parameters for compatibility
-        self.workspace_dirs = workspace_dirs
-        self.legacy_kwargs = kwargs
-    
-    def run_full_validation(self, target_scripts=None, skip_levels=None):
-        """Maintain existing API while using new configuration-driven approach."""
-        if target_scripts:
-            results = {}
-            for script_name in target_scripts:
-                results[script_name] = self.configurable_tester.run_validation_for_step(script_name)
-            return results
-        else:
-            return self.configurable_tester.run_validation_for_all_steps()
-    
-    # Preserve other existing methods for backward compatibility
-    def discover_scripts(self): ...
-    def get_validation_summary(self): ...
+from cursus.validation.alignment import UnifiedAlignmentTester  # Enhanced with configuration-driven validation
 ```
 
 **Deliverables:**
 - ✅ Remove 20+ redundant modules
 - ✅ Update import statements across codebase
-- ✅ Create backward compatibility wrapper
 - ✅ Update documentation and examples
 - ✅ Comprehensive integration testing
 
