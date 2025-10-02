@@ -8,7 +8,7 @@ Ensures builders properly handle configuration fields and validation.
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from ..analyzer import ConfigurationAnalyzer, BuilderCodeAnalyzer
+from ..analyzer import StepCatalogAnalyzer
 from ..patterns import PatternRecognizer
 
 
@@ -34,9 +34,8 @@ class BuilderConfigurationAlignmentTester:
         from ....step_catalog import StepCatalog
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
-        # Initialize extracted components
-        self.config_analyzer = ConfigurationAnalyzer()
-        self.builder_analyzer = BuilderCodeAnalyzer()
+        # Initialize unified analyzer with StepCatalog integration
+        self.unified_analyzer = StepCatalogAnalyzer(self.step_catalog)
         self.pattern_recognizer = PatternRecognizer()
 
     def validate_all_builders(
@@ -152,34 +151,62 @@ class BuilderConfigurationAlignmentTester:
                 ],
             }
 
-        # Analyze configuration class using extracted component
+        # Analyze step using unified StepCatalogAnalyzer
         try:
-            config_analysis = self.config_analyzer.analyze_config_class(config_class)
+            step_analysis = self.unified_analyzer.analyze_step(builder_name)
+            if "error" in step_analysis:
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "step_analysis_error",
+                            "message": f"Failed to analyze step: {step_analysis['error']}",
+                            "recommendation": "Fix step structure or implementation",
+                        }
+                    ],
+                }
+            
+            # Extract individual analysis components
+            config_analysis = step_analysis.get("config_analysis", {})
+            builder_analysis = step_analysis.get("builder_analysis", {})
+            
+            # Check for analysis errors
+            if "error" in config_analysis:
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "config_analysis_error",
+                            "message": f"Failed to analyze configuration: {config_analysis['error']}",
+                            "recommendation": "Fix configuration class structure or implementation",
+                        }
+                    ],
+                }
+            
+            if "error" in builder_analysis:
+                return {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "CRITICAL",
+                            "category": "builder_analysis_error",
+                            "message": f"Failed to analyze builder: {builder_analysis['error']}",
+                            "recommendation": "Fix builder class structure or implementation",
+                        }
+                    ],
+                }
+                
         except Exception as e:
             return {
                 "passed": False,
                 "issues": [
                     {
                         "severity": "CRITICAL",
-                        "category": "config_analysis_error",
-                        "message": f"Failed to analyze configuration class: {str(e)}",
-                        "recommendation": "Fix configuration class structure or implementation",
-                    }
-                ],
-            }
-
-        # Analyze builder class using extracted component
-        try:
-            builder_analysis = self.builder_analyzer.analyze_builder_class(builder_class)
-        except Exception as e:
-            return {
-                "passed": False,
-                "issues": [
-                    {
-                        "severity": "CRITICAL",
-                        "category": "builder_analysis_error",
-                        "message": f"Failed to analyze builder class: {str(e)}",
-                        "recommendation": "Fix builder class structure or implementation",
+                        "category": "unified_analysis_error",
+                        "message": f"Failed to perform unified analysis: {str(e)}",
+                        "recommendation": "Check step structure and StepCatalog integration",
                     }
                 ],
             }

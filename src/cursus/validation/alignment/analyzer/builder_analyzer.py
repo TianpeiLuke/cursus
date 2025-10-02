@@ -1,12 +1,12 @@
 """
 Builder Code Analysis Engine
 
-Analyzes builder code using AST parsing to extract configuration usage patterns,
-validation calls, and other architectural patterns.
+Analyzes builder code using StepCatalog integration to extract configuration usage patterns,
+validation calls, and other architectural patterns with optimal performance.
 """
 
 import ast
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 
@@ -14,16 +14,67 @@ class BuilderCodeAnalyzer:
     """
     Analyzes builder code to extract configuration usage patterns and architectural information.
 
-    Uses AST parsing to identify:
-    - Configuration field accesses
-    - Validation method calls
-    - Default value assignments
-    - Class and method definitions
+    Uses StepCatalog integration for:
+    - Direct builder class loading
+    - Metadata-driven analysis
+    - Framework detection
+    - Workspace-aware discovery
     """
+
+    def __init__(self, step_catalog=None):
+        """
+        Initialize the builder analyzer with optional StepCatalog integration.
+        
+        Args:
+            step_catalog: Optional StepCatalog instance for enhanced analysis
+        """
+        self.step_catalog = step_catalog
+
+    def analyze_builder_step(self, step_name: str) -> Dict[str, Any]:
+        """
+        Analyze builder using StepCatalog integration (preferred method).
+
+        Args:
+            step_name: Name of the step to analyze
+
+        Returns:
+            Dictionary containing builder analysis results
+        """
+        if not self.step_catalog:
+            return {"error": "StepCatalog not available for step analysis"}
+
+        try:
+            # Get step information from StepCatalog
+            step_info = self.step_catalog.get_step_info(step_name)
+            if not step_info:
+                return {"error": f"Step {step_name} not found in StepCatalog"}
+
+            # Load builder class directly
+            builder_class = self.step_catalog.load_builder_class(step_name)
+            if not builder_class:
+                return {"error": f"Builder class not found for step {step_name}"}
+
+            # Get builder file path from metadata
+            builder_metadata = step_info.file_components.get('builder')
+            if not builder_metadata:
+                return {"error": f"Builder file metadata not found for step {step_name}"}
+
+            # Analyze using class + metadata (more efficient than raw AST parsing)
+            return self.analyze_builder_class(builder_class, step_info)
+
+        except Exception as e:
+            return {
+                "error": str(e),
+                "config_accesses": [],
+                "validation_calls": [],
+                "default_assignments": [],
+                "class_definitions": [],
+                "method_definitions": [],
+            }
 
     def analyze_builder_file(self, builder_path: Path) -> Dict[str, Any]:
         """
-        Analyze builder file to extract code patterns.
+        Analyze builder file directly (legacy method for backward compatibility).
 
         Args:
             builder_path: Path to the builder file
@@ -37,6 +88,54 @@ class BuilderCodeAnalyzer:
 
             builder_ast = ast.parse(builder_content)
             return self.analyze_builder_code(builder_ast, builder_content)
+        except Exception as e:
+            return {
+                "error": str(e),
+                "config_accesses": [],
+                "validation_calls": [],
+                "default_assignments": [],
+                "class_definitions": [],
+                "method_definitions": [],
+            }
+
+    def analyze_builder_class(self, builder_class, step_info) -> Dict[str, Any]:
+        """
+        Analyze builder using loaded class and StepCatalog metadata.
+
+        Args:
+            builder_class: Loaded builder class
+            step_info: StepInfo object from StepCatalog
+
+        Returns:
+            Dictionary containing enhanced builder analysis results
+        """
+        try:
+            # Get builder file content for AST analysis
+            builder_metadata = step_info.file_components.get('builder')
+            if not builder_metadata or not builder_metadata.path.exists():
+                return {"error": "Builder file not accessible"}
+
+            with open(builder_metadata.path, "r") as f:
+                builder_content = f.read()
+
+            builder_ast = ast.parse(builder_content)
+            
+            # Perform enhanced analysis with StepCatalog context
+            analysis = self.analyze_builder_code(builder_ast, builder_content)
+            
+            # Add StepCatalog-enhanced metadata
+            analysis.update({
+                "step_name": step_info.step_name,
+                "workspace_id": step_info.workspace_id,
+                "registry_data": step_info.registry_data,
+                "builder_class_name": builder_class.__name__,
+                "framework": self.step_catalog.detect_framework(step_info.step_name) if self.step_catalog else None,
+                "file_path": str(builder_metadata.path),
+                "last_modified": builder_metadata.modified_time.isoformat() if builder_metadata.modified_time else None,
+            })
+
+            return analysis
+
         except Exception as e:
             return {
                 "error": str(e),

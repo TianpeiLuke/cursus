@@ -17,6 +17,7 @@ Components:
 from .builder_analyzer import BuilderCodeAnalyzer, BuilderPatternAnalyzer
 from .config_analyzer import ConfigurationAnalyzer
 from .script_analyzer import ScriptAnalyzer
+from .step_catalog_analyzer import StepCatalogAnalyzer
 
 # Specialized extractors and parsers
 from .builder_argument_extractor import BuilderArgumentExtractor, BuilderRegistry, extract_builder_arguments
@@ -40,6 +41,7 @@ __all__ = [
     "BuilderPatternAnalyzer",
     "ConfigurationAnalyzer", 
     "ScriptAnalyzer",
+    "StepCatalogAnalyzer",  # Unified StepCatalog-integrated analyzer
     
     # Specialized extractors
     "BuilderArgumentExtractor",
