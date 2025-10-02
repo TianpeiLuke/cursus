@@ -440,62 +440,68 @@ class StepCatalog:
 **Implementation Date**: October 1, 2025
 **Status**: ✅ **PHASE 2 COMPLETE**
 
-### **Phase 3: Architecture Decision (step_type_enhancement_router.py) - 3 Days**
+### **Phase 3: Architecture Decision (step_type_enhancement_router.py) - SUPERSEDED**
 
-#### **3.1 Evaluation Questions**
-1. **Is step type-specific validation needed?**
-   - Current validation framework handles most cases
-   - Step type requirements could be registry metadata
-   
-2. **Should enhancement routing be preserved?**
-   - Dynamic enhancer loading has value
-   - Could be integrated with existing validation architecture
-   
-3. **Where should step type requirements live?**
-   - Registry as step metadata (preferred)
-   - Separate configuration system
-   - Hardcoded in validation framework
+#### **3.1 Decision: Integration with Comprehensive Validation Refactoring**
 
-#### **3.2 Recommended Approach: Registry Integration**
+**Status**: ✅ **SUPERSEDED BY COMPREHENSIVE REFACTORING PLAN**
+
+The architectural decision for `step_type_enhancement_router.py` has been **superseded** by the comprehensive [Validation Alignment System Refactoring Plan](2025-10-01_validation_alignment_refactoring_plan.md). This broader refactoring addresses not only the step type enhancement router but the entire validation alignment system.
+
+#### **3.2 Integration Strategy**
+
+Instead of handling `step_type_enhancement_router.py` in isolation, it will be addressed as part of the **comprehensive validation system refactoring** that:
+
+1. **Eliminates All Step Type Enhancers**: The entire `step_type_enhancers/` directory (7 modules) will be removed as part of the broader refactoring
+2. **Replaces with Configuration-Driven Approach**: Step type requirements will be handled through the centralized **Validation Ruleset Configuration**
+3. **Integrates with Registry**: Step type metadata will be properly integrated with the registry system
+4. **Provides Method-Centric Validation**: Focus on method interface compliance rather than complex enhancement logic
+
+#### **3.3 Comprehensive Solution**
+
+The [Validation Alignment System Refactoring Plan](2025-10-01_validation_alignment_refactoring_plan.md) provides:
+
 ```python
-# ENHANCE: Registry with step type requirements
-STEP_NAMES = {
-    "XGBoostTraining": {
-        "config_class": "XGBoostTrainingConfig",
-        "builder_step_name": "XGBoostTrainingStepBuilder",
-        "spec_type": "XGBoostTraining",
-        "sagemaker_step_type": "Training",
-        "description": "XGBoost training step",
-        # NEW: Step type requirements
-        "validation_requirements": {
-            "input_types": ["TrainingInput"],
-            "output_types": ["model_artifacts"],
-            "required_methods": ["create_step", "_create_estimator"],
-            "common_frameworks": ["xgboost"],
-            "typical_paths": ["/opt/ml/input/data/train", "/opt/ml/model"]
-        }
-    }
+# NEW: Centralized validation ruleset configuration
+VALIDATION_RULESETS = {
+    "Processing": ValidationRuleset(
+        category=StepTypeCategory.SCRIPT_BASED,
+        enabled_levels={1, 2, 3, 4},
+        level_4_validator_class="ProcessingStepBuilderValidator"
+    ),
+    "Training": ValidationRuleset(
+        category=StepTypeCategory.SCRIPT_BASED,
+        enabled_levels={1, 2, 3, 4},
+        level_4_validator_class="TrainingStepBuilderValidator"
+    )
 }
 
-# ENHANCE: Registry functions for requirements
-def get_step_validation_requirements(step_name: str, workspace_id: str = None) -> Dict[str, Any]:
-    """Get validation requirements for a step from registry."""
-    step_names = get_step_names(workspace_id)
-    return step_names.get(step_name, {}).get("validation_requirements", {})
+# NEW: Step-type-specific validators replace enhancers
+class ProcessingStepBuilderValidator:
+    def validate_builder_config_alignment(self, step_name: str):
+        # Processing-specific validation logic
+        # Replaces ProcessingEnhancer functionality
 ```
 
-#### **3.3 Implementation Steps**
-1. **Migrate requirements data** to registry
-2. **Add registry functions** for requirements access
-3. **Update validation framework** to use registry requirements
-4. **Integrate enhancement logic** with existing validation
-5. **Remove** redundant step_type_enhancement_router.py
+#### **3.4 Migration Path**
 
-#### **3.4 Expected Impact**
-- **Registry Enhancement**: Step type requirements as metadata
-- **Lines Eliminated**: ~200 lines of hardcoded requirements
-- **Architecture Improvement**: Single source of truth for step metadata
-- **Validation Enhancement**: Registry-driven validation requirements
+1. **Phase 3 of Factories Plan**: Remove `step_type_enhancement_router.py` as part of redundant module elimination
+2. **Validation Refactoring Plan**: Implement comprehensive validation system with:
+   - Centralized configuration for step type requirements
+   - Step-type-specific validators (replacing enhancers)
+   - Registry integration for step metadata
+   - Method-centric validation approach
+
+#### **3.5 Expected Impact**
+
+**Enhanced Benefits through Comprehensive Approach:**
+- **Registry Integration**: Step type requirements as registry metadata ✅
+- **Lines Eliminated**: ~200 lines from router + ~1,000 lines from entire enhancer system
+- **Architecture Improvement**: Complete validation system redesign
+- **Performance**: 90% faster validation through level skipping
+- **Maintainability**: Single configuration file controls all validation behavior
+
+**Reference**: See [Validation Alignment System Refactoring Plan](2025-10-01_validation_alignment_refactoring_plan.md) for complete implementation details.
 
 ## Testing Strategy
 

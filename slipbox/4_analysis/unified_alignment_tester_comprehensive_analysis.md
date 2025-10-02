@@ -77,8 +77,8 @@ Different SageMaker step types have fundamentally different characteristics that
 #### **Script-Based Steps (Need Full 4-Level Validation)**
 ```python
 SCRIPT_BASED_STEPS = {
-    "ProcessingStep": {
-        "sagemaker_types": ["ProcessingStep"],
+    "Processing": {
+        "sagemaker_types": ["Processing"],
         "requires_script": True,
         "requires_contract": True,
         "validation_levels": [1, 2, 3, 4],
@@ -90,8 +90,8 @@ SCRIPT_BASED_STEPS = {
             "XGBoostModelEval"
         ]
     },
-    "TrainingStep": {
-        "sagemaker_types": ["TrainingStep"],
+    "Training": {
+        "sagemaker_types": ["Training"],
         "requires_script": True,
         "requires_contract": True,
         "validation_levels": [1, 2, 3, 4],
@@ -104,11 +104,35 @@ SCRIPT_BASED_STEPS = {
 }
 ```
 
+#### **Contract-Based Steps (Skip Level 1, Need Levels 2-4)**
+```python
+CONTRACT_BASED_STEPS = {
+    "CradleDataLoading": {
+        "sagemaker_types": ["CradleDataLoading"],
+        "requires_script": False,  # ❌ No script in cursus/steps/scripts
+        "requires_contract": True,  # ✅ Has contract for SageMaker integration
+        "validation_levels": [2, 3, 4],  # Skip script validation, need contract-spec-builder
+        "examples": [
+            "CradleDataLoading"
+        ]
+    },
+    "MimsModelRegistrationProcessing": {
+        "sagemaker_types": ["MimsModelRegistrationProcessing"],
+        "requires_script": False,  # ❌ No script in cursus/steps/scripts
+        "requires_contract": True,  # ✅ Has contract for SageMaker integration
+        "validation_levels": [2, 3, 4],  # Skip script validation, need contract-spec-builder
+        "examples": [
+            "MimsModelRegistration"
+        ]
+    }
+}
+```
+
 #### **Non-Script Steps (Skip Levels 1-2, Focus on 3-4)**
 ```python
 NON_SCRIPT_STEPS = {
-    "CreateModelStep": {
-        "sagemaker_types": ["CreateModelStep"],
+    "CreateModel": {
+        "sagemaker_types": ["CreateModel"],
         "requires_script": False,  # ❌ No script = No Level 1
         "requires_contract": False,  # ❌ No contract = No Level 2
         "validation_levels": [3, 4],  # Only spec dependencies and builder config
@@ -117,8 +141,8 @@ NON_SCRIPT_STEPS = {
             "PyTorchModel"
         ]
     },
-    "TransformStep": {
-        "sagemaker_types": ["TransformStep"],
+    "Transform": {
+        "sagemaker_types": ["Transform"],
         "requires_script": False,  # ❌ Uses existing model
         "requires_contract": False,  # ❌ No custom script
         "validation_levels": [3, 4],
@@ -126,7 +150,7 @@ NON_SCRIPT_STEPS = {
             "BatchTransform"
         ]
     },
-    "RegisterModelStep": {
+    "RegisterModel": {
         "sagemaker_types": ["RegisterModel"],
         "requires_script": False,  # ❌ SageMaker service operation
         "requires_contract": False,  # ❌ No custom code
@@ -141,13 +165,41 @@ NON_SCRIPT_STEPS = {
 #### **Configuration-Only Steps (Only Level 4 Needed)**
 ```python
 CONFIGURATION_ONLY_STEPS = {
-    "UtilityStep": {
-        "sagemaker_types": ["Utility"],
-        "requires_script": False,  # ❌ No SageMaker step created
-        "requires_contract": False,  # ❌ No execution
+    "Lambda": {
+        "sagemaker_types": ["Lambda"],
+        "requires_script": False,  # ❌ Lambda function, not script
+        "requires_contract": False,  # ❌ Different execution model
         "validation_levels": [4],  # Only builder-config alignment
         "examples": [
-            "HyperparameterPrep"
+            "LambdaStep"
+        ]
+    }
+}
+```
+
+#### **Excluded from Validation (No SageMaker Step Created)**
+```python
+EXCLUDED_STEP_TYPES = {
+    "Base": {
+        "sagemaker_types": ["Base"],
+        "requires_script": False,  # ❌ Base config only
+        "requires_contract": False,  # ❌ No execution
+        "requires_builder": False,  # ❌ No builder to validate
+        "validation_levels": [],  # No validation needed
+        "reason": "Base configurations and base processing configs - no builder exists",
+        "examples": [
+            "Base"
+        ]
+    },
+    "Utility": {
+        "sagemaker_types": ["Utility"],
+        "requires_script": False,  # ❌ Special classification - doesn't create SageMaker steps directly
+        "requires_contract": False,  # ❌ No SageMaker step execution
+        "requires_builder": True,  # ✅ Has builder but no SageMaker step
+        "validation_levels": [],  # No validation needed
+        "reason": "Special case - these don't create SageMaker steps directly",
+        "examples": [
+            "HyperparameterPrep"  # Hyperparameter preparation step
         ]
     }
 }
@@ -157,98 +209,425 @@ CONFIGURATION_ONLY_STEPS = {
 
 | SageMaker Step Type | Level 1 (Script↔Contract) | Level 2 (Contract↔Spec) | Level 3 (Spec↔Dependencies) | Level 4 (Builder↔Config) |
 |-------------------|---------------------------|-------------------------|----------------------------|--------------------------|
-| **ProcessingStep** | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
-| **TrainingStep** | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
-| **CreateModelStep** | ❌ N/A (No Script) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
-| **TransformStep** | ❌ N/A (No Script) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
-| **RegisterModelStep** | ❌ N/A (No Script) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
-| **TuningStep** | ❌ N/A (Uses Estimator) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
-| **UtilityStep** | ❌ N/A (No Execution) | ❌ N/A (No Contract) | ❌ N/A (No SageMaker Step) | ✅ Required |
+| **Processing** | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
+| **Training** | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
+| **CradleDataLoading** | ❌ N/A (No Script) | ✅ Required | ✅ Required | ✅ Required |
+| **MimsModelRegistrationProcessing** | ❌ N/A (No Script) | ✅ Required | ✅ Required | ✅ Required |
+| **CreateModel** | ❌ N/A (No Script) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
+| **Transform** | ❌ N/A (No Script) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
+| **RegisterModel** | ❌ N/A (No Script) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
+| **Utility** | ❌ EXCLUDED | ❌ EXCLUDED | ❌ EXCLUDED | ❌ EXCLUDED (No SageMaker Step) |
+| **Base** | ❌ EXCLUDED | ❌ EXCLUDED | ❌ EXCLUDED | ❌ EXCLUDED (No Builder) |
+| **Lambda** | ❌ N/A (Lambda Function) | ❌ N/A (No Contract) | ✅ Required | ✅ Required |
 
 ## Current Implementation Structure Analysis
 
 ### Complex Multi-Module Architecture
 
-The current implementation has **7 major module categories** with significant overlap:
+The current implementation has **7 major module categories** with significant overlap across **35 modules**:
 
-#### **1. Core Validation Modules (5 modules)**
+```
+src/cursus/validation/alignment/
+├── core/ (5 modules)
+│   ├── script_contract_alignment.py          # Level 1 validation
+│   ├── contract_spec_alignment.py            # Level 2 validation
+│   ├── spec_dependency_alignment.py          # Level 3 validation (Universal)
+│   ├── builder_config_alignment.py           # Level 4 validation (MISSING)
+│   └── validation_orchestrator.py            # Coordination (REDUNDANT)
+├── analyzer/ (7 modules)
+│   ├── script_analyzer.py                    # Script content analysis
+│   ├── config_analyzer.py                    # Configuration analysis
+│   ├── builder_analyzer.py                   # Builder class analysis
+│   ├── import_analyzer.py                    # Import statement analysis
+│   ├── path_extractor.py                     # Path extraction utilities
+│   ├── builder_argument_extractor.py         # Argument extraction
+│   └── step_catalog_analyzer.py              # Step catalog integration
+├── validators/ (6 modules)
+│   ├── script_contract_validator.py          # Script-contract validation
+│   ├── contract_spec_validator.py            # Contract-spec validation
+│   ├── dependency_validator.py               # Dependency validation
+│   ├── property_path_validator.py            # Property path validation
+│   ├── dependency_classifier.py              # Dependency classification
+│   └── testability_validator.py              # Testability validation
+├── step_type_enhancers/ (7 modules)
+│   ├── base_enhancer.py                      # Base enhancer class
+│   ├── processing_enhancer.py                # Processing step enhancements
+│   ├── training_enhancer.py                  # Training step enhancements
+│   ├── createmodel_enhancer.py               # CreateModel step enhancements
+│   ├── transform_enhancer.py                 # Transform step enhancements
+│   ├── registermodel_enhancer.py             # RegisterModel step enhancements
+│   └── utility_enhancer.py                   # Utility step enhancements
+├── patterns/ (3 modules)
+│   ├── framework_patterns.py                 # Framework detection patterns
+│   ├── pattern_recognizer.py                 # General pattern recognition
+│   └── __init__.py                           # Pattern module exports
+├── reporting/ (3 modules)
+│   ├── alignment_reporter.py                 # Main reporting system
+│   ├── alignment_scorer.py                   # Scoring and visualization
+│   └── enhanced_reporter.py                  # Enhanced reporting features
+├── utils/ (4 modules)
+│   ├── core_models.py                        # Core data models
+│   ├── script_analysis_models.py             # Script analysis models
+│   ├── alignment_utils.py                    # Alignment utilities
+│   └── utils.py                              # General utilities
+└── unified_alignment_tester.py               # Main orchestrator
+```
+
+### **Detailed Redundancy Analysis by Module**
+
+Based on the [Validation Alignment System Refactoring Plan](../2_project_planning/2025-10-01_validation_alignment_refactoring_plan.md) and [Validation Ruleset Configuration](../1_design/unified_alignment_tester_validation_ruleset.md), here's the detailed redundancy assessment:
+
+#### **1. Core Validation Modules (5 modules) - MIXED FATE**
+
+##### **✅ KEEP (3 modules) - Essential Level Validation**
 ```python
-CORE_MODULES = {
-    "script_contract_alignment.py": "Level 1 validation",
-    "contract_spec_alignment.py": "Level 2 validation", 
-    "spec_dependency_alignment.py": "Level 3 validation",
-    "builder_config_alignment.py": "Level 4 validation",
-    "validation_orchestrator.py": "Coordination (redundant with unified_alignment_tester.py)"
+CORE_MODULES_TO_KEEP = {
+    "script_contract_alignment.py": {
+        "status": "KEEP - Level 1 validation",
+        "reason": "Essential for script-based steps (Processing, Training)",
+        "refactor": "Integrate with LevelValidators.run_level_1_validation()",
+        "usage": "Script-based steps only (per validation ruleset)"
+    },
+    "contract_spec_alignment.py": {
+        "status": "KEEP - Level 2 validation", 
+        "reason": "Essential for contract-based and script-based steps",
+        "refactor": "Integrate with LevelValidators.run_level_2_validation()",
+        "usage": "Script-based + Contract-based steps (per validation ruleset)"
+    },
+    "spec_dependency_alignment.py": {
+        "status": "KEEP - Level 3 validation (Universal)",
+        "reason": "Universal validation for ALL non-excluded step types",
+        "refactor": "Integrate with LevelValidators.run_level_3_validation()",
+        "usage": "ALL step types except Base and Utility (per validation ruleset)"
+    }
 }
 ```
 
-#### **2. Analyzer Modules (7 modules)**
+##### **❌ REMOVE/MISSING (2 modules) - Redundant/Non-existent**
 ```python
-ANALYZER_MODULES = {
-    "script_analyzer.py": "Script content analysis",
-    "config_analyzer.py": "Configuration analysis",
-    "builder_analyzer.py": "Builder class analysis", 
-    "import_analyzer.py": "Import statement analysis",
-    "path_extractor.py": "Path extraction utilities",
-    "builder_argument_extractor.py": "Argument extraction",
-    "step_catalog_analyzer.py": "Step catalog integration"
+CORE_MODULES_TO_REMOVE = {
+    "validation_orchestrator.py": {
+        "status": "REMOVE - 100% REDUNDANT",
+        "reason": "Duplicates unified_alignment_tester.py functionality",
+        "replacement": "ConfigurableUnifiedAlignmentTester",
+        "redundancy_type": "Architectural duplication"
+    },
+    "builder_config_alignment.py": {
+        "status": "MISSING - Would be redundant if existed",
+        "reason": "Level 4 validation will be step-type-specific validators",
+        "replacement": "ProcessingStepBuilderValidator, TrainingStepBuilderValidator, etc.",
+        "design_decision": "Step-type-specific validators instead of generic Level 4"
+    }
 }
 ```
 
-#### **3. Validator Modules (6 modules)**
+#### **2. Analyzer Modules (7 modules) - MASSIVE REDUNDANCY**
+
+##### **❌ REMOVE (5 modules) - Redundant with Method Interface Validation**
 ```python
-VALIDATOR_MODULES = {
-    "script_contract_validator.py": "Script-contract validation",
-    "contract_spec_validator.py": "Contract-spec validation",
-    "dependency_validator.py": "Dependency validation",
-    "property_path_validator.py": "Property path validation",
-    "dependency_classifier.py": "Dependency classification",
-    "testability_validator.py": "Testability validation"
+ANALYZER_MODULES_TO_REMOVE = {
+    "script_analyzer.py": {
+        "status": "REMOVE - Replaced by method interface validation",
+        "reason": "Complex script analysis not needed for method validation",
+        "replacement": "MethodInterfaceValidator.validate_builder_interface()",
+        "lines_eliminated": "~200 lines",
+        "redundancy_type": "Over-engineered analysis"
+    },
+    "import_analyzer.py": {
+        "status": "REMOVE - Not needed for method validation",
+        "reason": "Import analysis irrelevant for method interface compliance",
+        "replacement": "None needed - method validation is simpler",
+        "lines_eliminated": "~150 lines",
+        "redundancy_type": "Unnecessary complexity"
+    },
+    "path_extractor.py": {
+        "status": "REMOVE - Not needed for method validation",
+        "reason": "Path extraction not relevant for method interface validation",
+        "replacement": "None needed",
+        "lines_eliminated": "~100 lines",
+        "redundancy_type": "Unnecessary utility"
+    },
+    "builder_argument_extractor.py": {
+        "status": "REMOVE - Not needed",
+        "reason": "Argument extraction not needed for method validation",
+        "replacement": "None needed",
+        "lines_eliminated": "~120 lines",
+        "redundancy_type": "Over-engineered extraction"
+    },
+    "config_analyzer.py": {
+        "status": "REMOVE - Consolidated into validators",
+        "reason": "Configuration analysis moved to step-type-specific validators",
+        "replacement": "ProcessingStepBuilderValidator, TrainingStepBuilderValidator, etc.",
+        "lines_eliminated": "~180 lines",
+        "redundancy_type": "Functionality consolidation"
+    }
 }
 ```
 
-#### **4. Step Type Enhancers (7 modules)**
+##### **🔄 TRANSFORM (2 modules) - Partial Integration**
 ```python
-STEP_TYPE_ENHANCERS = {
-    "base_enhancer.py": "Base enhancer class",
-    "processing_enhancer.py": "Processing step enhancements",
-    "training_enhancer.py": "Training step enhancements",
-    "createmodel_enhancer.py": "CreateModel step enhancements",
-    "transform_enhancer.py": "Transform step enhancements",
-    "registermodel_enhancer.py": "RegisterModel step enhancements",
-    "utility_enhancer.py": "Utility step enhancements"
+ANALYZER_MODULES_TO_TRANSFORM = {
+    "builder_analyzer.py": {
+        "status": "TRANSFORM - Consolidate into method validator",
+        "reason": "Builder analysis needed but simplified for method validation",
+        "replacement": "MethodInterfaceValidator (consolidated functionality)",
+        "lines_preserved": "~80 lines (essential builder inspection)",
+        "lines_eliminated": "~120 lines (complex analysis)",
+        "transformation": "Extract method inspection, eliminate complex analysis"
+    },
+    "step_catalog_analyzer.py": {
+        "status": "TRANSFORM - Direct StepCatalog integration",
+        "reason": "Step catalog integration needed but not as separate analyzer",
+        "replacement": "Direct StepCatalog usage in ConfigurableUnifiedAlignmentTester",
+        "lines_preserved": "~50 lines (integration logic)",
+        "lines_eliminated": "~100 lines (wrapper complexity)",
+        "transformation": "Direct integration instead of analyzer wrapper"
+    }
 }
 ```
 
-#### **5. Pattern Recognition (3 modules)**
+#### **3. Validator Modules (6 modules) - STEP-TYPE AWARENESS MISMATCH**
+
+##### **❌ REMOVE (4 modules) - Not Step-Type Aware**
 ```python
-PATTERN_MODULES = {
-    "framework_patterns.py": "Framework detection patterns",
-    "pattern_recognizer.py": "General pattern recognition",
-    "__init__.py": "Pattern module exports"
+VALIDATOR_MODULES_TO_REMOVE = {
+    "script_contract_validator.py": {
+        "status": "REMOVE - Script validation not needed for many step types",
+        "reason": "Non-script steps (CreateModel, Transform, RegisterModel) don't need script validation",
+        "replacement": "Level 1 validation only for script-based steps (per ruleset)",
+        "lines_eliminated": "~200 lines",
+        "step_type_issue": "Applies script validation to all steps regardless of type"
+    },
+    "contract_spec_validator.py": {
+        "status": "REMOVE - Contract validation not needed for many step types",
+        "reason": "Non-script steps don't have contracts to validate",
+        "replacement": "Level 2 validation only for script-based + contract-based steps",
+        "lines_eliminated": "~180 lines",
+        "step_type_issue": "Applies contract validation to all steps regardless of type"
+    },
+    "dependency_classifier.py": {
+        "status": "REMOVE - Over-engineered dependency logic",
+        "reason": "Complex dependency classification not needed for method validation",
+        "replacement": "Simplified dependency validation in Level 3",
+        "lines_eliminated": "~150 lines",
+        "redundancy_type": "Over-engineered classification"
+    },
+    "testability_validator.py": {
+        "status": "REMOVE - Not core requirement",
+        "reason": "Testability validation not essential for method interface compliance",
+        "replacement": "None needed - focus on method interface",
+        "lines_eliminated": "~100 lines",
+        "redundancy_type": "Non-essential validation"
+    }
 }
 ```
 
-#### **6. Reporting System (3 modules)**
+##### **🔄 TRANSFORM (2 modules) - Consolidate into Level Validation**
 ```python
-REPORTING_MODULES = {
-    "alignment_reporter.py": "Main reporting system",
-    "alignment_scorer.py": "Scoring and visualization",
-    "enhanced_reporter.py": "Enhanced reporting features"
+VALIDATOR_MODULES_TO_TRANSFORM = {
+    "dependency_validator.py": {
+        "status": "TRANSFORM - Consolidate into Level 3 validation",
+        "reason": "Dependency validation is universal (Level 3) but needs simplification",
+        "replacement": "LevelValidators.run_level_3_validation() (consolidated)",
+        "lines_preserved": "~100 lines (essential dependency logic)",
+        "lines_eliminated": "~80 lines (over-engineered complexity)",
+        "transformation": "Simplify and integrate into universal Level 3"
+    },
+    "property_path_validator.py": {
+        "status": "TRANSFORM - Integrate into step-type-specific validators",
+        "reason": "Property path validation needed but should be step-type-specific",
+        "replacement": "ProcessingStepBuilderValidator, TrainingStepBuilderValidator, etc.",
+        "lines_preserved": "~120 lines (essential property validation)",
+        "lines_eliminated": "~60 lines (generic complexity)",
+        "transformation": "Move to step-type-specific Level 4 validators"
+    }
 }
 ```
 
-#### **7. Utilities and Models (4 modules)**
+#### **4. Step Type Enhancers (7 modules) - COMPLETE ELIMINATION**
+
+##### **❌ REMOVE ALL (7 modules) - Replaced by Configuration-Driven Approach**
 ```python
-UTILITY_MODULES = {
-    "core_models.py": "Core data models",
-    "script_analysis_models.py": "Script analysis models",
-    "alignment_utils.py": "Alignment utilities",
-    "utils.py": "General utilities"
+STEP_TYPE_ENHANCERS_TO_REMOVE = {
+    "base_enhancer.py": {
+        "status": "REMOVE - Replaced by configuration system",
+        "reason": "Enhancement logic replaced by validation ruleset configuration",
+        "replacement": "ValidationRuleset configuration + step-type-specific validators",
+        "lines_eliminated": "~150 lines",
+        "replacement_approach": "Configuration-driven validation instead of enhancement"
+    },
+    "processing_enhancer.py": {
+        "status": "REMOVE - Replaced by ProcessingStepBuilderValidator",
+        "reason": "Processing-specific logic moved to dedicated validator",
+        "replacement": "ProcessingStepBuilderValidator (Level 4 validation)",
+        "lines_eliminated": "~200 lines",
+        "functionality_preserved": "Processing-specific validation logic"
+    },
+    "training_enhancer.py": {
+        "status": "REMOVE - Replaced by TrainingStepBuilderValidator", 
+        "reason": "Training-specific logic moved to dedicated validator",
+        "replacement": "TrainingStepBuilderValidator (Level 4 validation)",
+        "lines_eliminated": "~180 lines",
+        "functionality_preserved": "Training-specific validation logic"
+    },
+    "createmodel_enhancer.py": {
+        "status": "REMOVE - Replaced by CreateModelStepBuilderValidator",
+        "reason": "CreateModel-specific logic moved to dedicated validator",
+        "replacement": "CreateModelStepBuilderValidator (Level 4 validation)",
+        "lines_eliminated": "~160 lines",
+        "functionality_preserved": "CreateModel-specific validation logic"
+    },
+    "transform_enhancer.py": {
+        "status": "REMOVE - Replaced by TransformStepBuilderValidator",
+        "reason": "Transform-specific logic moved to dedicated validator",
+        "replacement": "TransformStepBuilderValidator (Level 4 validation)",
+        "lines_eliminated": "~140 lines",
+        "functionality_preserved": "Transform-specific validation logic"
+    },
+    "registermodel_enhancer.py": {
+        "status": "REMOVE - Replaced by RegisterModelStepBuilderValidator",
+        "reason": "RegisterModel-specific logic moved to dedicated validator",
+        "replacement": "RegisterModelStepBuilderValidator (Level 4 validation)",
+        "lines_eliminated": "~130 lines",
+        "functionality_preserved": "RegisterModel-specific validation logic"
+    },
+    "utility_enhancer.py": {
+        "status": "REMOVE - Utility steps excluded from validation",
+        "reason": "Utility steps don't create SageMaker steps directly (per ruleset)",
+        "replacement": "None needed - Utility steps excluded",
+        "lines_eliminated": "~120 lines",
+        "ruleset_decision": "Utility steps have ValidationRuleset.EXCLUDED category"
+    }
 }
 ```
 
-### Total Module Count: **35 modules** for alignment validation
+#### **5. Pattern Recognition (3 modules) - NOT NEEDED FOR METHOD VALIDATION**
+
+##### **❌ REMOVE ALL (3 modules) - Over-Engineered Pattern Matching**
+```python
+PATTERN_MODULES_TO_REMOVE = {
+    "framework_patterns.py": {
+        "status": "REMOVE - Not needed for method validation",
+        "reason": "Framework detection not relevant for method interface compliance",
+        "replacement": "StepCatalog.detect_framework() if needed",
+        "lines_eliminated": "~100 lines",
+        "redundancy_type": "Over-engineered pattern matching"
+    },
+    "pattern_recognizer.py": {
+        "status": "REMOVE - Over-engineered",
+        "reason": "Complex pattern recognition not needed for method validation",
+        "replacement": "None needed - method validation is simpler",
+        "lines_eliminated": "~150 lines",
+        "redundancy_type": "Unnecessary complexity"
+    },
+    "__init__.py": {
+        "status": "REMOVE - Pattern module exports",
+        "reason": "No pattern modules needed",
+        "replacement": "None needed",
+        "lines_eliminated": "~20 lines",
+        "redundancy_type": "Module structure cleanup"
+    }
+}
+```
+
+#### **6. Reporting System (3 modules) - CONSOLIDATION OPPORTUNITY**
+
+##### **🔄 CONSOLIDATE (3 modules) - Single Reporting Module**
+```python
+REPORTING_MODULES_TO_CONSOLIDATE = {
+    "alignment_reporter.py": {
+        "status": "CONSOLIDATE - Main reporting functionality",
+        "reason": "Core reporting needed but can be simplified",
+        "replacement": "ValidationReporter (consolidated)",
+        "lines_preserved": "~150 lines (essential reporting)",
+        "lines_eliminated": "~50 lines (complexity reduction)",
+        "consolidation": "Merge with enhanced_reporter.py functionality"
+    },
+    "alignment_scorer.py": {
+        "status": "CONSOLIDATE - Scoring and visualization",
+        "reason": "Scoring needed but can be integrated",
+        "replacement": "ValidationReporter.generate_scores() method",
+        "lines_preserved": "~80 lines (scoring logic)",
+        "lines_eliminated": "~40 lines (separate module overhead)",
+        "consolidation": "Integrate scoring into main reporter"
+    },
+    "enhanced_reporter.py": {
+        "status": "CONSOLIDATE - Enhanced reporting features",
+        "reason": "Enhanced features needed but can be integrated",
+        "replacement": "ValidationReporter (consolidated)",
+        "lines_preserved": "~100 lines (enhanced features)",
+        "lines_eliminated": "~30 lines (module separation overhead)",
+        "consolidation": "Merge with alignment_reporter.py"
+    }
+}
+```
+
+#### **7. Utilities and Models (4 modules) - PARTIAL CONSOLIDATION**
+
+##### **🔄 CONSOLIDATE (2 modules) - Essential Utilities**
+```python
+UTILITY_MODULES_TO_CONSOLIDATE = {
+    "core_models.py": {
+        "status": "CONSOLIDATE - Core data models",
+        "reason": "Data models needed but can be consolidated",
+        "replacement": "ValidationModels (consolidated)",
+        "lines_preserved": "~120 lines (essential models)",
+        "lines_eliminated": "~30 lines (redundant models)",
+        "consolidation": "Merge with script_analysis_models.py"
+    },
+    "alignment_utils.py": {
+        "status": "CONSOLIDATE - Essential utilities",
+        "reason": "Utilities needed but can be simplified",
+        "replacement": "ValidationUtils (consolidated)",
+        "lines_preserved": "~80 lines (essential utilities)",
+        "lines_eliminated": "~40 lines (over-engineered utilities)",
+        "consolidation": "Keep only essential utilities"
+    }
+}
+```
+
+##### **❌ REMOVE (2 modules) - Not Needed for Method Validation**
+```python
+UTILITY_MODULES_TO_REMOVE = {
+    "script_analysis_models.py": {
+        "status": "REMOVE - Not needed for method validation",
+        "reason": "Script analysis models not relevant for method interface validation",
+        "replacement": "ValidationModels (consolidated, simplified)",
+        "lines_eliminated": "~100 lines",
+        "redundancy_type": "Over-engineered data models"
+    },
+    "utils.py": {
+        "status": "REMOVE - General utilities not needed",
+        "reason": "General utilities can be replaced with standard library or removed",
+        "replacement": "Standard library functions or ValidationUtils",
+        "lines_eliminated": "~60 lines",
+        "redundancy_type": "Unnecessary utility functions"
+    }
+}
+```
+
+### **Total Redundancy Summary**
+
+#### **Modules by Fate:**
+- **✅ KEEP (3 modules)**: Core level validation modules
+- **🔄 TRANSFORM/CONSOLIDATE (7 modules)**: Partial functionality preservation
+- **❌ REMOVE (25 modules)**: Complete elimination due to redundancy
+
+#### **Lines of Code Impact:**
+- **Lines Eliminated**: ~3,500 lines (70% reduction)
+- **Lines Preserved/Transformed**: ~1,500 lines (30% preserved)
+- **New Lines (Configuration + Validators)**: ~1,000 lines
+- **Net Result**: ~10,000 → ~3,000 lines (70% reduction)
+
+#### **Redundancy Categories:**
+1. **Architectural Duplication** (2 modules): Multiple orchestrators
+2. **Over-Engineered Analysis** (8 modules): Complex analysis not needed for method validation
+3. **Step-Type Unawareness** (4 modules): Generic validation applied to all step types
+4. **Enhancement vs Configuration** (7 modules): Enhancement logic replaced by configuration
+5. **Pattern Over-Engineering** (3 modules): Complex patterns not needed
+6. **Module Fragmentation** (11 modules): Functionality spread across too many modules
+
+This detailed analysis demonstrates that **71% of the current modules (25 out of 35)** contain significant redundancy and can be eliminated or consolidated through the configuration-driven, step-type-aware approach outlined in the refactoring plan.
 
 ## Redundancy Analysis
 
