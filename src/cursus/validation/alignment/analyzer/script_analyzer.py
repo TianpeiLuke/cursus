@@ -18,10 +18,11 @@ from ..utils.script_analysis_models import (
     PathConstruction,
     FileOperation,
 )
-from ..factories.step_type_detection import (
-    detect_step_type_from_registry,
-    detect_framework_from_imports,
+from ....registry.step_names import (
+    get_sagemaker_step_type,
+    get_canonical_name_from_file_name,
 )
+from ....step_catalog import StepCatalog
 from ..patterns.framework_patterns import detect_training_patterns
 
 
@@ -761,10 +762,23 @@ class ScriptAnalyzer:
         # Extract basic analysis results
         imports = self.extract_imports()
 
-        # Phase 2 Enhancement: Add step type and framework detection
+        # Phase 2 Enhancement: Add step type and framework detection using registry functions
         script_name = Path(self.script_path).stem
-        step_type = detect_step_type_from_registry(script_name)
-        framework = detect_framework_from_imports(imports)
+        
+        # Use registry functions instead of redundant factories functions
+        try:
+            canonical_name = get_canonical_name_from_file_name(script_name)
+            step_type = get_sagemaker_step_type(canonical_name)
+        except (ValueError, Exception):
+            step_type = "Processing"  # Default fallback
+        
+        # Use StepCatalog for framework detection
+        try:
+            step_catalog = StepCatalog()
+            canonical_name = get_canonical_name_from_file_name(script_name)
+            framework = step_catalog.detect_framework(canonical_name)
+        except (ValueError, Exception):
+            framework = None
 
         # Add step type-specific patterns if this is a training script
         step_type_patterns = {}

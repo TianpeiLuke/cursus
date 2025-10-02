@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
-from ..factories.step_type_detection import detect_framework_from_imports
+from ....step_catalog import StepCatalog
 
 
 class BaseStepEnhancer(ABC):
@@ -204,8 +204,30 @@ class BaseStepEnhancer(ABC):
         Returns:
             Detected framework name or None
         """
+        # Use StepCatalog's framework detection instead of redundant function
+        step_catalog = StepCatalog()
+        
+        # Try to get step name from script analysis or use a generic approach
+        script_name = script_analysis.get("script_name", "unknown")
+        if script_name != "unknown":
+            return step_catalog.detect_framework(script_name)
+        
+        # Fallback: basic pattern matching for imports if no step name available
         imports = script_analysis.get("imports", [])
-        return detect_framework_from_imports(imports)
+        framework_patterns = {
+            "xgboost": ["xgboost", "xgb"],
+            "pytorch": ["torch", "pytorch"],
+            "sklearn": ["sklearn", "scikit-learn", "scikit_learn"],
+            "sagemaker": ["sagemaker"],
+        }
+        
+        for framework, patterns in framework_patterns.items():
+            for imp in imports:
+                import_str = str(imp).lower()
+                if any(pattern in import_str for pattern in patterns):
+                    return framework
+        
+        return None
 
     def _has_pattern_in_analysis(
         self,

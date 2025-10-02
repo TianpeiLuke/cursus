@@ -20,10 +20,11 @@ from .utils.core_models import (
     StepTypeAwareAlignmentIssue,
     create_step_type_aware_alignment_issue,
 )
-from .factories.step_type_detection import (
-    detect_step_type_from_registry,
-    detect_framework_from_imports,
+from ...registry.step_names import (
+    get_sagemaker_step_type,
+    get_canonical_name_from_file_name,
 )
+from ...step_catalog import StepCatalog
 from .factories.step_type_enhancement_router import StepTypeEnhancementRouter
 from .core.script_contract_alignment import ScriptContractAlignmentTester
 from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
@@ -1012,8 +1013,12 @@ class UnifiedAlignmentTester:
             # Get workspace context from step catalog
             workspace_context = self.get_workspace_context(script_name)
             
-            # Detect step type from registry (enhanced with workspace context)
-            step_type = detect_step_type_from_registry(script_name)
+            # Detect step type from registry using registry functions instead of redundant factories
+            try:
+                canonical_name = get_canonical_name_from_file_name(script_name)
+                step_type = get_sagemaker_step_type(canonical_name)
+            except (ValueError, Exception):
+                step_type = "Processing"  # Default fallback
             
             # Try to get framework from step catalog first, then script analysis
             framework = None

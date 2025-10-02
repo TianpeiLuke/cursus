@@ -14,10 +14,11 @@ from ..utils.utils import (
     extract_logical_name_from_path,
     is_sagemaker_path,
 )
-from ..factories.step_type_detection import (
-    detect_step_type_from_registry,
-    detect_framework_from_imports,
+from ....registry.step_names import (
+    get_sagemaker_step_type,
+    get_canonical_name_from_file_name,
 )
+from ....step_catalog import StepCatalog
 
 
 class ScriptContractValidator:
@@ -923,9 +924,27 @@ class ScriptContractValidator:
         """
         issues = []
 
-        # Get step type and framework from analysis
+        # Get step type using registry functions instead of redundant factories functions
         step_type = analysis.get("step_type")
+        if not step_type:
+            # Fallback: detect step type from script name using registry
+            try:
+                canonical_name = get_canonical_name_from_file_name(script_name)
+                step_type = get_sagemaker_step_type(canonical_name)
+            except (ValueError, Exception):
+                step_type = "Processing"  # Default fallback
+
+        # Get framework using StepCatalog instead of redundant function
         framework = analysis.get("framework")
+        if not framework:
+            # Fallback: detect framework using StepCatalog
+            try:
+                step_catalog = StepCatalog()
+                canonical_name = get_canonical_name_from_file_name(script_name)
+                framework = step_catalog.detect_framework(canonical_name)
+            except (ValueError, Exception):
+                framework = None
+
         step_type_patterns = analysis.get("step_type_patterns", {})
 
         if step_type == "Training":

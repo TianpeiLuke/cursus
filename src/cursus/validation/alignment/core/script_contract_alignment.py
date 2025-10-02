@@ -11,10 +11,11 @@ from pathlib import Path
 from ..analyzer.script_analyzer import ScriptAnalyzer
 from ..analyzer.builder_argument_extractor import extract_builder_arguments
 from ..validators.testability_validator import TestabilityPatternValidator
-from ..factories.step_type_detection import (
-    detect_step_type_from_registry,
-    detect_framework_from_imports,
+from ....registry.step_names import (
+    get_sagemaker_step_type,
+    get_canonical_name_from_file_name,
 )
+from ....step_catalog import StepCatalog
 from ..utils.utils import normalize_path
 from ..validators import ScriptContractValidator
 from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
@@ -352,13 +353,19 @@ class ScriptContractAlignmentTester:
         """
         additional_issues = []
 
-        # Detect step type from registry
-        step_type = detect_step_type_from_registry(script_name)
+        # Detect step type from registry using registry functions instead of redundant factories
+        try:
+            canonical_name = get_canonical_name_from_file_name(script_name)
+            step_type = get_sagemaker_step_type(canonical_name)
+        except (ValueError, Exception):
+            step_type = "Processing"  # Default fallback
 
-        # Detect framework from imports
+        # Detect framework using StepCatalog instead of redundant function
         framework = None
-        if "imports" in analysis:
-            framework = detect_framework_from_imports(analysis["imports"])
+        try:
+            framework = self.step_catalog.detect_framework(script_name)
+        except (ValueError, Exception):
+            framework = None
 
         # Add step type-specific validation
         if step_type == "Training":

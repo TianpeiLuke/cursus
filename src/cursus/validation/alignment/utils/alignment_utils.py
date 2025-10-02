@@ -32,13 +32,12 @@ from ..validators.dependency_classifier import DependencyPattern, DependencyPatt
 # File resolution
 from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
 
-# Step type detection
-from ..factories.step_type_detection import (
-    detect_step_type_from_registry,
-    detect_framework_from_imports,
-    detect_step_type_from_script_patterns,
-    get_step_type_context,
+# Step type detection - using registry functions instead of redundant factories
+from ....registry.step_names import (
+    get_sagemaker_step_type,
+    get_canonical_name_from_file_name,
 )
+from ....step_catalog import StepCatalog
 
 # Utility functions
 from .utils import (
@@ -73,11 +72,10 @@ __all__ = [
     "DependencyPatternClassifier",
     # File resolution
     "FlexibleFileResolver",
-    # Step type detection
-    "detect_step_type_from_registry",
-    "detect_framework_from_imports",
-    "detect_step_type_from_script_patterns",
-    "get_step_type_context",
+    # Step type detection - registry functions
+    "get_sagemaker_step_type",
+    "get_canonical_name_from_file_name",
+    "StepCatalog",
     # Utility functions
     "normalize_path",
     "extract_logical_name_from_path",
