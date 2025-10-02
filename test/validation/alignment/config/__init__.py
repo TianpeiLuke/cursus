@@ -1,3 +1,3 @@
 """
-Test module for validation alignment configuration.
+Tests for validation alignment configuration modules.
 """

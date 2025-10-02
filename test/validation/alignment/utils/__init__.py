@@ -1,3 +1,3 @@
 """
-Test package for alignment utilities.
+Tests for validation alignment utility modules.
 """
