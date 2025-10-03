@@ -183,7 +183,7 @@ class PyTorchModelStepBuilder(StepBuilderBase):
 
         return {model_data_key: inputs[model_data_key]}
 
-    def _get_outputs(self, outputs: Dict[str, Any]) -> str:
+    def _get_outputs(self, outputs: Dict[str, Any]) -> None:
         """
         Use specification outputs - returns model name.
 

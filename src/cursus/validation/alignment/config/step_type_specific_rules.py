@@ -276,7 +276,7 @@ STEP_TYPE_SPECIFIC_VALIDATION_RULES = {
         },
         
         "method_return_types": {
-            "_get_inputs": "TransformInput",
+            "_get_inputs": "Tuple[TransformInput, Union[str, Properties]]",  # Returns both TransformInput and model_name
             "_get_outputs": "str",  # Output path for transform results
             "create_step": "TransformStep"
         },
