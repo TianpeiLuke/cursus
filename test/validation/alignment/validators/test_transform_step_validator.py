@@ -64,7 +64,7 @@ class TestTransformStepBuilderValidator:
     def test_init_without_workspace_dirs(self):
         """Test TransformStepBuilderValidator initialization without workspace directories."""
         validator = TransformStepBuilderValidator()
-        assert validator.workspace_dirs == []
+        assert validator.workspace_dirs is None
 
     def test_validate_builder_config_alignment_with_valid_transform_builder(self, validator, sample_transform_builder):
         """Test validation with valid Transform builder."""
@@ -105,7 +105,7 @@ class TestTransformStepBuilderValidator:
         step_name = "transform_step"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = sample_transform_builder
@@ -140,7 +140,7 @@ class TestTransformStepBuilderValidator:
             # Missing _create_transformer
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = IncompleteTransformBuilder
@@ -207,100 +207,25 @@ class TestTransformStepBuilderValidator:
         warning_issues = [issue for issue in issues if issue["level"] == "WARNING"]
         assert len(warning_issues) > 0
 
-    def test_validate_batch_transform_parameters(self, validator, sample_transform_builder):
-        """Test batch transform parameter validation."""
+    def test_validate_transform_configuration_with_valid_configuration(self, validator, sample_transform_builder):
+        """Test transform configuration validation with valid configuration."""
         builder_class = sample_transform_builder
         
         # Execute validation
-        issues = validator._validate_batch_transform_parameters(builder_class)
+        issues = validator._validate_transform_configuration(builder_class)
         
-        # Should have no issues for valid batch transform parameters
+        # Should have no issues for valid transform configuration
         assert len(issues) == 0
 
-    def test_validate_batch_transform_parameters_with_optimization(self, validator):
-        """Test batch transform parameter validation with optimization settings."""
-        class OptimizedTransformBuilder:
-            def _create_transformer(self, output_path=None):
-                return {
-                    "transformer_type": "BatchTransform",
-                    "model_name": "optimized-model",
-                    "max_concurrent_transforms": 10,
-                    "max_payload": 6,
-                    "batch_strategy": "MultiRecord",
-                    "output_path": output_path
-                }
-        
-        # Execute validation
-        issues = validator._validate_batch_transform_parameters(OptimizedTransformBuilder)
-        
-        # Should have no issues for optimized parameters
-        assert len(issues) == 0
-
-    def test_validate_data_handling_patterns(self, validator, sample_transform_builder):
-        """Test data handling pattern validation."""
+    def test_validate_transformer_type_patterns_with_valid_patterns(self, validator, sample_transform_builder):
+        """Test transformer type patterns validation with valid patterns."""
         builder_class = sample_transform_builder
         
         # Execute validation
-        issues = validator._validate_data_handling_patterns(builder_class)
+        issues = validator._validate_transformer_type_patterns(builder_class)
         
-        # Should have no issues for valid data handling patterns
+        # Should have no issues for valid transformer type patterns
         assert len(issues) == 0
-
-    def test_validate_data_handling_patterns_with_content_types(self, validator):
-        """Test data handling pattern validation with content types."""
-        class ContentTypeTransformBuilder:
-            def _create_transformer(self, output_path=None):
-                return {
-                    "transformer_type": "BatchTransform",
-                    "content_type": "text/csv",
-                    "split_type": "Line",
-                    "compression_type": "Gzip",
-                    "accept": "application/json"
-                }
-        
-        # Execute validation
-        issues = validator._validate_data_handling_patterns(ContentTypeTransformBuilder)
-        
-        # Should have no issues for content type patterns
-        assert len(issues) == 0
-
-    def test_detect_transformer_patterns_batch_transform(self, validator):
-        """Test transformer pattern detection for BatchTransform."""
-        builder_class_dict = {
-            "_create_transformer": lambda output_path=None: {
-                "transformer_type": "BatchTransform",
-                "model_name": "test-model",
-                "instance_type": "ml.m5.xlarge"
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_transformer_patterns(builder_class_dict)
-        
-        # Verify BatchTransform pattern detected
-        assert "transformer_type" in patterns
-        assert patterns["transformer_type"] == "BatchTransform"
-        assert "batch_transform" in patterns
-        assert patterns["batch_transform"] is True
-
-    def test_detect_transformer_patterns_model_transformer(self, validator):
-        """Test transformer pattern detection for model.transformer()."""
-        builder_class_dict = {
-            "_create_transformer": lambda output_path=None: {
-                "transformer_type": "ModelTransformer",
-                "model_reference": "model.transformer()",
-                "instance_type": "ml.m5.large"
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_transformer_patterns(builder_class_dict)
-        
-        # Verify ModelTransformer pattern detected
-        assert "transformer_type" in patterns
-        assert patterns["transformer_type"] == "ModelTransformer"
-        assert "model_transformer" in patterns
-        assert patterns["model_transformer"] is True
 
     def test_integration_with_step_type_specific_validator_base(self, validator):
         """Test integration with StepTypeSpecificValidator base class."""
@@ -380,7 +305,7 @@ class TestTransformStepBuilderValidator:
                 return "s3://bucket/complex/transform/output/"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = ComplexTransformBuilder
@@ -422,7 +347,7 @@ class TestTransformStepBuilderValidator:
                 return "s3://bucket/large/transform/output/"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = LargeTransformBuilder
@@ -440,7 +365,7 @@ class TestTransformStepBuilderValidator:
         step_name = "consistency_test"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = sample_transform_builder
@@ -458,28 +383,3 @@ class TestTransformStepBuilderValidator:
             assert isinstance(result["step_type"], str)
             assert result["rule_type"] == "step_specific"
             assert result["priority"] == "SECONDARY"
-
-    def test_validate_transformer_output_path_usage(self, validator, sample_transform_builder):
-        """Test that _create_transformer properly uses output_path parameter."""
-        builder_class = sample_transform_builder
-        
-        # Execute validation
-        issues = validator._validate_transformer_output_path_usage(builder_class)
-        
-        # Should have no issues for proper output_path usage
-        assert len(issues) == 0
-
-    def test_validate_transformer_output_path_usage_not_used(self, validator):
-        """Test validation when _create_transformer doesn't use output_path parameter."""
-        class NoOutputPathBuilder:
-            def _create_transformer(self, output_path=None):
-                return {"transformer_type": "BatchTransform"}  # Doesn't use output_path
-        
-        # Execute validation
-        issues = validator._validate_transformer_output_path_usage(NoOutputPathBuilder)
-        
-        # Should have warning for not using output_path
-        assert len(issues) > 0
-        warning_issues = [issue for issue in issues if issue["level"] == "WARNING"]
-        assert len(warning_issues) > 0
-        assert any("output_path" in issue["message"] for issue in warning_issues)

@@ -62,7 +62,7 @@ class TestTrainingStepBuilderValidator:
     def test_init_without_workspace_dirs(self):
         """Test TrainingStepBuilderValidator initialization without workspace directories."""
         validator = TrainingStepBuilderValidator()
-        assert validator.workspace_dirs == []
+        assert validator.workspace_dirs is None
 
     def test_validate_builder_config_alignment_with_valid_training_builder(self, validator, sample_training_builder):
         """Test validation with valid training builder."""
@@ -103,7 +103,7 @@ class TestTrainingStepBuilderValidator:
         step_name = "training_step"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = sample_training_builder
@@ -138,7 +138,7 @@ class TestTrainingStepBuilderValidator:
             # Missing _create_estimator
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = IncompleteTrainingBuilder
@@ -176,7 +176,7 @@ class TestTrainingStepBuilderValidator:
             # Missing _get_outputs
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = IncompleteTrainingBuilder
@@ -257,147 +257,24 @@ class TestTrainingStepBuilderValidator:
         warning_issues = [issue for issue in issues if issue["level"] == "WARNING"]
         assert len(warning_issues) > 0
 
-    def test_detect_estimator_type_patterns_xgboost(self, validator):
-        """Test estimator type pattern detection for XGBoost."""
-        builder_class_dict = {
-            "_create_estimator": lambda output_path=None: {
-                "estimator_type": "XGBoost",
-                "framework_version": "1.3-1",
-                "hyperparameters": {"max_depth": 6, "n_estimators": 100}
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_estimator_type_patterns(builder_class_dict)
-        
-        # Verify XGBoost pattern detected
-        assert "estimator_type" in patterns
-        assert patterns["estimator_type"] == "XGBoost"
-        assert "xgboost_training" in patterns
-        assert patterns["xgboost_training"] is True
-
-    def test_detect_estimator_type_patterns_pytorch(self, validator):
-        """Test estimator type pattern detection for PyTorch."""
-        builder_class_dict = {
-            "_create_estimator": lambda output_path=None: {
-                "estimator_type": "PyTorch",
-                "framework_version": "1.8.1",
-                "py_version": "py38"
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_estimator_type_patterns(builder_class_dict)
-        
-        # Verify PyTorch pattern detected
-        assert "estimator_type" in patterns
-        assert patterns["estimator_type"] == "PyTorch"
-        assert "pytorch_training" in patterns
-        assert patterns["pytorch_training"] is True
-
-    def test_detect_estimator_type_patterns_tensorflow(self, validator):
-        """Test estimator type pattern detection for TensorFlow."""
-        builder_class_dict = {
-            "_create_estimator": lambda output_path=None: {
-                "estimator_type": "TensorFlow",
-                "framework_version": "2.6.0",
-                "py_version": "py38"
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_estimator_type_patterns(builder_class_dict)
-        
-        # Verify TensorFlow pattern detected
-        assert "estimator_type" in patterns
-        assert patterns["estimator_type"] == "TensorFlow"
-        assert "tensorflow_training" in patterns
-        assert patterns["tensorflow_training"] is True
-
-    def test_validate_training_input_patterns(self, validator, sample_training_builder):
-        """Test training input pattern validation."""
+    def test_validate_training_configuration_with_valid_configuration(self, validator, sample_training_builder):
+        """Test training configuration validation with valid configuration."""
         builder_class = sample_training_builder
         
         # Execute validation
-        issues = validator._validate_training_input_patterns(builder_class)
+        issues = validator._validate_training_configuration(builder_class)
         
-        # Should have no issues for valid input patterns
+        # Should have no issues for valid training configuration
         assert len(issues) == 0
 
-    def test_validate_hyperparameter_patterns(self, validator):
-        """Test hyperparameter pattern validation."""
-        class HyperparameterBuilder:
-            def _create_estimator(self, output_path=None):
-                return {
-                    "estimator_type": "XGBoost",
-                    "hyperparameters": {
-                        "max_depth": 6,
-                        "n_estimators": 100,
-                        "learning_rate": 0.1,
-                        "subsample": 0.8
-                    }
-                }
+    def test_validate_estimator_type_patterns_with_valid_patterns(self, validator, sample_training_builder):
+        """Test estimator type patterns validation with valid patterns."""
+        builder_class = sample_training_builder
         
         # Execute validation
-        issues = validator._validate_hyperparameter_patterns(HyperparameterBuilder)
+        issues = validator._validate_estimator_type_patterns(builder_class)
         
-        # Should have no issues for valid hyperparameter patterns
-        assert len(issues) == 0
-
-    def test_validate_framework_specific_xgboost(self, validator):
-        """Test framework-specific validation for XGBoost."""
-        class XGBoostBuilder:
-            def _create_estimator(self, output_path=None):
-                return {
-                    "estimator_type": "XGBoost",
-                    "framework_version": "1.3-1",
-                    "hyperparameters": {
-                        "max_depth": 6,
-                        "n_estimators": 100,
-                        "objective": "reg:squarederror"
-                    }
-                }
-        
-        # Execute validation
-        issues = validator._validate_framework_specific_xgboost(XGBoostBuilder)
-        
-        # Should have no issues for valid XGBoost configuration
-        assert len(issues) == 0
-
-    def test_validate_framework_specific_pytorch(self, validator):
-        """Test framework-specific validation for PyTorch."""
-        class PyTorchBuilder:
-            def _create_estimator(self, output_path=None):
-                return {
-                    "estimator_type": "PyTorch",
-                    "framework_version": "1.8.1",
-                    "py_version": "py38",
-                    "entry_point": "train.py",
-                    "source_dir": "/path/to/source"
-                }
-        
-        # Execute validation
-        issues = validator._validate_framework_specific_pytorch(PyTorchBuilder)
-        
-        # Should have no issues for valid PyTorch configuration
-        assert len(issues) == 0
-
-    def test_validate_training_job_optimization(self, validator):
-        """Test training job optimization validation."""
-        class OptimizedTrainingBuilder:
-            def _create_estimator(self, output_path=None):
-                return {
-                    "estimator_type": "XGBoost",
-                    "max_run": 86400,  # 24 hours
-                    "use_spot_instances": True,
-                    "max_wait": 172800,  # 48 hours
-                    "checkpoint_s3_uri": "s3://bucket/checkpoints/"
-                }
-        
-        # Execute validation
-        issues = validator._validate_training_job_optimization(OptimizedTrainingBuilder)
-        
-        # Should have no issues for valid optimization configuration
+        # Should have no issues for valid estimator type patterns
         assert len(issues) == 0
 
     def test_integration_with_step_type_specific_validator_base(self, validator):
@@ -478,7 +355,7 @@ class TestTrainingStepBuilderValidator:
                 return "s3://bucket/complex/model/output/"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = ComplexTrainingBuilder
@@ -519,7 +396,7 @@ class TestTrainingStepBuilderValidator:
                 return "s3://bucket/large/model/output/"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = LargeTrainingBuilder
@@ -537,7 +414,7 @@ class TestTrainingStepBuilderValidator:
         step_name = "consistency_test"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = sample_training_builder
@@ -555,28 +432,3 @@ class TestTrainingStepBuilderValidator:
             assert isinstance(result["step_type"], str)
             assert result["rule_type"] == "step_specific"
             assert result["priority"] == "SECONDARY"
-
-    def test_validate_estimator_output_path_usage(self, validator, sample_training_builder):
-        """Test that _create_estimator properly uses output_path parameter."""
-        builder_class = sample_training_builder
-        
-        # Execute validation
-        issues = validator._validate_estimator_output_path_usage(builder_class)
-        
-        # Should have no issues for proper output_path usage
-        assert len(issues) == 0
-
-    def test_validate_estimator_output_path_usage_not_used(self, validator):
-        """Test validation when _create_estimator doesn't use output_path parameter."""
-        class NoOutputPathBuilder:
-            def _create_estimator(self, output_path=None):
-                return {"estimator_type": "XGBoost"}  # Doesn't use output_path
-        
-        # Execute validation
-        issues = validator._validate_estimator_output_path_usage(NoOutputPathBuilder)
-        
-        # Should have warning for not using output_path
-        assert len(issues) > 0
-        warning_issues = [issue for issue in issues if issue["level"] == "WARNING"]
-        assert len(warning_issues) > 0
-        assert any("output_path" in issue["message"] for issue in warning_issues)

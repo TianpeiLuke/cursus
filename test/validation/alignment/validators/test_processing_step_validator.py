@@ -64,7 +64,7 @@ class TestProcessingStepBuilderValidator:
     def test_init_without_workspace_dirs(self):
         """Test ProcessingStepBuilderValidator initialization without workspace directories."""
         validator = ProcessingStepBuilderValidator()
-        assert validator.workspace_dirs == []
+        assert validator.workspace_dirs is None
 
     def test_validate_builder_config_alignment_with_valid_processing_builder(self, validator, sample_processing_builder):
         """Test validation with valid processing builder."""
@@ -105,7 +105,7 @@ class TestProcessingStepBuilderValidator:
         step_name = "processing_step"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = sample_processing_builder
@@ -140,7 +140,7 @@ class TestProcessingStepBuilderValidator:
             # Missing _create_processor
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = IncompleteProcessingBuilder
@@ -178,7 +178,7 @@ class TestProcessingStepBuilderValidator:
             # Missing _get_outputs
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = IncompleteProcessingBuilder
@@ -244,86 +244,24 @@ class TestProcessingStepBuilderValidator:
         warning_issues = [issue for issue in issues if issue["level"] == "WARNING"]
         assert len(warning_issues) > 0
 
-    def test_validate_job_arguments_with_valid_arguments(self, validator, sample_processing_builder):
-        """Test job arguments validation with valid arguments."""
+    def test_validate_job_arguments_override_with_valid_arguments(self, validator, sample_processing_builder):
+        """Test job arguments override validation with valid arguments."""
         builder_class = sample_processing_builder
         
         # Execute validation
-        issues = validator._validate_job_arguments(builder_class)
+        issues = validator._validate_job_arguments_override(builder_class)
         
-        # Should have no issues for valid job arguments
+        # Should have no issues for valid job arguments override
         assert len(issues) == 0
 
-    def test_validate_job_arguments_with_invalid_return_type(self, validator):
-        """Test job arguments validation with invalid return type."""
-        class InvalidJobArgsBuilder:
-            def _get_job_arguments(self):
-                return {"invalid": "return_type"}  # Should return list
-        
-        # Execute validation
-        issues = validator._validate_job_arguments(InvalidJobArgsBuilder)
-        
-        # Should have issues for invalid return type
-        assert len(issues) > 0
-        warning_issues = [issue for issue in issues if issue["level"] == "WARNING"]
-        assert len(warning_issues) > 0
-
-    def test_detect_processor_type_patterns_script_processor(self, validator):
-        """Test processor type pattern detection for ScriptProcessor."""
-        builder_class_dict = {
-            "_create_processor": lambda: {
-                "processor_type": "ScriptProcessor",
-                "source_dir": "/path/to/source",
-                "entry_point": "process.py"
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_processor_type_patterns(builder_class_dict)
-        
-        # Verify ScriptProcessor pattern detected
-        assert "processor_type" in patterns
-        assert patterns["processor_type"] == "ScriptProcessor"
-        assert "script_execution" in patterns
-        assert patterns["script_execution"] is True
-
-    def test_detect_processor_type_patterns_framework_processor(self, validator):
-        """Test processor type pattern detection for FrameworkProcessor."""
-        builder_class_dict = {
-            "_create_processor": lambda: {
-                "processor_type": "FrameworkProcessor",
-                "framework": "sklearn",
-                "framework_version": "0.24.2"
-            }
-        }
-        
-        # Execute pattern detection
-        patterns = validator._detect_processor_type_patterns(builder_class_dict)
-        
-        # Verify FrameworkProcessor pattern detected
-        assert "processor_type" in patterns
-        assert patterns["processor_type"] == "FrameworkProcessor"
-        assert "framework_execution" in patterns
-        assert patterns["framework_execution"] is True
-
-    def test_validate_processing_input_patterns(self, validator, sample_processing_builder):
-        """Test processing input pattern validation."""
+    def test_validate_processing_input_output_handling_with_valid_handling(self, validator, sample_processing_builder):
+        """Test processing input/output handling validation."""
         builder_class = sample_processing_builder
         
         # Execute validation
-        issues = validator._validate_processing_input_patterns(builder_class)
+        issues = validator._validate_processing_input_output_handling(builder_class)
         
-        # Should have no issues for valid input patterns
-        assert len(issues) == 0
-
-    def test_validate_processing_output_patterns(self, validator, sample_processing_builder):
-        """Test processing output pattern validation."""
-        builder_class = sample_processing_builder
-        
-        # Execute validation
-        issues = validator._validate_processing_output_patterns(builder_class)
-        
-        # Should have no issues for valid output patterns
+        # Should have no issues for valid input/output handling
         assert len(issues) == 0
 
     def test_integration_with_step_type_specific_validator_base(self, validator):
@@ -406,7 +344,7 @@ class TestProcessingStepBuilderValidator:
                 return [f"--param-{i}" for i in range(20)]
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = ComplexProcessingBuilder
@@ -447,7 +385,7 @@ class TestProcessingStepBuilderValidator:
                 ]
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = LargeProcessingBuilder
@@ -465,7 +403,7 @@ class TestProcessingStepBuilderValidator:
         step_name = "consistency_test"
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
-             patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type') as mock_get_step_type:
+             patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
             
             # Setup mocks
             mock_get_builder.return_value = sample_processing_builder

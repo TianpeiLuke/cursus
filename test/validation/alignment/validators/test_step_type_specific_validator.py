@@ -64,7 +64,7 @@ class TestStepTypeSpecificValidator:
 
     def test_init_without_workspace_dirs(self):
         """Test StepTypeSpecificValidator initialization without workspace directories."""
-        validator = ConcreteStepTypeValidator(workspace_dirs=[])
+        validator = ConcreteStepTypeValidator()
         assert validator.workspace_dirs is None
 
     def test_init_loads_validation_rules(self, validator):

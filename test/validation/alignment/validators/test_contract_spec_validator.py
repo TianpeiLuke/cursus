@@ -124,8 +124,8 @@ class TestConsolidatedContractSpecValidator:
         }
         
         # Should handle malformed data gracefully
-        issues = self.validator.validate_logical_names(malformed_contract, specification, "test_contract")
-        
+        issues = self.validator.validate_input_output_alignment(malformed_contract, specification, "test_contract")
+
         # Should report missing dependencies/outputs since malformed data is treated as empty
         assert len(issues) == 2  # Missing training_data dependency and model output
 

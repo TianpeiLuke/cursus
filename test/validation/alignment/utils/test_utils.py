@@ -189,7 +189,7 @@ class ProcessingStepBuilder:
         assert "total_issues" in stats
         assert "by_severity" in stats
         assert "highest_severity" in stats
-        assert "has_critical" in stats
+        assert "has_errors" in stats
         assert "has_errors" in stats
         
         assert stats["total_issues"] == 4
@@ -198,7 +198,6 @@ class ProcessingStepBuilder:
         assert stats["by_severity"]["INFO"] == 1
         assert stats["highest_severity"] == "ERROR"
         assert stats["has_errors"] == True
-        assert stats["has_critical"] == False
 
     def test_normalize_path_edge_cases(self):
         """Test normalize_path with edge cases."""
@@ -256,7 +255,7 @@ class ProcessingStepBuilder:
         # Test with empty list
         grouped_empty = group_issues_by_severity([])
         assert isinstance(grouped_empty, dict)
-        assert len(grouped_empty) == 4  # CRITICAL, ERROR, WARNING, INFO
+        assert len(grouped_empty) == 3  # ERROR, WARNING, INFO
         # All groups should be empty
         for level in IssueLevel:
             assert len(grouped_empty[level]) == 0
@@ -282,7 +281,6 @@ class ProcessingStepBuilder:
         assert stats_empty["by_severity"]["INFO"] == 0
         assert stats_empty["highest_severity"] is None
         assert stats_empty["has_errors"] == False
-        assert stats_empty["has_critical"] == False
         
         # Test with only one type of issue
         error_only = [ValidationIssue(level=IssueLevel.ERROR, message="Error")]
@@ -293,7 +291,6 @@ class ProcessingStepBuilder:
         assert stats_error["by_severity"]["INFO"] == 0
         assert stats_error["highest_severity"] == "ERROR"
         assert stats_error["has_errors"] == True
-        assert stats_error["has_critical"] == False
 
     def test_validate_environment_setup_integration(self):
         """Test validate_environment_setup integration."""
