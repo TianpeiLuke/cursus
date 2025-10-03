@@ -67,9 +67,9 @@ class TestScriptContractAlignment:
     def test_init_without_workspace_dirs(self):
         """Test ScriptContractAlignmentTester initialization without workspace directories."""
         alignment = ScriptContractAlignmentTester()
-        assert alignment.workspace_dirs == []
+        assert alignment.workspace_dirs is None
 
-    @patch('cursus.validation.alignment.core.script_contract_alignment.StepCatalog')
+    @patch('cursus.step_catalog.StepCatalog')
     def test_step_catalog_initialization(self, mock_step_catalog, workspace_dirs):
         """Test that StepCatalog is properly initialized."""
         ScriptContractAlignmentTester(workspace_dirs=workspace_dirs)

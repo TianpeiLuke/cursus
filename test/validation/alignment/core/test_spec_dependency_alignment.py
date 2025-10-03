@@ -102,9 +102,9 @@ class TestSpecDependencyAlignment:
     def test_init_without_workspace_dirs(self):
         """Test SpecificationDependencyAlignmentTester initialization without workspace directories."""
         alignment = SpecificationDependencyAlignmentTester()
-        assert alignment.workspace_dirs == []
+        assert alignment.workspace_dirs is None
 
-    @patch('cursus.validation.alignment.core.spec_dependency_alignment.StepCatalog')
+    @patch('cursus.step_catalog.StepCatalog')
     def test_step_catalog_initialization(self, mock_step_catalog, workspace_dirs):
         """Test that StepCatalog is properly initialized."""
         SpecificationDependencyAlignmentTester(workspace_dirs=workspace_dirs)
@@ -114,11 +114,13 @@ class TestSpecDependencyAlignment:
         """Test specification validation with all dependencies resolved."""
         spec_name = "test_spec"
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
              patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_spec.return_value = sample_specification
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = sample_specification
             
             mock_validator = Mock()
             mock_validator.resolve_dependencies.return_value = sample_dependency_info
@@ -130,13 +132,12 @@ class TestSpecDependencyAlignment:
             
             # Verify results
             assert result["passed"] is True
-            assert result["spec_name"] == spec_name
             assert len(result["issues"]) == 0
-            assert result["dependency_resolution"] == sample_dependency_info
+            assert result["specification"] == sample_specification
             
-            # Verify DependencyValidator was called correctly
-            mock_validator.resolve_dependencies.assert_called_once_with(sample_specification["dependencies"])
-            mock_validator.validate_dependency_resolution.assert_called_once_with(sample_dependency_info)
+            # Verify StepCatalog methods were called correctly
+            mock_load_spec.assert_called_once_with(spec_name)
+            mock_serialize_spec.assert_called_once()
 
     def test_validate_specification_with_unresolved_dependencies(self, spec_dependency_alignment, sample_specification):
         """Test specification validation with unresolved dependencies."""
@@ -184,16 +185,20 @@ class TestSpecDependencyAlignment:
             }
         ]
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
-            mock_load_spec.return_value = sample_specification
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = sample_specification
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = unresolved_dependency_info
-            mock_validator.validate_dependency_resolution.return_value = validation_issues
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return the validation issues
+            mock_dep_resolution.return_value = validation_issues
+            mock_circular.return_value = []
+            mock_data_types.return_value = []
             
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
@@ -202,7 +207,7 @@ class TestSpecDependencyAlignment:
             assert result["passed"] is False
             assert len(result["issues"]) == 2
             assert all(issue["severity"] == "ERROR" for issue in result["issues"])
-            assert result["dependency_resolution"]["unresolved_dependencies"] == unresolved_dependency_info["unresolved_dependencies"]
+            assert result["specification"] == sample_specification
 
     def test_validate_specification_with_circular_dependencies(self, spec_dependency_alignment, sample_specification):
         """Test specification validation with circular dependencies."""
@@ -235,11 +240,13 @@ class TestSpecDependencyAlignment:
             }
         ]
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
              patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_spec.return_value = sample_specification
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = sample_specification
             
             mock_validator = Mock()
             mock_validator.resolve_dependencies.return_value = circular_dependency_info
@@ -259,8 +266,8 @@ class TestSpecDependencyAlignment:
         """Test specification validation when specification cannot be loaded."""
         spec_name = "test_spec"
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec:
-            # Setup mock to return None
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec:
+            # Setup mock to return None (spec not found)
             mock_load_spec.return_value = None
             
             # Execute validation

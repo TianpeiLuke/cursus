@@ -224,7 +224,7 @@ class TestConfigurationAPI:
 class TestConfigurationIntegration:
     """Test configuration system integration."""
 
-    @patch('cursus.validation.alignment.config.validation_ruleset.get_sagemaker_step_type')
+    @patch('cursus.registry.step_names.get_sagemaker_step_type')
     def test_registry_integration(self, mock_get_step_type):
         """Test integration with registry system."""
         mock_get_step_type.return_value = "Processing"

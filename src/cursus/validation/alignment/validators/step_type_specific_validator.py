@@ -36,7 +36,7 @@ class StepTypeSpecificValidator(ABC):
         Args:
             workspace_dirs: List of workspace directories (optional)
         """
-        self.workspace_dirs = workspace_dirs or []
+        self.workspace_dirs = workspace_dirs
         
         # Load both rulesets for priority-based validation
         self.universal_rules = get_universal_validation_rules()
