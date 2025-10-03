@@ -89,6 +89,7 @@ class StepTypeSpecificValidator(ABC):
             results["total_issues"] = combined_result.get("total_issues", 0)
             results["error_count"] = combined_result.get("error_count", 0)
             results["warning_count"] = combined_result.get("warning_count", 0)
+            results["priority_resolution"] = combined_result.get("priority_resolution", "universal_rules_first_then_step_specific")
             
             logger.info(f"Priority-based validation completed for {step_name}")
             return results

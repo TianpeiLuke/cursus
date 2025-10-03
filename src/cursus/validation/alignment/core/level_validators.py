@@ -42,9 +42,9 @@ class LevelValidators:
         
         try:
             # Use existing script_contract_alignment logic
-            from .script_contract_alignment import ScriptContractAlignment
-            alignment = ScriptContractAlignment(workspace_dirs=self.workspace_dirs)
-            result = alignment.validate_script_contract_alignment(step_name)
+            from .script_contract_alignment import ScriptContractAlignmentTester
+            alignment = ScriptContractAlignmentTester(workspace_dirs=self.workspace_dirs)
+            result = alignment.validate_script(step_name)
             
             logger.info(f"Level 1 validation completed for {step_name}")
             return {
@@ -79,9 +79,9 @@ class LevelValidators:
         
         try:
             # Use existing contract_spec_alignment logic
-            from .contract_spec_alignment import ContractSpecAlignment
-            alignment = ContractSpecAlignment(workspace_dirs=self.workspace_dirs)
-            result = alignment.validate_contract_spec_alignment(step_name)
+            from .contract_spec_alignment import ContractSpecificationAlignmentTester
+            alignment = ContractSpecificationAlignmentTester(workspace_dirs=self.workspace_dirs)
+            result = alignment.validate_contract(step_name)
             
             logger.info(f"Level 2 validation completed for {step_name}")
             return {
@@ -118,9 +118,9 @@ class LevelValidators:
         
         try:
             # Use existing spec_dependency_alignment logic
-            from .spec_dependency_alignment import SpecDependencyAlignment
-            alignment = SpecDependencyAlignment(workspace_dirs=self.workspace_dirs)
-            result = alignment.validate_spec_dependency_alignment(step_name)
+            from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
+            alignment = SpecificationDependencyAlignmentTester(workspace_dirs=self.workspace_dirs)
+            result = alignment.validate_specification(step_name)
             
             logger.info(f"Level 3 validation completed for {step_name}")
             return {

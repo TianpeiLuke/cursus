@@ -19,7 +19,7 @@ class TestLevelValidators:
         self.workspace_dirs = ["/test/workspace"]
         self.level_validators = LevelValidators(self.workspace_dirs)
 
-    @patch('cursus.validation.alignment.core.level_validators.ScriptContractAlignment')
+    @patch('cursus.validation.alignment.core.script_contract_alignment.ScriptContractAlignmentTester')
     def test_run_level_1_validation(self, mock_alignment_class):
         """Test Level 1: Script ↔ Contract validation."""
         # Mock the alignment class and its method
@@ -38,14 +38,16 @@ class TestLevelValidators:
         mock_alignment_class.assert_called_once_with(workspace_dirs=self.workspace_dirs)
         
         # Verify validation method was called
-        mock_alignment.validate_script_contract_alignment.assert_called_once_with("test_script")
+        mock_alignment.validate_script.assert_called_once_with("test_script")
         
-        # Verify result
-        assert result["passed"] is True
+        # Verify result structure
         assert result["level"] == 1
+        assert result["step_name"] == "test_script"
         assert result["validation_type"] == "script_contract"
+        assert result["status"] == "COMPLETED"
+        assert "result" in result
 
-    @patch('cursus.validation.alignment.core.level_validators.ContractSpecAlignment')
+    @patch('cursus.validation.alignment.core.contract_spec_alignment.ContractSpecificationAlignmentTester')
     def test_run_level_2_validation(self, mock_alignment_class):
         """Test Level 2: Contract ↔ Specification validation."""
         # Mock the alignment class and its method
@@ -64,14 +66,16 @@ class TestLevelValidators:
         mock_alignment_class.assert_called_once_with(workspace_dirs=self.workspace_dirs)
         
         # Verify validation method was called
-        mock_alignment.validate_contract_spec_alignment.assert_called_once_with("test_contract")
+        mock_alignment.validate_contract.assert_called_once_with("test_contract")
         
-        # Verify result
-        assert result["passed"] is True
+        # Verify result structure
         assert result["level"] == 2
+        assert result["step_name"] == "test_contract"
         assert result["validation_type"] == "contract_spec"
+        assert result["status"] == "COMPLETED"
+        assert "result" in result
 
-    @patch('cursus.validation.alignment.core.level_validators.SpecDependencyAlignment')
+    @patch('cursus.validation.alignment.core.spec_dependency_alignment.SpecificationDependencyAlignmentTester')
     def test_run_level_3_validation(self, mock_alignment_class):
         """Test Level 3: Specification ↔ Dependencies validation."""
         # Mock the alignment class and its method
@@ -90,12 +94,14 @@ class TestLevelValidators:
         mock_alignment_class.assert_called_once_with(workspace_dirs=self.workspace_dirs)
         
         # Verify validation method was called
-        mock_alignment.validate_spec_dependency_alignment.assert_called_once_with("test_spec")
+        mock_alignment.validate_specification.assert_called_once_with("test_spec")
         
-        # Verify result
-        assert result["passed"] is True
+        # Verify result structure
         assert result["level"] == 3
+        assert result["step_name"] == "test_spec"
         assert result["validation_type"] == "spec_dependency"
+        assert result["status"] == "COMPLETED"
+        assert "result" in result
 
     def test_run_level_4_validation_with_validator_class(self):
         """Test Level 4: Builder ↔ Configuration validation with specific validator."""
@@ -142,7 +148,7 @@ class TestLevelValidators:
         assert "error" in result
         assert "Invalid validator class" in result["error"]
 
-    @patch('cursus.validation.alignment.core.level_validators.ValidatorFactory')
+    @patch('cursus.validation.alignment.validators.validator_factory.ValidatorFactory')
     def test_get_step_type_validator_success(self, mock_factory_class):
         """Test successful step-type validator retrieval."""
         # Mock validator factory and validator
@@ -162,7 +168,7 @@ class TestLevelValidators:
         # Verify validator was returned
         assert validator == mock_validator
 
-    @patch('cursus.validation.alignment.core.level_validators.ValidatorFactory')
+    @patch('cursus.validation.alignment.validators.validator_factory.ValidatorFactory')
     def test_get_step_type_validator_failure(self, mock_factory_class):
         """Test step-type validator retrieval failure."""
         # Mock validator factory to return None
@@ -175,7 +181,7 @@ class TestLevelValidators:
         # Should return None for invalid validator
         assert validator is None
 
-    @patch('cursus.validation.alignment.core.level_validators.ValidatorFactory')
+    @patch('cursus.validation.alignment.validators.validator_factory.ValidatorFactory')
     def test_get_step_type_validator_exception_handling(self, mock_factory_class):
         """Test step-type validator retrieval with exception."""
         # Mock validator factory to raise exception

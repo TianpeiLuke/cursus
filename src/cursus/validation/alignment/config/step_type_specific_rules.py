@@ -475,7 +475,9 @@ def is_step_type_excluded(step_type: str) -> bool:
         True if step type is excluded, False otherwise
     """
     rules = get_validation_rules_for_step_type(step_type)
-    return rules and rules.get("category") == StepTypeCategory.EXCLUDED
+    if not rules:
+        return False  # Unknown step types are not excluded
+    return rules.get("category") == StepTypeCategory.EXCLUDED
 
 
 def get_step_type_category(step_type: str) -> Optional[StepTypeCategory]:

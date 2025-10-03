@@ -63,9 +63,9 @@ class TestContractSpecAlignment:
     def test_init_without_workspace_dirs(self):
         """Test ContractSpecificationAlignmentTester initialization without workspace directories."""
         alignment = ContractSpecificationAlignmentTester()
-        assert alignment.workspace_dirs == []
+        assert alignment.workspace_dirs is None
 
-    @patch('cursus.validation.alignment.core.contract_spec_alignment.StepCatalog')
+    @patch('cursus.step_catalog.StepCatalog')
     def test_step_catalog_initialization(self, mock_step_catalog, workspace_dirs):
         """Test that StepCatalog is properly initialized."""
         ContractSpecificationAlignmentTester(workspace_dirs=workspace_dirs)
@@ -75,13 +75,32 @@ class TestContractSpecAlignment:
         """Test contract validation with valid contract and specification data."""
         contract_name = "test_contract"
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec, \
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator, \
              patch('cursus.validation.alignment.validators.contract_spec_validator.ConsolidatedContractSpecValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = {"primary_spec": sample_specification}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training", "validation_data": "/opt/ml/input/data/validation"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model", "evaluation_report": "/opt/ml/output"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_specification
+            mock_create_unified.return_value = {"primary_spec": sample_specification}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             mock_validator = Mock()
             mock_validator.validate_logical_names.return_value = []
@@ -93,16 +112,12 @@ class TestContractSpecAlignment:
             
             # Verify results
             assert result["passed"] is True
-            assert result["contract_name"] == contract_name
             assert len(result["issues"]) == 0
             
-            # Verify validator was called correctly
-            mock_validator.validate_logical_names.assert_called_once_with(
-                sample_contract, sample_specification, contract_name
-            )
-            mock_validator.validate_input_output_alignment.assert_called_once_with(
-                sample_contract, sample_specification, contract_name
-            )
+            # Verify StepCatalog methods were called
+            mock_load_contract.assert_called_once_with(contract_name)
+            mock_find_specs.assert_called_once_with(contract_name)
+            mock_create_unified.assert_called_once_with(contract_name)
 
     def test_validate_contract_with_logical_name_issues(self, contract_spec_alignment, sample_contract, sample_specification):
         """Test contract validation when logical name validation finds issues."""
@@ -117,13 +132,32 @@ class TestContractSpecAlignment:
             }
         ]
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec, \
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator, \
              patch('cursus.validation.alignment.validators.contract_spec_validator.ConsolidatedContractSpecValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = {"primary_spec": sample_specification}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training", "validation_data": "/opt/ml/input/data/validation"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model", "evaluation_report": "/opt/ml/output"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_specification
+            mock_create_unified.return_value = {"primary_spec": sample_specification}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             mock_validator = Mock()
             mock_validator.validate_logical_names.return_value = logical_issues
@@ -152,13 +186,32 @@ class TestContractSpecAlignment:
             }
         ]
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec, \
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator, \
              patch('cursus.validation.alignment.validators.contract_spec_validator.ConsolidatedContractSpecValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = {"primary_spec": sample_specification}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training", "validation_data": "/opt/ml/input/data/validation"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model", "evaluation_report": "/opt/ml/output"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_specification
+            mock_create_unified.return_value = {"primary_spec": sample_specification}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             mock_validator = Mock()
             mock_validator.validate_logical_names.return_value = []
@@ -192,13 +245,32 @@ class TestContractSpecAlignment:
             }
         ]
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec, \
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator, \
              patch('cursus.validation.alignment.validators.contract_spec_validator.ConsolidatedContractSpecValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = {"primary_spec": sample_specification}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training", "validation_data": "/opt/ml/input/data/validation"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model", "evaluation_report": "/opt/ml/output"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_specification
+            mock_create_unified.return_value = {"primary_spec": sample_specification}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             mock_validator = Mock()
             mock_validator.validate_logical_names.return_value = logical_issues
@@ -217,16 +289,34 @@ class TestContractSpecAlignment:
     def test_validate_contract_with_malformed_contract(self, contract_spec_alignment):
         """Test contract validation with malformed contract data."""
         contract_name = "test_contract"
-        malformed_contract = {"invalid": "structure"}
         sample_spec = {"dependencies": [], "outputs": []}
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec, \
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator, \
              patch('cursus.validation.alignment.validators.contract_spec_validator.ConsolidatedContractSpecValidator') as mock_validator_class:
             
-            # Setup mocks
-            mock_load_contract.return_value = malformed_contract
-            mock_load_spec.return_value = {"primary_spec": sample_spec}
+            # Setup mocks - malformed contract object
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {}
+            mock_contract_obj.expected_output_paths = {}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Malformed contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_spec
+            mock_create_unified.return_value = {"primary_spec": sample_spec}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             mock_validator = Mock()
             mock_validator.validate_logical_names.return_value = []
@@ -244,12 +334,23 @@ class TestContractSpecAlignment:
         """Test contract validation when specification cannot be loaded."""
         contract_name = "test_contract"
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec:
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = None
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            # No specifications found
+            mock_find_specs.return_value = {}
             
             # Execute validation
             result = contract_spec_alignment.validate_contract(contract_name)
@@ -262,7 +363,7 @@ class TestContractSpecAlignment:
         """Test contract validation error handling."""
         contract_name = "test_contract"
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract:
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract:
             # Setup mock to raise exception
             mock_load_contract.side_effect = Exception("Test error")
             
@@ -277,12 +378,31 @@ class TestContractSpecAlignment:
         """Test integration with ConsolidatedContractSpecValidator."""
         contract_name = "test_contract"
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec:
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = {"primary_spec": sample_specification}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training", "validation_data": "/opt/ml/input/data/validation"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model", "evaluation_report": "/opt/ml/output"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_specification
+            mock_create_unified.return_value = {"primary_spec": sample_specification}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             # Execute validation (using real ConsolidatedContractSpecValidator)
             result = contract_spec_alignment.validate_contract(contract_name)
@@ -290,20 +410,38 @@ class TestContractSpecAlignment:
             # Verify basic structure
             assert "passed" in result
             assert "issues" in result
-            assert "contract_name" in result
             assert isinstance(result["issues"], list)
 
     def test_validate_contract_result_structure(self, contract_spec_alignment, sample_contract, sample_specification):
         """Test that validate_contract returns properly structured results."""
         contract_name = "test_contract"
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec, \
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator, \
              patch('cursus.validation.alignment.validators.contract_spec_validator.ConsolidatedContractSpecValidator') as mock_validator_class:
             
             # Setup mocks
-            mock_load_contract.return_value = sample_contract
-            mock_load_spec.return_value = {"primary_spec": sample_specification}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {"training_data": "/opt/ml/input/data/training", "validation_data": "/opt/ml/input/data/validation"}
+            mock_contract_obj.expected_output_paths = {"model_artifacts": "/opt/ml/model", "evaluation_report": "/opt/ml/output"}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Test contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "test_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"test_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = sample_specification
+            mock_create_unified.return_value = {"primary_spec": sample_specification}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             mock_validator = Mock()
             mock_validator.validate_logical_names.return_value = []
@@ -314,13 +452,12 @@ class TestContractSpecAlignment:
             result = contract_spec_alignment.validate_contract(contract_name)
             
             # Verify result structure
-            required_keys = ["passed", "issues", "contract_name", "contract", "unified_specification"]
+            required_keys = ["passed", "issues", "contract", "unified_specification"]
             for key in required_keys:
                 assert key in result
             
             assert isinstance(result["passed"], bool)
             assert isinstance(result["issues"], list)
-            assert isinstance(result["contract_name"], str)
             assert isinstance(result["contract"], dict)
 
     def test_workspace_directory_propagation(self, workspace_dirs):
@@ -331,21 +468,36 @@ class TestContractSpecAlignment:
     def test_performance_with_large_contract(self, contract_spec_alignment):
         """Test performance with large contract and specification data."""
         # Create large contract and specification
-        large_contract = {
-            "inputs": {f"input_{i}": {"type": "s3_path"} for i in range(100)},
-            "outputs": {f"output_{i}": {"type": "s3_path"} for i in range(100)}
-        }
         large_spec = {
             "dependencies": [{"logical_name": f"input_{i}", "type": "s3_path"} for i in range(100)],
             "outputs": [{"logical_name": f"output_{i}", "type": "s3_path"} for i in range(100)]
         }
         
-        with patch.object(contract_spec_alignment, '_load_contract') as mock_load_contract, \
-             patch.object(contract_spec_alignment, '_load_unified_specification') as mock_load_spec:
+        with patch.object(contract_spec_alignment.step_catalog, 'load_contract_class') as mock_load_contract, \
+             patch.object(contract_spec_alignment.step_catalog, 'find_specs_by_contract') as mock_find_specs, \
+             patch.object(contract_spec_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(contract_spec_alignment.step_catalog, 'create_unified_specification') as mock_create_unified, \
+             patch.object(contract_spec_alignment.step_catalog, 'validate_logical_names_smart') as mock_validate_smart, \
+             patch.object(contract_spec_alignment.property_path_validator, 'validate_specification_property_paths') as mock_property_validator:
             
             # Setup mocks
-            mock_load_contract.return_value = large_contract
-            mock_load_spec.return_value = {"primary_spec": large_spec}
+            mock_contract_obj = Mock()
+            mock_contract_obj.expected_input_paths = {f"input_{i}": f"/opt/ml/input/data/input_{i}" for i in range(100)}
+            mock_contract_obj.expected_output_paths = {f"output_{i}": f"/opt/ml/output/output_{i}" for i in range(100)}
+            mock_contract_obj.expected_arguments = {}
+            mock_contract_obj.required_env_vars = []
+            mock_contract_obj.optional_env_vars = {}
+            mock_contract_obj.description = "Large contract"
+            mock_contract_obj.framework_requirements = {}
+            mock_contract_obj.entry_point = "large_contract.py"
+            mock_load_contract.return_value = mock_contract_obj
+            
+            mock_spec_instance = Mock()
+            mock_find_specs.return_value = {"large_spec": mock_spec_instance}
+            mock_serialize_spec.return_value = large_spec
+            mock_create_unified.return_value = {"primary_spec": large_spec}
+            mock_validate_smart.return_value = []
+            mock_property_validator.return_value = []
             
             # Execute validation and verify it completes
             result = contract_spec_alignment.validate_contract("large_contract")

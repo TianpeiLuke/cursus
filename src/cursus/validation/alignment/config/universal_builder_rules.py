@@ -365,6 +365,16 @@ def validate_universal_compliance(builder_class: type) -> List[str]:
     """
     issues = []
     
+    # Handle None input
+    if builder_class is None:
+        issues.append("Builder class cannot be None")
+        return issues
+    
+    # Handle non-class input
+    if not isinstance(builder_class, type):
+        issues.append(f"Expected a class, got {type(builder_class).__name__}")
+        return issues
+    
     # Check inheritance
     try:
         from ....core.base.builder_base import StepBuilderBase
@@ -372,6 +382,8 @@ def validate_universal_compliance(builder_class: type) -> List[str]:
             issues.append(f"Builder {builder_class.__name__} must inherit from StepBuilderBase")
     except ImportError:
         issues.append("Cannot validate inheritance - StepBuilderBase not available")
+    except TypeError:
+        issues.append(f"Cannot check inheritance for {builder_class}")
     
     # Check required methods
     required_methods = get_required_methods()
