@@ -41,12 +41,13 @@ class UnifiedAlignmentTester:
     validation level skipping.
     """
     
-    def __init__(self, workspace_dirs: List[str], **kwargs):
+    def __init__(self, workspace_dirs: Optional[List[str]] = None, **kwargs):
         """
         Initialize the enhanced unified alignment tester.
         
         Args:
-            workspace_dirs: List of workspace directories to search
+            workspace_dirs: Optional list of workspace directories to search.
+                           If None, only discovers package internal steps.
             **kwargs: Additional configuration options (preserved for backward compatibility)
         """
         self.workspace_dirs = workspace_dirs
@@ -67,7 +68,8 @@ class UnifiedAlignmentTester:
         # Preserve legacy kwargs for backward compatibility
         self.legacy_kwargs = kwargs
         
-        logger.info(f"Initialized Enhanced UnifiedAlignmentTester with {len(workspace_dirs)} workspace directories")
+        workspace_count = len(self.workspace_dirs) if self.workspace_dirs else 0
+        logger.info(f"Initialized Enhanced UnifiedAlignmentTester with {workspace_count} workspace directories")
     
     def run_full_validation(self, target_scripts: Optional[List[str]] = None, 
                           skip_levels: Optional[Set[int]] = None) -> Dict[str, Any]:
