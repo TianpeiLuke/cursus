@@ -13,7 +13,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any, List
 
-from cursus.validation.alignment.property_path_validator import (
+from cursus.validation.alignment.validators.property_path_validator import (
     SageMakerPropertyPathValidator,
     validate_property_paths,
 )
@@ -127,14 +127,14 @@ class TestSageMakerPropertyPathValidator:
         assert len(skip_issues) == 1
 
     @patch(
-        "cursus.validation.alignment.property_path_validator.STEP_REGISTRY_AVAILABLE",
+        "cursus.validation.alignment.validators.property_path_validator.STEP_REGISTRY_AVAILABLE",
         True,
     )
     @patch(
-        "cursus.validation.alignment.property_path_validator.get_step_name_from_spec_type"
+        "cursus.validation.alignment.validators.property_path_validator.get_step_name_from_spec_type"
     )
     @patch(
-        "cursus.validation.alignment.property_path_validator.get_sagemaker_step_type"
+        "cursus.validation.alignment.validators.property_path_validator.get_sagemaker_step_type"
     )
     def test_step_registry_integration(
         self, mock_get_sagemaker_type, mock_get_step_name, validator
@@ -165,7 +165,7 @@ class TestSageMakerPropertyPathValidator:
         mock_get_sagemaker_type.assert_called_once_with("CurrencyConversion")
 
     @patch(
-        "cursus.validation.alignment.property_path_validator.STEP_REGISTRY_AVAILABLE",
+        "cursus.validation.alignment.validators.property_path_validator.STEP_REGISTRY_AVAILABLE",
         False,
     )
     def test_step_registry_unavailable(self, validator):
@@ -609,7 +609,7 @@ class TestEdgeCasesAndErrorHandling:
             assert isinstance(e, (AttributeError, TypeError, KeyError))
 
     @patch(
-        "cursus.validation.alignment.property_path_validator.get_step_name_from_spec_type"
+        "cursus.validation.alignment.validators.property_path_validator.get_step_name_from_spec_type"
     )
     def test_step_registry_exception_handling(self, mock_get_step_name, validator):
         """Test handling of exceptions in step registry integration."""

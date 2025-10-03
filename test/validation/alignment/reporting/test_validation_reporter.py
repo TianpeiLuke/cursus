@@ -35,17 +35,13 @@ class TestValidationReporter:
         self.sample_issues = [
             ValidationIssue(
                 level=IssueLevel.ERROR,
-                category="test_error",
                 message="Test error message",
-                details={"step": "test_step"},
-                recommendation="Fix the error"
+                details={"step": "test_step"}
             ),
             ValidationIssue(
                 level=IssueLevel.WARNING,
-                category="test_warning",
                 message="Test warning message",
-                details={"step": "test_step"},
-                recommendation="Consider fixing the warning"
+                details={"step": "test_step"}
             )
         ]
         
@@ -54,26 +50,19 @@ class TestValidationReporter:
                 step_name="step1",
                 validation_level=ValidationLevel.SCRIPT_CONTRACT,
                 status=ValidationStatus.PASSED,
-                issues=[],
-                execution_time=1.2
+                issues=[]
             ),
             ValidationResult(
                 step_name="step2",
                 validation_level=ValidationLevel.CONTRACT_SPEC,
                 status=ValidationStatus.FAILED,
-                issues=self.sample_issues,
-                execution_time=2.5
+                issues=self.sample_issues
             )
         ]
         
-        self.sample_summary = ValidationSummary(
-            total_steps=2,
-            passed_steps=1,
-            failed_steps=1,
-            excluded_steps=0,
-            total_issues=2,
-            results=self.sample_results
-        )
+        self.sample_summary = ValidationSummary()
+        for result in self.sample_results:
+            self.sample_summary.add_result(result)
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -256,26 +245,19 @@ class TestValidationReporter:
                 step_name="step1",
                 validation_level=ValidationLevel.SCRIPT_CONTRACT,
                 status=ValidationStatus.PASSED,
-                issues=[],
-                execution_time=1.0
+                issues=[]
             ),
             ValidationResult(
                 step_name="step2",
                 validation_level=ValidationLevel.CONTRACT_SPEC,
                 status=ValidationStatus.PASSED,  # Improved from FAILED
-                issues=[],  # Fixed issues
-                execution_time=2.0
+                issues=[]  # Fixed issues
             )
         ]
         
-        comparison_summary = ValidationSummary(
-            total_steps=2,
-            passed_steps=2,  # Improved
-            failed_steps=0,  # Improved
-            excluded_steps=0,
-            total_issues=0,  # Improved
-            results=comparison_results
-        )
+        comparison_summary = ValidationSummary()
+        for result in comparison_results:
+            comparison_summary.add_result(result)
         
         comparison = self.reporter.generate_comparison_report(
             baseline=self.sample_summary,
@@ -294,16 +276,19 @@ class TestValidationReporter:
     def test_generate_trend_report(self):
         """Test trend analysis across multiple validation runs."""
         # Create historical data
+        # Create second summary for historical data
+        second_summary = ValidationSummary()
+        for i in range(2):
+            result = ValidationResult(
+                step_name=f"step{i+1}",
+                status=ValidationStatus.PASSED,
+                issues=[]
+            )
+            second_summary.add_result(result)
+        
         historical_summaries = [
             self.sample_summary,
-            ValidationSummary(
-                total_steps=2,
-                passed_steps=2,
-                failed_steps=0,
-                excluded_steps=0,
-                total_issues=0,
-                results=[]
-            )
+            second_summary
         ]
         
         trend_report = self.reporter.generate_trend_report(historical_summaries)
@@ -351,16 +336,21 @@ class TestValidationReporter:
     def test_report_aggregation(self):
         """Test report aggregation across multiple workspaces."""
         # Create multiple summaries representing different workspaces
+        # Create second workspace summary
+        workspace2_summary = ValidationSummary()
+        for i in range(3):
+            status = ValidationStatus.PASSED if i < 2 else ValidationStatus.FAILED
+            issues = [ValidationIssue(level=IssueLevel.ERROR, message="Error")] if i >= 2 else []
+            result = ValidationResult(
+                step_name=f"ws2_step{i+1}",
+                status=status,
+                issues=issues
+            )
+            workspace2_summary.add_result(result)
+        
         workspace_summaries = {
             "workspace1": self.sample_summary,
-            "workspace2": ValidationSummary(
-                total_steps=3,
-                passed_steps=2,
-                failed_steps=1,
-                excluded_steps=0,
-                total_issues=1,
-                results=[]
-            )
+            "workspace2": workspace2_summary
         }
         
         aggregated_report = self.reporter.generate_aggregated_report(workspace_summaries)
@@ -417,14 +407,7 @@ class TestValidationReporter:
 
     def test_empty_summary_handling(self):
         """Test handling of empty validation summary."""
-        empty_summary = ValidationSummary(
-            total_steps=0,
-            passed_steps=0,
-            failed_steps=0,
-            excluded_steps=0,
-            total_issues=0,
-            results=[]
-        )
+        empty_summary = ValidationSummary()
         
         report = self.reporter.generate_console_report(empty_summary)
         
@@ -439,19 +422,13 @@ class TestValidationReporter:
                 step_name=f"step_{i}",
                 validation_level=ValidationLevel.SCRIPT_CONTRACT,
                 status=ValidationStatus.PASSED if i % 2 == 0 else ValidationStatus.FAILED,
-                issues=[],
-                execution_time=0.1
+                issues=[]
             )
             large_results.append(result)
         
-        large_summary = ValidationSummary(
-            total_steps=1000,
-            passed_steps=500,
-            failed_steps=500,
-            excluded_steps=0,
-            total_issues=0,
-            results=large_results
-        )
+        large_summary = ValidationSummary()
+        for result in large_results:
+            large_summary.add_result(result)
         
         # Should handle large dataset without issues
         report = self.reporter.generate_console_report(large_summary)

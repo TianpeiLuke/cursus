@@ -50,6 +50,9 @@ class SpecificationDependencyAlignmentTester:
             validation_config or Level3ValidationConfig.create_relaxed_config()
         )
 
+        # Store workspace directories
+        self.workspace_dirs = workspace_dirs
+        
         # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)

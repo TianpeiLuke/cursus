@@ -50,7 +50,8 @@ class TestStepTypeSpecificRules:
                 StepTypeCategory.SCRIPT_BASED,
                 StepTypeCategory.CONTRACT_BASED,
                 StepTypeCategory.NON_SCRIPT,
-                StepTypeCategory.CONFIG_ONLY
+                StepTypeCategory.CONFIG_ONLY,
+                StepTypeCategory.EXCLUDED
             ]
 
     def test_get_step_type_validation_rules(self):
@@ -253,8 +254,8 @@ class TestStepTypeSpecificRules:
         
         # Check method specifications
         create_processor_spec = required_methods["_create_processor"]
-        assert create_processor_spec["return_type"] == "Dict[str, Any]"
-        assert "ScriptProcessor" in create_processor_spec["description"]
+        assert create_processor_spec["return_type"] == "Processor"
+        assert "Processor" in create_processor_spec["description"]
         
         get_outputs_spec = required_methods["_get_outputs"]
         assert get_outputs_spec["return_type"] == "List[ProcessingOutput]"
@@ -273,8 +274,8 @@ class TestStepTypeSpecificRules:
         
         # Check method specifications
         create_estimator_spec = required_methods["_create_estimator"]
-        assert create_estimator_spec["return_type"] == "Dict[str, Any]"
-        assert "output_path" in create_estimator_spec["parameters"]
+        assert create_estimator_spec["return_type"] == "Estimator"
+        assert "output_path" in create_estimator_spec["signature"]
         
         get_outputs_spec = required_methods["_get_outputs"]
         assert get_outputs_spec["return_type"] == "str"
@@ -292,7 +293,7 @@ class TestStepTypeSpecificRules:
         
         # Check method specifications
         create_model_spec = required_methods["_create_model"]
-        assert create_model_spec["return_type"] == "Dict[str, Any]"
+        assert create_model_spec["return_type"] == "Model"
 
     def test_transform_step_specific_rules(self):
         """Test Transform step-specific rules in detail."""
@@ -308,7 +309,7 @@ class TestStepTypeSpecificRules:
         
         # Check method specifications
         create_transformer_spec = required_methods["_create_transformer"]
-        assert create_transformer_spec["return_type"] == "Dict[str, Any]"
+        assert create_transformer_spec["return_type"] == "Transformer"
         
         get_outputs_spec = required_methods["_get_outputs"]
         assert get_outputs_spec["return_type"] == "str"

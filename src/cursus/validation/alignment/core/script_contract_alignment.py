@@ -42,6 +42,9 @@ class ScriptContractAlignmentTester:
             workspace_dirs: Optional list of workspace directories for workspace-aware discovery.
                           If not provided, uses package root for discovery.
         """
+        # Store workspace directories
+        self.workspace_dirs = workspace_dirs
+        
         # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)

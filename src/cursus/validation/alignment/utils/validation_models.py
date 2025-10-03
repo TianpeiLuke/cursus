@@ -35,6 +35,7 @@ class ValidationStatus(Enum):
 
 class IssueLevel(Enum):
     """Severity levels for validation issues."""
+    CRITICAL = "CRITICAL"
     ERROR = "ERROR"
     WARNING = "WARNING"
     INFO = "INFO"

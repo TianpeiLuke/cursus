@@ -27,7 +27,7 @@ class TestUniversalBuilderRules:
         assert isinstance(UNIVERSAL_BUILDER_VALIDATION_RULES, dict)
         assert "required_methods" in UNIVERSAL_BUILDER_VALIDATION_RULES
         assert "inherited_methods" in UNIVERSAL_BUILDER_VALIDATION_RULES
-        assert "implementation_patterns" in UNIVERSAL_BUILDER_VALIDATION_RULES
+        assert "common_implementation_patterns" in UNIVERSAL_BUILDER_VALIDATION_RULES
 
     def test_universal_method_categories_are_valid(self):
         """Test that all universal method categories are valid enum values."""
@@ -254,7 +254,7 @@ class TestUniversalBuilderRules:
         # Check required fields
         assert "required_methods" in rules
         assert "inherited_methods" in rules
-        assert "implementation_patterns" in rules
+        assert "common_implementation_patterns" in rules
         
         # Check required methods structure
         required_methods = rules["required_methods"]

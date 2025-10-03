@@ -19,6 +19,8 @@ def normalize_path(path: str) -> str:
     Returns:
         Normalized path string
     """
+    if path is None:
+        return ""
     return os.path.normpath(path).replace("\\", "/")
 
 
@@ -99,7 +101,7 @@ def format_alignment_issue(issue: ValidationIssue) -> str:
 
     result = f"{emoji} {level_name}: {issue.message}"
 
-    if issue.recommendation:
+    if hasattr(issue, 'recommendation') and issue.recommendation:
         result += f"\n  💡 Recommendation: {issue.recommendation}"
 
     if issue.details:

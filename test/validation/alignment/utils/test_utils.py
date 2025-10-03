@@ -80,11 +80,12 @@ class ProcessingStepBuilder:
     def test_extract_logical_name_from_path(self):
         """Test extract_logical_name_from_path function."""
         test_cases = [
-            ("/workspace/data/training_data.csv", "training_data"),
-            ("/path/to/model_artifacts.tar.gz", "model_artifacts"),
-            ("simple_file.json", "simple_file"),
-            ("/complex/path/with_underscores_file.txt", "with_underscores_file"),
+            ("/opt/ml/processing/input/training_data", "training_data"),
+            ("/opt/ml/processing/output/model_artifacts", "model_artifacts"),
+            ("/opt/ml/input/data/simple_file", "simple_file"),
+            ("/opt/ml/model/with_underscores_file", "with_underscores_file"),
             ("", None),
+            ("/regular/path/file.txt", None),  # Non-SageMaker path
         ]
         
         for input_path, expected_name in test_cases:
@@ -97,14 +98,16 @@ class ProcessingStepBuilder:
     def test_is_sagemaker_path(self):
         """Test is_sagemaker_path function."""
         test_cases = [
-            ("s3://bucket/path/file.csv", True),
-            ("/opt/ml/input/data/training", True),
-            ("/opt/ml/output/model", True),
             ("/opt/ml/processing/input", True),
             ("/opt/ml/processing/output", True),
+            ("/opt/ml/input/data/training", True),
+            ("/opt/ml/output/model", True),
+            ("/opt/ml/model", True),
+            ("/opt/ml/code", True),
             ("/regular/local/path", False),
             ("relative/path", False),
             ("", False),
+            ("s3://bucket/path/file.csv", False),  # S3 paths are not SageMaker container paths
         ]
         
         for path, expected_result in test_cases:
@@ -184,14 +187,18 @@ class ProcessingStepBuilder:
         stats = get_validation_summary_stats(issues)
         assert isinstance(stats, dict)
         assert "total_issues" in stats
-        assert "error_count" in stats
-        assert "warning_count" in stats
-        assert "info_count" in stats
+        assert "by_severity" in stats
+        assert "highest_severity" in stats
+        assert "has_critical" in stats
+        assert "has_errors" in stats
         
         assert stats["total_issues"] == 4
-        assert stats["error_count"] == 1
-        assert stats["warning_count"] == 2
-        assert stats["info_count"] == 1
+        assert stats["by_severity"]["ERROR"] == 1
+        assert stats["by_severity"]["WARNING"] == 2
+        assert stats["by_severity"]["INFO"] == 1
+        assert stats["highest_severity"] == "ERROR"
+        assert stats["has_errors"] == True
+        assert stats["has_critical"] == False
 
     def test_normalize_path_edge_cases(self):
         """Test normalize_path with edge cases."""
@@ -249,7 +256,10 @@ class ProcessingStepBuilder:
         # Test with empty list
         grouped_empty = group_issues_by_severity([])
         assert isinstance(grouped_empty, dict)
-        assert len(grouped_empty) == 0
+        assert len(grouped_empty) == 4  # CRITICAL, ERROR, WARNING, INFO
+        # All groups should be empty
+        for level in IssueLevel:
+            assert len(grouped_empty[level]) == 0
         
         # Test with single issue
         single_issue = [ValidationIssue(level=IssueLevel.ERROR, message="Single error")]
@@ -257,6 +267,9 @@ class ProcessingStepBuilder:
         assert isinstance(grouped_single, dict)
         assert IssueLevel.ERROR in grouped_single
         assert len(grouped_single[IssueLevel.ERROR]) == 1
+        assert len(grouped_single[IssueLevel.WARNING]) == 0
+        assert len(grouped_single[IssueLevel.INFO]) == 0
+        assert len(grouped_single[IssueLevel.CRITICAL]) == 0
 
     def test_get_validation_summary_stats_edge_cases(self):
         """Test get_validation_summary_stats with edge cases."""
@@ -264,17 +277,23 @@ class ProcessingStepBuilder:
         stats_empty = get_validation_summary_stats([])
         assert isinstance(stats_empty, dict)
         assert stats_empty["total_issues"] == 0
-        assert stats_empty["error_count"] == 0
-        assert stats_empty["warning_count"] == 0
-        assert stats_empty["info_count"] == 0
+        assert stats_empty["by_severity"]["ERROR"] == 0
+        assert stats_empty["by_severity"]["WARNING"] == 0
+        assert stats_empty["by_severity"]["INFO"] == 0
+        assert stats_empty["highest_severity"] is None
+        assert stats_empty["has_errors"] == False
+        assert stats_empty["has_critical"] == False
         
         # Test with only one type of issue
         error_only = [ValidationIssue(level=IssueLevel.ERROR, message="Error")]
         stats_error = get_validation_summary_stats(error_only)
         assert stats_error["total_issues"] == 1
-        assert stats_error["error_count"] == 1
-        assert stats_error["warning_count"] == 0
-        assert stats_error["info_count"] == 0
+        assert stats_error["by_severity"]["ERROR"] == 1
+        assert stats_error["by_severity"]["WARNING"] == 0
+        assert stats_error["by_severity"]["INFO"] == 0
+        assert stats_error["highest_severity"] == "ERROR"
+        assert stats_error["has_errors"] == True
+        assert stats_error["has_critical"] == False
 
     def test_validate_environment_setup_integration(self):
         """Test validate_environment_setup integration."""

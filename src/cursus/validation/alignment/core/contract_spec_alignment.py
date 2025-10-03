@@ -32,6 +32,9 @@ class ContractSpecificationAlignmentTester:
         Args:
             workspace_dirs: Optional list of workspace directories for workspace-aware discovery
         """
+        # Store workspace directories
+        self.workspace_dirs = workspace_dirs
+        
         # Initialize property path validator
         self.property_path_validator = SageMakerPropertyPathValidator()
 

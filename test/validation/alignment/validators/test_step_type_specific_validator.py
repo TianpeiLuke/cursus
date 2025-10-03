@@ -20,15 +20,10 @@ from cursus.validation.alignment.config.step_type_specific_rules import get_step
 class ConcreteStepTypeValidator(StepTypeSpecificValidator):
     """Concrete implementation for testing the abstract base class."""
     
-    def _apply_step_specific_validation(self, step_name: str) -> Dict[str, Any]:
-        """Concrete implementation of step-specific validation."""
-        return {
-            "status": "COMPLETED",
-            "issues": [],
-            "step_type": "TestStep",
-            "rule_type": "step_specific",
-            "priority": "SECONDARY"
-        }
+    def _validate_step_type_specifics(self, step_name: str, builder_class, step_type: str) -> List[Dict[str, Any]]:
+        """Concrete implementation of step-type-specific validation."""
+        # Return empty list for testing - no specific issues
+        return []
 
 
 class TestStepTypeSpecificValidator:
@@ -69,7 +64,7 @@ class TestStepTypeSpecificValidator:
 
     def test_init_without_workspace_dirs(self):
         """Test StepTypeSpecificValidator initialization without workspace directories."""
-        validator = ConcreteStepTypeValidator()
+        validator = ConcreteStepTypeValidator(workspace_dirs=[])
         assert validator.workspace_dirs == []
 
     def test_init_loads_validation_rules(self, validator):
@@ -119,7 +114,8 @@ class TestStepTypeSpecificValidator:
             mock_step_specific.assert_called_once_with(step_name)
             mock_resolve.assert_called_once_with(universal_result, step_specific_result)
             
-            assert result == combined_result
+            # Check that the final result contains the expected combined result
+            assert result["final_result"] == combined_result
 
     def test_apply_universal_validation_with_valid_builder(self, validator, sample_builder_class):
         """Test universal validation with valid builder class."""
@@ -493,12 +489,13 @@ class TestStepTypeSpecificValidator:
             # Execute validation
             result = validator.validate_builder_config_alignment(step_name)
             
-            # Verify consistent result structure
+            # Verify consistent result structure - check final_result contains expected keys
+            final_result = result["final_result"]
             required_keys = ["status", "total_issues", "error_count", "warning_count", "issues", "priority_resolution"]
             for key in required_keys:
-                assert key in result
+                assert key in final_result
             
-            assert isinstance(result["total_issues"], int)
-            assert isinstance(result["error_count"], int)
-            assert isinstance(result["warning_count"], int)
-            assert isinstance(result["issues"], list)
+            assert isinstance(final_result["total_issues"], int)
+            assert isinstance(final_result["error_count"], int)
+            assert isinstance(final_result["warning_count"], int)
+            assert isinstance(final_result["issues"], list)

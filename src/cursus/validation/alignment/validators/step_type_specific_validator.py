@@ -29,14 +29,14 @@ class StepTypeSpecificValidator(ABC):
     2. Step-Type-Specific Rules (SECONDARY PRIORITY) - Applied as supplements
     """
     
-    def __init__(self, workspace_dirs: List[str]):
+    def __init__(self, workspace_dirs: Optional[List[str]] = None):
         """
         Initialize step-type-specific validator.
         
         Args:
-            workspace_dirs: List of workspace directories
+            workspace_dirs: List of workspace directories (optional)
         """
-        self.workspace_dirs = workspace_dirs
+        self.workspace_dirs = workspace_dirs or []
         
         # Load both rulesets for priority-based validation
         self.universal_rules = get_universal_validation_rules()
@@ -83,6 +83,12 @@ class StepTypeSpecificValidator(ABC):
                 step_specific_validation
             )
             results["final_result"] = combined_result
+            
+            # Add compatibility fields at top level
+            results["status"] = combined_result.get("status", "UNKNOWN")
+            results["total_issues"] = combined_result.get("total_issues", 0)
+            results["error_count"] = combined_result.get("error_count", 0)
+            results["warning_count"] = combined_result.get("warning_count", 0)
             
             logger.info(f"Priority-based validation completed for {step_name}")
             return results

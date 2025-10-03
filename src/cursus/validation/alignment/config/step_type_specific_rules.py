@@ -20,11 +20,14 @@ class StepTypeCategory(Enum):
     EXCLUDED = "excluded"              # No validation needed (Base, Utility)
 
 
-STEP_TYPE_SPECIFIC_VALIDATION_RULES = {
+# Metadata for the validation rules
+VALIDATION_RULES_METADATA = {
     "version": "1.0.0",
     "description": "Step-type-specific validation rules based on actual codebase analysis",
-    "last_updated": "2025-10-02",
-    
+    "last_updated": "2025-10-02"
+}
+
+STEP_TYPE_SPECIFIC_VALIDATION_RULES = {
     # Training Steps - Full script-based validation
     "Training": {
         "sagemaker_step_class": "TrainingStep",
@@ -352,7 +355,8 @@ STEP_TYPE_SPECIFIC_VALIDATION_RULES = {
         "category": StepTypeCategory.EXCLUDED,
         "description": "Base configurations with no corresponding builder",
         "skip_reason": "Base configurations - no builder to validate",
-        "examples": ["BaseConfig", "BaseStep"]
+        "examples": ["BaseConfig", "BaseStep"],
+        "required_methods": {}  # Empty - no validation needed
     },
     
     "Utility": {
@@ -360,7 +364,8 @@ STEP_TYPE_SPECIFIC_VALIDATION_RULES = {
         "category": StepTypeCategory.EXCLUDED,
         "description": "Utility configurations with no corresponding builder", 
         "skip_reason": "Utility configurations - no builder to validate",
-        "examples": ["UtilityConfig", "HelperStep"]
+        "examples": ["UtilityConfig", "HelperStep"],
+        "required_methods": {}  # Empty - no validation needed
     }
 }
 

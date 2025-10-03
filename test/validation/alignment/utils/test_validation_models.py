@@ -54,7 +54,7 @@ class TestValidationEnums:
         
         # Test severity ordering (if implemented)
         levels = list(IssueLevel)
-        assert len(levels) == 3  # Only INFO, WARNING, ERROR
+        assert len(levels) == 4  # CRITICAL, ERROR, WARNING, INFO
 
     # StepTypeCategory is defined in config module, not validation_models
     # This test is moved to config tests
