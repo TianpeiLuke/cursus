@@ -9,411 +9,280 @@ import pytest
 from typing import Dict, Any, List
 
 from cursus.validation.alignment.config.validation_ruleset import (
-    VALIDATION_RULESET,
-    ValidationPriority,
+    VALIDATION_RULESETS,
+    ValidationLevel,
+    StepTypeCategory,
+    ValidationRuleset,
     get_validation_ruleset,
-    get_sagemaker_step_type,
-    get_validation_priority,
-    is_step_type_supported,
-    get_supported_step_types,
-    get_step_type_mapping,
-    validate_ruleset_consistency,
-    get_priority_order,
-    get_rule_application_order,
-    get_step_type_validation_config,
-    get_validation_level_config,
-    apply_validation_rules,
-    resolve_validation_conflicts,
-    get_validation_metadata
+    is_validation_level_enabled,
+    get_enabled_validation_levels,
+    get_level_4_validator_class,
+    is_step_type_excluded,
+    get_step_types_by_category,
+    get_all_step_types,
+    validate_step_type_configuration,
+    get_validation_ruleset_for_step_name,
+    is_validation_level_enabled_for_step_name,
+    get_enabled_validation_levels_for_step_name,
+    is_step_name_excluded
 )
 
 
 class TestValidationRuleset:
     """Test cases for validation ruleset configuration."""
 
-    def test_validation_ruleset_structure(self):
-        """Test that VALIDATION_RULESET has correct structure."""
-        assert isinstance(VALIDATION_RULESET, dict)
-        assert "step_type_mapping" in VALIDATION_RULESET
-        assert "validation_priorities" in VALIDATION_RULESET
-        assert "rule_application_order" in VALIDATION_RULESET
-
-    def test_validation_priorities_are_valid(self):
-        """Test that all validation priorities are valid enum values."""
-        priorities = VALIDATION_RULESET["validation_priorities"]
+    def test_validation_rulesets_structure(self):
+        """Test that VALIDATION_RULESETS has correct structure."""
+        assert isinstance(VALIDATION_RULESETS, dict)
+        assert len(VALIDATION_RULESETS) > 0
         
-        for priority_name, priority_value in priorities.items():
-            assert isinstance(priority_name, str)
-            assert isinstance(priority_value, ValidationPriority)
-            assert priority_value in [
-                ValidationPriority.HIGHEST,
-                ValidationPriority.HIGH,
-                ValidationPriority.MEDIUM,
-                ValidationPriority.LOW,
-                ValidationPriority.LOWEST
+        # Check that all rulesets have required structure
+        for step_type, ruleset in VALIDATION_RULESETS.items():
+            assert isinstance(step_type, str)
+            assert isinstance(ruleset, ValidationRuleset)
+            assert isinstance(ruleset.category, StepTypeCategory)
+            assert isinstance(ruleset.enabled_levels, set)
+
+    def test_step_type_categories_are_valid(self):
+        """Test that all step type categories are valid enum values."""
+        for step_type, ruleset in VALIDATION_RULESETS.items():
+            assert isinstance(ruleset.category, StepTypeCategory)
+            assert ruleset.category in [
+                StepTypeCategory.SCRIPT_BASED,
+                StepTypeCategory.CONTRACT_BASED,
+                StepTypeCategory.NON_SCRIPT,
+                StepTypeCategory.CONFIG_ONLY,
+                StepTypeCategory.EXCLUDED
             ]
 
     def test_get_validation_ruleset(self):
         """Test get_validation_ruleset function."""
-        ruleset = get_validation_ruleset()
-        assert isinstance(ruleset, dict)
-        assert ruleset == VALIDATION_RULESET
-
-    def test_get_sagemaker_step_type(self):
-        """Test get_sagemaker_step_type function."""
-        # Test known step types
-        assert get_sagemaker_step_type("processing_step") == "Processing"
-        assert get_sagemaker_step_type("training_step") == "Training"
-        assert get_sagemaker_step_type("createmodel_step") == "CreateModel"
-        assert get_sagemaker_step_type("transform_step") == "Transform"
+        # Test valid step type
+        ruleset = get_validation_ruleset("Processing")
+        assert isinstance(ruleset, ValidationRuleset)
+        assert ruleset.step_type == "Processing"
         
-        # Test step name variations
-        assert get_sagemaker_step_type("data_processing_step") == "Processing"
-        assert get_sagemaker_step_type("model_training_step") == "Training"
-        assert get_sagemaker_step_type("create_model_step") == "CreateModel"
-        assert get_sagemaker_step_type("batch_transform_step") == "Transform"
-        
-        # Test unknown step type
-        assert get_sagemaker_step_type("unknown_step") is None
+        # Test invalid step type
+        ruleset = get_validation_ruleset("InvalidStepType")
+        assert ruleset is None
 
-    def test_get_validation_priority(self):
-        """Test get_validation_priority function."""
-        # Test known priorities
-        assert get_validation_priority("universal") == ValidationPriority.HIGHEST
-        assert get_validation_priority("step_specific") == ValidationPriority.HIGH
-        assert get_validation_priority("contract_alignment") == ValidationPriority.MEDIUM
-        assert get_validation_priority("spec_dependency") == ValidationPriority.LOW
+    def test_is_validation_level_enabled(self):
+        """Test is_validation_level_enabled function."""
+        # Test script-based step types (should have all levels enabled)
+        assert is_validation_level_enabled("Processing", ValidationLevel.SCRIPT_CONTRACT) is True
+        assert is_validation_level_enabled("Processing", ValidationLevel.CONTRACT_SPEC) is True
+        assert is_validation_level_enabled("Processing", ValidationLevel.SPEC_DEPENDENCY) is True
+        assert is_validation_level_enabled("Processing", ValidationLevel.BUILDER_CONFIG) is True
         
-        # Test unknown priority
-        assert get_validation_priority("unknown_priority") is None
-
-    def test_is_step_type_supported(self):
-        """Test is_step_type_supported function."""
-        # Test supported step types
-        assert is_step_type_supported("Processing") is True
-        assert is_step_type_supported("Training") is True
-        assert is_step_type_supported("CreateModel") is True
-        assert is_step_type_supported("Transform") is True
+        # Test non-script step types (should skip script/contract levels)
+        assert is_validation_level_enabled("CreateModel", ValidationLevel.SCRIPT_CONTRACT) is False
+        assert is_validation_level_enabled("CreateModel", ValidationLevel.CONTRACT_SPEC) is False
+        assert is_validation_level_enabled("CreateModel", ValidationLevel.SPEC_DEPENDENCY) is True
+        assert is_validation_level_enabled("CreateModel", ValidationLevel.BUILDER_CONFIG) is True
         
-        # Test unsupported step type
-        assert is_step_type_supported("UnsupportedStepType") is False
-
-    def test_get_supported_step_types(self):
-        """Test get_supported_step_types function."""
-        supported_types = get_supported_step_types()
-        assert isinstance(supported_types, list)
-        assert len(supported_types) > 0
-        assert "Processing" in supported_types
-        assert "Training" in supported_types
-        assert "CreateModel" in supported_types
-        assert "Transform" in supported_types
-
-    def test_get_step_type_mapping(self):
-        """Test get_step_type_mapping function."""
-        mapping = get_step_type_mapping()
-        assert isinstance(mapping, dict)
+        # Test excluded step types (should have no levels enabled)
+        assert is_validation_level_enabled("Base", ValidationLevel.SCRIPT_CONTRACT) is False
+        assert is_validation_level_enabled("Base", ValidationLevel.SPEC_DEPENDENCY) is False
         
-        # Check that common step name patterns are mapped
-        processing_patterns = [key for key in mapping.keys() if "processing" in key.lower()]
-        training_patterns = [key for key in mapping.keys() if "training" in key.lower()]
-        createmodel_patterns = [key for key in mapping.keys() if "createmodel" in key.lower() or "create_model" in key.lower()]
-        transform_patterns = [key for key in mapping.keys() if "transform" in key.lower()]
-        
-        assert len(processing_patterns) > 0
-        assert len(training_patterns) > 0
-        assert len(createmodel_patterns) > 0
-        assert len(transform_patterns) > 0
+        # Test invalid step type
+        assert is_validation_level_enabled("InvalidStepType", ValidationLevel.SCRIPT_CONTRACT) is False
 
-    def test_validate_ruleset_consistency(self):
-        """Test validate_ruleset_consistency function."""
-        issues = validate_ruleset_consistency()
+    def test_get_enabled_validation_levels(self):
+        """Test get_enabled_validation_levels function."""
+        # Test script-based step type
+        processing_levels = get_enabled_validation_levels("Processing")
+        assert isinstance(processing_levels, set)
+        assert ValidationLevel.SCRIPT_CONTRACT in processing_levels
+        assert ValidationLevel.CONTRACT_SPEC in processing_levels
+        assert ValidationLevel.SPEC_DEPENDENCY in processing_levels
+        assert ValidationLevel.BUILDER_CONFIG in processing_levels
+        
+        # Test non-script step type
+        createmodel_levels = get_enabled_validation_levels("CreateModel")
+        assert isinstance(createmodel_levels, set)
+        assert ValidationLevel.SCRIPT_CONTRACT not in createmodel_levels
+        assert ValidationLevel.CONTRACT_SPEC not in createmodel_levels
+        assert ValidationLevel.SPEC_DEPENDENCY in createmodel_levels
+        assert ValidationLevel.BUILDER_CONFIG in createmodel_levels
+        
+        # Test excluded step type
+        base_levels = get_enabled_validation_levels("Base")
+        assert isinstance(base_levels, set)
+        assert len(base_levels) == 0
+        
+        # Test invalid step type
+        invalid_levels = get_enabled_validation_levels("InvalidStepType")
+        assert isinstance(invalid_levels, set)
+        assert len(invalid_levels) == 0
+
+    def test_is_step_type_excluded(self):
+        """Test is_step_type_excluded function."""
+        # Test excluded step types
+        assert is_step_type_excluded("Base") is True
+        assert is_step_type_excluded("Utility") is True
+        
+        # Test non-excluded step types
+        assert is_step_type_excluded("Processing") is False
+        assert is_step_type_excluded("Training") is False
+        assert is_step_type_excluded("CreateModel") is False
+        assert is_step_type_excluded("Transform") is False
+        
+        # Test invalid step type
+        assert is_step_type_excluded("InvalidStepType") is False
+
+    def test_get_all_step_types(self):
+        """Test get_all_step_types function."""
+        step_types = get_all_step_types()
+        assert isinstance(step_types, list)
+        assert len(step_types) > 0
+        assert "Processing" in step_types
+        assert "Training" in step_types
+        assert "CreateModel" in step_types
+        assert "Transform" in step_types
+        assert "Base" in step_types
+        assert "Utility" in step_types
+
+    def test_validate_step_type_configuration(self):
+        """Test validate_step_type_configuration function."""
+        issues = validate_step_type_configuration()
         assert isinstance(issues, list)
         
         # Should have no consistency issues in well-formed ruleset
         if issues:
             # Print issues for debugging if any exist
             for issue in issues:
-                print(f"Consistency issue: {issue}")
+                print(f"Configuration issue: {issue}")
 
-    def test_get_priority_order(self):
-        """Test get_priority_order function."""
-        order = get_priority_order()
-        assert isinstance(order, list)
-        assert len(order) > 0
+    def test_get_step_types_by_category(self):
+        """Test get_step_types_by_category function."""
+        # Test script-based step types
+        script_based_types = get_step_types_by_category(StepTypeCategory.SCRIPT_BASED)
+        assert isinstance(script_based_types, list)
+        assert "Processing" in script_based_types
+        assert "Training" in script_based_types
         
-        # Check that priorities are in correct order (highest to lowest)
-        priority_values = [get_validation_priority(priority_name) for priority_name in order]
-        for i in range(len(priority_values) - 1):
-            assert priority_values[i].value >= priority_values[i + 1].value
+        # Test non-script step types
+        non_script_types = get_step_types_by_category(StepTypeCategory.NON_SCRIPT)
+        assert isinstance(non_script_types, list)
+        assert "CreateModel" in non_script_types
+        assert "Transform" in non_script_types
+        
+        # Test excluded step types
+        excluded_types = get_step_types_by_category(StepTypeCategory.EXCLUDED)
+        assert isinstance(excluded_types, list)
+        assert "Base" in excluded_types
+        assert "Utility" in excluded_types
 
-    def test_get_rule_application_order(self):
-        """Test get_rule_application_order function."""
-        order = get_rule_application_order()
-        assert isinstance(order, list)
-        assert len(order) > 0
+    def test_get_level_4_validator_class(self):
+        """Test get_level_4_validator_class function."""
+        # Test step types with Level 4 validators
+        processing_validator = get_level_4_validator_class("Processing")
+        assert processing_validator == "ProcessingStepBuilderValidator"
         
-        # Check that universal rules come first
-        assert order[0] == "universal"
+        training_validator = get_level_4_validator_class("Training")
+        assert training_validator == "TrainingStepBuilderValidator"
         
-        # Check that step-specific rules come second
-        assert "step_specific" in order[:3]
-
-    def test_get_step_type_validation_config(self):
-        """Test get_step_type_validation_config function."""
-        # Test valid step type
-        config = get_step_type_validation_config("Processing")
-        assert isinstance(config, dict)
+        createmodel_validator = get_level_4_validator_class("CreateModel")
+        assert createmodel_validator == "CreateModelStepBuilderValidator"
+        
+        # Test excluded step type
+        base_validator = get_level_4_validator_class("Base")
+        assert base_validator is None
         
         # Test invalid step type
-        config = get_step_type_validation_config("InvalidStepType")
-        assert config == {}
+        invalid_validator = get_level_4_validator_class("InvalidStepType")
+        assert invalid_validator is None
 
-    def test_get_validation_level_config(self):
-        """Test get_validation_level_config function."""
-        # Test valid validation level
-        config = get_validation_level_config("universal")
-        assert isinstance(config, dict)
+    def test_registry_integration_functions(self):
+        """Test registry integration functions."""
+        # Test get_validation_ruleset_for_step_name
+        # Note: This may fall back to Processing if registry lookup fails
+        ruleset = get_validation_ruleset_for_step_name("test_processing_step")
+        assert isinstance(ruleset, ValidationRuleset)
         
-        # Test invalid validation level
-        config = get_validation_level_config("invalid_level")
-        assert config == {}
+        # Test is_validation_level_enabled_for_step_name
+        enabled = is_validation_level_enabled_for_step_name("test_processing_step", ValidationLevel.SPEC_DEPENDENCY)
+        assert isinstance(enabled, bool)
+        
+        # Test get_enabled_validation_levels_for_step_name
+        levels = get_enabled_validation_levels_for_step_name("test_processing_step")
+        assert isinstance(levels, set)
+        
+        # Test is_step_name_excluded
+        excluded = is_step_name_excluded("test_processing_step")
+        assert isinstance(excluded, bool)
 
-    def test_apply_validation_rules(self):
-        """Test apply_validation_rules function."""
-        step_name = "test_processing_step"
-        
-        # Mock validation context
-        validation_context = {
-            "step_name": step_name,
-            "step_type": "Processing",
-            "builder_class": Mock(),
-            "workspace_dirs": ["/test/workspace"]
-        }
-        
-        # Execute rule application
-        result = apply_validation_rules(validation_context)
-        assert isinstance(result, dict)
-        assert "status" in result
-        assert "applied_rules" in result
-        assert "total_issues" in result
+    def test_validation_level_enum_values(self):
+        """Test ValidationLevel enum values."""
+        assert ValidationLevel.SCRIPT_CONTRACT.value == 1
+        assert ValidationLevel.CONTRACT_SPEC.value == 2
+        assert ValidationLevel.SPEC_DEPENDENCY.value == 3
+        assert ValidationLevel.BUILDER_CONFIG.value == 4
 
-    def test_resolve_validation_conflicts(self):
-        """Test resolve_validation_conflicts function."""
-        # Mock conflicting validation results
-        validation_results = [
-            {
-                "rule_type": "universal",
-                "priority": ValidationPriority.HIGHEST,
-                "status": "PASSED",
-                "issues": []
-            },
-            {
-                "rule_type": "step_specific",
-                "priority": ValidationPriority.HIGH,
-                "status": "ISSUES_FOUND",
-                "issues": [{"level": "WARNING", "message": "Minor issue"}]
-            }
-        ]
-        
-        # Execute conflict resolution
-        result = resolve_validation_conflicts(validation_results)
-        assert isinstance(result, dict)
-        assert "final_status" in result
-        assert "resolution_strategy" in result
-        assert "combined_issues" in result
+    def test_step_type_category_enum_values(self):
+        """Test StepTypeCategory enum values."""
+        assert StepTypeCategory.SCRIPT_BASED.value == "script_based"
+        assert StepTypeCategory.CONTRACT_BASED.value == "contract_based"
+        assert StepTypeCategory.NON_SCRIPT.value == "non_script"
+        assert StepTypeCategory.CONFIG_ONLY.value == "config_only"
+        assert StepTypeCategory.EXCLUDED.value == "excluded"
 
-    def test_get_validation_metadata(self):
-        """Test get_validation_metadata function."""
-        metadata = get_validation_metadata()
-        assert isinstance(metadata, dict)
-        assert "version" in metadata
-        assert "supported_step_types" in metadata
-        assert "validation_levels" in metadata
-
-    def test_step_type_mapping_completeness(self):
-        """Test that step type mapping covers all common patterns."""
-        mapping = get_step_type_mapping()
+    def test_validation_ruleset_dataclass(self):
+        """Test ValidationRuleset dataclass."""
+        # Test creating a ValidationRuleset instance
+        ruleset = ValidationRuleset(
+            step_type="TestStep",
+            category=StepTypeCategory.SCRIPT_BASED,
+            enabled_levels={ValidationLevel.SCRIPT_CONTRACT, ValidationLevel.CONTRACT_SPEC},
+            level_4_validator_class="TestValidator",
+            skip_reason=None,
+            examples=["TestExample"]
+        )
         
-        # Check Processing patterns
-        processing_patterns = [
-            "processing_step", "data_processing_step", "feature_processing_step",
-            "preprocessing_step", "postprocessing_step"
-        ]
-        for pattern in processing_patterns:
-            if pattern in mapping:
-                assert mapping[pattern] == "Processing"
-        
-        # Check Training patterns
-        training_patterns = [
-            "training_step", "model_training_step", "train_step",
-            "model_train_step", "estimator_step"
-        ]
-        for pattern in training_patterns:
-            if pattern in mapping:
-                assert mapping[pattern] == "Training"
-        
-        # Check CreateModel patterns
-        createmodel_patterns = [
-            "createmodel_step", "create_model_step", "model_creation_step",
-            "model_step", "model_registration_step"
-        ]
-        for pattern in createmodel_patterns:
-            if pattern in mapping:
-                assert mapping[pattern] == "CreateModel"
-        
-        # Check Transform patterns
-        transform_patterns = [
-            "transform_step", "batch_transform_step", "inference_step",
-            "prediction_step", "batch_inference_step"
-        ]
-        for pattern in transform_patterns:
-            if pattern in mapping:
-                assert mapping[pattern] == "Transform"
-
-    def test_validation_priority_ordering(self):
-        """Test that validation priorities are correctly ordered."""
-        priorities = VALIDATION_RULESET["validation_priorities"]
-        
-        # Check that universal has highest priority
-        assert priorities["universal"] == ValidationPriority.HIGHEST
-        
-        # Check that step_specific has high priority
-        assert priorities["step_specific"] == ValidationPriority.HIGH
-        
-        # Check relative ordering
-        universal_value = priorities["universal"].value
-        step_specific_value = priorities["step_specific"].value
-        assert universal_value > step_specific_value
-
-    def test_rule_application_order_logic(self):
-        """Test that rule application order follows logical precedence."""
-        order = get_rule_application_order()
-        
-        # Universal rules should be first (highest priority)
-        assert order[0] == "universal"
-        
-        # Step-specific rules should be early in the order
-        step_specific_index = order.index("step_specific")
-        assert step_specific_index <= 2
-        
-        # Lower priority rules should come later
-        if "contract_alignment" in order and "spec_dependency" in order:
-            contract_index = order.index("contract_alignment")
-            spec_index = order.index("spec_dependency")
-            assert contract_index < spec_index
-
-    def test_step_type_detection_patterns(self):
-        """Test step type detection with various naming patterns."""
-        test_cases = [
-            ("data_processing_step_builder", "Processing"),
-            ("xgboost_training_step_builder", "Training"),
-            ("model_createmodel_step_builder", "CreateModel"),
-            ("batch_transform_step_builder", "Transform"),
-            ("feature_processing_pipeline_step", "Processing"),
-            ("deep_learning_training_step", "Training"),
-            ("ensemble_model_creation_step", "CreateModel"),
-            ("inference_transform_step", "Transform")
-        ]
-        
-        for step_name, expected_type in test_cases:
-            detected_type = get_sagemaker_step_type(step_name)
-            if detected_type is not None:
-                assert detected_type == expected_type
-
-    def test_validation_context_handling(self):
-        """Test validation context handling in rule application."""
-        # Test minimal context
-        minimal_context = {
-            "step_name": "test_step",
-            "step_type": "Processing"
-        }
-        
-        result = apply_validation_rules(minimal_context)
-        assert isinstance(result, dict)
-        assert "status" in result
-        
-        # Test complete context
-        complete_context = {
-            "step_name": "comprehensive_processing_step",
-            "step_type": "Processing",
-            "builder_class": Mock(),
-            "workspace_dirs": ["/test/workspace1", "/test/workspace2"],
-            "validation_options": {"strict_mode": True}
-        }
-        
-        result = apply_validation_rules(complete_context)
-        assert isinstance(result, dict)
-        assert "status" in result
-
-    def test_conflict_resolution_strategies(self):
-        """Test different conflict resolution strategies."""
-        # Test no conflicts (all passed)
-        no_conflict_results = [
-            {"rule_type": "universal", "priority": ValidationPriority.HIGHEST, "status": "PASSED", "issues": []},
-            {"rule_type": "step_specific", "priority": ValidationPriority.HIGH, "status": "PASSED", "issues": []}
-        ]
-        
-        result = resolve_validation_conflicts(no_conflict_results)
-        assert result["final_status"] == "PASSED"
-        
-        # Test conflicts with different priorities
-        conflict_results = [
-            {"rule_type": "universal", "priority": ValidationPriority.HIGHEST, "status": "FAILED", "issues": [{"level": "ERROR"}]},
-            {"rule_type": "step_specific", "priority": ValidationPriority.HIGH, "status": "PASSED", "issues": []}
-        ]
-        
-        result = resolve_validation_conflicts(conflict_results)
-        assert result["final_status"] == "FAILED"  # Higher priority rule determines outcome
+        assert ruleset.step_type == "TestStep"
+        assert ruleset.category == StepTypeCategory.SCRIPT_BASED
+        assert ValidationLevel.SCRIPT_CONTRACT in ruleset.enabled_levels
+        assert ValidationLevel.CONTRACT_SPEC in ruleset.enabled_levels
+        assert ruleset.level_4_validator_class == "TestValidator"
+        assert ruleset.examples == ["TestExample"]
 
     def test_api_function_error_handling(self):
         """Test that API functions handle errors gracefully."""
         # Test with None input
-        assert get_sagemaker_step_type(None) is None
-        assert get_validation_priority(None) is None
-        assert is_step_type_supported(None) is False
-        assert get_step_type_validation_config(None) == {}
+        assert get_validation_ruleset(None) is None
+        assert is_validation_level_enabled(None, ValidationLevel.SCRIPT_CONTRACT) is False
+        assert get_enabled_validation_levels(None) == set()
+        assert get_level_4_validator_class(None) is None
+        assert is_step_type_excluded(None) is False
         
         # Test with empty string
-        assert get_sagemaker_step_type("") is None
-        assert get_validation_priority("") is None
-        assert is_step_type_supported("") is False
-        assert get_step_type_validation_config("") == {}
+        assert get_validation_ruleset("") is None
+        assert is_validation_level_enabled("", ValidationLevel.SCRIPT_CONTRACT) is False
+        assert get_enabled_validation_levels("") == set()
+        assert get_level_4_validator_class("") is None
+        assert is_step_type_excluded("") is False
 
-    def test_ruleset_integration_with_validation_system(self):
-        """Test that ruleset integrates properly with validation system."""
-        # Test that all supported step types have proper configuration
-        supported_types = get_supported_step_types()
-        
-        for step_type in supported_types:
-            # Should have validation configuration
-            config = get_step_type_validation_config(step_type)
-            assert len(config) >= 0  # May be empty but should not error
+    def test_ruleset_completeness(self):
+        """Test that all rulesets are complete and consistent."""
+        for step_type, ruleset in VALIDATION_RULESETS.items():
+            # Check required fields
+            assert isinstance(ruleset.step_type, str)
+            assert isinstance(ruleset.category, StepTypeCategory)
+            assert isinstance(ruleset.enabled_levels, set)
             
-            # Should be recognized as supported
-            assert is_step_type_supported(step_type) is True
-        
-        # Test that all validation levels have proper configuration
-        priority_order = get_priority_order()
-        
-        for priority_name in priority_order:
-            # Should have validation level configuration
-            config = get_validation_level_config(priority_name)
-            assert len(config) >= 0  # May be empty but should not error
+            # Check that excluded steps have no enabled levels
+            if ruleset.category == StepTypeCategory.EXCLUDED:
+                assert len(ruleset.enabled_levels) == 0
+                assert ruleset.skip_reason is not None
             
-            # Should have valid priority
-            priority = get_validation_priority(priority_name)
-            assert priority is not None
-
-    def test_ruleset_metadata_consistency(self):
-        """Test that ruleset metadata is consistent with actual configuration."""
-        metadata = get_validation_metadata()
-        
-        # Check that metadata supported step types match actual supported types
-        metadata_step_types = set(metadata.get("supported_step_types", []))
-        actual_step_types = set(get_supported_step_types())
-        assert metadata_step_types == actual_step_types
-        
-        # Check that metadata validation levels match actual levels
-        metadata_levels = set(metadata.get("validation_levels", []))
-        actual_levels = set(get_priority_order())
-        assert metadata_levels == actual_levels
+            # Check that non-excluded steps have Level 3 enabled (universal requirement)
+            if ruleset.category != StepTypeCategory.EXCLUDED:
+                assert ValidationLevel.SPEC_DEPENDENCY in ruleset.enabled_levels
+            
+            # Check that Level 4 validator class is specified for non-excluded steps
+            if ruleset.category != StepTypeCategory.EXCLUDED:
+                assert ruleset.level_4_validator_class is not None
+            
+            # Check that examples are provided
+            assert ruleset.examples is not None
+            assert len(ruleset.examples) > 0

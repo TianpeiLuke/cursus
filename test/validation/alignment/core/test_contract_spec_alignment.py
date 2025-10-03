@@ -10,12 +10,12 @@ from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from typing import Dict, Any, List
 
-from cursus.validation.alignment.core.contract_spec_alignment import ContractSpecAlignment
+from cursus.validation.alignment.core.contract_spec_alignment import ContractSpecificationAlignmentTester
 from cursus.validation.alignment.validators.contract_spec_validator import ConsolidatedContractSpecValidator
 
 
 class TestContractSpecAlignment:
-    """Test cases for ContractSpecAlignment class."""
+    """Test cases for ContractSpecificationAlignmentTester class."""
 
     @pytest.fixture
     def workspace_dirs(self):
@@ -24,8 +24,8 @@ class TestContractSpecAlignment:
 
     @pytest.fixture
     def contract_spec_alignment(self, workspace_dirs):
-        """Fixture providing ContractSpecAlignment instance."""
-        return ContractSpecAlignment(workspace_dirs=workspace_dirs)
+        """Fixture providing ContractSpecificationAlignmentTester instance."""
+        return ContractSpecificationAlignmentTester(workspace_dirs=workspace_dirs)
 
     @pytest.fixture
     def sample_contract(self):
@@ -56,19 +56,19 @@ class TestContractSpecAlignment:
         }
 
     def test_init_with_workspace_dirs(self, workspace_dirs):
-        """Test ContractSpecAlignment initialization with workspace directories."""
-        alignment = ContractSpecAlignment(workspace_dirs=workspace_dirs)
+        """Test ContractSpecificationAlignmentTester initialization with workspace directories."""
+        alignment = ContractSpecificationAlignmentTester(workspace_dirs=workspace_dirs)
         assert alignment.workspace_dirs == workspace_dirs
 
     def test_init_without_workspace_dirs(self):
-        """Test ContractSpecAlignment initialization without workspace directories."""
-        alignment = ContractSpecAlignment()
+        """Test ContractSpecificationAlignmentTester initialization without workspace directories."""
+        alignment = ContractSpecificationAlignmentTester()
         assert alignment.workspace_dirs == []
 
     @patch('cursus.validation.alignment.core.contract_spec_alignment.StepCatalog')
     def test_step_catalog_initialization(self, mock_step_catalog, workspace_dirs):
         """Test that StepCatalog is properly initialized."""
-        ContractSpecAlignment(workspace_dirs=workspace_dirs)
+        ContractSpecificationAlignmentTester(workspace_dirs=workspace_dirs)
         mock_step_catalog.assert_called_once_with(workspace_dirs=workspace_dirs)
 
     def test_validate_contract_with_valid_data(self, contract_spec_alignment, sample_contract, sample_specification):
@@ -325,7 +325,7 @@ class TestContractSpecAlignment:
 
     def test_workspace_directory_propagation(self, workspace_dirs):
         """Test that workspace directories are properly propagated."""
-        alignment = ContractSpecAlignment(workspace_dirs=workspace_dirs)
+        alignment = ContractSpecificationAlignmentTester(workspace_dirs=workspace_dirs)
         assert alignment.workspace_dirs == workspace_dirs
 
     def test_performance_with_large_contract(self, contract_spec_alignment):

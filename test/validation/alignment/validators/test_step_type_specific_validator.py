@@ -12,7 +12,7 @@ from typing import Dict, Any, List
 from abc import ABC
 
 from cursus.validation.alignment.validators.step_type_specific_validator import StepTypeSpecificValidator
-from cursus.validation.alignment.config.validation_ruleset import get_sagemaker_step_type
+from cursus.registry.step_names import get_sagemaker_step_type
 from cursus.validation.alignment.config.universal_builder_rules import get_universal_validation_rules
 from cursus.validation.alignment.config.step_type_specific_rules import get_step_type_validation_rules
 

@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from typing import Dict, Any, List
 
-from cursus.validation.alignment.core.spec_dependency_alignment import SpecDependencyAlignment
+from cursus.validation.alignment.core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
 from cursus.validation.alignment.validators.dependency_validator import DependencyValidator
 
 
@@ -24,8 +24,8 @@ class TestSpecDependencyAlignment:
 
     @pytest.fixture
     def spec_dependency_alignment(self, workspace_dirs):
-        """Fixture providing SpecDependencyAlignment instance."""
-        return SpecDependencyAlignment(workspace_dirs=workspace_dirs)
+        """Fixture providing SpecificationDependencyAlignmentTester instance."""
+        return SpecificationDependencyAlignmentTester(workspace_dirs=workspace_dirs)
 
     @pytest.fixture
     def sample_specification(self):
@@ -95,19 +95,19 @@ class TestSpecDependencyAlignment:
         }
 
     def test_init_with_workspace_dirs(self, workspace_dirs):
-        """Test SpecDependencyAlignment initialization with workspace directories."""
-        alignment = SpecDependencyAlignment(workspace_dirs=workspace_dirs)
+        """Test SpecificationDependencyAlignmentTester initialization with workspace directories."""
+        alignment = SpecificationDependencyAlignmentTester(workspace_dirs=workspace_dirs)
         assert alignment.workspace_dirs == workspace_dirs
 
     def test_init_without_workspace_dirs(self):
-        """Test SpecDependencyAlignment initialization without workspace directories."""
-        alignment = SpecDependencyAlignment()
+        """Test SpecificationDependencyAlignmentTester initialization without workspace directories."""
+        alignment = SpecificationDependencyAlignmentTester()
         assert alignment.workspace_dirs == []
 
     @patch('cursus.validation.alignment.core.spec_dependency_alignment.StepCatalog')
     def test_step_catalog_initialization(self, mock_step_catalog, workspace_dirs):
         """Test that StepCatalog is properly initialized."""
-        SpecDependencyAlignment(workspace_dirs=workspace_dirs)
+        SpecificationDependencyAlignmentTester(workspace_dirs=workspace_dirs)
         mock_step_catalog.assert_called_once_with(workspace_dirs=workspace_dirs)
 
     def test_validate_specification_with_resolved_dependencies(self, spec_dependency_alignment, sample_specification, sample_dependency_info):
@@ -361,7 +361,7 @@ class TestSpecDependencyAlignment:
 
     def test_workspace_directory_propagation(self, workspace_dirs):
         """Test that workspace directories are properly propagated."""
-        alignment = SpecDependencyAlignment(workspace_dirs=workspace_dirs)
+        alignment = SpecificationDependencyAlignmentTester(workspace_dirs=workspace_dirs)
         assert alignment.workspace_dirs == workspace_dirs
 
     def test_validate_specification_with_complex_dependencies(self, spec_dependency_alignment):
