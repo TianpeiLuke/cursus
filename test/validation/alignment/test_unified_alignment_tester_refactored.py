@@ -78,9 +78,9 @@ class TestUnifiedAlignmentTesterRefactored:
         
         # Should return excluded status
         assert result["step_name"] == "base_config"
-        assert result["step_type"] == "Base"
-        assert result["overall_status"] == "EXCLUDED"
-        assert result["skip_reason"] == "Base configurations - no builder to validate"
+        assert result["sagemaker_step_type"] == "Base"
+        assert result["status"] == "EXCLUDED"
+        assert result["reason"] == "Base configurations - no builder to validate"
         
         # Should not run any validation levels
         assert "level1" not in result
@@ -123,12 +123,12 @@ class TestUnifiedAlignmentTesterRefactored:
         
         # Should return passing status
         assert result["step_name"] == "processing_script"
-        assert result["step_type"] == "Processing"
-        assert result["overall_status"] == "PASSING"
-        assert "level1" in result
-        assert "level2" in result
-        assert "level3" in result
-        assert "level4" in result
+        assert result["sagemaker_step_type"] == "Processing"
+        assert result["overall_status"] == "PASSED"
+        assert "level_1" in result["validation_results"]
+        assert "level_2" in result["validation_results"]
+        assert "level_3" in result["validation_results"]
+        assert "level_4" in result["validation_results"]
 
     @patch('cursus.validation.alignment.unified_alignment_tester.get_sagemaker_step_type')
     @patch('cursus.validation.alignment.unified_alignment_tester.get_validation_ruleset')

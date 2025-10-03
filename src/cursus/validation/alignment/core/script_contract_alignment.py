@@ -161,7 +161,25 @@ class ScriptContractAlignmentTester:
         from ..analyzer.script_analyzer import ScriptAnalyzer
         
         # Use restored ScriptAnalyzer for contract alignment validation
-        analyzer = ScriptAnalyzer(str(script_path))
+        try:
+            analyzer = ScriptAnalyzer(str(script_path))
+        except Exception as e:
+            return {
+                "passed": False,
+                "issues": [
+                    {
+                        "severity": "ERROR",
+                        "category": "script_analysis_error",
+                        "message": f"Failed to analyze script: {str(e)}",
+                        "details": {
+                            "script": script_name,
+                            "script_path": str(script_path),
+                            "error": str(e),
+                        },
+                        "recommendation": "Check script syntax and ensure it can be parsed",
+                    }
+                ],
+            }
         
         # Validate main function signature
         main_function_result = analyzer.validate_main_function_signature()

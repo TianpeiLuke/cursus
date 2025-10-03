@@ -164,7 +164,25 @@ class SpecificationDependencyAlignmentTester:
             Validation result dictionary
         """
         # Load specification using StepCatalog with built-in error handling
-        spec_obj = self.step_catalog.load_spec_class(spec_name)
+        try:
+            spec_obj = self.step_catalog.load_spec_class(spec_name)
+        except Exception as e:
+            return {
+                "passed": False,
+                "issues": [
+                    {
+                        "severity": "CRITICAL",
+                        "category": "spec_loading_error",
+                        "message": f"Failed to load specification for {spec_name}: {str(e)}",
+                        "details": {
+                            "spec_name": spec_name,
+                            "error": str(e),
+                        },
+                        "recommendation": f"Check specification file for {spec_name} or StepCatalog configuration",
+                    }
+                ],
+            }
+        
         if not spec_obj:
             return self._create_missing_spec_error(spec_name)
         

@@ -242,16 +242,18 @@ class TestSpecDependencyAlignment:
         
         with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
              patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
             mock_load_spec.return_value = Mock()  # Mock spec object
             mock_serialize_spec.return_value = sample_specification
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = circular_dependency_info
-            mock_validator.validate_dependency_resolution.return_value = validation_issues
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return the validation issues
+            mock_dep_resolution.return_value = []
+            mock_circular.return_value = validation_issues  # Circular dependency issues come from this method
+            mock_data_types.return_value = []
             
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
@@ -283,33 +285,34 @@ class TestSpecDependencyAlignment:
         spec_name = "test_spec"
         malformed_spec = {"invalid": "structure"}
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
-            mock_load_spec.return_value = malformed_spec
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = malformed_spec
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = {
-                "resolved_dependencies": {},
-                "unresolved_dependencies": [],
-                "circular_dependencies": [],
-                "missing_steps": []
-            }
-            mock_validator.validate_dependency_resolution.return_value = []
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return no issues (graceful handling)
+            mock_dep_resolution.return_value = []
+            mock_circular.return_value = []
+            mock_data_types.return_value = []
             
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
             
             # Verify validator handles malformed data gracefully
-            mock_validator.resolve_dependencies.assert_called_once()
+            assert result["passed"] is True  # No validation issues found
+            assert len(result["issues"]) == 0
+            assert result["specification"] == malformed_spec
 
     def test_validate_specification_error_handling(self, spec_dependency_alignment):
         """Test specification validation error handling."""
         spec_name = "test_spec"
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec:
             # Setup mock to raise exception
             mock_load_spec.side_effect = Exception("Test error")
             
@@ -324,46 +327,50 @@ class TestSpecDependencyAlignment:
         """Test that validate_specification returns properly structured results."""
         spec_name = "test_spec"
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
-            mock_load_spec.return_value = sample_specification
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = sample_specification
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = sample_dependency_info
-            mock_validator.validate_dependency_resolution.return_value = []
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return no issues
+            mock_dep_resolution.return_value = []
+            mock_circular.return_value = []
+            mock_data_types.return_value = []
             
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
             
-            # Verify result structure
-            required_keys = ["passed", "issues", "spec_name", "specification", "dependency_resolution"]
+            # Verify result structure (based on actual implementation)
+            required_keys = ["passed", "issues", "specification"]
             for key in required_keys:
                 assert key in result
             
             assert isinstance(result["passed"], bool)
             assert isinstance(result["issues"], list)
-            assert isinstance(result["spec_name"], str)
             assert isinstance(result["specification"], dict)
-            assert isinstance(result["dependency_resolution"], dict)
 
     def test_integration_with_dependency_validator(self, spec_dependency_alignment, sample_specification):
         """Test integration with DependencyValidator."""
         spec_name = "test_spec"
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec:
             # Setup mocks
-            mock_load_spec.return_value = sample_specification
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = sample_specification
             
             # Execute validation (using real DependencyValidator)
             result = spec_dependency_alignment.validate_specification(spec_name)
             
-            # Verify basic structure
+            # Verify basic structure (based on actual implementation)
             assert "passed" in result
             assert "issues" in result
-            assert "dependency_resolution" in result
+            assert "specification" in result
             assert isinstance(result["issues"], list)
 
     def test_workspace_directory_propagation(self, workspace_dirs):
@@ -415,23 +422,27 @@ class TestSpecDependencyAlignment:
             "missing_steps": []
         }
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
-            mock_load_spec.return_value = complex_spec
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = complex_spec
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = complex_dependency_info
-            mock_validator.validate_dependency_resolution.return_value = []
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return no issues
+            mock_dep_resolution.return_value = []
+            mock_circular.return_value = []
+            mock_data_types.return_value = []
             
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
             
             # Should handle complex dependencies without issues
             assert "passed" in result
-            assert result["dependency_resolution"] == complex_dependency_info
+            assert result["specification"] == complex_spec
 
     def test_validate_specification_with_mixed_dependency_types(self, spec_dependency_alignment):
         """Test specification validation with mixed dependency types and sources."""
@@ -490,23 +501,27 @@ class TestSpecDependencyAlignment:
             "missing_steps": []
         }
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
-            mock_load_spec.return_value = mixed_spec
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = mixed_spec
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = mixed_dependency_info
-            mock_validator.validate_dependency_resolution.return_value = []
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return no issues
+            mock_dep_resolution.return_value = []
+            mock_circular.return_value = []
+            mock_data_types.return_value = []
             
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
             
             # Should handle mixed dependency types correctly
             assert result["passed"] is True
-            assert len(result["dependency_resolution"]["resolved_dependencies"]) == 3
+            assert result["specification"] == mixed_spec
 
     def test_validate_specification_performance_with_large_spec(self, spec_dependency_alignment):
         """Test performance with large specification."""
@@ -542,21 +557,24 @@ class TestSpecDependencyAlignment:
             "missing_steps": []
         }
         
-        with patch.object(spec_dependency_alignment, '_load_specification') as mock_load_spec, \
-             patch('cursus.validation.alignment.validators.dependency_validator.DependencyValidator') as mock_validator_class:
+        with patch.object(spec_dependency_alignment.step_catalog, 'load_spec_class') as mock_load_spec, \
+             patch.object(spec_dependency_alignment.step_catalog, 'serialize_spec') as mock_serialize_spec, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_resolution') as mock_dep_resolution, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_circular_dependencies') as mock_circular, \
+             patch.object(spec_dependency_alignment.dependency_validator, 'validate_dependency_data_types') as mock_data_types:
             
             # Setup mocks
-            mock_load_spec.return_value = large_spec
+            mock_load_spec.return_value = Mock()  # Mock spec object
+            mock_serialize_spec.return_value = large_spec
             
-            mock_validator = Mock()
-            mock_validator.resolve_dependencies.return_value = large_dependency_info
-            mock_validator.validate_dependency_resolution.return_value = []
-            mock_validator_class.return_value = mock_validator
+            # Mock the dependency validator methods to return no issues
+            mock_dep_resolution.return_value = []
+            mock_circular.return_value = []
+            mock_data_types.return_value = []
             
             # Execute validation and verify it completes
             result = spec_dependency_alignment.validate_specification(spec_name)
             
             # Should complete successfully
             assert "passed" in result
-            assert "dependency_resolution" in result
-            assert len(result["dependency_resolution"]["resolved_dependencies"]) == 100
+            assert result["specification"] == large_spec

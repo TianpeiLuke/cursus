@@ -125,9 +125,9 @@ class ValidationReporter:
                 lines.extend(self._format_result_text(result))
                 lines.append("")
         
-        # Issue summary by type
-        if self.summary.total_issues > 0:
-            lines.append(self._colorize("ISSUE BREAKDOWN", 'bold', 'underline'))
+        # Issue summary by type (show in detailed mode or when there are issues)
+        if self.summary.total_issues > 0 or self.config.verbose:
+            lines.append(self._colorize("Issue Breakdown", 'bold', 'underline'))
             lines.extend(self._generate_issue_breakdown())
             lines.append("")
         
@@ -529,6 +529,76 @@ class ValidationReporter:
         print(f"  Success Rate: {scores['success_rate']:.1%}", file=output)
         print(f"  Overall Score: {scores['overall_score']:.1%}", file=output)
         print(f"  Issues: {self.summary.total_errors} errors, {self.summary.total_warnings} warnings", file=output)
+    
+    def export_to_json(self, output_file: Optional[Union[str, Path]] = None) -> str:
+        """
+        Export validation results to JSON format.
+        
+        Args:
+            output_file: Optional file path to write the JSON to
+            
+        Returns:
+            The JSON report as a string
+        """
+        # Temporarily set format to JSON
+        original_format = self.config.output_format
+        self.config.output_format = "json"
+        
+        try:
+            json_report = self.generate_report(output_file)
+            return json_report
+        finally:
+            # Restore original format
+            self.config.output_format = original_format
+    
+    def export_to_html(self, output_file: Optional[Union[str, Path]] = None) -> str:
+        """
+        Export validation results to HTML format.
+        
+        Args:
+            output_file: Optional file path to write the HTML to
+            
+        Returns:
+            The HTML report as a string
+        """
+        # Temporarily set format to HTML
+        original_format = self.config.output_format
+        self.config.output_format = "html"
+        
+        try:
+            html_report = self.generate_report(output_file)
+            return html_report
+        finally:
+            # Restore original format
+            self.config.output_format = original_format
+    
+    def generate_console_report(self, summary: ValidationSummary, detailed: bool = False) -> str:
+        """
+        Generate a console-friendly validation report.
+        
+        Args:
+            summary: ValidationSummary to generate report from
+            detailed: Whether to include detailed information
+            
+        Returns:
+            The console report as a string
+        """
+        # Update our internal summary with the provided one
+        self.summary = summary
+        
+        # Temporarily set format to text for console output and verbose mode
+        original_format = self.config.output_format
+        original_verbose = self.config.verbose
+        self.config.output_format = "text"
+        self.config.verbose = detailed
+        
+        try:
+            console_report = self.generate_report()
+            return console_report
+        finally:
+            # Restore original settings
+            self.config.output_format = original_format
+            self.config.verbose = original_verbose
 
 
 # Convenience functions for quick reporting

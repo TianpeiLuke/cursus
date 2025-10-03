@@ -90,10 +90,9 @@ def format_alignment_issue(issue: ValidationIssue) -> str:
         Formatted string representation
     """
     level_emoji = {
-        IssueLevel.INFO: "ℹ️",
-        IssueLevel.WARNING: "⚠️",
         IssueLevel.ERROR: "❌",
-        IssueLevel.CRITICAL: "🚨",
+        IssueLevel.WARNING: "⚠️",
+        IssueLevel.INFO: "ℹ️",
     }
 
     emoji = level_emoji.get(issue.level, "")
@@ -144,7 +143,6 @@ def get_highest_severity(issues: List[ValidationIssue]) -> Optional[IssueLevel]:
         return None
 
     severity_order = [
-        IssueLevel.CRITICAL,
         IssueLevel.ERROR,
         IssueLevel.WARNING,
         IssueLevel.INFO,
@@ -197,7 +195,6 @@ def get_validation_summary_stats(issues: List[ValidationIssue]) -> Dict[str, Any
             "total_issues": 0,
             "by_severity": {level.value: 0 for level in IssueLevel},
             "highest_severity": None,
-            "has_critical": False,
             "has_errors": False,
         }
 
@@ -208,6 +205,5 @@ def get_validation_summary_stats(issues: List[ValidationIssue]) -> Dict[str, Any
         "total_issues": len(issues),
         "by_severity": {level.value: len(grouped[level]) for level in IssueLevel},
         "highest_severity": highest.value if highest else None,
-        "has_critical": len(grouped[IssueLevel.CRITICAL]) > 0,
         "has_errors": len(grouped[IssueLevel.ERROR]) > 0,
     }

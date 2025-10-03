@@ -269,7 +269,7 @@ class ProcessingStepBuilder:
         assert len(grouped_single[IssueLevel.ERROR]) == 1
         assert len(grouped_single[IssueLevel.WARNING]) == 0
         assert len(grouped_single[IssueLevel.INFO]) == 0
-        assert len(grouped_single[IssueLevel.CRITICAL]) == 0
+        # CRITICAL level has been removed - no longer testing for it
 
     def test_get_validation_summary_stats_edge_cases(self):
         """Test get_validation_summary_stats with edge cases."""

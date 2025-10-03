@@ -198,15 +198,27 @@ class ScriptAnalyzer:
         """Find usage patterns for a specific parameter."""
         usage_keys = []
         
+        # First, collect all string literals that might be used as keys
+        potential_keys = self._collect_string_literals(func_node)
+        
         for node in ast.walk(func_node):
             # Look for param_name["key"] or param_name.get("key") patterns
             if isinstance(node, ast.Subscript):
                 if (isinstance(node.value, ast.Name) and 
-                    node.value.id == param_name and
-                    isinstance(node.slice, (ast.Str, ast.Constant))):
-                    key = node.slice.s if isinstance(node.slice, ast.Str) else node.slice.value
-                    if isinstance(key, str) and key not in usage_keys:
-                        usage_keys.append(key)
+                    node.value.id == param_name):
+                    # Handle direct string literals (modernized for Python 3.8+)
+                    if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+                        key = node.slice.value
+                        if key not in usage_keys:
+                            usage_keys.append(key)
+                    # Handle variable subscripts - check if we can find the variable's value
+                    elif isinstance(node.slice, ast.Name):
+                        # Look for patterns like: for key in ["train", "validation"]: ... param_name[key]
+                        var_name = node.slice.id
+                        keys_from_loops = self._find_keys_from_loops(func_node, var_name, potential_keys)
+                        for key in keys_from_loops:
+                            if key not in usage_keys:
+                                usage_keys.append(key)
             
             elif isinstance(node, ast.Call):
                 # Look for param_name.get("key") patterns
@@ -215,9 +227,10 @@ class ScriptAnalyzer:
                     node.func.value.id == param_name and
                     node.func.attr == "get" and
                     node.args and
-                    isinstance(node.args[0], (ast.Str, ast.Constant))):
-                    key = node.args[0].s if isinstance(node.args[0], ast.Str) else node.args[0].value
-                    if isinstance(key, str) and key not in usage_keys:
+                    isinstance(node.args[0], ast.Constant) and
+                    isinstance(node.args[0].value, str)):
+                    key = node.args[0].value
+                    if key not in usage_keys:
                         usage_keys.append(key)
             
             elif isinstance(node, ast.Attribute):
@@ -229,3 +242,40 @@ class ScriptAnalyzer:
                     usage_keys.append(node.attr)
         
         return usage_keys
+    
+    def _collect_string_literals(self, func_node: ast.FunctionDef) -> List[str]:
+        """Collect all string literals in the function that could be used as keys."""
+        string_literals = []
+        
+        for node in ast.walk(func_node):
+            # Only use ast.Constant for Python 3.8+ compatibility
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                string_literals.append(node.value)
+        
+        return string_literals
+    
+    def _find_keys_from_loops(self, func_node: ast.FunctionDef, var_name: str, potential_keys: List[str]) -> List[str]:
+        """Find keys that might be assigned to a variable in loops or assignments."""
+        keys = []
+        
+        for node in ast.walk(func_node):
+            # Look for: for var_name in ["key1", "key2", ...]:
+            if isinstance(node, ast.For):
+                if (isinstance(node.target, ast.Name) and 
+                    node.target.id == var_name and
+                    isinstance(node.iter, (ast.List, ast.Tuple))):
+                    for elt in node.iter.elts:
+                        # Only use ast.Constant for Python 3.8+ compatibility
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            keys.append(elt.value)
+            
+            # Look for: var_name = "key" or similar assignments
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if (isinstance(target, ast.Name) and 
+                        target.id == var_name):
+                        # Only use ast.Constant for Python 3.8+ compatibility
+                        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                            keys.append(node.value.value)
+        
+        return keys
