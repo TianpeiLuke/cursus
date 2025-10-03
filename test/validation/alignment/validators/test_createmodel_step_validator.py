@@ -42,12 +42,12 @@ class TestCreateModelStepBuilderValidator:
             def create_step(self):
                 pass
             
-            def _create_model(self):
+            def _create_model(self, model_data):
                 return {
                     "model_name": "xgboost-model",
                     "primary_container": {
                         "image": "683313688378.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.3-1-cpu-py3",
-                        "model_data_url": "s3://bucket/model.tar.gz"
+                        "model_data_url": model_data
                     },
                     "execution_role_arn": "arn:aws:iam::123456789012:role/SageMakerRole"
                 }
@@ -127,7 +127,7 @@ class TestCreateModelStepBuilderValidator:
 
     def test_apply_step_specific_validation_missing_create_model(self, validator):
         """Test step-specific validation with missing _create_model method."""
-        step_name = "createmodel_step"
+        step_name = "XGBoostModel"  # Use valid step name from registry
         
         # Create builder missing _create_model
         class IncompleteCreateModelBuilder:
@@ -291,7 +291,7 @@ class TestCreateModelStepBuilderValidator:
 
     def test_error_handling_during_validation(self, validator):
         """Test error handling during validation process."""
-        step_name = "createmodel_step"
+        step_name = "XGBoostModel"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder:
             # Setup mock to raise exception
@@ -302,7 +302,7 @@ class TestCreateModelStepBuilderValidator:
             
             # Should handle error gracefully
             assert result["status"] == "ERROR"
-            assert len(result["issues"]) > 0
+            assert "error" in result  # Error results have "error" key, not "issues"
 
     def test_workspace_directory_propagation(self, workspace_dirs):
         """Test that workspace directories are properly propagated."""
@@ -311,7 +311,7 @@ class TestCreateModelStepBuilderValidator:
 
     def test_validate_with_complex_createmodel_configuration(self, validator):
         """Test validation with complex CreateModel configuration."""
-        step_name = "complex_createmodel_step"
+        step_name = "PyTorchModel"  # Use valid step name from registry
         
         # Create complex CreateModel builder
         class ComplexCreateModelBuilder:
@@ -366,7 +366,7 @@ class TestCreateModelStepBuilderValidator:
 
     def test_performance_with_large_createmodel_configuration(self, validator):
         """Test performance with large CreateModel configuration."""
-        step_name = "large_createmodel_step"
+        step_name = "XGBoostModel"  # Use valid step name from registry
         
         # Create large CreateModel builder
         class LargeCreateModelBuilder:
@@ -408,7 +408,7 @@ class TestCreateModelStepBuilderValidator:
 
     def test_validation_result_consistency(self, validator, sample_createmodel_builder):
         """Test that validation results are consistently structured."""
-        step_name = "consistency_test"
+        step_name = "XGBoostModel"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:

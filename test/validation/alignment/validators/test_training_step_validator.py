@@ -100,7 +100,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_apply_step_specific_validation_with_valid_builder(self, validator, sample_training_builder):
         """Test step-specific validation with valid training builder."""
-        step_name = "training_step"
+        step_name = "XGBoostTraining"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
@@ -120,7 +120,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_apply_step_specific_validation_missing_create_estimator(self, validator):
         """Test step-specific validation with missing _create_estimator method."""
-        step_name = "training_step"
+        step_name = "XGBoostTraining"  # Use valid step name from registry
         
         # Create builder missing _create_estimator
         class IncompleteTrainingBuilder:
@@ -158,7 +158,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_apply_step_specific_validation_missing_get_outputs(self, validator):
         """Test step-specific validation with missing _get_outputs method."""
-        step_name = "training_step"
+        step_name = "XGBoostTraining"  # Use valid step name from registry
         
         # Create builder missing _get_outputs
         class IncompleteTrainingBuilder:
@@ -302,7 +302,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_error_handling_during_validation(self, validator):
         """Test error handling during validation process."""
-        step_name = "training_step"
+        step_name = "XGBoostTraining"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder:
             # Setup mock to raise exception
@@ -313,7 +313,7 @@ class TestTrainingStepBuilderValidator:
             
             # Should handle error gracefully
             assert result["status"] == "ERROR"
-            assert len(result["issues"]) > 0
+            assert "error" in result  # Error results have "error" key, not "issues"
 
     def test_workspace_directory_propagation(self, workspace_dirs):
         """Test that workspace directories are properly propagated."""
@@ -322,7 +322,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_validate_with_complex_training_configuration(self, validator):
         """Test validation with complex training configuration."""
-        step_name = "complex_training_step"
+        step_name = "PyTorchTraining"  # Use valid step name from registry
         
         # Create complex training builder
         class ComplexTrainingBuilder:
@@ -370,7 +370,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_performance_with_large_training_configuration(self, validator):
         """Test performance with large training configuration."""
-        step_name = "large_training_step"
+        step_name = "XGBoostTraining"  # Use valid step name from registry
         
         # Create large training builder
         class LargeTrainingBuilder:
@@ -411,7 +411,7 @@ class TestTrainingStepBuilderValidator:
 
     def test_validation_result_consistency(self, validator, sample_training_builder):
         """Test that validation results are consistently structured."""
-        step_name = "consistency_test"
+        step_name = "XGBoostTraining"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:

@@ -42,10 +42,10 @@ class TestTransformStepBuilderValidator:
             def create_step(self):
                 pass
             
-            def _create_transformer(self, output_path=None):
+            def _create_transformer(self, model_name, output_path=None):
                 return {
                     "transformer_type": "BatchTransform",
-                    "model_name": "xgboost-model",
+                    "model_name": model_name,
                     "output_path": output_path,
                     "instance_type": "ml.m5.xlarge",
                     "instance_count": 1
@@ -102,7 +102,7 @@ class TestTransformStepBuilderValidator:
 
     def test_apply_step_specific_validation_with_valid_builder(self, validator, sample_transform_builder):
         """Test step-specific validation with valid Transform builder."""
-        step_name = "transform_step"
+        step_name = "BatchTransform"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
@@ -122,7 +122,7 @@ class TestTransformStepBuilderValidator:
 
     def test_apply_step_specific_validation_missing_create_transformer(self, validator):
         """Test step-specific validation with missing _create_transformer method."""
-        step_name = "transform_step"
+        step_name = "BatchTransform"  # Use valid step name from registry
         
         # Create builder missing _create_transformer
         class IncompleteTransformBuilder:
@@ -252,7 +252,7 @@ class TestTransformStepBuilderValidator:
 
     def test_error_handling_during_validation(self, validator):
         """Test error handling during validation process."""
-        step_name = "transform_step"
+        step_name = "BatchTransform"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder:
             # Setup mock to raise exception
@@ -263,7 +263,7 @@ class TestTransformStepBuilderValidator:
             
             # Should handle error gracefully
             assert result["status"] == "ERROR"
-            assert len(result["issues"]) > 0
+            assert "error" in result  # Error results have "error" key, not "issues"
 
     def test_workspace_directory_propagation(self, workspace_dirs):
         """Test that workspace directories are properly propagated."""
@@ -272,7 +272,7 @@ class TestTransformStepBuilderValidator:
 
     def test_validate_with_complex_transform_configuration(self, validator):
         """Test validation with complex Transform configuration."""
-        step_name = "complex_transform_step"
+        step_name = "BatchTransform"  # Use valid step name from registry
         
         # Create complex Transform builder
         class ComplexTransformBuilder:
@@ -320,7 +320,7 @@ class TestTransformStepBuilderValidator:
 
     def test_performance_with_large_transform_configuration(self, validator):
         """Test performance with large Transform configuration."""
-        step_name = "large_transform_step"
+        step_name = "BatchTransform"  # Use valid step name from registry
         
         # Create large Transform builder
         class LargeTransformBuilder:
@@ -362,7 +362,7 @@ class TestTransformStepBuilderValidator:
 
     def test_validation_result_consistency(self, validator, sample_transform_builder):
         """Test that validation results are consistently structured."""
-        step_name = "consistency_test"
+        step_name = "BatchTransform"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:

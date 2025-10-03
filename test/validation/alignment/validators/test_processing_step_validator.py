@@ -42,7 +42,7 @@ class TestProcessingStepBuilderValidator:
             def create_step(self):
                 pass
             
-            def _create_processor(self):
+            def _create_processor(self):  # Fix signature to match actual implementation
                 return {"processor_type": "ScriptProcessor"}
             
             def _get_outputs(self):
@@ -102,7 +102,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_apply_step_specific_validation_with_valid_builder(self, validator, sample_processing_builder):
         """Test step-specific validation with valid processing builder."""
-        step_name = "processing_step"
+        step_name = "Processing"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:
@@ -122,7 +122,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_apply_step_specific_validation_missing_create_processor(self, validator):
         """Test step-specific validation with missing _create_processor method."""
-        step_name = "processing_step"
+        step_name = "Processing"  # Use valid step name from registry
         
         # Create builder missing _create_processor
         class IncompleteProcessingBuilder:
@@ -160,7 +160,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_apply_step_specific_validation_missing_get_outputs(self, validator):
         """Test step-specific validation with missing _get_outputs method."""
-        step_name = "processing_step"
+        step_name = "Processing"  # Use valid step name from registry
         
         # Create builder missing _get_outputs
         class IncompleteProcessingBuilder:
@@ -289,7 +289,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_error_handling_during_validation(self, validator):
         """Test error handling during validation process."""
-        step_name = "processing_step"
+        step_name = "Processing"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder:
             # Setup mock to raise exception
@@ -300,7 +300,7 @@ class TestProcessingStepBuilderValidator:
             
             # Should handle error gracefully
             assert result["status"] == "ERROR"
-            assert len(result["issues"]) > 0
+            assert "error" in result  # Error results have "error" key, not "issues"
 
     def test_workspace_directory_propagation(self, workspace_dirs):
         """Test that workspace directories are properly propagated."""
@@ -309,7 +309,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_validate_with_complex_processing_configuration(self, validator):
         """Test validation with complex processing configuration."""
-        step_name = "complex_processing_step"
+        step_name = "Processing"  # Use valid step name from registry
         
         # Create complex processing builder
         class ComplexProcessingBuilder:
@@ -359,7 +359,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_performance_with_large_processing_configuration(self, validator):
         """Test performance with large processing configuration."""
-        step_name = "large_processing_step"
+        step_name = "Processing"  # Use valid step name from registry
         
         # Create large processing builder
         class LargeProcessingBuilder:
@@ -400,7 +400,7 @@ class TestProcessingStepBuilderValidator:
 
     def test_validation_result_consistency(self, validator, sample_processing_builder):
         """Test that validation results are consistently structured."""
-        step_name = "consistency_test"
+        step_name = "Processing"  # Use valid step name from registry
         
         with patch.object(validator, '_get_builder_class') as mock_get_builder, \
              patch('cursus.registry.step_names.get_sagemaker_step_type') as mock_get_step_type:

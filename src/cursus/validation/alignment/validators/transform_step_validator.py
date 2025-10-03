@@ -78,8 +78,8 @@ class TransformStepBuilderValidator(StepTypeSpecificValidator):
                 "rule_type": "step_specific",
                 "details": {
                     "purpose": "Create SageMaker Transformer instance for Transform step",
-                    "expected_signature": "_create_transformer(self, output_path: str) -> Transformer",
-                    "return_type": "sagemaker.transformer.Transformer or subclass"
+                    "expected_signature": "_create_transformer(self, model_name, output_path=None) -> Transformer",
+                    "return_type": "sagemaker.transformer.Transformer"
                 }
             })
         else:
@@ -91,7 +91,7 @@ class TransformStepBuilderValidator(StepTypeSpecificValidator):
                 
                 # Basic parameter validation
                 params = list(signature.parameters.keys())
-                expected_params = ["self", "output_path"]
+                expected_params = ["self", "model_name"]  # output_path is optional
                 
                 if len(params) < len(expected_params):
                     issues.append({
@@ -101,23 +101,23 @@ class TransformStepBuilderValidator(StepTypeSpecificValidator):
                         "rule_type": "step_specific",
                         "details": {
                             "actual_params": params,
-                            "expected_params": expected_params,
+                            "expected_params": expected_params + ["output_path (optional)"],
                             "signature_check": "basic_parameter_count",
-                            "usage": "output_path typically comes from _get_outputs() result"
+                            "usage": "model_name is required, output_path is optional"
                         }
                     })
                 
-                # Check if output_path parameter exists
-                if "output_path" not in params:
+                # Check if model_name parameter exists
+                if "model_name" not in params:
                     issues.append({
                         "level": "WARNING",
-                        "message": "_create_transformer should accept output_path parameter",
+                        "message": "_create_transformer should accept model_name parameter",
                         "method_name": "_create_transformer",
                         "rule_type": "step_specific",
                         "details": {
-                            "missing_param": "output_path",
-                            "purpose": "Specify where transform results should be stored",
-                            "typical_usage": "output_path = self._get_outputs()"
+                            "missing_param": "model_name",
+                            "purpose": "Specify which model to use for transformation",
+                            "typical_usage": "model_name from CreateModel step output"
                         }
                     })
             

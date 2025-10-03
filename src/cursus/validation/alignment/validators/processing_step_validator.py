@@ -78,7 +78,7 @@ class ProcessingStepBuilderValidator(StepTypeSpecificValidator):
                 "rule_type": "step_specific",
                 "details": {
                     "purpose": "Create SageMaker Processor instance for Processing step",
-                    "expected_signature": "_create_processor(self, inputs: List[ProcessingInput], outputs: List[ProcessingOutput]) -> Processor",
+                    "expected_signature": "_create_processor(self) -> Processor",
                     "return_type": "sagemaker.processing.Processor or subclass"
                 }
             })
@@ -89,20 +89,20 @@ class ProcessingStepBuilderValidator(StepTypeSpecificValidator):
                 method = getattr(builder_class, "_create_processor")
                 signature = inspect.signature(method)
                 
-                # Basic parameter validation
+                # Basic parameter validation - should only have 'self'
                 params = list(signature.parameters.keys())
-                expected_params = ["self", "inputs", "outputs"]
+                expected_params = ["self"]
                 
-                if len(params) < len(expected_params):
+                if len(params) > len(expected_params):
                     issues.append({
                         "level": "WARNING",
-                        "message": "_create_processor method may have incorrect signature",
+                        "message": "_create_processor method should only take 'self' parameter",
                         "method_name": "_create_processor",
                         "rule_type": "step_specific",
                         "details": {
                             "actual_params": params,
                             "expected_params": expected_params,
-                            "signature_check": "basic_parameter_count"
+                            "signature_check": "parameter_count_validation"
                         }
                     })
             

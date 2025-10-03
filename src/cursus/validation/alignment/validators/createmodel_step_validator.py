@@ -78,7 +78,7 @@ class CreateModelStepBuilderValidator(StepTypeSpecificValidator):
                 "rule_type": "step_specific",
                 "details": {
                     "purpose": "Create SageMaker Model instance for CreateModel step",
-                    "expected_signature": "_create_model(self, inputs: Dict[str, Any]) -> Model",
+                    "expected_signature": "_create_model(self, model_data: str) -> Model",
                     "return_type": "sagemaker.model.Model or subclass"
                 }
             })
@@ -91,7 +91,7 @@ class CreateModelStepBuilderValidator(StepTypeSpecificValidator):
                 
                 # Basic parameter validation
                 params = list(signature.parameters.keys())
-                expected_params = ["self", "inputs"]
+                expected_params = ["self", "model_data"]
                 
                 if len(params) < len(expected_params):
                     issues.append({
@@ -103,21 +103,21 @@ class CreateModelStepBuilderValidator(StepTypeSpecificValidator):
                             "actual_params": params,
                             "expected_params": expected_params,
                             "signature_check": "basic_parameter_count",
-                            "usage": "inputs typically comes from _get_inputs() result"
+                            "usage": "model_data typically comes from training step output"
                         }
                     })
                 
-                # Check if inputs parameter exists
-                if "inputs" not in params:
+                # Check if model_data parameter exists
+                if "model_data" not in params:
                     issues.append({
                         "level": "WARNING",
-                        "message": "_create_model should accept inputs parameter",
+                        "message": "_create_model should accept model_data parameter",
                         "method_name": "_create_model",
                         "rule_type": "step_specific",
                         "details": {
-                            "missing_param": "inputs",
-                            "purpose": "Receive model artifacts and configuration from inputs",
-                            "typical_usage": "inputs = self._get_inputs()"
+                            "missing_param": "model_data",
+                            "purpose": "Receive model artifacts from training step",
+                            "typical_usage": "model_data from TrainingStep output"
                         }
                     })
             
