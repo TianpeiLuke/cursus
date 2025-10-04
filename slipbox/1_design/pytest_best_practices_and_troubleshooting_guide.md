@@ -538,6 +538,13 @@ def test_with_error_prevention():
 - Ensure mock objects have all required attributes from source
 - **Test mock behavior** matches real object behavior
 
+#### **8. Global State Management (Critical for Test Isolation)**
+- **Reset global state** before each test to ensure clean starting conditions
+- Use fixtures with `autouse=True` for automatic state management
+- **Mock global variables** when precise control is needed
+- **Document global state dependencies** in code and tests
+- **Prefer dependency injection** over global state when possible
+
 ## Common Test Failure Categories and Prevention
 
 **📋 For detailed error categories, patterns, and prevention strategies, see:**
