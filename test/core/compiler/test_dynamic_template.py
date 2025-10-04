@@ -597,3 +597,565 @@ class TestDynamicPipelineTemplate:
         # Should return the newly set parameters
         result_params = template._get_pipeline_parameters()
         assert result_params == new_params
+
+    # NEW TESTS FOR 0% COVERAGE METHODS - Following pytest best practices
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_create_step_builder_map_success(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _create_step_builder_map with successful builder resolution.
+        
+        IMPROVED: Following pytest best practices:
+        - Read source code first: method gets builder_map from step_catalog and validates configs
+        - Test actual implementation behavior
+        - Use proper mocking based on source analysis
+        """
+        # Setup mocks based on source code analysis
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        
+        base_config = MagicMock(spec=BasePipelineConfig)
+        data_config = MagicMock(spec=BasePipelineConfig)
+        preprocess_config = MagicMock(spec=BasePipelineConfig)
+        training_config = MagicMock(spec=BasePipelineConfig)
+        
+        configs = {
+            "Base": base_config,
+            "data_loading": data_config,
+            "preprocessing": preprocess_config,
+            "training": training_config,
+        }
+        mock_load_configs.return_value = configs
+        mock_template_load_configs.return_value = configs
+        
+        # Setup config resolver mock - source shows this is called first
+        config_map = {
+            "data_loading": data_config,
+            "preprocessing": preprocess_config,
+            "training": training_config,
+        }
+        self.mock_config_resolver.resolve_config_map.return_value = config_map
+        
+        # Setup step catalog mock - source shows get_builder_map() is called
+        mock_builder1 = MagicMock()
+        mock_builder1.__name__ = "CradleDataLoadingBuilder"
+        mock_builder2 = MagicMock()
+        mock_builder2.__name__ = "TabularPreprocessingBuilder"
+        mock_builder3 = MagicMock()
+        mock_builder3.__name__ = "XGBoostTrainingBuilder"
+        
+        builder_map = {
+            "CradleDataLoading": mock_builder1,
+            "TabularPreprocessing": mock_builder2,
+            "XGBoostTraining": mock_builder3,
+        }
+        self.mock_step_catalog.get_builder_map.return_value = builder_map
+        
+        # Source shows get_builder_for_config is called for each config
+        self.mock_step_catalog.get_builder_for_config.side_effect = [
+            mock_builder1, mock_builder2, mock_builder3
+        ]
+        
+        # Create template
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            config_resolver=self.mock_config_resolver,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Test the method - this should now work
+        result_map = template._create_step_builder_map()
+        
+        # Verify source code behavior
+        self.mock_step_catalog.get_builder_map.assert_called_once()
+        assert self.mock_step_catalog.get_builder_for_config.call_count == 3
+        
+        # Verify result matches expected builder map
+        assert result_map == builder_map
+        
+        # Test caching - second call should not call step_catalog again
+        self.mock_step_catalog.get_builder_map.reset_mock()
+        result_map_again = template._create_step_builder_map()
+        assert result_map_again == builder_map
+        self.mock_step_catalog.get_builder_map.assert_not_called()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_create_step_builder_map_step_catalog_none(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _create_step_builder_map when step_catalog is None.
+        
+        IMPROVED: Test actual error handling from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        # Create template with None step_catalog - source shows it creates new StepCatalog
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=None,  # Source shows this creates new StepCatalog, not None
+            skip_validation=True,
+        )
+        
+        # Source code shows when step_catalog=None, it creates new StepCatalog()
+        # So _step_catalog won't be None, but the real StepCatalog may not have builders for MagicMock configs
+        from cursus.registry.exceptions import RegistryError
+        with pytest.raises(RegistryError, match="Step builder mapping failed"):
+            template._create_step_builder_map()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_create_step_builder_map_missing_builders(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _create_step_builder_map when builders are missing for some configs.
+        
+        IMPROVED: Test actual error handling from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        
+        base_config = MagicMock(spec=BasePipelineConfig)
+        data_config = MagicMock(spec=BasePipelineConfig)
+        
+        configs = {"Base": base_config, "data_loading": data_config}
+        mock_load_configs.return_value = configs
+        mock_template_load_configs.return_value = configs
+        
+        # Setup config resolver
+        config_map = {"data_loading": data_config}
+        self.mock_config_resolver.resolve_config_map.return_value = config_map
+        
+        # Setup step catalog to return empty builder map
+        self.mock_step_catalog.get_builder_map.return_value = {}
+        # get_builder_for_config returns None (no builder found)
+        self.mock_step_catalog.get_builder_for_config.return_value = None
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            config_resolver=self.mock_config_resolver,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Source code shows this should raise RegistryError with missing builders
+        from cursus.registry.exceptions import RegistryError
+        with pytest.raises(RegistryError, match="Missing step builders"):
+            template._create_step_builder_map()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_validate_configuration_skip_validation(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _validate_configuration when skip_validation=True.
+        
+        IMPROVED: Test actual skip behavior from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,  # Source shows this causes early return
+        )
+        
+        # This should not raise any exception and return immediately
+        template._validate_configuration()  # Should complete without error
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_validate_configuration_success(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _validate_configuration with successful validation.
+        
+        IMPROVED: Test actual validation logic from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        data_config = MagicMock(spec=BasePipelineConfig)
+        
+        configs = {"Base": base_config, "data_loading": data_config}
+        mock_load_configs.return_value = configs
+        mock_template_load_configs.return_value = configs
+        
+        # Setup config resolver - return empty config_map to avoid builder resolution issues
+        config_map = {}  # Empty to avoid step builder validation
+        self.mock_config_resolver.resolve_config_map.return_value = config_map
+        
+        # Setup step catalog - return empty builder map since no configs to resolve
+        builder_map = {}
+        self.mock_step_catalog.get_builder_map.return_value = builder_map
+        
+        # Setup validation engine - source shows validate_dag_compatibility is called
+        mock_validation_result = MagicMock()
+        mock_validation_result.is_valid = True
+        mock_validation_result.warnings = []
+        
+        mock_validation_engine = MagicMock()
+        mock_validation_engine.validate_dag_compatibility.return_value = mock_validation_result
+        
+        # Create template with skip_validation=True to avoid constructor validation
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            config_resolver=self.mock_config_resolver,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,  # Skip validation in constructor
+        )
+        template._validation_engine = mock_validation_engine
+        
+        # Now manually call _validate_configuration with skip_validation=False
+        template._skip_validation = False
+        template._validate_configuration()
+        
+        # Verify validation engine was called
+        mock_validation_engine.validate_dag_compatibility.assert_called_once()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_validate_configuration_failure(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _validate_configuration with validation failure.
+        
+        IMPROVED: Test actual error handling from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        # Create template with skip_validation=True to avoid constructor validation
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Mock _create_step_builder_map to raise RegistryError (which gets caught and re-raised as ValidationError)
+        from cursus.registry.exceptions import RegistryError
+        template._create_step_builder_map = MagicMock(side_effect=RegistryError("Step builder mapping failed"))
+        
+        # Now manually call _validate_configuration with skip_validation=False
+        template._skip_validation = False
+        
+        # Source code shows RegistryError gets caught and re-raised as ValidationError with "Validation failed:" prefix
+        from cursus.core.compiler.exceptions import ValidationError
+        with pytest.raises(ValidationError, match="Validation failed:"):
+            template._validate_configuration()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_store_pipeline_metadata(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _store_pipeline_metadata stores step instances.
+        
+        IMPROVED: Test actual metadata storage from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Create mock assembler with step_instances
+        mock_assembler = MagicMock()
+        mock_step_instances = {"step1": "instance1", "step2": "instance2"}
+        mock_assembler.step_instances = mock_step_instances
+        
+        # Source code shows this should store step_instances in pipeline_metadata
+        template._store_pipeline_metadata(mock_assembler)
+        
+        # Verify step instances were stored
+        assert template.pipeline_metadata["step_instances"] == mock_step_instances
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_store_pipeline_metadata_no_step_instances(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test _store_pipeline_metadata when assembler has no step_instances.
+        
+        IMPROVED: Test edge case from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Create mock assembler without step_instances attribute
+        mock_assembler = MagicMock()
+        del mock_assembler.step_instances  # Remove the attribute
+        
+        # This should not raise an error (source code uses hasattr check)
+        template._store_pipeline_metadata(mock_assembler)
+        
+        # pipeline_metadata should not have step_instances key
+        assert "step_instances" not in template.pipeline_metadata
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_get_step_catalog_stats(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test get_step_catalog_stats returns catalog statistics.
+        
+        IMPROVED: Test actual implementation from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        # Setup step catalog mock - source shows list_supported_step_types() is called
+        self.mock_step_catalog.list_supported_step_types.return_value = ["Type1", "Type2", "Type3"]
+        # Source shows _step_index attribute is checked
+        self.mock_step_catalog._step_index = {"step1": "data1", "step2": "data2"}
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Test the method
+        stats = template.get_step_catalog_stats()
+        
+        # Verify source code behavior
+        assert stats["supported_step_types"] == 3  # len of supported types
+        assert stats["indexed_steps"] == 2  # len of _step_index
+        
+        # Verify method was called
+        self.mock_step_catalog.list_supported_step_types.assert_called_once()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_get_step_catalog_stats_no_step_index(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test get_step_catalog_stats when step_catalog has no _step_index.
+        
+        IMPROVED: Test edge case from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        # Setup step catalog without _step_index
+        self.mock_step_catalog.list_supported_step_types.return_value = ["Type1"]
+        # Remove _step_index attribute
+        if hasattr(self.mock_step_catalog, '_step_index'):
+            del self.mock_step_catalog._step_index
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Test the method
+        stats = template.get_step_catalog_stats()
+        
+        # Source code shows indexed_steps should be 0 when _step_index doesn't exist
+        assert stats["supported_step_types"] == 1
+        assert stats["indexed_steps"] == 0
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_validate_before_build_success(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test validate_before_build returns True when validation passes.
+        
+        IMPROVED: Test actual implementation from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,  # This will make _validate_configuration pass
+        )
+        
+        # Source code shows this calls _validate_configuration and returns True if no exception
+        result = template.validate_before_build()
+        assert result is True
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_validate_before_build_failure(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test validate_before_build returns False when validation fails.
+        
+        IMPROVED: Test actual error handling from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        # Create template with skip_validation=True to avoid constructor validation
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,  # Skip validation in constructor
+        )
+        
+        # Mock _validate_configuration to raise ValidationError
+        from cursus.core.compiler.exceptions import ValidationError
+        template._validate_configuration = MagicMock(side_effect=ValidationError("Validation failed"))
+        
+        # Source code shows this should catch ValidationError and return False
+        result = template.validate_before_build()
+        assert result is False
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_get_execution_order_success(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test get_execution_order returns topological sort of DAG.
+        
+        IMPROVED: Test actual implementation from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Mock DAG's topological_sort method
+        expected_order = ["data_loading", "preprocessing", "training"]
+        template._dag.topological_sort = MagicMock(return_value=expected_order)
+        
+        # Test the method
+        result = template.get_execution_order()
+        
+        # Verify source code behavior
+        assert result == expected_order
+        template._dag.topological_sort.assert_called_once()
+
+    @patch.object(PipelineTemplateBase, "_load_configs")
+    @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
+    @patch("cursus.steps.configs.utils.load_configs")
+    def test_get_execution_order_failure(
+        self, mock_load_configs, mock_detect_classes, mock_template_load_configs
+    ):
+        """
+        Test get_execution_order handles topological sort failure.
+        
+        IMPROVED: Test actual error handling from source code
+        """
+        # Setup mocks
+        mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
+        base_config = MagicMock(spec=BasePipelineConfig)
+        mock_configs = {"Base": base_config}
+        mock_load_configs.return_value = mock_configs
+        mock_template_load_configs.return_value = mock_configs
+        
+        template = DynamicPipelineTemplate(
+            dag=self.dag,
+            config_path=self.config_path,
+            step_catalog=self.mock_step_catalog,
+            skip_validation=True,
+        )
+        
+        # Mock DAG's topological_sort to raise exception
+        template._dag.topological_sort = MagicMock(side_effect=Exception("Topological sort failed"))
+        
+        # Source code shows this should catch exception and return list of nodes
+        result = template.get_execution_order()
+        
+        # Should return list of DAG nodes as fallback
+        assert set(result) == set(self.dag.nodes)
