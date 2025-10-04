@@ -576,18 +576,36 @@ def validate_all(
         workspace_dir_list = list(workspace_dirs) if workspace_dirs else []
         tester = UnifiedAlignmentTester(workspace_dirs=workspace_dir_list)
 
-        # Discover all scripts using step catalog (workspace-aware)
-        scripts = tester.discover_scripts()
-        click.echo(f"\n📋 Discovered {len(scripts)} scripts: {', '.join(scripts)}")
+        # Discover ALL steps for comprehensive validation (not just scripts)
+        # The validation system will intelligently skip levels based on step type
+        all_steps = tester.step_catalog.list_available_steps()
+        
+        # Get breakdown for user information by checking which steps have script files
+        scripts_with_files = []
+        steps_without_scripts = []
+        
+        for step_name in all_steps:
+            if tester._has_script_file(step_name):
+                scripts_with_files.append(step_name)
+            else:
+                steps_without_scripts.append(step_name)
+        
+        click.echo(f"\n📋 Discovered {len(all_steps)} total steps for comprehensive validation:")
+        click.echo(f"  • {len(scripts_with_files)} steps with scripts (full 4-level validation)")
+        click.echo(f"  • {len(steps_without_scripts)} steps without scripts (intelligent level skipping)")
+        click.echo(f"\nAll steps: {', '.join(all_steps)}")
+        
+        # Use all steps for validation, not just scripts
+        scripts = all_steps
 
         # Validation results summary
         validation_summary = {
-            "total_scripts": len(scripts),
-            "passed_scripts": 0,
-            "failed_scripts": 0,
-            "error_scripts": 0,
+            "total_steps": len(scripts),
+            "passed_steps": 0,
+            "failed_steps": 0,
+            "error_steps": 0,
             "validation_timestamp": datetime.now().isoformat(),
-            "script_results": {},
+            "step_results": {},
         }
 
         # Validate each script
@@ -620,25 +638,25 @@ def validate_all(
 
                 # Update summary - fix status value checks
                 status = results.get("overall_status", "UNKNOWN")
-                validation_summary["script_results"][script_name] = {
+                validation_summary["step_results"][script_name] = {
                     "status": status,
                     "timestamp": results.get("metadata", {}).get("validation_timestamp"),
                 }
 
                 if status == "PASSED":
-                    validation_summary["passed_scripts"] += 1
+                    validation_summary["passed_steps"] += 1
                 elif status == "FAILED":
-                    validation_summary["failed_scripts"] += 1
+                    validation_summary["failed_steps"] += 1
                 elif status == "EXCLUDED":
-                    # Excluded scripts don't count as errors
-                    validation_summary["passed_scripts"] += 1
+                    # Excluded steps don't count as errors
+                    validation_summary["passed_steps"] += 1
                 else:
-                    validation_summary["error_scripts"] += 1
+                    validation_summary["error_steps"] += 1
 
             except Exception as e:
                 click.echo(f"❌ Failed to validate {script_name}: {e}")
-                validation_summary["error_scripts"] += 1
-                validation_summary["script_results"][script_name] = {
+                validation_summary["error_steps"] += 1
+                validation_summary["step_results"][script_name] = {
                     "status": "ERROR",
                     "error": str(e),
                     "timestamp": datetime.now().isoformat(),
@@ -665,12 +683,12 @@ def validate_all(
         click.echo("🎯 FINAL VALIDATION SUMMARY")
         click.echo(f"{'='*80}")
 
-        total = validation_summary["total_scripts"]
-        passed = validation_summary["passed_scripts"]
-        failed = validation_summary["failed_scripts"]
-        errors = validation_summary["error_scripts"]
+        total = validation_summary["total_steps"]
+        passed = validation_summary["passed_steps"]
+        failed = validation_summary["failed_steps"]
+        errors = validation_summary["error_steps"]
 
-        click.echo(f"📊 Total Scripts: {total}")
+        click.echo(f"📊 Total Steps: {total}")
         if total > 0:
             click.secho(f"✅ Passed: {passed} ({passed/total*100:.1f}%)", fg="green")
             click.secho(f"❌ Failed: {failed} ({failed/total*100:.1f}%)", fg="red")
@@ -685,14 +703,14 @@ def validate_all(
 
         # Return appropriate exit code
         if total == 0:
-            # Special case: no scripts found should be success
-            click.echo(f"\n🎉 All {passed} scripts passed alignment validation!")
+            # Special case: no steps found should be success
+            click.echo(f"\n🎉 All {passed} steps passed alignment validation!")
             return  # Exit successfully without raising exception
         elif failed > 0 or errors > 0:
-            click.echo(f"\n⚠️  {failed + errors} script(s) failed validation.")
+            click.echo(f"\n⚠️  {failed + errors} step(s) failed validation.")
             ctx.exit(1)
         else:
-            click.echo(f"\n🎉 All {passed} scripts passed alignment validation!")
+            click.echo(f"\n🎉 All {passed} steps passed alignment validation!")
             return  # Exit successfully without raising exception
 
     except Exception as e:

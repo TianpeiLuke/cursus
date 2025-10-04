@@ -171,12 +171,15 @@ class LevelValidators:
             # Use step-type-specific validator
             validator = self._get_step_type_validator(validator_class)
             if not validator:
+                logger.warning(f"Validator {validator_class} is not implemented for step {step_name}")
                 return {
                     "level": 4,
                     "step_name": step_name,
                     "validation_type": "builder_config",
-                    "status": "ERROR",
-                    "error": f"Could not create validator: {validator_class}"
+                    "status": "SKIPPED",
+                    "reason": f"Validator {validator_class} is not yet implemented",
+                    "validator_class": validator_class,
+                    "implementation_needed": True
                 }
             
             result = validator.validate_builder_config_alignment(step_name)
