@@ -3,11 +3,21 @@ Unit tests for the dag_compiler module.
 
 This module tests the pipeline compilation process, particularly focusing on the 
 conversion of PipelineDAG structures to SageMaker pipelines.
+
+IMPROVED: Following pytest best practices and troubleshooting guide:
+1. Implementation-driven test design (read source code first)
+2. Precise mock path configuration based on actual imports
+3. Comprehensive edge case coverage
+4. Proper fixture isolation and cleanup
+5. Systematic error prevention patterns
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
+import tempfile
+import json
+from unittest.mock import patch, MagicMock, Mock
 from pathlib import Path
+from typing import Dict, Any
 
 from cursus.api.dag.base_dag import PipelineDAG
 from cursus.core.compiler.dag_compiler import (
@@ -22,255 +32,512 @@ from cursus.core.compiler.validation import (
     ResolutionPreview,
     ConversionReport,
 )
+from sagemaker.workflow.parameters import ParameterString
 
 
 class TestDagCompiler:
-    """Tests for the dag_compiler module."""
+    """
+    Tests for the dag_compiler module.
+    
+    IMPROVED: Following pytest best practices:
+    1. Proper fixture isolation (no shared state)
+    2. Realistic test data structures
+    3. Implementation-driven test design
+    """
 
-    @pytest.fixture(autouse=True)
-    def setup_method(self):
-        """Set up test fixtures."""
-        # Create a simple DAG for testing
-        self.dag = PipelineDAG()
-        self.dag.add_node("data_loading")
-        self.dag.add_node("preprocessing")
-        self.dag.add_node("training")
-        self.dag.add_edge("data_loading", "preprocessing")
-        self.dag.add_edge("preprocessing", "training")
+    @pytest.fixture
+    def sample_dag(self):
+        """Create a sample DAG for testing - fresh instance per test."""
+        dag = PipelineDAG()
+        dag.add_node("data_loading")
+        dag.add_node("preprocessing") 
+        dag.add_node("training")
+        dag.add_edge("data_loading", "preprocessing")
+        dag.add_edge("preprocessing", "training")
+        return dag
 
-        # Mock config path (doesn't need to exist for these tests)
-        self.config_path = "mock_config.json"
-
-        # Mock pipeline session and role
-        self.mock_session = MagicMock()
-        self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
-
-    @patch("cursus.core.compiler.dag_compiler.Path")
-    @patch("cursus.core.compiler.dynamic_template.DynamicPipelineTemplate")
-    @patch("cursus.core.compiler.dag_compiler.StepCatalog")
-    def test_compile_with_custom_pipeline_name(
-        self, mock_catalog_class, mock_template_class, mock_path
-    ):
-        """Test that custom pipeline names are used directly."""
-        # Setup mocks
-        mock_path_instance = MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path.return_value = mock_path_instance
-
-        mock_catalog = MagicMock()
-        mock_catalog_class.return_value = mock_catalog
-
-        mock_template = MagicMock()
-        mock_pipeline = MagicMock()
-        mock_template.generate_pipeline.return_value = mock_pipeline
-        mock_template_class.return_value = mock_template
-
-        # Create a compiler with the mocked template
-        compiler = PipelineDAGCompiler(
-            config_path=self.config_path, step_catalog=mock_catalog
-        )
-
-        # Test with custom pipeline name
-        result = compiler.compile(self.dag, pipeline_name="custom-pipeline-name")
-
-        # Verify custom name is used directly
-        assert result.name == "custom-pipeline-name"
+    @pytest.fixture
+    def temp_config_file(self):
+        """Create temporary config file with realistic structure."""
+        config_content = {
+            "Base": {
+                "config_type": "BasePipelineConfig",
+                "author": "test_author",
+                "bucket": "test-bucket",
+                "role": "test-role",
+                "region": "NA",
+                "service_name": "test_service",
+                "pipeline_version": "1.0.0",
+                "project_root_folder": "cursus",
+                "pipeline_name": "test_pipeline"
+            }
+        }
         
-        # Verify the template was created and used
-        mock_template_class.assert_called_once()
-        mock_template.generate_pipeline.assert_called_once()
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(config_content, f)
+            temp_path = f.name
+        
+        yield temp_path
+        
+        # Cleanup
+        Path(temp_path).unlink(missing_ok=True)
+
+    @pytest.fixture
+    def mock_session(self):
+        """Mock SageMaker session with proper spec."""
+        return Mock(spec=['default_bucket', 'region_name'])
+
+    @pytest.fixture
+    def mock_role(self):
+        """Mock IAM role."""
+        return "arn:aws:iam::123456789012:role/SageMakerRole"
+
+    def test_compile_with_custom_pipeline_name(self, sample_dag, temp_config_file, mock_session, mock_role):
+        """
+        Test that custom pipeline names are used directly.
+        
+        IMPROVED: 
+        - Read source code first: compile() method sets pipeline.name = pipeline_name when provided
+        - Use proper mock paths based on actual imports in dag_compiler.py
+        - Use realistic fixtures instead of hardcoded paths
+        """
+        # IMPROVED: Mock at correct import paths based on source analysis
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
+             patch("cursus.core.compiler.dag_compiler.StepCatalog") as mock_catalog_class, \
+             patch("cursus.core.compiler.dag_compiler.StepConfigResolver") as mock_resolver_class, \
+             patch("cursus.core.compiler.dag_compiler.ValidationEngine") as mock_validation_class:
+            
+            # Setup Path mock
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+
+            # Setup component mocks
+            mock_catalog = Mock()
+            mock_catalog_class.return_value = mock_catalog
+            mock_resolver = Mock()
+            mock_resolver_class.return_value = mock_resolver
+            mock_validation = Mock()
+            mock_validation_class.return_value = mock_validation
+
+            # Create compiler
+            compiler = PipelineDAGCompiler(
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role=mock_role,
+                step_catalog=mock_catalog
+            )
+
+            # IMPROVED: Mock create_template method with realistic behavior
+            mock_template = Mock()
+            mock_pipeline = Mock()
+            mock_pipeline.name = "original-name"  # Initial name
+            mock_template.generate_pipeline.return_value = mock_pipeline
+            mock_template.base_config = Mock()
+            mock_template.base_config.pipeline_name = "test_pipeline"
+            mock_template.base_config.pipeline_version = "1.0.0"
+            
+            compiler.create_template = Mock(return_value=mock_template)
+
+            # Test with custom pipeline name
+            result = compiler.compile(sample_dag, pipeline_name="custom-pipeline-name")
+
+            # IMPROVED: Verify actual behavior from source code
+            assert result.name == "custom-pipeline-name"
+            assert compiler._last_template == mock_template
+            
+            # Verify template creation was called with correct parameters
+            compiler.create_template.assert_called_once_with(
+                sample_dag, skip_validation=True
+            )
 
 
 class TestCompileDagToPipeline:
-    """Tests for the compile_dag_to_pipeline function."""
+    """
+    Tests for the compile_dag_to_pipeline function.
+    
+    IMPROVED: Following pytest best practices:
+    1. Use proper fixtures instead of setup_method
+    2. Avoid shared state between tests
+    3. Test actual implementation behavior
+    """
 
-    @pytest.fixture(autouse=True)
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.dag = PipelineDAG()
-        self.dag.add_node("data_loading")
-        self.dag.add_node("training")
-        self.dag.add_edge("data_loading", "training")
+    @pytest.fixture
+    def simple_dag(self):
+        """Create a simple DAG for testing."""
+        dag = PipelineDAG()
+        dag.add_node("data_loading")
+        dag.add_node("training")
+        dag.add_edge("data_loading", "training")
+        return dag
 
-        self.config_path = "test_config.json"
-        self.mock_session = MagicMock()
-        self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
+    @pytest.fixture
+    def temp_config_file(self):
+        """Create temporary config file."""
+        config_content = {
+            "Base": {
+                "config_type": "BasePipelineConfig",
+                "author": "test_author",
+                "bucket": "test-bucket",
+                "role": "test-role",
+                "region": "NA",
+                "service_name": "test_service",
+                "pipeline_version": "1.0.0",
+                "project_root_folder": "cursus",
+                "pipeline_name": "test_pipeline"
+            }
+        }
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(config_content, f)
+            temp_path = f.name
+        
+        yield temp_path
+        
+        # Cleanup
+        Path(temp_path).unlink(missing_ok=True)
 
-        yield
+    @pytest.fixture
+    def mock_session(self):
+        """Mock SageMaker session."""
+        return Mock(spec=['default_bucket', 'region_name'])
 
-    def test_compile_dag_to_pipeline_invalid_dag(self):
-        """Test compile_dag_to_pipeline with invalid DAG."""
+    @pytest.fixture
+    def mock_role(self):
+        """Mock IAM role."""
+        return "arn:aws:iam::123456789012:role/SageMakerRole"
+
+    def test_compile_dag_to_pipeline_invalid_dag(self, temp_config_file, mock_session, mock_role):
+        """
+        Test compile_dag_to_pipeline with invalid DAG.
+        
+        IMPROVED: 
+        - Read source code first: compile_dag_to_pipeline checks isinstance(dag, PipelineDAG)
+        - Use fixtures instead of self attributes
+        - Test exact error message from implementation
+        """
         with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
                 dag="not_a_dag",
-                config_path=self.config_path,
-                sagemaker_session=self.mock_session,
-                role=self.mock_role,
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role=mock_role,
             )
+        # IMPROVED: Test exact error message from source code
         assert "dag must be a PipelineDAG instance" in str(context.value)
 
-    def test_compile_dag_to_pipeline_empty_dag(self):
-        """Test compile_dag_to_pipeline with empty DAG."""
+    def test_compile_dag_to_pipeline_empty_dag(self, temp_config_file, mock_session, mock_role):
+        """
+        Test compile_dag_to_pipeline with empty DAG.
+        
+        IMPROVED:
+        - Read source code first: compile_dag_to_pipeline checks if dag.nodes is empty
+        - Use fixtures for consistent test data
+        """
         empty_dag = PipelineDAG()
 
         with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
                 dag=empty_dag,
-                config_path=self.config_path,
-                sagemaker_session=self.mock_session,
-                role=self.mock_role,
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role=mock_role,
             )
+        # IMPROVED: Test exact error message from source code
         assert "DAG must contain at least one node" in str(context.value)
 
-    def test_compile_dag_to_pipeline_missing_config_file(self):
-        """Test compile_dag_to_pipeline with missing config file."""
+    def test_compile_dag_to_pipeline_missing_config_file(self, simple_dag, mock_session, mock_role):
+        """
+        Test compile_dag_to_pipeline with missing config file.
+        
+        IMPROVED:
+        - Read source code first: compile_dag_to_pipeline checks Path(config_path).exists()
+        - Use fixtures for consistent test data
+        """
         with pytest.raises(PipelineAPIError) as context:
             compile_dag_to_pipeline(
-                dag=self.dag,
+                dag=simple_dag,
                 config_path="nonexistent_config.json",
-                sagemaker_session=self.mock_session,
-                role=self.mock_role,
+                sagemaker_session=mock_session,
+                role=mock_role,
             )
+        # IMPROVED: Test exact error message from source code
         assert "Configuration file not found" in str(context.value)
 
-    @patch("cursus.core.compiler.dag_compiler.Path")
-    @patch("cursus.core.compiler.dag_compiler.PipelineDAGCompiler")
-    def test_compile_dag_to_pipeline_success(self, mock_compiler_class, mock_path):
-        """Test successful compile_dag_to_pipeline execution."""
-        # Setup mocks
-        mock_path_instance = MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path.return_value = mock_path_instance
+    def test_compile_dag_to_pipeline_success(self, simple_dag, temp_config_file, mock_session, mock_role):
+        """
+        Test successful compile_dag_to_pipeline execution.
+        
+        IMPROVED:
+        - Read source code first: compile_dag_to_pipeline creates PipelineDAGCompiler and calls compile()
+        - Use proper mock paths based on actual imports
+        - Use fixtures for consistent test data
+        - Test actual parameter passing behavior
+        """
+        # IMPROVED: Mock at correct import paths based on source analysis
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
+             patch("cursus.core.compiler.dag_compiler.PipelineDAGCompiler") as mock_compiler_class:
+            
+            # Setup Path mock
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
 
-        mock_compiler = MagicMock()
-        mock_pipeline = MagicMock()
-        mock_pipeline.name = "test-pipeline"
-        mock_compiler.compile.return_value = mock_pipeline
-        mock_compiler_class.return_value = mock_compiler
+            # Setup compiler mock
+            mock_compiler = Mock()
+            mock_pipeline = Mock()
+            mock_pipeline.name = "test-pipeline"
+            mock_compiler.compile.return_value = mock_pipeline
+            mock_compiler_class.return_value = mock_compiler
 
-        # Call function
-        result = compile_dag_to_pipeline(
-            dag=self.dag,
-            config_path=self.config_path,
-            sagemaker_session=self.mock_session,
-            role=self.mock_role,
-            pipeline_name="custom-pipeline",
-        )
-
-        # Verify compiler was created with correct arguments
-        mock_compiler_class.assert_called_once_with(
-            config_path=self.config_path,
-            sagemaker_session=self.mock_session,
-            role=self.mock_role,
-        )
-
-        # Verify compile was called with correct arguments
-        mock_compiler.compile.assert_called_once_with(
-            self.dag, pipeline_name="custom-pipeline"
-        )
-
-        # Verify result
-        assert result == mock_pipeline
-
-    @patch("cursus.core.compiler.dag_compiler.Path")
-    @patch("cursus.core.compiler.dag_compiler.PipelineDAGCompiler")
-    def test_compile_dag_to_pipeline_exception_handling(
-        self, mock_compiler_class, mock_path
-    ):
-        """Test exception handling in compile_dag_to_pipeline."""
-        # Setup mocks
-        mock_path_instance = MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path.return_value = mock_path_instance
-
-        mock_compiler = MagicMock()
-        mock_compiler.compile.side_effect = Exception("Compilation failed")
-        mock_compiler_class.return_value = mock_compiler
-
-        # Call function and expect PipelineAPIError
-        with pytest.raises(PipelineAPIError) as context:
-            compile_dag_to_pipeline(
-                dag=self.dag,
-                config_path=self.config_path,
-                sagemaker_session=self.mock_session,
-                role=self.mock_role,
+            # Call function
+            result = compile_dag_to_pipeline(
+                dag=simple_dag,
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role=mock_role,
+                pipeline_name="custom-pipeline",
             )
 
-        assert "DAG compilation failed" in str(context.value)
+            # IMPROVED: Verify actual behavior from source code
+            # Source shows: compiler = PipelineDAGCompiler(config_path=config_path, sagemaker_session=sagemaker_session, role=role, **kwargs)
+            mock_compiler_class.assert_called_once_with(
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role=mock_role,
+            )
+
+            # Source shows: pipeline = compiler.compile(dag, pipeline_name=pipeline_name)
+            mock_compiler.compile.assert_called_once_with(
+                simple_dag, pipeline_name="custom-pipeline"
+            )
+
+            # Verify result
+            assert result == mock_pipeline
+
+    def test_compile_dag_to_pipeline_exception_handling(self, simple_dag, temp_config_file, mock_session, mock_role):
+        """
+        Test exception handling in compile_dag_to_pipeline.
+        
+        IMPROVED:
+        - Read source code first: compile_dag_to_pipeline wraps exceptions in PipelineAPIError
+        - Use fixtures for consistent test data
+        - Test exact exception handling behavior
+        """
+        # IMPROVED: Mock at correct import paths
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
+             patch("cursus.core.compiler.dag_compiler.PipelineDAGCompiler") as mock_compiler_class:
+            
+            # Setup Path mock
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+
+            # Setup compiler mock to raise exception
+            mock_compiler = Mock()
+            mock_compiler.compile.side_effect = Exception("Compilation failed")
+            mock_compiler_class.return_value = mock_compiler
+
+            # Call function and expect PipelineAPIError
+            with pytest.raises(PipelineAPIError) as context:
+                compile_dag_to_pipeline(
+                    dag=simple_dag,
+                    config_path=temp_config_file,
+                    sagemaker_session=mock_session,
+                    role=mock_role,
+                )
+
+            # IMPROVED: Test exact error message from source code
+            assert "DAG compilation failed" in str(context.value)
+            # Verify original exception is preserved
+            assert "Compilation failed" in str(context.value)
 
 
 class TestPipelineDAGCompilerInit:
-    """Tests for PipelineDAGCompiler initialization."""
+    """
+    Tests for PipelineDAGCompiler initialization.
+    
+    IMPROVED: Following pytest best practices:
+    1. Use proper fixtures instead of setup_method
+    2. Avoid shared state between tests
+    3. Test actual implementation behavior from source code
+    """
 
-    @pytest.fixture(autouse=True)
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.config_path = "test_config.json"
-        self.mock_session = MagicMock()
-        self.mock_role = "arn:aws:iam::123456789012:role/SageMakerRole"
+    @pytest.fixture
+    def temp_config_file(self):
+        """Create temporary config file."""
+        config_content = {
+            "Base": {
+                "config_type": "BasePipelineConfig",
+                "author": "test_author",
+                "bucket": "test-bucket",
+                "role": "test-role",
+                "region": "NA",
+                "service_name": "test_service",
+                "pipeline_version": "1.0.0",
+                "project_root_folder": "cursus",
+                "pipeline_name": "test_pipeline"
+            }
+        }
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(config_content, f)
+            temp_path = f.name
+        
+        yield temp_path
+        
+        # Cleanup
+        Path(temp_path).unlink(missing_ok=True)
 
-        yield
+    @pytest.fixture
+    def mock_session(self):
+        """Mock SageMaker session."""
+        return Mock(spec=['default_bucket', 'region_name'])
 
-    @patch("cursus.core.compiler.dag_compiler.Path")
-    @patch("cursus.core.compiler.dag_compiler.StepCatalog")
-    @patch("cursus.core.compiler.dag_compiler.StepConfigResolver")
-    @patch("cursus.core.compiler.dag_compiler.ValidationEngine")
-    def test_compiler_init_success(
-        self, mock_validation_engine, mock_resolver, mock_registry, mock_path
-    ):
-        """Test successful PipelineDAGCompiler initialization."""
-        # Setup mocks
-        mock_path_instance = MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path.return_value = mock_path_instance
+    @pytest.fixture
+    def mock_role(self):
+        """Mock IAM role."""
+        return "arn:aws:iam::123456789012:role/SageMakerRole"
 
-        # Create compiler
-        compiler = PipelineDAGCompiler(
-            config_path=self.config_path,
-            sagemaker_session=self.mock_session,
-            role=self.mock_role,
-        )
+    def test_compiler_init_success(self, temp_config_file, mock_session, mock_role):
+        """
+        Test successful PipelineDAGCompiler initialization.
+        
+        IMPROVED:
+        - Read source code first: __init__ method initializes components and validates config file
+        - Use proper mock paths based on actual imports
+        - Use fixtures for consistent test data
+        - Test actual initialization behavior
+        """
+        # IMPROVED: Mock at correct import paths based on source analysis
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path, \
+             patch("cursus.core.compiler.dag_compiler.StepCatalog") as mock_catalog_class, \
+             patch("cursus.core.compiler.dag_compiler.StepConfigResolver") as mock_resolver_class, \
+             patch("cursus.core.compiler.dag_compiler.ValidationEngine") as mock_validation_class:
+            
+            # Setup Path mock
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
 
-        # Verify initialization
-        assert compiler.config_path == self.config_path
-        assert compiler.sagemaker_session == self.mock_session
-        assert compiler.role == self.mock_role
-        assert compiler.config_resolver is not None
-        assert compiler.step_catalog is not None
-        assert compiler.validation_engine is not None
-        assert compiler._last_template is None
+            # Setup component mocks
+            mock_catalog = Mock()
+            mock_catalog_class.return_value = mock_catalog
+            mock_resolver = Mock()
+            mock_resolver_class.return_value = mock_resolver
+            mock_validation = Mock()
+            mock_validation_class.return_value = mock_validation
 
-    def test_compiler_init_missing_config_file(self):
-        """Test PipelineDAGCompiler initialization with missing config file."""
+            # Create compiler
+            compiler = PipelineDAGCompiler(
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role=mock_role,
+            )
+
+            # IMPROVED: Verify actual initialization from source code
+            assert compiler.config_path == temp_config_file
+            assert compiler.sagemaker_session == mock_session
+            assert compiler.role == mock_role
+            assert compiler.config_resolver is not None
+            assert compiler.step_catalog is not None
+            assert compiler.validation_engine is not None
+            assert compiler._last_template is None
+            # Source shows: pipeline_parameters initialized with defaults if None provided
+            assert compiler.pipeline_parameters is not None
+            assert len(compiler.pipeline_parameters) > 0
+
+    def test_compiler_init_missing_config_file(self, mock_session, mock_role):
+        """
+        Test PipelineDAGCompiler initialization with missing config file.
+        
+        IMPROVED:
+        - Read source code first: __init__ checks Path(config_path).exists() and raises FileNotFoundError
+        - Use fixtures for consistent test data
+        - Test exact error message from implementation
+        """
         with pytest.raises(FileNotFoundError) as context:
             PipelineDAGCompiler(
                 config_path="nonexistent_config.json",
-                sagemaker_session=self.mock_session,
-                role=self.mock_role,
+                sagemaker_session=mock_session,
+                role=mock_role,
             )
+        # IMPROVED: Test exact error message from source code
         assert "Configuration file not found" in str(context.value)
 
-    @patch("cursus.core.compiler.dag_compiler.Path")
-    def test_compiler_init_with_custom_components(self, mock_path):
-        """Test PipelineDAGCompiler initialization with custom components."""
-        # Setup mocks
-        mock_path_instance = MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path.return_value = mock_path_instance
+    def test_compiler_init_with_custom_components(self, temp_config_file):
+        """
+        Test PipelineDAGCompiler initialization with custom components.
+        
+        IMPROVED:
+        - Read source code first: __init__ uses provided components instead of creating new ones
+        - Use fixtures for consistent test data
+        - Test actual component assignment behavior
+        """
+        # IMPROVED: Mock Path to avoid file system dependency
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path:
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
 
-        custom_resolver = MagicMock()
-        custom_registry = MagicMock()
+            # Create custom components with proper specs
+            custom_resolver = Mock(spec=['resolve_config_map', 'preview_resolution'])
+            custom_catalog = Mock(spec=['list_supported_step_types', 'get_builder_map'])
 
-        # Create compiler with custom components
-        compiler = PipelineDAGCompiler(
-            config_path=self.config_path,
-            config_resolver=custom_resolver,
-            step_catalog=custom_registry,
-        )
+            # Create compiler with custom components
+            compiler = PipelineDAGCompiler(
+                config_path=temp_config_file,
+                config_resolver=custom_resolver,
+                step_catalog=custom_catalog,
+            )
 
-        # Verify custom components are used
-        assert compiler.config_resolver == custom_resolver
-        assert compiler.step_catalog == custom_registry
+            # IMPROVED: Verify actual behavior from source code
+            assert compiler.config_resolver == custom_resolver
+            assert compiler.step_catalog == custom_catalog
+
+    def test_compiler_init_with_pipeline_parameters(self, temp_config_file):
+        """
+        Test PipelineDAGCompiler initialization with custom pipeline parameters.
+        
+        IMPROVED: Test new functionality for pipeline parameter handling
+        """
+        custom_params = [
+            ParameterString(name="CUSTOM_PARAM", default_value="custom_value")
+        ]
+        
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path:
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+            
+            compiler = PipelineDAGCompiler(
+                config_path=temp_config_file,
+                pipeline_parameters=custom_params,
+            )
+            
+            # IMPROVED: Verify actual parameter storage from source code
+            assert compiler.pipeline_parameters == custom_params
+
+    def test_compiler_init_default_parameters(self, temp_config_file):
+        """
+        Test PipelineDAGCompiler initialization with default parameters.
+        
+        IMPROVED: Test default parameter behavior from source code
+        """
+        with patch("cursus.core.compiler.dag_compiler.Path") as mock_path:
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = True
+            mock_path.return_value = mock_path_instance
+            
+            compiler = PipelineDAGCompiler(config_path=temp_config_file)
+            
+            # IMPROVED: Verify default parameters are set from source code
+            assert compiler.pipeline_parameters is not None
+            assert len(compiler.pipeline_parameters) > 0
+            
+            # Should include standard parameters from source
+            param_names = [p.name for p in compiler.pipeline_parameters if hasattr(p, 'name')]
+            assert "EXECUTION_S3_PREFIX" in param_names
 
 
 class TestPipelineDAGCompilerValidation:
