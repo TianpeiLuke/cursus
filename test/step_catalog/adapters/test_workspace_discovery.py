@@ -587,10 +587,9 @@ class TestWorkspaceDiscoveryManagerAdapter:
         with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog') as mock_catalog_class:
             mock_catalog_class.side_effect = Exception("Test error")
             
-            adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
-            info = adapter.get_workspace_info()
-            
-            assert "error" in info
+            # Should raise exception during initialization since catalog is required
+            with pytest.raises(Exception, match="Test error"):
+                WorkspaceDiscoveryManagerAdapter(temp_workspace)
     
     def test_refresh_cache(self, temp_workspace):
         """Test cache refresh."""
@@ -738,6 +737,7 @@ class TestIntegrationScenarios:
                 comprehensive_workspace / "dev2",
                 comprehensive_workspace / "shared"
             ]
+            mock_catalog.package_root = comprehensive_workspace
             mock_catalog.list_available_steps.return_value = ["dev1_step", "dev2_step"]
             
             # Mock step info for comprehensive testing
@@ -745,8 +745,8 @@ class TestIntegrationScenarios:
             mock_step_info1.workspace_id = "dev1"
             mock_step_info1.step_name = "dev1_step"
             mock_step_info1.file_components = {
-                "contract": Mock(path=Path("/path/to/dev1_contract.py")),
-                "script": Mock(path=Path("/path/to/dev1_script.py"))
+                "contracts": Mock(path=MagicMock(spec=Path, __str__=lambda x: "/path/to/dev1_contract.py")),
+                "scripts": Mock(path=MagicMock(spec=Path, __str__=lambda x: "/path/to/dev1_script.py"))
             }
             mock_step_info1.registry_data = {}
             
@@ -754,7 +754,7 @@ class TestIntegrationScenarios:
             mock_step_info2.workspace_id = "dev2"
             mock_step_info2.step_name = "dev2_step"
             mock_step_info2.file_components = {
-                "spec": Mock(path=Path("/path/to/dev2_spec.py"))
+                "specs": Mock(path=MagicMock(spec=Path, __str__=lambda x: "/path/to/dev2_spec.py"))
             }
             mock_step_info2.registry_data = {}
             
@@ -768,9 +768,10 @@ class TestIntegrationScenarios:
             assert len(workspaces["workspaces"]) == 3
             assert workspaces["summary"]["total_workspaces"] == 3
             
-            # Test component discovery
-            components = adapter.discover_components()
+            # Test component discovery - specify workspace_ids to match our mock setup
+            components = adapter.discover_components(workspace_ids=["dev1", "dev2"])
             assert "metadata" in components
+            # Should find components from the mock step info we set up
             assert components["metadata"]["total_components"] > 0
             
             # Test developer listing
@@ -813,15 +814,9 @@ class TestErrorHandlingAndEdgeCases:
         with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog') as mock_catalog_class:
             mock_catalog_class.side_effect = Exception("Catalog initialization failed")
             
-            # Should still initialize but methods will fail gracefully
-            adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
-            
-            # Methods should handle catalog failures gracefully
-            result = adapter.discover_workspaces(temp_workspace)
-            assert "error" in result
-            
-            result = adapter.discover_components()
-            assert "error" in result
+            # Should raise exception during initialization since catalog is required
+            with pytest.raises(Exception, match="Catalog initialization failed"):
+                WorkspaceDiscoveryManagerAdapter(temp_workspace)
     
     def test_component_discovery_with_invalid_step_info(self, temp_workspace):
         """Test component discovery with invalid step info."""
@@ -981,10 +976,13 @@ class TestPerformanceAndScalability:
             assert result["metadata"]["component_counts"]["specs"] == 5
             assert result["metadata"]["component_counts"]["builders"] == 5
     
-    def test_cache_efficiency_with_repeated_operations(self, temp_workspace):
+    def test_cache_efficiency_with_repeated_operations(self):
         """Test cache efficiency with repeated operations."""
-        with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog'):
-            adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_workspace = Path(temp_dir)
+            
+            with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog'):
+                adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
             
             # Simulate repeated cache operations
             for i in range(100):

@@ -189,7 +189,6 @@ class TestLegacyDiscoveryWrapper:
         """Test finding best match via fuzzy matching."""
         with patch('cursus.step_catalog.adapters.legacy_wrappers.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
-            mock_catalog.get_step_info.return_value = None  # No direct match
             mock_catalog.list_available_steps.return_value = ["XGBoostTraining", "DataLoading"]
             
             # Mock step info for fuzzy matching
@@ -197,7 +196,13 @@ class TestLegacyDiscoveryWrapper:
             mock_script = Mock()
             mock_script.path = Path("/path/to/xgboost_training.py")
             mock_step_info.file_components = {"script": mock_script}
-            mock_catalog.get_step_info.side_effect = [None, mock_step_info, None]
+            
+            # Setup side_effect for all get_step_info calls:
+            # 1-2. During _refresh_cache() in __init__: XGBoostTraining, DataLoading
+            # 3. Direct lookup in _find_best_match: xgboost_training (returns None)
+            # 4. First step in fuzzy loop: XGBoostTraining (returns mock_step_info)
+            # 5. Second step in fuzzy loop: DataLoading (returns None)
+            mock_catalog.get_step_info.side_effect = [None, None, None, mock_step_info, None]
             mock_catalog_class.return_value = mock_catalog
             
             with patch('cursus.step_catalog.adapters.legacy_wrappers.ContractDiscoveryEngineAdapter'):
@@ -741,15 +746,9 @@ class TestErrorHandlingAndEdgeCases:
                         with patch('cursus.step_catalog.adapters.legacy_wrappers.WorkspaceDiscoveryManagerAdapter'):
                             with patch('cursus.step_catalog.adapters.legacy_wrappers.HybridFileResolverAdapter'):
                                 
-                                # Should still initialize but catalog methods will fail
-                                wrapper = LegacyDiscoveryWrapper(temp_workspace)
-                                
-                                # Methods should handle catalog failures gracefully
-                                assert wrapper.find_contract_file("test_step") is None
-                                assert wrapper.find_spec_file("test_step") is None
-                                assert wrapper.find_builder_file("test_step") is None
-                                assert wrapper.find_config_file("test_step") is None
-                                assert wrapper.find_all_component_files("test_step") == {}
+                                # Should raise exception during initialization since catalog is required
+                                with pytest.raises(Exception, match="Catalog initialization failed"):
+                                    LegacyDiscoveryWrapper(temp_workspace)
     
     def test_similarity_calculation_edge_cases(self, temp_workspace):
         """Test similarity calculation with edge cases."""

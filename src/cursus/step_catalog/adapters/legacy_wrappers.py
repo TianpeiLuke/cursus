@@ -45,18 +45,23 @@ class LegacyDiscoveryWrapper:
         self.hybrid_file_resolver = HybridFileResolverAdapter(workspace_root)
         
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize file cache
+        self._refresh_cache()
     
     def _refresh_cache(self):
         """Refresh file cache using step catalog discovery."""
+        # Always initialize file_cache, even if there's an error
+        self.file_cache = {
+            "scripts": {},
+            "contracts": {},
+            "specs": {},
+            "builders": {},
+            "configs": {}
+        }
+        
         try:
             steps = self.catalog.list_available_steps()
-            self.file_cache = {
-                "scripts": {},
-                "contracts": {},
-                "specs": {},
-                "builders": {},
-                "configs": {}
-            }
             
             for step_name in steps:
                 step_info = self.catalog.get_step_info(step_name)
@@ -73,7 +78,7 @@ class LegacyDiscoveryWrapper:
         """Extract base name from step name for legacy compatibility."""
         # Convert PascalCase to snake_case for legacy compatibility
         import re
-        snake_case = re.sub('([A-Z]+)', r'_\1', step_name).lower().strip('_')
+        snake_case = re.sub('([A-Z])', r'_\1', step_name).lower().strip('_')
         return snake_case
     
     def _normalize_name(self, name: str) -> str:
