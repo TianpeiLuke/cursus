@@ -225,14 +225,19 @@ class TestUS3MultiWorkspaceDiscovery:
             yield catalog
     
     def test_list_available_steps_all(self, catalog_with_workspaces):
-        """Test listing all available steps."""
-        result = catalog_with_workspaces.list_available_steps()
-        
-        assert len(result) == 4
-        assert "core_step" in result
-        assert "workspace_step" in result
-        assert "training_step" in result
-        assert "validation_step" in result
+        """Test listing all available steps with deduplication."""
+        # Mock the deduplication method to return filtered results
+        with patch.object(catalog_with_workspaces, '_deduplicate_and_filter_concrete_steps') as mock_dedupe:
+            mock_dedupe.return_value = ["core_step", "workspace_step", "training_step"]
+            
+            result = catalog_with_workspaces.list_available_steps()
+            
+            # Should call deduplication
+            mock_dedupe.assert_called_once()
+            assert len(result) == 3
+            assert "core_step" in result
+            assert "workspace_step" in result
+            assert "training_step" in result
     
     def test_list_available_steps_by_workspace(self, catalog_with_workspaces):
         """Test listing steps filtered by workspace."""
@@ -428,6 +433,236 @@ class TestUS5ConfigAutoDiscovery:
         
         catalog_with_config_discovery.config_discovery.build_complete_config_classes.assert_called_once_with("test_project")
         assert result == mock_result
+
+
+class TestNewDiscoveryMethods:
+    """Test new discovery methods added in enhancement."""
+    
+    @pytest.fixture
+    def catalog_with_script_components(self):
+        """Create catalog with steps that have script components."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
+            
+            # Create FileMetadata objects for testing
+            script_metadata = FileMetadata(
+                path=Path("/test/script.py"),
+                file_type="script",
+                modified_time=datetime.now()
+            )
+            spec_metadata = FileMetadata(
+                path=Path("/test/spec.py"),
+                file_type="spec",
+                modified_time=datetime.now()
+            )
+            
+            # Mock step index with mixed components
+            catalog._step_index = {
+                "script_step": StepInfo(
+                    step_name="script_step", 
+                    workspace_id="core",
+                    file_components={"script": script_metadata, "spec": spec_metadata}
+                ),
+                "spec_only_step": StepInfo(
+                    step_name="spec_only_step", 
+                    workspace_id="core",
+                    file_components={"spec": spec_metadata}
+                ),
+                "another_script_step": StepInfo(
+                    step_name="another_script_step", 
+                    workspace_id="core",
+                    file_components={"script": script_metadata}
+                ),
+                "no_components_step": StepInfo(
+                    step_name="no_components_step", 
+                    workspace_id="core",
+                    file_components={}
+                )
+            }
+            catalog._index_built = True
+            
+            yield catalog
+    
+    def test_list_steps_with_scripts_basic(self, catalog_with_script_components):
+        """Test basic functionality of list_steps_with_scripts."""
+        # Mock list_available_steps to return all steps
+        with patch.object(catalog_with_script_components, 'list_available_steps') as mock_list:
+            mock_list.return_value = ["script_step", "spec_only_step", "another_script_step", "no_components_step"]
+            
+            result = catalog_with_script_components.list_steps_with_scripts()
+            
+            # Should only return steps with script components
+            assert len(result) == 2
+            assert "script_step" in result
+            assert "another_script_step" in result
+            assert "spec_only_step" not in result
+            assert "no_components_step" not in result
+    
+    def test_list_steps_with_scripts_with_workspace_filter(self, catalog_with_script_components):
+        """Test list_steps_with_scripts with workspace filtering."""
+        with patch.object(catalog_with_script_components, 'list_available_steps') as mock_list:
+            mock_list.return_value = ["script_step"]
+            
+            result = catalog_with_script_components.list_steps_with_scripts(workspace_id="core")
+            
+            # Should pass workspace_id to list_available_steps
+            mock_list.assert_called_once_with("core", None)
+            assert "script_step" in result
+    
+    def test_list_steps_with_scripts_with_job_type_filter(self, catalog_with_script_components):
+        """Test list_steps_with_scripts with job type filtering."""
+        with patch.object(catalog_with_script_components, 'list_available_steps') as mock_list:
+            mock_list.return_value = ["script_step"]
+            
+            result = catalog_with_script_components.list_steps_with_scripts(job_type="training")
+            
+            # Should pass job_type to list_available_steps
+            mock_list.assert_called_once_with(None, "training")
+            assert "script_step" in result
+    
+    def test_list_steps_with_scripts_error_handling(self, catalog_with_script_components):
+        """Test error handling in list_steps_with_scripts."""
+        with patch.object(catalog_with_script_components, 'list_available_steps', side_effect=Exception("Test error")):
+            result = catalog_with_script_components.list_steps_with_scripts()
+            
+            assert result == []
+    
+    def test_list_steps_with_scripts_sorted_output(self, catalog_with_script_components):
+        """Test that list_steps_with_scripts returns sorted results."""
+        with patch.object(catalog_with_script_components, 'list_available_steps') as mock_list:
+            # Return steps in unsorted order
+            mock_list.return_value = ["z_script_step", "a_script_step", "m_script_step"]
+            
+            # Add these steps to the index with script components
+            for step_name in ["z_script_step", "a_script_step", "m_script_step"]:
+                catalog_with_script_components._step_index[step_name] = StepInfo(
+                    step_name=step_name,
+                    workspace_id="core",
+                    file_components={"script": FileMetadata(
+                        path=Path(f"/test/{step_name}.py"),
+                        file_type="script",
+                        modified_time=datetime.now()
+                    )}
+                )
+            
+            result = catalog_with_script_components.list_steps_with_scripts()
+            
+            # Should be sorted alphabetically
+            assert result == ["a_script_step", "m_script_step", "z_script_step"]
+
+
+class TestDeduplicationFunctionality:
+    """Test deduplication functionality added in enhancement."""
+    
+    @pytest.fixture
+    def catalog_with_deduplication(self):
+        """Create catalog for testing deduplication methods."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            catalog = StepCatalog(workspace_dirs=[Path(temp_dir)])
+            catalog._index_built = True
+            yield catalog
+    
+    def test_deduplicate_and_filter_concrete_steps(self, catalog_with_deduplication):
+        """Test the deduplication method."""
+        # Mock registry
+        mock_registry = {
+            "BatchTransform": {"sagemaker_step_type": "Transform"},
+            "CurrencyConversion": {"sagemaker_step_type": "Processing"},
+            "XGBoostTraining": {"sagemaker_step_type": "Training"}
+        }
+        
+        with patch('cursus.registry.step_names.get_step_names', return_value=mock_registry):
+            # Test input with duplicates and variants
+            input_steps = [
+                "BatchTransform",
+                "batch_transform",  # snake_case duplicate
+                "CurrencyConversion", 
+                "currency_conversion",  # snake_case duplicate
+                "XGBoostTraining",
+                "xgboost_training_calibration",  # job type variant
+                "Base",  # base config to exclude
+                "Processing"  # base config to exclude
+            ]
+            
+            result = catalog_with_deduplication._deduplicate_and_filter_concrete_steps(input_steps)
+            
+            # Should deduplicate and filter
+            assert len(result) == 3
+            assert "BatchTransform" in result
+            assert "CurrencyConversion" in result
+            assert "XGBoostTraining" in result
+            
+            # Should exclude duplicates, variants, and base configs
+            assert "batch_transform" not in result
+            assert "currency_conversion" not in result
+            assert "xgboost_training_calibration" not in result
+            assert "Base" not in result
+            assert "Processing" not in result
+    
+    def test_is_job_type_variant(self, catalog_with_deduplication):
+        """Test job type variant detection."""
+        catalog = catalog_with_deduplication
+        
+        # Should detect job type variants
+        assert catalog._is_job_type_variant("step_training") == True
+        assert catalog._is_job_type_variant("step_validation") == True
+        assert catalog._is_job_type_variant("step_calibration") == True
+        assert catalog._is_job_type_variant("step_testing") == True
+        assert catalog._is_job_type_variant("step_inference") == True
+        assert catalog._is_job_type_variant("step_evaluation") == True
+        
+        # Should not detect regular steps
+        assert catalog._is_job_type_variant("regular_step") == False
+        assert catalog._is_job_type_variant("BatchTransform") == False
+        assert catalog._is_job_type_variant("CurrencyConversion") == False
+    
+    def test_resolve_to_canonical_name(self, catalog_with_deduplication):
+        """Test canonical name resolution."""
+        catalog = catalog_with_deduplication
+        
+        # Mock registry
+        mock_registry = {
+            "BatchTransform": {"sagemaker_step_type": "Transform"},
+            "CurrencyConversion": {"sagemaker_step_type": "Processing"}
+        }
+        
+        # Should resolve snake_case to PascalCase
+        result = catalog._resolve_to_canonical_name("batch_transform", mock_registry)
+        assert result == "BatchTransform"
+        
+        result = catalog._resolve_to_canonical_name("currency_conversion", mock_registry)
+        assert result == "CurrencyConversion"
+        
+        # Should return None for non-resolvable names
+        result = catalog._resolve_to_canonical_name("unknown_step", mock_registry)
+        assert result is None
+        
+        # Should return None for non-snake_case names
+        result = catalog._resolve_to_canonical_name("RegularName", mock_registry)
+        assert result is None
+    
+    def test_resolve_to_canonical_name_for_indexing(self, catalog_with_deduplication):
+        """Test canonical name resolution for indexing."""
+        catalog = catalog_with_deduplication
+        
+        # Mock the registry import
+        mock_registry = {
+            "BatchTransform": {"sagemaker_step_type": "Transform"},
+            "CurrencyConversion": {"sagemaker_step_type": "Processing"}
+        }
+        
+        with patch('cursus.registry.step_names.get_step_names', return_value=mock_registry):
+            # Should resolve snake_case to PascalCase
+            result = catalog._resolve_to_canonical_name_for_indexing("batch_transform")
+            assert result == "BatchTransform"
+            
+            # Should return as-is if already canonical
+            result = catalog._resolve_to_canonical_name_for_indexing("BatchTransform")
+            assert result == "BatchTransform"
+            
+            # Should return None for non-resolvable names
+            result = catalog._resolve_to_canonical_name_for_indexing("unknown_step")
+            assert result is None
 
 
 class TestAdditionalUtilityMethods:
