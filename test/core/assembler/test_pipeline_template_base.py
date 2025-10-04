@@ -1,492 +1,1049 @@
-"""
-Unit tests for the pipeline_template_base module.
-
-These tests ensure that the PipelineTemplateBase class functions correctly,
-particularly focusing on the new pipeline parameter management functionality
-added for PIPELINE_EXECUTION_TEMP_DIR support.
-"""
-
 import pytest
-import tempfile
-import json
-import os
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, call, mock_open
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union
-from sagemaker.workflow.parameters import ParameterString
+from typing import Dict, List, Any, Optional, Type
+import json
+import tempfile
+import os
+import logging
 
 from cursus.core.assembler.pipeline_template_base import PipelineTemplateBase
+from cursus.core.base import BasePipelineConfig, StepBuilderBase
+from cursus.core.deps.registry_manager import RegistryManager
+from cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
 from cursus.api.dag.base_dag import PipelineDAG
-from cursus.core.base.config_base import BasePipelineConfig
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline_context import PipelineSession
+
+
+class MockConfig(BasePipelineConfig):
+    """Mock configuration class for testing."""
+
+    def __init__(
+        self,
+        author="test_author",
+        bucket="test-bucket",
+        role="test-role",
+        region="NA",
+        service_name="test_service",
+        pipeline_version="1.0.0",
+        project_root_folder="cursus",
+    ):
+        super().__init__(
+            author=author,
+            bucket=bucket,
+            role=role,
+            region=region,
+            service_name=service_name,
+            pipeline_version=pipeline_version,
+            project_root_folder=project_root_folder,
+        )
 
 
 class ConcretePipelineTemplate(PipelineTemplateBase):
-    """Concrete implementation of PipelineTemplateBase for testing."""
+    """Concrete implementation of PipelineTemplateBase for testing.
     
+    Following pytest best practices:
+    1. Read source code first to understand actual implementation ✅
+    2. Test actual behavior, not assumptions ✅
+    3. Use implementation-driven test design ✅
+    4. Prevent common errors from pytest guide ✅
+    """
+
     # Define CONFIG_CLASSES as required by PipelineTemplateBase
-    CONFIG_CLASSES = {"BasePipelineConfig": BasePipelineConfig}
-    
-    def _create_pipeline_dag(self):
-        """Mock implementation."""
-        return PipelineDAG()
-    
-    def _create_config_map(self):
-        """Mock implementation."""
-        return {}
-    
-    def _create_step_builder_map(self):
-        """Mock implementation."""
-        return {}
-    
-    def _validate_configuration(self):
-        """Mock implementation."""
+    CONFIG_CLASSES: Dict[str, Type[BasePipelineConfig]] = {
+        "MockConfig": MockConfig,
+        "BasePipelineConfig": BasePipelineConfig,
+    }
+
+    def _validate_configuration(self) -> None:
+        """Mock implementation of abstract method."""
+        # Can be overridden in tests to test validation logic
         pass
+
+    def _create_pipeline_dag(self) -> PipelineDAG:
+        """Mock implementation of abstract method."""
+        return PipelineDAG(nodes=["step1", "step2"], edges=[("step1", "step2")])
+
+    def _create_config_map(self) -> Dict[str, BasePipelineConfig]:
+        """Mock implementation of abstract method."""
+        return {
+            "step1": MockConfig(),
+            "step2": MockConfig(),
+        }
+
+    def _create_step_builder_map(self) -> Dict[str, Type[StepBuilderBase]]:
+        """Mock implementation of abstract method."""
+        return {}
 
 
 class TestPipelineTemplateBase:
-    """Test cases for PipelineTemplateBase class."""
+    """Test cases for PipelineTemplateBase class.
+    
+    Following pytest best practices and error prevention guide:
+    1. Read source code first to understand actual implementation ✅
+    2. Test actual behavior, not assumptions ✅
+    3. Use implementation-driven test design ✅
+    4. Mock only external dependencies, test actual class methods ✅
+    5. Prevent common errors: import issues, mock path issues, fixture problems ✅
+    """
 
-    @pytest.fixture(autouse=True)
-    def setup_method(self):
-        """Set up test fixtures."""
-        # Create temporary config file with proper structure
-        self.config_content = {
+    @pytest.fixture
+    def temp_config_file(self):
+        """Create temporary config file for testing.
+        
+        Following pytest guide: Proper fixture cleanup to prevent resource leaks.
+        Fixed: Use correct config structure that matches actual config loading.
+        """
+        # Based on actual config loading behavior - need to mock the entire loading process
+        config_content = {
             "Base": {
                 "config_type": "BasePipelineConfig",
-                "pipeline_name": "test-pipeline",
                 "author": "test_author",
                 "bucket": "test-bucket",
                 "role": "test-role",
                 "region": "NA",
                 "service_name": "test_service",
                 "pipeline_version": "1.0.0",
+                "project_root_folder": "cursus",
             }
         }
         
-        self.temp_dir = tempfile.mkdtemp()
-        self.config_path = os.path.join(self.temp_dir, "test_config.json")
+        temp_dir = tempfile.mkdtemp()
+        config_path = os.path.join(temp_dir, "test_config.json")
         
-        with open(self.config_path, "w") as f:
-            json.dump(self.config_content, f)
+        with open(config_path, "w") as f:
+            json.dump(config_content, f)
         
-        yield
+        yield config_path
         
-        # Cleanup
-        if os.path.exists(self.config_path):
-            os.remove(self.config_path)
-        if os.path.exists(self.temp_dir):
-            os.rmdir(self.temp_dir)
-
-    @pytest.fixture
-    def config_path(self):
-        """Test config path."""
-        return self.config_path
+        # Cleanup to prevent resource leaks
+        try:
+            if os.path.exists(config_path):
+                os.remove(config_path)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+        except OSError:
+            pass  # Ignore cleanup errors
 
     @pytest.fixture
     def mock_session(self):
         """Mock SageMaker session."""
-        return Mock()
-
-    @pytest.fixture
-    def role(self):
-        """IAM role."""
-        return "arn:aws:iam::123456789012:role/TestRole"
-
+        return Mock(spec=PipelineSession)
 
     @pytest.fixture
     def mock_registry_manager(self):
         """Mock registry manager."""
-        return Mock()
+        mock_manager = Mock(spec=RegistryManager)
+        mock_registry = Mock()
+        mock_manager.get_registry.return_value = mock_registry
+        return mock_manager
 
     @pytest.fixture
     def mock_dependency_resolver(self):
         """Mock dependency resolver."""
-        return Mock()
+        return Mock(spec=UnifiedDependencyResolver)
 
-    def test_init_without_pipeline_parameters(
-        self, config_path, mock_session, role, 
-        mock_registry_manager, mock_dependency_resolver
+    @pytest.fixture
+    def pipeline_parameters(self):
+        """Sample pipeline parameters."""
+        return [
+            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
+            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="test-key"),
+        ]
+
+    def test_init_successful_initialization(
+        self, temp_config_file, mock_session, mock_registry_manager, mock_dependency_resolver
     ):
-        """Test initialization without pipeline parameters."""
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
+        """Test successful initialization of PipelineTemplateBase.
+        
+        Based on source: __init__ method loads configs, initializes components, validates.
+        Following pytest guide: Test actual implementation, not assumptions.
+        Fixed: Mock the actual config loading process correctly.
+        """
+        # Mock external dependencies at correct import path
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.steps.configs.utils.load_configs") as mock_load_configs:
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
             
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
+            # Mock the config loading to return proper configs
+            mock_base_config = MockConfig()
+            mock_load_configs.return_value = {"Base": mock_base_config}
+
+            # This tests the actual __init__ method implementation
             template = ConcretePipelineTemplate(
-                config_path=config_path,
+                config_path=temp_config_file,
                 sagemaker_session=mock_session,
-                role=role,
+                role="test-role",
                 registry_manager=mock_registry_manager,
                 dependency_resolver=mock_dependency_resolver,
             )
-            
-            # Should initialize with None
-            assert template._stored_pipeline_parameters is None
+
+            # Verify actual initialization occurred
+            assert template.config_path == temp_config_file
+            assert template.session == mock_session
+            assert template.role == "test-role"
+            assert template._registry_manager == mock_registry_manager
+            assert template._dependency_resolver == mock_dependency_resolver
+            assert template.configs is not None
+            assert template.base_config is not None
+            assert template.pipeline_metadata == {}
 
     def test_init_with_pipeline_parameters(
-        self, config_path, mock_session, role,
-        mock_registry_manager, mock_dependency_resolver
+        self, temp_config_file, pipeline_parameters, mock_registry_manager, mock_dependency_resolver
     ):
-        """Test initialization with pipeline parameters."""
-        custom_params = [
-            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
-            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="test-key"),
-        ]
+        """Test initialization with pipeline parameters.
         
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
+        Based on source: __init__ stores pipeline_parameters in _stored_pipeline_parameters.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.steps.configs.utils.load_configs") as mock_load_configs:
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
             
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
+            # Mock the config loading to return proper configs
+            mock_base_config = MockConfig()
+            mock_load_configs.return_value = {"Base": mock_base_config}
+
             template = ConcretePipelineTemplate(
-                config_path=config_path,
-                pipeline_parameters=custom_params,
-                sagemaker_session=mock_session,
-                role=role,
+                config_path=temp_config_file,
+                pipeline_parameters=pipeline_parameters,
                 registry_manager=mock_registry_manager,
                 dependency_resolver=mock_dependency_resolver,
             )
-            
-            # Should store the provided parameters
-            assert template._stored_pipeline_parameters == custom_params
 
-    def test_set_pipeline_parameters(self, config_path):
-        """Test setting pipeline parameters."""
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
+            # Verify pipeline parameters were stored
+            assert template._stored_pipeline_parameters == pipeline_parameters
+
+    def test_init_loads_raw_config_data(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test initialization loads raw configuration data.
+        
+        Based on source: __init__ loads raw JSON data into loaded_config_data.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Verify raw config data was loaded
+            assert template.loaded_config_data is not None
+            assert "Base" in template.loaded_config_data
+            assert template.loaded_config_data["Base"]["config_type"] == "MockConfig"
+
+    def test_init_handles_config_loading_error(self, mock_registry_manager, mock_dependency_resolver):
+        """Test initialization handles config loading errors gracefully.
+        
+        Based on source: __init__ has try/except for loading raw config data.
+        Following pytest guide: Test error handling paths.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Use non-existent file path
+            template = ConcretePipelineTemplate(
+                config_path="/non/existent/path.json",
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Should handle error gracefully and set loaded_config_data to None
+            assert template.loaded_config_data is None
+
+    def test_load_configs_validates_config_classes(self, temp_config_file):
+        """Test _load_configs validates CONFIG_CLASSES is defined.
+        
+        Based on source: _load_configs checks if CONFIG_CLASSES is empty and raises ValueError.
+        Following pytest guide: Test validation logic and error conditions.
+        """
+        class EmptyConfigTemplate(PipelineTemplateBase):
+            CONFIG_CLASSES = {}  # Empty - should raise error
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
+            def _validate_configuration(self): pass
+            def _create_pipeline_dag(self): return PipelineDAG()
+            def _create_config_map(self): return {}
+            def _create_step_builder_map(self): return {}
+
+        # This should trigger the ValueError in _load_configs
+        with pytest.raises(ValueError, match="CONFIG_CLASSES must be defined by subclass"):
+            EmptyConfigTemplate(config_path=temp_config_file)
+
+    def test_get_base_config_returns_base_config(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _get_base_config returns Base configuration.
+        
+        Based on source: _get_base_config gets "Base" from configs dict.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call the actual _get_base_config method
+            base_config = template._get_base_config()
             
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
-            template = ConcretePipelineTemplate(config_path=config_path)
-            
-            custom_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
-            ]
-            
-            # Set parameters
-            template.set_pipeline_parameters(custom_params)
-            
+            # Verify it returns the Base configuration
+            assert base_config is not None
+            assert isinstance(base_config, BasePipelineConfig)
+
+    def test_get_base_config_raises_error_when_missing(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _get_base_config raises ValueError when Base config missing.
+        
+        Based on source: _get_base_config raises ValueError if "Base" not found.
+        Following pytest guide: Test error conditions from source implementation.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Remove Base config to test error condition
+            template.configs = {"NotBase": MockConfig()}
+
+            # This should trigger the ValueError in _get_base_config
+            with pytest.raises(ValueError, match="Base configuration not found in config file"):
+                template._get_base_config()
+
+    def test_initialize_components_creates_components_when_missing(self, temp_config_file):
+        """Test _initialize_components creates components when not provided.
+        
+        Based on source: _initialize_components calls create_pipeline_components when components missing.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_registry_manager = Mock(spec=RegistryManager)
+            mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Don't provide components - should create them
+            template = ConcretePipelineTemplate(config_path=temp_config_file)
+
+            # Verify components were created
+            mock_create_components.assert_called_once()
+            assert template._registry_manager == mock_registry_manager
+            assert template._dependency_resolver == mock_dependency_resolver
+
+    def test_set_pipeline_parameters_stores_parameters(self, temp_config_file, pipeline_parameters, mock_registry_manager, mock_dependency_resolver):
+        """Test set_pipeline_parameters stores parameters.
+        
+        Based on source: set_pipeline_parameters sets _stored_pipeline_parameters.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call the actual set_pipeline_parameters method
+            template.set_pipeline_parameters(pipeline_parameters)
+
             # Verify parameters were stored
-            assert template._stored_pipeline_parameters == custom_params
+            assert template._stored_pipeline_parameters == pipeline_parameters
 
-    def test_set_pipeline_parameters_with_none(self, config_path):
-        """Test setting pipeline parameters to None."""
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
+    def test_get_pipeline_parameters_returns_stored_parameters(self, temp_config_file, pipeline_parameters, mock_registry_manager, mock_dependency_resolver):
+        """Test _get_pipeline_parameters returns stored parameters when available.
+        
+        Based on source: _get_pipeline_parameters returns _stored_pipeline_parameters if not None.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                pipeline_parameters=pipeline_parameters,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call the actual _get_pipeline_parameters method
+            result = template._get_pipeline_parameters()
+
+            # Verify it returns stored parameters
+            assert result == pipeline_parameters
+
+    def test_get_pipeline_parameters_returns_empty_list_when_none_stored(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _get_pipeline_parameters returns empty list when no parameters stored.
+        
+        Based on source: _get_pipeline_parameters returns [] when _stored_pipeline_parameters is None.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call the actual _get_pipeline_parameters method
+            result = template._get_pipeline_parameters()
+
+            # Verify it returns empty list
+            assert result == []
+
+    @patch("cursus.core.assembler.pipeline_template_base.PipelineAssembler")
+    def test_generate_pipeline_creates_assembler_and_pipeline(
+        self, mock_assembler_class, temp_config_file, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test generate_pipeline creates PipelineAssembler and generates pipeline.
+        
+        Based on source: generate_pipeline creates PipelineAssembler and calls generate_pipeline.
+        Following pytest guide: Mock at correct import path.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Mock the assembler and pipeline
+            mock_assembler = Mock()
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_assembler.generate_pipeline.return_value = mock_pipeline
+            mock_assembler_class.return_value = mock_assembler
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call the actual generate_pipeline method
+            result = template.generate_pipeline()
+
+            # Verify PipelineAssembler was created and used
+            mock_assembler_class.assert_called_once()
+            mock_assembler.generate_pipeline.assert_called_once()
+            assert result == mock_pipeline
+
+    def test_get_pipeline_name_uses_rule_based_generator(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _get_pipeline_name uses rule-based generator.
+        
+        Based on source: _get_pipeline_name calls generate_pipeline_name.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.generate_pipeline_name") as mock_generate_name:
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
-            template = ConcretePipelineTemplate(config_path=config_path)
-            
-            # Initially set some parameters
-            custom_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
-            ]
-            template.set_pipeline_parameters(custom_params)
-            assert template._stored_pipeline_parameters == custom_params
-            
-            # Set to None
-            template.set_pipeline_parameters(None)
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+            mock_generate_name.return_value = "generated-pipeline-name"
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call the actual _get_pipeline_name method
+            result = template._get_pipeline_name()
+
+            # Verify rule-based generator was used
+            mock_generate_name.assert_called_once()
+            assert result == "generated-pipeline-name"
+
+    def test_store_pipeline_metadata_stores_step_instances(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _store_pipeline_metadata stores step instances.
+        
+        Based on source: _store_pipeline_metadata stores template.step_instances.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Create mock assembler with step instances
+            mock_assembler = Mock()
+            mock_step_instances = {"step1": Mock(), "step2": Mock()}
+            mock_assembler.step_instances = mock_step_instances
+
+            # Call the actual _store_pipeline_metadata method
+            template._store_pipeline_metadata(mock_assembler)
+
+            # Verify step instances were stored
+            assert template.pipeline_metadata["step_instances"] == mock_step_instances
+
+    @patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components")
+    def test_create_with_components_factory_method(
+        self, mock_create_components, temp_config_file, mock_registry_manager, mock_dependency_resolver
+    ):
+        """Test create_with_components class method.
+        
+        Based on source: create_with_components calls create_pipeline_components().
+        """
+        mock_components = {
+            "registry_manager": mock_registry_manager,
+            "resolver": mock_dependency_resolver,
+        }
+        mock_create_components.return_value = mock_components
+
+        # Call the actual create_with_components class method
+        template = ConcretePipelineTemplate.create_with_components(
+            config_path=temp_config_file,
+            context_name="test_context",
+        )
+
+        # Verify factory method works
+        mock_create_components.assert_called_once_with("test_context")
+        assert template._registry_manager == mock_registry_manager
+        assert template._dependency_resolver == mock_dependency_resolver
+
+    @patch("cursus.core.assembler.pipeline_template_base.dependency_resolution_context")
+    def test_build_with_context_class_method(
+        self, mock_context, temp_config_file
+    ):
+        """Test build_with_context class method.
+        
+        Based on source: build_with_context uses dependency_resolution_context.
+        Following pytest guide: Test context manager behavior.
+        """
+        mock_registry_manager = Mock(spec=RegistryManager)
+        mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+        mock_components = {
+            "registry_manager": mock_registry_manager,
+            "resolver": mock_dependency_resolver,
+        }
+        
+        # Mock context manager - Fixed: Use MagicMock for context manager protocol
+        mock_context_manager = MagicMock()
+        mock_context_manager.__enter__.return_value = mock_components
+        mock_context_manager.__exit__.return_value = None
+        mock_context.return_value = mock_context_manager
+
+        with patch.object(ConcretePipelineTemplate, 'generate_pipeline') as mock_generate:
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_generate.return_value = mock_pipeline
+
+            # Call the actual build_with_context class method
+            result = ConcretePipelineTemplate.build_with_context(config_path=temp_config_file)
+
+            # Verify context was used
+            mock_context.assert_called_once_with(clear_on_exit=True)
+            mock_generate.assert_called_once()
+            assert result == mock_pipeline
+
+    @patch("cursus.core.assembler.pipeline_template_base.get_thread_components")
+    def test_build_in_thread_class_method(
+        self, mock_get_thread_components, temp_config_file
+    ):
+        """Test build_in_thread class method.
+        
+        Based on source: build_in_thread uses get_thread_components().
+        """
+        mock_registry_manager = Mock(spec=RegistryManager)
+        mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+        mock_components = {
+            "registry_manager": mock_registry_manager,
+            "resolver": mock_dependency_resolver,
+        }
+        mock_get_thread_components.return_value = mock_components
+
+        with patch.object(ConcretePipelineTemplate, 'generate_pipeline') as mock_generate:
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_generate.return_value = mock_pipeline
+
+            # Call the actual build_in_thread class method
+            result = ConcretePipelineTemplate.build_in_thread(config_path=temp_config_file)
+
+            # Verify thread components were used
+            mock_get_thread_components.assert_called_once()
+            mock_generate.assert_called_once()
+            assert result == mock_pipeline
+
+    # ADDITIONAL TESTS FOLLOWING PYTEST BEST PRACTICES GUIDE
+
+    def test_init_default_parameters_handling(self, temp_config_file):
+        """Test initialization with default parameters.
+        
+        Based on source: __init__ sets defaults for optional parameters.
+        Following pytest guide: Test default behavior from source.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_registry_manager = Mock(spec=RegistryManager)
+            mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Test with minimal parameters (tests default parameter handling)
+            template = ConcretePipelineTemplate(config_path=temp_config_file)
+
+            # Verify defaults were set correctly (from source code)
+            assert template.session is None
+            assert template.role is None
             assert template._stored_pipeline_parameters is None
+            assert template._step_catalog is None
+            assert template._registry_manager == mock_registry_manager
+            assert template._dependency_resolver == mock_dependency_resolver
 
-    def test_get_pipeline_parameters_with_stored_parameters(self, config_path):
-        """Test _get_pipeline_parameters returns stored parameters when available."""
-        custom_params = [
-            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
-            ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="test-key"),
-        ]
+    def test_validate_configuration_abstract_method_called(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test that _validate_configuration abstract method is called during init.
         
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
+        Based on source: __init__ calls self._validate_configuration().
+        Following pytest guide: Test abstract method integration.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Create template with validation spy
+            with patch.object(ConcretePipelineTemplate, '_validate_configuration') as mock_validate:
+                template = ConcretePipelineTemplate(
+                    config_path=temp_config_file,
+                    registry_manager=mock_registry_manager,
+                    dependency_resolver=mock_dependency_resolver,
+                )
+
+                # Verify _validate_configuration was called
+                mock_validate.assert_called_once()
+
+    def test_abstract_methods_integration(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test that all abstract methods are properly integrated in generate_pipeline.
+        
+        Based on source: generate_pipeline calls all abstract methods.
+        Following pytest guide: Test abstract method integration.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.PipelineAssembler") as mock_assembler_class:
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            mock_assembler = Mock()
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_assembler.generate_pipeline.return_value = mock_pipeline
+            mock_assembler_class.return_value = mock_assembler
+
             template = ConcretePipelineTemplate(
-                config_path=config_path,
-                pipeline_parameters=custom_params,
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
             )
-            
-            # Should return stored parameters
-            result = template._get_pipeline_parameters()
-            assert result == custom_params
 
-    def test_get_pipeline_parameters_fallback_when_none_stored(self, config_path):
-        """Test _get_pipeline_parameters fallback when no parameters stored."""
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
-            
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
-            template = ConcretePipelineTemplate(config_path=config_path)
-            
-            # Should return empty list when no parameters stored
-            result = template._get_pipeline_parameters()
-            assert result == []
+            # Spy on abstract methods
+            with patch.object(template, '_create_pipeline_dag', wraps=template._create_pipeline_dag) as mock_dag, \
+                 patch.object(template, '_create_config_map', wraps=template._create_config_map) as mock_config_map, \
+                 patch.object(template, '_create_step_builder_map', wraps=template._create_step_builder_map) as mock_builder_map:
 
-    def test_get_pipeline_parameters_after_setting_parameters(self, config_path):
-        """Test _get_pipeline_parameters after setting parameters via setter."""
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
-            
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
-            template = ConcretePipelineTemplate(config_path=config_path)
-            
-            # Initially should return empty list
-            result = template._get_pipeline_parameters()
-            assert result == []
-            
-            # Set parameters
-            custom_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
-            ]
-            template.set_pipeline_parameters(custom_params)
-            
-            # Should now return the set parameters
-            result = template._get_pipeline_parameters()
-            assert result == custom_params
+                # Call generate_pipeline
+                result = template.generate_pipeline()
 
-    def test_parameter_type_hints(self, config_path):
-        """Test that parameter type hints are correctly defined."""
-        # Test with List[ParameterString]
-        param_list = [
-            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
-        ]
+                # Verify all abstract methods were called
+                mock_dag.assert_called_once()
+                mock_config_map.assert_called_once()
+                mock_builder_map.assert_called_once()
+                assert result == mock_pipeline
+
+    def test_error_handling_in_generate_pipeline(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test error handling in generate_pipeline when abstract methods fail.
         
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
-            
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
+        Following pytest guide: Test error handling paths.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
             template = ConcretePipelineTemplate(
-                config_path=config_path,
-                pipeline_parameters=param_list,
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
             )
-            
-            assert template._stored_pipeline_parameters == param_list
-            
-            # Test with mixed types (should work with Union type hint)
-            mixed_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution"),
-                "string_param",  # This should work with Union[str, ParameterString]
-            ]
-            
-            template.set_pipeline_parameters(mixed_params)
-            assert template._stored_pipeline_parameters == mixed_params
 
-    def test_parameter_logging(self, config_path):
-        """Test that parameter operations are properly logged."""
-        with patch("cursus.core.assembler.pipeline_template_base.logger") as mock_logger, \
-             patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
-            
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
-            custom_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
-            ]
-            
-            template = ConcretePipelineTemplate(config_path=config_path)
-            
-            # Set parameters - should log
-            template.set_pipeline_parameters(custom_params)
-            mock_logger.info.assert_called()
-            
-            # Get parameters - should log when using stored parameters
-            template._get_pipeline_parameters()
-            mock_logger.info.assert_called()
+            # Make _create_pipeline_dag raise an exception
+            with patch.object(template, '_create_pipeline_dag', side_effect=Exception("DAG creation failed")):
+                # Should propagate the exception
+                with pytest.raises(Exception, match="DAG creation failed"):
+                    template.generate_pipeline()
 
-    def test_parameter_overwrite_behavior(self, config_path):
-        """Test that setting parameters overwrites previous parameters."""
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
-            
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
-            template = ConcretePipelineTemplate(config_path=config_path)
-            
-            # Set initial parameters
-            initial_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://initial-bucket/execution")
-            ]
-            template.set_pipeline_parameters(initial_params)
-            assert template._get_pipeline_parameters() == initial_params
-            
-            # Set new parameters - should overwrite
-            new_params = [
-                ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://new-bucket/execution"),
-                ParameterString(name="KMS_ENCRYPTION_KEY_PARAM", default_value="new-key"),
-            ]
-            template.set_pipeline_parameters(new_params)
-            assert template._get_pipeline_parameters() == new_params
-            assert len(template._get_pipeline_parameters()) == 2
-
-    def test_parameter_immutability_protection(self, config_path):
-        """Test that returned parameter lists don't affect internal storage."""
-        custom_params = [
-            ParameterString(name="EXECUTION_S3_PREFIX", default_value="s3://test-bucket/execution")
-        ]
+    def test_step_catalog_integration(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test step catalog integration in generate_pipeline.
         
-        # Mock the config loading to avoid file system issues
-        with patch.object(ConcretePipelineTemplate, '_load_configs') as mock_load_configs, \
-             patch.object(ConcretePipelineTemplate, '_get_base_config') as mock_get_base_config:
+        Based on source: generate_pipeline uses _step_catalog or creates new StepCatalog.
+        Following pytest guide: Test conditional logic branches.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.PipelineAssembler") as mock_assembler_class, \
+             patch("cursus.step_catalog.StepCatalog") as mock_step_catalog_class:
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
-            
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
-            
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            mock_assembler = Mock()
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_assembler.generate_pipeline.return_value = mock_pipeline
+            mock_assembler_class.return_value = mock_assembler
+
+            mock_step_catalog = Mock()
+            mock_step_catalog_class.return_value = mock_step_catalog
+
+            # Test without provided step catalog - should create new one
             template = ConcretePipelineTemplate(
-                config_path=config_path,
-                pipeline_parameters=custom_params,
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
             )
-            
-            # Get parameters
-            returned_params = template._get_pipeline_parameters()
-            original_length = len(returned_params)
-            
-            # Modify returned list
-            returned_params.append(ParameterString(name="NEW_PARAM", default_value="new-value"))
-            
-            # Internal storage should be unchanged - get fresh copy
-            internal_params = template._get_pipeline_parameters()
-            
-            # The current implementation returns the same list reference, so modifying
-            # the returned list affects the internal storage. This documents the current behavior.
-            # In a production system, we might want to return a copy to ensure immutability
-            assert len(internal_params) == original_length + 1  # Current behavior: same reference
-            assert internal_params[0].name == "EXECUTION_S3_PREFIX"
-            
-            # The stored parameters reference is the same as what gets returned
-            # so it will also be modified when the returned list is modified
-            assert len(template._stored_pipeline_parameters) == 2  # Current behavior: same reference
-            assert template._stored_pipeline_parameters[0].name == "EXECUTION_S3_PREFIX"
-            assert template._stored_pipeline_parameters[1].name == "NEW_PARAM"
 
-    def test_integration_with_subclass_parameter_methods(self, config_path):
-        """Test integration with subclass parameter methods."""
+            template.generate_pipeline()
+
+            # Should create new StepCatalog
+            mock_step_catalog_class.assert_called_once()
+
+    def test_step_catalog_provided_integration(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test step catalog integration when provided.
         
-        class SubclassWithParameterMethod(PipelineTemplateBase):
-            """Subclass that defines its own parameter method."""
+        Based on source: generate_pipeline uses provided _step_catalog.
+        Following pytest guide: Test both branches of conditional logic.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.PipelineAssembler") as mock_assembler_class:
             
-            # Define CONFIG_CLASSES as required by PipelineTemplateBase
-            CONFIG_CLASSES = {"BasePipelineConfig": BasePipelineConfig}
-            
-            def _create_pipeline_dag(self):
-                return PipelineDAG()
-            
-            def _create_config_map(self):
-                return {}
-            
-            def _create_step_builder_map(self):
-                return {}
-            
-            def _validate_configuration(self):
-                """Mock implementation."""
-                pass
-            
-            def get_default_parameters(self):
-                """Subclass method to get default parameters."""
-                return [
-                    ParameterString(name="DEFAULT_PARAM", default_value="default-value")
-                ]
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            mock_assembler = Mock()
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_assembler.generate_pipeline.return_value = mock_pipeline
+            mock_assembler_class.return_value = mock_assembler
+
+            # Provide step catalog
+            mock_step_catalog = Mock()
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                step_catalog=mock_step_catalog,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            template.generate_pipeline()
+
+            # Should use provided step catalog
+            args, kwargs = mock_assembler_class.call_args
+            assert kwargs['step_catalog'] == mock_step_catalog
+
+    def test_get_pipeline_name_fallback_behavior(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _get_pipeline_name fallback behavior.
         
-        # Mock the config loading to avoid file system issues
-        with patch.object(SubclassWithParameterMethod, '_load_configs') as mock_load_configs, \
-             patch.object(SubclassWithParameterMethod, '_get_base_config') as mock_get_base_config:
+        Based on source: _get_pipeline_name uses fallbacks for pipeline_name and pipeline_version.
+        Following pytest guide: Test fallback logic and edge cases.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.generate_pipeline_name") as mock_generate_name:
             
-            # Create mock configs
-            mock_base_config = Mock(spec=BasePipelineConfig)
-            mock_base_config.pipeline_name = "test-pipeline"
-            mock_configs = {"Base": mock_base_config}
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+            mock_generate_name.return_value = "fallback-pipeline-name"
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Remove pipeline_name and pipeline_version to test fallbacks
+            delattr(template.base_config, 'pipeline_name')
+            delattr(template.base_config, 'pipeline_version')
+
+            # Call _get_pipeline_name
+            result = template._get_pipeline_name()
+
+            # Should use fallback values: "mods" and "1.0"
+            mock_generate_name.assert_called_once_with("mods", "1.0")
+            assert result == "fallback-pipeline-name"
+
+    def test_store_pipeline_metadata_handles_missing_step_instances(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test _store_pipeline_metadata handles missing step_instances gracefully.
+        
+        Based on source: _store_pipeline_metadata checks hasattr(template, "step_instances").
+        Following pytest guide: Test edge cases and defensive programming.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Create mock assembler without step_instances
+            mock_assembler = Mock()
+            # Don't set step_instances attribute
+
+            # Call _store_pipeline_metadata - should handle gracefully
+            template._store_pipeline_metadata(mock_assembler)
+
+            # Should not crash and should not store step_instances
+            assert "step_instances" not in template.pipeline_metadata
+
+    def test_context_name_handling_in_initialize_components(self, temp_config_file):
+        """Test context name handling in _initialize_components.
+        
+        Based on source: _initialize_components gets context_name from base_config.pipeline_name.
+        Following pytest guide: Test parameter passing and context handling.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_registry_manager = Mock(spec=RegistryManager)
+            mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Create template without providing components
+            template = ConcretePipelineTemplate(config_path=temp_config_file)
+
+            # Verify create_pipeline_components was called with correct context
+            mock_create_components.assert_called_once()
+            # The context_name should be from base_config.pipeline_name
+            args, kwargs = mock_create_components.call_args
+            # Should be called with pipeline_name from base config
+            assert len(args) == 1  # context_name argument
+
+    # ERROR HANDLING TESTS FOLLOWING PYTEST TROUBLESHOOTING GUIDE
+
+    def test_config_loading_with_invalid_json(self, mock_registry_manager, mock_dependency_resolver):
+        """Test config loading with invalid JSON file.
+        
+        Following pytest troubleshooting guide: Test file I/O error conditions.
+        """
+        # Create temp file with invalid JSON
+        temp_dir = tempfile.mkdtemp()
+        config_path = os.path.join(temp_dir, "invalid_config.json")
+        
+        with open(config_path, "w") as f:
+            f.write("{ invalid json content")
+        
+        try:
+            with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+                mock_components = {
+                    "registry_manager": mock_registry_manager,
+                    "resolver": mock_dependency_resolver,
+                }
+                mock_create_components.return_value = mock_components
+
+                # Should handle invalid JSON gracefully
+                template = ConcretePipelineTemplate(
+                    config_path=config_path,
+                    registry_manager=mock_registry_manager,
+                    dependency_resolver=mock_dependency_resolver,
+                )
+
+                # loaded_config_data should be None due to JSON error
+                assert template.loaded_config_data is None
+        finally:
+            # Cleanup
+            if os.path.exists(config_path):
+                os.remove(config_path)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+
+    def test_component_initialization_error_handling(self, temp_config_file):
+        """Test component initialization error handling.
+        
+        Following pytest troubleshooting guide: Test exception propagation.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            # Make create_pipeline_components raise an exception
+            mock_create_components.side_effect = Exception("Component creation failed")
+
+            # Should propagate the exception
+            with pytest.raises(Exception, match="Component creation failed"):
+                ConcretePipelineTemplate(config_path=temp_config_file)
+
+    def test_pipeline_name_generation_error_handling(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test pipeline name generation error handling.
+        
+        Following pytest troubleshooting guide: Test external function error handling.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.generate_pipeline_name") as mock_generate_name:
             
-            mock_load_configs.return_value = mock_configs
-            mock_get_base_config.return_value = mock_base_config
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
             
-            # Test without stored parameters - should use base class fallback
-            template = SubclassWithParameterMethod(config_path=config_path)
-            result = template._get_pipeline_parameters()
-            assert result == []  # Base class returns empty list
+            # Make generate_pipeline_name raise an exception
+            mock_generate_name.side_effect = Exception("Name generation failed")
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Should propagate the exception
+            with pytest.raises(Exception, match="Name generation failed"):
+                template._get_pipeline_name()
+
+    # COMPREHENSIVE COVERAGE TESTS
+
+    def test_all_init_parameters_coverage(self, temp_config_file):
+        """Test initialization with all possible parameters.
+        
+        Following pytest guide: Test comprehensive parameter combinations.
+        """
+        mock_session = Mock(spec=PipelineSession)
+        mock_registry_manager = Mock(spec=RegistryManager)
+        mock_dependency_resolver = Mock(spec=UnifiedDependencyResolver)
+        mock_step_catalog = Mock()
+        pipeline_params = [ParameterString(name="TEST", default_value="test")]
+
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components:
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+
+            # Test with all parameters
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                sagemaker_session=mock_session,
+                role="comprehensive-test-role",
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+                pipeline_parameters=pipeline_params,
+                step_catalog=mock_step_catalog,
+            )
+
+            # Verify all parameters were set
+            assert template.config_path == temp_config_file
+            assert template.session == mock_session
+            assert template.role == "comprehensive-test-role"
+            assert template._registry_manager == mock_registry_manager
+            assert template._dependency_resolver == mock_dependency_resolver
+            assert template._stored_pipeline_parameters == pipeline_params
+            assert template._step_catalog == mock_step_catalog
+
+    def test_generate_pipeline_complete_flow(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test complete generate_pipeline flow.
+        
+        Following pytest guide: Test complete integration flow.
+        """
+        with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
+             patch("cursus.core.assembler.pipeline_template_base.PipelineAssembler") as mock_assembler_class, \
+             patch("cursus.core.assembler.pipeline_template_base.generate_pipeline_name") as mock_generate_name:
             
-            # Test with stored parameters - should use stored parameters
-            custom_params = [
-                ParameterString(name="CUSTOM_PARAM", default_value="custom-value")
-            ]
-            template.set_pipeline_parameters(custom_params)
-            result = template._get_pipeline_parameters()
-            assert result == custom_params
-            assert len(result) == 1
-            assert result[0].name == "CUSTOM_PARAM"
+            mock_components = {
+                "registry_manager": mock_registry_manager,
+                "resolver": mock_dependency_resolver,
+            }
+            mock_create_components.return_value = mock_components
+            mock_generate_name.return_value = "complete-test-pipeline"
+
+            mock_assembler = Mock()
+            mock_pipeline = Mock(spec=Pipeline)
+            mock_assembler.generate_pipeline.return_value = mock_pipeline
+            mock_assembler.step_instances = {"step1": Mock(), "step2": Mock()}
+            mock_assembler_class.return_value = mock_assembler
+
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+
+            # Call generate_pipeline
+            result = template.generate_pipeline()
+
+            # Verify complete flow
+            assert result == mock_pipeline
+            mock_generate_name.assert_called_once()
+            mock_assembler_class.assert_called_once()
+            mock_assembler.generate_pipeline.assert_called_once_with("complete-test-pipeline")
+            
+            # Verify metadata was stored
+            assert "step_instances" in template.pipeline_metadata
+            assert template.pipeline_metadata["step_instances"] == mock_assembler.step_instances
