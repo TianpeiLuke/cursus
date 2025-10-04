@@ -191,14 +191,17 @@ class StepCatalog:
     def list_available_steps(self, workspace_id: Optional[str] = None, 
                            job_type: Optional[str] = None) -> List[str]:
         """
-        List all available steps, optionally filtered by workspace and job_type.
+        List all available concrete pipeline steps with deduplication.
+        
+        Excludes base configuration steps ('Base', 'Processing') and applies
+        canonical name deduplication following standardization rules.
         
         Args:
             workspace_id: Optional workspace filter
             job_type: Optional job type filter
             
         Returns:
-            List of step names matching the criteria
+            List of concrete pipeline step names (PascalCase, canonical)
         """
         try:
             self._ensure_index_built()
@@ -208,15 +211,18 @@ class StepCatalog:
             else:
                 steps = list(self._step_index.keys())
             
+            # DEDUPLICATION: Apply canonical name resolution and base config exclusion
+            canonical_steps = self._deduplicate_and_filter_concrete_steps(steps)
+            
             if job_type:
                 # Filter steps by job type
                 filtered_steps = []
-                for step in steps:
+                for step in canonical_steps:
                     if step.endswith(f"_{job_type}") or job_type == "default":
                         filtered_steps.append(step)
-                steps = filtered_steps
+                canonical_steps = filtered_steps
             
-            return steps
+            return canonical_steps
             
         except Exception as e:
             self.logger.error(f"Error listing steps for workspace {workspace_id}: {e}")
@@ -253,6 +259,39 @@ class StepCatalog:
             
         except Exception as e:
             self.logger.error(f"Error listing steps with specs for workspace {workspace_id}: {e}")
+            return []
+    
+    def list_steps_with_scripts(self, workspace_id: Optional[str] = None, 
+                              job_type: Optional[str] = None) -> List[str]:
+        """
+        List all steps that have script components.
+        
+        This method filters available steps to only return those that have
+        script file components, which is useful for alignment validation
+        and script-based testing frameworks.
+        
+        Args:
+            workspace_id: Optional workspace filter
+            job_type: Optional job type filter
+            
+        Returns:
+            List of step names that have script components
+        """
+        try:
+            # Get all available steps with optional filtering
+            available_steps = self.list_available_steps(workspace_id, job_type)
+            
+            # Filter to only steps that have script components
+            steps_with_scripts = []
+            for step_name in available_steps:
+                step_info = self.get_step_info(step_name)
+                if step_info and step_info.file_components.get('script'):
+                    steps_with_scripts.append(step_name)
+            
+            return sorted(steps_with_scripts)
+            
+        except Exception as e:
+            self.logger.error(f"Error listing steps with scripts for workspace {workspace_id}: {e}")
             return []
     
     # US4: Efficient Scaling (Simple but effective search)
@@ -1120,30 +1159,34 @@ class StepCatalog:
     
     def _add_component_to_index(self, step_name: str, py_file: Path, component_type: str, workspace_id: str) -> None:
         """
-        Add component to index with error handling.
+        Add component to index with canonical name resolution.
         
         Args:
-            step_name: Name of the step
+            step_name: Name of the step (may be snake_case from file)
             py_file: Path to the component file
             component_type: Type of component
             workspace_id: ID of the workspace
         """
         try:
+            # Resolve to canonical name if possible
+            canonical_name = self._resolve_to_canonical_name_for_indexing(step_name)
+            target_step_name = canonical_name if canonical_name else step_name
+            
             # Update or create step info
-            if step_name in self._step_index:
-                step_info = self._step_index[step_name]
+            if target_step_name in self._step_index:
+                step_info = self._step_index[target_step_name]
                 # Update workspace if this is from a developer workspace
                 if workspace_id != "core":
                     step_info.workspace_id = workspace_id
             else:
                 step_info = StepInfo(
-                    step_name=step_name,
+                    step_name=target_step_name,
                     workspace_id=workspace_id,
                     registry_data={},
                     file_components={}
                 )
-                self._step_index[step_name] = step_info
-                self._workspace_steps.setdefault(workspace_id, []).append(step_name)
+                self._step_index[target_step_name] = step_info
+                self._workspace_steps.setdefault(workspace_id, []).append(target_step_name)
             
             # Add file component
             file_metadata = FileMetadata(
@@ -1152,10 +1195,43 @@ class StepCatalog:
                 modified_time=datetime.fromtimestamp(py_file.stat().st_mtime)
             )
             step_info.file_components[component_type] = file_metadata
-            self._component_index[py_file] = step_name
+            self._component_index[py_file] = target_step_name
+            
+            if canonical_name:
+                self.logger.debug(f"Linked {component_type} file {py_file.name} to canonical step {canonical_name}")
             
         except Exception as e:
             self.logger.warning(f"Error adding component {py_file} to index: {e}")
+    
+    def _resolve_to_canonical_name_for_indexing(self, step_name: str) -> Optional[str]:
+        """
+        Resolve step name to canonical name for indexing purposes.
+        
+        Args:
+            step_name: Step name to resolve (likely snake_case from file)
+            
+        Returns:
+            Canonical PascalCase name if found, None otherwise
+        """
+        try:
+            from ..registry.step_names import get_step_names
+            registry = get_step_names()
+            
+            # If already canonical, return as-is
+            if step_name in registry:
+                return step_name
+            
+            # Try snake_case to PascalCase conversion
+            if '_' in step_name and step_name.islower():
+                pascal_candidate = ''.join(word.capitalize() for word in step_name.split('_'))
+                if pascal_candidate in registry:
+                    return pascal_candidate
+            
+            return None
+            
+        except Exception as e:
+            self.logger.debug(f"Error resolving canonical name for {step_name}: {e}")
+            return None
     
     def _extract_step_name(self, filename: str, component_type: str) -> Optional[str]:
         """
@@ -1180,6 +1256,67 @@ class StepCatalog:
             return name[7:-5]  # Remove config_ and _step
         elif component_type == "script":
             return name
+        
+        return None
+    
+    def _deduplicate_and_filter_concrete_steps(self, steps: List[str]) -> List[str]:
+        """
+        Deduplicate steps and filter to concrete pipeline steps only.
+        
+        Applies:
+        1. Canonical name resolution (PascalCase from registry)
+        2. Base config exclusion ('Base', 'Processing')
+        3. Job type variant filtering
+        
+        Args:
+            steps: List of step names (mix of PascalCase and snake_case)
+            
+        Returns:
+            List of concrete canonical step names (PascalCase)
+        """
+        try:
+            # Get registry as Single Source of Truth
+            from ..registry.step_names import get_step_names
+            registry = get_step_names()
+            canonical_steps = set()
+            
+            # Base configurations to exclude
+            BASE_CONFIGS = {'Base', 'Processing'}
+            
+            for step_name in steps:
+                # Skip job type variants
+                if self._is_job_type_variant(step_name):
+                    continue
+                    
+                # 1. If already canonical (in registry), use as-is
+                if step_name in registry:
+                    if step_name not in BASE_CONFIGS:  # Exclude base configs
+                        canonical_steps.add(step_name)
+                else:
+                    # 2. Try to resolve snake_case to PascalCase
+                    canonical_name = self._resolve_to_canonical_name(step_name, registry)
+                    if canonical_name and canonical_name not in BASE_CONFIGS:
+                        canonical_steps.add(canonical_name)
+            
+            return sorted(list(canonical_steps))
+            
+        except Exception as e:
+            self.logger.error(f"Error in canonical name deduplication: {e}")
+            return sorted(list(set(steps)))  # Fallback to simple deduplication
+    
+    def _is_job_type_variant(self, step_name: str) -> bool:
+        """Check if step name is a job type variant."""
+        JOB_SUFFIXES = ['_calibration', '_testing', '_training', '_validation', '_inference', '_evaluation']
+        return any(step_name.endswith(suffix) for suffix in JOB_SUFFIXES)
+    
+    def _resolve_to_canonical_name(self, step_name: str, registry: Dict[str, Any]) -> Optional[str]:
+        """Resolve snake_case step name to canonical PascalCase name."""
+        # Simple snake_case to PascalCase conversion
+        if '_' in step_name and step_name.islower():
+            pascal_candidate = ''.join(word.capitalize() for word in step_name.split('_'))
+            if pascal_candidate in registry:
+                self.logger.debug(f"Resolved canonical name: {step_name} → {pascal_candidate}")
+                return pascal_candidate
         
         return None
     

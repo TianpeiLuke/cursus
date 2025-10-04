@@ -17,16 +17,17 @@ logger = logging.getLogger(__name__)
 class LevelValidators:
     """Consolidated validation logic for each level."""
     
-    def __init__(self, workspace_dirs: List[str]):
+    def __init__(self, workspace_dirs: Optional[List[str]] = None):
         """
         Initialize level validators.
         
         Args:
-            workspace_dirs: List of workspace directories to search
+            workspace_dirs: Optional list of workspace directories to search
         """
         self.workspace_dirs = workspace_dirs
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
-        logger.info(f"Initialized LevelValidators with {len(workspace_dirs)} workspace directories")
+        workspace_count = len(workspace_dirs) if workspace_dirs else 0
+        logger.info(f"Initialized LevelValidators with {workspace_count} workspace directories")
     
     def run_level_1_validation(self, step_name: str) -> Dict[str, Any]:
         """

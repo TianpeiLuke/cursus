@@ -138,34 +138,45 @@ class UnifiedAlignmentTester:
     
     def _discover_all_steps(self) -> List[str]:
         """
-        Discover all steps using step catalog - consolidated discovery method.
+        Discover ALL pipeline steps for comprehensive validation.
         
-        This replaces 5 separate discovery methods with a single unified approach.
+        The step-type-specific ruleset controls which validation levels
+        are applied to each step type, enabling comprehensive coverage
+        while skipping inappropriate validation levels.
         
         Returns:
-            List of discovered step names
+            List of all concrete pipeline steps (21 steps)
         """
         logger.info("Discovering all steps using step catalog")
         
-        all_steps = []
-        
         try:
-            # Get all step names from step catalog
-            step_names = self.step_catalog.list_available_steps()
-            all_steps.extend(step_names)
+            # COMPREHENSIVE: Use list_available_steps() for all concrete steps
+            all_steps = self.step_catalog.list_available_steps()
             
-            # Get steps with specs (for comprehensive coverage)
-            steps_with_specs = self.step_catalog.list_steps_with_specs()
-            all_steps.extend(steps_with_specs)
-            
-            # Remove duplicates and return
-            unique_steps = list(set(all_steps))
-            logger.info(f"Discovered {len(unique_steps)} unique steps")
-            return sorted(unique_steps)
+            logger.info(f"Discovered {len(all_steps)} steps for comprehensive validation")
+            return all_steps
             
         except Exception as e:
             logger.error(f"Failed to discover steps: {str(e)}")
             return []
+    
+    def _has_script_file(self, step_name: str) -> bool:
+        """
+        Simple file existence validation - no complex validator classes.
+        
+        Args:
+            step_name: Step name to validate
+            
+        Returns:
+            True if step has script file, False otherwise
+        """
+        try:
+            step_info = self.step_catalog.get_step_info(step_name)
+            return (step_info is not None and 
+                    step_info.file_components.get('script') is not None)
+        except Exception as e:
+            logger.debug(f"File validation failed for {step_name}: {e}")
+            return False
     
     def _run_validation_level(self, step_name: str, level: ValidationLevel, ruleset) -> Dict[str, Any]:
         """
