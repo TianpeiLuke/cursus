@@ -364,7 +364,12 @@ def builder_test():
     default="test_reports",
     help="Output directory for exports (default: test_reports)"
 )
-def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str, export_chart: bool, output_dir: str):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str, export_chart: bool, output_dir: str, workspace_dirs: tuple):
     """Run all tests (universal test suite)."""
     try:
         click.echo(f"🔍 Importing builder class: {builder_class}")
@@ -373,10 +378,17 @@ def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str,
 
         click.echo(f"\n🚀 Running all tests for {builder_cls.__name__}...")
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+        
         # Run tests with scoring if requested using new unified architecture
         tester = UniversalStepBuilderTest.from_builder_class(
             builder_class=builder_cls,
-            workspace_dirs=["."],
+            workspace_dirs=workspace_list,
             verbose=verbose,
             enable_scoring=scoring,
             enable_structured_reporting=bool(export_json or export_chart)
@@ -392,10 +404,39 @@ def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str,
             results = tester.run_full_validation()
 
         # Print results with appropriate formatting
-        if scoring and "test_results" in results:
-            print_enhanced_results(results, verbose)
+        # The actual implementation returns results in a different format than expected
+        # Handle both the new component-based format and legacy format
+        if isinstance(results, dict):
+            if "components" in results:
+                # New component-based format from actual implementation
+                click.echo(f"\n📊 Validation Results for {results.get('step_name', 'Unknown')}")
+                click.echo(f"Builder: {results.get('builder_class', 'Unknown')}")
+                click.echo(f"Overall Status: {results.get('overall_status', 'Unknown')}")
+                
+                components = results.get("components", {})
+                for comp_name, comp_result in components.items():
+                    status = comp_result.get("status", "UNKNOWN")
+                    status_icon = "✅" if status == "COMPLETED" else "❌" if status == "ERROR" else "⚠️"
+                    click.echo(f"  {status_icon} {comp_name}: {status}")
+                    
+                    if status == "ERROR" and "error" in comp_result:
+                        click.echo(f"    Error: {comp_result['error']}")
+                
+                # Show scoring if available
+                if scoring and "scoring" in results:
+                    scoring_data = results["scoring"]
+                    overall_score = scoring_data.get("overall", {}).get("score", 0.0)
+                    overall_rating = scoring_data.get("overall", {}).get("rating", "Unknown")
+                    click.echo(f"\n🏆 Quality Score: {overall_score:.1f}/100 - {overall_rating}")
+            
+            elif "test_results" in results:
+                # Legacy format with test_results wrapper
+                print_enhanced_results(results, verbose)
+            else:
+                # Direct test results format
+                print_test_results(results, verbose, show_scoring=scoring)
         else:
-            print_test_results(results, verbose, show_scoring=scoring)
+            click.echo(f"⚠️  Unexpected results format: {type(results)}")
 
         # Handle exports
         if export_json:
@@ -408,20 +449,43 @@ def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str,
             else:
                 click.echo("⚠️  Could not generate score chart (matplotlib may not be available)")
 
-        # Determine exit code
-        if "test_results" in results:
-            test_results = results["test_results"]
+        # Determine exit code based on actual result format
+        if isinstance(results, dict):
+            if "overall_status" in results:
+                # New component-based format
+                overall_status = results.get("overall_status", "UNKNOWN")
+                if overall_status in ["FAILED", "ERROR"]:
+                    click.echo(f"\n⚠️  Validation failed with status: {overall_status}")
+                    sys.exit(1)
+                elif overall_status == "ISSUES_FOUND":
+                    click.echo(f"\n⚠️  Validation completed with issues found.")
+                    sys.exit(1)
+                else:
+                    click.echo(f"\n🎉 Validation passed successfully!")
+            elif "test_results" in results:
+                # Legacy format with test_results wrapper
+                test_results = results["test_results"]
+                failed_tests = sum(
+                    1 for result in test_results.values() if not result.get("passed", False)
+                )
+                if failed_tests > 0:
+                    click.echo(f"\n⚠️  {failed_tests} test(s) failed. Please review and fix the issues.")
+                    sys.exit(1)
+                else:
+                    click.echo(f"\n🎉 All tests passed successfully!")
+            else:
+                # Direct test results format
+                failed_tests = sum(
+                    1 for result in results.values() if not result.get("passed", False)
+                )
+                if failed_tests > 0:
+                    click.echo(f"\n⚠️  {failed_tests} test(s) failed. Please review and fix the issues.")
+                    sys.exit(1)
+                else:
+                    click.echo(f"\n🎉 All tests passed successfully!")
         else:
-            test_results = results
-
-        failed_tests = sum(
-            1 for result in test_results.values() if not result.get("passed", False)
-        )
-        if failed_tests > 0:
-            click.echo(f"\n⚠️  {failed_tests} test(s) failed. Please review and fix the issues.")
+            click.echo(f"\n⚠️  Unable to determine test results from format: {type(results)}")
             sys.exit(1)
-        else:
-            click.echo(f"\n🎉 All tests passed successfully!")
 
     except Exception as e:
         click.echo(f"❌ Error during test execution: {e}", err=True)
@@ -439,7 +503,12 @@ def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str,
     is_flag=True,
     help="Show detailed output including test details and logs"
 )
-def test_level(level: int, builder_class: str, verbose: bool):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def test_level(level: int, builder_class: str, verbose: bool, workspace_dirs: tuple):
     """Run tests for a specific level."""
     try:
         click.echo(f"🔍 Importing builder class: {builder_class}")
@@ -459,8 +528,16 @@ def test_level(level: int, builder_class: str, verbose: bool):
         # Use the refactored UniversalStepBuilderTest for all levels
         click.echo(f"⚠️  Note: Using refactored UniversalStepBuilderTest (Level {level} tests are now integrated)")
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+        
         tester = UniversalStepBuilderTest.from_builder_class(
             builder_class=builder_cls,
+            workspace_dirs=workspace_list,
             verbose=verbose
         )
         results = tester.run_all_tests()
@@ -493,7 +570,12 @@ def test_level(level: int, builder_class: str, verbose: bool):
     is_flag=True,
     help="Show detailed output including test details and logs"
 )
-def test_variant(variant: str, builder_class: str, verbose: bool):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def test_variant(variant: str, builder_class: str, verbose: bool, workspace_dirs: tuple):
     """Run tests for a specific variant."""
     try:
         click.echo(f"🔍 Importing builder class: {builder_class}")
@@ -505,8 +587,16 @@ def test_variant(variant: str, builder_class: str, verbose: bool):
         # Use the refactored UniversalStepBuilderTest for all variants
         click.echo(f"⚠️  Note: Using refactored UniversalStepBuilderTest ({variant} variant tests are now integrated)")
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+        
         tester = UniversalStepBuilderTest.from_builder_class(
             builder_class=builder_cls,
+            workspace_dirs=workspace_list,
             verbose=verbose
         )
         results = tester.run_all_tests()
@@ -548,11 +638,25 @@ def test_variant(variant: str, builder_class: str, verbose: bool):
     type=click.Path(),
     help="Export test results to JSON file at specified path"
 )
-def test_by_type(sagemaker_type: str, verbose: bool, scoring: bool, export_json: str):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def test_by_type(sagemaker_type: str, verbose: bool, scoring: bool, export_json: str, workspace_dirs: tuple):
     """Test all builders for a specific SageMaker step type."""
     try:
         click.echo(f"🔍 Testing all builders for SageMaker step type: {sagemaker_type}")
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+        
+        # Note: test_all_builders_by_type is a static method that needs to be updated
+        # For now, we'll use the existing method but this should be enhanced to support workspace_dirs
         results = UniversalStepBuilderTest.test_all_builders_by_type(
             sagemaker_step_type=sagemaker_type,
             verbose=verbose,
@@ -605,12 +709,24 @@ def test_by_type(sagemaker_type: str, verbose: bool, scoring: bool, export_json:
     is_flag=True,
     help="Show detailed output including errors"
 )
-def registry_report(verbose: bool):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def registry_report(verbose: bool, workspace_dirs: tuple):
     """Generate step catalog discovery report."""
     try:
         click.echo("🔍 Generating step catalog discovery report...")
         
-        catalog = StepCatalog(workspace_dirs=None)
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+        
+        catalog = StepCatalog(workspace_dirs=workspace_list)
         all_steps = catalog.list_available_steps()
         
         # Generate report using step catalog
@@ -663,12 +779,24 @@ def registry_report(verbose: bool):
 
 @builder_test.command("validate-builder")
 @click.argument("step_name")
-def validate_builder(step_name: str):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def validate_builder(step_name: str, workspace_dirs: tuple):
     """Validate that a step builder is available and can be loaded."""
     try:
         click.echo(f"🔍 Validating builder availability for: {step_name}")
         
-        catalog = StepCatalog(workspace_dirs=None)
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        else:
+            click.echo("🔧 Using package-internal discovery only")
+        
+        catalog = StepCatalog(workspace_dirs=workspace_list)
         all_steps = catalog.list_available_steps()
         
         # Check if step exists in catalog
@@ -809,13 +937,25 @@ def list_builders():
 @click.option("--scoring", is_flag=True, help="Enable quality scoring")
 @click.option("--export-json", type=click.Path(), help="Export results to JSON file")
 @click.option("--step-type", help="Filter by SageMaker step type")
-def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_type: str):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_type: str, workspace_dirs: tuple):
     """Test all builders discovered via step catalog."""
     try:
         click.echo("🔍 Discovering builders via step catalog...")
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+        
         from ..step_catalog import StepCatalog
-        catalog = StepCatalog(workspace_dirs=None)
+        catalog = StepCatalog(workspace_dirs=workspace_list)
         
         if step_type:
             builders = catalog.get_builders_by_step_type(step_type)
@@ -836,16 +976,16 @@ def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_typ
             click.echo(f"\n[{i}/{len(builders)}] Testing {step_name}...")
             
             try:
+                # Create tester with correct interface
                 tester = UniversalStepBuilderTest(
-                    builder_class=builder_class,
-                    step_name=step_name,
+                    workspace_dirs=workspace_list,
                     verbose=verbose,
                     enable_scoring=scoring,
-                    enable_structured_reporting=True,
-                    use_step_catalog_discovery=True
+                    enable_structured_reporting=True
                 )
                 
-                test_results = tester.run_all_tests()
+                # Run validation for the specific step
+                test_results = tester.run_validation_for_step(step_name)
                 results[step_name] = test_results
                 
                 # Quick status report
@@ -899,13 +1039,21 @@ def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_typ
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
 @click.option("--scoring", is_flag=True, help="Enable quality scoring")
 @click.option("--export-json", type=click.Path(), help="Export results to JSON file")
-def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: str):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: str, workspace_dirs: tuple):
     """Test single builder by canonical name."""
     try:
         click.echo(f"🔍 Looking for builder: {canonical_name}")
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        
         from ..step_catalog import StepCatalog
-        catalog = StepCatalog(workspace_dirs=None)
+        catalog = StepCatalog(workspace_dirs=workspace_list)
         builder_class = catalog.load_builder_class(canonical_name)
         
         if not builder_class:
@@ -921,20 +1069,26 @@ def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: 
         click.echo(f"✅ Found builder: {builder_class.__name__}")
         click.echo(f"\n🧪 Testing {canonical_name}...")
         
-        # Run tests
+        # Run tests using workspace-aware constructor
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if verbose and workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        elif verbose:
+            click.echo("🔧 Using package-internal discovery only")
+            
         tester = UniversalStepBuilderTest(
-            builder_class=builder_class,
-            step_name=canonical_name,
+            workspace_dirs=workspace_list,
             verbose=verbose,
             enable_scoring=scoring,
-            enable_structured_reporting=True,
-            use_step_catalog_discovery=True
+            enable_structured_reporting=True
         )
         
-        results = tester.run_all_tests()
+        # Run validation for the specific step
+        results = tester.run_validation_for_step(canonical_name)
         
-        # Print results
-        if scoring and "test_results" in results:
+        # Print results - handle both new format and direct results
+        if scoring and isinstance(results, dict) and ("test_results" in results or "scoring" in results):
             print_enhanced_results(results, verbose)
         else:
             print_test_results(results, verbose, show_scoring=scoring)
@@ -960,14 +1114,26 @@ def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: 
 
 @builder_test.command("list-discovered")
 @click.option("--step-type", help="Filter by SageMaker step type")
-def list_discovered(step_type: str):
+@click.option(
+    "--workspace-dirs", "-w",
+    multiple=True,
+    help="Workspace directories to include for step discovery (can be used multiple times). If not specified, uses package-internal discovery only."
+)
+def list_discovered(step_type: str, workspace_dirs: tuple):
     """List builders discovered via step catalog."""
     try:
         click.echo("📋 Builders discovered via step catalog:")
         click.echo("=" * 50)
         
+        # Convert tuple to list, None means package-internal only
+        workspace_list = list(workspace_dirs) if workspace_dirs else None
+        if workspace_list:
+            click.echo(f"🔧 Using workspace directories: {workspace_list}")
+        else:
+            click.echo("🔧 Using package-internal discovery only")
+        
         from ..step_catalog import StepCatalog
-        catalog = StepCatalog(workspace_dirs=None)
+        catalog = StepCatalog(workspace_dirs=workspace_list)
         
         if step_type:
             builders = catalog.get_builders_by_step_type(step_type)
