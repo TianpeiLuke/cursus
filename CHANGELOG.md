@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2025-10-04
+
+### Added
+- **New ML Pipeline Steps** - Expanded step library with advanced ML capabilities
+  - **Missing Value Imputation Step** - Complete step for handling missing data with multiple imputation strategies
+  - **Model Wiki Generator Step** - Automated model documentation and wiki generation capabilities
+  - **Model Metrics Computation Step** - Comprehensive model performance metrics calculation and reporting
+  - **XGBoost Model Inference Step** - Dedicated inference step for XGBoost models with optimized performance
+
+### Enhanced
+- **Validation System Improvements** - Major enhancements to validation framework reliability
+  - **Builder Test CLI Enhancements** - Improved command-line interface for builder testing with better error handling
+  - **Alignment Tester Refactoring** - Comprehensive refactoring of alignment validation system for better accuracy
+  - **Validation Builder Test Optimization** - Reduced code redundancy and improved test execution performance
+  - **Step Catalog Integration** - Enhanced step catalog system with deduplication and improved step discovery
+
+- **Testing Infrastructure Modernization** - Comprehensive testing system improvements
+  - **Pytest Best Practices Implementation** - Adopted pytest best practices across all test modules
+  - **Test Structure Reorganization** - Improved test organization with better separation of concerns
+  - **Dynamic Step Builder Testing** - Enhanced dynamic testing capabilities for step builders
+  - **CLI Testing Framework** - Comprehensive testing framework for command-line interface components
+
+- **Code Quality and Organization** - Major code cleanup and optimization efforts
+  - **Workspace-Aware System Simplification** - Removed over-engineered workspace-aware components in favor of step catalog
+  - **Validation System Refactoring** - Streamlined validation components with reduced complexity
+  - **Code Redundancy Elimination** - Systematic removal of redundant code across validation and testing modules
+  - **Rule-Based Validation** - Enhanced rule-based validation system with improved pattern matching
+
+### Fixed
+- **CLI System Stability** - Comprehensive fixes to command-line interface reliability
+  - **Builder CLI Error Resolution** - Fixed critical errors in builder CLI execution and validation
+  - **Alignment CLI Improvements** - Resolved alignment CLI issues with better error handling and reporting
+  - **Validation CLI Enhancements** - Fixed validation CLI bugs and improved user experience
+  - **Registry CLI Integration** - Enhanced registry CLI with better component discovery and management
+
+- **Testing Framework Reliability** - Major improvements to test execution stability
+  - **Test Error Resolution** - Systematic resolution of test errors across validation and builder test modules
+  - **Step Catalog Test Fixes** - Fixed step catalog testing issues with improved integration
+  - **Alignment Test Improvements** - Enhanced alignment testing with better rule matching and validation
+  - **Builder Test Optimization** - Improved builder test reliability with better mock infrastructure
+
+- **Validation System Accuracy** - Enhanced validation accuracy and reduced false positives
+  - **Rule Matching Improvements** - Better rule matching algorithms for more accurate validation results
+  - **Low Score System Fixes** - Fixed issues with low score detection and reporting in validation systems
+  - **Alignment Validation Enhancements** - Improved alignment validation with better pattern recognition
+  - **Factory Method Cleanup** - Cleaned up factory methods in alignment tester for better reliability
+
+### Technical Details
+- **Step Library Expansion** - Added 4 new production-ready ML pipeline steps with complete implementations
+- **Validation Architecture** - Refactored validation system with rule-based approach and step catalog integration
+- **Testing Framework** - Modernized testing infrastructure with pytest best practices and dynamic testing
+- **CLI Enhancement** - Comprehensive CLI improvements with better error handling and user experience
+- **Code Optimization** - Significant code reduction through redundancy elimination and architectural simplification
+- **Dependency Updates** - Lowered networkx requirement from >=3.5.0 to >=2.8.0 for better package compatibility
+
+### Quality Assurance
+- **Test Reliability** - Improved test reliability with systematic error resolution and better infrastructure
+- **Validation Accuracy** - Enhanced validation accuracy with improved rule matching and pattern recognition
+- **Code Quality** - Better code quality through systematic cleanup and architectural improvements
+- **CLI Stability** - Enhanced CLI stability with comprehensive error handling and improved user experience
+
+### Performance Improvements
+- **Test Execution Speed** - Optimized test execution with reduced redundancy and better resource management
+- **Validation Performance** - Improved validation performance with streamlined algorithms and better caching
+- **Step Catalog Operations** - Enhanced step catalog performance with deduplication and optimized discovery
+- **CLI Responsiveness** - Improved CLI responsiveness with optimized execution paths and better error handling
+
 ## [1.3.6] - 2025-09-29
 
 ### Added
