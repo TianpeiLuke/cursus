@@ -6,25 +6,13 @@ pipeline topologies with intelligent dependency resolution.
 """
 
 from .base_dag import PipelineDAG
-from .edge_types import (
-    EdgeType,
-    DependencyEdge,
-    ConditionalEdge,
-    ParallelEdge,
-    EdgeCollection,
-)
-from .enhanced_dag import EnhancedPipelineDAG
+from .pipeline_dag_resolver import PipelineDAGResolver, PipelineExecutionPlan
 from .workspace_dag import WorkspaceAwareDAG
 
 __all__ = [
     # Core DAG classes
     "PipelineDAG",
-    "EnhancedPipelineDAG",
+    "PipelineDAGResolver",
+    "PipelineExecutionPlan",
     "WorkspaceAwareDAG",
-    # Edge types and management
-    "EdgeType",
-    "DependencyEdge",
-    "ConditionalEdge",
-    "ParallelEdge",
-    "EdgeCollection",
 ]

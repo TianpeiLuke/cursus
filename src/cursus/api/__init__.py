@@ -8,24 +8,15 @@ including DAG management and pipeline compilation.
 # Import DAG classes for direct access
 from .dag import (
     PipelineDAG,
-    EnhancedPipelineDAG,
+    PipelineDAGResolver,
+    PipelineExecutionPlan,
     WorkspaceAwareDAG,
-    EdgeType,
-    DependencyEdge,
-    ConditionalEdge,
-    ParallelEdge,
-    EdgeCollection,
 )
 
 __all__ = [
     # DAG classes
     "PipelineDAG",
-    "EnhancedPipelineDAG",
+    "PipelineDAGResolver",
+    "PipelineExecutionPlan",
     "WorkspaceAwareDAG",
-    # Edge types and management
-    "EdgeType",
-    "DependencyEdge",
-    "ConditionalEdge",
-    "ParallelEdge",
-    "EdgeCollection",
 ]

@@ -95,7 +95,7 @@ except ImportError as e:
 
 # Core data structures
 try:
-    from .api.dag import PipelineDAG, EnhancedPipelineDAG
+    from .api.dag import PipelineDAG
 except ImportError:
 
     class PipelineDAG:
@@ -104,11 +104,6 @@ except ImportError:
                 "DAG functionality not available. Please install with: pip install cursus[all]"
             )
 
-    class EnhancedPipelineDAG:
-        def __init__(self, *args, **kwargs):
-            raise ImportError(
-                "Enhanced DAG functionality not available. Please install with: pip install cursus[all]"
-            )
 
 
 # Convenience function for quick pipeline creation
@@ -150,7 +145,6 @@ __all__ = [
     # Core classes
     "PipelineDAGCompiler",
     "PipelineDAG",
-    "EnhancedPipelineDAG",
     "DynamicPipelineTemplate",
 ]
 
