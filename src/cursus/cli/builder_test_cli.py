@@ -14,12 +14,13 @@ import sys
 import importlib
 import inspect
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Type
 
 from ..validation.builders.universal_test import UniversalStepBuilderTest
-from ..validation.builders.core.integration_tests import IntegrationTests
-from ..validation.builders.reporting.scoring import StepBuilderScorer
+from ..validation.builders.reporting.scoring import StreamlinedStepBuilderScorer
+from ..validation.builders.reporting.builder_reporter import StreamlinedBuilderTestReporter
 from ..step_catalog import StepCatalog
 from ..registry import STEP_NAMES
 
@@ -284,15 +285,45 @@ def export_results_to_json(results: Dict[str, Any], output_path: str) -> None:
 def generate_score_chart(
     results: Dict[str, Any], builder_name: str, output_dir: str
 ) -> Optional[str]:
-    """Generate score visualization chart."""
-    if "test_results" not in results:
-        # Create scorer from raw results
-        scorer = StepBuilderScorer(results)
-    else:
-        # Create scorer from test_results
-        scorer = StepBuilderScorer(results["test_results"])
-
-    return scorer.generate_chart(builder_name, output_dir)
+    """Generate score visualization chart using streamlined scorer."""
+    try:
+        if "scoring" in results:
+            # Use existing scoring data
+            scoring_data = results["scoring"]
+        else:
+            # Generate scoring from results
+            if "test_results" not in results:
+                scorer = StreamlinedStepBuilderScorer(results)
+            else:
+                scorer = StreamlinedStepBuilderScorer(results["test_results"])
+            scoring_data = scorer.generate_report()
+        
+        # Generate chart using scoring data (if visualization available)
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            # Create simple score visualization
+            output_path = Path(output_dir) / f"{builder_name}_score_chart.png"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            overall_score = scoring_data.get("overall", {}).get("score", 0)
+            
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.bar(['Overall Score'], [overall_score], color='green' if overall_score >= 80 else 'orange' if overall_score >= 60 else 'red')
+            ax.set_ylim(0, 100)
+            ax.set_ylabel('Score')
+            ax.set_title(f'{builder_name} Quality Score')
+            
+            plt.tight_layout()
+            plt.savefig(output_path)
+            plt.close()
+            
+            return str(output_path)
+        except ImportError:
+            return None
+    except Exception:
+        return None
 
 
 @click.group(name="builder-test")
@@ -342,15 +373,23 @@ def test_all(builder_class: str, verbose: bool, scoring: bool, export_json: str,
 
         click.echo(f"\n🚀 Running all tests for {builder_cls.__name__}...")
         
-        # Run tests with scoring if requested
-        tester = UniversalStepBuilderTest(
+        # Run tests with scoring if requested using new unified architecture
+        tester = UniversalStepBuilderTest.from_builder_class(
             builder_class=builder_cls,
+            workspace_dirs=["."],
             verbose=verbose,
             enable_scoring=scoring,
-            enable_structured_reporting=bool(export_json or export_chart),
-            use_step_catalog_discovery=True,
+            enable_structured_reporting=bool(export_json or export_chart)
         )
-        results = tester.run_all_tests()
+        
+        # Use new unified validation approach
+        if hasattr(tester, 'single_builder_mode') and tester.single_builder_mode:
+            # Single builder mode - run validation for the specific step
+            step_name = tester._infer_step_name()
+            results = tester.run_validation_for_step(step_name)
+        else:
+            # Multi-builder mode - run full validation
+            results = tester.run_full_validation()
 
         # Print results with appropriate formatting
         if scoring and "test_results" in results:
@@ -837,14 +876,18 @@ def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_typ
         click.echo(f"   Builders Tested: {total_builders}")
         click.echo(f"   Successful Tests: {successful_tests} ({success_rate:.1f}%)")
         
-        # Export or auto-save results
+        # Export results if requested
         if export_json:
             export_results_to_json(results, export_json)
         else:
-            # Auto-save results
-            from ..validation.builders.results_storage import BuilderTestResultsStorage
-            output_path = BuilderTestResultsStorage.save_test_results(results, "all_builders", step_type)
-            click.echo(f"📁 Results automatically saved to: {output_path}")
+            # Auto-save results to default location
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_dir = Path("test_reports") / "builder_tests"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            filename = f"all_builders_{step_type or 'all'}_{timestamp}.json"
+            output_path = output_dir / filename
+            export_results_to_json(results, str(output_path))
             
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -901,9 +944,14 @@ def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: 
         if export_json:
             export_results_to_json(export_data, export_json)
         else:
-            from ..validation.builders.results_storage import BuilderTestResultsStorage
-            output_path = BuilderTestResultsStorage.save_test_results(export_data, "single_builder", canonical_name)
-            click.echo(f"📁 Results automatically saved to: {output_path}")
+            # Auto-save results to default location
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_dir = Path("test_reports") / "builder_tests"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            filename = f"single_builder_{canonical_name}_{timestamp}.json"
+            output_path = output_dir / filename
+            export_results_to_json(export_data, str(output_path))
             
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)

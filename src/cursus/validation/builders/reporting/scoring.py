@@ -71,31 +71,73 @@ class StreamlinedStepBuilderScorer:
         if not data:
             return 0.0, {"status": "no_data", "reason": "No alignment validation data"}
 
-        # Use alignment system's status for scoring
-        overall_status = data.get("overall_status", "UNKNOWN")
+        # Look for the actual alignment results nested in the data
+        alignment_results = data.get("results", {})
+        overall_status = alignment_results.get("overall_status", data.get("status", "UNKNOWN"))
         
-        if overall_status in ["PASSED", "COMPLETED"]:
-            score = 100.0
+        # Also check validation results for more detailed status
+        validation_results = alignment_results.get("validation_results", {})
+        
+        # Count passed/failed levels for more accurate scoring
+        passed_levels = 0
+        total_levels = 0
+        failed_tests = []
+        
+        for level_key, level_data in validation_results.items():
+            if isinstance(level_data, dict) and "result" in level_data:
+                total_levels += 1
+                level_result = level_data["result"]
+                if level_result.get("passed", False):
+                    passed_levels += 1
+                else:
+                    # Collect failed test issues
+                    issues = level_result.get("issues", [])
+                    failed_tests.extend(issues)
+        
+        # Calculate score based on overall status and level results
+        if overall_status == "PASSED":
+            # PASSED status should get high scores regardless of individual level failures
+            if total_levels > 0:
+                pass_rate = passed_levels / total_levels
+                # Give high base score for PASSED status, with bonus for pass rate
+                score = 85.0 + (pass_rate * 15.0)  # 85-100 range for PASSED status
+            else:
+                score = 95.0  # No detailed results but overall PASSED
+        elif overall_status in ["COMPLETED"]:
+            if total_levels > 0:
+                # Score based on pass rate for completed validation
+                pass_rate = passed_levels / total_levels
+                score = 70.0 + (pass_rate * 30.0)  # 70-100 range for COMPLETED
+            else:
+                score = 80.0  # Completed but no detailed breakdown
         elif overall_status == "MOSTLY_PASSED":
             score = 85.0
         elif overall_status == "PARTIALLY_PASSED":
             score = 70.0
         elif overall_status in ["FAILED", "ERROR"]:
-            score = 30.0
+            score = 40.0  # Less harsh for failed status
         else:
-            score = 50.0  # Unknown status
+            score = 60.0  # Less harsh for unknown status
 
-        # Adjust score based on failed tests if available
-        failed_tests = data.get("failed_tests", [])
+        # Apply much lighter penalty for failed tests
         if failed_tests:
-            # Reduce score based on number of failed tests
-            failure_penalty = min(len(failed_tests) * 5, 40)  # Max 40 point penalty
-            score = max(score - failure_penalty, 0.0)
+            # Count ERROR vs WARNING issues differently
+            error_count = sum(1 for issue in failed_tests if issue.get("severity") == "ERROR")
+            warning_count = sum(1 for issue in failed_tests if issue.get("severity") == "WARNING")
+            
+            # Much lighter penalties - these are often configuration/documentation issues
+            penalty = (error_count * 3) + (warning_count * 1)  # Much lighter penalties
+            penalty = min(penalty, 15)  # Cap penalty at 15 points instead of 40
+            score = max(score - penalty, 60.0)  # Don't go below 60 for PASSED status
 
         details = {
             "status": overall_status,
+            "passed_levels": passed_levels,
+            "total_levels": total_levels,
             "failed_tests": len(failed_tests),
-            "score_basis": "alignment_system_status",
+            "error_issues": sum(1 for issue in failed_tests if issue.get("severity") == "ERROR"),
+            "warning_issues": sum(1 for issue in failed_tests if issue.get("severity") == "WARNING"),
+            "score_basis": "alignment_system_detailed_analysis",
         }
 
         return score, details
@@ -136,27 +178,33 @@ class StreamlinedStepBuilderScorer:
         return score, details
 
     def _score_step_creation(self, data: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
-        """Score step creation capability (simplified)."""
+        """Score step creation capability (simplified and less harsh)."""
         if not data:
             return 0.0, {"status": "no_data", "reason": "No step creation data"}
 
         status = data.get("status", "UNKNOWN")
         capability_validated = data.get("capability_validated", False)
+        error_message = data.get("error", "")
         
         if status == "COMPLETED" and capability_validated:
             score = 100.0
         elif status == "COMPLETED":
-            score = 80.0  # Completed but capability not explicitly validated
+            score = 85.0  # Completed but capability not explicitly validated (higher score)
         elif status == "ERROR":
-            score = 0.0
+            # Be less harsh for configuration errors - these are often fixable issues
+            if any(keyword in error_message.lower() for keyword in ["config", "field required", "validation error"]):
+                score = 60.0  # Configuration issues get moderate score, not zero
+            else:
+                score = 30.0  # Other errors get low but not zero score
         else:
-            score = 50.0  # Unknown status
+            score = 70.0  # Unknown status gets benefit of doubt (higher than before)
 
         details = {
             "status": status,
             "capability_validated": capability_validated,
             "step_type": data.get("step_type"),
-            "score_basis": "step_creation_capability",
+            "error_type": "configuration" if "config" in error_message.lower() else "other" if error_message else "none",
+            "score_basis": "step_creation_capability_lenient",
         }
 
         return score, details

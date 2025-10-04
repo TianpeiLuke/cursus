@@ -372,8 +372,9 @@ class BuilderAutoDiscovery:
         if file_name.startswith("builder_") and file_name.endswith("_step"):
             # Remove builder_ prefix and _step suffix
             step_name_parts = file_name[8:-5].split("_")  # Remove "builder_" and "_step"
-            # Convert to CamelCase
-            step_name = "".join(word.capitalize() for word in step_name_parts)
+            
+            # Apply special case handling for known patterns
+            step_name = self._convert_parts_to_pascal_case_with_special_cases(step_name_parts)
             
             # Validate against registry if possible
             if step_name in self._registry_info:
@@ -405,6 +406,29 @@ class BuilderAutoDiscovery:
         
         # Fallback: use extracted name as-is
         return step_name
+    
+    def _convert_parts_to_pascal_case_with_special_cases(self, parts: List[str]) -> str:
+        """
+        Convert file name parts to PascalCase with special case handling.
+        
+        Args:
+            parts: List of file name parts (e.g., ['xgboost', 'training'])
+            
+        Returns:
+            PascalCase step name with proper special case handling
+        """
+        result_parts = []
+        
+        for part in parts:
+            # Handle special cases
+            if part.lower() == 'xgboost':
+                result_parts.append('XGBoost')
+            elif part.lower() == 'pytorch':
+                result_parts.append('PyTorch')
+            else:
+                result_parts.append(part.capitalize())
+        
+        return "".join(result_parts)
     
     def _load_class_from_file(self, file_path: Path, class_name: str) -> Optional[Type]:
         """

@@ -674,64 +674,142 @@ class UniversalStepBuilderTest:
         """Get builder class from step catalog or registry."""
         if self.step_catalog_available:
             try:
-                step_info = self.step_catalog.get_step_info(step_name)
-                if step_info and hasattr(step_info, 'builder_class'):
-                    return step_info.builder_class
-            except Exception:
-                pass
+                # Use the step catalog's load_builder_class method directly
+                builder_class = self.step_catalog.load_builder_class(step_name)
+                if builder_class:
+                    return builder_class
+            except Exception as e:
+                if self.verbose:
+                    print(f"⚠️  Step catalog failed to load builder for {step_name}: {e}")
         
-        # Fallback to registry lookup
-        try:
-            step_info = STEP_NAMES.get(step_name, {})
-            builder_class_name = step_info.get("builder_step_name")
-            if builder_class_name:
-                # Try to import the builder class
-                module_path = f"cursus.steps.builders.builder_{step_name.lower()}_step"
-                try:
-                    import importlib
-                    module = importlib.import_module(module_path)
-                    return getattr(module, builder_class_name, None)
-                except ImportError:
-                    pass
-        except Exception:
-            pass
+        # Fallback: Step catalog should handle everything, but keep minimal fallback
+        if self.verbose:
+            print(f"⚠️  Step catalog could not load builder for {step_name}, no fallback available")
         
         return None
     
     def _create_minimal_config(self, builder_class: Type) -> Any:
-        """Create minimal config for step creation capability testing."""
+        """Create minimal config using step catalog's real config classes with only essential fields."""
         try:
-            # Use alignment system's step type detection
+            # Get step name from builder class
             class_name = builder_class.__name__
             step_name = class_name[:-11] if class_name.endswith("StepBuilder") else class_name
-            step_type = get_sagemaker_step_type(step_name)
             
-            # Create minimal config based on step type
+            # Use step catalog to get the real config class
+            if self.step_catalog_available:
+                try:
+                    # Get discovered config classes
+                    config_classes = self.step_catalog.discover_config_classes()
+                    
+                    # Look for the config class for this step
+                    config_class_name = f"{step_name}Config"
+                    if config_class_name in config_classes:
+                        ConfigClass = config_classes[config_class_name]
+                        
+                        # Use config's field categorization to get only essential fields
+                        try:
+                            # Create temporary instance to call categorize_fields
+                            temp_data = {
+                                'author': 'temp',
+                                'bucket': 'temp', 
+                                'role': 'temp',
+                                'region': 'temp',
+                                'service_name': 'temp',
+                                'pipeline_version': 'temp',
+                                'project_root_folder': 'temp',
+                                'label_name': 'temp'  # Add for preprocessing steps
+                            }
+                            
+                            temp_instance = ConfigClass.model_construct(**temp_data)
+                            categories = temp_instance.categorize_fields()
+                            
+                            # Get essential fields (user-required fields)
+                            essential_fields = categories.get('essential', [])
+                            
+                            if essential_fields:
+                                # Create minimal config with only essential fields
+                                minimal_data = {}
+                                for field_name in essential_fields:
+                                    if field_name == 'author':
+                                        minimal_data[field_name] = 'test-author'
+                                    elif field_name == 'bucket':
+                                        minimal_data[field_name] = 'test-bucket'
+                                    elif field_name == 'role':
+                                        minimal_data[field_name] = 'arn:aws:iam::123456789012:role/TestRole'
+                                    elif field_name == 'region':
+                                        minimal_data[field_name] = 'us-east-1'
+                                    elif field_name == 'service_name':
+                                        minimal_data[field_name] = 'test-service'
+                                    elif field_name == 'pipeline_version':
+                                        minimal_data[field_name] = '1.0.0'
+                                    elif field_name == 'project_root_folder':
+                                        minimal_data[field_name] = '/tmp/test-project'
+                                    elif field_name == 'label_name':
+                                        minimal_data[field_name] = 'target'
+                                    else:
+                                        # Generic fallback for any other essential fields
+                                        minimal_data[field_name] = f'test-{field_name}'
+                                
+                                # Try to create the config instance with only essential fields
+                                try:
+                                    config_instance = ConfigClass(**minimal_data)
+                                    if self.verbose:
+                                        print(f"✅ Created config for {step_name} using only essential fields: {list(minimal_data.keys())}")
+                                    return config_instance
+                                except Exception as e:
+                                    if self.verbose:
+                                        print(f"⚠️  Config creation with essential fields failed: {e}")
+                                    
+                                    # Try with model_construct for more flexibility
+                                    try:
+                                        config_instance = ConfigClass.model_construct(**minimal_data)
+                                        if self.verbose:
+                                            print(f"✅ Created config for {step_name} using model_construct with essential fields")
+                                        return config_instance
+                                    except Exception as e2:
+                                        if self.verbose:
+                                            print(f"⚠️  model_construct also failed: {e2}")
+                            else:
+                                if self.verbose:
+                                    print(f"⚠️  No essential fields found for {step_name}")
+                                
+                        except Exception as e:
+                            if self.verbose:
+                                print(f"⚠️  Field categorization failed for {step_name}: {e}")
+                    
+                except Exception as e:
+                    if self.verbose:
+                        print(f"⚠️  Error using step catalog for config creation: {e}")
+            
+            # Fallback to enhanced minimal config with common essential fields
             from types import SimpleNamespace
             config = SimpleNamespace()
-            config.region = "NA"
-            config.pipeline_name = "test-pipeline"
-            config.pipeline_s3_loc = "s3://test-bucket/test-prefix"
+            
+            # Essential fields that most configs need (based on categorization analysis)
+            config.author = "test-author"
+            config.bucket = "test-bucket"
             config.role = "arn:aws:iam::123456789012:role/TestRole"
+            config.region = "us-east-1"
+            config.service_name = "test-service"
+            config.pipeline_version = "1.0.0"
+            config.project_root_folder = "/tmp/test-project"
             
-            # Add step-type-specific fields if needed
-            if step_type == "Training":
-                config.hyperparameters = {}
-                config.framework_version = "1.0"
-            elif step_type == "Processing":
-                config.instance_type = "ml.m5.large"
-                config.instance_count = 1
+            # Step-specific essential fields
+            if "TabularPreprocessing" in step_name:
+                config.label_name = "target"  # Essential for preprocessing
             
+            if self.verbose:
+                print(f"✅ Created fallback config for {step_name} with essential fields")
             return config
             
-        except Exception:
-            # Fallback to generic minimal config
+        except Exception as e:
+            if self.verbose:
+                print(f"❌ Error creating minimal config: {e}")
+            # Ultimate fallback with absolute minimum
             from types import SimpleNamespace
             config = SimpleNamespace()
-            config.region = "NA"
-            config.pipeline_name = "test-pipeline"
-            config.pipeline_s3_loc = "s3://test-bucket/test-prefix"
             config.role = "arn:aws:iam::123456789012:role/TestRole"
+            config.region = "us-east-1"
             return config
     
     def _determine_overall_status(self, components: Dict[str, Any]) -> str:
@@ -932,14 +1010,18 @@ class UniversalStepBuilderTest:
         results = {}
         
         try:
+            # Base configurations that should be excluded (no concrete builders expected)
+            BASE_CONFIGS = {'Processing', 'Base'}
+            
             # Get all steps of the specified type from registry
             matching_steps = []
             for step_name, step_info in STEP_NAMES.items():
-                if step_info.get("sagemaker_step_type") == sagemaker_step_type:
+                if (step_info.get("sagemaker_step_type") == sagemaker_step_type and 
+                    step_name not in BASE_CONFIGS):
                     matching_steps.append(step_name)
             
             if verbose:
-                print(f"🔍 Found {len(matching_steps)} steps of type {sagemaker_step_type}")
+                print(f"🔍 Found {len(matching_steps)} concrete steps of type {sagemaker_step_type}")
             
             # Create tester instance
             tester = cls(workspace_dirs=["."], verbose=verbose, enable_scoring=enable_scoring)
