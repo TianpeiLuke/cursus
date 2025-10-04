@@ -218,36 +218,31 @@ class TestUnifiedAlignmentTesterRefactored:
 
     def test_discover_scripts_integration(self, tester):
         """Test script discovery integration with step catalog."""
-        # Mock step catalog methods that _discover_all_steps calls
-        mock_step_names = ["script1", "script2"]
-        mock_builder_names = ["builder1"]
-        mock_spec_names = ["spec1"]
+        # Mock step catalog methods that actual implementation calls
+        mock_available_steps = ["script1", "script2", "builder1", "spec1"]
         
-        tester.step_catalog.get_all_step_names = Mock(return_value=mock_step_names)
-        tester.step_catalog.get_all_builder_names = Mock(return_value=mock_builder_names)
-        tester.step_catalog.get_all_spec_names = Mock(return_value=mock_spec_names)
+        tester.step_catalog.list_available_steps = Mock(return_value=mock_available_steps)
+        
+        # Mock _has_script_file to return True for all steps (actual implementation filters by script files)
+        tester._has_script_file = Mock(return_value=True)
         
         # Test discovery
         result = tester.discover_scripts()
         
-        # Should return discovered scripts (unique and sorted)
-        expected = sorted(list(set(mock_step_names + mock_builder_names + mock_spec_names)))
+        # Should return discovered scripts (filtered by script files)
+        expected = mock_available_steps  # All have script files in this test
         assert result == expected
         
-        # Should call all catalog methods
-        tester.step_catalog.get_all_step_names.assert_called_once()
-        tester.step_catalog.get_all_builder_names.assert_called_once()
-        tester.step_catalog.get_all_spec_names.assert_called_once()
+        # Should call actual catalog method used by implementation
+        tester.step_catalog.list_available_steps.assert_called_once()
 
     @patch('cursus.validation.alignment.unified_alignment_tester.get_sagemaker_step_type')
     @patch('cursus.validation.alignment.unified_alignment_tester.get_validation_ruleset')
     @patch('cursus.validation.alignment.unified_alignment_tester.is_step_type_excluded')
     def test_run_full_validation_with_mixed_step_types(self, mock_is_excluded, mock_get_ruleset, mock_get_step_type, tester):
         """Test full validation with mixed step types."""
-        # Mock script discovery methods that _discover_all_steps calls
-        tester.step_catalog.get_all_step_names = Mock(return_value=["processing_script"])
-        tester.step_catalog.get_all_builder_names = Mock(return_value=["create_model_step"])
-        tester.step_catalog.get_all_spec_names = Mock(return_value=["base_config"])
+        # Mock script discovery method that _discover_all_steps actually calls
+        tester.step_catalog.list_available_steps = Mock(return_value=["processing_script", "create_model_step", "base_config"])
         
         # Mock step type detection
         def mock_step_type_side_effect(step_name):
