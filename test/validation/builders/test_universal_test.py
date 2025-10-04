@@ -21,6 +21,20 @@ from src.cursus.validation.builders.universal_test import (
     TestUniversalStepBuilder
 )
 
+# Import streamlined components for testing
+try:
+    from src.cursus.validation.builders.reporting.builder_reporter import (
+        StreamlinedBuilderTestReporter,
+        StreamlinedBuilderTestReport
+    )
+    from src.cursus.validation.builders.reporting.scoring import (
+        StreamlinedStepBuilderScorer,
+        score_builder_validation_results
+    )
+    _has_streamlined_components = True
+except ImportError:
+    _has_streamlined_components = False
+
 
 class TestUniversalStepBuilderTest:
     """Test suite for UniversalStepBuilderTest class."""

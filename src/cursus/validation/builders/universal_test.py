@@ -154,7 +154,29 @@ class UniversalStepBuilderTest:
                 "error": f"No builder class found for step: {step_name}"
             }
         
-        return self._run_comprehensive_validation_for_step(step_name, builder_class)
+        # Run comprehensive validation
+        results = self._run_comprehensive_validation_for_step(step_name, builder_class)
+        
+        # Add scoring if enabled
+        if self.enable_scoring and SCORING_AVAILABLE:
+            try:
+                scoring_results = self._calculate_scoring(results)
+                results["scoring"] = scoring_results
+                # Store for reporter access
+                self._last_scoring_results = scoring_results
+                
+                if self.verbose:
+                    overall_score = scoring_results.get("overall", {}).get("score", 0.0)
+                    overall_rating = scoring_results.get("overall", {}).get("rating", "Unknown")
+                    print(f"📊 Quality Score: {overall_score:.1f}/100 - {overall_rating}")
+                    
+            except Exception as e:
+                if self.verbose:
+                    print(f"⚠️  Scoring calculation failed: {str(e)}")
+                # Don't fail validation if scoring fails
+                results["scoring_error"] = str(e)
+        
+        return results
     
     def _run_comprehensive_validation_for_step(self, step_name: str, builder_class: Type) -> Dict[str, Any]:
         """Run comprehensive validation for a step using unified approach."""
@@ -564,6 +586,89 @@ class UniversalStepBuilderTest:
             print(f"🎯 Total unique steps discovered: {len(unique_steps)}")
         
         return sorted(unique_steps)
+    
+    def _calculate_scoring(self, validation_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Calculate scoring using StreamlinedStepBuilderScorer."""
+        try:
+            from .reporting.scoring import StreamlinedStepBuilderScorer
+            scorer = StreamlinedStepBuilderScorer(validation_results)
+            return scorer.generate_report()
+        except Exception as e:
+            # Fallback to basic scoring if StreamlinedStepBuilderScorer fails
+            return self._calculate_basic_scoring(validation_results)
+    
+    def _calculate_basic_scoring(self, validation_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Basic scoring calculation as fallback."""
+        overall_status = validation_results.get("overall_status", "UNKNOWN")
+        components = validation_results.get("components", {})
+        
+        # Calculate basic score based on component status
+        total_components = len(components)
+        passed_components = sum(1 for comp in components.values() if comp.get("status") == "COMPLETED")
+        
+        if total_components > 0:
+            score = (passed_components / total_components) * 100
+        else:
+            score = 0.0
+        
+        # Determine rating
+        if score >= 90:
+            rating = "Excellent"
+        elif score >= 80:
+            rating = "Good"
+        elif score >= 70:
+            rating = "Fair"
+        elif score >= 60:
+            rating = "Poor"
+        else:
+            rating = "Critical"
+        
+        return {
+            "overall": {
+                "score": score,
+                "rating": rating,
+                "status": overall_status
+            },
+            "components": {
+                "total": total_components,
+                "passed": passed_components,
+                "pass_rate": score
+            },
+            "scoring_approach": "basic_fallback",
+            "note": "Using basic scoring - StreamlinedStepBuilderScorer not available"
+        }
+    
+    def generate_report(self, step_name: str):
+        """Generate comprehensive report for a step."""
+        try:
+            from .reporting.builder_reporter import StreamlinedBuilderTestReport
+            
+            # Run validation with scoring
+            validation_results = self.run_validation_for_step(step_name)
+            
+            # Get step type
+            step_type = get_sagemaker_step_type(step_name)
+            builder_class_name = validation_results.get("builder_class", "Unknown")
+            
+            # Create report
+            report = StreamlinedBuilderTestReport(step_name, builder_class_name, step_type)
+            
+            # Add validation results
+            components = validation_results.get("components", {})
+            if "alignment_validation" in components:
+                report.add_alignment_results(components["alignment_validation"])
+            if "integration_testing" in components:
+                report.add_integration_results(components["integration_testing"])
+            
+            # Add scoring if available
+            if "scoring" in validation_results:
+                report.add_scoring_data(validation_results["scoring"])
+            
+            return report
+            
+        except ImportError:
+            # Return validation results if reporter not available
+            return self.run_validation_for_step(step_name)
     
     def _get_builder_class_from_catalog(self, step_name: str) -> Optional[Type]:
         """Get builder class from step catalog or registry."""
