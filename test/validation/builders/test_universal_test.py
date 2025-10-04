@@ -17,7 +17,7 @@ import tempfile
 import json
 
 # Import the class under test
-from src.cursus.validation.builders.universal_test import UniversalStepBuilderTest
+from cursus.validation.builders.universal_test import UniversalStepBuilderTest
 
 
 class TestUniversalStepBuilderTestInitialization:
@@ -49,7 +49,7 @@ class TestUniversalStepBuilderTestInitialization:
         assert tester.enable_scoring is False
         assert tester.enable_structured_reporting is True
 
-    @patch('src.cursus.step_catalog.StepCatalog')
+    @patch('cursus.step_catalog.StepCatalog')
     def test_init_with_step_catalog_available(self, mock_step_catalog_class):
         """Test initialization when StepCatalog is available."""
         mock_catalog_instance = Mock()
@@ -61,7 +61,7 @@ class TestUniversalStepBuilderTestInitialization:
         assert tester.step_catalog == mock_catalog_instance
         mock_step_catalog_class.assert_called_once_with(workspace_dirs=["/test"])
 
-    @patch('src.cursus.step_catalog.StepCatalog')
+    @patch('cursus.step_catalog.StepCatalog')
     def test_init_with_step_catalog_import_error(self, mock_step_catalog_class):
         """Test initialization when StepCatalog import fails."""
         mock_step_catalog_class.side_effect = ImportError("StepCatalog not available")
@@ -71,7 +71,7 @@ class TestUniversalStepBuilderTestInitialization:
         assert tester.step_catalog_available is False
         assert tester.step_catalog is None
 
-    @patch('src.cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
+    @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_init_with_alignment_tester_available(self, mock_alignment_tester_class):
         """Test initialization when UnifiedAlignmentTester is available."""
         mock_alignment_instance = Mock()
@@ -83,7 +83,7 @@ class TestUniversalStepBuilderTestInitialization:
         assert tester.alignment_tester == mock_alignment_instance
         mock_alignment_tester_class.assert_called_once_with(workspace_dirs=["/test"])
 
-    @patch('src.cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
+    @patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester')
     def test_init_with_alignment_tester_import_error(self, mock_alignment_tester_class):
         """Test initialization when UnifiedAlignmentTester import fails."""
         mock_alignment_tester_class.side_effect = ImportError("UnifiedAlignmentTester not available")
@@ -100,7 +100,7 @@ class TestUniversalStepBuilderTestValidation:
     @pytest.fixture
     def mock_tester_with_catalog(self):
         """Create a tester with mocked step catalog."""
-        with patch('src.cursus.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog_class.return_value = mock_catalog
             
@@ -133,7 +133,7 @@ class TestUniversalStepBuilderTestValidation:
         mock_catalog.load_builder_class.return_value = mock_builder_class
         
         # Mock alignment tester at the actual import location
-        with patch('src.cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester') as mock_alignment_class:
+        with patch('cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester') as mock_alignment_class:
             mock_alignment = Mock()
             mock_alignment.run_validation_for_step.return_value = {
                 "step_name": "TestStep",
@@ -262,7 +262,7 @@ class TestUniversalStepBuilderTestStepInstantiation:
     def mock_tester_with_catalog(self):
         """Create tester with mocked step catalog."""
         # FIXED: Mock at actual import location (Category 1: Conditional Import Mocking)
-        with patch('src.cursus.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog_class.return_value = mock_catalog
             
@@ -377,7 +377,7 @@ class TestUniversalStepBuilderTestStepInstantiation:
         assert "_get_inputs" in result["found_methods"]
         assert "_get_outputs" not in result["found_methods"]
 
-    @patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type')
+    @patch('cursus.validation.builders.universal_test.get_sagemaker_step_type')
     def test_check_sagemaker_methods_training_step(self, mock_get_step_type):
         """Test SageMaker methods check for Training step."""
         tester = UniversalStepBuilderTest()
@@ -394,7 +394,7 @@ class TestUniversalStepBuilderTestStepInstantiation:
         assert result["step_type"] == "Training"
         assert "_create_estimator" in result["found_methods"]
 
-    @patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type')
+    @patch('cursus.validation.builders.universal_test.get_sagemaker_step_type')
     def test_check_sagemaker_methods_processing_step(self, mock_get_step_type):
         """Test SageMaker methods check for Processing step."""
         tester = UniversalStepBuilderTest()
@@ -411,7 +411,7 @@ class TestUniversalStepBuilderTestStepInstantiation:
         assert result["step_type"] == "Processing"
         assert "_create_processor" in result["found_methods"]
 
-    @patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type')
+    @patch('cursus.validation.builders.universal_test.get_sagemaker_step_type')
     def test_check_sagemaker_methods_missing_required_method(self, mock_get_step_type):
         """Test SageMaker methods check when required method is missing."""
         tester = UniversalStepBuilderTest()
@@ -436,7 +436,7 @@ class TestUniversalStepBuilderTestStepCreation:
     def mock_tester_with_catalog(self):
         """Create tester with mocked step catalog."""
         # FIXED: Mock at actual import location (Category 1: Conditional Import Mocking)
-        with patch('src.cursus.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog_class.return_value = mock_catalog
             
@@ -541,7 +541,7 @@ class TestUniversalStepBuilderTestStepCreation:
 class TestUniversalStepBuilderTestStepTypeValidation:
     """Test step type specific validation methods."""
 
-    @patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type')
+    @patch('cursus.validation.builders.universal_test.get_sagemaker_step_type')
     def test_run_step_type_specific_validation_processing(self, mock_get_step_type):
         """Test step type validation for Processing steps."""
         tester = UniversalStepBuilderTest()
@@ -558,7 +558,7 @@ class TestUniversalStepBuilderTestStepTypeValidation:
         assert result["results"]["step_type"] == "Processing"
         assert result["results"]["step_type_tests"]["processor_methods"]["passed"] is True
 
-    @patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type')
+    @patch('cursus.validation.builders.universal_test.get_sagemaker_step_type')
     def test_run_step_type_specific_validation_training(self, mock_get_step_type):
         """Test step type validation for Training steps."""
         tester = UniversalStepBuilderTest()
@@ -573,7 +573,7 @@ class TestUniversalStepBuilderTestStepTypeValidation:
         assert result["results"]["step_type"] == "Training"
         assert result["results"]["step_type_tests"]["estimator_methods"]["passed"] is True
 
-    @patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type')
+    @patch('cursus.validation.builders.universal_test.get_sagemaker_step_type')
     def test_run_step_type_specific_validation_unknown_type(self, mock_get_step_type):
         """Test step type validation for unknown step types."""
         tester = UniversalStepBuilderTest()
@@ -595,7 +595,7 @@ class TestUniversalStepBuilderTestDiscovery:
     def mock_tester_with_catalog(self):
         """Create tester with mocked step catalog."""
         # FIXED: Category 1 - Mock at actual import location (conditional import)
-        with patch('src.cursus.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog_class.return_value = mock_catalog
             
@@ -620,7 +620,7 @@ class TestUniversalStepBuilderTestDiscovery:
         assert "Step3" in steps
         mock_catalog.list_available_steps.assert_called_once()
 
-    @patch('src.cursus.validation.builders.universal_test.STEP_NAMES')
+    @patch('cursus.validation.builders.universal_test.STEP_NAMES')
     def test_discover_all_steps_fallback_to_registry(self, mock_step_names):
         """Test step discovery fallback to registry when catalog fails."""
         # Create tester without step catalog
@@ -754,7 +754,7 @@ class TestUniversalStepBuilderTestClassMethods:
         assert tester.workspace_dirs == ["/test"]
         assert tester.verbose is True
 
-    @patch('src.cursus.validation.builders.universal_test.STEP_NAMES')
+    @patch('cursus.validation.builders.universal_test.STEP_NAMES')
     def test_test_all_builders_by_type(self, mock_step_names):
         """Test testing all builders by SageMaker step type."""
         # Mock STEP_NAMES registry
@@ -787,7 +787,7 @@ class TestUniversalStepBuilderTestErrorHandling:
     def test_run_validation_for_step_scoring_error(self):
         """Test validation when scoring calculation fails."""
         # FIXED: Category 1 - Mock at actual import location (conditional import)
-        with patch('src.cursus.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog_class.return_value = mock_catalog
             
@@ -840,7 +840,7 @@ class TestUniversalStepBuilderTestErrorHandling:
         tester = UniversalStepBuilderTest()
         
         # Mock get_sagemaker_step_type to raise exception
-        with patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type') as mock_get_type:
+        with patch('cursus.validation.builders.universal_test.get_sagemaker_step_type') as mock_get_type:
             mock_get_type.side_effect = Exception("Step type lookup failed")
             
             mock_builder = Mock()
@@ -906,7 +906,7 @@ class TestUniversalStepBuilderTestFullValidation:
     def mock_tester_setup(self):
         """Set up tester with all necessary mocks."""
         # FIXED: Category 1 - Mock at actual import location (conditional import)
-        with patch('src.cursus.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog_class.return_value = mock_catalog
             
@@ -976,7 +976,7 @@ class TestUniversalStepBuilderTestScoring:
         }
         
         # FIXED: Category 1 - Mock at actual import location (conditional import)
-        with patch('src.cursus.validation.builders.reporting.scoring.StreamlinedStepBuilderScorer') as mock_scorer_class:
+        with patch('cursus.validation.builders.reporting.scoring.StreamlinedStepBuilderScorer') as mock_scorer_class:
             mock_scorer = Mock()
             mock_scorer.generate_report.return_value = {
                 "overall": {"score": 95.0, "rating": "Excellent"}
@@ -1003,7 +1003,7 @@ class TestUniversalStepBuilderTestScoring:
         }
         
         # FIXED: Category 1 - Mock at actual import location (conditional import)
-        with patch('src.cursus.validation.builders.reporting.scoring.StreamlinedStepBuilderScorer') as mock_scorer_class:
+        with patch('cursus.validation.builders.reporting.scoring.StreamlinedStepBuilderScorer') as mock_scorer_class:
             mock_scorer_class.side_effect = Exception("Scorer failed")
             
             result = tester._calculate_scoring(validation_results)
@@ -1080,11 +1080,11 @@ class TestUniversalStepBuilderTestExportAndReporting:
             }
             
             # Mock get_sagemaker_step_type
-            with patch('src.cursus.validation.builders.universal_test.get_sagemaker_step_type') as mock_get_type:
+            with patch('cursus.validation.builders.universal_test.get_sagemaker_step_type') as mock_get_type:
                 mock_get_type.return_value = "Training"
                 
                 # FIXED: Category 1 - Mock at actual import location (conditional import)
-                with patch('src.cursus.validation.builders.reporting.builder_reporter.StreamlinedBuilderTestReport') as mock_report_class:
+                with patch('cursus.validation.builders.reporting.builder_reporter.StreamlinedBuilderTestReport') as mock_report_class:
                     mock_report = Mock()
                     mock_report_class.return_value = mock_report
                     
@@ -1108,7 +1108,7 @@ class TestUniversalStepBuilderTestExportAndReporting:
             mock_validation.return_value = validation_results
             
             # FIXED: Category 1 - Mock at actual import location (conditional import)
-            with patch('src.cursus.validation.builders.reporting.builder_reporter.StreamlinedBuilderTestReport') as mock_report_class:
+            with patch('cursus.validation.builders.reporting.builder_reporter.StreamlinedBuilderTestReport') as mock_report_class:
                 mock_report_class.side_effect = ImportError("Reporter not available")
                 
                 result = tester.generate_report("XGBoostTraining")

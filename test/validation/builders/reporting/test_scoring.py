@@ -16,7 +16,7 @@ import json
 import tempfile
 
 # Import the classes under test
-from src.cursus.validation.builders.reporting.scoring import (
+from cursus.validation.builders.reporting.scoring import (
     StreamlinedStepBuilderScorer,
     score_builder_validation_results,
     score_builder_results,

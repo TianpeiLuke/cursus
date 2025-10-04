@@ -17,7 +17,7 @@ import json
 import tempfile
 
 # Import the classes under test
-from src.cursus.validation.builders.reporting.builder_reporter import (
+from cursus.validation.builders.reporting.builder_reporter import (
     StreamlinedBuilderTestReport,
     StreamlinedBuilderTestReporter
 )
@@ -629,7 +629,7 @@ class TestStreamlinedBuilderTestReporterStepNameInference:
         mock_builder.__name__ = "TestStepBuilder"
         
         # FIXED: Mock STEP_NAMES at actual import location (Category 1: Mock Path Issues)
-        with patch('src.cursus.registry.step_names.STEP_NAMES') as mock_step_names:
+        with patch('cursus.registry.step_names.STEP_NAMES') as mock_step_names:
             mock_step_names.items.return_value = [
                 ("FoundStep", {"builder_step_name": "TestStepBuilder"}),
                 ("OtherStep", {"builder_step_name": "OtherStepBuilder"})
@@ -645,7 +645,7 @@ class TestStreamlinedBuilderTestReporterStepNameInference:
         mock_builder.__name__ = "UnknownStepBuilder"
         
         # FIXED: Mock STEP_NAMES at actual import location (Category 1: Mock Path Issues)
-        with patch('src.cursus.registry.step_names.STEP_NAMES') as mock_step_names:
+        with patch('cursus.registry.step_names.STEP_NAMES') as mock_step_names:
             mock_step_names.items.return_value = [
                 ("OtherStep", {"builder_step_name": "OtherStepBuilder"})
             ]
@@ -673,7 +673,7 @@ class TestStreamlinedBuilderTestReporterBuilderLoading:
         mock_catalog.load_builder_class.return_value = mock_builder_class
         
         # Mock StepCatalog creation at actual import location
-        with patch('src.cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog_class.return_value = mock_catalog
             
             result = reporter._load_builder_class("TestStep")
@@ -686,7 +686,7 @@ class TestStreamlinedBuilderTestReporterBuilderLoading:
         mock_catalog = Mock()
         mock_catalog.load_builder_class.return_value = None
         
-        with patch('src.cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog_class.return_value = mock_catalog
             
             result = reporter._load_builder_class("NonExistentStep")
@@ -696,7 +696,7 @@ class TestStreamlinedBuilderTestReporterBuilderLoading:
     def test_load_builder_class_exception(self, reporter):
         """Test builder class loading when exception occurs."""
         # FIXED: Category 1 - Mock at actual import location (nested module import)
-        with patch('src.cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog_class.side_effect = Exception("Catalog failed")
             
             result = reporter._load_builder_class("TestStep")
@@ -709,7 +709,7 @@ class TestStreamlinedBuilderTestReporterBuilderLoading:
         mock_catalog.load_builder_class.return_value = Mock()
         
         # FIXED: Category 1 - Mock at actual import location (nested module import)
-        with patch('src.cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
+        with patch('cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
             mock_catalog_class.return_value = mock_catalog
             
             # First call
@@ -740,13 +740,13 @@ class TestStreamlinedBuilderTestReporterTestAndReport:
     def test_test_and_report_builder_success(self, reporter, mock_builder_class):
         """Test successful test and report generation."""
         # FIXED: Category 1 - Mock STEP_NAMES at actual import location (registry import)
-        with patch('src.cursus.registry.step_names.STEP_NAMES') as mock_step_names:
+        with patch('cursus.registry.step_names.STEP_NAMES') as mock_step_names:
             mock_step_names.get.return_value = {"sagemaker_step_type": "Training"}
             
             # FIXED: Category 1 - Relative Import Pattern (following enhanced guide STEP 2D)
             # Source: from ..universal_test import UniversalStepBuilderTest
-            # Convert relative ..universal_test to absolute: src.cursus.validation.builders.universal_test
-            with patch('src.cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
+            # Convert relative ..universal_test to absolute: cursus.validation.builders.universal_test
+            with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
                 mock_tester = Mock()
                 mock_tester.run_validation_for_step.return_value = {
                     "components": {
@@ -769,13 +769,13 @@ class TestStreamlinedBuilderTestReporterTestAndReport:
     def test_test_and_report_builder_infers_step_name(self, reporter, mock_builder_class):
         """Test that step name is inferred when not provided."""
         # FIXED: Category 1 - Mock STEP_NAMES at actual import location (registry import)
-        with patch('src.cursus.registry.step_names.STEP_NAMES') as mock_step_names:
+        with patch('cursus.registry.step_names.STEP_NAMES') as mock_step_names:
             mock_step_names.get.return_value = {"sagemaker_step_type": "Processing"}
             
             # FIXED: Category 1 - Relative Import Pattern (following enhanced guide STEP 2D)
             # Source: from ..universal_test import UniversalStepBuilderTest
-            # Convert relative ..universal_test to absolute: src.cursus.validation.builders.universal_test
-            with patch('src.cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
+            # Convert relative ..universal_test to absolute: cursus.validation.builders.universal_test
+            with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
                 mock_tester = Mock()
                 mock_tester.run_validation_for_step.return_value = {
                     "components": {
@@ -796,13 +796,13 @@ class TestStreamlinedBuilderTestReporterTestAndReport:
     def test_test_and_report_builder_with_exception(self, reporter, mock_builder_class):
         """Test test and report generation when exception occurs."""
         # FIXED: Category 1 - Mock STEP_NAMES at actual import location (registry import)
-        with patch('src.cursus.registry.step_names.STEP_NAMES') as mock_step_names:
+        with patch('cursus.registry.step_names.STEP_NAMES') as mock_step_names:
             mock_step_names.get.return_value = {"sagemaker_step_type": "Training"}
             
             # FIXED: Category 1 - Relative Import Pattern (following enhanced guide STEP 2D)
             # Source: from ..universal_test import UniversalStepBuilderTest
-            # Convert relative ..universal_test to absolute: src.cursus.validation.builders.universal_test
-            with patch('src.cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
+            # Convert relative ..universal_test to absolute: cursus.validation.builders.universal_test
+            with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
                 mock_tester_class.side_effect = Exception("Validation failed")
                 
                 report = reporter.test_and_report_builder(mock_builder_class, "TestStep")
@@ -844,7 +844,7 @@ class TestStreamlinedBuilderTestReporterStepTypeReporting:
     # FIXED: Category 1 - Conditional Function Import Pattern (following enhanced guide)
     # Source: from ....registry.step_names import get_steps_by_sagemaker_type
     # Mock at registry source, not importing module
-    @patch('src.cursus.registry.step_names.get_steps_by_sagemaker_type')
+    @patch('cursus.registry.step_names.get_steps_by_sagemaker_type')
     def test_test_step_type_builders_success(self, mock_get_steps, reporter):
         """Test testing all builders of a specific step type."""
         # Mock step discovery
@@ -882,7 +882,7 @@ class TestStreamlinedBuilderTestReporterStepTypeReporting:
     # FIXED: Category 1 - Conditional Function Import Pattern (following enhanced guide)
     # Source: from ....registry.step_names import get_steps_by_sagemaker_type
     # Mock at registry source, not importing module
-    @patch('src.cursus.registry.step_names.get_steps_by_sagemaker_type')
+    @patch('cursus.registry.step_names.get_steps_by_sagemaker_type')
     def test_test_step_type_builders_no_steps_found(self, mock_get_steps, reporter):
         """Test testing step type when no steps are found."""
         mock_get_steps.return_value = []
@@ -894,7 +894,7 @@ class TestStreamlinedBuilderTestReporterStepTypeReporting:
     # FIXED: Category 1 - Conditional Function Import Pattern (following enhanced guide)
     # Source: from ....registry.step_names import get_steps_by_sagemaker_type
     # Mock at registry source, not importing module
-    @patch('src.cursus.registry.step_names.get_steps_by_sagemaker_type')
+    @patch('cursus.registry.step_names.get_steps_by_sagemaker_type')
     def test_test_step_type_builders_with_load_failures(self, mock_get_steps, reporter):
         """Test testing step type when some builders fail to load."""
         mock_get_steps.return_value = ["Step1", "Step2"]
@@ -979,13 +979,13 @@ class TestStreamlinedBuilderTestReporterErrorHandling:
         mock_builder.__name__ = "UnknownStepBuilder"
         
         # FIXED: Category 1 - Mock STEP_NAMES at actual import location (registry import)
-        with patch('src.cursus.registry.step_names.STEP_NAMES') as mock_step_names:
+        with patch('cursus.registry.step_names.STEP_NAMES') as mock_step_names:
             mock_step_names.get.return_value = {}  # No step info found
             
             # FIXED: Category 1 - Relative Import Pattern (following enhanced guide STEP 2D)
             # Source: from ..universal_test import UniversalStepBuilderTest
-            # Convert relative ..universal_test to absolute: src.cursus.validation.builders.universal_test
-            with patch('src.cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
+            # Convert relative ..universal_test to absolute: cursus.validation.builders.universal_test
+            with patch('cursus.validation.builders.universal_test.UniversalStepBuilderTest') as mock_tester_class:
                 mock_tester = Mock()
                 mock_tester.run_validation_for_step.return_value = {"components": {}}
                 mock_tester_class.return_value = mock_tester
@@ -998,7 +998,7 @@ class TestStreamlinedBuilderTestReporterErrorHandling:
     def test_test_step_type_builders_handles_exception(self, reporter):
         """Test handling when step type testing raises exception."""
         # FIXED: Category 1 - Mock get_steps_by_sagemaker_type at actual import location (registry import)
-        with patch('src.cursus.registry.step_names.get_steps_by_sagemaker_type') as mock_get_steps:
+        with patch('cursus.registry.step_names.get_steps_by_sagemaker_type') as mock_get_steps:
             mock_get_steps.side_effect = Exception("Discovery failed")
             
             results = reporter.test_step_type_builders("Training")
@@ -1030,7 +1030,7 @@ class TestStreamlinedBuilderTestReporterBackwardCompatibility:
     def test_backward_compatibility_aliases(self):
         """Test that backward compatibility aliases exist."""
         # These should be available for backward compatibility
-        from src.cursus.validation.builders.reporting.builder_reporter import (
+        from cursus.validation.builders.reporting.builder_reporter import (
             BuilderTestReport,
             BuilderTestReporter
         )
