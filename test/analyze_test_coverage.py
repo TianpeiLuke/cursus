@@ -1,64 +1,108 @@
 #!/usr/bin/env python3
 """
-Comprehensive Test Coverage Analysis for Cursus Core Package
+Comprehensive Test Coverage Analysis for Cursus Package
 
-This program analyzes test coverage for the core package components:
-- assembler
-- base
-- compiler
-- config_fields (config_field in test directory)
-- deps
+This program provides comprehensive test coverage analysis for the entire cursus package,
+including all components: api, cli, core, mods, pipeline_catalog, processing, registry,
+step_catalog, steps, validation, and workspace.
 
-It provides detailed reporting on test results and coverage analysis.
+Features:
+- Full package coverage analysis using pytest-cov
+- Component-by-component breakdown
+- Function-level coverage analysis
+- HTML and JSON reporting
+- Integration with existing test infrastructure
+- Performance metrics and timing analysis
+- Coverage trend tracking
 """
 
 import json
 import sys
 import os
+import subprocess
+import time
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict, Counter
 import ast
 import re
+from datetime import datetime
 
 # Add the project root to the Python path
 # Note: project_root setup handled by conftest.py
 
 
 class TestCoverageAnalyzer:
-    """Comprehensive test coverage analyzer for cursus core package."""
+    """Comprehensive test coverage analyzer for the entire cursus package."""
 
     def __init__(self):
         """Initialize the test coverage analyzer."""
         self.root = Path(__file__).resolve().parent.parent
-        self.src_dir = self.root / "src" / "cursus" / "core"
-        self.test_dir = self.root / "test" / "core"
+        self.src_dir = self.root / "src" / "cursus"
+        self.test_dir = self.root / "test"
 
-        # Component mapping
+        # All cursus package components
         self.components = {
-            "assembler": {
-                "source_dir": self.src_dir / "assembler",
-                "test_dir": self.test_dir / "assembler",
+            "api": {
+                "source_dir": self.src_dir / "api",
+                "test_dir": self.test_dir / "api",
+                "description": "DAG and pipeline API components"
             },
-            "base": {
-                "source_dir": self.src_dir / "base",
-                "test_dir": self.test_dir / "base",
+            "cli": {
+                "source_dir": self.src_dir / "cli",
+                "test_dir": self.test_dir / "cli",
+                "description": "Command-line interface tools"
             },
-            "compiler": {
-                "source_dir": self.src_dir / "compiler",
-                "test_dir": self.test_dir / "compiler",
+            "core": {
+                "source_dir": self.src_dir / "core",
+                "test_dir": self.test_dir / "core",
+                "description": "Core framework components (assembler, base, compiler, config_fields, deps)"
             },
-            "config_fields": {
-                "source_dir": self.src_dir / "config_fields",
-                "test_dir": self.test_dir / "config_fields",
+            "mods": {
+                "source_dir": self.src_dir / "mods",
+                "test_dir": self.test_dir / "mods",
+                "description": "MODS integration and execution documents"
             },
-            "deps": {
-                "source_dir": self.src_dir / "deps",
-                "test_dir": self.test_dir / "deps",
+            "pipeline_catalog": {
+                "source_dir": self.src_dir / "pipeline_catalog",
+                "test_dir": self.test_dir / "pipeline_catalog",
+                "description": "Pipeline catalog and registry management"
             },
+            "processing": {
+                "source_dir": self.src_dir / "processing",
+                "test_dir": self.test_dir / "processing",
+                "description": "Data processing and transformation components"
+            },
+            "registry": {
+                "source_dir": self.src_dir / "registry",
+                "test_dir": self.test_dir / "registry",
+                "description": "Step and hyperparameter registry management"
+            },
+            "step_catalog": {
+                "source_dir": self.src_dir / "step_catalog",
+                "test_dir": self.test_dir / "step_catalog",
+                "description": "Step catalog discovery and management"
+            },
+            "steps": {
+                "source_dir": self.src_dir / "steps",
+                "test_dir": self.test_dir / "steps",
+                "description": "Pipeline step builders, configs, and specifications"
+            },
+            "validation": {
+                "source_dir": self.src_dir / "validation",
+                "test_dir": self.test_dir / "validation",
+                "description": "Validation framework and alignment testing"
+            },
+            "workspace": {
+                "source_dir": self.src_dir / "workspace",
+                "test_dir": self.test_dir / "workspace",
+                "description": "Workspace management and integration"
+            }
         }
 
         self.coverage_data = {}
+        self.start_time = None
+        self.end_time = None
 
     def extract_functions_from_file(self, file_path: Path) -> List[str]:
         """Extract function and method names from a Python file."""
@@ -87,6 +131,80 @@ class TestCoverageAnalyzer:
 
         return functions
 
+    def run_pytest_coverage(self, component: Optional[str] = None, 
+                           html_report: bool = True, 
+                           fail_under: Optional[float] = None) -> Dict:
+        """Run pytest with coverage analysis."""
+        print("🚀 Running pytest with coverage analysis...")
+        self.start_time = time.time()
+        
+        # Base pytest command with coverage
+        cmd = [
+            "python", "-m", "pytest",
+            "--cov=src/cursus",
+            "--cov-report=json:test/coverage.json",
+            "--cov-report=term-missing",
+            "-v"
+        ]
+        
+        # Add HTML report if requested
+        if html_report:
+            cmd.extend(["--cov-report=html:htmlcov"])
+            
+        # Add fail-under threshold if specified
+        if fail_under:
+            cmd.extend([f"--cov-fail-under={fail_under}"])
+            
+        # Target specific component if specified
+        if component and component in self.components:
+            test_path = self.components[component]["test_dir"]
+            if test_path.exists():
+                cmd.append(str(test_path))
+            else:
+                print(f"⚠️  Test directory not found for {component}: {test_path}")
+                return {}
+        else:
+            # Run all tests
+            cmd.append("test/")
+            
+        # Change to project root directory
+        original_cwd = os.getcwd()
+        os.chdir(self.root)
+        
+        try:
+            print(f"📋 Running command: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            
+            self.end_time = time.time()
+            execution_time = self.end_time - self.start_time
+            
+            # Parse results
+            coverage_data = {
+                "command": " ".join(cmd),
+                "execution_time": execution_time,
+                "return_code": result.returncode,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "success": result.returncode == 0
+            }
+            
+            # Load JSON coverage report if available
+            coverage_json_path = self.root / "test" / "coverage.json"
+            if coverage_json_path.exists():
+                with open(coverage_json_path, 'r') as f:
+                    coverage_data["detailed_coverage"] = json.load(f)
+                    
+            return coverage_data
+            
+        except subprocess.TimeoutExpired:
+            print("❌ Test execution timed out after 10 minutes")
+            return {"error": "timeout", "execution_time": 600}
+        except Exception as e:
+            print(f"❌ Error running tests: {e}")
+            return {"error": str(e)}
+        finally:
+            os.chdir(original_cwd)
+
     def analyze_component_coverage(self, component_name: str) -> Dict:
         """Analyze test coverage for a specific component."""
         component_info = self.components[component_name]
@@ -97,31 +215,49 @@ class TestCoverageAnalyzer:
         source_files = []
         source_functions_by_file = {}
         all_source_functions = []
+        total_source_lines = 0
 
         if source_dir.exists():
-            for py_file in source_dir.glob("*.py"):
+            for py_file in source_dir.rglob("*.py"):
                 if py_file.name.startswith("__"):
                     continue
 
-                rel_path = f"src/cursus/core/{component_name}/{py_file.name}"
-                source_files.append(rel_path)
+                rel_path = py_file.relative_to(self.src_dir)
+                source_files.append(str(rel_path))
+
+                # Count lines
+                try:
+                    with open(py_file, 'r', encoding='utf-8') as f:
+                        lines = len(f.readlines())
+                        total_source_lines += lines
+                except:
+                    pass
 
                 functions = self.extract_functions_from_file(py_file)
-                source_functions_by_file[rel_path] = functions
+                source_functions_by_file[str(rel_path)] = functions
                 all_source_functions.extend(functions)
 
         # Get test files and functions
         test_files = []
         test_functions_by_file = {}
         all_test_functions = []
+        total_test_lines = 0
 
         if test_dir.exists():
-            for py_file in test_dir.glob("test_*.py"):
-                rel_path = f"test/core/{component_name}/{py_file.name}"
-                test_files.append(rel_path)
+            for py_file in test_dir.rglob("test_*.py"):
+                rel_path = py_file.relative_to(self.test_dir)
+                test_files.append(str(rel_path))
+
+                # Count lines
+                try:
+                    with open(py_file, 'r', encoding='utf-8') as f:
+                        lines = len(f.readlines())
+                        total_test_lines += lines
+                except:
+                    pass
 
                 functions = self.extract_functions_from_file(py_file)
-                test_functions_by_file[rel_path] = functions
+                test_functions_by_file[str(rel_path)] = functions
                 all_test_functions.extend(functions)
 
         # Determine likely tested functions based on naming patterns
@@ -165,12 +301,18 @@ class TestCoverageAnalyzer:
 
         return {
             "component": component_name,
+            "description": component_info["description"],
+            "source_exists": source_dir.exists(),
+            "test_exists": test_dir.exists(),
             "source_files": source_files,
             "test_files": test_files,
             "total_source_functions": total_functions,
             "tested_functions": tested_functions,
             "untested_functions": untested_functions,
             "coverage_percentage": coverage_percentage,
+            "total_source_lines": total_source_lines,
+            "total_test_lines": total_test_lines,
+            "test_to_source_ratio": len(all_test_functions) / max(total_functions, 1),
             "source_functions_by_file": source_functions_by_file,
             "test_functions_by_file": test_functions_by_file,
             "likely_tested_functions": likely_tested,
@@ -317,19 +459,92 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Analyze test coverage for cursus core package"
+        description="Comprehensive test coverage analysis for cursus package",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python analyze_test_coverage.py                    # Full analysis of all components
+  python analyze_test_coverage.py --component core   # Analyze only core component
+  python analyze_test_coverage.py --pytest          # Run pytest with coverage
+  python analyze_test_coverage.py --pytest --html   # Run pytest with HTML report
+  python analyze_test_coverage.py --list-components  # List all available components
+        """
     )
+    
     parser.add_argument("--component", help="Analyze specific component only")
     parser.add_argument(
         "--output",
-        default="core_coverage_analysis.json",
-        help="Output file name (default: core_coverage_analysis.json)",
+        default="comprehensive_coverage_analysis.json",
+        help="Output file name (default: comprehensive_coverage_analysis.json)",
+    )
+    parser.add_argument(
+        "--pytest", 
+        action="store_true",
+        help="Run pytest with coverage analysis"
+    )
+    parser.add_argument(
+        "--html", 
+        action="store_true",
+        help="Generate HTML coverage report (requires --pytest)"
+    )
+    parser.add_argument(
+        "--fail-under",
+        type=float,
+        help="Fail if coverage is under this percentage"
+    )
+    parser.add_argument(
+        "--list-components",
+        action="store_true",
+        help="List all available components and exit"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose output"
     )
 
     args = parser.parse_args()
 
     try:
         analyzer = TestCoverageAnalyzer()
+
+        # List components and exit
+        if args.list_components:
+            print("📋 Available Components:")
+            print("=" * 50)
+            for name, info in analyzer.components.items():
+                status = "✅" if info["source_dir"].exists() else "❌"
+                test_status = "🧪" if info["test_dir"].exists() else "❌"
+                print(f"{status} {name:<15} {test_status} {info['description']}")
+            print("\nLegend: ✅ = Source exists, 🧪 = Tests exist, ❌ = Missing")
+            return
+
+        # Run pytest with coverage
+        if args.pytest:
+            print("🚀 Running pytest with coverage analysis...")
+            pytest_results = analyzer.run_pytest_coverage(
+                component=args.component,
+                html_report=args.html,
+                fail_under=args.fail_under
+            )
+            
+            if pytest_results.get("success"):
+                print("✅ Pytest execution completed successfully")
+                if args.html:
+                    print("📊 HTML coverage report generated in htmlcov/")
+            else:
+                print("❌ Pytest execution failed")
+                if args.verbose:
+                    print("STDOUT:", pytest_results.get("stdout", ""))
+                    print("STDERR:", pytest_results.get("stderr", ""))
+                    
+            # Save pytest results
+            pytest_output = args.output.replace(".json", "_pytest.json")
+            analyzer.save_analysis_results(pytest_results, pytest_output)
+            
+            # Also run function-level analysis
+            print("\n" + "="*60)
+            print("Running function-level analysis...")
 
         if args.component:
             # Analyze single component
@@ -340,24 +555,63 @@ def main():
 
             print(f"🔍 Analyzing component: {args.component}")
             coverage_data = analyzer.analyze_component_coverage(args.component)
-            test_count = analyzer.get_test_count(args.component)
 
             # Print detailed results for single component
             print(f"\n📊 COVERAGE ANALYSIS - {args.component.upper()}")
+            print(f"   Description: {coverage_data['description']}")
+            print(f"   Source exists: {'✅' if coverage_data['source_exists'] else '❌'}")
+            print(f"   Tests exist: {'✅' if coverage_data['test_exists'] else '❌'}")
             print(f"   Total Functions: {coverage_data['total_source_functions']}")
             print(f"   Tested Functions: {coverage_data['tested_functions']}")
             print(f"   Coverage: {coverage_data['coverage_percentage']:.1f}%")
-            print(f"   Test Functions: {test_count}")
+            print(f"   Source Lines: {coverage_data['total_source_lines']}")
+            print(f"   Test Lines: {coverage_data['total_test_lines']}")
+            print(f"   Test/Source Ratio: {coverage_data['test_to_source_ratio']:.2f}")
 
-            if coverage_data["likely_untested_functions"]:
+            if coverage_data["likely_untested_functions"] and args.verbose:
                 print(f"\n📋 LIKELY UNTESTED FUNCTIONS:")
                 for func in coverage_data["likely_untested_functions"]:
                     print(f"   • {func}")
+                    
+            # Save single component results
+            single_results = {
+                "timestamp": analyzer._get_timestamp(),
+                "component_analysis": coverage_data,
+                "summary": {
+                    "component": args.component,
+                    "coverage_percentage": coverage_data['coverage_percentage'],
+                    "total_functions": coverage_data['total_source_functions'],
+                    "tested_functions": coverage_data['tested_functions']
+                }
+            }
+            analyzer.save_analysis_results(single_results, args.output)
         else:
             # Run full analysis
             results = analyzer.run_full_analysis()
             analyzer.print_summary_report(results)
             analyzer.save_analysis_results(results, args.output)
+            
+            # Print recommendations
+            print(f"\n💡 RECOMMENDATIONS:")
+            coverage_data = results["coverage_analysis"]
+            
+            # Find components with no tests
+            no_tests = [name for name, data in coverage_data.items() 
+                       if not data["test_exists"]]
+            if no_tests:
+                print(f"   🚨 Components without tests: {', '.join(no_tests)}")
+                
+            # Find components with low coverage
+            low_coverage = [name for name, data in coverage_data.items() 
+                           if data["coverage_percentage"] < 30 and data["source_exists"]]
+            if low_coverage:
+                print(f"   ⚠️  Low coverage components: {', '.join(low_coverage)}")
+                
+            # Find components with good coverage
+            good_coverage = [name for name, data in coverage_data.items() 
+                            if data["coverage_percentage"] > 70]
+            if good_coverage:
+                print(f"   ✅ Well-tested components: {', '.join(good_coverage)}")
 
     except KeyboardInterrupt:
         print("\n⚠️  Analysis interrupted by user")
