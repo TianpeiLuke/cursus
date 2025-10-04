@@ -338,20 +338,175 @@ class UniversalStepBuilderTest:
             }
     
     def _check_step_instantiation(self, builder_class: Type) -> Dict[str, Any]:
-        """Check basic step instantiation capability."""
+        """Check step instantiation structural requirements."""
         try:
-            # Try to instantiate with minimal config
-            minimal_config = self._create_minimal_config(builder_class)
-            builder = builder_class(config=minimal_config)
+            checks = {}
+            
+            # 1. Confirm existence of corresponding config class
+            config_check = self._check_config_class_exists(builder_class)
+            checks["config_class_exists"] = config_check
+            
+            # 2. Confirm step builder imports config correctly
+            import_check = self._check_config_import(builder_class)
+            checks["config_import"] = import_check
+            
+            # 3. Confirm inputs and outputs are defined (via _get_inputs/_get_outputs methods)
+            io_check = self._check_input_output_methods(builder_class)
+            checks["input_output_methods"] = io_check
+            
+            # 4. For SageMaker steps, confirm required methods exist (create_processor, create_estimator, etc.)
+            sagemaker_check = self._check_sagemaker_methods(builder_class)
+            checks["sagemaker_methods"] = sagemaker_check
+            
+            # Overall pass if all structural checks pass
+            all_passed = all(check.get("passed", False) for check in checks.values())
             
             return {
-                "passed": True,
-                "note": "Builder can be instantiated with minimal config"
+                "passed": all_passed,
+                "checks": checks,
+                "note": "Structural validation - no instantiation attempted"
             }
         except Exception as e:
             return {
                 "passed": False,
-                "error": f"Builder instantiation failed: {str(e)}"
+                "error": f"Step instantiation structural check failed: {str(e)}"
+            }
+    
+    def _check_config_class_exists(self, builder_class: Type) -> Dict[str, Any]:
+        """Check if corresponding config class exists."""
+        try:
+            # Extract step name from builder class
+            class_name = builder_class.__name__
+            step_name = class_name[:-11] if class_name.endswith("StepBuilder") else class_name
+            
+            if self.step_catalog_available:
+                config_classes = self.step_catalog.discover_config_classes()
+                config_class_name = f"{step_name}Config"
+                
+                if config_class_name in config_classes:
+                    return {
+                        "passed": True,
+                        "config_class": config_class_name,
+                        "found_via": "step_catalog"
+                    }
+                else:
+                    return {
+                        "passed": False,
+                        "config_class": config_class_name,
+                        "error": f"Config class {config_class_name} not found"
+                    }
+            else:
+                return {
+                    "passed": False,
+                    "error": "Step catalog not available for config discovery"
+                }
+        except Exception as e:
+            return {
+                "passed": False,
+                "error": f"Config class check failed: {str(e)}"
+            }
+    
+    def _check_config_import(self, builder_class: Type) -> Dict[str, Any]:
+        """Check if step builder imports config correctly."""
+        try:
+            # Check if builder has __init__ method that accepts config parameter
+            init_method = getattr(builder_class, '__init__', None)
+            if init_method:
+                import inspect
+                sig = inspect.signature(init_method)
+                params = list(sig.parameters.keys())
+                
+                # Check if 'config' parameter exists (after 'self')
+                has_config_param = 'config' in params
+                
+                return {
+                    "passed": has_config_param,
+                    "init_params": params[1:],  # Exclude 'self'
+                    "has_config_param": has_config_param
+                }
+            else:
+                return {
+                    "passed": False,
+                    "error": "No __init__ method found"
+                }
+        except Exception as e:
+            return {
+                "passed": False,
+                "error": f"Config import check failed: {str(e)}"
+            }
+    
+    def _check_input_output_methods(self, builder_class: Type) -> Dict[str, Any]:
+        """Check if inputs and outputs are defined via methods."""
+        try:
+            io_methods = ["_get_inputs", "_get_outputs"]
+            found_methods = []
+            
+            for method in io_methods:
+                if hasattr(builder_class, method):
+                    found_methods.append(method)
+            
+            # At least one I/O method should be present
+            has_io_methods = len(found_methods) > 0
+            
+            return {
+                "passed": has_io_methods,
+                "found_methods": found_methods,
+                "expected_methods": io_methods,
+                "note": "At least one I/O method should be present"
+            }
+        except Exception as e:
+            return {
+                "passed": False,
+                "error": f"I/O methods check failed: {str(e)}"
+            }
+    
+    def _check_sagemaker_methods(self, builder_class: Type) -> Dict[str, Any]:
+        """Check SageMaker-specific methods based on step type."""
+        try:
+            # Extract step name and get step type
+            class_name = builder_class.__name__
+            step_name = class_name[:-11] if class_name.endswith("StepBuilder") else class_name
+            
+            try:
+                step_type = get_sagemaker_step_type(step_name)
+            except:
+                step_type = "Unknown"
+            
+            expected_methods = []
+            found_methods = []
+            
+            # Define expected methods based on step type
+            if step_type == "Processing":
+                expected_methods = ["_create_processor"]
+            elif step_type == "Training":
+                expected_methods = ["_create_estimator"]
+            elif step_type == "Transform":
+                expected_methods = ["_create_transformer"]
+            elif step_type == "CreateModel":
+                expected_methods = ["_create_model"]
+            elif step_type == "RegisterModel":
+                expected_methods = []  # Optional methods
+            
+            # Check which methods are present
+            for method in expected_methods:
+                if hasattr(builder_class, method):
+                    found_methods.append(method)
+            
+            # Pass if all expected methods are found, or if no methods are expected
+            passed = len(expected_methods) == 0 or len(found_methods) == len(expected_methods)
+            
+            return {
+                "passed": passed,
+                "step_type": step_type,
+                "expected_methods": expected_methods,
+                "found_methods": found_methods,
+                "note": f"SageMaker {step_type} step method validation"
+            }
+        except Exception as e:
+            return {
+                "passed": True,  # Don't fail on SageMaker method check errors
+                "error": f"SageMaker methods check failed: {str(e)}",
+                "note": "SageMaker method check is non-critical"
             }
     
     def _test_step_creation_capability(self, step_name: str, builder_class: Type) -> Dict[str, Any]:

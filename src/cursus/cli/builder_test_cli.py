@@ -33,6 +33,30 @@ def print_test_results(
         click.echo("❌ No test results found!")
         return
 
+    # Check if this is the component-based format from UniversalStepBuilderTest
+    if "components" in results:
+        # This is the new component-based format - handle it directly
+        click.echo(f"\n📊 Validation Results for {results.get('step_name', 'Unknown')}")
+        click.echo(f"Builder: {results.get('builder_class', 'Unknown')}")
+        click.echo(f"Overall Status: {results.get('overall_status', 'Unknown')}")
+        
+        components = results.get("components", {})
+        for comp_name, comp_result in components.items():
+            status = comp_result.get("status", "UNKNOWN")
+            status_icon = "✅" if status == "COMPLETED" else "❌" if status == "ERROR" else "⚠️"
+            click.echo(f"  {status_icon} {comp_name}: {status}")
+            
+            if status == "ERROR" and "error" in comp_result:
+                click.echo(f"    Error: {comp_result['error']}")
+        
+        # Show scoring if available
+        if show_scoring and "scoring" in results:
+            scoring_data = results["scoring"]
+            overall_score = scoring_data.get("overall", {}).get("score", 0.0)
+            overall_rating = scoring_data.get("overall", {}).get("rating", "Unknown")
+            click.echo(f"\n🏆 Quality Score: {overall_score:.1f}/100 - {overall_rating}")
+        return
+
     # Handle both legacy format (raw results) and new format (with scoring/reporting)
     if "test_results" in results:
         # New format with scoring/reporting
@@ -40,10 +64,19 @@ def print_test_results(
         scoring_data = results.get("scoring")
         structured_report = results.get("structured_report")
     else:
-        # Legacy format (raw results)
-        test_results = results
-        scoring_data = None
-        structured_report = None
+        # Legacy format (raw results) - but make sure it's actually test results
+        # Check if the values look like test result dictionaries
+        if results and isinstance(list(results.values())[0], dict) and any(
+            key in list(results.values())[0] for key in ["passed", "error", "details"]
+        ):
+            test_results = results
+            scoring_data = None
+            structured_report = None
+        else:
+            # This doesn't look like test results - it might be component format
+            click.echo("⚠️  Unexpected results format in print_test_results")
+            click.echo(f"Results keys: {list(results.keys())}")
+            return
 
     # Calculate summary statistics
     total_tests = len(test_results)
@@ -1020,9 +1053,9 @@ def test_all_discovered(verbose: bool, scoring: bool, export_json: str, step_typ
         if export_json:
             export_results_to_json(results, export_json)
         else:
-            # Auto-save results to default location
+            # Auto-save results to test directory structure
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = Path("test_reports") / "builder_tests"
+            output_dir = Path("test") / "steps" / "builders"
             output_dir.mkdir(parents=True, exist_ok=True)
             
             filename = f"all_builders_{step_type or 'all'}_{timestamp}.json"
@@ -1087,25 +1120,70 @@ def test_single(canonical_name: str, verbose: bool, scoring: bool, export_json: 
         # Run validation for the specific step
         results = tester.run_validation_for_step(canonical_name)
         
-        # Print results - handle both new format and direct results
-        if scoring and isinstance(results, dict) and ("test_results" in results or "scoring" in results):
-            print_enhanced_results(results, verbose)
-        else:
-            print_test_results(results, verbose, show_scoring=scoring)
+        # Print results - handle the actual component-based format from UniversalStepBuilderTest
+        try:
+            if isinstance(results, dict):
+                if "components" in results:
+                    # New component-based format from actual implementation
+                    click.echo(f"\n📊 Validation Results for {results.get('step_name', 'Unknown')}")
+                    click.echo(f"Builder: {results.get('builder_class', 'Unknown')}")
+                    click.echo(f"Overall Status: {results.get('overall_status', 'Unknown')}")
+                    
+                    components = results.get("components", {})
+                    for comp_name, comp_result in components.items():
+                        status = comp_result.get("status", "UNKNOWN")
+                        status_icon = "✅" if status == "COMPLETED" else "❌" if status == "ERROR" else "⚠️"
+                        click.echo(f"  {status_icon} {comp_name}: {status}")
+                        
+                        if status == "ERROR" and "error" in comp_result:
+                            click.echo(f"    Error: {comp_result['error']}")
+                    
+                    # Show scoring if available
+                    if scoring and "scoring" in results:
+                        scoring_data = results["scoring"]
+                        overall_score = scoring_data.get("overall", {}).get("score", 0.0)
+                        overall_rating = scoring_data.get("overall", {}).get("rating", "Unknown")
+                        click.echo(f"\n🏆 Quality Score: {overall_score:.1f}/100 - {overall_rating}")
+                        
+                        if verbose and "levels" in scoring_data:
+                            click.echo("\n📈 Detailed Scoring Breakdown:")
+                            levels = scoring_data.get("levels", {})
+                            for level_name, level_data in levels.items():
+                                display_name = level_name.replace("level", "Level ").replace("_", " ").title()
+                                score = level_data.get("score", 0)
+                                click.echo(f"  {display_name}: {score:.1f}/100")
+                
+                elif "test_results" in results:
+                    # Legacy format with test_results wrapper
+                    print_enhanced_results(results, verbose)
+                else:
+                    # Direct test results format
+                    print_test_results(results, verbose, show_scoring=scoring)
+            else:
+                click.echo(f"⚠️  Unexpected results format: {type(results)}")
+        except Exception as e:
+            click.echo(f"⚠️  Error printing results: {e}")
+            click.echo(f"Results type: {type(results)}")
+            if isinstance(results, dict):
+                click.echo(f"Results keys: {list(results.keys())}")
+            else:
+                click.echo(f"Results content: {str(results)[:200]}...")
         
         # Export or auto-save results
-        export_data = {canonical_name: results}
-        if export_json:
-            export_results_to_json(export_data, export_json)
-        else:
-            # Auto-save results to default location
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = Path("test_reports") / "builder_tests"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            filename = f"single_builder_{canonical_name}_{timestamp}.json"
-            output_path = output_dir / filename
-            export_results_to_json(export_data, str(output_path))
+        try:
+            export_data = {canonical_name: results}
+            if export_json:
+                export_results_to_json(export_data, export_json)
+            else:
+                # Auto-save results to test directory structure
+                output_dir = Path("test") / "steps" / "builders" / "results" / "individual"
+                output_dir.mkdir(parents=True, exist_ok=True)
+                
+                filename = f"{canonical_name}.json"
+                output_path = output_dir / filename
+                export_results_to_json(export_data, str(output_path))
+        except Exception as e:
+            click.echo(f"⚠️  Error exporting results: {e}")
             
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
