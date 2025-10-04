@@ -168,9 +168,14 @@ class TestConfigClassDetectorAdapter:
     
     def test_extract_class_names_error_handling(self):
         """Test error handling in _extract_class_names."""
-        # Create data that will cause an exception
-        config_data = Mock()
-        config_data.__getitem__.side_effect = Exception("Test error")
+        # Create data that will cause an exception when accessed
+        # Use a dict-like object that raises exception on key access
+        class ErrorDict(dict):
+            def __getitem__(self, key):
+                raise Exception("Test error")
+        
+        config_data = ErrorDict()
+        config_data["metadata"] = "trigger_error"  # This will cause exception when accessed
         
         mock_logger = Mock()
         result = ConfigClassDetectorAdapter._extract_class_names(config_data, mock_logger)
@@ -488,9 +493,12 @@ class TestErrorHandlingAndEdgeCases:
         # Should return the decorator function
         assert callable(result)
         
-        # Test with non-class object
-        invalid_obj = "not_a_class"
-        invalid_obj.__name__ = "InvalidObj"  # Mock __name__ attribute
+        # Test with non-class object that has __name__ attribute
+        class MockInvalidObj:
+            def __init__(self):
+                self.__name__ = "InvalidObj"
+        
+        invalid_obj = MockInvalidObj()
         
         # This should still work as the registry doesn't validate class types
         ConfigClassStoreAdapter.register(invalid_obj)
@@ -501,12 +509,19 @@ class TestErrorHandlingAndEdgeCases:
     
     def test_extract_class_names_with_nested_exceptions(self):
         """Test _extract_class_names with deeply nested data causing exceptions."""
-        # Create mock data that raises exceptions at different levels
-        config_data = {
-            "metadata": {
-                "config_types": Mock(side_effect=Exception("Nested error"))
-            }
-        }
+        # Create data that will cause an exception during iteration
+        class ErrorDict(dict):
+            def __getitem__(self, key):
+                if key == "metadata":
+                    # Return a dict that will cause error when accessed
+                    class ErrorConfigTypes(dict):
+                        def values(self):
+                            raise Exception("Nested error")
+                    return {"config_types": ErrorConfigTypes()}
+                return super().__getitem__(key)
+        
+        config_data = ErrorDict()
+        config_data["metadata"] = "will_be_overridden"
         
         mock_logger = Mock()
         result = ConfigClassDetectorAdapter._extract_class_names(config_data, mock_logger)

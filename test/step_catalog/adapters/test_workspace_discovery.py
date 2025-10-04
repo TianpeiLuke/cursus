@@ -96,14 +96,18 @@ class TestWorkspaceDiscoveryManagerAdapter:
     def test_discover_workspaces_error_handling(self, temp_workspace):
         """Test error handling in workspace discovery."""
         with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog') as mock_catalog_class:
+            # Create a mock catalog that works for initialization but fails during discover_workspaces
             mock_catalog = Mock()
-            mock_catalog.workspace_dirs = []
-            mock_catalog_class.side_effect = Exception("Test error")
+            mock_catalog.workspace_dirs = [temp_workspace / "dev1"]
+            mock_catalog_class.return_value = mock_catalog
             
             adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
-            result = adapter.discover_workspaces(temp_workspace)
             
-            assert "error" in result
+            # Mock the _count_workspace_components method to cause an error
+            with patch.object(adapter, '_count_workspace_components', side_effect=Exception("Test error")):
+                result = adapter.discover_workspaces(temp_workspace)
+                
+                assert "error" in result
     
     def test_count_workspace_components(self, temp_workspace):
         """Test counting components in workspace."""
@@ -229,8 +233,8 @@ class TestWorkspaceDiscoveryManagerAdapter:
             mock_step_info.workspace_id = "dev1"
             mock_step_info.step_name = "test_step"
             mock_step_info.file_components = {
-                "contract": Mock(path=Path("/path/to/contract.py")),
-                "spec": Mock(path=Path("/path/to/spec.py"))
+                "contracts": Mock(path=Path("/path/to/contract.py")),
+                "specs": Mock(path=Path("/path/to/spec.py"))
             }
             mock_step_info.registry_data = {"test": "data"}
             
@@ -365,9 +369,12 @@ class TestWorkspaceDiscoveryManagerAdapter:
             
             adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
             
-            # Mock workspace_dirs to cause an error
-            adapter.catalog.workspace_dirs = Mock()
-            adapter.catalog.workspace_dirs.__iter__.side_effect = Exception("Test error")
+            # Create a workspace_dirs that raises an exception when iterated
+            class ErrorList(list):
+                def __iter__(self):
+                    raise Exception("Test error")
+            
+            adapter.catalog.workspace_dirs = ErrorList()
             
             path = adapter._find_workspace_path("dev1")
             assert path is None
@@ -494,6 +501,10 @@ class TestWorkspaceDiscoveryManagerAdapter:
     def test_list_available_developers(self, temp_workspace):
         """Test listing available developers."""
         with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog') as mock_catalog_class:
+            # Create dev2 directory to match the test expectation
+            dev2_workspace = temp_workspace / "dev2"
+            dev2_workspace.mkdir()
+            
             mock_catalog = Mock()
             mock_catalog.workspace_dirs = [temp_workspace / "dev1", temp_workspace / "dev2", temp_workspace / "shared"]
             mock_catalog_class.return_value = mock_catalog
@@ -514,10 +525,13 @@ class TestWorkspaceDiscoveryManagerAdapter:
             mock_catalog.workspace_dirs = []
             mock_catalog_class.return_value = mock_catalog
             
-            # Mock workspace_dirs to cause an error
+            # Create a workspace_dirs that raises an exception when iterated
+            class ErrorList(list):
+                def __iter__(self):
+                    raise Exception("Test error")
+            
             adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
-            adapter.catalog.workspace_dirs = Mock()
-            adapter.catalog.workspace_dirs.__iter__.side_effect = Exception("Test error")
+            adapter.catalog.workspace_dirs = ErrorList()
             
             developers = adapter.list_available_developers()
             assert developers == []

@@ -48,7 +48,11 @@ class ContractDiscoveryEngineAdapter:
     def __init__(self, workspace_root: Path):
         """Initialize with unified catalog."""
         # PORTABLE: Use workspace-aware discovery for contract discovery
-        self.catalog = StepCatalog(workspace_dirs=[workspace_root])
+        try:
+            self.catalog = StepCatalog(workspace_dirs=[workspace_root])
+        except Exception as e:
+            logger.error(f"Failed to initialize StepCatalog: {e}")
+            self.catalog = None
         self.logger = logging.getLogger(__name__)
     
     def discover_contracts_with_scripts(self) -> List[str]:
@@ -58,6 +62,8 @@ class ContractDiscoveryEngineAdapter:
         This is the primary method used by ContractSpecificationAlignmentTester.
         """
         try:
+            if self.catalog is None:
+                return []
             # Use step catalog's built-in method - no redundant code needed
             return self.catalog.discover_contracts_with_scripts()
             
@@ -72,6 +78,8 @@ class ContractDiscoveryEngineAdapter:
         Used by alignment validation system.
         """
         try:
+            if self.catalog is None:
+                return []
             all_steps = self.catalog.list_available_steps()
             contracts = []
             
@@ -99,6 +107,8 @@ class ContractDiscoveryEngineAdapter:
             Step name if found, None otherwise
         """
         try:
+            if self.catalog is None:
+                return None
             # Use step catalog to find step by spec component
             step_name = self.catalog.find_step_by_component(spec_file)
             if step_name:
@@ -123,6 +133,8 @@ class ContractDiscoveryEngineAdapter:
             Dictionary mapping step names to script file paths
         """
         try:
+            if self.catalog is None:
+                return {}
             mapping = {}
             all_steps = self.catalog.list_available_steps()
             
@@ -166,7 +178,7 @@ class ContractDiscoveryManagerAdapter:
         # Minimal cache for test performance
         self._contract_cache = {}
     
-    def discover_contract(self, step_name: str, canonical_name: Optional[str] = None):
+    def discover_contract(self, step_name: str, canonical_name: Optional[str] = None) -> Optional[str]:
         """
         MODERNIZED: Use StepCatalog's load_contract_class for discovery.
         
@@ -175,47 +187,34 @@ class ContractDiscoveryManagerAdapter:
             canonical_name: Optional canonical name for the step
             
         Returns:
-            ContractDiscoveryResult with contract information, or string path for backward compatibility
+            String path for backward compatibility, or None if not found
         """
         try:
             # Check cache first
             cache_key = f"{step_name}:{canonical_name}"
             if cache_key in self._contract_cache:
                 cached_result = self._contract_cache[cache_key]
-                # For backward compatibility, return string path if tests expect it
-                if hasattr(cached_result, 'success') and cached_result.success:
-                    return cached_result
-                return None
+                # Return consistent type - always string path or None
+                return cached_result
             
             # MODERNIZED: Use StepCatalog's load_contract_class method
             contract = self.catalog.load_contract_class(step_name)
             
             if contract:
-                result = ContractDiscoveryResult(
-                    contract=contract,
-                    contract_name=f"{step_name.upper()}_CONTRACT",
-                    discovery_method="step_catalog_load_contract_class",
-                    error_message=None
-                )
-                
-                self._contract_cache[cache_key] = result
-                
                 # For backward compatibility with tests, try to get contract path
                 step_info = self.catalog.get_step_info(step_name)
                 if step_info and step_info.file_components.get('contract'):
-                    contract_path = step_info.file_components['contract'].path
-                    return str(contract_path)
+                    contract_path = str(step_info.file_components['contract'].path)
+                    # Cache the string path for consistency
+                    self._contract_cache[cache_key] = contract_path
+                    return contract_path
                 else:
-                    # Return the result object if no file path available
-                    return result
+                    # No file path available, cache None
+                    self._contract_cache[cache_key] = None
+                    return None
             else:
-                result = ContractDiscoveryResult(
-                    contract=None,
-                    contract_name="not_found",
-                    discovery_method="step_catalog_load_contract_class",
-                    error_message=f"No contract found for {step_name}"
-                )
-                self._contract_cache[cache_key] = result
+                # No contract found, cache None
+                self._contract_cache[cache_key] = None
                 return None
             
         except Exception as e:

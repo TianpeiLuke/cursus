@@ -329,11 +329,8 @@ class TestContractDiscoveryManagerAdapter:
             adapter = ContractDiscoveryManagerAdapter(workspace_root=temp_workspace)
             result = adapter.discover_contract("test_step")
             
-            # Should return ContractDiscoveryResult object
-            assert isinstance(result, ContractDiscoveryResult)
-            assert result.success is True
-            assert result.contract == mock_contract
-            assert result.contract_name == "TEST_STEP_CONTRACT"
+            # Should return None when no file path is available (per type hint: Optional[str])
+            assert result is None
     
     def test_discover_contract_not_found(self, temp_workspace):
         """Test contract discovery when contract is not found."""

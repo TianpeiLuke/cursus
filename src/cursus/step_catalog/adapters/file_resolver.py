@@ -57,10 +57,13 @@ class FlexibleFileResolverAdapter:
                 step_info = self.catalog.get_step_info(step_name)
                 if step_info:
                     for component_type, metadata in step_info.file_components.items():
-                        if metadata and component_type in self.file_cache:
-                            # Extract base name for legacy compatibility
-                            base_name = self._extract_base_name(step_name, component_type)
-                            self.file_cache[component_type][base_name] = str(metadata.path)
+                        if metadata:
+                            # Map singular component types to plural cache keys
+                            cache_key = f"{component_type}s"  # script -> scripts, contract -> contracts, etc.
+                            if cache_key in self.file_cache:
+                                # Extract base name for legacy compatibility
+                                base_name = self._extract_base_name(step_name, component_type)
+                                self.file_cache[cache_key][base_name] = str(metadata.path)
         except Exception as e:
             self.logger.error(f"Error refreshing cache: {e}")
     

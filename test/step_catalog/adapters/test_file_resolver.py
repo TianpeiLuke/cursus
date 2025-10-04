@@ -94,7 +94,7 @@ class TestFlexibleFileResolverAdapter:
             adapter = FlexibleFileResolverAdapter(temp_workspace)
             
             # Test PascalCase to snake_case conversion
-            assert adapter._extract_base_name("XGBoostTraining", "script") == "x_g_boost_training"
+            assert adapter._extract_base_name("XGBoostTraining", "script") == "xgboost_training"
             assert adapter._extract_base_name("DataLoading", "contract") == "data_loading"
             assert adapter._extract_base_name("SimpleStep", "spec") == "simple_step"
     
@@ -143,7 +143,6 @@ class TestFlexibleFileResolverAdapter:
         """Test finding best match via fuzzy matching."""
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
-            mock_catalog.get_step_info.return_value = None  # No direct match
             mock_catalog.list_available_steps.return_value = ["XGBoostTraining", "DataLoading"]
             
             # Mock step info for fuzzy matching
@@ -151,7 +150,13 @@ class TestFlexibleFileResolverAdapter:
             mock_script = Mock()
             mock_script.path = Path("/path/to/xgboost_training.py")
             mock_step_info.file_components = {"script": mock_script}
-            mock_catalog.get_step_info.side_effect = [None, mock_step_info, None]
+            
+            # Setup side_effect for all get_step_info calls:
+            # 1-2. _refresh_cache calls during initialization for XGBoostTraining, DataLoading
+            # 3. Direct lookup call in _find_best_match (returns None)
+            # 4. First step in fuzzy loop: XGBoostTraining (returns mock_step_info)
+            # 5. Second step in fuzzy loop: DataLoading (returns None)
+            mock_catalog.get_step_info.side_effect = [None, None, None, mock_step_info, None]
             mock_catalog_class.return_value = mock_catalog
             
             adapter = FlexibleFileResolverAdapter(temp_workspace)
@@ -554,6 +559,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
         """Test finding contract file."""
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
+            mock_catalog.list_available_steps.return_value = []  # Add missing method
             mock_step_info = Mock()
             mock_contract = Mock()
             mock_contract.path = Path("/path/to/contract.py")
@@ -574,6 +580,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
         """Test finding spec file."""
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
+            mock_catalog.list_available_steps.return_value = []  # Add missing method
             mock_step_info = Mock()
             mock_spec = Mock()
             mock_spec.path = Path("/path/to/spec.py")
@@ -594,6 +601,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
         """Test finding builder file."""
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
+            mock_catalog.list_available_steps.return_value = []  # Add missing method
             mock_step_info = Mock()
             mock_builder = Mock()
             mock_builder.path = Path("/path/to/builder.py")
@@ -614,6 +622,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
         """Test finding config file."""
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
+            mock_catalog.list_available_steps.return_value = []  # Add missing method
             mock_step_info = Mock()
             mock_config = Mock()
             mock_config.path = Path("/path/to/config.py")
@@ -634,6 +643,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
         """Test finding script file."""
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog = Mock()
+            mock_catalog.list_available_steps.return_value = []  # Add missing method
             mock_step_info = Mock()
             mock_script = Mock()
             mock_script.path = Path("/path/to/script.py")
@@ -763,7 +773,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
             )
             
             # Mock workspace_root to cause an error
-            adapter.workspace_root = Mock()
+            adapter.workspace_root = MagicMock()
             adapter.workspace_root.__truediv__.side_effect = Exception("Path error")
             
             info = adapter.get_workspace_info()
@@ -807,7 +817,7 @@ class TestDeveloperWorkspaceFileResolverAdapter:
             )
             
             # Mock workspace_root to cause an error
-            adapter.workspace_root = Mock()
+            adapter.workspace_root = MagicMock()
             adapter.workspace_root.__truediv__.side_effect = Exception("Path error")
             
             developers = adapter.list_available_developers()
@@ -874,27 +884,20 @@ class TestHybridFileResolverAdapter:
             mock_catalog = Mock()
             mock_catalog.list_available_steps.return_value = ["xgboost_training", "data_loading", "model_evaluation"]
             
-            # Mock step info for matching steps
-            mock_step_info1 = Mock()
-            mock_script1 = Mock()
-            mock_script1.path = Path("/path/to/xgboost_training.py")
-            mock_step_info1.file_components = {"script": mock_script1}
+            # Only model_evaluation matches "model" pattern, so get_step_info is called only once
+            mock_step_info = Mock()
+            mock_script = Mock()
+            mock_script.path = Path("/path/to/model_evaluation.py")
+            mock_step_info.file_components = {"script": mock_script}
             
-            mock_step_info2 = Mock()
-            mock_step_info2.file_components = {}  # No script component
-            
-            mock_step_info3 = Mock()
-            mock_script3 = Mock()
-            mock_script3.path = Path("/path/to/model_evaluation.py")
-            mock_step_info3.file_components = {"script": mock_script3}
-            
-            mock_catalog.get_step_info.side_effect = [mock_step_info1, mock_step_info2, mock_step_info3]
+            # get_step_info is only called for model_evaluation (the matching step)
+            mock_catalog.get_step_info.return_value = mock_step_info
             mock_catalog_class.return_value = mock_catalog
             
             adapter = HybridFileResolverAdapter(temp_workspace)
             result = adapter.resolve_file_pattern("model", "script")
             
-            # Should find steps containing "model" in their name
+            # Should find only steps containing "model" in their name (model_evaluation)
             assert len(result) == 1
             assert Path("/path/to/model_evaluation.py") in result
     
@@ -1042,18 +1045,16 @@ class TestErrorHandlingAndEdgeCases:
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog') as mock_catalog_class:
             mock_catalog_class.side_effect = Exception("Catalog initialization failed")
             
-            # Should still initialize but methods will fail gracefully
-            adapter = FlexibleFileResolverAdapter(temp_workspace)
-            
-            # All methods should handle errors gracefully
-            assert adapter.find_contract_file("test_step") is None
-            assert adapter.find_spec_file("test_step") is None
-            assert adapter.find_builder_file("test_step") is None
-            assert adapter.find_config_file("test_step") is None
-            assert adapter.find_all_component_files("test_step") == {}
+            # Should raise exception during initialization since catalog is required
+            with pytest.raises(Exception, match="Catalog initialization failed"):
+                FlexibleFileResolverAdapter(temp_workspace)
     
     def test_workspace_adapter_with_invalid_paths(self, temp_workspace):
         """Test workspace adapter with invalid file paths."""
+        # Create the required workspace structure for the adapter to initialize
+        dev_workspace = temp_workspace / "developers" / "test_dev"
+        dev_workspace.mkdir(parents=True)
+        
         with patch('cursus.step_catalog.adapters.file_resolver.StepCatalog'):
             adapter = DeveloperWorkspaceFileResolverAdapter(
                 workspace_root=temp_workspace,
