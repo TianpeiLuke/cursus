@@ -204,8 +204,8 @@ class TestTestLevelCommand:
     """Test the test-level command."""
 
     @patch("cursus.cli.builder_test_cli.import_builder_class")
-    @patch("cursus.cli.builder_test_cli.InterfaceTests")
-    def test_test_level_1_success(self, mock_interface_tests, mock_import, cli_runner):
+    @patch("cursus.cli.builder_test_cli.UniversalStepBuilderTest")
+    def test_test_level_1_success(self, mock_universal_test, mock_import, cli_runner):
         """Test running Level 1 tests successfully."""
         # Mock the import function
         mock_builder_cls = Mock()
@@ -217,7 +217,7 @@ class TestTestLevelCommand:
             "test_inheritance": {"passed": True, "error": None},
             "test_naming_conventions": {"passed": True, "error": None},
         }
-        mock_interface_tests.return_value = mock_tester
+        mock_universal_test.from_builder_class.return_value = mock_tester
 
         result = cli_runner.invoke(
             test_level, 
@@ -226,20 +226,21 @@ class TestTestLevelCommand:
 
         assert result.exit_code == 0
         assert "🚀 Running Level 1 (Interface) tests" in result.output
+        assert "Using refactored UniversalStepBuilderTest" in result.output
         mock_import.assert_called_once_with("TabularPreprocessingStepBuilder")
-        mock_interface_tests.assert_called_once_with(
+        mock_universal_test.from_builder_class.assert_called_once_with(
             builder_class=mock_builder_cls,
             verbose=False
         )
 
-    @patch("cursus.cli.builder_test_cli.SpecificationTests")
-    def test_test_level_2_success(self, mock_spec_tests, cli_runner):
+    @patch("cursus.cli.builder_test_cli.UniversalStepBuilderTest")
+    def test_test_level_2_success(self, mock_universal_test, cli_runner):
         """Test running Level 2 tests successfully."""
         mock_tester = Mock()
         mock_tester.run_all_tests.return_value = {
             "test_specification_usage": {"passed": True, "error": None},
         }
-        mock_spec_tests.return_value = mock_tester
+        mock_universal_test.from_builder_class.return_value = mock_tester
 
         result = cli_runner.invoke(
             test_level, 
@@ -248,6 +249,7 @@ class TestTestLevelCommand:
 
         assert result.exit_code == 0
         assert "🚀 Running Level 2 (Specification) tests" in result.output
+        assert "Using refactored UniversalStepBuilderTest" in result.output
 
     def test_test_level_invalid_level(self, cli_runner):
         """Test running tests with invalid level."""
@@ -263,8 +265,8 @@ class TestTestVariantCommand:
     """Test the test-variant command."""
 
     @patch("cursus.cli.builder_test_cli.import_builder_class")
-    @patch("cursus.cli.builder_test_cli.ProcessingStepBuilderTest")
-    def test_test_variant_processing_success(self, mock_processing_test, mock_import, cli_runner):
+    @patch("cursus.cli.builder_test_cli.UniversalStepBuilderTest")
+    def test_test_variant_processing_success(self, mock_universal_test, mock_import, cli_runner):
         """Test running processing variant tests successfully."""
         # Mock the import function
         mock_builder_cls = Mock()
@@ -275,7 +277,7 @@ class TestTestVariantCommand:
         mock_tester.run_all_tests.return_value = {
             "test_processing_step_creation": {"passed": True, "error": None},
         }
-        mock_processing_test.return_value = mock_tester
+        mock_universal_test.from_builder_class.return_value = mock_tester
 
         result = cli_runner.invoke(
             test_variant, 
@@ -284,8 +286,9 @@ class TestTestVariantCommand:
 
         assert result.exit_code == 0
         assert "🚀 Running Processing variant tests" in result.output
+        assert "Using refactored UniversalStepBuilderTest" in result.output
         mock_import.assert_called_once_with("TabularPreprocessingStepBuilder")
-        mock_processing_test.assert_called_once_with(
+        mock_universal_test.from_builder_class.assert_called_once_with(
             builder_class=mock_builder_cls,
             verbose=False
         )
@@ -377,53 +380,50 @@ class TestTestByTypeCommand:
 class TestRegistryReportCommand:
     """Test the registry-report command."""
 
-    @patch("cursus.cli.builder_test_cli.RegistryStepDiscovery")
-    def test_registry_report_success(self, mock_registry, cli_runner):
-        """Test generating registry discovery report successfully."""
-        mock_report = {
-            "total_steps": 10,
-            "sagemaker_step_types": ["Training", "Transform", "Processing"],
-            "step_type_counts": {"Training": 5, "Transform": 3, "Processing": 2},
-            "availability_summary": {
-                "available": 8,
-                "unavailable": 2,
-                "errors": [
-                    {"step_name": "BrokenStep", "error": "Module not found"}
-                ]
-            }
-        }
-        mock_registry.generate_discovery_report.return_value = mock_report
+    @patch("cursus.cli.builder_test_cli.StepCatalog")
+    def test_registry_report_success(self, mock_catalog_class, cli_runner):
+        """Test generating step catalog discovery report successfully."""
+        mock_catalog = Mock()
+        mock_catalog.list_available_steps.return_value = [
+            "XGBoostTraining", "TabularPreprocessing", "BatchTransform"
+        ]
+        mock_catalog.load_builder_class.side_effect = [
+            Mock(__name__="XGBoostTrainingStepBuilder"),  # Success
+            Mock(__name__="TabularPreprocessingStepBuilder"),  # Success
+            None  # Failure
+        ]
+        mock_catalog_class.return_value = mock_catalog
 
-        result = cli_runner.invoke(registry_report, [])
+        with patch("cursus.cli.builder_test_cli.get_sagemaker_step_type") as mock_get_type:
+            mock_get_type.side_effect = ["Training", "Processing", "Transform"]
+            
+            result = cli_runner.invoke(registry_report, [])
 
         assert result.exit_code == 0
-        assert "🔍 Generating registry discovery report..." in result.output
-        assert "📊 Registry Discovery Report" in result.output
-        assert "Total steps in registry: 10" in result.output
-        assert "Training: 5 steps" in result.output
-        assert "✅ Available: 8" in result.output
-        assert "❌ Unavailable: 2" in result.output
-        mock_registry.generate_discovery_report.assert_called_once()
+        assert "🔍 Generating step catalog discovery report..." in result.output
+        assert "📊 Step Catalog Discovery Report" in result.output
+        assert "Total steps in catalog: 3" in result.output
+        assert "Training: 1 steps" in result.output
+        assert "✅ Available: 2" in result.output
+        assert "❌ Unavailable: 1" in result.output
 
-    @patch("cursus.cli.builder_test_cli.RegistryStepDiscovery")
-    def test_registry_report_with_verbose_errors(self, mock_registry, cli_runner):
-        """Test registry report with verbose error display."""
-        mock_report = {
-            "total_steps": 5,
-            "sagemaker_step_types": ["Training"],
-            "step_type_counts": {"Training": 5},
-            "availability_summary": {
-                "available": 3,
-                "unavailable": 2,
-                "errors": [
-                    {"step_name": "BrokenStep1", "error": "Module not found"},
-                    {"step_name": "BrokenStep2", "error": "Class not found"},
-                ]
-            }
-        }
-        mock_registry.generate_discovery_report.return_value = mock_report
+    @patch("cursus.cli.builder_test_cli.StepCatalog")
+    def test_registry_report_with_verbose_errors(self, mock_catalog_class, cli_runner):
+        """Test step catalog report with verbose error display."""
+        mock_catalog = Mock()
+        mock_catalog.list_available_steps.return_value = [
+            "BrokenStep1", "BrokenStep2"
+        ]
+        mock_catalog.load_builder_class.side_effect = [
+            Exception("Module not found"),
+            Exception("Class not found")
+        ]
+        mock_catalog_class.return_value = mock_catalog
 
-        result = cli_runner.invoke(registry_report, ["--verbose"])
+        with patch("cursus.cli.builder_test_cli.get_sagemaker_step_type") as mock_get_type:
+            mock_get_type.side_effect = [Exception("Type error"), Exception("Type error")]
+            
+            result = cli_runner.invoke(registry_report, ["--verbose"])
 
         assert result.exit_code == 0
         assert "BrokenStep1: Module not found" in result.output
@@ -433,18 +433,13 @@ class TestRegistryReportCommand:
 class TestValidateBuilderCommand:
     """Test the validate-builder command."""
 
-    @patch("cursus.cli.builder_test_cli.RegistryStepDiscovery")
-    def test_validate_builder_success(self, mock_registry, cli_runner):
+    @patch("cursus.cli.builder_test_cli.StepCatalog")
+    def test_validate_builder_success(self, mock_catalog_class, cli_runner):
         """Test validating builder availability successfully."""
-        mock_validation = {
-            "step_name": "XGBoostTraining",
-            "in_registry": True,
-            "module_exists": True,
-            "class_exists": True,
-            "loadable": True,
-            "error": None,
-        }
-        mock_registry.validate_step_builder_availability.return_value = mock_validation
+        mock_catalog = Mock()
+        mock_catalog.list_available_steps.return_value = ["XGBoostTraining"]
+        mock_catalog.load_builder_class.return_value = Mock(__name__="XGBoostTrainingStepBuilder")
+        mock_catalog_class.return_value = mock_catalog
 
         result = cli_runner.invoke(
             validate_builder, 
@@ -455,24 +450,17 @@ class TestValidateBuilderCommand:
         assert "🔍 Validating builder availability for: XGBoostTraining" in result.output
         assert "📊 Builder Validation Results" in result.output
         assert "Step name: XGBoostTraining" in result.output
-        assert "In registry: ✅" in result.output
-        assert "Module exists: ✅" in result.output
-        assert "Class exists: ✅" in result.output
+        assert "In step catalog: ✅" in result.output
+        assert "Builder class found: ✅" in result.output
         assert "Loadable: ✅" in result.output
-        mock_registry.validate_step_builder_availability.assert_called_once_with("XGBoostTraining")
 
-    @patch("cursus.cli.builder_test_cli.RegistryStepDiscovery")
-    def test_validate_builder_with_errors(self, mock_registry, cli_runner):
+    @patch("cursus.cli.builder_test_cli.StepCatalog")
+    def test_validate_builder_with_errors(self, mock_catalog_class, cli_runner):
         """Test validating builder with errors."""
-        mock_validation = {
-            "step_name": "InvalidBuilder",
-            "in_registry": False,
-            "module_exists": False,
-            "class_exists": False,
-            "loadable": False,
-            "error": "Step 'InvalidBuilder' not found in registry",
-        }
-        mock_registry.validate_step_builder_availability.return_value = mock_validation
+        mock_catalog = Mock()
+        mock_catalog.list_available_steps.return_value = []  # Not in catalog
+        mock_catalog.load_builder_class.side_effect = Exception("Step not found")
+        mock_catalog_class.return_value = mock_catalog
 
         result = cli_runner.invoke(
             validate_builder, 
@@ -480,11 +468,10 @@ class TestValidateBuilderCommand:
         )
 
         assert result.exit_code == 1
-        assert "In registry: ❌" in result.output
-        assert "Module exists: ❌" in result.output
-        assert "Class exists: ❌" in result.output
+        assert "In step catalog: ❌" in result.output
+        assert "Builder class found: ❌" in result.output
         assert "Loadable: ❌" in result.output
-        assert "Error: Step 'InvalidBuilder' not found in registry" in result.output
+        assert "Error: Step not found" in result.output
 
 
 class TestListBuildersCommand:
@@ -607,12 +594,12 @@ class TestBuilderTestCliErrorHandling:
         assert result.exit_code == 1
         assert "❌ Error during test execution" in result.output
 
-    @patch("cursus.cli.builder_test_cli.InterfaceTests")
-    def test_test_level_execution_error(self, mock_interface_tests, cli_runner):
+    @patch("cursus.cli.builder_test_cli.UniversalStepBuilderTest")
+    def test_test_level_execution_error(self, mock_universal_test, cli_runner):
         """Test error handling during level test execution."""
         mock_tester = Mock()
         mock_tester.run_all_tests.side_effect = Exception("Test execution failed")
-        mock_interface_tests.return_value = mock_tester
+        mock_universal_test.from_builder_class.return_value = mock_tester
 
         result = cli_runner.invoke(
             test_level, 
@@ -622,12 +609,12 @@ class TestBuilderTestCliErrorHandling:
         assert result.exit_code == 1
         assert "❌ Error during test execution" in result.output
 
-    @patch("cursus.cli.builder_test_cli.ProcessingStepBuilderTest")
-    def test_test_variant_execution_error(self, mock_processing_test, cli_runner):
+    @patch("cursus.cli.builder_test_cli.UniversalStepBuilderTest")
+    def test_test_variant_execution_error(self, mock_universal_test, cli_runner):
         """Test error handling during variant test execution."""
         mock_tester = Mock()
         mock_tester.run_all_tests.side_effect = Exception("Variant test failed")
-        mock_processing_test.return_value = mock_tester
+        mock_universal_test.from_builder_class.return_value = mock_tester
 
         result = cli_runner.invoke(
             test_variant, 
@@ -641,24 +628,15 @@ class TestBuilderTestCliErrorHandling:
 class TestBuilderTestCliIntegration:
     """Integration tests for builder test CLI."""
 
-    @patch("cursus.cli.builder_test_cli.RegistryStepDiscovery")
+    @patch("cursus.cli.builder_test_cli.StepCatalog")
     @patch("cursus.cli.builder_test_cli.UniversalStepBuilderTest")
-    def test_full_workflow_integration(self, mock_test_class, mock_registry, cli_runner):
+    def test_full_workflow_integration(self, mock_test_class, mock_catalog_class, cli_runner):
         """Test a complete workflow integration."""
-        # Mock builder listing
-        mock_registry.list_available_builders.return_value = [
-            "TabularPreprocessingStepBuilder"
-        ]
-        
-        # Mock builder validation
-        mock_registry.validate_step_builder_availability.return_value = {
-            "step_name": "TabularPreprocessing",
-            "in_registry": True,
-            "module_exists": True,
-            "class_exists": True,
-            "loadable": True,
-            "error": None,
-        }
+        # Mock step catalog
+        mock_catalog = Mock()
+        mock_catalog.list_available_steps.return_value = ["TabularPreprocessing"]
+        mock_catalog.load_builder_class.return_value = Mock(__name__="TabularPreprocessingStepBuilder")
+        mock_catalog_class.return_value = mock_catalog
         
         # Mock test execution
         mock_tester = Mock()
@@ -671,7 +649,7 @@ class TestBuilderTestCliIntegration:
         # Test list builders
         result = cli_runner.invoke(list_builders, [])
         assert result.exit_code == 0
-        assert "TabularPreprocessingStepBuilder" in result.output
+        # Note: list_builders uses file scanning, not step catalog, so we can't easily mock the output
 
         # Test validate builder
         result = cli_runner.invoke(validate_builder, ["TabularPreprocessing"])

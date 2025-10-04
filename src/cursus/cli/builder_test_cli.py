@@ -18,13 +18,10 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Type
 
 from ..validation.builders.universal_test import UniversalStepBuilderTest
-from ..validation.builders.core.interface_tests import InterfaceTests
-from ..validation.builders.core.specification_tests import SpecificationTests
-from ..validation.builders.core.step_creation_tests import StepCreationTests
 from ..validation.builders.core.integration_tests import IntegrationTests
-from ..validation.builders.variants.processing_test import ProcessingStepBuilderTest
-from ..validation.builders.discovery.registry_discovery import RegistryStepDiscovery
 from ..validation.builders.reporting.scoring import StepBuilderScorer
+from ..step_catalog import StepCatalog
+from ..registry import STEP_NAMES
 
 
 def print_test_results(
@@ -420,15 +417,13 @@ def test_level(level: int, builder_class: str, verbose: bool):
         
         click.echo(f"\n🚀 Running Level {level} ({level_name}) tests for {builder_cls.__name__}...")
 
-        test_classes = {
-            1: InterfaceTests,
-            2: SpecificationTests,
-            3: StepCreationTests,
-            4: IntegrationTests,
-        }
-
-        test_class = test_classes[level]
-        tester = test_class(builder_class=builder_cls, verbose=verbose)
+        # Use the refactored UniversalStepBuilderTest for all levels
+        click.echo(f"⚠️  Note: Using refactored UniversalStepBuilderTest (Level {level} tests are now integrated)")
+        
+        tester = UniversalStepBuilderTest.from_builder_class(
+            builder_class=builder_cls,
+            verbose=verbose
+        )
         results = tester.run_all_tests()
 
         print_test_results(results, verbose)
@@ -468,12 +463,13 @@ def test_variant(variant: str, builder_class: str, verbose: bool):
 
         click.echo(f"\n🚀 Running {variant.title()} variant tests for {builder_cls.__name__}...")
 
-        variant_classes = {
-            "processing": ProcessingStepBuilderTest,
-        }
-
-        variant_class = variant_classes[variant]
-        tester = variant_class(builder_class=builder_cls, verbose=verbose)
+        # Use the refactored UniversalStepBuilderTest for all variants
+        click.echo(f"⚠️  Note: Using refactored UniversalStepBuilderTest ({variant} variant tests are now integrated)")
+        
+        tester = UniversalStepBuilderTest.from_builder_class(
+            builder_class=builder_cls,
+            verbose=verbose
+        )
         results = tester.run_all_tests()
 
         print_test_results(results, verbose)
@@ -571,34 +567,58 @@ def test_by_type(sagemaker_type: str, verbose: bool, scoring: bool, export_json:
     help="Show detailed output including errors"
 )
 def registry_report(verbose: bool):
-    """Generate registry discovery report."""
+    """Generate step catalog discovery report."""
     try:
-        click.echo("🔍 Generating registry discovery report...")
-        report = RegistryStepDiscovery.generate_discovery_report()
+        click.echo("🔍 Generating step catalog discovery report...")
+        
+        catalog = StepCatalog(workspace_dirs=None)
+        all_steps = catalog.list_available_steps()
+        
+        # Generate report using step catalog
+        step_type_counts = {}
+        available_count = 0
+        errors = []
+        
+        for step_name in all_steps:
+            try:
+                # Try to get step type
+                from ..registry import get_sagemaker_step_type
+                step_type = get_sagemaker_step_type(step_name)
+                if step_type:
+                    step_type_counts[step_type] = step_type_counts.get(step_type, 0) + 1
+                
+                # Try to load builder class
+                builder_class = catalog.load_builder_class(step_name)
+                if builder_class:
+                    available_count += 1
+                else:
+                    errors.append({"step_name": step_name, "error": "Builder class not found"})
+                    
+            except Exception as e:
+                errors.append({"step_name": step_name, "error": str(e)})
 
-        click.echo(f"\n📊 Registry Discovery Report")
+        click.echo(f"\n📊 Step Catalog Discovery Report")
         click.echo("=" * 50)
-        click.echo(f"Total steps in registry: {report['total_steps']}")
-        click.echo(f"Available SageMaker step types: {', '.join(report['sagemaker_step_types'])}")
+        click.echo(f"Total steps in catalog: {len(all_steps)}")
+        click.echo(f"Available SageMaker step types: {', '.join(step_type_counts.keys())}")
 
         click.echo(f"\nStep counts by type:")
-        for step_type, count in report["step_type_counts"].items():
+        for step_type, count in step_type_counts.items():
             click.echo(f"  • {step_type}: {count} steps")
 
-        availability = report["availability_summary"]
         click.echo(f"\nAvailability summary:")
-        click.echo(f"  ✅ Available: {availability['available']}")
-        click.echo(f"  ❌ Unavailable: {availability['unavailable']}")
+        click.echo(f"  ✅ Available: {available_count}")
+        click.echo(f"  ❌ Unavailable: {len(errors)}")
 
-        if availability["errors"] and verbose:
+        if errors and verbose:
             click.echo(f"\nErrors:")
-            for error in availability["errors"][:10]:  # Show first 10 errors
+            for error in errors[:10]:  # Show first 10 errors
                 click.echo(f"  • {error['step_name']}: {error['error']}")
-            if len(availability["errors"]) > 10:
-                click.echo(f"  ... and {len(availability['errors']) - 10} more errors")
+            if len(errors) > 10:
+                click.echo(f"  ... and {len(errors) - 10} more errors")
 
     except Exception as e:
-        click.echo(f"❌ Error generating registry report: {e}", err=True)
+        click.echo(f"❌ Error generating step catalog report: {e}", err=True)
         sys.exit(1)
 
 
@@ -608,18 +628,33 @@ def validate_builder(step_name: str):
     """Validate that a step builder is available and can be loaded."""
     try:
         click.echo(f"🔍 Validating builder availability for: {step_name}")
-        validation = RegistryStepDiscovery.validate_step_builder_availability(step_name)
+        
+        catalog = StepCatalog(workspace_dirs=None)
+        all_steps = catalog.list_available_steps()
+        
+        # Check if step exists in catalog
+        in_catalog = step_name in all_steps
+        
+        # Try to load builder class
+        builder_class = None
+        loadable = False
+        error = None
+        
+        try:
+            builder_class = catalog.load_builder_class(step_name)
+            loadable = builder_class is not None
+        except Exception as e:
+            error = str(e)
 
         click.echo(f"\n📊 Builder Validation Results")
         click.echo("=" * 40)
-        click.echo(f"Step name: {validation['step_name']}")
-        click.echo(f"In registry: {'✅' if validation['in_registry'] else '❌'}")
-        click.echo(f"Module exists: {'✅' if validation['module_exists'] else '❌'}")
-        click.echo(f"Class exists: {'✅' if validation['class_exists'] else '❌'}")
-        click.echo(f"Loadable: {'✅' if validation['loadable'] else '❌'}")
+        click.echo(f"Step name: {step_name}")
+        click.echo(f"In step catalog: {'✅' if in_catalog else '❌'}")
+        click.echo(f"Builder class found: {'✅' if builder_class else '❌'}")
+        click.echo(f"Loadable: {'✅' if loadable else '❌'}")
 
-        if validation["error"]:
-            click.echo(f"Error: {validation['error']}")
+        if error:
+            click.echo(f"Error: {error}")
             sys.exit(1)
 
     except Exception as e:

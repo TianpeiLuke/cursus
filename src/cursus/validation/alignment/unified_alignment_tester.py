@@ -151,16 +151,12 @@ class UnifiedAlignmentTester:
         
         try:
             # Get all step names from step catalog
-            step_names = self.step_catalog.get_all_step_names()
+            step_names = self.step_catalog.list_available_steps()
             all_steps.extend(step_names)
             
-            # Get builder names (for backward compatibility)
-            builder_names = self.step_catalog.get_all_builder_names()
-            all_steps.extend(builder_names)
-            
-            # Get spec names (for comprehensive coverage)
-            spec_names = self.step_catalog.get_all_spec_names()
-            all_steps.extend(spec_names)
+            # Get steps with specs (for comprehensive coverage)
+            steps_with_specs = self.step_catalog.list_steps_with_specs()
+            all_steps.extend(steps_with_specs)
             
             # Remove duplicates and return
             unique_steps = list(set(all_steps))
