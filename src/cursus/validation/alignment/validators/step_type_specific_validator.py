@@ -334,10 +334,10 @@ class StepTypeSpecificValidator(ABC):
             from ....step_catalog import StepCatalog
             step_catalog = StepCatalog(workspace_dirs=self.workspace_dirs)
             
-            # Try to get builder class
-            builder_info = step_catalog.get_builder_info(step_name)
-            if builder_info and "class" in builder_info:
-                return builder_info["class"]
+            # Try to get builder class using the correct method
+            builder_class = step_catalog.load_builder_class(step_name)
+            if builder_class:
+                return builder_class
             
             # Fallback: try to import builder directly
             builder_module_name = f"cursus.steps.builders.builder_{step_name.lower()}_step"

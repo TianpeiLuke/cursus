@@ -302,9 +302,28 @@ class UnifiedAlignmentTester:
         Discover scripts - maintained for backward compatibility.
         
         Returns:
-            List of discovered script names
+            List of discovered script names (only steps with actual script files)
         """
-        return self._discover_all_steps()
+        logger.info("Discovering scripts (steps with script files) using step catalog")
+        
+        try:
+            # Get all available steps
+            all_steps = self.step_catalog.list_available_steps()
+            
+            # Filter to only include steps that have script files
+            scripts_with_files = []
+            for step_name in all_steps:
+                if self._has_script_file(step_name):
+                    scripts_with_files.append(step_name)
+                else:
+                    logger.debug(f"Skipping {step_name} - no script file found")
+            
+            logger.info(f"Discovered {len(scripts_with_files)} scripts with files out of {len(all_steps)} total steps")
+            return scripts_with_files
+            
+        except Exception as e:
+            logger.error(f"Failed to discover scripts: {str(e)}")
+            return []
     
     def get_validation_summary(self) -> Dict[str, Any]:
         """

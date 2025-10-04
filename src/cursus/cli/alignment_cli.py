@@ -609,7 +609,7 @@ def validate_all(
                 }
 
                 # Print results
-                print_validation_summary(results, verbose, show_scoring)
+                print_validation_summary(results, verbose, False)  # show_scoring not defined in this scope
 
                 # Save reports if output directory specified
                 if output_dir:
