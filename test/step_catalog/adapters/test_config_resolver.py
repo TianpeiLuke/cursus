@@ -594,6 +594,24 @@ class TestIntegrationScenarios:
 class TestErrorHandlingAndEdgeCases:
     """Test error handling and edge cases."""
     
+    @pytest.fixture
+    def mock_configs(self):
+        """Create mock configuration instances for testing."""
+        configs = {}
+        
+        # Create mock configs with different attributes
+        training_config = Mock()
+        training_config.__class__.__name__ = "XGBoostTrainingConfig"
+        training_config.job_type = "training"
+        configs["training_config"] = training_config
+        
+        eval_config = Mock()
+        eval_config.__class__.__name__ = "XGBoostEvalConfig"
+        eval_config.job_type = "evaluation"
+        configs["eval_config"] = eval_config
+        
+        return configs
+    
     def test_empty_configs_dict(self):
         """Test behavior with empty configs dictionary."""
         with patch('cursus.step_catalog.adapters.config_resolver.StepCatalog'):

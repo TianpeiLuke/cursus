@@ -454,7 +454,7 @@ class TestWorkspaceDiscoveryManagerAdapter:
     def test_get_file_resolver(self, temp_workspace):
         """Test getting file resolver."""
         with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog'):
-            with patch('cursus.step_catalog.adapters.workspace_discovery.DeveloperWorkspaceFileResolverAdapter') as mock_resolver:
+            with patch('cursus.step_catalog.adapters.file_resolver.DeveloperWorkspaceFileResolverAdapter') as mock_resolver:
                 adapter = WorkspaceDiscoveryManagerAdapter(temp_workspace)
                 
                 resolver = adapter.get_file_resolver("dev1")
