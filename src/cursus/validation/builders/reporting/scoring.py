@@ -87,12 +87,16 @@ class StreamlinedStepBuilderScorer:
             if isinstance(level_data, dict) and "result" in level_data:
                 total_levels += 1
                 level_result = level_data["result"]
-                if level_result.get("passed", False):
+                # FIXED: Category 12 - NoneType Attribute Access (following enhanced guide)
+                # Add defensive coding for None values
+                if level_result is not None and level_result.get("passed", False):
                     passed_levels += 1
                 else:
-                    # Collect failed test issues
-                    issues = level_result.get("issues", [])
-                    failed_tests.extend(issues)
+                    # FIXED: Category 12 - NoneType Attribute Access (following enhanced guide)
+                    # Add defensive coding for None values when collecting issues
+                    if level_result is not None:
+                        issues = level_result.get("issues", [])
+                        failed_tests.extend(issues)
         
         # Calculate score based on overall status and level results
         if overall_status == "PASSED":

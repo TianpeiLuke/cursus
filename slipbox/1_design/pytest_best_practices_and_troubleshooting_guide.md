@@ -37,15 +37,17 @@ Through systematic analysis of test suite failures across multiple modules (file
 ### Key Principles
 
 1. **🔍 MANDATORY: Read Source Code First** - Always examine the actual implementation before writing any test
-2. **Mock Path Precision**: Ensure mocks target the exact import path used in the code
+2. **Mock Path Precision**: Ensure mocks target the exact import path used in the code, especially for conditional imports
 3. **Implementation-Driven Testing**: Match test behavior to actual implementation behavior
-4. **Fixture Isolation**: Design fixtures for complete test independence
-5. **Systematic Debugging**: Follow structured troubleshooting methodology
-6. **Error Message Analysis**: Read full tracebacks to understand the complete error context
-7. **Mock Behavior Matching**: Ensure mock objects behave exactly like real objects
-8. **Test Environment Consistency**: Maintain consistent test environments across different scenarios
-9. **Dependency Chain Understanding**: Map out the complete dependency chain before mocking
-10. **Edge Case Coverage**: Test both happy path and failure scenarios systematically
+4. **Mock Spec Control**: Use `spec` parameter to prevent false positives and control mock behavior
+5. **Magic Method Handling**: Use `MagicMock` for objects requiring magic methods like `__init__`, `__truediv__`
+6. **Fixture Isolation**: Design fixtures for complete test independence
+7. **Systematic Debugging**: Follow structured troubleshooting methodology
+8. **Error Message Analysis**: Read full tracebacks to understand the complete error context
+9. **Mock Behavior Matching**: Ensure mock objects behave exactly like real objects
+10. **Test Environment Consistency**: Maintain consistent test environments across different scenarios
+11. **Dependency Chain Understanding**: Map out the complete dependency chain before mocking
+12. **Edge Case Coverage**: Test both happy path and failure scenarios systematically
 
 ### The Source Code First Rule
 
@@ -79,6 +81,118 @@ from ..step_catalog import StepCatalog           # ← Mock path: module.submodu
 from pathlib import Path                         # ← Standard library imports
 from typing import Optional, List, Dict          # ← Type hints for method signatures
 from unittest.mock import Mock                   # ← Testing utilities
+```
+
+**🔍 STEP 2A: CRITICAL - Find ALL Conditional Imports**
+```bash
+# MANDATORY: Search for ALL conditional imports in source:
+grep -r "try:" src/module_path/ | grep -A 3 "import"
+```
+
+```python
+# Example conditional imports found:
+try:
+    from ...step_catalog import StepCatalog                    # ← Mock: src.cursus.step_catalog.StepCatalog
+    from ..alignment.unified_alignment_tester import UnifiedAlignmentTester  # ← Mock: src.cursus.validation.alignment.unified_alignment_tester.UnifiedAlignmentTester
+    from .reporting.scoring import StreamlinedStepBuilderScorer  # ← Mock: src.cursus.validation.builders.reporting.scoring.StreamlinedStepBuilderScorer
+except ImportError:
+    # These classes are NOT available in the importing module namespace!
+    StepCatalog = None
+    UnifiedAlignmentTester = None
+    StreamlinedStepBuilderScorer = None
+```
+
+**🔍 STEP 2B: CRITICAL - Find ALL Registry and Function Imports**
+```bash
+# MANDATORY: Search for ALL registry imports:
+grep -r "from.*registry.*import" src/module_path/
+grep -r "from.*step_names.*import" src/module_path/
+
+# MANDATORY: Search for ALL nested module imports:
+grep -r "from.*step_catalog\.step_catalog.*import" src/module_path/
+```
+
+```python
+# Example registry imports found:
+try:
+    from ....registry.step_names import STEP_NAMES, get_steps_by_sagemaker_type
+except ImportError:
+    STEP_NAMES = {}
+    get_steps_by_sagemaker_type = None
+
+# ← Mock: src.cursus.registry.step_names.STEP_NAMES
+# ← Mock: src.cursus.registry.step_names.get_steps_by_sagemaker_type
+
+# Example nested module imports found:
+try:
+    from ....step_catalog.step_catalog import StepCatalog
+except ImportError:
+    StepCatalog = None
+
+# ← Mock: src.cursus.step_catalog.step_catalog.StepCatalog
+```
+
+**🔍 STEP 2C: CRITICAL - Import Source Verification**
+```python
+# For EACH import found, verify the actual source path:
+# Example: from ....registry.step_names import STEP_NAMES
+# Source path: src.cursus.registry.step_names.STEP_NAMES
+# Mock path: @patch('src.cursus.registry.step_names.STEP_NAMES')
+
+# Example: from ....step_catalog.step_catalog import StepCatalog  
+# Source path: src.cursus.step_catalog.step_catalog.StepCatalog
+# Mock path: @patch('src.cursus.step_catalog.step_catalog.StepCatalog')
+```
+
+**🔍 STEP 2D: CRITICAL - Find ALL Relative Imports**
+```bash
+# MANDATORY: Search for ALL relative imports:
+grep -r "from \.\." src/module_path/
+```
+
+```python
+# Example relative imports found:
+try:
+    from ..universal_test import UniversalStepBuilderTest
+except ImportError:
+    UniversalStepBuilderTest = None
+
+# ← Convert relative to absolute: ..universal_test becomes src.cursus.validation.builders.universal_test
+# ← Mock: src.cursus.validation.builders.universal_test.UniversalStepBuilderTest
+
+# Example relative function import:
+try:
+    from ..alignment.unified_alignment_tester import UnifiedAlignmentTester
+except ImportError:
+    UnifiedAlignmentTester = None
+
+# ← Convert relative to absolute: ..alignment.unified_alignment_tester becomes src.cursus.validation.builders.alignment.unified_alignment_tester
+# ← Mock: src.cursus.validation.builders.alignment.unified_alignment_tester.UnifiedAlignmentTester
+```
+
+**⚠️ CRITICAL RULE: Conditional Imports Are NOT Available in Module Namespace**
+- ❌ WRONG: `@patch('importing_module.ConditionalClass')` - Will fail with AttributeError
+- ✅ CORRECT: `@patch('source_module.ConditionalClass')` - Patches at actual import location
+
+**⚠️ CRITICAL RULE: Registry and Function Imports Follow Same Pattern**
+- ❌ WRONG: `@patch('importing_module.STEP_NAMES')` - Will fail with AttributeError
+- ✅ CORRECT: `@patch('src.cursus.registry.step_names.STEP_NAMES')` - Patches at registry source
+
+**⚠️ CRITICAL RULE: Nested Module Imports Need Full Path**
+- ❌ WRONG: `@patch('src.cursus.step_catalog.StepCatalog')` - May fail if nested
+- ✅ CORRECT: `@patch('src.cursus.step_catalog.step_catalog.StepCatalog')` - Full nested path
+
+**⚠️ CRITICAL RULE: Relative Imports Must Be Converted to Absolute Paths**
+- ❌ WRONG: `@patch('importing_module.RelativeClass')` - Will fail with AttributeError
+- ✅ CORRECT: `@patch('src.cursus.full.absolute.path.RelativeClass')` - Convert ..module to absolute path
+
+**🔧 RELATIVE IMPORT CONVERSION FORMULA:**
+```python
+# If you're in: src/cursus/validation/builders/reporting/builder_reporter.py
+# And you see: from ..universal_test import UniversalStepBuilderTest
+# Then ..universal_test means: go up one level from reporting/ to builders/, then into universal_test
+# Absolute path: src.cursus.validation.builders.universal_test
+# Mock path: @patch('src.cursus.validation.builders.universal_test.UniversalStepBuilderTest')
 ```
 
 **🔧 STEP 3: Study Method Implementations**
@@ -426,1194 +540,183 @@ def test_with_error_prevention():
 
 ## Common Test Failure Categories and Prevention
 
-### Category 1: Mock Path and Import Issues (35% of failures)
+**📋 For detailed error categories, patterns, and prevention strategies, see:**
 
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Mocking wrong import path
-@patch('cursus.step_catalog.StepCatalog')  # Mock at definition location
-def test_adapter_init():
-    adapter = WorkspaceAdapter()  # Uses different import path
-```
+**→ [Common Test Failure Categories and Prevention](pytest_test_failure_categories_and_prevention.md)**
 
-#### **Root Cause Analysis**
-- Mock applied at class definition location, not where it's imported
-- Module imports use different paths than where class is defined
-- Circular import issues causing import path confusion
+This companion document provides:
+- **12 major failure categories** with specific examples and fixes
+- **Quick error classification** by error message patterns  
+- **Instant fix patterns** for each category
+- **Troubleshooting checklists** for systematic debugging
+- **Prevention strategies** based on 500+ test failure analysis
 
-#### **✅ PREVENTION STRATEGY**
+### Quick Reference: Most Common Categories
 
-**1. Always Mock at Import Location**
-```python
-# ✅ CORRECT: Mock where the code imports it
-@patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog')
-def test_adapter_init():
-    adapter = WorkspaceDiscoveryManagerAdapter(workspace_root)
-```
+1. **Mock Path and Import Issues (35%)** - Conditional imports, try/except patterns
+2. **Mock Configuration and Side Effects (25%)** - Magic methods, spec control, side_effect mismatches
+3. **Path and File System Operations (20%)** - MagicMock usage, realistic fixtures
+4. **Test Expectations vs Implementation (10%)** - Reading source code first
+5. **Fixture Dependencies and Scope (5%)** - Proper fixture design and isolation
 
-**2. Verify Import Paths in Source Code**
-```python
-# Check actual import in source file
-from ..step_catalog import StepCatalog  # This is the path to mock
-```
+**💡 Key Insight**: Reading the source code first prevents 95% of these failures.
 
-**3. Use Module-Level Mocking for Complex Cases**
-```python
-# For complex import scenarios
-with patch.object(sys.modules['cursus.step_catalog.adapters.workspace_discovery'], 
-                  'StepCatalog') as mock_catalog:
-    # Test code here
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Check the exact import statement in the source file
-- [ ] Verify the mock path matches the import path
-- [ ] Confirm no circular imports affecting the path
-- [ ] Test the mock is actually being applied (add assertions)
-
-### Category 2: Mock Configuration and Side Effects (25% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Incorrect side_effect configuration
-mock_catalog.get_step_info.side_effect = [step_info1, step_info2, step_info3]
-# But code only calls get_step_info twice → IndexError
-```
-
-#### **Root Cause Analysis**
-- Mismatch between number of side_effect values and actual method calls
-- Mock return values don't match expected data types
-- Mock objects missing required attributes or methods
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Count Method Calls in Source Code**
-```python
-# Examine source to count calls
-def discover_components(self):
-    for step_name in steps:  # 2 steps
-        step_info = self.catalog.get_step_info(step_name)  # Called 2 times
-    
-# Configure mock accordingly
-mock_catalog.get_step_info.side_effect = [step_info1, step_info2]  # Exactly 2 values
-```
-
-**2. Use return_value for Single Calls**
-```python
-# ✅ For single calls, use return_value
-mock_catalog.get_step_info.return_value = mock_step_info
-```
-
-**3. Create Complete Mock Objects**
-```python
-# ✅ Mock objects with all required attributes
-mock_step_info = Mock()
-mock_step_info.workspace_id = "dev1"
-mock_step_info.step_name = "test_step"
-mock_step_info.file_components = {"scripts": Mock(path=Path("/path/to/script.py"))}
-mock_step_info.registry_data = {}
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Count actual method calls in source code
-- [ ] Verify side_effect list length matches call count
-- [ ] Check mock objects have all required attributes
-- [ ] Ensure mock return types match expected types
-
-### Category 3: Path and File System Operations (20% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Mock Path objects don't support operations
-mock_path = Mock()
-result = mock_path / "subdir"  # AttributeError: Mock object has no __truediv__
-```
-
-#### **Root Cause Analysis**
-- Mock objects don't implement Path-specific magic methods
-- File system operations expect real Path behavior
-- Temporary directories not properly set up in fixtures
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Use MagicMock for Path Operations**
-```python
-# ✅ CORRECT: MagicMock supports magic methods
-mock_path = MagicMock(spec=Path)
-mock_path.__truediv__ = MagicMock(return_value=MagicMock(spec=Path))
-```
-
-**2. Create Realistic Path Fixtures**
-```python
-@pytest.fixture
-def temp_workspace():
-    """Create temporary workspace with realistic structure."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        workspace_root = Path(temp_dir)
-        
-        # Create realistic directory structure
-        dev_workspace = workspace_root / "dev1"
-        dev_workspace.mkdir()
-        (dev_workspace / "contracts").mkdir()
-        (dev_workspace / "contracts" / "test_contract.py").write_text("# Test")
-        
-        yield workspace_root
-```
-
-**3. Mock File System Operations Appropriately**
-```python
-# ✅ Mock file operations, not Path objects
-with patch('pathlib.Path.exists', return_value=True):
-    with patch('pathlib.Path.glob', return_value=[Path("test.py")]):
-        # Test code here
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Use MagicMock for objects needing magic methods
-- [ ] Create realistic temporary directory structures
-- [ ] Mock file operations, not Path objects themselves
-- [ ] Verify Path operations work in isolation
-
-### Category 4: Test Expectations vs Implementation Behavior (10% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Test expects behavior that doesn't match implementation
-def test_discovery():
-    components = adapter.discover_components()
-    assert components["metadata"]["total_components"] > 0  # Fails: gets 0
-```
-
-#### **Root Cause Analysis**
-- Test expectations based on assumptions, not actual implementation
-- Implementation behavior changed but tests not updated
-- Edge cases not properly handled in tests
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Examine Implementation Before Writing Tests**
-```python
-# Check actual implementation logic
-def discover_components(self, workspace_ids=None):
-    if workspace_ids is None:
-        target_workspaces = ["core"]  # Default behavior
-    else:
-        target_workspaces = workspace_ids
-    
-    # Filter by target workspaces
-    for step_name in steps:
-        if step_info.workspace_id not in target_workspaces:
-            continue  # Skip non-matching workspaces
-```
-
-**2. Write Tests That Match Implementation**
-```python
-# ✅ Test matches actual implementation behavior
-def test_discovery_with_workspace_ids():
-    # Mock setup matches what implementation expects
-    components = adapter.discover_components(workspace_ids=["dev1", "dev2"])
-    assert components["metadata"]["total_components"] > 0
-```
-
-**3. Test Edge Cases Explicitly**
-```python
-def test_discovery_no_matching_workspaces():
-    # Test when no workspaces match
-    components = adapter.discover_components(workspace_ids=["nonexistent"])
-    assert components["metadata"]["total_components"] == 0  # Expected behavior
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Read the actual implementation code
-- [ ] Verify test expectations match implementation behavior
-- [ ] Test both happy path and edge cases
-- [ ] Update tests when implementation changes
-
-### Category 5: Fixture Dependencies and Scope Issues (5% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Missing fixture dependency
-def test_cache_operations(self, temp_workspace):  # temp_workspace not defined in class
-    # Test fails: fixture not found
-```
-
-#### **Root Cause Analysis**
-- Fixture not available in test class scope
-- Fixture dependencies not properly declared
-- Fixture cleanup not properly handled
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Define Fixtures in Correct Scope**
-```python
-class TestPerformanceAndScalability:
-    @pytest.fixture
-    def temp_workspace(self):  # Define in class scope
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield Path(temp_dir)
-    
-    def test_cache_operations(self, temp_workspace):  # Now available
-        # Test code here
-```
-
-**2. Use Module-Level Fixtures for Shared Resources**
-```python
-@pytest.fixture(scope="module")
-def shared_workspace():
-    """Shared workspace for multiple tests."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Setup shared resources
-        yield Path(temp_dir)
-```
-
-**3. Handle Fixture Cleanup Properly**
-```python
-@pytest.fixture
-def database_connection():
-    conn = create_connection()
-    try:
-        yield conn
-    finally:
-        conn.close()  # Ensure cleanup
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Verify fixture is defined in accessible scope
-- [ ] Check fixture dependencies are properly declared
-- [ ] Ensure fixture cleanup is handled
-- [ ] Test fixture isolation between tests
-
-### Category 6: Exception Handling and Error Expectations (3% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Expecting exception in wrong place
-def test_catalog_failure():
-    adapter = WorkspaceAdapter(temp_workspace)  # Exception should happen here
-    with pytest.raises(Exception):
-        adapter.some_method()  # But test expects it here
-```
-
-#### **Root Cause Analysis**
-- Exception occurs during initialization, not method call
-- Wrong exception type expected
-- Exception handling in implementation prevents expected exception
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Identify Where Exceptions Actually Occur**
-```python
-# Check implementation to see where exception is raised
-def __init__(self, workspace_root):
-    self.catalog = StepCatalog()  # Exception happens here if StepCatalog fails
-```
-
-**2. Test Exceptions at Correct Location**
-```python
-# ✅ Test exception during initialization
-def test_catalog_failure():
-    with patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog') as mock_catalog:
-        mock_catalog.side_effect = Exception("Catalog failed")
-        
-        with pytest.raises(Exception, match="Catalog failed"):
-            WorkspaceDiscoveryManagerAdapter(temp_workspace)  # Exception here
-```
-
-**3. Test Exception Types Precisely**
-```python
-# ✅ Test specific exception types
-with pytest.raises(ValueError, match="No workspace root configured"):
-    adapter.get_file_resolver()
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Identify exact location where exception occurs
-- [ ] Verify expected exception type matches implementation
-- [ ] Check if implementation handles exceptions internally
-- [ ] Test exception messages match actual messages
-
-### Category 7: Data Structure and Type Mismatches (2% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Mock data structure doesn't match expected format
-mock_step_info.file_components = {
-    "contract": Mock(path=Path("/path"))  # Wrong key name
-}
-
-# Implementation expects:
-for component_type, file_metadata in step_info.file_components.items():
-    if component_type in inventory:  # Expects "contracts", not "contract"
-```
-
-#### **Root Cause Analysis**
-- Mock data structures don't match implementation expectations
-- Key names or data types don't align with actual usage
-- Nested data structures not properly mocked
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Match Implementation Data Structures Exactly**
-```python
-# Check implementation expectations
-for component_type, file_metadata in step_info.file_components.items():
-    if component_type in inventory:  # Expects plural form
-
-# ✅ Mock with correct structure
-mock_step_info.file_components = {
-    "contracts": Mock(path=Path("/path")),  # Plural form
-    "scripts": Mock(path=Path("/path"))
-}
-```
-
-**2. Use Real Data Structures When Possible**
-```python
-# ✅ Use actual data structures
-from cursus.step_catalog.models import StepInfo
-
-step_info = StepInfo(
-    workspace_id="dev1",
-    step_name="test_step",
-    file_components={"contracts": FileMetadata(path=Path("/path"))},
-    registry_data={}
-)
-```
-
-**3. Validate Mock Structure Against Implementation**
-```python
-# Add assertions to verify mock structure
-def test_mock_structure():
-    mock_step_info = create_mock_step_info()
-    
-    # Verify structure matches expectations
-    assert hasattr(mock_step_info, 'file_components')
-    assert 'contracts' in mock_step_info.file_components
-    assert hasattr(mock_step_info.file_components['contracts'], 'path')
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Compare mock data structure to implementation expectations
-- [ ] Verify key names match exactly (singular vs plural)
-- [ ] Check nested object attributes are properly mocked
-- [ ] Validate data types match implementation requirements
-
-### Category 8: Validation System Integration Issues (8% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Validation tests fail due to missing step catalog integration
-def test_alignment_validation():
-    validator = UnifiedAlignmentTester(workspace_dirs=["."])
-    results = validator.run_validation_for_step("NonExistentStep")
-    # Fails: step not found in catalog, but test expects validation results
-```
-
-#### **Root Cause Analysis**
-- Tests assume steps exist in step catalog without proper setup
-- Validation systems depend on complex discovery mechanisms
-- Mock configurations don't account for multi-level validation dependencies
-- Step catalog discovery methods return empty results in test environment
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Mock Step Catalog Discovery Comprehensively**
-```python
-# ✅ Mock all discovery methods used by validation system
-@pytest.fixture
-def mock_step_catalog_for_validation():
-    with patch('cursus.validation.alignment.unified_alignment_tester.StepCatalog') as mock_catalog:
-        # Mock step discovery methods
-        mock_catalog.return_value.list_available_steps.return_value = ["TestStep", "XGBoostTraining"]
-        mock_catalog.return_value.get_step_info.return_value = Mock(
-            step_name="TestStep",
-            workspace_id="core",
-            file_components={
-                "script": Mock(path=Path("/path/to/script.py")),
-                "contract": Mock(path=Path("/path/to/contract.py")),
-                "spec": Mock(path=Path("/path/to/spec.py"))
-            }
-        )
-        yield mock_catalog
-```
-
-**2. Create Realistic Validation Test Scenarios**
-```python
-# ✅ Test validation with proper step catalog setup
-def test_validation_with_complete_step_setup(mock_step_catalog_for_validation):
-    validator = UnifiedAlignmentTester()
-    
-    # Test with step that exists in mocked catalog
-    results = validator.run_validation_for_step("TestStep")
-    
-    assert results["step_name"] == "TestStep"
-    assert "validation_results" in results
-```
-
-**3. Handle Validation System Dependencies**
-```python
-# ✅ Mock validation dependencies at correct levels
-@patch('cursus.validation.alignment.core.level_validators.LevelValidators')
-@patch('cursus.validation.alignment.unified_alignment_tester.get_sagemaker_step_type')
-def test_validation_system_integration(mock_step_type, mock_validators):
-    mock_step_type.return_value = "Processing"
-    mock_validators.return_value.run_level_1_validation.return_value = {"status": "PASSED"}
-    
-    validator = UnifiedAlignmentTester()
-    results = validator.run_validation_for_step("ProcessingStep")
-    
-    assert results["sagemaker_step_type"] == "Processing"
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Mock all step catalog discovery methods used by validation
-- [ ] Ensure step exists in mocked catalog before testing validation
-- [ ] Mock validation level dependencies (LevelValidators, etc.)
-- [ ] Verify step type detection is properly mocked
-- [ ] Check that validation configuration is properly loaded
-
-### Category 9: Workspace and Path Resolution Issues (6% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Tests fail due to workspace path resolution issues
-def test_workspace_discovery():
-    adapter = WorkspaceDiscoveryManagerAdapter(workspace_root=Path("/nonexistent"))
-    # Fails: workspace path doesn't exist, discovery returns empty results
-```
-
-#### **Root Cause Analysis**
-- Tests use hardcoded or invalid workspace paths
-- Workspace discovery depends on actual file system structure
-- Path resolution logic varies between development and test environments
-- Temporary workspace fixtures don't match expected directory structure
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Create Realistic Workspace Fixtures**
-```python
-# ✅ Create workspace fixtures with proper structure
-@pytest.fixture
-def realistic_workspace():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        workspace_root = Path(temp_dir)
-        
-        # Create expected directory structure
-        dev_workspace = workspace_root / "dev1"
-        dev_workspace.mkdir(parents=True)
-        
-        # Create component directories
-        for component_type in ["scripts", "contracts", "specs", "builders", "configs"]:
-            component_dir = dev_workspace / component_type
-            component_dir.mkdir()
-            
-            # Create sample files
-            sample_file = component_dir / f"sample_{component_type[:-1]}.py"
-            sample_file.write_text(f"# Sample {component_type[:-1]} file")
-        
-        yield workspace_root
-```
-
-**2. Mock Path Resolution Appropriately**
-```python
-# ✅ Mock path operations while preserving structure
-def test_workspace_discovery_with_path_mocking():
-    with patch('pathlib.Path.exists', return_value=True):
-        with patch('pathlib.Path.is_dir', return_value=True):
-            with patch('pathlib.Path.iterdir') as mock_iterdir:
-                mock_iterdir.return_value = [
-                    Path("dev1/scripts/test_script.py"),
-                    Path("dev1/contracts/test_contract.py")
-                ]
-                
-                adapter = WorkspaceDiscoveryManagerAdapter(workspace_root=Path("/test"))
-                results = adapter.discover_components()
-                
-                assert results["metadata"]["total_components"] > 0
-```
-
-**3. Handle Workspace Configuration Edge Cases**
-```python
-# ✅ Test workspace configuration edge cases
-def test_workspace_discovery_no_workspaces():
-    """Test behavior when no workspaces are configured."""
-    adapter = WorkspaceDiscoveryManagerAdapter(workspace_root=None)
-    results = adapter.discover_components()
-    
-    # Should handle gracefully, not crash
-    assert results["metadata"]["total_components"] == 0
-    assert "error" not in results
-
-def test_workspace_discovery_empty_workspace():
-    """Test behavior with empty workspace directory."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        empty_workspace = Path(temp_dir)
-        adapter = WorkspaceDiscoveryManagerAdapter(workspace_root=empty_workspace)
-        results = adapter.discover_components()
-        
-        assert results["metadata"]["total_components"] == 0
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Create realistic workspace directory structures in fixtures
-- [ ] Mock path operations consistently across test scenarios
-- [ ] Test both valid and invalid workspace configurations
-- [ ] Verify workspace discovery handles edge cases gracefully
-- [ ] Check that path resolution works in test environment
-
-### Category 10: Async and Concurrency Issues (4% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Tests fail due to async/await or concurrency issues
-async def test_async_validation():
-    validator = AsyncValidator()
-    result = validator.validate_step("TestStep")  # Missing await
-    assert result.status == "COMPLETED"  # Fails: result is coroutine, not result object
-```
-
-#### **Root Cause Analysis**
-- Missing `await` keywords in async test functions
-- Async fixtures not properly configured
-- Race conditions in concurrent test execution
-- Event loop issues in pytest-asyncio setup
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Proper Async Test Configuration**
-```python
-# ✅ Configure pytest-asyncio properly
-import pytest
-import asyncio
-
-@pytest.mark.asyncio
-async def test_async_validation():
-    validator = AsyncValidator()
-    result = await validator.validate_step("TestStep")  # Proper await
-    assert result.status == "COMPLETED"
-```
-
-**2. Async Fixture Management**
-```python
-# ✅ Create async fixtures correctly
-@pytest.fixture
-async def async_validator():
-    validator = AsyncValidator()
-    await validator.initialize()
-    yield validator
-    await validator.cleanup()
-
-@pytest.mark.asyncio
-async def test_with_async_fixture(async_validator):
-    result = await async_validator.validate_step("TestStep")
-    assert result is not None
-```
-
-**3. Handle Concurrency in Tests**
-```python
-# ✅ Test concurrent operations safely
-@pytest.mark.asyncio
-async def test_concurrent_validation():
-    validator = AsyncValidator()
-    
-    # Test multiple concurrent validations
-    tasks = [
-        validator.validate_step("Step1"),
-        validator.validate_step("Step2"),
-        validator.validate_step("Step3")
-    ]
-    
-    results = await asyncio.gather(*tasks)
-    assert len(results) == 3
-    assert all(r.status == "COMPLETED" for r in results)
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Add `@pytest.mark.asyncio` decorator to async tests
-- [ ] Use `await` for all async function calls
-- [ ] Configure async fixtures with proper setup/teardown
-- [ ] Test concurrent operations with `asyncio.gather()`
-- [ ] Verify event loop configuration in test environment
-
-### Category 11: Configuration and Environment Issues (5% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Tests fail due to missing or incorrect configuration
-def test_validation_with_config():
-    validator = ConfigurableValidator()
-    # Fails: no configuration loaded, validator uses defaults that don't match test expectations
-    results = validator.validate_step("TestStep")
-    assert results["config_driven"] == True  # Fails: config not loaded
-```
-
-#### **Root Cause Analysis**
-- Tests assume configuration is loaded but don't provide it
-- Environment variables not set in test environment
-- Configuration files not found in test paths
-- Default configuration doesn't match test expectations
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Mock Configuration Loading**
-```python
-# ✅ Mock configuration system properly
-@pytest.fixture
-def mock_validation_config():
-    config_data = {
-        "validation_levels": {
-            "Processing": ["SCRIPT_CONTRACT", "CONTRACT_SPEC"],
-            "Training": ["SCRIPT_CONTRACT", "CONTRACT_SPEC", "SPEC_DEPENDENCY"]
-        },
-        "excluded_step_types": ["Legacy"],
-        "enable_scoring": True
-    }
-    
-    with patch('cursus.validation.alignment.config.load_validation_config') as mock_load:
-        mock_load.return_value = config_data
-        yield config_data
-
-def test_validation_with_mocked_config(mock_validation_config):
-    validator = ConfigurableValidator()
-    results = validator.validate_step("ProcessingStep")
-    
-    assert results["config_driven"] == True
-    assert "Processing" in results["enabled_levels"]
-```
-
-**2. Environment Variable Management**
-```python
-# ✅ Manage environment variables in tests
-@pytest.fixture
-def test_environment():
-    original_env = os.environ.copy()
-    
-    # Set test environment variables
-    os.environ.update({
-        "CURSUS_WORKSPACE_ROOT": "/test/workspace",
-        "CURSUS_VALIDATION_MODE": "strict",
-        "CURSUS_LOG_LEVEL": "DEBUG"
-    })
-    
-    yield
-    
-    # Restore original environment
-    os.environ.clear()
-    os.environ.update(original_env)
-
-def test_with_environment(test_environment):
-    validator = EnvironmentAwareValidator()
-    assert validator.workspace_root == "/test/workspace"
-    assert validator.validation_mode == "strict"
-```
-
-**3. Configuration File Mocking**
-```python
-# ✅ Mock configuration file loading
-def test_config_file_loading():
-    mock_config_content = """
-    validation:
-      levels:
-        Processing: ["SCRIPT_CONTRACT", "CONTRACT_SPEC"]
-      excluded_types: ["Legacy"]
-    """
-    
-    with patch('builtins.open', mock_open(read_data=mock_config_content)):
-        with patch('pathlib.Path.exists', return_value=True):
-            validator = FileConfigValidator()
-            config = validator.load_config()
-            
-            assert "Processing" in config["validation"]["levels"]
-            assert "Legacy" in config["validation"]["excluded_types"]
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Mock configuration loading systems appropriately
-- [ ] Set required environment variables in test fixtures
-- [ ] Provide test-specific configuration data
-- [ ] Verify configuration is loaded before testing functionality
-- [ ] Test both configured and default behavior scenarios
-
-### Category 12: Test Isolation and State Leakage Issues (3% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Tests affect each other due to shared state
-class TestSharedState:
-    shared_catalog = None  # Class-level shared state
-    
-    def test_first_operation(self):
-        self.shared_catalog = StepCatalog()
-        # Modifies shared state
-        
-    def test_second_operation(self):
-        # Depends on state from previous test - fails when run in isolation
-        assert self.shared_catalog is not None
-```
-
-#### **Root Cause Analysis**
-- Tests share mutable state between test methods
-- Global variables or class attributes modified during tests
-- Fixtures not properly isolated between test runs
-- Side effects from one test affecting subsequent tests
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Use Fresh Fixtures for Each Test**
-```python
-# ✅ Create fresh instances for each test
-@pytest.fixture
-def fresh_catalog():
-    """Create a fresh catalog instance for each test."""
-    return StepCatalog()
-
-def test_first_operation(fresh_catalog):
-    # Each test gets its own catalog instance
-    result = fresh_catalog.discover_components()
-    assert result is not None
-
-def test_second_operation(fresh_catalog):
-    # Independent catalog instance
-    result = fresh_catalog.list_available_steps()
-    assert isinstance(result, list)
-```
-
-**2. Reset Global State in Fixtures**
-```python
-# ✅ Reset global state between tests
-@pytest.fixture(autouse=True)
-def reset_global_state():
-    """Reset global state before each test."""
-    # Store original state
-    original_cache = GlobalCache.instance
-    original_config = GlobalConfig.settings
-    
-    # Reset to clean state
-    GlobalCache.clear()
-    GlobalConfig.reset()
-    
-    yield
-    
-    # Restore original state
-    GlobalCache.instance = original_cache
-    GlobalConfig.settings = original_config
-```
-
-**3. Use Context Managers for Temporary Changes**
-```python
-# ✅ Use context managers for temporary state changes
-@contextmanager
-def temporary_workspace(workspace_path):
-    """Temporarily change workspace without affecting other tests."""
-    original_workspace = os.environ.get('CURSUS_WORKSPACE')
-    try:
-        os.environ['CURSUS_WORKSPACE'] = str(workspace_path)
-        yield workspace_path
-    finally:
-        if original_workspace:
-            os.environ['CURSUS_WORKSPACE'] = original_workspace
-        else:
-            os.environ.pop('CURSUS_WORKSPACE', None)
-
-def test_with_temporary_workspace():
-    with temporary_workspace("/tmp/test"):
-        # Test with temporary workspace
-        validator = WorkspaceValidator()
-        assert validator.workspace_root == "/tmp/test"
-    # Workspace automatically restored
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Verify tests don't share mutable state
-- [ ] Use fresh fixtures for each test method
-- [ ] Reset global state between tests
-- [ ] Check for side effects that persist between tests
-- [ ] Run tests in different orders to detect dependencies
-
-### Category 13: Complex Mock Chain and Nested Dependency Issues (4% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Complex mock chains that don't match actual call patterns
-def test_complex_validation():
-    with patch('module.StepCatalog') as mock_catalog:
-        mock_catalog.return_value.get_step_info.return_value.file_components.get.return_value = Mock()
-        # Fails: actual code uses different call pattern
-```
-
-#### **Root Cause Analysis**
-- Mock chains don't match actual method call patterns
-- Nested dependencies not properly understood
-- Complex object hierarchies not correctly mocked
-- Method chaining patterns not replicated in mocks
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Map Out Actual Call Chains**
-```python
-# ✅ Understand actual call patterns first
-# Source code analysis:
-def validate_step(self, step_name):
-    step_info = self.catalog.get_step_info(step_name)  # Call 1
-    if step_info:
-        components = step_info.file_components  # Access 1
-        if 'contract' in components:  # Access 2
-            contract_path = components['contract'].path  # Access 3
-
-# Mock to match exact pattern:
-mock_file_metadata = Mock()
-mock_file_metadata.path = Path("/test/contract.py")
-
-mock_step_info = Mock()
-mock_step_info.file_components = {'contract': mock_file_metadata}
-
-mock_catalog.get_step_info.return_value = mock_step_info
-```
-
-**2. Use Realistic Mock Object Hierarchies**
-```python
-# ✅ Create realistic mock hierarchies
-def create_realistic_step_info_mock():
-    """Create a realistic StepInfo mock with proper structure."""
-    mock_step_info = Mock(spec=StepInfo)
-    
-    # Mock file components with proper structure
-    mock_contract = Mock()
-    mock_contract.path = Path("/test/contract.py")
-    mock_contract.modified_time = datetime.now()
-    
-    mock_script = Mock()
-    mock_script.path = Path("/test/script.py")
-    mock_script.modified_time = datetime.now()
-    
-    mock_step_info.file_components = {
-        'contract': mock_contract,
-        'script': mock_script
-    }
-    mock_step_info.workspace_id = "dev1"
-    mock_step_info.step_name = "TestStep"
-    mock_step_info.registry_data = {}
-    
-    return mock_step_info
-```
-
-**3. Test Mock Chains Incrementally**
-```python
-# ✅ Test each level of the mock chain
-def test_mock_chain_validation():
-    mock_step_info = create_realistic_step_info_mock()
-    
-    # Test each level works
-    assert mock_step_info.file_components is not None
-    assert 'contract' in mock_step_info.file_components
-    assert hasattr(mock_step_info.file_components['contract'], 'path')
-    assert isinstance(mock_step_info.file_components['contract'].path, Path)
-    
-    # Now test the actual functionality
-    validator = StepValidator()
-    result = validator.validate_step_with_mock(mock_step_info)
-    assert result is not None
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Map out complete call chains in source code
-- [ ] Create mock hierarchies that match actual object structure
-- [ ] Test each level of mock chain independently
-- [ ] Verify mock behavior matches real object behavior
-- [ ] Use spec parameter to enforce correct mock interfaces
-
-### Category 14: Import and Module Loading Edge Cases (2% of failures)
-
-#### **Problem Pattern**
-```python
-# ❌ WRONG: Tests fail due to import timing or circular import issues
-def test_dynamic_import():
-    # Fails: module not available during test execution
-    from cursus.dynamic_module import DynamicClass
-    instance = DynamicClass()
-```
-
-#### **Root Cause Analysis**
-- Dynamic imports not available in test environment
-- Circular import issues during test execution
-- Module loading order dependencies
-- Optional dependencies not available in test environment
-
-#### **✅ PREVENTION STRATEGY**
-
-**1. Mock Dynamic Imports Appropriately**
-```python
-# ✅ Mock dynamic imports when they're not available
-def test_dynamic_import_with_mock():
-    mock_dynamic_class = Mock()
-    mock_dynamic_class.process.return_value = "processed"
-    
-    with patch.dict('sys.modules', {'cursus.dynamic_module': Mock()}):
-        with patch('cursus.dynamic_module.DynamicClass', return_value=mock_dynamic_class):
-            # Test code that uses dynamic import
-            result = function_that_uses_dynamic_import()
-            assert result == "processed"
-```
-
-**2. Handle Optional Dependencies Gracefully**
-```python
-# ✅ Test both with and without optional dependencies
-def test_with_optional_dependency():
-    """Test when optional dependency is available."""
-    try:
-        import optional_package
-        # Test with dependency available
-        processor = ProcessorWithOptional()
-        result = processor.process_with_optional()
-        assert result is not None
-    except ImportError:
-        pytest.skip("Optional dependency not available")
-
-def test_without_optional_dependency():
-    """Test fallback behavior when optional dependency is missing."""
-    with patch.dict('sys.modules', {'optional_package': None}):
-        processor = ProcessorWithOptional()
-        result = processor.process_without_optional()
-        assert result is not None
-```
-
-**3. Control Import Order in Tests**
-```python
-# ✅ Control import order to avoid circular import issues
-def test_import_order_control():
-    """Test with controlled import order."""
-    # Clear any existing imports
-    modules_to_clear = [
-        'cursus.module_a',
-        'cursus.module_b',
-        'cursus.module_c'
-    ]
-    
-    for module in modules_to_clear:
-        if module in sys.modules:
-            del sys.modules[module]
-    
-    # Import in specific order
-    from cursus.module_a import ClassA
-    from cursus.module_b import ClassB
-    
-    # Test functionality
-    instance_a = ClassA()
-    instance_b = ClassB()
-    assert instance_a.interact_with(instance_b) is not None
-```
-
-#### **Troubleshooting Checklist**
-- [ ] Mock dynamic imports that aren't available in test environment
-- [ ] Test both with and without optional dependencies
-- [ ] Control import order to avoid circular import issues
-- [ ] Clear module cache when testing import behavior
-- [ ] Use pytest.skip for tests requiring unavailable dependencies
 
 ## Systematic Troubleshooting Methodology
 
-### Phase 1: Initial Error Analysis (5 minutes)
+### **🔍 Quick Error Classification (2 minutes)**
 
-#### **Step 1: Categorize the Error**
 ```python
-# Common error patterns:
-AttributeError: Mock object has no attribute 'X'     → Mock configuration issue
-ImportError: cannot import name 'X'                  → Import path issue  
-IndexError: list index out of range                  → side_effect mismatch
-AssertionError: assert X == Y                        → Expectation mismatch
-TypeError: 'Mock' object is not callable             → Mock setup issue
-FileNotFoundError: No such file or directory         → Fixture/path issue
+# Instantly categorize errors by pattern:
+AttributeError: Mock object has no attribute 'X'     → Category 2: Mock Configuration
+ImportError: cannot import name 'X'                  → Category 1: Mock Path Issues  
+IndexError: list index out of range                  → Category 2: side_effect mismatch
+AssertionError: assert X == Y                        → Category 4: Expectation mismatch
+TypeError: 'Mock' object is not callable             → Category 2: Mock setup issue
+FileNotFoundError: No such file or directory         → Category 3: Path/fixture issue
 ```
 
-#### **Step 2: Identify Error Location**
+### **⚡ 4-Step Fix Protocol (15 minutes total)**
+
+#### **Step 1: Read Source Code (5 minutes) - MANDATORY**
 ```python
-# Read the full traceback to identify:
-1. Which line in the test is failing
-2. Which line in the source code is being called
-3. What operation is being attempted
-4. What the expected vs actual values are
+# ALWAYS start here - prevents 95% of issues
+def analyze_source():
+    # 1. Open the actual implementation file
+    # 2. Find the failing method/class
+    # 3. Read import statements (for mock paths)
+    # 4. Understand method call patterns (for mock config)
+    # 5. Note data structures (for mock data)
 ```
 
-#### **Step 3: Quick Verification Checks**
+#### **Step 2: Apply Category Fix (5 minutes)**
 ```python
-# Before deep debugging, verify:
-- [ ] Test is using correct import paths
-- [ ] Mock is applied to correct location
-- [ ] Fixture dependencies are satisfied
-- [ ] Test expectations match implementation
-```
-
-### Phase 2: Source Code Investigation (10 minutes)
-
-#### **Step 1: Examine the Implementation**
-```python
-# Read the actual source code to understand:
-1. What imports are used
-2. How methods are called
-3. What data structures are expected
-4. Where exceptions might be raised
-5. What the actual behavior should be
-```
-
-#### **Step 2: Trace the Execution Path**
-```python
-# Follow the code path from test to implementation:
-1. Test calls method X
-2. Method X imports module Y
-3. Module Y calls function Z
-4. Function Z expects data structure W
-5. Error occurs at step N
-```
-
-#### **Step 3: Identify the Mismatch**
-```python
-# Common mismatches:
-- Mock path doesn't match import path
-- Mock data doesn't match expected structure
-- Mock behavior doesn't match implementation needs
-- Test expectations don't match actual behavior
-```
-
-### Phase 3: Targeted Fix Implementation (10 minutes)
-
-#### **Step 1: Apply Category-Specific Fix**
-```python
-# Use the appropriate fix pattern based on error category:
-if error_category == "mock_path":
-    fix_import_path_mocking()
-elif error_category == "mock_configuration":
-    fix_mock_setup_and_side_effects()
-elif error_category == "path_operations":
-    fix_path_mocking_with_magicmock()
-# ... etc
-```
-
-#### **Step 2: Verify Fix Locally**
-```python
-# Test the specific failing test:
-pytest test_file.py::TestClass::test_method -v
-
-# Verify related tests still pass:
-pytest test_file.py::TestClass -v
-```
-
-#### **Step 3: Validate Against Implementation**
-```python
-# Ensure fix aligns with actual implementation:
-1. Mock behavior matches real behavior
-2. Test expectations match implementation
-3. Edge cases are properly handled
-4. No new issues introduced
-```
-
-### Phase 4: Comprehensive Validation (5 minutes)
-
-#### **Step 1: Run Full Test Suite**
-```python
-# Verify no regressions:
-pytest test_module/ --tb=short -q
-```
-
-#### **Step 2: Check Related Tests**
-```python
-# Run tests that might be affected:
-pytest -k "related_functionality" -v
-```
-
-#### **Step 3: Document the Fix**
-```python
-# Add comments explaining the fix:
-# Mock at import location, not definition location
-@patch('cursus.step_catalog.adapters.workspace_discovery.StepCatalog')
-def test_adapter_init():
-    # Test implementation here
-```
-
-## Agent-Specific Troubleshooting Guide
-
-### For AI Agents Debugging Tests
-
-#### **Systematic Approach Protocol**
-
-**1. Always Start with Source Code Analysis**
-```python
-# MANDATORY: Read the implementation before fixing tests
-def debug_test_failure():
-    # Step 1: Read the failing test
-    # Step 2: Read the source code being tested
-    # Step 3: Identify the mismatch
-    # Step 4: Apply appropriate fix pattern
-    # Step 5: Verify fix works
-```
-
-**2. Use Structured Error Classification**
-```python
-# Classify error into one of 7 categories:
-ERROR_CATEGORIES = {
-    "mock_path": "Mock applied to wrong import path",
-    "mock_config": "Mock configuration or side_effect issues", 
-    "path_ops": "Path/filesystem operation problems",
-    "expectations": "Test expectations don't match implementation",
-    "fixtures": "Fixture dependency or scope issues",
-    "exceptions": "Exception handling or error expectation issues",
-    "data_types": "Data structure or type mismatches"
+# Use proven fix patterns by category:
+CATEGORY_FIXES = {
+    1: "Fix import path: patch where imported FROM, not where imported TO",
+    2: "Fix mock config: count calls in source, match side_effect length",
+    3: "Fix paths: use MagicMock for Path operations, tempfile for fixtures",
+    4: "Fix expectations: test actual behavior from source, not assumptions"
 }
 ```
 
-**3. Apply Category-Specific Fix Patterns**
+#### **Step 3: Verify Fix (3 minutes)**
 ```python
-# Each category has proven fix patterns:
-def fix_mock_path_issue():
-    # 1. Find actual import statement in source
-    # 2. Update mock path to match import location
-    # 3. Verify mock is applied correctly
-
-def fix_mock_config_issue():
-    # 1. Count method calls in source code
-    # 2. Match side_effect list length to call count
-    # 3. Ensure mock objects have required attributes
-
-# ... etc for each category
+# Quick verification:
+pytest test_file.py::TestClass::test_method -v  # Test specific failure
+pytest test_file.py::TestClass -v               # Test related methods
 ```
 
-#### **Common Agent Mistakes to Avoid**
-
-**❌ Don't Guess at Mock Paths**
+#### **Step 4: Validate Implementation Alignment (2 minutes)**
 ```python
-# Wrong approach:
-@patch('cursus.step_catalog.StepCatalog')  # Guessing
-
-# Correct approach:
-# 1. Read source: from ..step_catalog import StepCatalog
-# 2. Mock at import location: 'module.submodule.StepCatalog'
+# Ensure fix matches reality:
+- [ ] Mock behavior matches real object behavior
+- [ ] Test expectations match source code behavior  
+- [ ] Mock paths match actual import statements
+- [ ] Mock data structures match implementation needs
 ```
 
-**❌ Don't Assume Test Expectations**
-```python
-# Wrong approach:
-assert result > 0  # Assuming positive result
+### **🎯 Agent-Specific Quick Reference**
 
-# Correct approach:
-# 1. Read implementation to understand actual behavior
-# 2. Write test that matches implementation
-# 3. Test both success and edge cases
+#### **Common Mistakes to Avoid**
+```python
+❌ @patch('wrong.path.Class')           → ✅ Read source imports first
+❌ mock.side_effect = [1,2,3,4]         → ✅ Count actual calls in source  
+❌ assert result > 0                    → ✅ Read source to know actual behavior
+❌ Mock() for Path operations           → ✅ Use MagicMock(spec=Path)
 ```
 
-**❌ Don't Over-Complicate Fixes**
+#### **Instant Fix Patterns**
 ```python
-# Wrong approach: Complex workarounds
-# Correct approach: Address root cause directly
+# Pattern 1: Import path issues
+# Source: from ..module import Class
+@patch('package.module.importing_module.Class')  # ✅ Patch at import location
+
+# Pattern 2: Mock configuration issues  
+# Source: for item in items: process(item)  # 3 items
+mock.side_effect = [result1, result2, result3]   # ✅ Exactly 3 results
+
+# Pattern 3: Magic method issues
+mock_obj = MagicMock(spec=RealClass)              # ✅ Use MagicMock for magic methods
+
+# Pattern 4: False positive prevention
+mock_obj = Mock(spec=['method1', 'method2'])      # ✅ Control available attributes
 ```
 
-#### **Verification Checklist for Agents**
-
-Before submitting a fix, verify:
-- [ ] Read and understood the source code implementation
-- [ ] Identified the specific error category
-- [ ] Applied the appropriate fix pattern for that category
-- [ ] Tested the fix works for the specific failing test
+#### **Verification Checklist**
+```python
+# Before submitting fix:
+- [ ] Read source code completely
+- [ ] Applied correct category fix pattern  
+- [ ] Tested specific failing test passes
 - [ ] Verified no regressions in related tests
-- [ ] Added explanatory comments for complex fixes
+- [ ] Mock behavior matches real behavior
+```
+
+### **🆕 NEW: Category 16 - Exception Handling vs Test Expectations**
+
+#### **Problem Pattern (NEW - discovered from remaining failures)**
+```python
+# ❌ WRONG: Test expects graceful handling but implementation propagates exception
+def test_handles_exception_gracefully(self, reporter):
+    """Test handling when operation raises exception."""
+    with patch('module.function') as mock_func:
+        mock_func.side_effect = Exception("Discovery failed")
+        
+        # Test expects empty results, but implementation lets exception propagate
+        results = reporter.operation_that_should_handle_exceptions("param")
+        assert results == {}  # FAILS: Exception propagates instead of being caught
+```
+
+#### **Root Cause Analysis**
+- Test expects implementation to catch exceptions and return graceful fallback
+- Implementation doesn't have try/catch blocks around the failing operation
+- Mismatch between test expectations and actual error handling strategy
+- Test assumes defensive programming that doesn't exist in implementation
+
+#### **✅ PREVENTION STRATEGY**
+
+**1. Read Implementation to Understand Exception Handling**
+```python
+# ✅ Check actual implementation for exception handling
+def operation_that_should_handle_exceptions(self, param):
+    # If implementation has no try/catch:
+    step_names = get_steps_by_sagemaker_type(param)  # Exception propagates here
+    return process_steps(step_names)
+    
+# ✅ Test should expect exception, not graceful handling
+def test_handles_exception_correctly(self, reporter):
+    with patch('module.get_steps_by_sagemaker_type') as mock_func:
+        mock_func.side_effect = Exception("Discovery failed")
+        
+        # Test should expect exception to propagate
+        with pytest.raises(Exception, match="Discovery failed"):
+            reporter.operation_that_should_handle_exceptions("param")
+```
+
+**2. If Graceful Handling is Required, Update Implementation**
+```python
+# ✅ Add exception handling to implementation if test expects it
+def operation_that_should_handle_exceptions(self, param):
+    try:
+        step_names = get_steps_by_sagemaker_type(param)
+        return process_steps(step_names)
+    except Exception as e:
+        print(f"❌ Failed to process {param}: {e}")
+        return {}  # Graceful fallback
+```
+
+#### **Key Rule: Match Test Expectations to Implementation Reality**
+- If implementation doesn't catch exceptions, test should expect exceptions
+- If test expects graceful handling, implementation must catch exceptions
+- Don't assume defensive programming exists without reading the source code
+
+#### **Troubleshooting Checklist**
+- [ ] Read implementation to see if exceptions are caught
+- [ ] Check if test expects graceful handling or exception propagation
+- [ ] Verify exception handling strategy matches test expectations
+- [ ] Consider whether implementation should be updated to handle exceptions
+- [ ] Test both success and exception scenarios appropriately
 
 ### Debugging Tools and Techniques
 

@@ -315,35 +315,40 @@ class StreamlinedBuilderTestReporter:
         print(f"Testing all {sagemaker_step_type} step builders (streamlined)...")
         print("=" * 60)
 
-        # Get all steps of this type
-        from ....registry.step_names import get_steps_by_sagemaker_type
-        step_names = get_steps_by_sagemaker_type(sagemaker_step_type)
+        try:
+            # Get all steps of this type
+            from ....registry.step_names import get_steps_by_sagemaker_type
+            step_names = get_steps_by_sagemaker_type(sagemaker_step_type)
 
-        if not step_names:
-            print(f"❌ No {sagemaker_step_type} step builders found")
-            return {}
+            if not step_names:
+                print(f"❌ No {sagemaker_step_type} step builders found")
+                return {}
 
-        reports = {}
+            reports = {}
 
-        for step_name in step_names:
-            try:
-                # Load builder class using step catalog
-                builder_class = self._load_builder_class(step_name)
-                if not builder_class:
-                    print(f"  ❌ Could not load builder class for {step_name}")
-                    continue
+            for step_name in step_names:
+                try:
+                    # Load builder class using step catalog
+                    builder_class = self._load_builder_class(step_name)
+                    if not builder_class:
+                        print(f"  ❌ Could not load builder class for {step_name}")
+                        continue
 
-                # Test and save report
-                report = self.test_and_save_builder_report(builder_class, step_name)
-                reports[step_name] = report
+                    # Test and save report
+                    report = self.test_and_save_builder_report(builder_class, step_name)
+                    reports[step_name] = report
 
-            except Exception as e:
-                print(f"  ❌ Failed to test {step_name}: {e}")
+                except Exception as e:
+                    print(f"  ❌ Failed to test {step_name}: {e}")
 
-        # Generate streamlined step type summary
-        self._generate_streamlined_step_type_summary(sagemaker_step_type, reports)
+            # Generate streamlined step type summary
+            self._generate_streamlined_step_type_summary(sagemaker_step_type, reports)
 
-        return reports
+            return reports
+
+        except Exception as e:
+            print(f"❌ Failed to process {sagemaker_step_type} step builders: {e}")
+            return {}  # Graceful fallback
 
     def _infer_step_name(self, builder_class: Type[StepBuilderBase]) -> str:
         """Infer step name from builder class name."""

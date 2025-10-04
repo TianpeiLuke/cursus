@@ -144,39 +144,50 @@ class UniversalStepBuilderTest:
         if self.verbose:
             print(f"🔍 Running comprehensive validation for step: {step_name}")
         
-        # Get builder class for the step
-        builder_class = self._get_builder_class_from_catalog(step_name)
-        if not builder_class:
+        try:
+            # Get builder class for the step
+            builder_class = self._get_builder_class_from_catalog(step_name)
+            if not builder_class:
+                return {
+                    "step_name": step_name,
+                    "validation_type": "comprehensive_builder_validation",
+                    "overall_status": "ERROR",
+                    "error": f"No builder class found for step: {step_name}"
+                }
+            
+            # Run comprehensive validation
+            results = self._run_comprehensive_validation_for_step(step_name, builder_class)
+            
+            # Add scoring if enabled
+            if self.enable_scoring and SCORING_AVAILABLE:
+                try:
+                    scoring_results = self._calculate_scoring(results)
+                    results["scoring"] = scoring_results
+                    # Store for reporter access
+                    self._last_scoring_results = scoring_results
+                    
+                    if self.verbose:
+                        overall_score = scoring_results.get("overall", {}).get("score", 0.0)
+                        overall_rating = scoring_results.get("overall", {}).get("rating", "Unknown")
+                        print(f"📊 Quality Score: {overall_score:.1f}/100 - {overall_rating}")
+                        
+                except Exception as e:
+                    if self.verbose:
+                        print(f"⚠️  Scoring calculation failed: {str(e)}")
+                    # Don't fail validation if scoring fails
+                    results["scoring_error"] = str(e)
+            
+            return results
+            
+        except Exception as e:
+            if self.verbose:
+                print(f"❌ Failed to run validation for {step_name}: {e}")
             return {
                 "step_name": step_name,
                 "validation_type": "comprehensive_builder_validation",
                 "overall_status": "ERROR",
-                "error": f"No builder class found for step: {step_name}"
+                "error": str(e)
             }
-        
-        # Run comprehensive validation
-        results = self._run_comprehensive_validation_for_step(step_name, builder_class)
-        
-        # Add scoring if enabled
-        if self.enable_scoring and SCORING_AVAILABLE:
-            try:
-                scoring_results = self._calculate_scoring(results)
-                results["scoring"] = scoring_results
-                # Store for reporter access
-                self._last_scoring_results = scoring_results
-                
-                if self.verbose:
-                    overall_score = scoring_results.get("overall", {}).get("score", 0.0)
-                    overall_rating = scoring_results.get("overall", {}).get("rating", "Unknown")
-                    print(f"📊 Quality Score: {overall_score:.1f}/100 - {overall_rating}")
-                    
-            except Exception as e:
-                if self.verbose:
-                    print(f"⚠️  Scoring calculation failed: {str(e)}")
-                # Don't fail validation if scoring fails
-                results["scoring_error"] = str(e)
-        
-        return results
     
     def _run_comprehensive_validation_for_step(self, step_name: str, builder_class: Type) -> Dict[str, Any]:
         """Run comprehensive validation for a step using unified approach."""
