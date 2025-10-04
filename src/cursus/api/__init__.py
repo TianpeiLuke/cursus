@@ -10,7 +10,6 @@ from .dag import (
     PipelineDAG,
     PipelineDAGResolver,
     PipelineExecutionPlan,
-    WorkspaceAwareDAG,
 )
 
 __all__ = [
@@ -18,5 +17,4 @@ __all__ = [
     "PipelineDAG",
     "PipelineDAGResolver",
     "PipelineExecutionPlan",
-    "WorkspaceAwareDAG",
 ]
