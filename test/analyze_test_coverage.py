@@ -327,7 +327,8 @@ class TestCoverageAnalyzer:
         total_test_functions = 0
 
         if test_dir.exists():
-            for py_file in test_dir.glob("test_*.py"):
+            # Use rglob to search recursively for test files
+            for py_file in test_dir.rglob("test_*.py"):
                 functions = self.extract_functions_from_file(py_file)
                 total_test_functions += len(functions)
 
@@ -425,15 +426,9 @@ class TestCoverageAnalyzer:
 
             coverage_pct = f"{cov['coverage_percentage']:.1f}%"
             functions_str = f"{cov['tested_functions']}/{cov['total_source_functions']}"
-            test_count = (
-                len(
-                    cov["test_functions_by_file"].get(
-                        list(cov["test_functions_by_file"].keys())[0], []
-                    )
-                )
-                if cov["test_functions_by_file"]
-                else 0
-            )
+            
+            # Calculate total test functions across all test files
+            test_count = sum(len(funcs) for funcs in cov["test_functions_by_file"].values())
             test_count_str = f"{test_count} tests"
 
             print(

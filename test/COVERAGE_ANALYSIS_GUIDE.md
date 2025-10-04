@@ -66,22 +66,23 @@ Based on the latest analysis:
 - **Total Functions**: 6,463 across all components
 - **Tested Functions**: 3,687 (57.0% coverage)
 - **Components**: 11 total
+- **Total Test Functions**: 12,062 across all components
 
 ### Component Breakdown
 
-| Component | Coverage | Functions | Status |
-|-----------|----------|-----------|---------|
-| **mods** | 83.1% | 74/89 | ✅ Excellent |
-| **workspace** | 82.3% | 116/141 | ✅ Excellent |
-| **step_catalog** | 80.6% | 698/866 | ✅ Excellent |
-| **cli** | 70.7% | 53/75 | ✅ Good |
-| **core** | 65.9% | 653/991 | 🟡 Moderate |
-| **pipeline_catalog** | 65.3% | 413/632 | 🟡 Moderate |
-| **validation** | 63.0% | 865/1373 | 🟡 Moderate |
-| **registry** | 51.5% | 119/231 | 🟡 Moderate |
-| **api** | 37.8% | 93/246 | 🔴 Low |
-| **steps** | 37.8% | 603/1594 | 🔴 Low |
-| **processing** | 0.0% | 0/225 | 🚨 Critical |
+| Component | Coverage | Functions | Test Functions | Status |
+|-----------|----------|-----------|----------------|---------|
+| **mods** | 83.1% | 74/89 | 301 | ✅ Excellent |
+| **workspace** | 82.3% | 116/141 | 359 | ✅ Excellent |
+| **step_catalog** | 80.6% | 698/866 | 1,886 | ✅ Excellent |
+| **cli** | 70.7% | 53/75 | 685 | ✅ Good |
+| **core** | 65.9% | 653/991 | 2,241 | 🟡 Moderate |
+| **pipeline_catalog** | 65.3% | 413/632 | 886 | 🟡 Moderate |
+| **validation** | 63.0% | 865/1373 | 3,558 | 🟡 Moderate |
+| **registry** | 51.5% | 119/231 | 751 | 🟡 Moderate |
+| **api** | 37.8% | 93/246 | 203 | 🔴 Low |
+| **steps** | 37.8% | 603/1594 | 1,192 | 🔴 Low |
+| **processing** | 0.0% | 0/225 | 0 | 🚨 Critical |
 
 ### Critical Issues
 
