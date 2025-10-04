@@ -27,16 +27,19 @@ def print_validation_summary(
     results: Dict[str, Any], verbose: bool = False, show_scoring: bool = False
 ) -> None:
     """Print validation results in a formatted way."""
-    script_name = results.get("script_name", "Unknown")
+    script_name = results.get("step_name", results.get("script_name", "Unknown"))
     status = results.get("overall_status", "UNKNOWN")
 
-    # Status emoji and color
-    if status == "PASSING":
+    # Status emoji and color - fix status value mapping
+    if status == "PASSED":
         status_emoji = "✅"
         status_color = "green"
-    elif status == "FAILING":
+    elif status == "FAILED":
         status_emoji = "❌"
         status_color = "red"
+    elif status == "EXCLUDED":
+        status_emoji = "⚠️"
+        status_color = "yellow"
     else:
         status_emoji = "⚠️"
         status_color = "yellow"
@@ -87,27 +90,41 @@ def print_validation_summary(
             if verbose:
                 click.echo(f"⚠️  Could not display scoring: {e}")
 
-    # Print level-by-level results
+    # Print level-by-level results - fix to match actual implementation structure
     level_names = [
         "Script ↔ Contract",
-        "Contract ↔ Specification",
+        "Contract ↔ Specification", 
         "Specification ↔ Dependencies",
         "Builder ↔ Configuration",
     ]
 
+    # Get validation results from the actual structure
+    validation_results = results.get("validation_results", {})
+    
     for level_num, level_name in enumerate(level_names, 1):
-        level_key = f"level{level_num}"
-        level_result = results.get(level_key, {})
-        level_passed = level_result.get("passed", False)
-        level_issues = level_result.get("issues", [])
+        level_key = f"level_{level_num}"  # Implementation uses level_1, level_2, etc.
+        level_result = validation_results.get(level_key, {})
+        
+        # Check level status - implementation uses "status" field
+        level_status = level_result.get("status", "UNKNOWN")
+        level_passed = level_status not in ["ERROR", "FAILED"]
+        
+        # Get issues/errors from level result
+        level_issues = []
+        if level_result.get("error"):
+            level_issues.append({
+                "severity": "ERROR",
+                "message": level_result.get("error"),
+                "recommendation": "Check the validation logs for more details"
+            })
 
         level_emoji = "✅" if level_passed else "❌"
         issues_text = f" ({len(level_issues)} issues)" if level_issues else ""
 
         click.echo(f"  {level_emoji} Level {level_num} ({level_name}): ", nl=False)
-        level_status = "PASS" if level_passed else "FAIL"
+        display_status = "PASS" if level_passed else "FAIL"
         level_color = "green" if level_passed else "red"
-        click.secho(f"{level_status}{issues_text}", fg=level_color)
+        click.secho(f"{display_status}{issues_text}", fg=level_color)
 
         # Show issues if verbose or if there are critical/error issues
         if verbose or any(
@@ -474,11 +491,14 @@ def validate(
             if format in ["html", "both"]:
                 save_report(script_name, results, output_dir, "html")
 
-        # Return appropriate exit code
+        # Return appropriate exit code - fix status value check
         status = results.get("overall_status", "UNKNOWN")
-        if status == "PASSING":
+        if status == "PASSED":
             click.echo(f"\n✅ {script_name} passed all alignment validation checks!")
             sys.exit(0)
+        elif status == "EXCLUDED":
+            click.echo(f"\n⚠️  {script_name} was excluded from validation.")
+            sys.exit(0)  # Excluded is not a failure
         else:
             click.echo(
                 f"\n❌ {script_name} failed alignment validation. Please review the issues above."
@@ -598,17 +618,20 @@ def validate_all(
                     if format in ["html", "both"]:
                         save_report(script_name, results, output_dir, "html")
 
-                # Update summary
+                # Update summary - fix status value checks
                 status = results.get("overall_status", "UNKNOWN")
                 validation_summary["script_results"][script_name] = {
                     "status": status,
                     "timestamp": results.get("metadata", {}).get("validation_timestamp"),
                 }
 
-                if status == "PASSING":
+                if status == "PASSED":
                     validation_summary["passed_scripts"] += 1
-                elif status == "FAILING":
+                elif status == "FAILED":
                     validation_summary["failed_scripts"] += 1
+                elif status == "EXCLUDED":
+                    # Excluded scripts don't count as errors
+                    validation_summary["passed_scripts"] += 1
                 else:
                     validation_summary["error_scripts"] += 1
 
@@ -737,11 +760,23 @@ def validate_level(
         # Run validation for specific level
         results = tester.validate_specific_script(script_name)
 
-        # Extract level-specific results
-        level_key = f"level{level}"
-        level_result = results.get(level_key, {})
-        level_passed = level_result.get("passed", False)
-        level_issues = level_result.get("issues", [])
+        # Extract level-specific results - fix to match implementation structure
+        validation_results = results.get("validation_results", {})
+        level_key = f"level_{level}"  # Implementation uses level_1, level_2, etc.
+        level_result = validation_results.get(level_key, {})
+        
+        # Check level status from implementation structure
+        level_status = level_result.get("status", "UNKNOWN")
+        level_passed = level_status not in ["ERROR", "FAILED"]
+        
+        # Get issues from level result
+        level_issues = []
+        if level_result.get("error"):
+            level_issues.append({
+                "severity": "ERROR",
+                "message": level_result.get("error"),
+                "recommendation": "Check the validation logs for more details"
+            })
 
         # Print level-specific results
         click.echo(f"\n{'='*60}")
