@@ -65,15 +65,13 @@ from .config_fields import (
     deserialize_config,
     ConfigClassStore,
     register_config_class,
-    CircularReferenceTracker,
-    ConfigFieldTierRegistry,
-    # These modules are not currently available
-    # DefaultValuesProvider,
-    # FieldDerivationEngine,
-    # DataConfig,
-    # ModelConfig,
-    # RegistrationConfig,
-    # EssentialInputs
+    # NOTE: The following components have been eliminated in Phase 2:
+    # - CircularReferenceTracker (replaced with UnifiedConfigManager's simple tracker)
+    # - ConfigFieldTierRegistry (replaced with config class methods)
+    # These modules are not currently available:
+    # - DefaultValuesProvider
+    # - FieldDerivationEngine
+    # - DataConfig, ModelConfig, RegistrationConfig, EssentialInputs
 )
 from .deps import (
     DependencyType,
@@ -150,15 +148,13 @@ __all__ = [
     "deserialize_config",
     "ConfigClassStore",
     "register_config_class",
-    "CircularReferenceTracker",
-    "ConfigFieldTierRegistry",
-    # These modules are not currently available
-    # "DefaultValuesProvider",
-    # "FieldDerivationEngine",
-    # "DataConfig",
-    # "ModelConfig",
-    # "RegistrationConfig",
-    # "EssentialInputs",
+    # NOTE: The following components have been eliminated in Phase 2:
+    # - "CircularReferenceTracker" (replaced with UnifiedConfigManager's simple tracker)
+    # - "ConfigFieldTierRegistry" (replaced with config class methods)
+    # These modules are not currently available:
+    # - "DefaultValuesProvider"
+    # - "FieldDerivationEngine"
+    # - "DataConfig", "ModelConfig", "RegistrationConfig", "EssentialInputs"
     # Dependencies
     "DependencyType",
     "NodeType",

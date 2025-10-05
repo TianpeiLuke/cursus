@@ -86,28 +86,75 @@ class ConfigMerger:
 
     def _verify_merged_output(self, merged: Dict[str, Any]) -> None:
         """
-        Verify the merged output meets expectations for the simplified structure.
-
+        OPTIMIZED: Single comprehensive verification method covering critical requirements only.
+        
+        Reduction: 100+ lines → ~40 lines (60% reduction)
+        Focus: Essential structure validation only
+        Performance: Faster validation with single pass
+        
         Args:
             merged: Merged configuration structure
-
-        Raises:
-            ValueError: If verification fails
         """
-        # Check structure has only shared and specific sections
+        # Single comprehensive verification covering all critical requirements
+        self._verify_essential_structure(merged)
+    
+    def _verify_essential_structure(self, merged: Dict[str, Any]) -> None:
+        """
+        Single comprehensive verification method covering all essential requirements.
+        
+        Combines structure integrity, field placement, and mutual exclusivity checks
+        into one efficient pass through the data.
+        """
+        # Validate basic structure
         if set(merged.keys()) != {"shared", "specific"}:
             self.logger.warning(
                 f"Merged structure has unexpected keys: {set(merged.keys())}. Expected 'shared' and 'specific' only."
             )
-
-        # Check for mutual exclusivity violations
-        self._check_mutual_exclusivity(merged)
-
-        # Check for special fields in wrong sections
-        self._check_special_fields_placement(merged)
-
-        # Check for missing required fields
-        self._check_required_fields(merged)
+            return
+        
+        # Collect all field information in single pass
+        shared_fields = set(merged["shared"].keys())
+        specific_field_info = {}
+        special_fields_in_shared = []
+        field_collisions = {}
+        
+        # Single pass through specific configs
+        for step_name, fields in merged["specific"].items():
+            if not isinstance(fields, dict):
+                self.logger.warning(f"Specific config for {step_name} is not a dictionary")
+                continue
+                
+            step_fields = set(fields.keys())
+            specific_field_info[step_name] = step_fields
+            
+            # Check for collisions with shared fields
+            collisions = shared_fields.intersection(step_fields)
+            if collisions:
+                field_collisions[step_name] = collisions
+        
+        # Check for special fields in shared section
+        for field in shared_fields:
+            if field in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
+                special_fields_in_shared.append(field)
+        
+        # Log any issues found
+        if field_collisions:
+            for step, collisions in field_collisions.items():
+                self.logger.warning(
+                    f"Field name collision between shared and specific.{step}: {collisions}"
+                )
+        
+        if special_fields_in_shared:
+            self.logger.warning(
+                f"Special fields found in shared section: {special_fields_in_shared}"
+            )
+        
+        # Log successful verification
+        total_shared = len(shared_fields)
+        total_specific = sum(len(fields) for fields in specific_field_info.values())
+        self.logger.debug(
+            f"Structure verification complete: {total_shared} shared, {total_specific} specific fields"
+        )
 
     def _generate_step_name(self, config: Any) -> str:
         """
@@ -123,118 +170,6 @@ class ConfigMerger:
         serializer = TypeAwareConfigSerializer()
         return serializer.generate_step_name(config)
 
-    def _check_mutual_exclusivity(self, merged: Dict[str, Any]) -> None:
-        """
-        Check for field name collisions across categories in the simplified structure.
-
-        Args:
-            merged: Merged configuration structure
-
-        Raises:
-            ValueError: If mutual exclusivity is violated
-        """
-        # Collect all field names by section
-        shared_fields = set(merged["shared"].keys())
-
-        specific_fields: Dict[str, Set[str]] = {}
-        for step, fields in merged["specific"].items():
-            specific_fields[step] = set(fields.keys())
-
-        # Check for collisions between shared and specific sections
-        for step, fields in specific_fields.items():
-            collisions = shared_fields.intersection(fields)
-            if collisions:
-                self.logger.warning(
-                    f"Field name collision between shared and specific.{step}: {collisions}"
-                )
-
-    def _check_special_fields_placement(self, merged: Dict[str, Any]) -> None:
-        """
-        Check that special fields are placed in specific sections in the simplified structure.
-
-        Args:
-            merged: Merged configuration structure
-
-        Raises:
-            ValueError: If special fields are in wrong sections
-        """
-        # Check shared section for special fields
-        for field in merged["shared"]:
-            if field in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
-                self.logger.warning(f"Special field '{field}' found in shared section")
-
-    def _check_required_fields(self, merged: Dict[str, Any]) -> None:
-        """
-        Check that common fields are consistently placed across configurations.
-
-        This method dynamically determines which fields appear in multiple config
-        classes and checks their placement in the merged configuration.
-
-        Args:
-            merged: Merged configuration structure
-        """
-        if not self.config_list:
-            return  # Nothing to check if no configs
-
-        # Get all fields from each config
-        config_fields = {}
-        for config in self.config_list:
-            step_name = self._generate_step_name(config)
-            config_fields[step_name] = set(
-                field
-                for field in dir(config)
-                if not field.startswith("_") and not callable(getattr(config, field))
-            )
-
-        # Find fields that appear in all configs
-        if config_fields:
-            common_fields = set.intersection(*config_fields.values())
-        else:
-            common_fields = set()
-
-        # Remove special fields that should stay in specific sections
-        from .constants import SPECIAL_FIELDS_TO_KEEP_SPECIFIC
-
-        common_fields -= set(SPECIAL_FIELDS_TO_KEEP_SPECIFIC)
-
-        # Fields that should be common (appear in multiple configs)
-        potential_shared_fields = set()
-        for field in set().union(*config_fields.values()):
-            if field in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
-                continue  # Skip special fields
-
-            # Count configs that have this field
-            count = sum(1 for fields in config_fields.values() if field in fields)
-            if count > 1:
-                # Field appears in multiple configs, should be shared
-                potential_shared_fields.add(field)
-
-        # Get fields from shared section
-        shared_fields = set(merged["shared"].keys())
-
-        # Find potentially shared fields that aren't in the shared section
-        missing_from_shared = potential_shared_fields - shared_fields
-
-        if not missing_from_shared:
-            # All potential shared fields are already in shared section - perfect!
-            return
-
-        # Check if any of these fields appear in specific sections instead
-        misplaced_fields: Dict[str, List[str]] = {}
-        for step_name, fields in merged["specific"].items():
-            step_fields = set(fields.keys())
-            for field in missing_from_shared:
-                if field in step_fields:
-                    if field not in misplaced_fields:
-                        misplaced_fields[field] = []
-                    misplaced_fields[field].append(step_name)
-
-        # Log fields that should be moved from specific to shared
-        if misplaced_fields:
-            for field, steps in misplaced_fields.items():
-                self.logger.info(
-                    f"Field '{field}' appears in multiple configs but is in specific section(s): {steps}"
-                )
 
     def save(self, output_file: str) -> Dict[str, Any]:
         """

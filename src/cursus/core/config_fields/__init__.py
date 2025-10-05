@@ -60,8 +60,8 @@ from .type_aware_config_serializer import (
     deserialize_config as _deserialize_config,
 )
 from .step_catalog_aware_categorizer import StepCatalogAwareConfigFieldCategorizer
-from .circular_reference_tracker import CircularReferenceTracker
-from .tier_registry import ConfigFieldTierRegistry
+# CircularReferenceTracker eliminated - functionality moved to UnifiedConfigManager's simple tracker
+# TierRegistry eliminated - functionality moved to UnifiedConfigManager
 
 # Import step catalog adapters for config class functionality
 try:
@@ -127,29 +127,27 @@ except ImportError:
 
 
 __all__ = [
-    # Original exports
+    # Primary API functions - PRESERVED
     "merge_and_save_configs",
     "load_configs",
     "serialize_config",
     "deserialize_config",
+    # Config class management
     "ConfigClassStore",  # Export for use as a decorator
     "register_config_class",  # Convenient alias for the decorator
-    "CircularReferenceTracker",  # For advanced circular reference handling
     # Enhanced categorization
     "StepCatalogAwareConfigFieldCategorizer",  # Enhanced field categorizer
-    # Three-tier architecture components
-    "ConfigFieldTierRegistry",
     # Config class detection functionality
     "ConfigClassDetector",
     "detect_config_classes_from_json",
     "build_complete_config_classes",
-    # The following modules are not currently available
-    # 'DefaultValuesProvider',
-    # 'FieldDerivationEngine',
-    # 'DataConfig',
-    # 'ModelConfig',
-    # 'RegistrationConfig',
-    # 'EssentialInputs'
+    # NOTE: The following components have been eliminated in Phase 2:
+    # - CircularReferenceTracker (replaced with UnifiedConfigManager's simple tracker)
+    # - ConfigFieldTierRegistry (replaced with config class methods)
+    # The following modules are not currently available:
+    # - DefaultValuesProvider
+    # - FieldDerivationEngine
+    # - DataConfig, ModelConfig, RegistrationConfig, EssentialInputs
 ]
 
 
@@ -382,22 +380,8 @@ def load_configs(
             # Final fallback to basic discovery
             all_config_classes = _get_basic_config_classes()
 
-        # Use enhanced loader if available
-        if enhanced_discovery:
-            try:
-                from .enhanced_config_loader import EnhancedConfigLoader
-                loader = EnhancedConfigLoader(
-                    config_classes=all_config_classes,
-                    project_id=detected_project_id
-                )
-                logger.info(f"Using enhanced config loader for {input_file}")
-                loaded_configs = loader.load(input_file)
-            except ImportError:
-                logger.debug("EnhancedConfigLoader not available, using standard loader")
-                loaded_configs = ConfigMerger.load(input_file, all_config_classes)
-        else:
-            # Use standard ConfigMerger for backward compatibility
-            loaded_configs = ConfigMerger.load(input_file, all_config_classes)
+        # Use standard ConfigMerger for loading (enhanced discovery already handled above)
+        loaded_configs = ConfigMerger.load(input_file, all_config_classes)
 
         logger.info(
             f"Successfully loaded configs from {input_file} with {len(loaded_configs.get('specific', {}))} specific configs"
