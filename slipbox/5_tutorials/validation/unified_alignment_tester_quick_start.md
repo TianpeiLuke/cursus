@@ -11,21 +11,21 @@ keywords:
   - alignment validation
   - script contract alignment
   - specification validation
-  - workspace validation
+  - configuration-driven validation
 topics:
   - unified alignment testing
   - validation tutorial
   - alignment validation workflow
-  - workspace-aware validation
+  - step-type-aware validation
 language: python
-date of note: 2025-09-06
+date of note: 2025-10-05
 ---
 
 # Unified Alignment Tester Quick Start Guide
 
 ## Overview
 
-This 20-minute tutorial will get you up and running with the Cursus Unified Alignment Tester. You'll learn how to validate alignment across all four levels of the pipeline architecture, understand workspace-aware validation, and generate comprehensive reports.
+This 20-minute tutorial will get you up and running with the Cursus Unified Alignment Tester. You'll learn how to validate alignment across all four levels of the pipeline architecture using the new configuration-driven approach that automatically adapts validation based on step types.
 
 ## Prerequisites
 
@@ -38,295 +38,342 @@ This 20-minute tutorial will get you up and running with the Cursus Unified Alig
 
 The Unified Alignment Tester validates consistency across four critical levels:
 
-1. **Level 1**: Script ↔ Contract Alignment
-2. **Level 2**: Contract ↔ Specification Alignment  
-3. **Level 3**: Specification ↔ Dependencies Alignment
-4. **Level 4**: Builder ↔ Configuration Alignment
+1. **Level 1**: Script ↔ Contract Alignment (validates script implementation matches contract)
+2. **Level 2**: Contract ↔ Specification Alignment (ensures contract matches spec requirements)
+3. **Level 3**: Specification ↔ Dependencies Alignment (universal dependency validation)
+4. **Level 4**: Builder ↔ Configuration Alignment (validates builder configuration)
+
+The system uses **step-type-aware validation** - different SageMaker step types (Processing, Training, CreateModel, etc.) automatically get appropriate validation levels applied.
 
 ## Step 1: Initialize the Unified Alignment Tester (2 minutes)
 
 First, let's set up the tester and verify it's working:
 
 ```python
-from cursus.validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
+from cursus.validation.alignment import UnifiedAlignmentTester
 
-# Initialize with default paths
+# Initialize with default configuration (package-only steps)
 tester = UnifiedAlignmentTester()
 
-# Or initialize with custom paths
+# Or initialize with workspace directories for workspace-aware validation
 tester = UnifiedAlignmentTester(
-    scripts_dir="src/cursus/steps/scripts",
-    contracts_dir="src/cursus/steps/contracts", 
-    specs_dir="src/cursus/steps/specs",
-    builders_dir="src/cursus/steps/builders",
-    configs_dir="src/cursus/steps/configs",
-    level3_validation_mode="relaxed"  # Options: strict, relaxed, permissive
+    workspace_dirs=["development/projects/project_alpha", "development/projects/project_beta"]
 )
 
 print("✅ Unified Alignment Tester initialized successfully")
-print(f"Scripts directory: {tester.scripts_dir}")
-print(f"Level 3 validation mode: {tester.level3_config.validation_mode}")
+
+# Check discovered steps
+discovered_steps = tester.discover_scripts()
+print(f"📁 Discovered {len(discovered_steps)} steps with script files")
+
+# Get validation summary to see configuration
+summary = tester.get_validation_summary()
+print(f"📊 Ready to validate {summary['total_steps']} total steps")
 ```
 
 **Expected Output:**
 ```
 ✅ Unified Alignment Tester initialized successfully
-Scripts directory: /path/to/src/cursus/steps/scripts
-Level 3 validation mode: ValidationMode.RELAXED
+📁 Discovered 15 steps with script files
+📊 Ready to validate 21 total steps
 ```
 
-## Step 2: Run Your First Alignment Validation (3 minutes)
+## Step 2: Run Your First Configuration-Driven Validation (3 minutes)
 
-Let's run a comprehensive validation across all levels:
+The new system automatically applies appropriate validation levels based on step types:
 
 ```python
-# Run full validation across all levels
-print("🔍 Starting comprehensive alignment validation...")
-report = tester.run_full_validation()
+# Run comprehensive validation with automatic step-type detection
+print("🔍 Starting configuration-driven alignment validation...")
+results = tester.run_full_validation()
 
 # Check overall results
-if report.is_passing():
-    print("✅ All alignment tests passed!")
-else:
-    print("❌ Some alignment issues detected")
-
-# Print summary
-print(f"\n📊 Validation Summary:")
-print(f"Total tests: {report.summary.total_tests}")
-print(f"Pass rate: {report.summary.pass_rate:.1f}%")
-print(f"Critical issues: {report.summary.critical_issues}")
-print(f"Error issues: {report.summary.error_issues}")
-print(f"Warning issues: {report.summary.warning_issues}")
-```
-
-**What this validates:**
-- Script-contract consistency across all pipeline steps
-- Contract-specification alignment for proper integration
-- Specification dependency resolution and compatibility
-- Builder-configuration alignment for runtime execution
-
-## Step 3: Validate Specific Scripts (2 minutes)
-
-You can target specific scripts for focused validation:
-
-```python
-# Validate specific scripts only
-target_scripts = ["tabular_preprocessing", "xgboost_training", "model_evaluation"]
-
-print(f"🎯 Validating specific scripts: {target_scripts}")
-report = tester.run_full_validation(target_scripts=target_scripts)
-
-# Check results for each script
-for script_name in target_scripts:
-    # Check Level 1 results
-    if script_name in report.level1_results:
-        level1_result = report.level1_results[script_name]
-        status = "✅" if level1_result.passed else "❌"
-        print(f"{status} {script_name} - Level 1 (Script↔Contract): {'PASS' if level1_result.passed else 'FAIL'}")
+print(f"\n📊 Validation Results:")
+for step_name, result in results.items():
+    status = result.get("overall_status") or result.get("status", "UNKNOWN")
+    step_type = result.get("sagemaker_step_type", "unknown")
+    category = result.get("category", "unknown")
     
-    # Check Level 2 results
-    if script_name in report.level2_results:
-        level2_result = report.level2_results[script_name]
-        status = "✅" if level2_result.passed else "❌"
-        print(f"{status} {script_name} - Level 2 (Contract↔Spec): {'PASS' if level2_result.passed else 'FAIL'}")
-```
-
-## Step 4: Run Level-Specific Validation (2 minutes)
-
-Sometimes you want to focus on a specific alignment level:
-
-```python
-# Run only Level 1 validation (Script ↔ Contract)
-print("\n📝 Running Level 1 validation only...")
-level1_report = tester.run_level_validation(level=1)
-
-print(f"Level 1 Results:")
-for script_name, result in level1_report.level1_results.items():
-    status = "✅" if result.passed else "❌"
-    print(f"  {status} {script_name}: {len(result.issues)} issues")
+    status_icon = "✅" if status == "PASSED" else "❌" if status == "FAILED" else "⚠️"
+    print(f"{status_icon} {step_name} ({step_type}) - {status}")
     
-    # Show first few issues if any
-    if result.issues:
-        for issue in result.issues[:2]:  # Show first 2 issues
-            print(f"    - {issue.level.value}: {issue.message}")
+    # Show enabled validation levels
+    enabled_levels = result.get("enabled_levels", [])
+    if enabled_levels:
+        print(f"    Levels: {enabled_levels}")
 
-# Run Level 3 validation with different modes
-print("\n🔗 Testing different Level 3 validation modes...")
-
-# Strict mode - catches more potential issues
-strict_tester = UnifiedAlignmentTester(level3_validation_mode="strict")
-strict_report = strict_tester.run_level_validation(level=3)
-print(f"Strict mode: {len(strict_report.level3_results)} components validated")
-
-# Permissive mode - allows more flexibility
-permissive_tester = UnifiedAlignmentTester(level3_validation_mode="permissive")
-permissive_report = permissive_tester.run_level_validation(level=3)
-print(f"Permissive mode: {len(permissive_report.level3_results)} components validated")
-```
-
-## Step 5: Understanding Validation Results (3 minutes)
-
-Let's explore the detailed validation results:
-
-```python
-# Get detailed validation summary
-summary = tester.get_validation_summary()
-
-print(f"\n📈 Detailed Validation Summary:")
-print(f"Overall Status: {summary['overall_status']}")
-print(f"Total Tests: {summary['total_tests']}")
-print(f"Pass Rate: {summary['pass_rate']:.1f}%")
-
-# Level breakdown
-level_breakdown = summary['level_breakdown']
-print(f"\nLevel Breakdown:")
-print(f"  Level 1 tests: {level_breakdown['level1_tests']}")
-print(f"  Level 2 tests: {level_breakdown['level2_tests']}")
-print(f"  Level 3 tests: {level_breakdown['level3_tests']}")
-print(f"  Level 4 tests: {level_breakdown['level4_tests']}")
-
-# Get critical issues that need immediate attention
-critical_issues = tester.get_critical_issues()
-if critical_issues:
-    print(f"\n🚨 Critical Issues Requiring Immediate Attention:")
-    for issue in critical_issues[:3]:  # Show first 3 critical issues
-        print(f"  • {issue['category']}: {issue['message']}")
-        if issue['recommendation']:
-            print(f"    💡 Recommendation: {issue['recommendation']}")
-else:
-    print("\n✅ No critical issues found!")
-```
-
-## Step 6: Generate Alignment Reports (3 minutes)
-
-The tester can generate comprehensive reports in multiple formats:
-
-```python
-# Generate JSON report
-json_report = tester.export_report(format='json', output_path='alignment_report.json')
-print("📄 JSON report generated: alignment_report.json")
-
-# Generate HTML report with visualization
-html_report = tester.export_report(
-    format='html', 
-    output_path='alignment_report.html',
-    generate_chart=True,
-    script_name="my_pipeline_validation"
-)
-print("📄 HTML report generated: alignment_report.html")
-print("📊 Alignment score chart generated")
-
-# Print the report summary
+# Print enhanced summary
 tester.print_summary()
 ```
 
-**Sample Report Output:**
-```
-📊 Alignment Quality Scoring:
-   Overall Score: 85.2/100 (Good)
-   L1 Script↔Contract: 92.1/100 (15/16 tests)
-   L2 Contract↔Spec: 88.5/100 (12/14 tests)
-   L3 Spec↔Dependencies: 78.3/100 (9/12 tests)
-   L4 Builder↔Config: 81.7/100 (11/13 tests)
-```
+**What this validates:**
+- **Processing steps**: Full 4-level validation (script, contract, spec, builder)
+- **Training steps**: Full 4-level validation with training-specific patterns
+- **CreateModel steps**: Levels 3-4 only (no script/contract needed)
+- **Transform steps**: Levels 3-4 only (uses existing models)
+- **Excluded steps**: Skipped entirely (Base, Utility types)
 
-## Step 7: Workspace-Aware Validation (3 minutes)
+## Step 3: Validate Specific Steps (2 minutes)
 
-For multi-developer environments, use the workspace-aware tester:
+You can target specific steps for focused validation:
 
 ```python
-from cursus.workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
+# Validate specific steps only
+target_steps = ["tabular_preprocessing", "xgboost_training", "xgboost_model"]
 
-# Initialize workspace-aware tester
-workspace_tester = WorkspaceUnifiedAlignmentTester(
-    workspace_root="development/projects",
-    developer_id="your_developer_id",
-    enable_shared_fallback=True
+print(f"🎯 Validating specific steps: {target_steps}")
+results = tester.run_full_validation(target_scripts=target_steps)
+
+# Check results for each step
+for step_name in target_steps:
+    if step_name in results:
+        result = results[step_name]
+        step_type = result.get("sagemaker_step_type", "unknown")
+        status = result.get("overall_status", "UNKNOWN")
+        
+        print(f"\n📋 {step_name} ({step_type}): {status}")
+        
+        # Show validation results by level
+        validation_results = result.get("validation_results", {})
+        for level_key, level_result in validation_results.items():
+            level_status = level_result.get("status", "UNKNOWN")
+            level_icon = "✅" if level_status == "PASSED" else "❌"
+            print(f"  {level_icon} {level_key}: {level_status}")
+    else:
+        print(f"⚠️ {step_name}: Not found or excluded")
+```
+
+## Step 4: Understanding Step-Type-Aware Validation (3 minutes)
+
+The system automatically adapts validation based on step types:
+
+```python
+# Explore step type configuration
+from cursus.validation.alignment.config import get_validation_ruleset, get_all_step_types
+
+print("🔧 Step Type Configuration:")
+print(f"{'Step Type':<25} {'Category':<15} {'Levels':<20} {'Validator'}")
+print("-" * 80)
+
+for step_type in get_all_step_types():
+    ruleset = get_validation_ruleset(step_type)
+    if ruleset:
+        levels = [str(level.value) for level in ruleset.enabled_levels]
+        levels_str = ",".join(levels) if levels else "None"
+        validator = ruleset.level_4_validator_class or "None"
+        
+        print(f"{step_type:<25} {ruleset.category.value:<15} {levels_str:<20} {validator}")
+
+# Check specific step validation rules
+step_name = "tabular_preprocessing"
+from cursus.registry.step_names import get_sagemaker_step_type
+
+try:
+    step_type = get_sagemaker_step_type(step_name)
+    ruleset = get_validation_ruleset(step_type)
+    
+    print(f"\n🔍 Validation Rules for {step_name}:")
+    print(f"  Step Type: {step_type}")
+    print(f"  Category: {ruleset.category.value}")
+    print(f"  Enabled Levels: {[level.value for level in ruleset.enabled_levels]}")
+    print(f"  Skip Reason: {ruleset.skip_reason or 'None'}")
+    
+except Exception as e:
+    print(f"⚠️ Could not determine step type for {step_name}: {e}")
+```
+
+**Expected Output:**
+```
+🔧 Step Type Configuration:
+Step Type                 Category        Levels               Validator
+--------------------------------------------------------------------------------
+Processing                script_based    1,2,3,4              ProcessingStepBuilderValidator
+Training                  script_based    1,2,3,4              TrainingStepBuilderValidator
+CreateModel               non_script      3,4                  CreateModelStepBuilderValidator
+Transform                 non_script      3,4                  TransformStepBuilderValidator
+CradleDataLoading         contract_based  2,3,4                ProcessingStepBuilderValidator
+Base                      excluded        None                 None
+```
+
+## Step 5: Analyzing Validation Results (3 minutes)
+
+Let's explore detailed validation results and issues:
+
+```python
+# Run validation and analyze results
+results = tester.run_full_validation()
+
+# Get critical issues across all steps
+critical_issues = tester.get_critical_issues()
+
+if critical_issues:
+    print(f"🚨 {len(critical_issues)} Critical Issues Found:")
+    for issue in critical_issues[:5]:  # Show first 5
+        print(f"  • {issue['step_name']} ({issue['step_type']}): {issue['error']}")
+        print(f"    Level: {issue['level']}, Category: {issue['category']}")
+else:
+    print("✅ No critical issues found!")
+
+# Analyze results by step type
+step_type_analysis = {}
+for step_name, result in results.items():
+    step_type = result.get("sagemaker_step_type", "unknown")
+    status = result.get("overall_status") or result.get("status")
+    
+    if step_type not in step_type_analysis:
+        step_type_analysis[step_type] = {"total": 0, "passed": 0, "failed": 0, "excluded": 0}
+    
+    step_type_analysis[step_type]["total"] += 1
+    
+    if status == "PASSED":
+        step_type_analysis[step_type]["passed"] += 1
+    elif status == "EXCLUDED":
+        step_type_analysis[step_type]["excluded"] += 1
+    else:
+        step_type_analysis[step_type]["failed"] += 1
+
+print(f"\n📊 Results by Step Type:")
+for step_type, stats in step_type_analysis.items():
+    total = stats["total"]
+    passed = stats["passed"]
+    excluded = stats["excluded"]
+    active = total - excluded
+    pass_rate = (passed / active * 100) if active > 0 else 0
+    
+    print(f"  {step_type}: {passed}/{active} passed ({pass_rate:.1f}%)")
+    if excluded > 0:
+        print(f"    ({excluded} excluded)")
+```
+
+## Step 6: Generate Enhanced Reports (3 minutes)
+
+The tester generates comprehensive reports with step-type insights:
+
+```python
+# Generate JSON report with step-type breakdown
+json_report = tester.export_report(format='json', output_path='alignment_report.json')
+print("📄 JSON report generated: alignment_report.json")
+
+# Generate text report with enhanced summary
+text_report = tester.export_report(format='text', output_path='alignment_report.txt')
+print("📄 Text report generated: alignment_report.txt")
+
+# Print enhanced summary to console
+print("\n" + "="*60)
+print("ENHANCED VALIDATION SUMMARY")
+print("="*60)
+
+summary = tester.get_validation_summary()
+print(f"Total Steps: {summary['total_steps']}")
+print(f"Passed: {summary['passed_steps']}")
+print(f"Failed: {summary['failed_steps']}")
+print(f"Excluded: {summary['excluded_steps']}")
+print(f"Pass Rate: {summary['pass_rate']:.2%}")
+print(f"Configuration-Driven: {summary['configuration_driven']}")
+
+print("\nStep Type Breakdown:")
+for step_type, breakdown in summary['step_type_breakdown'].items():
+    status_str = f"{breakdown['passed']}/{breakdown['total']} passed"
+    if breakdown['excluded'] > 0:
+        status_str += f" ({breakdown['excluded']} excluded)"
+    print(f"  {step_type}: {status_str}")
+
+print("="*60)
+```
+
+## Step 7: Validate Single Steps in Detail (2 minutes)
+
+For detailed analysis of individual steps:
+
+```python
+# Validate a single step across all applicable levels
+step_name = "tabular_preprocessing"
+result = tester.run_validation_for_step(step_name)
+
+print(f"🔍 Detailed Validation for {step_name}:")
+print(f"Step Type: {result.get('sagemaker_step_type')}")
+print(f"Category: {result.get('category')}")
+print(f"Overall Status: {result.get('overall_status')}")
+
+# Check each validation level
+validation_results = result.get("validation_results", {})
+for level_key, level_result in validation_results.items():
+    status = level_result.get("status", "UNKNOWN")
+    status_icon = "✅" if status in ["PASSED", "COMPLETED"] else "❌"
+    
+    print(f"\n{status_icon} {level_key.upper()}:")
+    print(f"  Status: {status}")
+    
+    # Show any errors
+    if "error" in level_result:
+        print(f"  Error: {level_result['error']}")
+    
+    # Show validation details if available
+    if "details" in level_result:
+        details = level_result["details"]
+        if isinstance(details, dict):
+            for key, value in details.items():
+                if key not in ["status", "error"]:
+                    print(f"  {key}: {value}")
+
+# Get step info from catalog
+step_info = tester.get_step_info_from_catalog(step_name)
+if step_info:
+    print(f"\n📁 Step Files:")
+    for component_type, component in step_info.file_components.items():
+        if component:
+            print(f"  {component_type}: {component.path}")
+```
+
+## Step 8: Workspace-Aware Validation (2 minutes)
+
+For multi-developer environments with workspace support:
+
+```python
+# Initialize with workspace directories
+workspace_tester = UnifiedAlignmentTester(
+    workspace_dirs=["development/projects/project_alpha", "development/projects/project_beta"]
 )
 
-print(f"🏢 Workspace tester initialized for developer: {workspace_tester.developer_id}")
+print("🏢 Workspace-aware validation initialized")
 
-# Run workspace validation
-workspace_results = workspace_tester.run_workspace_validation()
+# Run validation across workspaces
+workspace_results = workspace_tester.run_full_validation()
 
-if workspace_results['success']:
-    print("✅ Workspace validation completed successfully")
+# Analyze workspace distribution
+workspace_stats = {}
+for step_name, result in workspace_results.items():
+    # Check if step comes from workspace or package
+    step_info = workspace_tester.get_step_info_from_catalog(step_name)
+    if step_info:
+        source = "workspace" if any("development" in str(comp.path) for comp in step_info.file_components.values() if comp) else "package"
+        
+        if source not in workspace_stats:
+            workspace_stats[source] = {"total": 0, "passed": 0}
+        
+        workspace_stats[source]["total"] += 1
+        status = result.get("overall_status") or result.get("status")
+        if status == "PASSED":
+            workspace_stats[source]["passed"] += 1
+
+print(f"\n📊 Workspace Distribution:")
+for source, stats in workspace_stats.items():
+    pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+    print(f"  {source.title()}: {stats['passed']}/{stats['total']} passed ({pass_rate:.1f}%)")
+
+# Check cross-workspace compatibility
+if len(workspace_results) > 1:
+    step_names = list(workspace_results.keys())
+    compatibility = workspace_tester.validate_cross_workspace_compatibility(step_names)
     
-    # Check workspace-specific statistics
-    stats = workspace_results['workspace_statistics']
-    print(f"\n📊 Workspace Statistics:")
-    print(f"  Scripts validated: {stats['total_scripts_validated']}")
-    print(f"  Successful validations: {stats['successful_validations']}")
-    print(f"  Failed validations: {stats['failed_validations']}")
+    print(f"\n🔗 Cross-Workspace Compatibility:")
+    print(f"  Compatible: {compatibility['compatible']}")
+    print(f"  Step Types: {len(compatibility['step_type_distribution'])}")
     
-    # Check workspace components
-    components = stats['workspace_components_found']
-    print(f"\n🔧 Workspace Components:")
-    for comp_type, count in components.items():
-        print(f"  {comp_type}: {count} files")
-    
-    # Check cross-workspace validation if enabled
-    if 'cross_workspace_validation' in workspace_results:
-        cross_validation = workspace_results['cross_workspace_validation']
-        if cross_validation['enabled']:
-            shared_usage = cross_validation['shared_components_used']
-            print(f"\n🔗 Cross-Workspace Dependencies:")
-            for script, usage in shared_usage.items():
-                shared_count = sum(usage.values())
-                print(f"  {script}: {shared_count} shared components")
-else:
-    print(f"❌ Workspace validation failed: {workspace_results.get('error', 'Unknown error')}")
-
-# Switch to different developer workspace
-try:
-    workspace_tester.switch_developer("another_developer_id")
-    print("✅ Switched to different developer workspace")
-except ValueError as e:
-    print(f"⚠️ Could not switch developer: {e}")
-```
-
-## Step 8: Advanced Validation Scenarios (2 minutes)
-
-Here are some advanced usage patterns:
-
-```python
-# Skip certain validation levels
-report = tester.run_full_validation(skip_levels=[3, 4])  # Skip Level 3 and 4
-print("Validation completed with Level 3 and 4 skipped")
-
-# Validate a single script across all levels
-script_results = tester.validate_specific_script("tabular_preprocessing")
-print(f"\n🔍 Single Script Validation Results:")
-print(f"Script: {script_results['script_name']}")
-print(f"Overall Status: {script_results['overall_status']}")
-
-for level in ['level1', 'level2', 'level3', 'level4']:
-    if level in script_results:
-        level_result = script_results[level]
-        status = "✅" if level_result.get('passed', False) else "❌"
-        print(f"  {status} {level.title()}: {'PASS' if level_result.get('passed', False) else 'FAIL'}")
-
-# Get alignment status matrix for all scripts
-status_matrix = tester.get_alignment_status_matrix()
-print(f"\n📋 Alignment Status Matrix:")
-print(f"{'Script':<25} {'L1':<8} {'L2':<8} {'L3':<8} {'L4':<8}")
-print("-" * 57)
-
-for script_name, statuses in status_matrix.items():
-    l1_status = "✅" if statuses['level1'] == 'PASSING' else "❌" if statuses['level1'] == 'FAILING' else "?"
-    l2_status = "✅" if statuses['level2'] == 'PASSING' else "❌" if statuses['level2'] == 'FAILING' else "?"
-    l3_status = "✅" if statuses['level3'] == 'PASSING' else "❌" if statuses['level3'] == 'FAILING' else "?"
-    l4_status = "✅" if statuses['level4'] == 'PASSING' else "❌" if statuses['level4'] == 'FAILING' else "?"
-    
-    print(f"{script_name:<25} {l1_status:<8} {l2_status:<8} {l3_status:<8} {l4_status:<8}")
-
-# Discover available scripts
-available_scripts = tester.discover_scripts()
-print(f"\n📁 Available Scripts ({len(available_scripts)}):")
-for script in available_scripts[:5]:  # Show first 5
-    print(f"  • {script}")
-if len(available_scripts) > 5:
-    print(f"  ... and {len(available_scripts) - 5} more")
+    if compatibility['recommendations']:
+        print("  Recommendations:")
+        for rec in compatibility['recommendations']:
+            print(f"    • {rec}")
 ```
 
 ## Common Workflows
@@ -335,23 +382,30 @@ if len(available_scripts) > 5:
 
 ```python
 def daily_alignment_check():
-    """Daily alignment validation routine."""
+    """Daily alignment validation routine with step-type awareness."""
     print("🌅 Daily Alignment Check")
     
-    # Quick validation of recently modified scripts
-    recent_scripts = ["tabular_preprocessing", "model_evaluation"]  # Your recent work
-    
     tester = UnifiedAlignmentTester()
-    report = tester.run_full_validation(target_scripts=recent_scripts)
     
-    if report.is_passing():
+    # Quick validation of all steps
+    results = tester.run_full_validation()
+    
+    # Check for any critical issues
+    critical_issues = tester.get_critical_issues()
+    
+    if not critical_issues:
         print("✅ Daily check passed - all alignments look good!")
+        
+        # Show summary
+        summary = tester.get_validation_summary()
+        print(f"📊 {summary['passed_steps']}/{summary['total_steps']} steps passed")
+        print(f"   ({summary['excluded_steps']} excluded by configuration)")
+        
         return True
     else:
-        print("⚠️ Daily check found issues:")
-        critical_issues = tester.get_critical_issues()
-        for issue in critical_issues[:3]:
-            print(f"  • {issue['message']}")
+        print(f"⚠️ Daily check found {len(critical_issues)} critical issues:")
+        for issue in critical_issues[:3]:  # Show first 3
+            print(f"  • {issue['step_name']}: {issue['error']}")
         return False
 
 # Run daily check
@@ -363,159 +417,225 @@ daily_alignment_check()
 ```python
 def pre_commit_validation():
     """Comprehensive validation before committing changes."""
-    print("🔍 Pre-commit validation")
+    print("🔍 Pre-commit validation with enhanced configuration")
     
-    tester = UnifiedAlignmentTester(level3_validation_mode="strict")
-    report = tester.run_full_validation()
+    tester = UnifiedAlignmentTester()
+    results = tester.run_full_validation()
     
-    # Generate report for review
-    tester.export_report(format='html', output_path='pre_commit_report.html')
+    # Generate detailed report
+    tester.export_report(format='json', output_path='pre_commit_report.json')
     
+    # Check results
     summary = tester.get_validation_summary()
+    critical_issues = tester.get_critical_issues()
     
-    if summary['pass_rate'] >= 95.0:  # Require 95% pass rate
+    # Calculate pass rate excluding excluded steps
+    active_steps = summary['total_steps'] - summary['excluded_steps']
+    pass_rate = (summary['passed_steps'] / active_steps * 100) if active_steps > 0 else 100
+    
+    if pass_rate >= 95.0 and len(critical_issues) == 0:
         print("✅ Pre-commit validation passed!")
+        print(f"📊 Pass rate: {pass_rate:.1f}% ({summary['passed_steps']}/{active_steps})")
         return True
     else:
-        print(f"❌ Pre-commit validation failed: {summary['pass_rate']:.1f}% pass rate")
-        print("📄 Review pre_commit_report.html for details")
+        print(f"❌ Pre-commit validation failed:")
+        print(f"📊 Pass rate: {pass_rate:.1f}% (required: 95%)")
+        print(f"🚨 Critical issues: {len(critical_issues)}")
+        print("📄 Review pre_commit_report.json for details")
         return False
 
 # Run pre-commit validation
 pre_commit_validation()
 ```
 
-### Integration Testing Workflow
+### Step Type Analysis Workflow
 
 ```python
-def integration_validation_workflow():
-    """Comprehensive validation for integration testing."""
-    print("🔗 Integration validation workflow")
+def analyze_step_type_coverage():
+    """Analyze validation coverage by step type."""
+    print("📊 Step Type Coverage Analysis")
     
-    # Test with different validation modes
-    modes = ["strict", "relaxed", "permissive"]
-    results = {}
+    tester = UnifiedAlignmentTester()
+    results = tester.run_full_validation()
     
-    for mode in modes:
-        print(f"\n🧪 Testing with {mode} mode...")
-        tester = UnifiedAlignmentTester(level3_validation_mode=mode)
-        report = tester.run_full_validation()
+    # Group by step type and category
+    from cursus.validation.alignment.config import get_validation_ruleset
+    
+    coverage_analysis = {}
+    for step_name, result in results.items():
+        step_type = result.get("sagemaker_step_type", "unknown")
+        status = result.get("overall_status") or result.get("status")
         
-        results[mode] = {
-            'pass_rate': tester.get_validation_summary()['pass_rate'],
-            'critical_issues': len(tester.get_critical_issues())
-        }
+        if step_type not in coverage_analysis:
+            ruleset = get_validation_ruleset(step_type)
+            coverage_analysis[step_type] = {
+                "category": ruleset.category.value if ruleset else "unknown",
+                "total": 0,
+                "passed": 0,
+                "failed": 0,
+                "excluded": 0,
+                "examples": []
+            }
         
-        print(f"  Pass rate: {results[mode]['pass_rate']:.1f}%")
-        print(f"  Critical issues: {results[mode]['critical_issues']}")
+        coverage_analysis[step_type]["total"] += 1
+        coverage_analysis[step_type]["examples"].append(step_name)
+        
+        if status == "PASSED":
+            coverage_analysis[step_type]["passed"] += 1
+        elif status == "EXCLUDED":
+            coverage_analysis[step_type]["excluded"] += 1
+        else:
+            coverage_analysis[step_type]["failed"] += 1
     
-    # Recommend validation mode based on results
-    if results['strict']['pass_rate'] >= 90:
-        print("\n💡 Recommendation: Use strict mode for production")
-    elif results['relaxed']['pass_rate'] >= 85:
-        print("\n💡 Recommendation: Use relaxed mode for development")
-    else:
-        print("\n⚠️ Recommendation: Address critical issues before deployment")
+    # Print analysis
+    print(f"\n{'Step Type':<20} {'Category':<15} {'Coverage':<15} {'Examples'}")
+    print("-" * 80)
     
-    return results
+    for step_type, analysis in coverage_analysis.items():
+        total = analysis["total"]
+        passed = analysis["passed"]
+        excluded = analysis["excluded"]
+        active = total - excluded
+        
+        if active > 0:
+            coverage = f"{passed}/{active} ({passed/active*100:.0f}%)"
+        else:
+            coverage = "N/A (excluded)"
+        
+        examples = ", ".join(analysis["examples"][:2])  # Show first 2 examples
+        if len(analysis["examples"]) > 2:
+            examples += f" (+{len(analysis['examples'])-2} more)"
+        
+        print(f"{step_type:<20} {analysis['category']:<15} {coverage:<15} {examples}")
+    
+    return coverage_analysis
 
-# Run integration validation
-integration_validation_workflow()
+# Run step type analysis
+analyze_step_type_coverage()
 ```
 
 ## Troubleshooting
 
-### Issue: "No scripts found for validation"
+### Issue: "No steps found for validation"
 ```python
-# Check if scripts directory exists and contains files
+# Debug step discovery
 tester = UnifiedAlignmentTester()
-scripts = tester.discover_scripts()
 
-if not scripts:
-    print("❌ No scripts found")
-    print(f"📁 Scripts directory: {tester.scripts_dir}")
-    print("💡 Check if the scripts directory path is correct")
-    print("💡 Ensure script files follow naming convention (*.py)")
+# Check step catalog discovery
+all_steps = tester.step_catalog.list_available_steps()
+scripts_with_files = tester.discover_scripts()
+
+print(f"📁 Step Discovery Debug:")
+print(f"  Total steps in catalog: {len(all_steps)}")
+print(f"  Steps with script files: {len(scripts_with_files)}")
+
+if all_steps:
+    print(f"  Example steps: {all_steps[:5]}")
 else:
-    print(f"✅ Found {len(scripts)} scripts: {scripts}")
+    print("❌ No steps found in catalog")
+    print("💡 Check if StepCatalog is properly configured")
+    print("💡 Verify workspace directories if using workspace-aware mode")
+
+if not scripts_with_files:
+    print("❌ No script files found")
+    print("💡 Check if scripts exist in src/cursus/steps/scripts/")
 ```
 
-### Issue: "Level 3 validation fails with dependency errors"
+### Issue: "Step type detection fails"
 ```python
-# Try different Level 3 validation modes
-modes = ["permissive", "relaxed", "strict"]
+# Debug step type detection
+from cursus.registry.step_names import get_sagemaker_step_type
 
-for mode in modes:
-    print(f"\n🧪 Testing Level 3 with {mode} mode...")
-    tester = UnifiedAlignmentTester(level3_validation_mode=mode)
-    report = tester.run_level_validation(level=3)
-    
-    passed_tests = sum(1 for result in report.level3_results.values() if result.passed)
-    total_tests = len(report.level3_results)
-    
-    print(f"  Results: {passed_tests}/{total_tests} passed")
-    
-    if passed_tests == total_tests:
-        print(f"✅ Level 3 validation passes with {mode} mode")
-        break
-```
-
-### Issue: "Workspace validation fails"
-```python
-# Debug workspace configuration
-from cursus.workspace.validation.workspace_alignment_tester import WorkspaceUnifiedAlignmentTester
-
+step_name = "your_step_name"
 try:
-    workspace_tester = WorkspaceUnifiedAlignmentTester(
-        workspace_root="development/projects",
-        developer_id="your_developer_id"
-    )
+    step_type = get_sagemaker_step_type(step_name)
+    print(f"✅ {step_name} -> {step_type}")
     
-    # Get workspace info
-    workspace_info = workspace_tester.get_workspace_info()
-    print("✅ Workspace configuration:")
-    print(f"  Developer ID: {workspace_info['developer_id']}")
-    print(f"  Workspace root: {workspace_info['workspace_root']}")
-    print(f"  Available developers: {workspace_info['available_developers']}")
-    
+    # Check validation rules
+    from cursus.validation.alignment.config import get_validation_ruleset
+    ruleset = get_validation_ruleset(step_type)
+    if ruleset:
+        print(f"📋 Validation levels: {[level.value for level in ruleset.enabled_levels]}")
+    else:
+        print("⚠️ No validation ruleset found")
+        
 except Exception as e:
-    print(f"❌ Workspace setup failed: {e}")
-    print("💡 Check if workspace directory exists")
-    print("💡 Verify developer workspace is properly initialized")
+    print(f"❌ Step type detection failed: {e}")
+    print("💡 Check step naming patterns")
+    print("💡 Verify step is registered in step_names.py")
+```
+
+### Issue: "Validation fails with configuration errors"
+```python
+# Validate configuration consistency
+from cursus.validation.alignment.config import validate_step_type_configuration
+
+config_issues = validate_step_type_configuration()
+if config_issues:
+    print("⚠️ Configuration issues found:")
+    for issue in config_issues:
+        print(f"  • {issue}")
+else:
+    print("✅ Configuration is valid")
+
+# Check specific step configuration
+step_name = "your_step_name"
+try:
+    from cursus.validation.alignment.config import get_validation_ruleset_for_step_name
+    ruleset = get_validation_ruleset_for_step_name(step_name)
+    
+    if ruleset:
+        print(f"✅ Configuration for {step_name}:")
+        print(f"  Step Type: {ruleset.step_type}")
+        print(f"  Category: {ruleset.category.value}")
+        print(f"  Enabled Levels: {[level.value for level in ruleset.enabled_levels]}")
+    else:
+        print(f"❌ No configuration found for {step_name}")
+        
+except Exception as e:
+    print(f"❌ Configuration lookup failed: {e}")
 ```
 
 ## Next Steps
 
 Congratulations! You've successfully:
 
-1. ✅ Initialized the Unified Alignment Tester
-2. ✅ Run comprehensive alignment validation
-3. ✅ Validated specific scripts and levels
-4. ✅ Generated detailed reports with scoring
-5. ✅ Used workspace-aware validation
-6. ✅ Learned advanced validation scenarios
+1. ✅ Initialized the Enhanced Unified Alignment Tester
+2. ✅ Run configuration-driven alignment validation
+3. ✅ Understood step-type-aware validation rules
+4. ✅ Analyzed validation results by step type
+5. ✅ Generated enhanced reports with step-type insights
+6. ✅ Used workspace-aware validation capabilities
+7. ✅ Learned advanced validation workflows
 
 ### What's Next?
 
-1. **Explore API Reference**: Check out the [Unified Tester API Reference](unified_tester_api_reference.md) for complete method documentation
+1. **Explore API Reference**: Check out the [Unified Alignment Tester API Reference](unified_alignment_tester_api_reference.md) for complete method documentation
 
-2. **Integrate with CI/CD**: Set up automated alignment validation in your development pipeline
+2. **Integrate with CI/CD**: Set up automated alignment validation in your development pipeline using the configuration-driven approach
 
-3. **Custom Validation Rules**: Learn to extend the tester with custom validation logic
+3. **Custom Step Types**: Learn to extend the validation ruleset for custom step types
 
 4. **Team Collaboration**: Use workspace-aware validation for multi-developer projects
 
-5. **Monitor Alignment Health**: Implement regular alignment monitoring and reporting
+5. **Monitor Alignment Health**: Implement regular alignment monitoring with step-type-aware reporting
 
 ### Additional Resources
 
+- **[Unified Alignment Tester API Reference](unified_alignment_tester_api_reference.md)** - Complete API documentation
 - **[Universal Step Builder Tester Quick Start](universal_builder_tester_quick_start.md)** - Learn to test step builders
-- **[Universal Step Builder Tester API Reference](universal_builder_tester_api_reference.md)** - Complete builder testing API
 - **[Workspace Quick Start Guide](../../workspace/workspace_quick_start.md)** - Multi-developer workspace setup
 - **[Validation Framework Guide](../../0_developer_guide/validation_framework_guide.md)** - Comprehensive validation concepts
 
 ## Summary
 
-The Unified Alignment Tester provides comprehensive validation across all four levels of pipeline architecture, ensuring consistency and reliability in your ML pipeline development. With workspace-aware capabilities, it supports both individual and collaborative development workflows, making it an essential tool for maintaining high-quality pipeline implementations.
+The Enhanced Unified Alignment Tester provides configuration-driven validation that automatically adapts to different SageMaker step types. With step-type-aware validation rules, it ensures appropriate validation levels are applied while skipping unnecessary checks, making it both comprehensive and efficient for maintaining high-quality pipeline implementations.
+
+The system supports:
+- **Automatic step type detection** and appropriate validation level selection
+- **Workspace-aware validation** for multi-developer environments  
+- **Enhanced reporting** with step-type breakdown and insights
+- **Performance optimization** through intelligent validation level skipping
+- **Extensible configuration** for custom step types and validation rules
 
 Happy validating! 🚀
