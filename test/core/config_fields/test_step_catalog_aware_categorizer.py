@@ -128,7 +128,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         yield  # This is where the test runs
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_init_basic_functionality(self, mock_serialize, mock_get_unified_manager):
         """Test that the categorizer correctly initializes with basic functionality."""
         # Setup mock serialize function
@@ -167,7 +167,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert len(categorizer.field_info["sources"]["shared_field"]) == 6
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_init_with_enhanced_features(self, mock_serialize, mock_get_unified_manager):
         """Test initialization with enhanced workspace and framework features."""
         # Setup mocks
@@ -200,7 +200,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         mock_get_unified_manager.assert_called_once_with(self.test_workspace_root)
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_init_unified_manager_failure(self, mock_serialize, mock_get_unified_manager):
         """Test initialization when unified manager fails to initialize."""
         # Setup mocks
@@ -241,7 +241,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert framework_mappings["pytorch_version"] == "ml_framework"
         assert framework_mappings["tensorflow_version"] == "ml_framework"
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_get_workspace_field_mappings_no_unified_manager(self, mock_serialize):
         """Test workspace field mappings when unified manager is not available."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -258,7 +258,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert len(workspace_mappings) == 0
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_get_workspace_field_mappings_with_unified_manager(self, mock_serialize, mock_get_unified_manager):
         """Test workspace field mappings with unified manager available."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -295,7 +295,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert "annotated_field" in workspace_mappings
         assert workspace_mappings["annotated_field"] == "workspace_specific"
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorize_field_with_step_catalog_context_workspace_mapping(self, mock_serialize):
         """Test field categorization with workspace-specific mappings."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -314,7 +314,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
 
         assert result == "workspace_specific"
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorize_field_with_step_catalog_context_framework_mapping(self, mock_serialize):
         """Test field categorization with framework-specific mappings."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -335,7 +335,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert result == "ml_framework"
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorize_field_with_tier_aware_categorization(self, mock_serialize, mock_get_unified_manager):
         """Test field categorization with tier-aware logic from unified manager."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -364,7 +364,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         # Essential fields should be categorized as shared
         assert result == "shared"
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorize_field_fallback_to_base(self, mock_serialize):
         """Test that categorization falls back to base class when no enhanced rules apply."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -380,7 +380,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
             # The enhanced method calls base with correct signature (field_name only)
             mock_base.assert_called_once_with("unknown_field")
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorize_field_override(self, mock_serialize):
         """Test that _categorize_field correctly overrides base implementation."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -445,7 +445,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert info["step_catalog_available"] is True
         # step_catalog_info might not be present due to exception
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorize_with_enhanced_metadata(self, mock_serialize):
         """Test categorization with enhanced metadata."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -466,7 +466,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
             assert "workspace_field_mappings_count" in result["enhanced_metadata"]
             assert "framework_field_mappings_count" in result["enhanced_metadata"]
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_end_to_end_categorization_with_framework_fields(self, mock_serialize):
         """Test end-to-end categorization with framework-specific fields."""
         # Setup mock serialize function
@@ -533,7 +533,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         assert categorizer.step_catalog == self.mock_step_catalog
         assert categorizer.workspace_root == self.test_workspace_root
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_inheritance_preservation(self, mock_serialize):
         """Test that all base class functionality is preserved."""
         # Setup mock serialize function
@@ -565,7 +565,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         # Test inherited stats method (should not raise exception)
         categorizer.print_categorization_stats()
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_error_handling_in_enhanced_mappings(self, mock_serialize):
         """Test error handling in enhanced mapping initialization."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -582,7 +582,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
             assert isinstance(categorizer._workspace_field_mappings, dict)
             assert isinstance(categorizer._framework_field_mappings, dict)
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_tier_aware_categorization_exception_handling(self, mock_serialize):
         """Test exception handling in tier-aware categorization."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -625,7 +625,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         for field in important_fields:
             assert field in mappings
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_workspace_field_mappings_with_model_fields_exception(self, mock_serialize):
         """Test workspace field mappings when model_fields access raises exception."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -647,7 +647,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
         workspace_mappings = categorizer._get_workspace_field_mappings()
         assert isinstance(workspace_mappings, dict)
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_categorization_mapping_priority(self, mock_serialize):
         """Test that workspace mappings take priority over framework mappings."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -670,7 +670,7 @@ class TestStepCatalogAwareConfigFieldCategorizer:
 class TestStepCatalogAwareCategorizerEdgeCases:
     """Test edge cases and error conditions for StepCatalogAwareConfigFieldCategorizer."""
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_empty_config_list(self, mock_serialize):
         """Test categorizer with empty config list."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -689,7 +689,7 @@ class TestStepCatalogAwareCategorizerEdgeCases:
         assert "specific" in result
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_none_values_handling(self, mock_serialize, mock_get_unified_manager):
         """Test handling of None values in various parameters."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -727,7 +727,7 @@ class TestStepCatalogAwareCategorizerEdgeCases:
         # Should handle gracefully (unified manager will likely fail to initialize)
         assert categorizer.workspace_root == "/invalid/string/path"
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_malformed_step_catalog_object(self, mock_serialize):
         """Test handling of malformed step catalog object."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}
@@ -771,7 +771,7 @@ class TestStepCatalogAwareCategorizerIntegration:
             yield workspace_root
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_integration_with_real_workspace_structure(self, mock_serialize, mock_get_unified_manager, temp_workspace):
         """Test integration with realistic workspace structure."""
         # Setup mocks
@@ -824,7 +824,7 @@ class TestStepCatalogAwareCategorizerIntegration:
         specific_configs = result["specific"]
         assert len(specific_configs) > 0
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_performance_with_large_config_list(self, mock_serialize):
         """Test performance and correctness with large number of configs."""
         # Setup mock serialize function
@@ -868,7 +868,7 @@ class TestStepCatalogAwareCategorizerIntegration:
         # Verify framework-specific fields are in specific sections
         assert len(result["specific"]) > 0
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_mixed_framework_and_workspace_categorization(self, mock_serialize):
         """Test categorization with both framework and workspace-specific fields."""
         # Setup mock serialize function
@@ -935,7 +935,7 @@ class TestStepCatalogAwareCategorizerIntegration:
 class TestStepCatalogAwareCategorizerCompatibility:
     """Test compatibility and backward compatibility of StepCatalogAwareConfigFieldCategorizer."""
 
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_backward_compatibility_with_base_categorizer(self, mock_serialize):
         """Test that enhanced categorizer maintains backward compatibility."""
         # Setup mock serialize function (same as base categorizer tests)
@@ -1006,7 +1006,7 @@ class TestStepCatalogAwareCategorizerCompatibility:
         assert callable(create_step_catalog_aware_categorizer)
 
     @patch('cursus.core.config_fields.step_catalog_aware_categorizer.get_unified_config_manager')
-    @patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+    @patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
     def test_enhanced_features_optional(self, mock_serialize, mock_get_unified_manager):
         """Test that enhanced features are optional and don't break basic functionality."""
         mock_serialize.return_value = {"_metadata": {"step_name": "TestConfig"}}

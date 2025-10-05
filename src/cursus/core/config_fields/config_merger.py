@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel
 
-from .config_field_categorizer import ConfigFieldCategorizer
+from .step_catalog_aware_categorizer import StepCatalogAwareConfigFieldCategorizer
 from .constants import CategoryType, MergeDirection, SPECIAL_FIELDS_TO_KEEP_SPECIFIC
 from .type_aware_config_serializer import serialize_config, TypeAwareConfigSerializer
 
@@ -42,9 +42,9 @@ class ConfigMerger:
         self.config_list = config_list
         self.logger = logging.getLogger(__name__)
 
-        # Use ConfigFieldCategorizer to categorize fields - implementing Single Source of Truth
+        # Use StepCatalogAwareConfigFieldCategorizer to categorize fields - implementing Single Source of Truth
         self.logger.info(f"Categorizing fields for {len(config_list)} configs")
-        self.categorizer = ConfigFieldCategorizer(
+        self.categorizer = StepCatalogAwareConfigFieldCategorizer(
             config_list, processing_step_config_base_class
         )
 

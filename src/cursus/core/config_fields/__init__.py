@@ -59,7 +59,7 @@ from .type_aware_config_serializer import (
     serialize_config as _serialize_config,
     deserialize_config as _deserialize_config,
 )
-from .config_field_categorizer import ConfigFieldCategorizer
+from .step_catalog_aware_categorizer import StepCatalogAwareConfigFieldCategorizer
 from .circular_reference_tracker import CircularReferenceTracker
 from .tier_registry import ConfigFieldTierRegistry
 
@@ -135,6 +135,8 @@ __all__ = [
     "ConfigClassStore",  # Export for use as a decorator
     "register_config_class",  # Convenient alias for the decorator
     "CircularReferenceTracker",  # For advanced circular reference handling
+    # Enhanced categorization
+    "StepCatalogAwareConfigFieldCategorizer",  # Enhanced field categorizer
     # Three-tier architecture components
     "ConfigFieldTierRegistry",
     # Config class detection functionality

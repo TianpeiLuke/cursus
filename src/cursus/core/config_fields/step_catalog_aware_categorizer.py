@@ -3,32 +3,43 @@ Step Catalog Aware Config Field Categorizer.
 
 Enhanced categorizer with workspace and framework awareness.
 
-This module extends the existing ConfigFieldCategorizer with step catalog integration
-to provide workspace-specific field categorization and framework-specific field handling
-while preserving all existing categorization rules and logic.
+This module provides a standalone categorizer that includes all base categorization
+functionality plus enhanced capabilities for workspace-specific field categorization
+and framework-specific field handling.
 
 Workspace: Project-specific field categorization
 Framework: Framework-specific field handling  
-Preserved: All existing categorization rules and logic
+Complete: All categorization rules and logic included
 """
 
+import json
 import logging
+from collections import defaultdict
 from typing import Dict, List, Any, Optional, Set, Type
 from pathlib import Path
+from pydantic import BaseModel
 
-from .config_field_categorizer import ConfigFieldCategorizer
+from .constants import (
+    SPECIAL_FIELDS_TO_KEEP_SPECIFIC,
+    NON_STATIC_FIELD_PATTERNS,
+    NON_STATIC_FIELD_EXCEPTIONS,
+    CategoryType,
+)
+from .type_aware_config_serializer import serialize_config
 from .unified_config_manager import get_unified_config_manager
 
 logger = logging.getLogger(__name__)
 
 
-class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
+class StepCatalogAwareConfigFieldCategorizer:
     """
     Enhanced categorizer with workspace and framework awareness.
     
-    Workspace: Project-specific field categorization
-    Framework: Framework-specific field handling
-    Preserved: All existing categorization rules and logic
+    Combines all base categorization functionality with enhanced capabilities:
+    - Workspace-specific field categorization
+    - Framework-specific field handling
+    - Step catalog integration
+    - All existing categorization rules preserved
     """
     
     def __init__(
@@ -49,7 +60,10 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
             step_catalog: Optional step catalog instance for enhanced processing
             workspace_root: Optional workspace root for step catalog integration
         """
-        # Enhanced attributes - initialize BEFORE base class init
+        self.config_list = config_list
+        self.logger = logging.getLogger(__name__)
+        
+        # Enhanced attributes
         self.project_id = project_id
         self.step_catalog = step_catalog
         self.workspace_root = workspace_root
@@ -57,20 +71,51 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
         
         # Initialize unified manager if available
         try:
-            self.unified_manager = get_unified_config_manager(workspace_root)
-            logger.debug("Initialized with unified config manager")
+            if workspace_root:
+                self.unified_manager = get_unified_config_manager(workspace_root)
+                logger.debug("Initialized with unified config manager")
         except Exception as e:
             logger.debug(f"Could not initialize unified config manager: {e}")
         
-        # Workspace-specific field mappings - initialize BEFORE base class init
+        # Workspace-specific field mappings
         self._workspace_field_mappings = {}
         self._framework_field_mappings = {}
         
-        # Initialize enhanced mappings BEFORE base class init
+        # Initialize enhanced mappings
         self._initialize_enhanced_mappings()
         
-        # Initialize base categorizer AFTER enhanced attributes are ready
-        super().__init__(config_list, processing_step_config_base_class)
+        # Determine the base class for processing steps (from base class logic)
+        self.processing_base_class = processing_step_config_base_class
+        if self.processing_base_class is None:
+            # Try to infer the base class from imports
+            try:
+                from ...steps.configs.config_processing_step_base import (
+                    ProcessingStepConfigBase,
+                )
+                self.processing_base_class = ProcessingStepConfigBase
+            except ImportError:
+                self.logger.warning(
+                    "Could not import ProcessingStepConfigBase. "
+                    "Processing steps will not be properly identified."
+                )
+                # Use a fallback approach - assume no processing configs
+                self.processing_base_class = object
+
+        # Categorize configs (from base class logic)
+        self.processing_configs = [
+            c for c in config_list if isinstance(c, self.processing_base_class)
+        ]
+        self.non_processing_configs = [
+            c for c in config_list if not isinstance(c, self.processing_base_class)
+        ]
+
+        # Collect field information and categorize (from base class logic)
+        self.logger.info(
+            f"Collecting field information for {len(config_list)} configs "
+            f"({len(self.processing_configs)} processing configs)"
+        )
+        self.field_info = self._collect_field_info()
+        self.categorization = self._categorize_fields()
     
     def _initialize_enhanced_mappings(self) -> None:
         """Initialize workspace and framework-specific field mappings."""
@@ -163,6 +208,224 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
         }
         
         return framework_mappings
+
+    def _collect_field_info(self) -> Dict[str, Any]:
+        """
+        Collect comprehensive information about all fields across configs.
+        (Merged from base class)
+
+        Implements the Single Source of Truth principle by gathering all information
+        in one place for consistent categorization decisions.
+
+        Returns:
+            dict: Field information including values, sources, types, etc.
+        """
+        field_info = {
+            "values": defaultdict(set),  # field_name -> set of values (as JSON strings)
+            "sources": defaultdict(list),  # field_name -> list of step names
+            "processing_sources": defaultdict(
+                list
+            ),  # field_name -> list of processing step names
+            "non_processing_sources": defaultdict(
+                list
+            ),  # field_name -> list of non-processing step names
+            "is_static": defaultdict(
+                bool
+            ),  # field_name -> bool (is this field likely static)
+            "is_special": defaultdict(
+                bool
+            ),  # field_name -> bool (is this a special field)
+            "is_cross_type": defaultdict(
+                bool
+            ),  # field_name -> bool (appears in both processing/non-processing)
+            "raw_values": defaultdict(dict),  # field_name -> {step_name: actual value}
+        }
+
+        # Collect information from all configs
+        for config in self.config_list:
+            serialized = serialize_config(config)
+
+            # Extract step name from metadata
+            if "_metadata" not in serialized:
+                self.logger.warning(
+                    f"Config {config.__class__.__name__} does not have _metadata. "
+                    "Using class name as step name."
+                )
+                step_name = config.__class__.__name__
+            else:
+                step_name = serialized["_metadata"].get(
+                    "step_name", config.__class__.__name__
+                )
+
+            # Process each field - ensure serialized is a dictionary
+            if not isinstance(serialized, dict):
+                self.logger.warning(
+                    f"Serialized config for {config.__class__.__name__} is not a dictionary, got {type(serialized)}"
+                )
+                continue
+
+            for field_name, value in serialized.items():
+                if field_name == "_metadata":
+                    continue
+
+                # Track raw value - use defaultdict behavior directly
+                field_info["raw_values"][field_name][step_name] = value
+
+                # Track serialized value for comparison - use defaultdict behavior directly
+                try:
+                    value_str = json.dumps(value, sort_keys=True)
+                    field_info["values"][field_name].add(value_str)
+                except (TypeError, ValueError):
+                    # If not JSON serializable, use object ID as placeholder
+                    field_info["values"][field_name].add(f"__non_serializable_{id(value)}__")
+
+                # Track sources - use defaultdict behavior directly
+                field_info["sources"][field_name].append(step_name)
+
+                # Track processing/non-processing sources - use defaultdict behavior directly
+                if self.processing_base_class and isinstance(config, self.processing_base_class):
+                    field_info["processing_sources"][field_name].append(step_name)
+                else:
+                    field_info["non_processing_sources"][field_name].append(step_name)
+
+                # Determine if cross-type - use defaultdict behavior directly
+                field_info["is_cross_type"][field_name] = (
+                    bool(field_info["processing_sources"][field_name]) and 
+                    bool(field_info["non_processing_sources"][field_name])
+                )
+
+                # Check if special - use defaultdict behavior directly
+                field_info["is_special"][field_name] = self._is_special_field(
+                    field_name, value, config
+                )
+
+                # Check if static - use defaultdict behavior directly
+                field_info["is_static"][field_name] = self._is_likely_static(
+                    field_name, value
+                )
+
+        # Log statistics about field collection
+        sources = field_info['sources']
+        if hasattr(sources, '__len__'):
+            self.logger.info(
+                f"Collected information for {len(sources)} unique fields"
+            )
+        else:
+            self.logger.info("Collected field information")
+        self.logger.debug(
+            f"Fields with multiple values: "
+            f"{[f for f, v in field_info['values'].items() if hasattr(v, '__len__') and len(v) > 1]}"  # type: ignore[attr-defined]
+        )
+        self.logger.debug(
+            f"Cross-type fields: {[f for f, v in field_info['is_cross_type'].items() if v]}"  # type: ignore[attr-defined]
+        )
+        self.logger.debug(
+            f"Special fields: {[f for f, v in field_info['is_special'].items() if v]}"  # type: ignore[attr-defined]
+        )
+
+        return field_info
+
+    def _is_special_field(self, field_name: str, value: Any, config: Any) -> bool:
+        """
+        Determine if a field should be treated as special.
+        (Merged from base class)
+
+        Special fields are always kept in specific sections.
+
+        Args:
+            field_name: Name of the field
+            value: Value of the field
+            config: The config containing this field
+
+        Returns:
+            bool: True if the field is special
+        """
+        # Check against known special fields
+        if field_name in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
+            return True
+
+        # Check if it's a Pydantic model
+        if isinstance(value, BaseModel):
+            return True
+
+        # Check for fields with nested complex structures
+        if isinstance(value, dict) and any(
+            isinstance(v, (dict, list)) for v in value.values()
+        ):
+            # Complex nested structure should be considered special
+            return True
+
+        return False
+
+    def _is_likely_static(self, field_name: str, value: Any, config: Any = None) -> bool:
+        """
+        Determine if a field is likely static based on name and value.
+        (Merged from base class)
+
+        Static fields are those that don't change at runtime.
+
+        Args:
+            field_name: Name of the field
+            value: Value of the field
+            config: Optional config the field belongs to (not used, kept for backwards compatibility)
+
+        Returns:
+            bool: True if the field is likely static
+        """
+        # Fields in the exceptions list are considered static
+        if field_name in NON_STATIC_FIELD_EXCEPTIONS:
+            return True
+
+        # Special fields are never static
+        if field_name in SPECIAL_FIELDS_TO_KEEP_SPECIFIC:
+            return False
+
+        # Pydantic models are never static
+        if isinstance(value, BaseModel):
+            return False
+
+        # Check name patterns that suggest non-static fields
+        if any(pattern in field_name for pattern in NON_STATIC_FIELD_PATTERNS):
+            return False
+
+        # Check complex values
+        if isinstance(value, dict) and len(value) > 3:
+            return False
+        if isinstance(value, list) and len(value) > 5:
+            return False
+
+        # Default to static
+        return True
+
+    def _categorize_fields(self) -> Dict[str, Any]:
+        """
+        Apply categorization rules to all fields.
+        (Merged from base class with enhancements)
+
+        Implements the Declarative Over Imperative principle with explicit rules.
+        Uses the simplified structure with just 'shared' and 'specific' sections.
+
+        Returns:
+            dict: Field categorization results
+        """
+        # Simplified structure with just shared and specific
+        categorization: Dict[str, Any] = {"shared": {}, "specific": defaultdict(dict)}
+
+        # Apply categorization rules to each field
+        for field_name in self.field_info["sources"]:
+            # Explicit categorization following Explicit Over Implicit principle
+            category = self._categorize_field(field_name)
+
+            self.logger.debug(f"Field '{field_name}' categorized as {category}")
+
+            # Place field in the appropriate category in simplified structure
+            self._place_field(field_name, category, categorization)
+
+        # Log statistics about categorization
+        self.logger.info(f"Shared fields: {len(categorization['shared'])}")
+        self.logger.info(f"Specific steps: {len(categorization['specific'])}")
+
+        return categorization
     
     def _categorize_field_with_step_catalog_context(
         self, 
@@ -215,11 +478,61 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
                 logger.debug(f"Could not use tier-aware categorization: {e}")
         
         # Fall back to base categorization logic
-        return super()._categorize_field(field_name)
+        return self._categorize_field_base_logic(field_name)
     
-    def _categorize_field(self, field_name: str):
+    def _categorize_field_base_logic(self, field_name: str) -> str:
         """
-        Override base categorization to include step catalog context.
+        Base categorization logic (from original base class).
+        
+        Args:
+            field_name: Name of the field to categorize
+            
+        Returns:
+            Category name for the field
+        """
+        info = self.field_info
+
+        # Rule 1: Special fields always go to specific sections
+        if info["is_special"][field_name]:
+            self.logger.debug(f"Rule 1: Field '{field_name}' is special")
+            return "specific"
+
+        # Rule 2: Fields that only appear in one config are specific
+        if len(info["sources"][field_name]) <= 1:
+            self.logger.debug(
+                f"Rule 2: Field '{field_name}' only appears in one config"
+            )
+            return "specific"
+
+        # Rule 3: Fields with different values across configs are specific
+        if len(info["values"][field_name]) > 1:
+            self.logger.debug(
+                f"Rule 3: Field '{field_name}' has different values across configs"
+            )
+            return "specific"
+
+        # Rule 4: Non-static fields are specific
+        if not info["is_static"][field_name]:
+            self.logger.debug(f"Rule 4: Field '{field_name}' is non-static")
+            return "specific"
+
+        # Rule 5: Fields with identical values across all configs go to shared
+        if (
+            len(info["sources"][field_name]) == len(self.config_list)
+            and len(info["values"][field_name]) == 1
+        ):
+            self.logger.debug(
+                f"Rule 5: Field '{field_name}' has identical values in ALL configs"
+            )
+            return "shared"
+
+        # Default case: if we can't determine clearly, be safe and make it specific
+        self.logger.debug(f"Default rule: Field '{field_name}' using safe default rule")
+        return "specific"
+    
+    def _categorize_field(self, field_name: str) -> CategoryType:
+        """
+        Enhanced categorization that includes step catalog context.
         
         Args:
             field_name: Name of the field to categorize
@@ -227,7 +540,7 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
         Returns:
             CategoryType: Category for the field (SHARED or SPECIFIC)
         """
-        # Extract field values and config names from field_info (like base class does)
+        # Extract field values and config names from field_info
         field_values = list(self.field_info["values"][field_name])
         config_names = self.field_info["sources"][field_name]
         
@@ -235,9 +548,6 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
         enhanced_category = self._categorize_field_with_step_catalog_context(
             field_name, field_values, config_names
         )
-        
-        # Import CategoryType for return value compatibility
-        from .constants import CategoryType
         
         # Map enhanced categories to base CategoryType enum
         if enhanced_category in ['framework_specific', 'cloud_specific', 'ml_framework']:
@@ -249,7 +559,136 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
             return CategoryType.SPECIFIC
         else:
             # Use base categorization as final fallback
-            return super()._categorize_field(field_name)
+            base_category = self._categorize_field_base_logic(field_name)
+            return CategoryType.SHARED if base_category == 'shared' else CategoryType.SPECIFIC
+
+    def _place_field(
+        self, field_name: str, category: CategoryType, categorization: Dict[str, Any]
+    ) -> None:
+        """
+        Place a field into the appropriate category in the simplified categorization structure.
+        (Merged from base class)
+
+        Args:
+            field_name: Name of the field
+            category: Category to place the field in (SHARED or SPECIFIC)
+            categorization: Categorization structure to update
+        """
+        info = self.field_info
+
+        # Handle each category
+        if category == CategoryType.SHARED:
+            # Use the common value for all configs
+            value_str = next(iter(info["values"][field_name]))
+            try:
+                categorization["shared"][field_name] = json.loads(value_str)
+            except json.JSONDecodeError:
+                # Handle non-serializable values
+                self.logger.warning(
+                    f"Could not deserialize value for shared field '{field_name}'. "
+                    "Using raw value from first config."
+                )
+                step_name = info["sources"][field_name][0]
+                categorization["shared"][field_name] = info["raw_values"][field_name][
+                    step_name
+                ]
+
+        else:  # CategoryType.SPECIFIC
+            # Add to each config that has this field
+            for config in self.config_list:
+                step_name = None
+                # Get step name from serialized config
+                serialized = serialize_config(config)
+                if "_metadata" in serialized:
+                    step_name = serialized["_metadata"].get("step_name")
+
+                if step_name is None:
+                    step_name = config.__class__.__name__
+
+                # Check if this config has the field
+                for field, sources in info["raw_values"].items():
+                    if field == field_name and step_name in sources:
+                        if step_name not in categorization["specific"]:
+                            categorization["specific"][step_name] = {}
+                        value = sources[step_name]
+                        categorization["specific"][step_name][field_name] = value
+
+    def get_category_for_field(
+        self, field_name: str, config: Optional[Any] = None
+    ) -> Optional[CategoryType]:
+        """
+        Get the category for a specific field, optionally in a specific config.
+        (Merged from base class)
+
+        Args:
+            field_name: Name of the field
+            config: Optional config instance
+
+        Returns:
+            CategoryType: Category for the field or None if field not found
+        """
+        if field_name not in self.field_info["sources"]:
+            return None
+
+        if config is None:
+            # Return general category
+            return self._categorize_field(field_name)
+        else:
+            # Check if this config has this field
+            serialized = serialize_config(config)
+            if field_name not in serialized or field_name == "_metadata":
+                return None
+
+            # Get category for this specific instance
+            category = self._categorize_field(field_name)
+
+            # In simplified model, we only have SHARED and SPECIFIC
+            return category
+
+    def get_categorized_fields(self) -> Dict[str, Any]:
+        """
+        Get the categorization result.
+        (Merged from base class)
+
+        Returns:
+            dict: Field categorization
+        """
+        return self.categorization
+
+    def get_field_sources(self) -> Dict[str, List[str]]:
+        """
+        Get the field sources mapping (inverted index).
+        (Merged from base class)
+        
+        This creates an inverted index that maps each field name to the list
+        of step names that contain that field.
+        
+        Returns:
+            dict: Mapping of field_name -> list of step names
+        """
+        # Convert defaultdict to regular dict for JSON serialization
+        field_sources = {}
+        for field_name, step_list in self.field_info["sources"].items():
+            field_sources[field_name] = list(step_list)  # Ensure it's a list
+        
+        return field_sources
+
+    def print_categorization_stats(self) -> None:
+        """
+        Print statistics about field categorization for the simplified structure.
+        (Merged from base class)
+        """
+        shared_count = len(self.categorization["shared"])
+        specific_count = sum(
+            len(fields) for fields in self.categorization["specific"].values()
+        )
+
+        total = shared_count + specific_count
+
+        print(f"Field categorization statistics:")
+        print(f"  Shared: {shared_count} ({shared_count / total:.1%})")
+        print(f"  Specific: {specific_count} ({specific_count / total:.1%})")
+        print(f"  Total: {total}")
     
     def get_enhanced_categorization_info(self) -> Dict[str, Any]:
         """
