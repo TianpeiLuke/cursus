@@ -49,10 +49,7 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
             step_catalog: Optional step catalog instance for enhanced processing
             workspace_root: Optional workspace root for step catalog integration
         """
-        # Initialize base categorizer
-        super().__init__(config_list, processing_step_config_base_class)
-        
-        # Enhanced attributes
+        # Enhanced attributes - initialize BEFORE base class init
         self.project_id = project_id
         self.step_catalog = step_catalog
         self.workspace_root = workspace_root
@@ -65,12 +62,15 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
         except Exception as e:
             logger.debug(f"Could not initialize unified config manager: {e}")
         
-        # Workspace-specific field mappings
+        # Workspace-specific field mappings - initialize BEFORE base class init
         self._workspace_field_mappings = {}
         self._framework_field_mappings = {}
         
-        # Initialize enhanced mappings
+        # Initialize enhanced mappings BEFORE base class init
         self._initialize_enhanced_mappings()
+        
+        # Initialize base categorizer AFTER enhanced attributes are ready
+        super().__init__(config_list, processing_step_config_base_class)
     
     def _initialize_enhanced_mappings(self) -> None:
         """Initialize workspace and framework-specific field mappings."""
@@ -215,40 +215,41 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
                 logger.debug(f"Could not use tier-aware categorization: {e}")
         
         # Fall back to base categorization logic
-        return super()._categorize_field(field_name, field_values, config_names)
+        return super()._categorize_field(field_name)
     
-    def _categorize_field(
-        self, 
-        field_name: str, 
-        field_values: List[Any], 
-        config_names: List[str]
-    ) -> str:
+    def _categorize_field(self, field_name: str):
         """
         Override base categorization to include step catalog context.
         
         Args:
             field_name: Name of the field to categorize
-            field_values: List of values for this field across configs
-            config_names: List of config names that have this field
             
         Returns:
-            Category name for the field
+            CategoryType: Category for the field (SHARED or SPECIFIC)
         """
+        # Extract field values and config names from field_info (like base class does)
+        field_values = list(self.field_info["values"][field_name])
+        config_names = self.field_info["sources"][field_name]
+        
         # Use enhanced categorization with step catalog context
         enhanced_category = self._categorize_field_with_step_catalog_context(
             field_name, field_values, config_names
         )
         
-        # If enhanced categorization didn't provide a definitive answer,
-        # fall back to base categorization logic
+        # Import CategoryType for return value compatibility
+        from .constants import CategoryType
+        
+        # Map enhanced categories to base CategoryType enum
         if enhanced_category in ['framework_specific', 'cloud_specific', 'ml_framework']:
             # These are all specific categories
-            return 'specific'
-        elif enhanced_category in ['shared', 'specific']:
-            return enhanced_category
+            return CategoryType.SPECIFIC
+        elif enhanced_category == 'shared':
+            return CategoryType.SHARED
+        elif enhanced_category == 'specific':
+            return CategoryType.SPECIFIC
         else:
             # Use base categorization as final fallback
-            return super()._categorize_field(field_name, field_values, config_names)
+            return super()._categorize_field(field_name)
     
     def get_enhanced_categorization_info(self) -> Dict[str, Any]:
         """
@@ -285,7 +286,7 @@ class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
             Categorization result with enhanced metadata
         """
         # Perform standard categorization
-        result = self.categorize()
+        result = self.get_categorized_fields()
         
         # Add enhanced metadata
         result['enhanced_metadata'] = self.get_enhanced_categorization_info()

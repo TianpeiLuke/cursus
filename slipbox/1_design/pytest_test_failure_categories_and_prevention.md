@@ -41,6 +41,68 @@ FileNotFoundError: No such file or directory         → Category 3: Path/fixtur
 
 ## Category 1: Mock Path and Import Issues (35% of failures)
 
+### **NEW: Inheritance-Based Mock Path Issues (CRITICAL DISCOVERY)**
+```python
+# ❌ WRONG: Mocking at wrong inheritance level (discovered 2025-10-04)
+# Enhanced class inherits from base class that imports serialize_config
+class StepCatalogAwareConfigFieldCategorizer(ConfigFieldCategorizer):
+    # Base class imports: from .type_aware_config_serializer import serialize_config
+    pass
+
+# Test incorrectly mocks at type_aware_config_serializer level
+@patch('cursus.core.config_fields.type_aware_config_serializer.serialize_config')
+def test_enhanced_categorizer(mock_serialize):
+    # FAILS: Mock never gets called because base class uses different import path
+    categorizer = StepCatalogAwareConfigFieldCategorizer(config_list=configs)
+    # Mock is not applied, real serialization runs, tests fail mysteriously
+
+# ✅ CORRECT: Mock at the base class import level
+@patch('cursus.core.config_fields.config_field_categorizer.serialize_config')
+def test_enhanced_categorizer(mock_serialize):
+    # WORKS: Mock is applied where base class actually imports it
+    categorizer = StepCatalogAwareConfigFieldCategorizer(config_list=configs)
+    # Mock gets called, tests pass
+```
+
+**Key Discovery**: When testing inherited classes, the mock path must target where the **base class** imports the function, not where it's originally defined. This is especially critical for enhanced/wrapper classes.
+
+**Root Cause Analysis**:
+- Enhanced classes inherit behavior from base classes
+- Base classes import functions from their own modules
+- Tests incorrectly mock at the original definition location
+- Mock never gets applied because inheritance uses base class import path
+
+**Critical Rule**: For inherited classes, **ALWAYS** mock at the base class import location, not the original definition location.
+
+**Debugging Pattern**:
+```python
+# Step 1: Identify the inheritance chain
+class Enhanced(BaseClass):  # Enhanced inherits from BaseClass
+    pass
+
+# Step 2: Check base class imports (CRITICAL STEP)
+# In base_class.py:
+from .some_module import target_function  # ← This is the path to mock
+
+# Step 3: Mock at base class import level
+@patch('package.base_class.target_function')  # ✅ CORRECT
+# NOT: @patch('package.some_module.target_function')  # ❌ WRONG
+```
+
+**Detection Signs**:
+- Tests fail with "Mock never called" or similar
+- Enhanced/inherited classes being tested
+- Mock setup looks correct but doesn't work
+- Mysterious test failures where mocks seem ignored
+
+**Prevention Strategy**:
+1. **Read base class source code first** - Check actual import statements
+2. **Trace inheritance chain** - Identify which class actually imports the function
+3. **Mock at inheritance level** - Target where the calling class imports from
+4. **Verify mock application** - Add assertions to confirm mock is called
+
+This pattern was discovered during comprehensive testing of `StepCatalogAwareConfigFieldCategorizer` and represents a critical gap in existing mock path guidance.
+
 ### **NEW: Fixture-Level Mock Path Issues**
 ```python
 # ❌ WRONG: Fixture using incorrect mock path (common pattern in test output)
