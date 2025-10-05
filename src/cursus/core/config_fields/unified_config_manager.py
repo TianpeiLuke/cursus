@@ -82,14 +82,14 @@ class UnifiedConfigManager:
     Total Reduction: 950 lines → 120 lines (87% reduction)
     """
     
-    def __init__(self, workspace_root: Optional[Path] = None):
+    def __init__(self, workspace_dirs: Optional[List[str]] = None):
         """
         Initialize unified config manager.
         
         Args:
-            workspace_root: Root directory for step catalog integration
+            workspace_dirs: List of workspace directories for step catalog integration
         """
-        self.workspace_root = workspace_root
+        self.workspace_dirs = workspace_dirs or []
         self.simple_tracker = SimpleTierAwareTracker()
         self._step_catalog = None
         
@@ -99,9 +99,8 @@ class UnifiedConfigManager:
         if self._step_catalog is None:
             try:
                 from ...step_catalog import StepCatalog
-                # Use new dual search space API
-                workspace_dirs = [self.workspace_root] if self.workspace_root else []
-                self._step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
+                # Use workspace_dirs directly as step catalog expects
+                self._step_catalog = StepCatalog(workspace_dirs=self.workspace_dirs)
             except ImportError:
                 logger.warning("Step catalog not available, using fallback")
                 self._step_catalog = None
@@ -134,10 +133,9 @@ class UnifiedConfigManager:
                 temp_catalog = StepCatalog(workspace_dirs=None)
                 package_root = temp_catalog.package_root
                 
-                workspace_dirs = [self.workspace_root] if self.workspace_root else []
                 config_discovery = ConfigAutoDiscovery(
                     package_root=package_root,    # Cursus package location (from StepCatalog)
-                    workspace_dirs=workspace_dirs # User workspace directories
+                    workspace_dirs=self.workspace_dirs # User workspace directories
                 )
                 discovered_classes = config_discovery.build_complete_config_classes(project_id)
                 logger.info(f"Discovered {len(discovered_classes)} config classes via ConfigAutoDiscovery")
@@ -281,22 +279,135 @@ class UnifiedConfigManager:
             "system": system_fields,
             "derived": derived_fields,
         }
+    
+    def save(self, config_list: List[Any], output_file: str, 
+             processing_step_config_base_class: Optional[type] = None) -> Dict[str, Any]:
+        """
+        Save merged configuration to a file using UnifiedConfigManager.
+        
+        Args:
+            config_list: List of configuration objects to merge and save
+            output_file: Path to output file
+            processing_step_config_base_class: Optional base class for processing steps
+            
+        Returns:
+            dict: Merged configuration structure
+        """
+        import json
+        import os
+        from datetime import datetime
+        from .step_catalog_aware_categorizer import StepCatalogAwareConfigFieldCategorizer
+        from .type_aware_config_serializer import TypeAwareConfigSerializer
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+        
+        # Use step catalog aware categorizer
+        categorizer = StepCatalogAwareConfigFieldCategorizer(
+            config_list, processing_step_config_base_class
+        )
+        
+        # Get categorized fields
+        categorized = categorizer.get_categorized_fields()
+        merged = {"shared": categorized["shared"], "specific": categorized["specific"]}
+        
+        # Create metadata
+        config_types = {}
+        serializer = TypeAwareConfigSerializer()
+        for cfg in config_list:
+            step_name = serializer.generate_step_name(cfg)
+            class_name = cfg.__class__.__name__
+            config_types[step_name] = class_name
+        
+        field_sources = categorizer.get_field_sources()
+        metadata = {
+            "created_at": datetime.now().isoformat(),
+            "config_types": config_types,
+            "field_sources": field_sources,
+        }
+        
+        # Create output structure
+        output = {"metadata": metadata, "configuration": merged}
+        
+        # Save to file
+        logger.info(f"Saving merged configuration to {output_file}")
+        with open(output_file, "w") as f:
+            json.dump(output, f, indent=2, sort_keys=True)
+        
+        logger.info(f"Successfully saved merged configuration to {output_file}")
+        return merged
+    
+    def load(self, input_file: str, config_classes: Optional[Dict[str, type]] = None) -> Dict[str, Any]:
+        """
+        Load a merged configuration from a file using UnifiedConfigManager.
+        
+        Args:
+            input_file: Path to input file
+            config_classes: Optional mapping of class names to class objects
+            
+        Returns:
+            dict: Loaded configuration structure
+        """
+        import json
+        import os
+        from .type_aware_config_serializer import TypeAwareConfigSerializer
+        
+        logger.info(f"Loading configuration from {input_file}")
+        
+        if not os.path.exists(input_file):
+            raise FileNotFoundError(f"Configuration file not found: {input_file}")
+        
+        # Load JSON file
+        with open(input_file, "r") as f:
+            file_data = json.load(f)
+        
+        # Handle both old and new formats
+        if "configuration" in file_data and isinstance(file_data["configuration"], dict):
+            data = file_data["configuration"]
+        else:
+            data = file_data
+        
+        # Use config classes from UnifiedConfigManager if not provided
+        if config_classes is None:
+            config_classes = self.get_config_classes()
+        
+        # Create serializer
+        serializer = TypeAwareConfigSerializer(config_classes=config_classes)
+        
+        # Process into simplified structure
+        result: Dict[str, Any] = {"shared": {}, "specific": {}}
+        
+        # Deserialize shared fields
+        if "shared" in data:
+            for field, value in data["shared"].items():
+                result["shared"][field] = serializer.deserialize(value)
+        
+        # Deserialize specific fields
+        if "specific" in data:
+            for step, fields in data["specific"].items():
+                if step not in result["specific"]:
+                    result["specific"][step] = {}
+                for field, value in fields.items():
+                    result["specific"][step][field] = serializer.deserialize(value)
+        
+        logger.info(f"Successfully loaded configuration from {input_file}")
+        return result
 
 
 # Global instance for backward compatibility
 _unified_manager = None
 
-def get_unified_config_manager(workspace_root: Optional[Path] = None) -> UnifiedConfigManager:
+def get_unified_config_manager(workspace_dirs: Optional[List[str]] = None) -> UnifiedConfigManager:
     """
     Get global unified config manager instance.
     
     Args:
-        workspace_root: Workspace root for step catalog integration
+        workspace_dirs: List of workspace directories for step catalog integration
         
     Returns:
         UnifiedConfigManager instance
     """
     global _unified_manager
     if _unified_manager is None:
-        _unified_manager = UnifiedConfigManager(workspace_root)
+        _unified_manager = UnifiedConfigManager(workspace_dirs)
     return _unified_manager
