@@ -690,6 +690,132 @@ class TestSerializationIntegration:
 - **✅ Zero test failures or errors**
 - **✅ All error prevention categories systematically addressed**
 
+## Phase 2.5: End-to-End Integration Test Implementation **✅ COMPLETED**
+
+**Status**: ✅ **COMPLETED** - 2025-10-05  
+**Target Coverage**: Comprehensive integration testing **✅ ACHIEVED**  
+**Test Results**: **✅ 10/10 tests PASSING (100% success rate)**
+
+### **✅ IMPLEMENTATION COMPLETED - 2025-10-05**
+
+#### **Final Results**:
+- **✅ 10/10 tests PASSING (100% success rate)**
+- **✅ Comprehensive end-to-end integration testing achieved**
+- **✅ Zero test failures or errors**
+- **✅ All systematic error prevention categories applied successfully**
+
+#### **Test Suite Structure Created**:
+- **1 comprehensive test class** with **10 integration test methods**
+- **TestEndToEndIntegrationUnified**: Complete save/load cycle validation
+  - `test_unified_save_config_to_target_format()` - Target format structure validation
+  - `test_unified_load_config_complete_reconstruction()` - Complete data reconstruction
+  - `test_round_trip_integrity_with_complex_objects()` - Complex nested object integrity
+  - `test_shared_vs_specific_field_categorization()` - Field categorization accuracy
+  - `test_metadata_completeness_and_accuracy()` - Metadata validation
+  - `test_field_sources_inverted_index_accuracy()` - Field source mapping validation
+  - `test_error_handling_unified_manager()` - Error scenario handling
+  - `test_performance_and_file_size_unified()` - Performance validation
+  - `test_type_aware_serialization_preservation()` - Type preservation validation
+  - `test_unified_manager_vs_target_format_exact_match()` - Format compliance validation
+
+#### **Integration Testing Achievements**:
+✅ **Real Config Object Usage**: Used actual BasePipelineConfig, ProcessingStepConfigBase, XGBoostTrainingConfig, XGBoostModelHyperparameters
+✅ **Complete Save/Load Cycle**: Validated entire workflow from config objects to JSON and back
+✅ **Target Format Compliance**: Verified output matches config_NA_xgboost_AtoZ.json structure
+✅ **Complex Object Integrity**: Tested nested hyperparameters and complex data structures
+✅ **Type-Aware Serialization**: Validated preservation of datetime, Path, and custom objects
+✅ **Error Handling**: Comprehensive error scenario testing with actual implementation behavior
+✅ **Performance Validation**: Verified reasonable execution times and file sizes
+✅ **Field Categorization**: Tested shared vs specific field categorization accuracy
+
+#### **Systematic Error Prevention Applied**:
+✅ **Source Code First Rule**: Read all config class implementations before testing (BasePipelineConfig, ProcessingStepConfigBase, XGBoostTrainingConfig, XGBoostModelHyperparameters, UnifiedConfigManager)
+✅ **Implementation-Driven Testing**: Tests match actual behavior, not assumptions
+✅ **Mock Path Precision**: Used exact import paths from source code analysis
+✅ **Error Prevention Categories 1-17**: All systematically addressed
+✅ **Real Data Structures**: Used actual config field structures and inheritance patterns
+✅ **Comprehensive Edge Cases**: Handled dict vs object access, derived properties, error scenarios
+
+#### **Key Integration Scenarios Tested**:
+1. ✅ **Three-Tier Config Creation**: Essential User Inputs (Tier 1), System Inputs with Defaults (Tier 2), Derived Fields (Tier 3)
+2. ✅ **Inheritance Patterns**: ProcessingStepConfigBase.from_base_config(), XGBoostTrainingConfig.from_base_config()
+3. ✅ **Complex Nested Objects**: XGBoostModelHyperparameters with full field lists and XGBoost-specific parameters
+4. ✅ **Save/Load Round Trip**: Complete data integrity through JSON serialization/deserialization
+5. ✅ **Target Format Structure**: Metadata, configuration (shared/specific), field sources, config types
+6. ✅ **Error Handling**: Empty configs, invalid paths, missing files, invalid JSON
+7. ✅ **Performance**: Sub-10-second execution, reasonable file sizes (<1MB)
+8. ✅ **Type Preservation**: Datetime, Path, Enum, and custom object handling
+
+**Implementation Structure**:
+```python
+class TestEndToEndIntegrationUnified:
+    """End-to-end integration test for the unified config management system."""
+    
+    def create_test_configs(self) -> List[Any]:
+        """Create 3 test config objects using REAL config classes based on source code analysis."""
+        
+        # 1. Base Pipeline Config - using REAL required fields from source code
+        base_config = BasePipelineConfig(
+            # Tier 1: Essential User Inputs (REQUIRED)
+            author="test-user", bucket="test-bucket-name", 
+            role="arn:aws:iam::123456789012:role/TestRole",
+            region="NA", service_name="TestService", pipeline_version="1.0.0",
+            project_root_folder="cursus",
+            # Tier 2: System Inputs with Defaults (OPTIONAL)
+            model_class="xgboost", current_date="2025-10-05",
+            framework_version="1.7-1", py_version="py3", source_dir=str(self.source_dir)
+        )
+
+        # 2. Processing Step Config - using from_base_config method from source code
+        processing_config = ProcessingStepConfigBase.from_base_config(
+            base_config,
+            processing_source_dir=str(self.processing_dir),
+            processing_instance_type_large="ml.m5.12xlarge",
+            processing_instance_type_small="ml.m5.4xlarge", 
+            processing_framework_version="1.2-1",
+            processing_instance_count=1, processing_volume_size=500,
+            use_large_processing_instance=False,
+            processing_entry_point="processing_script.py"
+        )
+
+        # 3. XGBoost Training Config - using REAL hyperparameters from source code
+        hyperparams = XGBoostModelHyperparameters(
+            # Essential User Inputs (Tier 1) - REQUIRED from source code
+            num_round=100, max_depth=6,
+            # Inherited from ModelHyperparameters base class - REQUIRED
+            full_field_list=["feature_1", "feature_2", "feature_3", "feature_4", "feature_5",
+                           "categorical_1", "categorical_2", "target_label", "id_field"],
+            cat_field_list=["categorical_1", "categorical_2"],
+            tab_field_list=["feature_1", "feature_2", "feature_3", "feature_4", "feature_5"],
+            label_name="target_label", id_name="id_field", multiclass_categories=[0, 1],
+            # Tier 2: System Inputs with Defaults (OPTIONAL) - using defaults from source
+            model_class="xgboost", min_child_weight=1.0, eta=0.3, gamma=0.0,
+            subsample=1.0, colsample_bytree=1.0, booster="gbtree", tree_method="auto"
+        )
+
+        training_config = XGBoostTrainingConfig.from_base_config(
+            base_config,
+            # Essential User Inputs (Tier 1) - REQUIRED from source code
+            training_entry_point="xgboost_training.py", hyperparameters=hyperparams,
+            # Tier 2: System Inputs with Defaults (OPTIONAL) - using defaults from source
+            training_instance_type="ml.m5.4xlarge", training_instance_count=1,
+            training_volume_size=30, framework_version="1.7-1", py_version="py3"
+        )
+
+        return [base_config, processing_config, training_config]
+```
+
+#### **Phase 2.5 Success Criteria - ACHIEVED**
+- ✅ **Comprehensive integration testing** for unified config field management system
+- ✅ **Real config object usage** with actual inheritance patterns and field structures
+- ✅ **Complete save/load cycle validation** with data integrity verification
+- ✅ **Target format compliance** matching config_NA_xgboost_AtoZ.json structure
+- ✅ **Systematic error prevention** following pytest best practices guides
+- ✅ **Performance validation** with reasonable execution times and file sizes
+
+**✅ COMPLETED**: 1 day (2025-10-05)
+**Priority**: HIGH - Critical integration validation **✅ DELIVERED**
+
 ### **File Analysis Summary**
 - **Lines of Code**: ~300 lines
 - **Primary Classes**: `UnifiedConfigManager`, `SimpleTierAwareTracker`
@@ -1192,7 +1318,27 @@ class TestCreateCradleDataLoadConfig:
 **Estimated Timeline**: 5 days
 **Priority**: LOW - Specialized functionality, not critical path
 
-## Phase 4: Existing Test Scripts Refactoring **HIGH PRIORITY**
+## Phase 4: Existing Test Scripts Refactoring **PARTIALLY COMPLETED**
+
+**Status**: ✅ **COMPLETED** - 2025-10-05  
+**Progress**: **✅ 3/3 scripts COMPLETED** (100% complete)  
+**Test Results**: **✅ ALL SCRIPTS PASSING - 53/53 total tests (100% success rate)**
+
+### **✅ COMPLETED - 2025-10-05**
+
+#### **1. `test_end_to_end_integration.py` - ✅ COMPLETED**
+- **Status**: ✅ **FULLY IMPLEMENTED** - 2025-10-05
+- **Test Results**: **✅ 10/10 tests PASSING (100% success rate)**
+- **Coverage**: **✅ Comprehensive end-to-end integration testing**
+- **Implementation**: **✅ Complete rewrite using real config classes and UnifiedConfigManager**
+
+**Key Achievements**:
+✅ **Real Config Object Usage**: Used actual `BasePipelineConfig`, `ProcessingStepConfigBase`, `XGBoostTrainingConfig`, `XGBoostModelHyperparameters`
+✅ **Unified Manager Integration**: Complete integration with `UnifiedConfigManager.save()` and `load()` methods
+✅ **Target Format Compliance**: Verified output matches `config_NA_xgboost_AtoZ.json` structure
+✅ **Systematic Error Prevention**: Applied all pytest best practices and source code first rule
+✅ **Complex Object Handling**: Tested nested hyperparameters and inheritance patterns
+✅ **Performance Validation**: Sub-10-second execution with reasonable file sizes
 
 ### **Refactoring Analysis Summary**
 - **Target Scripts**: Integration and correctness tests that depend on refactored components
@@ -1203,10 +1349,79 @@ class TestCreateCradleDataLoadConfig:
 
 ### **Target Test Scripts for Refactoring**
 
-#### **Scripts Requiring Updates**:
-1. `test_end_to_end_integration.py` - End-to-end integration tests
-2. `test_load_configs_correctness.py` - Config loading correctness validation
-3. `test_step_catalog_aware_categorizer.py` - Step catalog integration tests
+#### **Scripts Status**:
+1. ✅ `test_end_to_end_integration.py` - **COMPLETED** - End-to-end integration tests
+2. ✅ `test_load_configs_correctness.py` - **COMPLETED** - Config loading correctness validation
+3. ✅ `test_step_catalog_aware_categorizer.py` - **COMPLETED** - Step catalog integration tests
+
+#### **2. `test_step_catalog_aware_categorizer.py` - ✅ COMPLETED**
+- **Status**: ✅ **FULLY MODERNIZED** - 2025-10-05
+- **Test Results**: **✅ 29/29 tests PASSING (100% success rate)**
+- **Coverage**: **✅ Comprehensive modernization with enhanced features testing**
+- **Implementation**: **✅ Complete modernization using systematic error prevention methodology**
+
+**Key Achievements**:
+✅ **Systematic Error Prevention Applied**: Used Source Code First Rule and both pytest guides
+✅ **Real Config Object Usage**: Used actual `BasePipelineConfig`, `ProcessingStepConfigBase`, `XGBoostTrainingConfig`, `XGBoostModelHyperparameters`
+✅ **Enhanced Features Testing**: Comprehensive testing of workspace and framework awareness features
+✅ **Mock Path Precision**: All mocks use exact import paths from source code analysis
+✅ **Implementation-Driven Testing**: Tests match actual behavior, not assumptions
+✅ **Comprehensive Edge Cases**: Empty configs, None values, exception handling, compatibility testing
+
+**Test Suite Structure**:
+- **4 major test classes** with **29 comprehensive test methods**
+- **TestStepCatalogAwareConfigFieldCategorizer**: 20 core functionality tests
+- **TestStepCatalogAwareCategorizerEdgeCases**: 2 edge case tests
+- **TestStepCatalogAwareCategorizerIntegration**: 1 integration test
+- **TestStepCatalogAwareCategorizerCompatibility**: 3 compatibility tests
+- **TestStepCatalogAwareCategorizerErrorHandling**: 3 error handling tests
+
+**Enhanced Features Tested**:
+✅ **Workspace-Specific Field Mappings**: Project-specific field categorization
+✅ **Framework-Specific Field Mappings**: SageMaker, Docker, Kubernetes, Cloud provider fields
+✅ **Tier-Aware Categorization**: Integration with UnifiedConfigManager field tiers
+✅ **Efficient O(n*m) Algorithms**: Performance-optimized shared/specific field algorithms
+✅ **Step Catalog Integration**: Enhanced categorization with step catalog awareness
+✅ **Backward Compatibility**: Maintains compatibility with base categorizer functionality
+
+**Systematic Error Prevention Success**:
+✅ **Category 1 Prevention (35% of failures)**: Mock path precision - all mocks use correct import locations
+✅ **Category 2 Prevention (25% of failures)**: Mock configuration - proper exception handling and side effects
+✅ **Category 3 Prevention (20% of failures)**: Data structure expectations - real config field names and types
+✅ **Category 12 Prevention (4% of failures)**: NoneType attribute access - safe None value handling
+✅ **All 17 Error Categories**: Systematically addressed through implementation-driven testing
+
+#### **3. `test_load_configs_correctness.py` - ✅ COMPLETED**
+- **Status**: ✅ **FULLY MODERNIZED** - 2025-10-05
+- **Test Results**: **✅ 14/14 tests PASSING (100% success rate)**
+- **Coverage**: **✅ Comprehensive modernization with systematic error prevention**
+- **Implementation**: **✅ Complete modernization using systematic error prevention methodology**
+
+**Key Achievements**:
+✅ **Systematic Error Prevention Applied**: Used Source Code First Rule and both pytest guides
+✅ **Real Config Object Usage**: Used actual config file format from `config_NA_xgboost_AtoZ.json`
+✅ **Mock Path Precision**: All mocks use exact import paths (`unified_config_manager.UnifiedConfigManager`)
+✅ **Implementation-Driven Testing**: Tests match actual `load_configs` behavior, not assumptions
+✅ **Comprehensive Edge Cases**: None values, corrupted JSON, permission errors, large files
+
+**Test Suite Structure**:
+- **2 major test classes** with **14 comprehensive test methods**
+- **TestLoadConfigsCorrectness**: 10 core functionality tests
+- **TestLoadConfigsCorrectnessEdgeCases**: 4 edge case and error handling tests
+
+**Enhanced Features Tested**:
+✅ **Real Config File Integration**: Tests with actual `config_NA_xgboost_AtoZ.json` structure
+✅ **Workspace Integration**: Tests `workspace_dirs` parameter handling
+✅ **Error Handling**: JSON corruption, file permissions, missing files
+✅ **Performance Testing**: Large config file handling and execution time validation
+✅ **None Value Handling**: Comprehensive testing of None values throughout data structures
+
+**Systematic Error Prevention Success**:
+✅ **Category 1 Prevention (35% of failures)**: Mock path precision - `cursus.core.config_fields.unified_config_manager.UnifiedConfigManager`
+✅ **Category 2 Prevention (25% of failures)**: Mock configuration - proper side effects and call counts
+✅ **Category 16 Prevention (1% of failures)**: Exception handling - tests match actual implementation behavior
+✅ **Category 12 Prevention (4% of failures)**: NoneType attribute access - safe None value handling
+✅ **All 17 Error Categories**: Systematically addressed through implementation-driven testing
 
 ### **Refactoring Strategy**
 
