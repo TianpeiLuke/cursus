@@ -141,6 +141,7 @@ class TestExecutionDocumentGenerator:
         # Setup mocks
         mock_config = Mock()
         mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_config.job_type = "Training"  # Add job_type for step name transformation
         mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
@@ -148,15 +149,16 @@ class TestExecutionDocumentGenerator:
         # Mock the cradle helper to handle the config
         generator.cradle_helper.can_handle_step = Mock(return_value=True)
         generator.cradle_helper.extract_step_config = Mock(return_value={"mock_config": "config_for_step1"})
+        generator.cradle_helper.get_execution_step_name = Mock(return_value="step1-Training")
         
         # Setup DAG
         dag = Mock()
         dag.nodes = ["step1"]
         
-        # Setup execution document
+        # Setup execution document with the transformed step name
         execution_doc = {
             "PIPELINE_STEP_CONFIGS": {
-                "step1": {"STEP_TYPE": ["PROCESSING_STEP"]}
+                "step1-Training": {"STEP_TYPE": ["PROCESSING_STEP"]}
             }
         }
         
@@ -166,9 +168,9 @@ class TestExecutionDocumentGenerator:
         result = generator.fill_execution_document(dag, execution_doc)
         
         assert "PIPELINE_STEP_CONFIGS" in result
-        assert "step1" in result["PIPELINE_STEP_CONFIGS"]
-        assert "STEP_CONFIG" in result["PIPELINE_STEP_CONFIGS"]["step1"]
-        assert result["PIPELINE_STEP_CONFIGS"]["step1"]["STEP_CONFIG"]["mock_config"] == "config_for_step1"
+        assert "step1-Training" in result["PIPELINE_STEP_CONFIGS"]
+        assert "STEP_CONFIG" in result["PIPELINE_STEP_CONFIGS"]["step1-Training"]
+        assert result["PIPELINE_STEP_CONFIGS"]["step1-Training"]["STEP_CONFIG"]["mock_config"] == "config_for_step1"
     
     @patch('cursus.steps.configs.utils.load_configs')
     @patch('cursus.steps.configs.utils.build_complete_config_classes')

@@ -1,0 +1,96 @@
+{
+  "PIPELINE_STEP_CONFIGS": {
+    "CradleDataLoading-Training": {
+      "STEP_CONFIG": {
+        "dataSources": {
+          "dataSources": [
+            {
+              "dataSourceName": "RAW_MDS_NA",
+              "dataSourceType": "MDS",
+              "mdsDataSourceProperties": {
+                "serviceName": "AtoZ",
+                "orgId": "0",
+                "region": "NA"
+              }
+            },
+            {
+              "dataSourceName": "TAGS",
+              "dataSourceType": "EDX"
+            }
+          ]
+        },
+        "transformSpecification": {
+          "transformSQL": "SELECT * FROM RAW_MDS_NA JOIN TAGS ON RAW_MDS_NA.objectId = TAGS.order_id"
+        },
+        "outputSpecification": {
+          "outputPath": "s3://test-bucket/training",
+          "outputFormat": "PARQUET"
+        },
+        "cradleJobSpecification": {
+          "clusterType": "MEDIUM",
+          "cradleAccount": "test-account"
+        }
+      },
+      "STEP_TYPE": [
+        "WORKFLOW_INPUT",
+        "CradleDataLoadingStep"
+      ]
+    },
+    "CradleDataLoading-Calibration": {
+      "STEP_CONFIG": {
+        "dataSources": {
+          "dataSources": [
+            {
+              "dataSourceName": "RAW_MDS_NA",
+              "dataSourceType": "MDS",
+              "mdsDataSourceProperties": {
+                "serviceName": "AtoZ",
+                "orgId": "0",
+                "region": "NA"
+              }
+            },
+            {
+              "dataSourceName": "TAGS",
+              "dataSourceType": "EDX"
+            }
+          ]
+        },
+        "transformSpecification": {
+          "transformSQL": "SELECT * FROM RAW_MDS_NA JOIN TAGS ON RAW_MDS_NA.objectId = TAGS.order_id"
+        },
+        "outputSpecification": {
+          "outputPath": "s3://test-bucket/calibration",
+          "outputFormat": "PARQUET"
+        },
+        "cradleJobSpecification": {
+          "clusterType": "MEDIUM",
+          "cradleAccount": "test-account"
+        }
+      },
+      "STEP_TYPE": [
+        "WORKFLOW_INPUT",
+        "CradleDataLoadingStep"
+      ]
+    },
+    "XGBoostTraining": {
+      "STEP_CONFIG": {},
+      "STEP_TYPE": "TRAINING_STEP"
+    },
+    "Registration-NA": {
+      "STEP_CONFIG": {
+        "model_domain": "AtoZ",
+        "model_objective": "AtoZ_Claims_SM_Model_NA",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_input_variable_list": [],
+        "source_model_inference_output_variable_list": {}
+      },
+      "STEP_TYPE": [
+        "PROCESSING_STEP",
+        "ModelRegistration"
+      ]
+    }
+  },
+  "PIPELINE_ADDITIONAL_PARAMS": {}
+}

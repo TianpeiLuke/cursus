@@ -98,11 +98,16 @@ class CradleDataLoadingHelper(ExecutionDocumentHelper):
         Returns:
             True if this helper can handle the configuration, False otherwise
         """
-        # Use direct isinstance check if CradleDataLoadConfig is available
+        # First try isinstance check if CradleDataLoadConfig is available
         if CRADLE_CONFIG_AVAILABLE:
-            return isinstance(config, CradleDataLoadConfig)
+            try:
+                if isinstance(config, CradleDataLoadConfig):
+                    return True
+            except Exception:
+                # If isinstance fails, continue to string matching
+                pass
         
-        # Fallback to string matching if import failed
+        # Fallback to string matching based on class name
         config_type_name = type(config).__name__.lower()
         return ("cradle" in config_type_name and 
                 "data" in config_type_name and 

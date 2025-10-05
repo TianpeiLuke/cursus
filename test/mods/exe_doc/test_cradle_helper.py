@@ -22,9 +22,11 @@ class TestCradleDataLoadingHelper:
         """Test can_handle_step with Cradle configuration."""
         helper = CradleDataLoadingHelper()
         
-        # Mock config with Cradle-like class name
-        mock_config = Mock()
-        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        # Create a proper mock class with the right name
+        class MockCradleDataLoadConfig:
+            pass
+        
+        mock_config = MockCradleDataLoadConfig()
         
         assert helper.can_handle_step("test_step", mock_config) is True
     
@@ -42,7 +44,7 @@ class TestCradleDataLoadingHelper:
         """Test can_handle_step with partial matches."""
         helper = CradleDataLoadingHelper()
         
-        # Test various partial matches
+        # Test various partial matches using proper mock classes
         test_cases = [
             ("CradleConfig", False),  # Missing "data" and "load"
             ("DataLoadConfig", False),  # Missing "cradle"
@@ -53,8 +55,9 @@ class TestCradleDataLoadingHelper:
         ]
         
         for class_name, expected in test_cases:
-            mock_config = Mock()
-            mock_config.__class__.__name__ = class_name
+            # Create a dynamic class with the desired name
+            MockClass = type(class_name, (), {})
+            mock_config = MockClass()
             result = helper.can_handle_step("test_step", mock_config)
             assert result == expected, f"Failed for class name: {class_name}"
     

@@ -1,0 +1,27 @@
+{
+  "PIPELINE_STEP_CONFIGS": {
+    "CradleDataLoading-Training": {
+      "STEP_TYPE": [
+        "WORKFLOW_INPUT",
+        "CradleDataLoadingStep"
+      ]
+    },
+    "CradleDataLoading-Calibration": {
+      "STEP_TYPE": [
+        "WORKFLOW_INPUT",
+        "CradleDataLoadingStep"
+      ]
+    },
+    "XGBoostTraining": {
+      "STEP_CONFIG": {},
+      "STEP_TYPE": "TRAINING_STEP"
+    },
+    "Registration-NA": {
+      "STEP_TYPE": [
+        "PROCESSING_STEP",
+        "MimsModelRegistrationProcessingStep"
+      ]
+    }
+  },
+  "PIPELINE_ADDITIONAL_PARAMS": {}
+}
