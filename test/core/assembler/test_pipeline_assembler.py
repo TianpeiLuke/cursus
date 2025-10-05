@@ -157,7 +157,13 @@ class TestSafeValueForLogging:
 
 
 class MockConfig(BasePipelineConfig):
-    """Mock configuration class for testing."""
+    """Mock configuration class for testing.
+    
+    Following pytest best practices:
+    1. Fix the _cache attribute initialization issue
+    2. Ensure proper inheritance from BasePipelineConfig
+    3. Mock only what's necessary for testing
+    """
 
     def __init__(
         self,
@@ -178,6 +184,23 @@ class MockConfig(BasePipelineConfig):
             pipeline_version=pipeline_version,
             project_root_folder=project_root_folder,
         )
+        
+        # CRITICAL FIX: Initialize _cache as actual dict to fix the TypeError
+        # Based on source: get_script_contract() expects _cache to be a dict for "in" operator
+        # The PrivateAttr creates a ModelPrivateAttr object, not a dict
+        self._cache = {}
+        
+        # Initialize _step_catalog to None to avoid lazy loading issues in tests
+        self._step_catalog = None
+    
+    def get_script_contract(self):
+        """Override to return None for testing - avoids complex contract loading."""
+        return None
+    
+    @property
+    def script_contract(self):
+        """Override to return None for testing."""
+        return None
 
 
 class MockStepBuilder(StepBuilderBase):
