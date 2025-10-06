@@ -27,17 +27,17 @@ class TestExecutionDocumentGeneratorIntegration:
     @pytest.fixture
     def config_path(self):
         """Path to the test configuration."""
-        return "test_data/config_NA_xgboost_AtoZ.json"
+        return Path(__file__).parent / "test_data" / "config_NA_xgboost_AtoZ.json"
     
     @pytest.fixture
     def sample_exe_doc_path(self):
         """Path to the sample execution document."""
-        return "test_data/sample_exe_doc.json"
+        return Path(__file__).parent / "test_data" / "sample_exe_doc.json"
     
     @pytest.fixture
     def expected_result_path(self):
         """Path to the expected result."""
-        return "test_data/execute_doc_lukexie-AtoZ-xgboost-NA_2.0.0.json"
+        return Path(__file__).parent / "test_data" / "execute_doc_lukexie-AtoZ-xgboost-NA_2.0.0.json"
     
     @pytest.fixture
     def sample_execution_document(self, sample_exe_doc_path):
@@ -305,7 +305,7 @@ class TestExecutionDocumentGeneratorIntegration:
         result = generator.fill_execution_document(xgboost_dag, sample_execution_document)
         
         # Save the result to the test_data folder
-        output_path = "test_data/test_output_execution_document.json"
+        output_path = Path(__file__).parent / "test_data" / "test_output_execution_document.json"
         
         with open(output_path, 'w') as f:
             json.dump(result, f, indent=2)
