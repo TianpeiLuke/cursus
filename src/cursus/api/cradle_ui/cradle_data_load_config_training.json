@@ -1,0 +1,74 @@
+{
+  "author": "test-user",
+  "bucket": "test-bucket",
+  "role": "arn:aws:iam::123456789012:role/test-role",
+  "region": "NA",
+  "service_name": "test-service",
+  "pipeline_version": "1.0.0",
+  "model_class": "xgboost",
+  "current_date": "2025-10-06",
+  "framework_version": "2.1.0",
+  "py_version": "py310",
+  "source_dir": null,
+  "project_root_folder": "test-project",
+  "job_type": "training",
+  "data_sources_spec": {
+    "start_date": "2025-01-01T00:00:00",
+    "end_date": "2025-04-17T00:00:00",
+    "data_sources": [
+      {
+        "data_source_name": "RAW_MDS_NA",
+        "data_source_type": "MDS",
+        "mds_data_source_properties": {
+          "service_name": "AtoZ",
+          "region": "NA",
+          "output_schema": [
+            {
+              "field_name": "objectId",
+              "field_type": "STRING"
+            },
+            {
+              "field_name": "transactionDate",
+              "field_type": "STRING"
+            }
+          ],
+          "org_id": 0,
+          "use_hourly_edx_data_set": false
+        },
+        "edx_data_source_properties": null,
+        "andes_data_source_properties": null
+      }
+    ]
+  },
+  "transform_spec": {
+    "transform_sql": "SELECT\n  mds.objectId,\n  mds.transactionDate,\n  edx.is_abuse\nFROM mds_source mds\nJOIN edx_source edx ON mds.objectId = edx.order_id",
+    "job_split_options": {
+      "merge_sql": "SELECT * FROM INPUT",
+      "split_job": false,
+      "days_per_split": 7
+    }
+  },
+  "output_spec": {
+    "output_schema": [
+      "objectId",
+      "transactionDate"
+    ],
+    "pipeline_s3_loc": "s3://test-bucket/MODS/test-user-test-service-xgboost-NA_1.0.0",
+    "output_format": "PARQUET",
+    "output_save_mode": "ERRORIFEXISTS",
+    "output_file_count": 0,
+    "keep_dot_in_output_schema": false,
+    "include_header_in_s3_output": true
+  },
+  "cradle_job_spec": {
+    "cradle_account": "Buyer-Abuse-RnD-Dev",
+    "cluster_type": "STANDARD",
+    "extra_spark_job_arguments": "",
+    "job_retry_count": 1
+  },
+  "s3_input_override": null,
+  "aws_region": "us-east-1",
+  "pipeline_name": "test-user-test-service-xgboost-NA",
+  "pipeline_description": "test-service xgboost Model NA",
+  "pipeline_s3_loc": "s3://test-bucket/MODS/test-user-test-service-xgboost-NA_1.0.0"
+}

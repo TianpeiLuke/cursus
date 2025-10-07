@@ -132,12 +132,10 @@ class CradleConfigWidget:
             # Set job type
             params['job_type'] = self.job_type
             
-            # Set default save location based on base config
-            if hasattr(self.base_config, 'source_dir'):
-                source_dir = str(self.base_config.source_dir)
-                params['save_location'] = f"{source_dir}/cradle_data_load_config_{self.job_type}.json"
-            else:
-                params['save_location'] = f"cradle_data_load_config_{self.job_type}.json"
+            # Set default save location - absolute path to where notebook is running
+            import os
+            notebook_dir = os.getcwd()  # Get the current working directory where notebook is running
+            params['save_location'] = os.path.join(notebook_dir, f"cradle_data_load_config_{self.job_type.lower()}.json")
             
         except Exception as e:
             # If there's any error extracting config, log it but don't fail
