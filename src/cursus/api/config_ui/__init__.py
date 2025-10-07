@@ -21,10 +21,10 @@ from .specialized_widgets import (
 )
 from .jupyter_widget import (
     UniversalConfigWidget as JupyterUniversalConfigWidget,
-    PipelineConfigWidget as JupyterPipelineConfigWidget,
+    CompleteConfigUIWidget as JupyterPipelineConfigWidget,
     create_config_widget as create_jupyter_config_widget,
-    create_pipeline_config_widget as create_jupyter_pipeline_config_widget,
-    UniversalConfigWidgetWithServer
+    create_complete_config_ui_widget as create_jupyter_pipeline_config_widget,
+    EnhancedSaveAllMergedWidget as UniversalConfigWidgetWithServer
 )
 
 __all__ = [
