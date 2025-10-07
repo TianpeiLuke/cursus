@@ -486,6 +486,73 @@ The implementation leverages a **single-file frontend approach** with embedded J
 - **Server-side**: Pydantic model validation ensuring type safety and business rule compliance
 - **Dual validation**: Prevents invalid data submission while maintaining security
 
+### Validation and Error Handling System
+
+**✅ YES - The UI provides comprehensive validation and user feedback for invalid inputs:**
+
+**Real-Time Input Validation:**
+- **Error Message Display**: Each form field has dedicated error message containers (`<div class="error-message" id="fieldNameError"></div>`)
+- **Visual Feedback**: Invalid fields show red error text immediately below the input
+- **Required Field Validation**: All required fields marked with `*` are validated before proceeding
+- **Format Validation**: Date fields, IAM roles, and other structured inputs are validated for correct format
+
+**User Feedback Mechanisms:**
+```html
+<!-- Example: Each field has error display capability -->
+<div class="form-group">
+    <label for="author">Author *</label>
+    <input type="text" id="author" placeholder="e.g., john-doe">
+    <div class="error-message" id="authorError"></div>  <!-- ✅ Error display -->
+</div>
+
+<div class="form-group">
+    <label for="startDate">Start Date *</label>
+    <input type="text" id="startDate" placeholder="YYYY-MM-DDTHH:MM:SS">
+    <div class="error-message" id="startDateError"></div>  <!-- ✅ Format validation -->
+</div>
+```
+
+**Validation Types Implemented:**
+1. **Required Field Validation**: Prevents empty required fields
+2. **Format Validation**: Date/time format, IAM role ARN format, etc.
+3. **Business Logic Validation**: At least one data source required, valid job type selection
+4. **Server-Side Validation**: Backend API validates complete configuration before building
+5. **Interactive Alerts**: JavaScript alerts for critical validation failures
+
+**Error Display Features:**
+- **Immediate Feedback**: Errors appear as soon as invalid input is detected
+- **Clear Messaging**: Specific error messages explain what needs to be corrected
+- **Visual Styling**: Red error text with `.error-message` CSS class for clear visibility
+- **Success Feedback**: Green success messages with `.success-message` class
+
+**Validation Flow:**
+```javascript
+// Example validation functions in the implementation
+function finishWizard() {
+    const jobType = document.querySelector('input[name="jobType"]:checked');
+    if (!jobType) {
+        alert('Please select a job type.');  // ✅ User feedback
+        return;
+    }
+    
+    const saveLocation = document.getElementById('saveLocation').value.trim();
+    if (!saveLocation) {
+        alert('Please specify a save location for the configuration file.');  // ✅ User feedback
+        return;
+    }
+    // ... additional validation
+}
+
+function addField(button) {
+    const fieldName = input.value.trim();
+    if (!fieldName) {
+        alert('Please enter a field name.');  // ✅ User feedback
+        return;
+    }
+    // ... proceed with adding field
+}
+```
+
 ### Key Technical Decisions
 
 **1. Single-File Frontend:**
@@ -498,7 +565,12 @@ The implementation leverages a **single-file frontend approach** with embedded J
 - **Jupyter Integration**: Embedded iframe for notebook workflows
 - **Shared Backend**: Consistent validation and configuration building
 
-**3. Automatic File Management:**
+**3. Comprehensive Validation Strategy:**
+- **Client-Side**: Immediate feedback prevents user frustration
+- **Server-Side**: Ensures data integrity and security
+- **Dual-Layer**: Client validation for UX, server validation for reliability
+
+**4. Automatic File Management:**
 - **Smart Path Detection**: Uses notebook's working directory context
 - **Configurable Locations**: User-specified save paths
 - **Atomic Operations**: Prevents file corruption during saves
