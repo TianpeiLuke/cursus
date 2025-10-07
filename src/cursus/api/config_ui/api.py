@@ -111,6 +111,12 @@ class DAGAnalysisResponse(BaseModel):
     hidden_configs_count: int = Field(description="Number of hidden/unused config types")
 
 
+class DAGCatalogResponse(BaseModel):
+    """Response model for DAG catalog discovery."""
+    dags: List[Dict[str, Any]] = Field(description="Available DAG definitions from catalog")
+    count: int = Field(description="Number of available DAGs")
+
+
 # Endpoints
 @router.post("/discover", response_model=ConfigDiscoveryResponse)
 async def discover_configurations(request: ConfigDiscoveryRequest):
@@ -706,6 +712,121 @@ async def clear_config():
 
 
 # Health check endpoint
+@router.get("/catalog/dags", response_model=DAGCatalogResponse)
+async def get_dag_catalog():
+    """
+    Discover and return available DAG definitions from the pipeline catalog.
+    
+    Uses the existing get_all_shared_dags() function to properly handle imports
+    and avoid relative import issues.
+    
+    Returns:
+        DAGCatalogResponse with available DAG definitions
+    """
+    try:
+        logger.info("Discovering DAG catalog using get_all_shared_dags()")
+        
+        # Use the existing function that properly handles imports
+        try:
+            from cursus.pipeline_catalog.shared_dags import get_all_shared_dags
+            shared_dags_metadata = get_all_shared_dags()
+            logger.info(f"Found {len(shared_dags_metadata)} DAGs from get_all_shared_dags()")
+        except ImportError as e:
+            logger.error(f"Failed to import get_all_shared_dags: {e}")
+            return DAGCatalogResponse(dags=[], count=0)
+        
+        discovered_dags = []
+        
+        # Process each DAG metadata
+        for dag_id, metadata in shared_dags_metadata.items():
+            try:
+                # Parse the DAG ID to get framework and name
+                if '.' in dag_id:
+                    framework, dag_name = dag_id.split('.', 1)
+                else:
+                    framework = 'unknown'
+                    dag_name = dag_id
+                
+                # Handle complexity mapping for compatibility
+                complexity = metadata.complexity
+                if complexity == "medium":
+                    complexity = "standard"  # Map medium to standard
+                
+                # Create DAG info for frontend
+                dag_info = {
+                    "id": dag_id.replace('.', '_'),
+                    "name": metadata.extra_metadata.get("name", dag_name),
+                    "display_name": f"{framework.title()} - {metadata.description}",
+                    "framework": framework,
+                    "description": metadata.description,
+                    "complexity": complexity,
+                    "features": metadata.features,
+                    "node_count": metadata.node_count,
+                    "edge_count": metadata.edge_count,
+                    "dag_structure": {
+                        "nodes": [],  # Will be populated when DAG is actually loaded
+                        "edges": []
+                    }
+                }
+                
+                # Try to get the actual DAG structure if possible
+                try:
+                    if framework == 'xgboost' and 'complete_e2e' in dag_name:
+                        from cursus.pipeline_catalog.shared_dags.xgboost.complete_e2e_dag import create_xgboost_complete_e2e_dag
+                        dag = create_xgboost_complete_e2e_dag()
+                        dag_info["dag_structure"] = {
+                            "nodes": [{"name": node, "type": "pipeline_step"} for node in dag.nodes],
+                            "edges": [{"from": edge[0], "to": edge[1]} for edge in dag.edges]
+                        }
+                    elif framework == 'xgboost' and 'simple' in dag_name:
+                        from cursus.pipeline_catalog.shared_dags.xgboost.simple_dag import create_xgboost_simple_dag
+                        dag = create_xgboost_simple_dag()
+                        dag_info["dag_structure"] = {
+                            "nodes": [{"name": node, "type": "pipeline_step"} for node in dag.nodes],
+                            "edges": [{"from": edge[0], "to": edge[1]} for edge in dag.edges]
+                        }
+                    elif framework == 'pytorch' and 'standard_e2e' in dag_name:
+                        from cursus.pipeline_catalog.shared_dags.pytorch.standard_e2e_dag import create_pytorch_standard_e2e_dag
+                        dag = create_pytorch_standard_e2e_dag()
+                        dag_info["dag_structure"] = {
+                            "nodes": [{"name": node, "type": "pipeline_step"} for node in dag.nodes],
+                            "edges": [{"from": edge[0], "to": edge[1]} for edge in dag.edges]
+                        }
+                    elif framework == 'dummy' and 'e2e_basic' in dag_name:
+                        from cursus.pipeline_catalog.shared_dags.dummy.e2e_basic_dag import create_dummy_e2e_basic_dag
+                        dag = create_dummy_e2e_basic_dag()
+                        dag_info["dag_structure"] = {
+                            "nodes": [{"name": node, "type": "pipeline_step"} for node in dag.nodes],
+                            "edges": [{"from": edge[0], "to": edge[1]} for edge in dag.edges]
+                        }
+                    # Add more DAG types as needed
+                    
+                except Exception as dag_error:
+                    logger.warning(f"Could not load DAG structure for {dag_id}: {dag_error}")
+                    # Keep the DAG info but without structure
+                
+                discovered_dags.append(dag_info)
+                logger.info(f"Successfully processed DAG: {dag_info['name']}")
+                
+            except Exception as e:
+                logger.error(f"Failed to process DAG {dag_id}: {e}")
+                continue
+        
+        # Sort DAGs by framework and complexity
+        discovered_dags.sort(key=lambda x: (x["framework"], x["complexity"], x["name"]))
+        
+        logger.info(f"Successfully discovered {len(discovered_dags)} DAGs from catalog")
+        
+        return DAGCatalogResponse(
+            dags=discovered_dags,
+            count=len(discovered_dags)
+        )
+        
+    except Exception as e:
+        logger.error(f"DAG catalog discovery failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Catalog discovery failed: {str(e)}")
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint."""

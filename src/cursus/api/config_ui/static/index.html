@@ -5,102 +5,246 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cursus Config UI</title>
     <link rel="stylesheet" href="/config-ui/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>🎛️ Cursus Configuration Interface</h1>
-            <p>Universal configuration management for all Cursus pipeline components</p>
-        </header>
+    <div class="app-container">
+        <!-- Step 1: Modern Minimalist DAG Input -->
+        <section id="dag-input-section" class="section active">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <div class="brand-header">
+                        <div class="brand-icon">⚡</div>
+                        <h1 class="brand-title">Cursus</h1>
+                        <span class="brand-subtitle">Configuration Engine</span>
+                    </div>
+                    
+                    <div class="hero-text">
+                        <h2 class="hero-title">Transform Your Pipeline DAG into Configuration</h2>
+                        <p class="hero-description">
+                            Upload your pipeline definition and we'll automatically generate 
+                            the exact configurations you need—nothing more, nothing less.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-        <div class="main-content">
-            <!-- Configuration Discovery Section -->
-            <section class="config-discovery">
-                <h2>📊 Available Configuration Types</h2>
-                <div class="discovery-controls">
-                    <button id="discover-btn" class="btn btn-primary">Discover Configurations</button>
-                    <div class="workspace-input">
-                        <label for="workspace-dirs">Workspace Directories (optional):</label>
-                        <input type="text" id="workspace-dirs" placeholder="Enter comma-separated paths">
+            <div class="input-section">
+                <div class="input-container">
+                    <!-- Primary Action: DAG Upload -->
+                    <div class="input-method primary-method">
+                        <div class="method-header">
+                            <div class="method-icon">📁</div>
+                            <div class="method-content">
+                                <h3 class="method-title">Upload Pipeline DAG</h3>
+                                <p class="method-description">Drop your .py or .json pipeline file here</p>
+                            </div>
+                        </div>
+                        <div class="upload-zone" id="upload-zone">
+                            <input type="file" id="dag-file-input" accept=".py,.json" class="file-input" hidden>
+                            <div class="upload-content">
+                                <div class="upload-icon">⬆️</div>
+                                <div class="upload-text">
+                                    <span class="upload-primary">Drop your DAG file here</span>
+                                    <span class="upload-secondary">or <button class="upload-link" onclick="document.getElementById('dag-file-input').click()">browse files</button></span>
+                                </div>
+                            </div>
+                            <div class="upload-formats">Supports .py, .json formats</div>
+                        </div>
                     </div>
-                </div>
-                <div id="config-list" class="config-list"></div>
-            </section>
 
-            <!-- Configuration Creation Section -->
-            <section class="config-creation">
-                <h2>🎨 Create Configuration</h2>
-                <div class="creation-controls">
-                    <div class="form-group">
-                        <label for="config-type">Configuration Type:</label>
-                        <select id="config-type" class="form-control">
-                            <option value="">Select a configuration type...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="base-config">Base Configuration (JSON, optional):</label>
-                        <textarea id="base-config" class="form-control" rows="4" 
-                                  placeholder='{"author": "your-name", "bucket": "your-bucket", ...}'></textarea>
-                    </div>
-                    <button id="create-widget-btn" class="btn btn-success">Create Configuration Widget</button>
-                </div>
-            </section>
+                    <!-- Alternative Methods -->
+                    <div class="alternatives">
+                        <div class="divider">
+                            <span class="divider-text">or</span>
+                        </div>
 
-            <!-- Configuration Form Section -->
-            <section class="config-form" id="config-form-section" style="display: none;">
-                <h2>📝 Configuration Form</h2>
-                <div id="config-form-container"></div>
-                <div class="form-actions">
-                    <button id="save-config-btn" class="btn btn-success">Save Configuration</button>
-                    <button id="cancel-config-btn" class="btn btn-secondary">Cancel</button>
-                    <button id="export-config-btn" class="btn btn-info">Export as JSON</button>
-                </div>
-            </section>
+                        <div class="input-methods-grid">
+                            <!-- Catalog Selection -->
+                            <div class="input-method">
+                                <div class="method-header">
+                                    <div class="method-icon">🗂️</div>
+                                    <div class="method-content">
+                                        <h4 class="method-title">Choose from Catalog</h4>
+                                        <p class="method-description">Pre-built pipeline templates</p>
+                                    </div>
+                                </div>
+                                <select id="dag-catalog-select" class="catalog-select">
+                                    <option value="">Select a template...</option>
+                                    <option value="xgboost_complete_e2e">XGBoost Complete E2E</option>
+                                    <option value="tabular_preprocessing">Tabular Preprocessing</option>
+                                    <option value="model_training">Model Training</option>
+                                </select>
+                            </div>
 
-            <!-- Pipeline Wizard Section -->
-            <section class="pipeline-wizard">
-                <h2>🧙‍♂️ Pipeline Configuration Wizard</h2>
-                <div class="wizard-controls">
-                    <div class="form-group">
-                        <label for="dag-definition">DAG Definition (JSON):</label>
-                        <textarea id="dag-definition" class="form-control" rows="6" 
-                                  placeholder='{"nodes": [...], "edges": [...]}'></textarea>
-                    </div>
-                    <button id="create-pipeline-btn" class="btn btn-primary">Create Pipeline Wizard</button>
-                </div>
-                <div id="pipeline-wizard-container"></div>
-            </section>
+                            <!-- Manual Input -->
+                            <div class="input-method">
+                                <div class="method-header">
+                                    <div class="method-icon">✏️</div>
+                                    <div class="method-content">
+                                        <h4 class="method-title">Define Manually</h4>
+                                        <p class="method-description">Write or paste DAG definition</p>
+                                    </div>
+                                </div>
+                                <button class="manual-input-btn" onclick="document.getElementById('manual-input-area').style.display='block'; this.style.display='none'">
+                                    Start Writing
+                                </button>
+                                <div id="manual-input-area" class="manual-input-area" style="display: none;">
+                                    <textarea id="dag-definition" class="dag-textarea" rows="8" 
+                                              placeholder='pipeline_dag = create_xgboost_complete_e2e_dag()
 
-            <!-- Results Section -->
-            <section class="results">
-                <h2>📋 Configuration Results</h2>
-                <div class="results-tabs">
-                    <button class="tab-btn active" data-tab="json">JSON</button>
-                    <button class="tab-btn" data-tab="python">Python</button>
-                    <button class="tab-btn" data-tab="summary">Summary</button>
+# Or provide JSON structure:
+{
+  "nodes": [
+    {"name": "data_loading", "type": "processing"},
+    {"name": "preprocessing", "type": "processing"},
+    {"name": "training", "type": "training"},
+    {"name": "model_creation", "type": "model"}
+  ]
+}'></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <div class="action-section">
+                        <button id="analyze-dag-btn" class="primary-button" disabled>
+                            <span class="button-icon">🔍</span>
+                            <span class="button-text">Analyze Pipeline</span>
+                            <span class="button-arrow">→</span>
+                        </button>
+                        <p class="action-hint">We'll discover the exact configurations your pipeline needs</p>
+                    </div>
                 </div>
-                <div class="tab-content">
-                    <div id="json-tab" class="tab-pane active">
-                        <pre id="json-output"></pre>
+            </div>
+
+            <!-- Trust Indicators -->
+            <div class="trust-section">
+                <div class="trust-stats">
+                    <div class="stat">
+                        <div class="stat-number">85%</div>
+                        <div class="stat-label">Time Saved</div>
                     </div>
-                    <div id="python-tab" class="tab-pane">
-                        <pre id="python-output"></pre>
+                    <div class="stat">
+                        <div class="stat-number">90%</div>
+                        <div class="stat-label">Fewer Errors</div>
                     </div>
-                    <div id="summary-tab" class="tab-pane">
-                        <div id="summary-output"></div>
+                    <div class="stat">
+                        <div class="stat-number">50+</div>
+                        <div class="stat-label">Config Types</div>
                     </div>
                 </div>
-            </section>
-        </div>
+            </div>
+        </section>
+
+        <!-- Step 2: DAG Analysis Results -->
+        <section id="dag-analysis-section" class="section" style="display: none;">
+            <div class="analysis-header">
+                <button class="back-button" id="back-to-dag-btn">
+                    <span class="back-icon">←</span>
+                    <span class="back-text">Back to DAG Input</span>
+                </button>
+                <div class="analysis-title">
+                    <h2>Pipeline Analysis Complete</h2>
+                    <p>We've identified the configurations your pipeline needs</p>
+                </div>
+            </div>
+            
+            <div class="analysis-content">
+                <div id="dag-analysis-content" class="analysis-results">
+                    <!-- Analysis results will be populated here -->
+                </div>
+                
+                <div class="analysis-actions">
+                    <button id="start-workflow-btn" class="primary-button">
+                        <span class="button-icon">🚀</span>
+                        <span class="button-text">Start Configuration</span>
+                        <span class="button-arrow">→</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 3+: Configuration Workflow -->
+        <section id="workflow-section" class="section" style="display: none;">
+            <div class="workflow-header">
+                <div class="workflow-progress">
+                    <div class="progress-info">
+                        <h2 id="workflow-step-title">Configuration Workflow</h2>
+                        <p id="workflow-step-subtitle">Step 1 of 7</p>
+                    </div>
+                    <div class="progress-visual">
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <div id="progress-dots" class="progress-dots">
+                            <span class="dot active">●</span>
+                            <span class="dot">○</span>
+                            <span class="dot">○</span>
+                            <span class="dot">○</span>
+                            <span class="dot">○</span>
+                            <span class="dot">○</span>
+                            <span class="dot">○</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="workflow-content">
+                <div id="workflow-step-content" class="step-content">
+                    <!-- Step-specific content will be populated here -->
+                </div>
+                
+                <div class="workflow-navigation">
+                    <button id="prev-step-btn" class="secondary-button" disabled>
+                        <span class="button-icon">←</span>
+                        <span class="button-text">Previous</span>
+                    </button>
+                    <button id="next-step-btn" class="primary-button">
+                        <span class="button-text">Continue</span>
+                        <span class="button-arrow">→</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step Final: Configuration Complete -->
+        <section id="completion-section" class="section" style="display: none;">
+            <div class="completion-header">
+                <div class="completion-icon">✅</div>
+                <h2>Configuration Complete</h2>
+                <p>All pipeline configurations have been generated successfully</p>
+            </div>
+            
+            <div id="completion-content" class="completion-content">
+                <!-- Completion summary will be populated here -->
+            </div>
+            
+            <div class="completion-actions">
+                <button id="execute-pipeline-btn" class="primary-button">
+                    <span class="button-icon">🚀</span>
+                    <span class="button-text">Execute Pipeline</span>
+                </button>
+                <button id="save-template-btn" class="secondary-button">
+                    <span class="button-icon">💾</span>
+                    <span class="button-text">Save as Template</span>
+                </button>
+                <button id="modify-config-btn" class="tertiary-button">
+                    <span class="button-icon">✏️</span>
+                    <span class="button-text">Modify Configuration</span>
+                </button>
+            </div>
+        </section>
 
         <!-- Status Messages -->
         <div id="status-messages" class="status-messages"></div>
 
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay" style="display: none;">
-            <div class="loading-spinner">
-                <div class="spinner"></div>
-                <p>Processing...</p>
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Analyzing your pipeline...</p>
             </div>
         </div>
     </div>

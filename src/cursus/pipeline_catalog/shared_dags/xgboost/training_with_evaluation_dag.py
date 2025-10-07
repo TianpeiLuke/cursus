@@ -69,7 +69,7 @@ def get_dag_metadata() -> DAGMetadata:
     """
     return DAGMetadata(
         description="XGBoost training pipeline with model evaluation",
-        complexity="medium",
+        complexity="standard",
         features=["training", "evaluation", "data_loading", "preprocessing"],
         framework="xgboost",
         node_count=6,

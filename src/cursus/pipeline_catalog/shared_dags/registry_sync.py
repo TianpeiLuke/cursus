@@ -349,7 +349,7 @@ class DAGMetadataRegistrySync:
             source_file=node.get("source_file", ""),
             migration_source=node.get("migration_source", ""),
             created_date=node.get("created_date", ""),
-            priority=node.get("priority", "medium"),
+            priority=node.get("priority", "standard"),
             # Connections
             manual_connections=manual_connections,
             curated_connections=curated_connections,

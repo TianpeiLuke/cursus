@@ -72,7 +72,7 @@ class ZettelkastenMetadata(BaseModel):
     source_file: str = ""
     migration_source: str = ""
     created_date: str = ""
-    priority: str = "medium"
+    priority: str = "standard"
 
     # Connectivity metadata
     connection_types: List[str] = Field(

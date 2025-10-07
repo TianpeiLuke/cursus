@@ -64,7 +64,7 @@ def get_dag_metadata() -> DAGMetadata:
     """
     metadata = DAGMetadata(
         description="PyTorch training pipeline with model evaluation",
-        complexity="medium",
+        complexity="standard",
         features=["training", "evaluation", "data_loading", "preprocessing"],
         framework="pytorch",
         node_count=6,

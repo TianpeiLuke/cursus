@@ -84,7 +84,7 @@ def get_dag_metadata() -> DAGMetadata:
     """
     return DAGMetadata(
         description="Complete PyTorch end-to-end pipeline with training, evaluation, packaging, and registration",
-        complexity="complex",
+        complexity="comprehensive",
         features=["training", "evaluation", "packaging", "registration"],
         framework="pytorch",
         node_count=9,

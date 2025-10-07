@@ -91,7 +91,7 @@ def get_dag_metadata() -> DAGMetadata:
     """
     return DAGMetadata(
         description="Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
-        complexity="complex",
+        complexity="comprehensive",
         features=["training", "calibration", "packaging", "registration", "evaluation"],
         framework="xgboost",
         node_count=10,
