@@ -434,23 +434,51 @@ class HyperparametersConfigWidget:
 
 
 class SpecializedComponentRegistry:
-    """Registry for specialized UI components."""
+    """Registry for specialized UI components with enhanced visual integration."""
     
     SPECIALIZED_COMPONENTS = {
         "CradleDataLoadConfig": {
             "component_class": "CradleConfigWidget",
             "module": "cursus.api.cradle_ui.jupyter_widget",
-            "preserve_existing_ui": True
+            "preserve_existing_ui": True,
+            "description": "Advanced data loading configuration with 5-step wizard interface",
+            "features": [
+                "1️⃣ Data Sources Configuration",
+                "2️⃣ Transform Specification", 
+                "3️⃣ Output Configuration",
+                "4️⃣ Cradle Job Settings",
+                "5️⃣ Validation & Preview"
+            ],
+            "icon": "🎛️",
+            "complexity": "advanced"
         },
         "ModelHyperparameters": {
             "component_class": "HyperparametersConfigWidget",
             "module": "cursus.api.config_ui.specialized_widgets",
-            "preserve_existing_ui": False
+            "preserve_existing_ui": False,
+            "description": "Comprehensive hyperparameter configuration with field management",
+            "features": [
+                "📊 Dynamic field list editor",
+                "🎯 Feature selection interface",
+                "⚙️ Model parameter tuning",
+                "📈 Performance metrics selection"
+            ],
+            "icon": "🧠",
+            "complexity": "intermediate"
         },
         "XGBoostModelHyperparameters": {
             "component_class": "HyperparametersConfigWidget",
             "module": "cursus.api.config_ui.specialized_widgets",
-            "preserve_existing_ui": False
+            "preserve_existing_ui": False,
+            "description": "XGBoost-specific hyperparameter configuration with advanced options",
+            "features": [
+                "🌳 Tree-specific parameters",
+                "📊 Boosting configuration",
+                "🎯 Regularization settings",
+                "⚡ Performance optimization"
+            ],
+            "icon": "🚀",
+            "complexity": "advanced"
         }
     }
     

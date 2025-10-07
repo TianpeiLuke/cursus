@@ -81,6 +81,21 @@ class PipelineWizardResponse(BaseModel):
     wizard_id: str = Field(description="Wizard identifier")
 
 
+class DAGAnalysisRequest(BaseModel):
+    """Request model for DAG analysis."""
+    pipeline_dag: Dict[str, Any] = Field(description="Pipeline DAG definition")
+    workspace_dirs: Optional[List[str]] = Field(None, description="Optional workspace directories")
+
+
+class DAGAnalysisResponse(BaseModel):
+    """Response model for DAG analysis."""
+    discovered_steps: List[Dict[str, Any]] = Field(description="Discovered pipeline steps")
+    required_configs: List[Dict[str, Any]] = Field(description="Required configuration classes")
+    workflow_steps: List[Dict[str, Any]] = Field(description="Generated workflow structure")
+    total_steps: int = Field(description="Total number of workflow steps")
+    hidden_configs_count: int = Field(description="Number of hidden/unused config types")
+
+
 # Endpoints
 @router.post("/discover", response_model=ConfigDiscoveryResponse)
 async def discover_configurations(request: ConfigDiscoveryRequest):
@@ -285,6 +300,97 @@ config = {request.config_class_name}(
     except Exception as e:
         logger.error(f"Configuration save failed: {e}")
         raise HTTPException(status_code=500, detail=f"Save failed: {str(e)}")
+
+
+@router.post("/analyze-dag", response_model=DAGAnalysisResponse)
+async def analyze_pipeline_dag(request: DAGAnalysisRequest):
+    """
+    Analyze PipelineDAG to discover required configuration classes.
+    
+    This endpoint implements the DAG-driven discovery approach from the design,
+    providing intelligent configuration filtering based on actual pipeline needs.
+    
+    Args:
+        request: DAG analysis request with pipeline definition
+        
+    Returns:
+        DAGAnalysisResponse with discovered steps and workflow structure
+    """
+    try:
+        logger.info("Analyzing pipeline DAG for configuration discovery")
+        
+        # Create core engine for DAG analysis
+        core = UniversalConfigCore(workspace_dirs=request.workspace_dirs)
+        
+        # Create a mock DAG object from the request data
+        class MockDAG:
+            def __init__(self, dag_data):
+                self.nodes = dag_data.get("nodes", [])
+                if isinstance(self.nodes, list) and len(self.nodes) > 0:
+                    # Handle list of node names or node objects
+                    if isinstance(self.nodes[0], str):
+                        self.nodes = self.nodes  # Already list of strings
+                    else:
+                        # Extract node names from objects
+                        self.nodes = [node.get("name", str(i)) for i, node in enumerate(self.nodes)]
+        
+        mock_dag = MockDAG(request.pipeline_dag)
+        
+        # Extract DAG nodes for analysis
+        dag_nodes = list(mock_dag.nodes) if hasattr(mock_dag, 'nodes') else []
+        
+        # Discover required config classes using the new discovery methods
+        resolver = None
+        try:
+            from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter
+            resolver = StepConfigResolverAdapter()
+        except ImportError:
+            logger.warning("StepConfigResolverAdapter not available, using fallback discovery")
+        
+        required_config_classes = core._discover_required_config_classes(dag_nodes, resolver)
+        
+        # Create workflow structure
+        workflow_steps = core._create_workflow_structure(required_config_classes)
+        
+        # Format discovered steps for response
+        discovered_steps = []
+        for node_name in dag_nodes:
+            discovered_steps.append({
+                "step_name": node_name,
+                "step_type": "pipeline_step",  # Could be enhanced with actual step type detection
+                "dependencies": []  # Could be enhanced with dependency analysis
+            })
+        
+        # Format required configs for response
+        formatted_required_configs = []
+        for config in required_config_classes:
+            formatted_required_configs.append({
+                "config_class_name": config["config_class_name"],
+                "node_name": config["node_name"],
+                "inheritance_pattern": config["inheritance_pattern"],
+                "is_specialized": config["is_specialized"],
+                "inferred": config.get("inferred", False)
+            })
+        
+        # Calculate hidden configs count
+        all_configs = core.discover_config_classes()
+        hidden_configs_count = len(all_configs) - len(required_config_classes) - 2  # -2 for base configs
+        
+        logger.info(f"DAG analysis complete: {len(discovered_steps)} steps, "
+                   f"{len(required_config_classes)} required configs, "
+                   f"{len(workflow_steps)} workflow steps")
+        
+        return DAGAnalysisResponse(
+            discovered_steps=discovered_steps,
+            required_configs=formatted_required_configs,
+            workflow_steps=workflow_steps,
+            total_steps=len(workflow_steps),
+            hidden_configs_count=max(0, hidden_configs_count)
+        )
+        
+    except Exception as e:
+        logger.error(f"DAG analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"DAG analysis failed: {str(e)}")
 
 
 @router.post("/create-pipeline-wizard", response_model=PipelineWizardResponse)

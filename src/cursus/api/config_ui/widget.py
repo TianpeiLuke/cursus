@@ -41,104 +41,358 @@ class UniversalConfigWidget:
         logger.info(f"UniversalConfigWidget initialized for {self.config_class_name}")
     
     def display(self):
-        """Display the configuration form."""
+        """Display the configuration form with 3-tier field categorization."""
         with self.output:
             clear_output(wait=True)
             
-            # Create title
-            title = widgets.HTML(f"<h3>Configure {self.config_class_name}</h3>")
+            # Create modern title with emoji
+            title_html = f"""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
+                <h2 style='margin: 0; display: flex; align-items: center;'>
+                    ⚙️ {self.config_class_name}
+                    <span style='margin-left: auto; font-size: 14px; opacity: 0.8;'>Configuration</span>
+                </h2>
+            </div>
+            """
+            title = widgets.HTML(title_html)
             display(title)
             
-            # Create form widgets
-            form_widgets = []
+            # Categorize fields by tier
+            essential_fields = [f for f in self.fields if f.get('tier') == 'essential' or f.get('required', False)]
+            system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') != 'essential')]
             
-            for field in self.fields:
-                field_name = field["name"]
-                field_type = field["type"]
-                required = field["required"]
-                description = field["description"]
-                
-                # Get current value
-                current_value = self.values.get(field_name, "")
-                
-                # Create appropriate widget based on field type
-                if field_type == "text":
-                    widget = widgets.Text(
-                        value=str(current_value) if current_value is not None else "",
-                        description=f"{field_name}{'*' if required else ''}:",
-                        style={'description_width': 'initial'},
-                        layout=widgets.Layout(width='500px')
-                    )
-                elif field_type == "number":
-                    widget = widgets.FloatText(
-                        value=float(current_value) if current_value and str(current_value).replace('.', '').replace('-', '').isdigit() else 0.0,
-                        description=f"{field_name}{'*' if required else ''}:",
-                        style={'description_width': 'initial'},
-                        layout=widgets.Layout(width='300px')
-                    )
-                elif field_type == "checkbox":
-                    widget = widgets.Checkbox(
-                        value=bool(current_value) if current_value is not None else False,
-                        description=f"{field_name}{'*' if required else ''}:",
-                        style={'description_width': 'initial'}
-                    )
-                elif field_type == "list":
-                    widget = widgets.Textarea(
-                        value=json.dumps(current_value) if isinstance(current_value, list) else str(current_value) if current_value else "[]",
-                        description=f"{field_name}{'*' if required else ''}:",
-                        placeholder="Enter JSON list, e.g., [\"item1\", \"item2\"]",
-                        style={'description_width': 'initial'},
-                        layout=widgets.Layout(width='500px', height='80px')
-                    )
-                elif field_type == "keyvalue":
-                    widget = widgets.Textarea(
-                        value=json.dumps(current_value, indent=2) if isinstance(current_value, dict) else str(current_value) if current_value else "{}",
-                        description=f"{field_name}{'*' if required else ''}:",
-                        placeholder="Enter JSON object, e.g., {\"key\": \"value\"}",
-                        style={'description_width': 'initial'},
-                        layout=widgets.Layout(width='500px', height='100px')
-                    )
-                else:
-                    # Default to text
-                    widget = widgets.Text(
-                        value=str(current_value) if current_value is not None else "",
-                        description=f"{field_name}{'*' if required else ''}:",
-                        style={'description_width': 'initial'},
-                        layout=widgets.Layout(width='500px')
-                    )
-                
-                self.widgets[field_name] = widget
-                
-                # Add description if available
-                if description:
-                    desc_widget = widgets.HTML(f"<small><i>{description}</i></small>")
-                    form_widgets.extend([widget, desc_widget])
-                else:
-                    form_widgets.append(widget)
+            form_sections = []
             
-            # Create buttons
-            save_button = widgets.Button(
-                description="Save Configuration",
-                button_style='success',
-                layout=widgets.Layout(width='200px')
-            )
-            cancel_button = widgets.Button(
-                description="Cancel",
-                button_style='',
-                layout=widgets.Layout(width='100px')
-            )
+            # Essential Fields Section (Tier 1)
+            if essential_fields:
+                essential_section = self._create_field_section(
+                    "🔥 Essential User Inputs (Tier 1)",
+                    essential_fields,
+                    "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                    "#f59e0b",
+                    "Required fields that must be filled by user"
+                )
+                form_sections.append(essential_section)
             
-            save_button.on_click(self._on_save_clicked)
-            cancel_button.on_click(self._on_cancel_clicked)
+            # System Fields Section (Tier 2)
+            if system_fields:
+                system_section = self._create_field_section(
+                    "⚙️ System Inputs (Tier 2)",
+                    system_fields,
+                    "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                    "#3b82f6",
+                    "Optional fields with defaults, user-modifiable"
+                )
+                form_sections.append(system_section)
             
-            button_box = widgets.HBox([save_button, cancel_button])
+            # Inherited Configuration Display
+            inherited_section = self._create_inherited_section()
+            if inherited_section:
+                form_sections.append(inherited_section)
             
-            # Display all widgets
-            all_widgets = form_widgets + [button_box]
-            form_box = widgets.VBox(all_widgets)
+            # Create action buttons with modern styling
+            button_section = self._create_action_buttons()
+            form_sections.append(button_section)
+            
+            # Display all sections
+            form_box = widgets.VBox(form_sections, layout=widgets.Layout(padding='10px'))
             display(form_box)
         
         display(self.output)
+    
+    def _create_field_section(self, title: str, fields: List[Dict], bg_gradient: str, border_color: str, description: str) -> widgets.Widget:
+        """Create a modern field section with tier-specific styling."""
+        # Section header
+        header_html = f"""
+        <div style='background: {bg_gradient}; 
+                    border-left: 4px solid {border_color}; 
+                    padding: 12px; border-radius: 8px 8px 0 0; margin-bottom: 0;'>
+            <h4 style='margin: 0; color: #1f2937; display: flex; align-items: center;'>
+                {title}
+            </h4>
+            <p style='margin: 5px 0 0 0; font-size: 12px; color: #6b7280; font-style: italic;'>
+                {description}
+            </p>
+        </div>
+        """
+        header = widgets.HTML(header_html)
+        
+        # Create field widgets in a grid-like layout
+        field_rows = []
+        
+        for i, field in enumerate(fields):
+            field_widget_data = self._create_enhanced_field_widget(field)
+            
+            # Add to widgets dict for later access
+            self.widgets[field["name"]] = field_widget_data["widget"]
+            
+            # Add the container (which includes widget + description if present)
+            field_rows.append(field_widget_data["container"])
+        
+        # Create field container with modern styling
+        if field_rows:
+            field_container = widgets.VBox(
+                field_rows, 
+                layout=widgets.Layout(
+                    padding='20px',
+                    background='white',
+                    border='1px solid #e5e7eb',
+                    border_top='none',
+                    border_radius='0 0 8px 8px'
+                )
+            )
+            
+            # Combine header and fields
+            section = widgets.VBox([header, field_container], layout=widgets.Layout(margin='0 0 20px 0'))
+        else:
+            # Just header if no fields
+            section = widgets.VBox([header], layout=widgets.Layout(margin='0 0 20px 0'))
+        
+        return section
+    
+    def _create_enhanced_field_widget(self, field: Dict) -> Dict:
+        """Create an enhanced field widget with modern styling and emoji icons."""
+        field_name = field["name"]
+        field_type = field["type"]
+        required = field.get("required", False)
+        tier = field.get("tier", "system")
+        description = field.get("description", "")
+        
+        # Get current value
+        current_value = self.values.get(field_name, field.get("default", ""))
+        
+        # Get emoji icon for field
+        emoji_icon = self._get_field_emoji(field_name)
+        
+        # Create field label with emoji and styling
+        label_style = "font-weight: 600; color: #374151;" if required else "color: #6b7280;"
+        required_indicator = " *" if required else ""
+        
+        # Create appropriate widget based on field type
+        if field_type == "text":
+            widget = widgets.Text(
+                value=str(current_value) if current_value is not None else "",
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='500px', margin='5px 0')
+            )
+        elif field_type == "number":
+            widget = widgets.FloatText(
+                value=float(current_value) if current_value and str(current_value).replace('.', '').replace('-', '').isdigit() else (field.get("default", 0.0) or 0.0),
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='300px', margin='5px 0')
+            )
+        elif field_type == "checkbox":
+            widget = widgets.Checkbox(
+                value=bool(current_value) if current_value is not None else bool(field.get("default", False)),
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(margin='5px 0')
+            )
+        elif field_type == "list":
+            widget = widgets.Textarea(
+                value=json.dumps(current_value) if isinstance(current_value, list) else str(current_value) if current_value else "[]",
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                placeholder="Enter JSON list, e.g., [\"item1\", \"item2\"]",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='500px', height='80px', margin='5px 0')
+            )
+        elif field_type == "keyvalue":
+            widget = widgets.Textarea(
+                value=json.dumps(current_value, indent=2) if isinstance(current_value, dict) else str(current_value) if current_value else "{}",
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                placeholder="Enter JSON object, e.g., {\"key\": \"value\"}",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='500px', height='100px', margin='5px 0')
+            )
+        elif field_type == "specialized":
+            # Create specialized configuration interface
+            return self._create_specialized_field_widget(field)
+        else:
+            # Default to text
+            widget = widgets.Text(
+                value=str(current_value) if current_value is not None else "",
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='500px', margin='5px 0')
+            )
+        
+        # Add description if available
+        if description:
+            desc_html = f"<div style='margin-left: 210px; margin-top: -5px; margin-bottom: 10px; font-size: 11px; color: #6b7280; font-style: italic;'>{description}</div>"
+            desc_widget = widgets.HTML(desc_html)
+            return {"widget": widget, "description": desc_widget, "container": widgets.VBox([widget, desc_widget])}
+        else:
+            return {"widget": widget, "container": widget}
+    
+    def _create_specialized_field_widget(self, field: Dict) -> Dict:
+        """Create a specialized configuration interface widget."""
+        config_class_name = field.get("config_class_name", "Unknown")
+        icon = field.get("icon", "🎛️")
+        complexity = field.get("complexity", "advanced")
+        description = field.get("description", "Specialized configuration interface")
+        features = field.get("features", [])
+        
+        # Create complexity badge
+        complexity_colors = {
+            "basic": "#10b981",
+            "intermediate": "#f59e0b", 
+            "advanced": "#ef4444"
+        }
+        complexity_color = complexity_colors.get(complexity, "#6b7280")
+        
+        # Create features list
+        features_html = ""
+        if features:
+            features_html = "<br>".join([f"    {feature}" for feature in features])
+        
+        # Create specialized interface display
+        specialized_html = f"""
+        <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                    border: 2px solid #0ea5e9; border-radius: 12px; padding: 20px; margin: 15px 0;
+                    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);'>
+            <div style='display: flex; align-items: center; margin-bottom: 15px;'>
+                <div style='font-size: 32px; margin-right: 15px;'>{icon}</div>
+                <div style='flex: 1;'>
+                    <h3 style='margin: 0; color: #0c4a6e; font-size: 20px;'>Specialized Configuration</h3>
+                    <div style='display: flex; align-items: center; margin-top: 5px;'>
+                        <span style='background: {complexity_color}; color: white; padding: 2px 8px; 
+                                     border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase;'>
+                            {complexity}
+                        </span>
+                        <span style='margin-left: 10px; color: #0c4a6e; font-weight: 600;'>{config_class_name}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <p style='margin: 0 0 15px 0; color: #0c4a6e; font-size: 14px; line-height: 1.5;'>
+                {description}
+            </p>
+            
+            <div style='background: rgba(255, 255, 255, 0.7); border-radius: 8px; padding: 15px; margin-bottom: 15px;'>
+                <h4 style='margin: 0 0 10px 0; color: #0c4a6e; font-size: 14px;'>✨ Features:</h4>
+                <div style='color: #0c4a6e; font-size: 13px; line-height: 1.6;'>
+                    {features_html}
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <button style='background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); 
+                               color: white; border: none; padding: 12px 24px; border-radius: 8px; 
+                               font-weight: 600; cursor: pointer; font-size: 14px;
+                               box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+                               transition: all 0.3s ease;'
+                        onmouseover='this.style.transform="translateY(-2px)"; this.style.boxShadow="0 4px 12px rgba(14, 165, 233, 0.4)";'
+                        onmouseout='this.style.transform="translateY(0px)"; this.style.boxShadow="0 2px 8px rgba(14, 165, 233, 0.3)";'>
+                    {icon} Open {config_class_name} Wizard
+                </button>
+                <p style='margin: 10px 0 0 0; font-size: 11px; color: #6b7280; font-style: italic;'>
+                    Base configuration will be pre-filled automatically
+                </p>
+            </div>
+        </div>
+        """
+        
+        # Create a dummy widget for form compatibility
+        dummy_widget = widgets.HTML(value="specialized_widget_placeholder")
+        
+        specialized_display = widgets.HTML(specialized_html)
+        
+        return {
+            "widget": dummy_widget,
+            "container": specialized_display
+        }
+    
+    def _get_field_emoji(self, field_name: str) -> str:
+        """Get appropriate emoji icon for field name."""
+        emoji_map = {
+            "author": "👤", "bucket": "🪣", "role": "🔐", "region": "🌍",
+            "service_name": "🎯", "pipeline_version": "📅", "project_root_folder": "📁",
+            "model_class": "🤖", "instance_type": "🖥️", "volume_size": "💾",
+            "processing_source_dir": "📂", "entry_point": "🎯", "job_type": "🏷️",
+            "label_name": "🎯", "output_schema": "📊", "output_format": "📄",
+            "cluster_type": "⚙️", "cradle_account": "🔐", "transform_sql": "🔄",
+            "num_round": "🔢", "max_depth": "📏", "learning_rate": "📈",
+            "lr": "📈", "batch_size": "📦", "max_epochs": "🔄", "device": "💻",
+            "optimizer": "⚡", "metric_choices": "📊"
+        }
+        return emoji_map.get(field_name.lower(), "⚙️")
+    
+    def _create_inherited_section(self) -> Optional[widgets.Widget]:
+        """Create inherited configuration display section."""
+        if not hasattr(self, 'pre_populated_instance') or not self.pre_populated_instance:
+            return None
+        
+        # Extract inherited values
+        inherited_values = {}
+        if hasattr(self.pre_populated_instance, 'model_dump'):
+            inherited_values = self.pre_populated_instance.model_dump()
+        elif hasattr(self.pre_populated_instance, '__dict__'):
+            inherited_values = self.pre_populated_instance.__dict__
+        
+        if not inherited_values:
+            return None
+        
+        # Create inherited fields display
+        inherited_items = []
+        for key, value in inherited_values.items():
+            if not key.startswith('_') and value is not None:
+                emoji = self._get_field_emoji(key)
+                inherited_items.append(f"• {emoji} {key}: {value}")
+        
+        if not inherited_items:
+            return None
+        
+        inherited_html = f"""
+        <div style='background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); 
+                    border-left: 4px solid #8b5cf6; 
+                    padding: 15px; border-radius: 8px; margin: 20px 0;'>
+            <h4 style='margin: 0 0 10px 0; color: #1f2937; display: flex; align-items: center;'>
+                💾 Inherited Configuration
+            </h4>
+            <p style='margin: 0 0 10px 0; font-size: 12px; color: #6b7280; font-style: italic;'>
+                Auto-filled from parent configuration
+            </p>
+            <div style='font-size: 13px; color: #4c1d95; line-height: 1.6;'>
+                {' <br>'.join(inherited_items[:6])}
+                {' <br><em>... and more</em>' if len(inherited_items) > 6 else ''}
+            </div>
+        </div>
+        """
+        
+        return widgets.HTML(inherited_html)
+    
+    def _create_action_buttons(self) -> widgets.Widget:
+        """Create modern action buttons."""
+        save_button = widgets.Button(
+            description="💾 Save Configuration",
+            button_style='success',
+            layout=widgets.Layout(width='200px', height='40px')
+        )
+        cancel_button = widgets.Button(
+            description="❌ Cancel",
+            button_style='',
+            layout=widgets.Layout(width='120px', height='40px')
+        )
+        
+        save_button.on_click(self._on_save_clicked)
+        cancel_button.on_click(self._on_cancel_clicked)
+        
+        # Create button container with modern styling
+        button_html = """
+        <div style='background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
+                    padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;'>
+        </div>
+        """
+        button_bg = widgets.HTML(button_html)
+        button_box = widgets.HBox(
+            [save_button, cancel_button], 
+            layout=widgets.Layout(justify_content='center', margin='20px 0')
+        )
+        
+        return button_box
     
     def _on_save_clicked(self, button):
         """Handle save button click."""
@@ -251,43 +505,124 @@ class MultiStepWizard:
         display(self.output)
     
     def _display_navigation(self):
-        """Display navigation controls."""
-        # Progress indicator
-        progress_html = "<div style='margin-bottom: 20px;'>"
-        progress_html += f"<h3>Pipeline Configuration Wizard</h3>"
-        progress_html += f"<p>Step {self.current_step + 1} of {len(self.steps)}</p>"
-        progress_html += "<div style='background-color: #f0f0f0; height: 20px; border-radius: 10px;'>"
-        progress_percent = ((self.current_step + 1) / len(self.steps)) * 100
-        progress_html += f"<div style='background-color: #4CAF50; height: 100%; width: {progress_percent}%; border-radius: 10px;'></div>"
-        progress_html += "</div></div>"
+        """Display enhanced navigation controls with detailed step visualization."""
+        # Get current step info
+        current_step_info = self.steps[self.current_step] if self.current_step < len(self.steps) else {"title": "Complete"}
         
+        # Enhanced progress indicator with step details
+        progress_percent = ((self.current_step + 1) / len(self.steps)) * 100
+        
+        # Create detailed step indicators with titles
+        step_indicators = []
+        step_details = []
+        for i, step in enumerate(self.steps):
+            if i < self.current_step:
+                # Completed step
+                step_indicators.append("●")
+                step_details.append(f"✅ {step['title']}")
+            elif i == self.current_step:
+                # Current step
+                step_indicators.append("●")
+                step_details.append(f"🔄 {step['title']} (Current)")
+            else:
+                # Future step
+                step_indicators.append("○")
+                step_details.append(f"⏳ {step['title']}")
+        
+        # Create step overview section
+        step_overview_html = f"""
+        <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                    border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px; margin-bottom: 15px;'>
+            <h4 style='margin: 0 0 10px 0; color: #0c4a6e;'>📋 Configuration Workflow Overview</h4>
+            <div style='font-size: 13px; line-height: 1.6;'>
+                {' <br>'.join(step_details)}
+            </div>
+        </div>
+        """
+        
+        progress_html = f"""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);'>
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;'>
+                <h2 style='margin: 0; font-size: 24px;'>🎯 Pipeline Configuration Wizard</h2>
+                <div style='font-size: 14px; opacity: 0.9;'>
+                    Step {self.current_step + 1} of {len(self.steps)}
+                </div>
+            </div>
+            
+            <div style='margin-bottom: 15px;'>
+                <h3 style='margin: 0; font-size: 18px; opacity: 0.95;'>{current_step_info["title"]}</h3>
+                <p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;'>
+                    {current_step_info.get("description", "Configure the settings for this step")}
+                </p>
+            </div>
+            
+            <div style='margin-bottom: 15px;'>
+                <div style='background: rgba(255, 255, 255, 0.2); height: 12px; border-radius: 6px; overflow: hidden;'>
+                    <div style='background: linear-gradient(90deg, #10b981 0%, #059669 100%); height: 100%; width: {progress_percent}%; 
+                                border-radius: 6px; transition: width 0.5s ease; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);'></div>
+                </div>
+            </div>
+            
+            <div style='display: flex; justify-content: space-between; align-items: center;'>
+                <div style='font-size: 14px; opacity: 0.8; letter-spacing: 2px;'>
+                    Progress: {' '.join(step_indicators)} ({self.current_step + 1}/{len(self.steps)})
+                </div>
+                <div style='font-size: 12px; opacity: 0.7;'>
+                    {progress_percent:.0f}% Complete
+                </div>
+            </div>
+        </div>
+        """
+        
+        # Display step overview and progress
+        overview_widget = widgets.HTML(step_overview_html)
         progress_widget = widgets.HTML(progress_html)
+        display(overview_widget)
         display(progress_widget)
         
-        # Navigation buttons
+        # Enhanced navigation buttons with step context
         prev_button = widgets.Button(
             description="← Previous",
             disabled=(self.current_step == 0),
-            layout=widgets.Layout(width='100px')
+            layout=widgets.Layout(width='140px', height='45px'),
+            style={'button_color': '#6b7280' if self.current_step == 0 else '#374151'},
+            tooltip=f"Go back to: {self.steps[self.current_step - 1]['title'] if self.current_step > 0 else 'N/A'}"
         )
+        
         next_button = widgets.Button(
             description="Next →",
             button_style='primary',
             disabled=(self.current_step == len(self.steps) - 1),
-            layout=widgets.Layout(width='100px')
+            layout=widgets.Layout(width='140px', height='45px'),
+            tooltip=f"Continue to: {self.steps[self.current_step + 1]['title'] if self.current_step < len(self.steps) - 1 else 'N/A'}"
         )
+        
         finish_button = widgets.Button(
-            description="Finish",
+            description="🎉 Complete Workflow",
             button_style='success',
             disabled=(self.current_step != len(self.steps) - 1),
-            layout=widgets.Layout(width='100px')
+            layout=widgets.Layout(width='180px', height='45px'),
+            tooltip="Finish configuration and generate config_list"
         )
         
         prev_button.on_click(self._on_prev_clicked)
         next_button.on_click(self._on_next_clicked)
         finish_button.on_click(self._on_finish_clicked)
         
-        nav_box = widgets.HBox([prev_button, next_button, finish_button])
+        # Create enhanced navigation container
+        nav_box = widgets.HBox(
+            [prev_button, next_button, finish_button], 
+            layout=widgets.Layout(
+                justify_content='center', 
+                margin='15px 0',
+                padding='20px',
+                border='2px solid #e2e8f0',
+                border_radius='12px',
+                background='linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+            )
+        )
         display(nav_box)
     
     def _display_current_step(self):
@@ -327,8 +662,18 @@ class MultiStepWizard:
         registry = SpecializedComponentRegistry()
         
         if registry.has_specialized_component(config_class_name):
-            # For specialized components, return minimal fields since they handle their own UI
-            return [{"name": "specialized_component", "type": "specialized", "required": False, "description": f"Uses specialized {config_class_name} widget"}]
+            # For specialized components, create a visual interface description
+            spec_info = registry.SPECIALIZED_COMPONENTS[config_class_name]
+            return [{
+                "name": "specialized_component", 
+                "type": "specialized", 
+                "required": False, 
+                "description": spec_info["description"],
+                "features": spec_info["features"],
+                "icon": spec_info["icon"],
+                "complexity": spec_info["complexity"],
+                "config_class_name": config_class_name
+            }]
         
         # Use UniversalConfigCore to get fields for standard components
         from .core import UniversalConfigCore

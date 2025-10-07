@@ -145,24 +145,25 @@ merged_config = merge_and_save_configs(config_list, 'config_NA_xgboost_AtoZ.json
 
 ## Implementation Phases
 
-### **Phase 1: Core Infrastructure Implementation** (Weeks 1-2)
+### **Phase 1: Core Infrastructure Implementation** (Weeks 1-2) - ✅ COMPLETED
 
-#### **Objective**: Implement universal configuration engine and basic widget framework
+#### **Objective**: Update universal configuration engine to align with production compiler patterns
 
-#### **Week 1: Universal Configuration Engine**
+#### **Week 1: Universal Configuration Engine Updates**
 
-**Day 1-2: Core Engine Implementation**
+**Day 1-2: Core Engine Implementation Updates**
 
 **Target File**: `src/cursus/api/config_ui/core.py`
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Implement `UniversalConfigCore` class with StepCatalog integration
-- ✅ **COMPLETED** - Create field type mapping system for automatic form generation
-- ✅ **COMPLETED** - Implement config class discovery using existing StepCatalog infrastructure
-- ✅ **COMPLETED** - Add form field extraction from Pydantic model definitions
-- ✅ **COMPLETED** - Create inheritance chain analysis for proper field categorization
-- ✅ **COMPLETED** - Add BasePipelineConfig and ProcessingStepConfigBase to discovered classes
-- ✅ **COMPLETED** - Fix import paths for ProcessingStepConfigBase across all modules
+- ✅ **COMPLETED** - Update `UniversalConfigCore` class to align with production patterns
+- ✅ **COMPLETED** - Fix `create_pipeline_config_widget()` method implementation
+- ✅ **COMPLETED** - Add `_discover_required_config_classes()` method
+- ✅ **COMPLETED** - Add `_infer_config_class_from_node_name()` fallback method
+- ✅ **COMPLETED** - Add `_create_workflow_structure()` method
+- ✅ **COMPLETED** - Add `_get_inheritance_pattern()` and `_is_specialized_config()` methods
+- ✅ **COMPLETED** - StepCatalog integration and field type mapping (no changes needed)
+- ✅ **COMPLETED** - Config class discovery infrastructure (no changes needed)
 
 **Implementation Structure**:
 ```python
@@ -219,46 +220,122 @@ class UniversalConfigCore:
         return fields
 ```
 
-**Day 3-4: DAG Integration Implementation**
+**Day 3-4: DAG Integration Implementation (UPDATED - Production Aligned)**
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Implement `create_pipeline_config_widget()` method
-- ✅ **COMPLETED** - Integrate with existing StepConfigResolverAdapter for DAG resolution
-- ✅ **COMPLETED** - Create multi-step wizard structure from DAG nodes
-- ✅ **COMPLETED** - Implement config dependency ordering for proper config_list generation
-- ✅ **COMPLETED** - Add pre-population logic using .from_base_config() patterns
+- ✅ **COMPLETED** - Update `create_pipeline_config_widget()` method to align with production patterns
+- ✅ **COMPLETED** - Fix DAG node extraction to use `list(pipeline_dag.nodes)` pattern
+- ✅ **COMPLETED** - Implement discovery-based approach instead of resolution-based
+- ✅ **COMPLETED** - Remove metadata dependencies not relevant for UI creation
+- ✅ **COMPLETED** - Add fallback inference for nodes not found in catalog
 
-**Implementation Structure**:
+**Updated Implementation Structure** (Based on Production Compiler Analysis):
 ```python
-def create_pipeline_config_widget(self, dag: PipelineDAG, base_config: BasePipelineConfig):
-    """Create DAG-driven pipeline configuration widget."""
-    # Use existing StepConfigResolverAdapter
+def create_pipeline_config_widget(self, pipeline_dag: PipelineDAG, **kwargs):
+    """
+    Create DAG-driven pipeline configuration widget with inheritance support.
+    
+    Uses the same infrastructure as DynamicPipelineTemplate but for discovery
+    rather than resolution of existing configurations.
+    """
+    # Use existing StepConfigResolverAdapter (matches production pattern)
     from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter
     resolver = StepConfigResolverAdapter()
     
-    # Resolve DAG nodes to config requirements
-    config_map = resolver.resolve_config_map(dag.nodes, {})
+    # Extract DAG nodes (matches DynamicPipelineTemplate._create_config_map pattern)
+    dag_nodes = list(pipeline_dag.nodes)  # CORRECTED: was pipeline_dag.nodes
     
-    # Create multi-step wizard
-    steps = []
+    # Discover required config classes (UI-specific, not resolution)
+    required_config_classes = self._discover_required_config_classes(dag_nodes, resolver)
     
-    # Step 1: Base Pipeline Configuration (always first)
-    steps.append({"title": "Base Pipeline Configuration", "config_class": BasePipelineConfig})
+    # Create multi-step wizard with inheritance support
+    workflow_steps = self._create_workflow_structure(required_config_classes)
     
-    # Step 2: Base Processing Configuration (always second, required for processing steps)
-    steps.append({"title": "Processing Configuration", "config_class": ProcessingStepConfigBase})
+    return MultiStepWizard(workflow_steps)
+
+def _discover_required_config_classes(self, dag_nodes: List[str], resolver: StepConfigResolverAdapter) -> List[Dict]:
+    """
+    Discover what configuration classes are needed for the DAG nodes.
     
-    # Step 3+: Specialized configs from DAG
-    for node_name, config_instance in config_map.items():
-        if config_instance:
-            config_class = type(config_instance)
-            steps.append({
-                "title": f"{config_class.__name__}",
-                "config_class": config_class,
-                "pre_populated": config_class.from_base_config(base_config).model_dump()
-            })
+    This is different from production resolve_config_map() because:
+    - Production: Maps nodes to existing config instances from saved file
+    - UI: Discovers what config classes users need to create from scratch
     
-    return MultiStepWizard(steps)
+    Args:
+        dag_nodes: List of DAG node names (extracted same as production)
+        resolver: StepConfigResolverAdapter instance
+        
+    Returns:
+        List of required configuration class information
+    """
+    required_configs = []
+    
+    for node_name in dag_nodes:
+        # Use step catalog to determine required config class
+        step_info = resolver.catalog.get_step_info(node_name)
+        
+        if step_info and step_info.config_class:
+            config_class = resolver.catalog.get_config_class(step_info.config_class)
+            if config_class:
+                required_configs.append({
+                    "node_name": node_name,
+                    "config_class_name": step_info.config_class,
+                    "config_class": config_class,
+                    "inheritance_pattern": self._get_inheritance_pattern(config_class),
+                    "is_specialized": self._is_specialized_config(config_class)
+                })
+        else:
+            # Fallback: Try to infer from node name patterns
+            inferred_config = self._infer_config_class_from_node_name(node_name, resolver)
+            if inferred_config:
+                required_configs.append(inferred_config)
+    
+    return required_configs
+
+def _create_workflow_structure(self, required_configs: List[Dict]) -> List[Dict]:
+    """Create logical workflow structure for configuration steps."""
+    workflow_steps = []
+    
+    # Step 1: Always start with Base Configuration
+    workflow_steps.append({
+        "step_number": 1,
+        "title": "Base Configuration",
+        "config_class": BasePipelineConfig,
+        "type": "base",
+        "required": True
+    })
+    
+    # Step 2: Add Processing Configuration if any configs need it
+    processing_based_configs = [
+        config for config in required_configs 
+        if config["inheritance_pattern"] == "processing_based"
+    ]
+    
+    if processing_based_configs:
+        workflow_steps.append({
+            "step_number": 2,
+            "title": "Processing Configuration",
+            "config_class": ProcessingStepConfigBase,
+            "type": "processing",
+            "required": True
+        })
+    
+    # Step 3+: Add specific configurations
+    step_number = len(workflow_steps) + 1
+    for config in required_configs:
+        workflow_steps.append({
+            "step_number": step_number,
+            "title": config["config_class_name"],
+            "config_class": config["config_class"],
+            "step_name": config["node_name"],
+            "type": "specific",
+            "inheritance_pattern": config["inheritance_pattern"],
+            "is_specialized": config["is_specialized"],
+            "required": True
+        })
+        step_number += 1
+    
+    return workflow_steps
 ```
 
 **Day 5: Factory Functions and Utils**
@@ -290,18 +367,18 @@ def create_pipeline_config_widget(dag: PipelineDAG, base_config: BasePipelineCon
     return core.create_pipeline_config_widget(dag, base_config)
 ```
 
-#### **Week 2: Multi-Step Wizard Framework**
+#### **Week 2: Multi-Step Wizard Framework - ✅ COMPLETED**
 
-**Day 1-2: MultiStepWizard Implementation**
+**Day 1-2: MultiStepWizard Implementation Updates**
 
 **Target File**: `src/cursus/api/config_ui/widget.py`
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Implement `MultiStepWizard` class with step navigation
-- ✅ **COMPLETED** - Create step validation and state management
-- ✅ **COMPLETED** - Implement configuration storage and retrieval
-- ✅ **COMPLETED** - Add progress tracking and user feedback
-- ✅ **COMPLETED** - Create dependency ordering for config_list generation
+- ✅ **COMPLETED** - Update `MultiStepWizard` to work with new workflow structure from `_create_workflow_structure()`
+- ✅ **COMPLETED** - Update step navigation to handle discovery-based workflow steps
+- ✅ **COMPLETED** - Update configuration storage to handle inheritance patterns and specialized configs
+- ✅ **COMPLETED** - Update progress tracking to work with dynamic step counts
+- ✅ **COMPLETED** - Basic step validation and state management (enhanced with modern styling)
 
 **Implementation Structure**:
 ```python
@@ -359,14 +436,45 @@ class MultiStepWizard:
         pass
 ```
 
-**Day 3-4: Universal Widget Implementation**
+**Day 3-4: Universal Widget Implementation - ✅ COMPLETED + ENHANCED**
 
-**Implementation Tasks**:
-- ✅ **COMPLETED** - Implement `UniversalConfigWidget` class using ipywidgets
-- ✅ **COMPLETED** - Create form rendering system for different field types
-- ✅ **COMPLETED** - Implement validation and error handling
-- ✅ **COMPLETED** - Add save/load functionality for individual configurations
-- ✅ **COMPLETED** - Create specialized components for complex fields (lists, dicts, nested objects)
+**Core Implementation Tasks**:
+- ✅ **COMPLETED** - Update `UniversalConfigWidget` to support 3-tier field categorization (Tier 1: Essential, Tier 2: System, Tier 3: Hidden)
+- ✅ **COMPLETED** - Update form rendering to handle inheritance field pre-population from parent configs
+- ✅ **COMPLETED** - Add support for specialized config detection and routing to specialized widgets
+- ✅ **COMPLETED** - Update validation to work with discovery-based workflow structure
+- ✅ **COMPLETED** - Enhanced ipywidgets implementation with modern styling and emoji icons
+- ✅ **COMPLETED** - Enhanced save/load functionality with comprehensive error handling
+
+**Additional Enhancement Tasks (October 7, 2025)**:
+- ✅ **COMPLETED** - Enhanced MultiStepWizard Progress Indicators
+  - ✅ Detailed step visualization with status icons (✅ 🔄 ⏳)
+  - ✅ Enhanced progress bar with smooth animations and percentage display
+  - ✅ Step context navigation with tooltips showing previous/next step names
+  - ✅ Modern gradient styling and professional layout improvements
+  - ✅ Step overview section with workflow status tracking
+
+- ✅ **COMPLETED** - DAG-Driven Configuration Discovery Implementation
+  - ✅ Created dedicated `DAGConfigurationManager` class in separate module
+  - ✅ Implemented comprehensive pipeline analysis and step discovery
+  - ✅ Added smart configuration filtering (only show relevant configs)
+  - ✅ Created workflow structure generation with inheritance support
+  - ✅ Added factory functions for easy DAG-driven widget creation
+  - ✅ Implemented DAG analysis summary with hidden config tracking
+
+- ✅ **COMPLETED** - Specialized Configuration Integration Enhancement
+  - ✅ Enhanced `SpecializedComponentRegistry` with rich metadata
+  - ✅ Added descriptions, features, icons, and complexity levels
+  - ✅ Created visual specialized interface display with complexity badges
+  - ✅ Implemented interactive specialized component buttons
+  - ✅ Added professional card-based layout matching design specifications
+
+- ✅ **COMPLETED** - Code Organization and Architecture Improvements
+  - ✅ Split `core.py` into focused modules for better maintainability
+  - ✅ Created dedicated `dag_manager.py` for DAG-specific functionality
+  - ✅ Updated `core.py` to focus solely on `UniversalConfigCore`
+  - ✅ Enhanced module exports and API organization
+  - ✅ Maintained all functionality while improving code structure
 
 **Implementation Structure**:
 ```python
@@ -410,16 +518,16 @@ class UniversalConfigWidget:
 
 #### **Week 3: Specialized Component Implementation**
 
-**Day 1-2: Hyperparameters Page Implementation**
+**Day 1-2: Hyperparameters Page Implementation - REQUIRES UPDATES**
 
 **Target**: Page 3 - Model Hyperparameters Configuration (detailed in design document)
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Implement dynamic field list editor for full_field_list
-- ✅ **COMPLETED** - Create multi-select dropdowns for tabular and categorical fields
-- ✅ **COMPLETED** - Add field validation ensuring tab_field_list ⊆ full_field_list
-- ✅ **COMPLETED** - Implement XGBoost parameter configuration with advanced options
-- ✅ **COMPLETED** - Create collapsible advanced parameters section
+- ❌ **REQUIRES UPDATE** - Update dynamic field list editor to support 3-tier field categorization (Essential/System/Hidden)
+- ❌ **REQUIRES UPDATE** - Update multi-select dropdowns to work with discovery-based field detection
+- ❌ **REQUIRES UPDATE** - Update field validation to integrate with new workflow structure from `_create_workflow_structure()`
+- ❌ **REQUIRES UPDATE** - Update XGBoost parameter configuration to support inheritance field pre-population
+- ✅ **COMPLETED** - Basic collapsible advanced parameters section (minor updates needed for tier display)
 
 **Implementation Structure**:
 ```python
@@ -451,14 +559,14 @@ class HyperparametersConfigWidget:
         pass
 ```
 
-**Day 3-4: Cradle UI Integration**
+**Day 3-4: Cradle UI Integration - REQUIRES UPDATES**
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Integrate existing CradleDataLoadingStepWidget components
-- ✅ **COMPLETED** - Create specialized component registry for complex configurations
-- ✅ **COMPLETED** - Implement 5-page sub-wizard for Cradle Data Loading (Data Sources, Transform, Output, Job)
-- ✅ **COMPLETED** - Add data source type selection (MDS, EDX, Andes) with dynamic form updates
-- ✅ **COMPLETED** - Preserve existing Cradle UI functionality while adding universal interface
+- ❌ **REQUIRES UPDATE** - Update CradleDataLoadingStepWidget integration to work with discovery-based workflow structure
+- ❌ **REQUIRES UPDATE** - Update specialized component registry to support `_is_specialized_config()` detection method
+- ❌ **REQUIRES UPDATE** - Update 5-page sub-wizard to integrate with new `_create_workflow_structure()` approach
+- ❌ **REQUIRES UPDATE** - Update data source type selection to support inheritance field pre-population from base configs
+- ✅ **COMPLETED** - Basic Cradle UI functionality preservation (minor integration updates needed)
 
 **Implementation Structure**:
 ```python
@@ -482,7 +590,7 @@ class SpecializedComponentRegistry:
         return None
 ```
 
-**Day 5: Web Interface Implementation**
+**Day 5: Web Interface Implementation - REQUIRES UPDATES**
 
 **Target Files**: 
 - `src/cursus/api/config_ui/static/index.html`
@@ -490,24 +598,26 @@ class SpecializedComponentRegistry:
 - `src/cursus/api/config_ui/static/styles.css`
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Create responsive web interface for configuration management
-- ✅ **COMPLETED** - Implement JavaScript client for dynamic form generation
-- ✅ **COMPLETED** - Add CSS styling for professional appearance
-- ✅ **COMPLETED** - Create progress indicators and navigation controls
-- ✅ **COMPLETED** - Implement real-time validation and error display
+- ❌ **REQUIRES UPDATE** - Update JavaScript client to support new `/api/analyze-dag` endpoint for DAG-driven workflow
+- ❌ **REQUIRES UPDATE** - Update dynamic form generation to handle 3-tier field categorization (Essential/System/Hidden)
+- ❌ **REQUIRES UPDATE** - Update progress indicators to work with dynamic step counts from `_create_workflow_structure()`
+- ❌ **REQUIRES UPDATE** - Update navigation controls to support discovery-based workflow steps
+- ✅ **COMPLETED** - Basic responsive web interface and CSS styling (minor updates needed)
+- ✅ **COMPLETED** - Real-time validation and error display (no changes needed)
 
 #### **Week 4: FastAPI Backend and Integration**
 
-**Day 1-2: FastAPI Backend Implementation**
+**Day 1-2: FastAPI Backend Implementation - REQUIRES UPDATES**
 
 **Target File**: `src/cursus/api/config_ui/api.py`
 
 **Implementation Tasks**:
-- ✅ **COMPLETED** - Implement FastAPI endpoints for configuration management
-- ✅ **COMPLETED** - Create REST API for config class discovery and form generation
-- ✅ **COMPLETED** - Add endpoints for configuration validation and saving
-- ✅ **COMPLETED** - Implement static file serving for web interface
-- ✅ **COMPLETED** - Add comprehensive error handling and logging
+- ❌ **REQUIRES UPDATE** - Add new `/api/analyze-dag` endpoint for PipelineDAG analysis
+- ❌ **REQUIRES UPDATE** - Update `/api/create-pipeline-widget` endpoint to use discovery-based approach
+- ❌ **REQUIRES UPDATE** - Add support for workflow structure generation in API responses
+- ❌ **REQUIRES UPDATE** - Update error handling to support DAG analysis failures
+- ✅ **COMPLETED** - Basic FastAPI endpoints and static file serving (minor updates needed)
+- ✅ **COMPLETED** - Configuration validation and saving endpoints (no changes needed)
 
 **Implementation Structure**:
 ```python
