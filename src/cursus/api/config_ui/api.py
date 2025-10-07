@@ -189,8 +189,38 @@ async def create_configuration_widget(request: ConfigWidgetRequest):
                 detail=f"Configuration class '{request.config_class_name}' not found"
             )
         
-        # Get form fields
+        # Get form fields with proper serialization handling
         fields = core._get_form_fields(config_class)
+        
+        # Clean fields to ensure they're serializable
+        cleaned_fields = []
+        for field in fields:
+            cleaned_field = {}
+            for key, value in field.items():
+                if key == 'default':
+                    # Handle PydanticUndefinedType and other non-serializable defaults
+                    if value is not None:
+                        try:
+                            # Check if value is serializable
+                            import json
+                            json.dumps(value)  # Test serialization
+                            cleaned_field[key] = value
+                        except (TypeError, ValueError):
+                            # If not serializable, convert to string or set to None
+                            if hasattr(value, '__name__'):
+                                cleaned_field[key] = str(value.__name__)
+                            elif str(type(value)) == "<class 'pydantic_core._pydantic_core.PydanticUndefinedType'>":
+                                cleaned_field[key] = None
+                            else:
+                                try:
+                                    cleaned_field[key] = str(value)
+                                except:
+                                    cleaned_field[key] = None
+                    else:
+                        cleaned_field[key] = None
+                else:
+                    cleaned_field[key] = value
+            cleaned_fields.append(cleaned_field)
         
         # Get pre-populated values if base_config provided
         values = {}
@@ -206,7 +236,7 @@ async def create_configuration_widget(request: ConfigWidgetRequest):
         
         return ConfigWidgetResponse(
             config_class_name=request.config_class_name,
-            fields=fields,
+            fields=cleaned_fields,
             values=values,
             specialized_component=False
         )

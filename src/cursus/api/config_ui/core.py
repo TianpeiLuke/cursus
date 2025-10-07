@@ -347,10 +347,25 @@ class UniversalConfigCore:
                     if hasattr(field_info, 'description') and field_info.description:
                         description = field_info.description
                     
-                    # Get default value
+                    # Get default value - handle PydanticUndefinedType properly
                     default_value = None
-                    if hasattr(field_info, 'default') and field_info.default is not None:
-                        default_value = field_info.default
+                    if hasattr(field_info, 'default'):
+                        try:
+                            # Check if default is PydanticUndefinedType or similar
+                            default = field_info.default
+                            if default is not None and str(type(default)) != "<class 'pydantic_core._pydantic_core.PydanticUndefinedType'>":
+                                # Only use serializable defaults
+                                if isinstance(default, (str, int, float, bool, list, dict)):
+                                    default_value = default
+                                else:
+                                    # Try to convert to string for complex types
+                                    try:
+                                        default_value = str(default)
+                                    except:
+                                        default_value = None
+                        except Exception as e:
+                            logger.debug(f"Could not extract default for field {field_name}: {e}")
+                            default_value = None
                     
                     fields.append({
                         "name": field_name,

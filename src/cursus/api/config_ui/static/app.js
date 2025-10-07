@@ -1862,8 +1862,11 @@ class CursusConfigUI {
     }
     
     displayMergeResults(result) {
-        // Display the merge results in a modal or dedicated section
+        // Display the merge results with file save dialog
         const container = document.getElementById('pipeline-wizard-container') || document.getElementById('config-list');
+        
+        // Generate smart default filename based on configuration data
+        const defaultFilename = this.generateSmartFilename(result.merged_config);
         
         container.innerHTML = `
             <div class="merge-results">
@@ -1899,11 +1902,39 @@ class CursusConfigUI {
                     </div>
                 </div>
                 
+                <div class="file-save-dialog">
+                    <h3>💾 Save Configuration File</h3>
+                    <div class="save-options">
+                        <div class="save-field-group">
+                            <label for="save-filename" class="form-label">📄 Filename:</label>
+                            <input type="text" id="save-filename" class="form-control" value="${defaultFilename}" placeholder="config_service_region.json">
+                            <div class="field-description">Default format: config_{service_name}_{region}.json</div>
+                        </div>
+                        
+                        <div class="save-field-group">
+                            <label for="save-location" class="form-label">📁 Save Location:</label>
+                            <select id="save-location" class="form-control">
+                                <option value="current">📂 Current Directory (where Jupyter notebook runs)</option>
+                                <option value="downloads">⬇️ Downloads Folder</option>
+                                <option value="custom">📁 Custom Location (browser default)</option>
+                            </select>
+                            <div class="field-description">Current directory is recommended for Jupyter notebook workflows</div>
+                        </div>
+                        
+                        <div class="save-preview">
+                            <h4>💡 Save Preview:</h4>
+                            <div class="preview-info">
+                                <span id="save-preview-text">Will save as: <strong>${defaultFilename}</strong> in current directory</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="download-actions">
                     <h3>✅ Ready for Pipeline Execution!</h3>
                     <div class="action-buttons">
-                        <button class="btn btn-success btn-large" onclick="window.cursusUI.downloadMergedConfig('${result.download_url}', '${result.filename}')">
-                            ⬇️ Download ${result.filename}
+                        <button class="btn btn-success btn-large" onclick="window.cursusUI.downloadMergedConfigWithOptions('${result.download_url}')">
+                            💾 Save Configuration File
                         </button>
                         <button class="btn btn-info" onclick="window.cursusUI.previewMergedJSON(${JSON.stringify(result.merged_config).replace(/"/g, '&quot;')})">
                             👁️ Preview JSON
@@ -1920,7 +1951,7 @@ class CursusConfigUI {
                     <div class="code-example">
                         <pre><code># Load the merged configuration
 from cursus.core.config_fields import load_configs
-config_list = load_configs("${result.filename}")
+config_list = load_configs("${defaultFilename}")
 
 # Execute your pipeline
 pipeline.run(config_list)</code></pre>
@@ -1928,6 +1959,9 @@ pipeline.run(config_list)</code></pre>
                 </div>
             </div>
         `;
+        
+        // Bind event listeners for the save dialog
+        this.bindSaveDialogEvents();
     }
     
     async downloadMergedConfig(downloadUrl, filename) {
@@ -1986,6 +2020,139 @@ pipeline.run(config_list)</code></pre>
             console.error('Copy failed:', err);
             this.showStatus('Copy failed', 'error');
         });
+    }
+    
+    generateSmartFilename(mergedConfig) {
+        // Generate smart default filename based on configuration data
+        // Format: config_{service_name}_{region}.json
+        
+        let serviceName = 'pipeline';
+        let region = 'default';
+        
+        // Extract service_name and region from shared config
+        if (mergedConfig && mergedConfig.shared) {
+            serviceName = mergedConfig.shared.service_name || serviceName;
+            region = mergedConfig.shared.region || region;
+        }
+        
+        // Clean up service name and region for filename
+        serviceName = serviceName.replace(/[^a-zA-Z0-9_-]/g, '_');
+        region = region.replace(/[^a-zA-Z0-9_-]/g, '_');
+        
+        return `config_${serviceName}_${region}.json`;
+    }
+    
+    bindSaveDialogEvents() {
+        // Bind event listeners for the save dialog
+        
+        const filenameInput = document.getElementById('save-filename');
+        const locationSelect = document.getElementById('save-location');
+        const previewText = document.getElementById('save-preview-text');
+        
+        if (filenameInput && locationSelect && previewText) {
+            const updatePreview = () => {
+                const filename = filenameInput.value || 'config.json';
+                const location = locationSelect.value;
+                
+                let locationText = 'current directory';
+                if (location === 'downloads') {
+                    locationText = 'Downloads folder';
+                } else if (location === 'custom') {
+                    locationText = 'browser default location';
+                }
+                
+                previewText.innerHTML = `Will save as: <strong>${filename}</strong> in ${locationText}`;
+            };
+            
+            filenameInput.addEventListener('input', updatePreview);
+            locationSelect.addEventListener('change', updatePreview);
+            
+            // Initial preview update
+            updatePreview();
+        }
+    }
+    
+    async downloadMergedConfigWithOptions(downloadUrl) {
+        // Download merged config with user-specified options
+        
+        const filenameInput = document.getElementById('save-filename');
+        const locationSelect = document.getElementById('save-location');
+        
+        if (!filenameInput || !locationSelect) {
+            // Fallback to simple download
+            this.downloadMergedConfig(downloadUrl, 'config.json');
+            return;
+        }
+        
+        const filename = filenameInput.value || 'config.json';
+        const location = locationSelect.value;
+        
+        try {
+            // Fetch the configuration data
+            const response = await fetch(downloadUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const configData = await response.json();
+            const jsonString = JSON.stringify(configData, null, 2);
+            
+            if (location === 'current') {
+                // For current directory, we need to use the File System Access API if available
+                // or fall back to regular download
+                if ('showSaveFilePicker' in window) {
+                    try {
+                        const fileHandle = await window.showSaveFilePicker({
+                            suggestedName: filename,
+                            types: [{
+                                description: 'JSON files',
+                                accept: { 'application/json': ['.json'] }
+                            }]
+                        });
+                        
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(jsonString);
+                        await writable.close();
+                        
+                        this.showStatus(`Configuration saved as ${filename}`, 'success');
+                        return;
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            console.error('File System Access API failed:', err);
+                        }
+                        // Fall through to regular download
+                    }
+                }
+            }
+            
+            // Regular download (works for all browsers)
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+            
+            let locationText = 'Downloads folder';
+            if (location === 'current') {
+                locationText = 'default download location (current directory not supported by browser)';
+            } else if (location === 'custom') {
+                locationText = 'selected location';
+            }
+            
+            this.showStatus(`Configuration downloaded as ${filename} to ${locationText}`, 'success');
+            
+        } catch (error) {
+            console.error('Download with options failed:', error);
+            this.showStatus(`Download failed: ${error.message}`, 'error');
+        }
     }
     
     exportIndividualConfigs() {
