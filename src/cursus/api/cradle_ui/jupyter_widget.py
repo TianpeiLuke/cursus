@@ -14,9 +14,10 @@ import asyncio
 import threading
 import time
 from pathlib import Path
+import uuid
+import weakref
 
 from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
-
 
 class CradleConfigWidget:
     """
@@ -50,247 +51,100 @@ class CradleConfigWidget:
         self.config_result = None
         self.server_url = f"http://localhost:{server_port}"
         
+        # Unique identifier for this widget instance
+        self.widget_id = str(uuid.uuid4())
+        
         # Create the widget components
         self._create_widgets()
         
-        # Start checking for configuration availability
-        self._start_config_checker()
-        
     def _create_widgets(self):
         """Create the widget components."""
-        # Status display
-        self.status_output = widgets.Output()
+        # Status display with proper layout for text wrapping
+        self.status_output = widgets.Output(
+            layout=widgets.Layout(
+                width='100%',
+                max_height='400px',
+                overflow='auto',
+                border='1px solid #ddd',
+                padding='10px'
+            )
+        )
         
-        # Configuration result display
-        self.result_output = widgets.Output()
+        # Extract base config values if provided
+        base_config_params = self._extract_base_config_params()
+        
+        # Build URL with base config parameters
+        iframe_url = self.server_url
+        if base_config_params:
+            # Convert params to URL query string
+            param_pairs = []
+            for key, value in base_config_params.items():
+                if value is not None:
+                    param_pairs.append(f"{key}={value}")
+            
+            if param_pairs:
+                iframe_url += "?" + "&".join(param_pairs)
         
         # Main iframe for the UI
         self.iframe = widgets.HTML(
             value=f'''
             <iframe 
-                src="{self.server_url}" 
+                src="{iframe_url}" 
                 width="{self.width}" 
                 height="{self.height}"
                 style="border: 1px solid #ccc; border-radius: 4px;"
-                id="cradle-config-iframe">
+                id="cradle-config-iframe-{self.widget_id}">
             </iframe>
             '''
         )
         
-        # Control buttons
-        self.get_config_btn = widgets.Button(
-            description="Get Configuration",
-            button_style='',  # Start with default style (greyed out)
-            tooltip="Complete the configuration and click 'Finish' first",
-            disabled=True  # Start disabled
-        )
-        self.get_config_btn.on_click(self._on_get_config_clicked)
-        
-        self.clear_btn = widgets.Button(
-            description="Clear Results",
-            button_style='info',
-            tooltip="Clear the configuration results"
-        )
-        self.clear_btn.on_click(self._on_clear_clicked)
-        
-        # Layout
+        # Layout - No buttons needed, just iframe and status
         self.widget = widgets.VBox([
-            widgets.HTML("<h3>Cradle Data Load Configuration</h3>"),
+            widgets.HTML(f"<h3>Cradle Data Load Configuration (ID: {self.widget_id[:8]})</h3>"),
             self.iframe,
-            widgets.HBox([self.get_config_btn, self.clear_btn]),
-            self.status_output,
-            self.result_output
+            self.status_output
         ])
     
-    def _handle_config_result(self, config_data: Dict[str, Any]):
-        """Handle configuration result from the UI."""
-        try:
-            # Convert the config data to a CradleDataLoadConfig object
-            self.config_result = CradleDataLoadConfig(**config_data)
-            
-            with self.status_output:
-                self.status_output.clear_output()
-                print("✅ Configuration generated successfully!")
-                print(f"Job Type: {self.config_result.job_type}")
-                print(f"Data Sources: {len(self.config_result.data_sources_spec.data_sources)}")
-                
-        except Exception as e:
-            with self.status_output:
-                self.status_output.clear_output()
-                print(f"❌ Error processing configuration: {str(e)}")
-    
-    def _on_get_config_clicked(self, button):
-        """Handle get configuration button click."""
-        with self.status_output:
-            self.status_output.clear_output()
-            print("🔄 Attempting to retrieve configuration from server...")
+    def _extract_base_config_params(self):
+        """Extract parameters from base_config to pre-populate the form."""
+        if not self.base_config:
+            return {}
+        
+        params = {}
         
         try:
-            # Try to get the latest configuration from the server
-            response = requests.get(f"{self.server_url}/api/cradle-ui/get-latest-config", timeout=10)
+            # Extract BasePipelineConfig fields
+            if hasattr(self.base_config, 'author'):
+                params['author'] = self.base_config.author
+            if hasattr(self.base_config, 'bucket'):
+                params['bucket'] = self.base_config.bucket
+            if hasattr(self.base_config, 'role'):
+                params['role'] = self.base_config.role
+            if hasattr(self.base_config, 'region'):
+                params['region'] = self.base_config.region
+            if hasattr(self.base_config, 'service_name'):
+                params['service_name'] = self.base_config.service_name
+            if hasattr(self.base_config, 'pipeline_version'):
+                params['pipeline_version'] = self.base_config.pipeline_version
+            if hasattr(self.base_config, 'project_root_folder'):
+                params['project_root_folder'] = self.base_config.project_root_folder
             
-            if response.status_code == 200:
-                config_data = response.json()
-                
-                # Prompt user for save location
-                from tkinter import filedialog, messagebox
-                import tkinter as tk
-                
-                # Create a temporary root window (hidden)
-                root = tk.Tk()
-                root.withdraw()
-                
-                # Ask user where to save the configuration
-                file_path = filedialog.asksaveasfilename(
-                    title="Save Cradle Configuration",
-                    defaultextension=".json",
-                    filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-                    initialfile=f"cradle_config_{self.job_type}.json"
-                )
-                
-                if file_path:
-                    # Save configuration to JSON file
-                    with open(file_path, 'w') as f:
-                        json.dump(config_data, f, indent=2, default=str)
-                    
-                    with self.status_output:
-                        self.status_output.clear_output()
-                        print("✅ Configuration saved successfully!")
-                        print("=" * 50)
-                        print(f"📁 Saved to: {file_path}")
-                        print()
-                        print("🔧 To load this configuration in your notebook:")
-                        print("```python")
-                        print("from cursus.api.cradle_ui.utils.config_loader import load_cradle_config_from_json")
-                        print()
-                        print(f"# Load the configuration")
-                        print(f"config = load_cradle_config_from_json('{file_path}')")
-                        print("config_list.append(config)")
-                        print("```")
-                        print()
-                        print("💡 The configuration is now ready to use in your pipeline!")
-                    
-                    # Store the config for immediate use using proper loader
-                    from .utils.config_loader import _reconstruct_cradle_config
-                    self.config_result = _reconstruct_cradle_config(config_data)
-                    
-                else:
-                    with self.status_output:
-                        self.status_output.clear_output()
-                        print("⚠️ Save cancelled. Configuration not saved.")
-                
-                root.destroy()
-                
-            elif response.status_code == 404:
-                with self.status_output:
-                    self.status_output.clear_output()
-                    print("⚠️ No configuration found on server.")
-                    print("Please complete the configuration in the UI above and click 'Finish' first.")
-                    
+            # Set job type
+            params['job_type'] = self.job_type
+            
+            # Set default save location based on base config
+            if hasattr(self.base_config, 'source_dir'):
+                source_dir = str(self.base_config.source_dir)
+                params['save_location'] = f"{source_dir}/cradle_data_load_config_{self.job_type}.json"
             else:
-                with self.status_output:
-                    self.status_output.clear_output()
-                    print(f"❌ Server error: {response.status_code}")
-                    print("Please try again or check the server logs.")
-                    
-        except requests.exceptions.RequestException as e:
-            with self.status_output:
-                self.status_output.clear_output()
-                print("❌ Could not connect to server.")
-                print(f"Error: {str(e)}")
-                print("Please ensure the Cradle UI server is running.")
-                
-        except ImportError:
-            with self.status_output:
-                self.status_output.clear_output()
-                print("⚠️ tkinter not available for file dialog.")
-                print("Please specify a file path manually:")
-                print()
-                print("```python")
-                print("import requests")
-                print("import json")
-                print("from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig")
-                print()
-                print(f"# Get config from server")
-                print(f"response = requests.get('{self.server_url}/api/cradle-ui/get-latest-config')")
-                print("config_data = response.json()")
-                print()
-                print("# Save to file")
-                print("with open('cradle_config.json', 'w') as f:")
-                print("    json.dump(config_data, f, indent=2, default=str)")
-                print()
-                print("# Load as config object")
-                print("config = CradleDataLoadConfig(**config_data)")
-                print("config_list.append(config)")
-                print("```")
-                
-        except Exception as e:
-            with self.status_output:
-                self.status_output.clear_output()
-                print(f"❌ Unexpected error: {str(e)}")
-    
-    def _start_config_checker(self):
-        """Start a background thread to check for configuration availability."""
-        self._checker_running = True
-        self._checker_thread = threading.Thread(target=self._config_checker_loop, daemon=True)
-        self._checker_thread.start()
-    
-    def _config_checker_loop(self):
-        """Background loop to check for configuration availability."""
-        while self._checker_running:
-            try:
-                # Check if configuration is available on server
-                response = requests.get(f"{self.server_url}/api/cradle-ui/get-latest-config", timeout=2)
-                
-                if response.status_code == 200:
-                    # Configuration is available - enable the button
-                    if self.get_config_btn.disabled:
-                        self.get_config_btn.disabled = False
-                        self.get_config_btn.button_style = 'success'
-                        self.get_config_btn.tooltip = "Configuration ready! Click to save to JSON file"
-                        
-                        # Show notification in status output
-                        with self.status_output:
-                            self.status_output.clear_output()
-                            print("✅ Configuration is ready! You can now click 'Get Configuration' to save it.")
-                            
-                elif response.status_code == 404:
-                    # No configuration available - keep button disabled
-                    if not self.get_config_btn.disabled:
-                        self.get_config_btn.disabled = True
-                        self.get_config_btn.button_style = ''
-                        self.get_config_btn.tooltip = "Complete the configuration and click 'Finish' first"
-                        
-            except requests.exceptions.RequestException:
-                # Server not available or other network error - keep button disabled
-                if not self.get_config_btn.disabled:
-                    self.get_config_btn.disabled = True
-                    self.get_config_btn.button_style = ''
-                    self.get_config_btn.tooltip = "Server not available or configuration not ready"
+                params['save_location'] = f"cradle_data_load_config_{self.job_type}.json"
             
-            # Wait before next check
-            time.sleep(3)  # Check every 3 seconds
-    
-    def _stop_config_checker(self):
-        """Stop the configuration checker thread."""
-        self._checker_running = False
-        if hasattr(self, '_checker_thread'):
-            self._checker_thread.join(timeout=1)
-    
-    def _on_clear_clicked(self, button):
-        """Handle clear button click."""
-        with self.status_output:
-            self.status_output.clear_output()
-        with self.result_output:
-            self.result_output.clear_output()
-        self.config_result = None
+        except Exception as e:
+            # If there's any error extracting config, log it but don't fail
+            with self.status_output:
+                print(f"⚠️ Warning: Could not extract some base config values: {str(e)}")
         
-        # Reset button state
-        self.get_config_btn.disabled = True
-        self.get_config_btn.button_style = ''
-        self.get_config_btn.tooltip = "Complete the configuration and click 'Finish' first"
-        
-        print("🧹 Results cleared.")
+        return params
     
     def get_config(self) -> Optional[CradleDataLoadConfig]:
         """
@@ -307,15 +161,18 @@ class CradleConfigWidget:
         
         # Display usage instructions
         display(HTML("""
-        <div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin: 10px 0;">
-            <h4>📝 How to Use:</h4>
-            <ol>
-                <li>Complete the 4-step configuration in the UI above</li>
-                <li>Click "Finish" in the UI to generate the configuration</li>
-                <li>Click "Get Configuration" button below to see the results</li>
-                <li>Use <code>cradle_widget.get_config()</code> to get the config object</li>
-                <li>Add to your config list: <code>config_list.append(cradle_widget.get_config())</code></li>
+        <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; margin: 15px 0; color: #212529;">
+            <h4 style="color: #495057; margin-bottom: 15px; font-weight: 600;">📝 How to Use:</h4>
+            <ol style="color: #495057; line-height: 1.6; margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Complete the 4-step configuration in the UI above</li>
+                <li style="margin-bottom: 8px;">In Step 4, specify the save location for your configuration file</li>
+                <li style="margin-bottom: 8px;">Click <strong>"Finish"</strong> in the UI - the configuration will be automatically saved</li>
+                <li style="margin-bottom: 8px;">Load the saved configuration: <code style="background-color: #e9ecef; color: #495057; padding: 2px 4px; border-radius: 3px; font-size: 0.9em;">load_cradle_config_from_json('your_file.json')</code></li>
+                <li style="margin-bottom: 0;">Add to your config list: <code style="background-color: #e9ecef; color: #495057; padding: 2px 4px; border-radius: 3px; font-size: 0.9em;">config_list.append(config)</code></li>
             </ol>
+            <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; border-radius: 4px; margin-top: 15px;">
+                <strong>✨ Simplified:</strong> No buttons needed! Just complete the UI and click "Finish" - the configuration will be automatically saved to your specified location.
+            </div>
         </div>
         """))
 
@@ -347,9 +204,10 @@ def create_cradle_config_widget(base_config=None,
         )
         cradle_widget.display()
         
-        # After completing the UI configuration:
-        training_cradle_data_load_config = cradle_widget.get_config()
-        config_list.append(training_cradle_data_load_config)
+        # The configuration will be automatically saved when you click "Finish" in the UI
+        # Load it afterwards:
+        # config = load_cradle_config_from_json('your_file.json')
+        # config_list.append(config)
         ```
     """
     return CradleConfigWidget(
@@ -363,9 +221,7 @@ def create_cradle_config_widget(base_config=None,
 
 # Enhanced widget with server management
 class CradleConfigWidgetWithServer(CradleConfigWidget):
-    """
-    Enhanced Cradle Config Widget that can start/stop its own server.
-    """
+    """Enhanced Cradle Config Widget that can start/stop its own server."""
     
     def __init__(self, *args, **kwargs):
         self.server_process = None
@@ -374,7 +230,6 @@ class CradleConfigWidgetWithServer(CradleConfigWidget):
     def start_server(self):
         """Start the UI server if not already running."""
         try:
-            # Check if server is already running
             response = requests.get(f"{self.server_url}/health", timeout=2)
             if response.status_code == 200:
                 with self.status_output:
@@ -383,16 +238,10 @@ class CradleConfigWidgetWithServer(CradleConfigWidget):
         except requests.exceptions.RequestException:
             pass
         
-        # Start the server
         try:
             import subprocess
             import sys
-            from pathlib import Path
             
-            # Get the path to the app module
-            app_path = Path(__file__).parent / "app.py"
-            
-            # Start uvicorn server
             cmd = [
                 sys.executable, "-m", "uvicorn",
                 "cursus.api.cradle_ui.app:app",
@@ -407,10 +256,8 @@ class CradleConfigWidgetWithServer(CradleConfigWidget):
                 stderr=subprocess.PIPE
             )
             
-            # Wait a moment for server to start
             time.sleep(3)
             
-            # Check if server started successfully
             try:
                 response = requests.get(f"{self.server_url}/health", timeout=5)
                 if response.status_code == 200:
@@ -439,7 +286,6 @@ class CradleConfigWidgetWithServer(CradleConfigWidget):
     
     def display(self):
         """Display the widget and start server if needed."""
-        # Try to start server
         if not self.start_server():
             display(HTML("""
             <div style="background-color: #ffe6e6; padding: 15px; border-radius: 5px; margin: 10px 0;">

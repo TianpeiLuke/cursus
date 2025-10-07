@@ -140,7 +140,7 @@ async def validate_data_source(request: DataSourceValidationRequest) -> Validati
 @router.post("/build-config", response_model=ConfigBuildResponse)
 async def build_config(request: ConfigBuildRequest) -> ConfigBuildResponse:
     """
-    Build the final CradleDataLoadConfig from UI data.
+    Build the final CradleDataLoadConfig from UI data and optionally save to file.
     
     Args:
         request: Configuration build request with all UI data
@@ -172,11 +172,34 @@ async def build_config(request: ConfigBuildRequest) -> ConfigBuildResponse:
         # Store the latest configuration for retrieval by Jupyter widget
         latest_config = config_dict
         
+        # Auto-save to file if save_location is provided
+        save_message = ""
+        if hasattr(request, 'save_location') and request.save_location:
+            try:
+                import json
+                from pathlib import Path
+                
+                # Ensure directory exists
+                save_path = Path(request.save_location)
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Save configuration to JSON file
+                with open(save_path, 'w') as f:
+                    json.dump(config_dict, f, indent=2, default=str)
+                
+                save_message = f"Configuration automatically saved to: {request.save_location}"
+                logger.info(f"Configuration saved to: {request.save_location}")
+                
+            except Exception as save_error:
+                logger.error(f"Error saving configuration to {request.save_location}: {str(save_error)}")
+                save_message = f"Warning: Failed to save to {request.save_location}: {str(save_error)}"
+        
         return ConfigBuildResponse(
             success=True,
             config=config_dict,
             python_code=python_code,
-            errors=[]
+            errors=[],
+            message=save_message if save_message else "Configuration built successfully"
         )
         
     except Exception as e:

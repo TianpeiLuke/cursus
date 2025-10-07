@@ -30,6 +30,7 @@ class ConfigBuildResponse(BaseModel):
     config: Optional[Dict[str, Any]] = Field(None, description="Built configuration object")
     python_code: Optional[str] = Field(None, description="Python code to create the configuration")
     errors: List[str] = Field(default_factory=list, description="Build errors")
+    message: Optional[str] = Field(None, description="Success or informational message")
 
 
 class ConfigExportResponse(BaseModel):

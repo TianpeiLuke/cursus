@@ -26,6 +26,7 @@ class ConfigBuildRequest(BaseModel):
     output_spec: Dict[str, Any] = Field(..., description="Output specification")
     cradle_job_spec: Dict[str, Any] = Field(..., description="Cradle job specification")
     job_type: str = Field(..., description="Job type (training/validation/testing/calibration)")
+    save_location: Optional[str] = Field(None, description="Optional file path to automatically save the configuration")
 
 
 class ConfigExportRequest(BaseModel):

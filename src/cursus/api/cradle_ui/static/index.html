@@ -327,6 +327,19 @@
             color: #6b7280;
         }
 
+        .save-location-section {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .save-location-section h3 {
+            color: #92400e;
+            margin-bottom: 15px;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -638,6 +651,17 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                         <label for="extraSparkJobArguments">Extra Spark Arguments (Optional)</label>
                         <textarea id="extraSparkJobArguments" placeholder="Additional Spark driver options"></textarea>
                     </div>
+
+                    <!-- Save Location Section -->
+                    <div class="save-location-section">
+                        <h3>📁 Save Configuration</h3>
+                        <p style="margin-bottom: 15px; color: #92400e;">Specify where to save the generated configuration file.</p>
+                        <div class="form-group">
+                            <label for="saveLocation">Save Location *</label>
+                            <input type="text" id="saveLocation" placeholder="e.g., cradle_data_load_config.json" value="cradle_data_load_config.json">
+                            <div class="error-message" id="saveLocationError"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Final Step: Summary -->
@@ -688,6 +712,10 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                         <div class="summary-item">
                             <span class="summary-label">Cluster:</span>
                             <span class="summary-value" id="summaryCluster">STANDARD</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Save Location:</span>
+                            <span class="summary-value" id="summarySaveLocation">cradle_data_load_config.json</span>
                         </div>
                     </div>
                 </div>
@@ -804,9 +832,16 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                 return;
             }
             
+            const saveLocation = document.getElementById('saveLocation').value.trim();
+            if (!saveLocation) {
+                alert('Please specify a save location for the configuration file.');
+                return;
+            }
+            
             // Collect all form data
             const configData = collectAllFormData();
             configData.job_type = jobType.value;
+            configData.save_location = saveLocation;
             
             try {
                 // Format data according to API schema
@@ -868,6 +903,7 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                         job_retry_count: parseInt(configData.job_retry_count)
                     },
                     job_type: configData.job_type,
+                    save_location: configData.save_location,
                     // Include BasePipelineConfig fields
                     author: configData.author,
                     bucket: configData.bucket,
@@ -953,7 +989,9 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                 cradle_account: document.getElementById('cradleAccount').value,
                 cluster_type: document.getElementById('clusterType').value,
                 job_retry_count: document.getElementById('jobRetryCount').value,
-                extra_spark_job_arguments: document.getElementById('extraSparkJobArguments').value
+                extra_spark_job_arguments: document.getElementById('extraSparkJobArguments').value,
+                // Save location
+                save_location: document.getElementById('saveLocation').value
             };
         }
         
@@ -984,8 +1022,11 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             `;
             
+            const messageHtml = result.message ? `<p style="color: #10b981; margin-bottom: 15px; font-weight: 500;">${result.message}</p>` : '';
+            
             content.innerHTML = `
                 <h2 style="margin-bottom: 20px; color: #2563eb;">CradleDataLoadConfig Generated Successfully!</h2>
+                ${messageHtml}
                 <div style="margin-bottom: 20px;">
                     <h3>Configuration Object:</h3>
                     <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow: auto; font-size: 12px;">${JSON.stringify(result.config, null, 2)}</pre>
@@ -1121,18 +1162,78 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
             const endDate = document.getElementById('endDate').value;
             const outputFormat = document.getElementById('outputFormat').value;
             const clusterType = document.getElementById('clusterType').value;
-            const outputFields = document.querySelectorAll('#summaryOutput').length;
+            const saveLocation = document.getElementById('saveLocation').value;
 
             document.getElementById('summaryDataSources').textContent = `${dataSourceCount} configured`;
             document.getElementById('summaryTimeRange').textContent = `${startDate.split('T')[0]} to ${endDate.split('T')[0]}`;
-            document.getElementById('summaryOutput').textContent = `${outputFormat} format, ${outputFields} fields`;
+            document.getElementById('summaryOutput').textContent = `${outputFormat} format`;
             document.getElementById('summaryCluster').textContent = clusterType;
+            document.getElementById('summarySaveLocation').textContent = saveLocation;
+        }
+
+        // Function to get URL parameters
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const result = {};
+            for (const [key, value] of params) {
+                result[key] = decodeURIComponent(value);
+            }
+            return result;
+        }
+
+        // Function to populate form fields from URL parameters
+        function populateFromUrlParams() {
+            const params = getUrlParams();
+            
+            console.log('URL parameters:', params);
+            
+            // Populate BasePipelineConfig fields
+            if (params.author) {
+                document.getElementById('author').value = params.author;
+            }
+            if (params.bucket) {
+                document.getElementById('bucket').value = params.bucket;
+            }
+            if (params.role) {
+                document.getElementById('role').value = params.role;
+            }
+            if (params.region) {
+                document.getElementById('pipelineRegion').value = params.region;
+            }
+            if (params.service_name) {
+                document.getElementById('serviceName').value = params.service_name;
+            }
+            if (params.pipeline_version) {
+                document.getElementById('pipelineVersion').value = params.pipeline_version;
+            }
+            if (params.project_root_folder) {
+                document.getElementById('projectRootFolder').value = params.project_root_folder;
+            }
+            
+            // Populate save location
+            if (params.save_location) {
+                document.getElementById('saveLocation').value = params.save_location;
+            }
+            
+            // Set job type radio button
+            if (params.job_type) {
+                const jobTypeRadio = document.querySelector(`input[name="jobType"][value="${params.job_type}"]`);
+                if (jobTypeRadio) {
+                    jobTypeRadio.checked = true;
+                }
+            }
+            
+            console.log('Form fields populated from base_config');
         }
 
         // Initialize the wizard
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing wizard...');
             console.log('All step elements:', document.querySelectorAll('.step-content'));
+            
+            // Populate form fields from URL parameters (base_config)
+            populateFromUrlParams();
+            
             showStep(1);
         });
     </script>
