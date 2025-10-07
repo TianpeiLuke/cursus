@@ -649,7 +649,7 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                         <label>Job Type *</label>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
                             <label style="display: flex; align-items: center; gap: 8px; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;">
-                                <input type="radio" name="jobType" value="training">
+                                <input type="radio" name="jobType" value="training" checked>
                                 <span>Training</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;">
@@ -767,8 +767,27 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
 
         function previousStep() {
             if (currentStep > 1) {
+                // If we're leaving the finish page (step 5), clear the configuration
+                if (currentStep === totalSteps) {
+                    clearServerConfiguration();
+                }
+                
                 currentStep--;
                 showStep(currentStep);
+            }
+        }
+        
+        async function clearServerConfiguration() {
+            try {
+                await fetch('/api/cradle-ui/clear-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                console.log('Server configuration cleared');
+            } catch (error) {
+                console.error('Error clearing server configuration:', error);
             }
         }
 
@@ -790,13 +809,82 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
             configData.job_type = jobType.value;
             
             try {
+                // Format data according to API schema
+                const apiData = {
+                    data_sources_spec: {
+                        start_date: configData.start_date,
+                        end_date: configData.end_date,
+                        data_sources: configData.data_sources.map(ds => ({
+                            data_source_name: ds.source_name,
+                            data_source_type: ds.data_source_type,
+                            mds_data_source_properties: ds.data_source_type === 'MDS' ? {
+                                service_name: ds.service_name,
+                                region: ds.region,
+                                output_schema: ds.output_schema.map(field => ({
+                                    field_name: field,
+                                    field_type: "STRING"
+                                })),
+                                org_id: 0,
+                                use_hourly_edx_data_set: false
+                            } : null,
+                            edx_data_source_properties: ds.data_source_type === 'EDX' ? {
+                                service_name: ds.service_name,
+                                region: ds.region,
+                                output_schema: ds.output_schema.map(field => ({
+                                    field_name: field,
+                                    field_type: "STRING"
+                                }))
+                            } : null,
+                            andes_data_source_properties: ds.data_source_type === 'ANDES' ? {
+                                service_name: ds.service_name,
+                                region: ds.region,
+                                output_schema: ds.output_schema.map(field => ({
+                                    field_name: field,
+                                    field_type: "STRING"
+                                }))
+                            } : null
+                        }))
+                    },
+                    transform_spec: {
+                        transform_sql: configData.transform_sql,
+                        job_split_options: {
+                            split_job: configData.enable_job_splitting,
+                            days_per_split: parseInt(configData.days_per_split),
+                            merge_sql: configData.merge_sql || null
+                        }
+                    },
+                    output_spec: {
+                        output_schema: configData.data_sources.flatMap(ds => ds.output_schema),
+                        output_format: configData.output_format,
+                        output_save_mode: configData.output_save_mode,
+                        output_file_count: parseInt(configData.output_file_count),
+                        keep_dot_in_output_schema: configData.keep_dot_in_output_schema,
+                        include_header_in_s3_output: configData.include_header_in_s3_output
+                    },
+                    cradle_job_spec: {
+                        cradle_account: configData.cradle_account,
+                        cluster_type: configData.cluster_type,
+                        extra_spark_job_arguments: configData.extra_spark_job_arguments,
+                        job_retry_count: parseInt(configData.job_retry_count)
+                    },
+                    job_type: configData.job_type,
+                    // Include BasePipelineConfig fields
+                    author: configData.author,
+                    bucket: configData.bucket,
+                    role: configData.role,
+                    region: configData.region,
+                    service_name: configData.service_name,
+                    pipeline_version: configData.pipeline_version,
+                    project_root_folder: configData.project_root_folder
+                };
+
                 // Call the backend API to build the configuration
-                const response = await fetch('/api/build-config', {
+                const response = await fetch('/api/cradle-ui/build-config', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(configData)
+                    body: JSON.stringify(apiData)
                 });
                 
                 if (response.ok) {
@@ -819,7 +907,9 @@ JOIN edx_source edx ON mds.objectId = edx.order_id</textarea>
                 const sourceName = block.querySelector('input[placeholder*="RAW_MDS_NA"], input[placeholder*="TAGS"]').value;
                 const sourceType = block.querySelector('select').value;
                 const serviceName = block.querySelector('input[placeholder*="AtoZ"]').value;
-                const region = block.querySelector('select:last-of-type').value;
+                // Get the region from the second select (not the data source type select)
+                const selects = block.querySelectorAll('select');
+                const region = selects.length > 1 ? selects[1].value : 'NA';
                 
                 const outputSchema = [];
                 block.querySelectorAll('.field-item span').forEach(span => {

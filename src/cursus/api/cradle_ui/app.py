@@ -69,10 +69,31 @@ async def general_exception_handler(request, exc):
         ).model_dump()
     )
 
-# Root endpoint
+# Root endpoint - serve the main UI
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
+    """Serve the main UI page."""
+    from fastapi.responses import FileResponse
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    index_file = os.path.join(static_dir, "index.html")
+    
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    else:
+        # Fallback to API info if HTML file not found
+        return {
+            "name": "Cradle Data Load Config UI API",
+            "version": "1.0.0",
+            "description": "REST API for the Cradle Data Load Configuration wizard interface",
+            "docs_url": "/docs",
+            "health_url": "/api/cradle-ui/health",
+            "error": "UI file not found - check static/index.html"
+        }
+
+# API info endpoint
+@app.get("/api/info")
+async def api_info():
+    """API information endpoint."""
     return {
         "name": "Cradle Data Load Config UI API",
         "version": "1.0.0",

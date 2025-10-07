@@ -35,6 +35,9 @@ router = APIRouter(prefix="/api/cradle-ui", tags=["cradle-ui"])
 config_builder = ConfigBuilderService()
 validation_service = ValidationService()
 
+# Global variable to store the latest configuration
+latest_config = None
+
 
 @router.get("/config-defaults", response_model=ConfigDefaultsResponse)
 async def get_config_defaults() -> ConfigDefaultsResponse:
@@ -145,25 +148,34 @@ async def build_config(request: ConfigBuildRequest) -> ConfigBuildResponse:
     Returns:
         ConfigBuildResponse: Built configuration or error details
     """
+    global latest_config
+    
     try:
         # Convert request to dictionary format expected by validation service
         ui_data = {
-            "dataSourcesSpec": request.data_sources_spec,
-            "transformSpec": request.transform_spec,
-            "outputSpec": request.output_spec,
-            "cradleJobSpec": request.cradle_job_spec,
-            "jobType": request.job_type
+            "data_sources_spec": request.data_sources_spec,
+            "transform_spec": request.transform_spec,
+            "output_spec": request.output_spec,
+            "cradle_job_spec": request.cradle_job_spec,
+            "job_type": request.job_type
         }
         
         # Build the configuration
         config = validation_service.build_final_config(ui_data)
         
+        # Generate Python code
+        python_code = validation_service.generate_python_code(config)
+        
         # Convert to dictionary for response
         config_dict = config.model_dump()
+        
+        # Store the latest configuration for retrieval by Jupyter widget
+        latest_config = config_dict
         
         return ConfigBuildResponse(
             success=True,
             config=config_dict,
+            python_code=python_code,
             errors=[]
         )
         
@@ -172,8 +184,46 @@ async def build_config(request: ConfigBuildRequest) -> ConfigBuildResponse:
         return ConfigBuildResponse(
             success=False,
             config=None,
+            python_code=None,
             errors=[str(e)]
         )
+
+
+@router.get("/get-latest-config")
+async def get_latest_config():
+    """
+    Get the latest generated configuration for Jupyter widget retrieval.
+    
+    Returns:
+        Dict: Latest configuration data or 404 if none available
+    """
+    global latest_config
+    
+    if latest_config is None:
+        raise HTTPException(
+            status_code=404, 
+            detail="No configuration available. Please complete the configuration wizard first."
+        )
+    
+    return latest_config
+
+
+@router.post("/clear-config")
+async def clear_config():
+    """
+    Clear the stored configuration.
+    
+    This endpoint is called when the user navigates away from the finish page
+    to disable the "Get Configuration" button in the Jupyter widget.
+    
+    Returns:
+        Dict: Success message
+    """
+    global latest_config
+    
+    latest_config = None
+    
+    return {"success": True, "message": "Configuration cleared"}
 
 
 @router.post("/export-config", response_model=ConfigExportResponse)

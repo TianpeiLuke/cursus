@@ -28,6 +28,7 @@ class ConfigBuildResponse(BaseModel):
     """Response model for configuration building."""
     success: bool = Field(..., description="Whether the configuration was built successfully")
     config: Optional[Dict[str, Any]] = Field(None, description="Built configuration object")
+    python_code: Optional[str] = Field(None, description="Python code to create the configuration")
     errors: List[str] = Field(default_factory=list, description="Build errors")
 
 

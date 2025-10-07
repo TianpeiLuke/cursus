@@ -304,29 +304,41 @@ class ValidationService:
         try:
             # Build data sources
             data_sources = []
-            for ds_data in ui_data['dataSourcesSpec']['dataSources']:
-                ds_type = ds_data['dataSourceType']
+            for ds_data in ui_data['data_sources_spec']['data_sources']:
+                ds_type = ds_data['data_source_type']
                 
                 if ds_type == 'MDS':
-                    mds_props = MdsDataSourceConfig(**ds_data['mdsProperties'])
+                    mds_props = ds_data.get('mds_data_source_properties')
+                    if not mds_props:
+                        raise ValueError(f"MDS properties missing for data source: {ds_data.get('data_source_name')}")
+                    
+                    mds_config = MdsDataSourceConfig(**mds_props)
                     data_source = DataSourceConfig(
-                        data_source_name=ds_data['dataSourceName'],
+                        data_source_name=ds_data['data_source_name'],
                         data_source_type=ds_type,
-                        mds_data_source_properties=mds_props
+                        mds_data_source_properties=mds_config
                     )
                 elif ds_type == 'EDX':
-                    edx_props = EdxDataSourceConfig(**ds_data['edxProperties'])
+                    edx_props = ds_data.get('edx_data_source_properties')
+                    if not edx_props:
+                        raise ValueError(f"EDX properties missing for data source: {ds_data.get('data_source_name')}")
+                    
+                    edx_config = EdxDataSourceConfig(**edx_props)
                     data_source = DataSourceConfig(
-                        data_source_name=ds_data['dataSourceName'],
+                        data_source_name=ds_data['data_source_name'],
                         data_source_type=ds_type,
-                        edx_data_source_properties=edx_props
+                        edx_data_source_properties=edx_config
                     )
                 elif ds_type == 'ANDES':
-                    andes_props = AndesDataSourceConfig(**ds_data['andesProperties'])
+                    andes_props = ds_data.get('andes_data_source_properties')
+                    if not andes_props:
+                        raise ValueError(f"ANDES properties missing for data source: {ds_data.get('data_source_name')}")
+                    
+                    andes_config = AndesDataSourceConfig(**andes_props)
                     data_source = DataSourceConfig(
-                        data_source_name=ds_data['dataSourceName'],
+                        data_source_name=ds_data['data_source_name'],
                         data_source_type=ds_type,
-                        andes_data_source_properties=andes_props
+                        andes_data_source_properties=andes_config
                     )
                 else:
                     raise ValueError(f"Invalid data source type: {ds_type}")
@@ -335,31 +347,86 @@ class ValidationService:
             
             # Build specifications
             data_sources_spec = DataSourcesSpecificationConfig(
-                start_date=ui_data['dataSourcesSpec']['startDate'],
-                end_date=ui_data['dataSourcesSpec']['endDate'],
+                start_date=ui_data['data_sources_spec']['start_date'],
+                end_date=ui_data['data_sources_spec']['end_date'],
                 data_sources=data_sources
             )
             
-            job_split_options = JobSplitOptionsConfig(**ui_data['transformSpec']['jobSplitOptions'])
+            job_split_options = JobSplitOptionsConfig(**ui_data['transform_spec']['job_split_options'])
             transform_spec = TransformSpecificationConfig(
-                transform_sql=ui_data['transformSpec']['transformSql'],
+                transform_sql=ui_data['transform_spec']['transform_sql'],
                 job_split_options=job_split_options
             )
             
-            output_spec = OutputSpecificationConfig(**ui_data['outputSpec'])
-            cradle_job_spec = CradleJobSpecificationConfig(**ui_data['cradleJobSpec'])
+            output_spec = OutputSpecificationConfig(**ui_data['output_spec'])
+            cradle_job_spec = CradleJobSpecificationConfig(**ui_data['cradle_job_spec'])
             
-            # Build final config
-            config = CradleDataLoadConfig(
-                job_type=ui_data['jobType'],
-                data_sources_spec=data_sources_spec,
-                transform_spec=transform_spec,
-                output_spec=output_spec,
-                cradle_job_spec=cradle_job_spec
-            )
+            # Build final config - need to include all required BasePipelineConfig fields
+            config_data = {
+                'job_type': ui_data['job_type'],
+                'data_sources_spec': data_sources_spec,
+                'transform_spec': transform_spec,
+                'output_spec': output_spec,
+                'cradle_job_spec': cradle_job_spec,
+                # Add required BasePipelineConfig fields from the UI data
+                'author': ui_data.get('author', 'test-user'),
+                'bucket': ui_data.get('bucket', 'test-bucket'),
+                'role': ui_data.get('role', 'arn:aws:iam::123456789012:role/test-role'),
+                'region': ui_data.get('region', 'NA'),  # Use valid region default
+                'service_name': ui_data.get('service_name', 'test-service'),
+                'pipeline_version': ui_data.get('pipeline_version', '1.0.0'),
+                'project_root_folder': ui_data.get('project_root_folder', 'test-project'),
+                # System fields with defaults
+                'model_class': 'xgboost',
+                'current_date': '2025-10-06',
+                'framework_version': '2.1.0',
+                'py_version': 'py310',
+                'source_dir': None
+            }
+            
+            config = CradleDataLoadConfig(**config_data)
             
             return config
             
         except Exception as e:
             logger.error(f"Error building final config: {str(e)}")
             raise ValueError(f"Failed to build configuration: {str(e)}")
+    
+    def generate_python_code(self, config: CradleDataLoadConfig) -> str:
+        """
+        Generate Python code to create the CradleDataLoadConfig.
+        
+        Args:
+            config: The configuration object
+            
+        Returns:
+            str: Python code string
+        """
+        try:
+            config_dict = config.model_dump()
+            
+            # Generate Python code
+            python_code = f"""from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+
+# Generated CradleDataLoadConfig
+config = CradleDataLoadConfig(
+    author="{config.author}",
+    bucket="{config.bucket}",
+    role="{config.role}",
+    region="{config.region}",
+    service_name="{config.service_name}",
+    pipeline_version="{config.pipeline_version}",
+    project_root_folder="{config.project_root_folder}",
+    job_type="{config.job_type}",
+    # ... (full configuration object)
+)
+
+# Use the config
+print(config.model_dump_json(indent=2))
+"""
+            
+            return python_code
+            
+        except Exception as e:
+            logger.error(f"Error generating Python code: {str(e)}")
+            return f"# Error generating Python code: {str(e)}"

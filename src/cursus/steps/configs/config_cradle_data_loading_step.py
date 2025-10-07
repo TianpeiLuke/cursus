@@ -13,19 +13,6 @@ from pydantic import (
     PrivateAttr,
 )
 
-# Try to import from external SDK, fallback to local constants if not available
-try:
-    from secure_ai_sandbox_workflow_python_sdk.utils.constants import (
-        OUTPUT_TYPE_DATA,
-        OUTPUT_TYPE_METADATA,
-        OUTPUT_TYPE_SIGNATURE,
-    )
-except ImportError:
-    # Fallback constants when external SDK is not available
-    OUTPUT_TYPE_SIGNATURE = "SIGNATURE"
-    OUTPUT_TYPE_DATA = "DATA"
-    OUTPUT_TYPE_METADATA = "METADATA"
-
 from ...core.base.config_base import BasePipelineConfig
 
 
@@ -613,7 +600,6 @@ class OutputSpecificationConfig(BaseCradleComponentConfig):
     """
     Corresponds to com.amazon.secureaisandboxproxyservice.models.outputspecification.OutputSpecification:
       - output_schema: List[str]
-      - job_type: str (e.g. 'training', 'calibration')
       - output_format: str (e.g. 'PARQUET', 'CSV', etc.)
       - output_save_mode: str (e.g. 'ERRORIFEXISTS', 'OVERWRITE', 'APPEND', 'IGNORE')
       - output_file_count: int (0 means "auto")
@@ -631,10 +617,6 @@ class OutputSpecificationConfig(BaseCradleComponentConfig):
 
     output_schema: List[str] = Field(
         description="List of column names to emit (e.g. ['objectId','transactionDate',…])."
-    )
-
-    job_type: str = Field(
-        description="Type of job (training, validation, testing, calibration)"
     )
 
     # Pipeline S3 location - needed for output_path calculation
