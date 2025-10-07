@@ -11,8 +11,8 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 import json
 
-from cursus.core.base.config_base import BasePipelineConfig
-from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ...core.base.config_base import BasePipelineConfig
+from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -320,8 +320,17 @@ class MultiStepWizard:
     def _get_step_fields(self, step: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get form fields for a step."""
         config_class = step["config_class"]
+        config_class_name = step["config_class_name"]
         
-        # Use UniversalConfigCore to get fields
+        # Check if there's a specialized component for this config type
+        from .specialized_widgets import SpecializedComponentRegistry
+        registry = SpecializedComponentRegistry()
+        
+        if registry.has_specialized_component(config_class_name):
+            # For specialized components, return minimal fields since they handle their own UI
+            return [{"name": "specialized_component", "type": "specialized", "required": False, "description": f"Uses specialized {config_class_name} widget"}]
+        
+        # Use UniversalConfigCore to get fields for standard components
         from .core import UniversalConfigCore
         core = UniversalConfigCore()
         return core._get_form_fields(config_class)

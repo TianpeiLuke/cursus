@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pathlib import Path
 import inspect
 
-from cursus.core.base.config_base import BasePipelineConfig
-from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ...core.base.config_base import BasePipelineConfig
+from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -290,8 +290,7 @@ class UniversalConfigCore:
                         "name": field_name,
                         "type": self.field_types.get(field_type, "text"),
                         "required": is_required,
-                        "description": description,
-                        "field_info": field_info
+                        "description": description
                     })
         
         # Fallback for classes without model_fields
@@ -308,8 +307,7 @@ class UniversalConfigCore:
                             "name": param_name,
                             "type": self.field_types.get(field_type, "text"),
                             "required": is_required,
-                            "description": f"Parameter: {param_name}",
-                            "field_info": param
+                            "description": f"Parameter: {param_name}"
                         })
             except Exception as e:
                 logger.warning(f"Failed to extract fields from {config_class.__name__}: {e}")

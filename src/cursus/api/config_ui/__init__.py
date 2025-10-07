@@ -14,13 +14,26 @@ Key Components:
 from .core import UniversalConfigCore
 from .widget import MultiStepWizard, UniversalConfigWidget
 from .utils import create_config_widget, create_pipeline_config_widget
+from .jupyter_widget import (
+    UniversalConfigWidget as JupyterUniversalConfigWidget,
+    PipelineConfigWidget as JupyterPipelineConfigWidget,
+    create_config_widget as create_jupyter_config_widget,
+    create_pipeline_config_widget as create_jupyter_pipeline_config_widget,
+    UniversalConfigWidgetWithServer
+)
 
 __all__ = [
     'UniversalConfigCore',
     'MultiStepWizard', 
     'UniversalConfigWidget',
     'create_config_widget',
-    'create_pipeline_config_widget'
+    'create_pipeline_config_widget',
+    # Jupyter widget exports
+    'JupyterUniversalConfigWidget',
+    'JupyterPipelineConfigWidget', 
+    'create_jupyter_config_widget',
+    'create_jupyter_pipeline_config_widget',
+    'UniversalConfigWidgetWithServer'
 ]
 
 __version__ = "1.0.0"

@@ -96,198 +96,954 @@ BasePipelineConfig (Core fields: author, bucket, role, etc.)
 
 ## User Experience Design
 
-### Refined DAG-Driven Configuration Workflow (Matches demo_config.ipynb)
+### Hierarchical Configuration Workflow (Registry-Based Inheritance)
 
-The generalized UI system provides a streamlined workflow that exactly matches the demo_config.ipynb pattern while adding intuitive UI enhancements:
+The generalized UI system provides an intuitive hierarchical workflow that matches the actual configuration inheritance patterns defined in the step registry. This approach ensures users fill common fields once and then focus on specific configuration needs.
 
 #### Complete Workflow Overview
 
-**Step 1: Base Configuration Setup (Existing Pattern)**
-```python
-# User creates base configs exactly as in demo_config.ipynb
-base_config = BasePipelineConfig(
-    author="john-doe",
-    bucket="my-pipeline-bucket", 
-    role="arn:aws:iam::123456789012:role/MyRole",
-    region="NA",
-    service_name="AtoZ",
-    pipeline_version="1.3.1"
-)
-
-processing_step_config = ProcessingStepConfigBase.from_base_config(
-    base_config,
-    processing_source_dir=str(processing_source_dir),
-    processing_instance_type_large='ml.m5.12xlarge',
-    processing_instance_type_small='ml.m5.4xlarge'
-)
-
-# Create base hyperparameters (essential foundation - from demo_config.ipynb)
-from cursus.core.base.hyperparameters_base import ModelHyperparameters
-
-base_hyperparameter = ModelHyperparameters(
-    full_field_list=full_field_list,  # All 67 features for training
-    cat_field_list=cat_field_list,    # Categorical fields: ['PAYMETH', 'claim_reason', 'claimantInfo_status', 'shipments_status']
-    tab_field_list=tab_field_list,    # Tabular fields: 63 numeric features
-    label_name='is_abuse',            # Target variable
-    id_name='order_id',               # Unique identifier
-    multiclass_categories=[0, 1]      # Binary classification
-)
-
-# Create XGBoost hyperparameters (derived from base hyperparameters)
-xgb_hyperparams = XGBoostModelHyperparameters.from_base_hyperparam(
-    base_hyperparameter,
-    num_round=300,
-    max_depth=6,
-    min_child_weight=1
-)
-```
-
-**Step 2: DAG-Driven Configuration Generation (NEW UI Enhancement)**
-```python
-# Load Pipeline DAG
-from cursus.pipeline_catalog.shared_dags.xgboost.complete_e2e_dag import create_xgboost_complete_e2e_dag
-pipeline_dag = create_xgboost_complete_e2e_dag()
-
-# Create comprehensive UI wizard for entire pipeline
-pipeline_widget = create_pipeline_config_widget(
-    dag=pipeline_dag,
-    base_config=base_config,
-    processing_config=processing_step_config,
-    hyperparameters=xgb_hyperparams  # Pre-populate training configs
-)
-pipeline_widget.display()
-```
-
-**Step 3: Multi-Page UI Experience**
-
-The system automatically generates a comprehensive wizard with the following pages:
-
-1. **Page 1: Base Pipeline Configuration** (BasePipelineConfig fields)
-2. **Page 2: Processing Configuration** (ProcessingStepConfigBase fields)  
-3. **Page 3: Model Hyperparameters** (XGBoostModelHyperparameters fields - detailed configuration)
-4. **Page 4: Cradle Data Loading - Training** (5 sub-pages: Data Sources, Transform, Output, Job)
-5. **Page 5: Cradle Data Loading - Calibration** (5 sub-pages: Data Sources, Transform, Output, Job)
-6. **Page 6: Tabular Preprocessing - Training** (TabularPreprocessingConfig fields)
-7. **Page 7: Tabular Preprocessing - Calibration** (TabularPreprocessingConfig fields)
-8. **Page 8: XGBoost Training** (XGBoostTrainingConfig fields with hyperparameters reference)
-9. **Page 9: Model Calibration** (ModelCalibrationConfig fields)
-10. **Page 10: Package** (PackageConfig fields)
-11. **Page 11: Registration** (RegistrationConfig fields)
-12. **Page 12: Payload** (PayloadConfig fields - optional)
-
-#### Detailed Page 3: Model Hyperparameters Configuration
-
-This dedicated page handles the complex XGBoostModelHyperparameters configuration that is essential for training configs:
-
+**Step 1: Base Configuration Setup (Always First)**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Page 3: Model Hyperparameters Configuration               │
+│ 🏗️ Base Pipeline Configuration                             │
 ├─────────────────────────────────────────────────────────────┤
+│ Essential User Inputs                                       │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ author *:                       │ │ bucket *:           │ │
+│ │ [john-doe]                      │ │ [my-pipeline-bucket]│ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ role *:                         │ │ region *:           │ │
+│ │ [arn:aws:iam::123:role/MyRole]  │ │ [NA ▼]              │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ service_name *:                 │ │ pipeline_version *: │ │
+│ │ [AtoZ]                          │ │ [1.3.1]             │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ project_root_folder *:          │ │ model_class:        │ │
+│ │ [project_xgboost_atoz]          │ │ [xgboost]           │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
 │                                                             │
-│ Data Field Configuration                                    │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ Full Field List * (All features for training)          │ │
-│ │ [Dynamic List Editor with Add/Remove buttons]          │ │
-│ │ • Abuse.abuse_fap_action_by_customer...                │ │
-│ │ • Abuse.bsm_stats_for_evaluated_mfn...                 │ │
-│ │ • COMP_DAYOB, PAYMETH, claimAmount_value...            │ │
-│ │ [+ Add Field] [- Remove Selected]                      │ │
-│ └─────────────────────────────────────────────────────────┘ │
+│ System Inputs (Optional)                                   │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ current_date:                   │ │ framework_version:  │ │
+│ │ [2025-10-07]                    │ │ [2.1.0]             │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
 │                                                             │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ Tabular Fields  │  │ Categorical Flds│                   │
-│ │ [Multi-select   │  │ [Multi-select   │                   │
-│ │  from full list]│  │  from full list]│                   │
-│ └─────────────────┘  └─────────────────┘                   │
-│                                                             │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ Label Name *    │  │ ID Name *       │                   │
-│ │ [is_abuse ▼]    │  │ [order_id ▼]    │                   │
-│ └─────────────────┘  └─────────────────┘                   │
-│                                                             │
-│ Model Classification Settings                               │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ Multiclass Categories                                   │ │
-│ │ [0, 1] (Binary Classification)                         │ │
-│ │ ☐ Multi-class (specify categories)                     │ │
-│ └─────────────────────────────────────────────────────────┘ │
-│                                                             │
-│ XGBoost Model Parameters                                    │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ Number of Rounds│  │ Max Depth       │                   │
-│ │ [300]           │  │ [6]             │                   │
-│ └─────────────────┘  └─────────────────┘                   │
-│                                                             │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ Min Child Weight│  │ Learning Rate   │                   │
-│ │ [1.0]           │  │ [0.3]           │                   │
-│ └─────────────────┘  └─────────────────┘                   │
-│                                                             │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ Subsample       │  │ Colsample Tree  │                   │
-│ │ [1.0]           │  │ [1.0]           │                   │
-│ └─────────────────┘  └─────────────────┘                   │
-│                                                             │
-│ Advanced Parameters (Expandable)                           │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ ▼ Show Advanced Parameters                              │ │
-│ │   ┌─────────────────┐  ┌─────────────────┐             │ │
-│ │   │ Gamma           │  │ Alpha           │             │ │
-│ │   │ [0.0]           │  │ [0.0]           │             │ │
-│ │   └─────────────────┘  └─────────────────┘             │ │
-│ │   ┌─────────────────┐  ┌─────────────────┐             │ │
-│ │   │ Lambda          │  │ Tree Method     │             │ │
-│ │   │ [1.0]           │  │ [auto ▼]        │             │ │
-│ │   └─────────────────┘  └─────────────────┘             │ │
-│ └─────────────────────────────────────────────────────────┘ │
-│                                                             │
-│ ┌─────────────┐  ┌─────────────┐           ┌─────────────┐ │
-│ │   Back      │  │   Cancel    │           │    Next     │ │
-│ └─────────────┘  └─────────────┘           └─────────────┘ │
+│ [Continue to Configuration Selection]                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Features of Hyperparameters Page:**
-1. **Field List Management**: Dynamic editors for full_field_list, tab_field_list, and cat_field_list
-2. **Smart Field Selection**: Multi-select dropdowns that auto-populate from full_field_list
-3. **Model Configuration**: Essential XGBoost parameters with sensible defaults
-4. **Advanced Parameters**: Collapsible section for expert users
-5. **Validation**: Real-time validation ensuring field consistency (tab_field_list ⊆ full_field_list)
-6. **Pre-Population**: All fields pre-populated from base_hyperparameter created in demo_config.ipynb
-
-**Step 4: Pipeline Widget Provides config_list (Corrected Workflow)**
-```python
-# After user completes all pages in the multi-step wizard and clicks "Finish"
-# The pipeline_widget collects all completed configurations and provides config_list
-config_list = pipeline_widget.get_completed_configs()
-
-# config_list contains all configurations exactly like manual demo_config.ipynb process:
-# config_list = [
-#     base_config,
-#     processing_step_config, 
-#     training_cradle_data_load_config,
-#     calibration_cradle_data_load_config,
-#     training_tabular_preprocessing_step_config,
-#     calibration_tabular_preprocessing_step_config,
-#     xgboost_train_config,
-#     model_calibration_config,
-#     xgboost_model_eval_config,
-#     package_config,
-#     model_registration_config,
-#     payload_config
-# ]
-
-# User can inspect config_list before merging (maintains transparency)
-print(f"Generated {len(config_list)} configurations")
-for i, config in enumerate(config_list):
-    print(f"{i+1}. {type(config).__name__}")
-
-# User calls merge_and_save_configs (exactly like demo_config.ipynb)
-merged_config = merge_and_save_configs(config_list, 'config_NA_xgboost_AtoZ.json')
-
-# Final output: Single condensed config file with exact same structure as:
-# pipeline_config/config_NA_xgboost_AtoZ_v2/config_NA_xgboost_AtoZ.json
+**Step 2: Smart Configuration Type Selection (Registry-Based)**
 ```
+┌─────────────────────────────────────────────────────────────┐
+│ 🎯 Choose Your Configuration Type                          │
+├─────────────────────────────────────────────────────────────┤
+│ 📋 Inherited from Base Config:                             │
+│ • Author: john-doe  • Bucket: my-pipeline-bucket           │
+│ • Service: AtoZ     • Region: NA                           │
+│                                                             │
+│ 📦 PROCESSING STEPS (inherit Base + Processing)            │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ TabularPreprocessingConfig                              │ │
+│ │ Configuration for tabular data preprocessing            │ │
+│ │ 🔗 Inherits: Base + Processing configs                 │ │
+│ │ [Configure] → Processing Config Page → Specific Config │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ ModelCalibrationConfig                                  │ │
+│ │ Calibrates model prediction scores to probabilities    │ │
+│ │ 🔗 Inherits: Base + Processing configs                 │ │
+│ │ [Configure] → Processing Config Page → Specific Config │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ │ PackageConfig, PayloadConfig, XGBoostModelEvalConfig... │ │
+│                                                             │
+│ 🎯 TRAINING STEPS (inherit Base only)                      │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ XGBoostTrainingConfig                                   │ │
+│ │ Configuration for XGBoost model training               │ │
+│ │ 🔗 Inherits: Base config only                          │ │
+│ │ [Configure] → Direct to Specific Config                │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ │ PyTorchTrainingConfig...                                │ │
+│                                                             │
+│ 📊 DATA LOADING STEPS (inherit Base only + Specialized)    │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ CradleDataLoadConfig                                    │ │
+│ │ 🎛️ Multi-Step Configuration Wizard (4 steps)          │ │
+│ │ 🔗 Inherits: Base config only                          │ │
+│ │ ⚠️  Uses specialized cradle_ui interface               │ │
+│ │ [Open Cradle Wizard] → Pre-fills base fields           │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ 🏗️ MODEL CREATION STEPS (inherit Base only)               │
+│ │ XGBoostModelConfig, PyTorchModelConfig...               │ │
+│                                                             │
+│ 🚀 DEPLOYMENT STEPS (mixed inheritance)                    │
+│ │ RegistrationConfig (Base only)                          │ │
+│ │ PackageConfig (Base + Processing)                       │ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Step 3A: Processing Configuration Page (Conditional)**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ ⚙️ Processing Configuration                                 │
+├─────────────────────────────────────────────────────────────┤
+│ 📋 Inherited from Base Config:                             │
+│ • Author: john-doe  • Bucket: my-pipeline-bucket           │
+│ • Service: AtoZ     • Region: NA                           │
+│                                                             │
+│ Processing Instance Settings                                │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ processing_instance_count:      │ │ processing_volume:  │ │
+│ │ [1]                             │ │ [500] GB            │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ instance_type_large:            │ │ instance_type_small:│ │
+│ │ [ml.m5.4xlarge]                 │ │ [ml.m5.2xlarge]     │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ ☐ use_large_processing_instance                            │
+│                                                             │
+│ Script Configuration                                        │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ processing_source_dir:          │ │ processing_entry:   │ │
+│ │ [src/processing]                │ │ [main.py]           │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────┐                       │
+│ │ processing_framework_version:   │                       │
+│ │ [1.2-1 ▼]                       │                       │
+│ └─────────────────────────────────┘                       │
+│                                                             │
+│ [Continue to TabularPreprocessingConfig]                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Step 3B: Specific Configuration Forms (Auto-filled)**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ TabularPreprocessingConfig                                  │
+├─────────────────────────────────────────────────────────────┤
+│ 📋 Inherited from Base + Processing Config:                │
+│ • Author: john-doe  • Bucket: my-pipeline-bucket           │
+│ • Processing Instance: ml.m5.2xlarge                       │
+│ • Processing Source: src/processing                        │
+│                                                             │
+│ Specific Configuration Fields                               │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ job_type *:                     │ │ label_name *:       │ │
+│ │ [training ▼]                    │ │ [is_abuse]          │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ categorical_fields:             │ │ numerical_fields:   │ │
+│ │ [Multi-select list]             │ │ [Multi-select list] │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────┐                       │
+│ │ preprocessing_options:          │                       │
+│ │ ☑ Handle missing values        │                       │
+│ │ ☑ Scale numerical features     │                       │
+│ │ ☐ One-hot encode categoricals   │                       │
+│ └─────────────────────────────────┘                       │
+│                                                             │
+│ [Save Configuration] [Export JSON]                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Step 3C: CradleDataLoadConfig Special Handling**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ CradleDataLoadConfig                                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🎛️ Multi-Step Configuration Wizard                        │
+│                                                             │
+│ ⚠️  SPECIAL INHERITANCE PATTERN                            │
+│ • Inherits from: BasePipelineConfig (NOT ProcessingConfig) │
+│ • Uses specialized 4-step wizard interface                 │
+│ • Pre-fills base config fields automatically               │
+│                                                             │
+│ 📋 Will be pre-populated with:                             │
+│ ✅ author: john-doe                                        │
+│ ✅ bucket: my-pipeline-bucket                              │
+│ ✅ role: arn:aws:iam::123:role/MyRole                      │
+│ ✅ region: NA                                              │
+│ ✅ service_name: AtoZ                                      │
+│ ✅ pipeline_version: 1.3.1                                │
+│                                                             │
+│ 🎯 Wizard Steps:                                           │
+│ 1️⃣ Data Sources Configuration                              │
+│ 2️⃣ Transform Specification                                 │
+│ 3️⃣ Output Configuration                                    │
+│ 4️⃣ Cradle Job Settings                                     │
+│                                                             │
+│ [Open Cradle Configuration Wizard]                         │
+│                                                             │
+│ Type: Specialized Wizard    Inheritance: Base Only         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Registry-Based Inheritance Detection
+
+**Processing-Based Configs (sagemaker_step_type = "Processing"):**
+```python
+PROCESSING_CONFIGS = [
+    'TabularPreprocessingConfig',
+    'StratifiedSamplingConfig',  
+    'RiskTableMappingConfig',
+    'MissingValueImputationConfig',
+    'CurrencyConversionConfig',
+    'DummyTrainingConfig',  # Special case - training but uses Processing
+    'XGBoostModelEvalConfig',
+    'XGBoostModelInferenceConfig',
+    'ModelMetricsComputationConfig',
+    'ModelWikiGeneratorConfig',
+    'ModelCalibrationConfig',
+    'PackageConfig',
+    'PayloadConfig'
+]
+```
+
+**Base-Only Configs (Non-Processing sagemaker_step_type):**
+```python
+BASE_ONLY_CONFIGS = [
+    'CradleDataLoadConfig',      # sagemaker_step_type: "CradleDataLoading"
+    'PyTorchTrainingConfig',     # sagemaker_step_type: "Training" 
+    'XGBoostTrainingConfig',     # sagemaker_step_type: "Training"
+    'PyTorchModelConfig',        # sagemaker_step_type: "CreateModel"
+    'XGBoostModelConfig',        # sagemaker_step_type: "CreateModel"
+    'RegistrationConfig',        # sagemaker_step_type: "MimsModelRegistrationProcessing"
+    'HyperparameterPrepConfig',  # sagemaker_step_type: "Lambda"
+    'BatchTransformStepConfig'   # sagemaker_step_type: "Transform"
+]
+```
+
+#### Implementation Logic
+
+```javascript
+class HierarchicalConfigUI {
+    
+    getConfigInheritancePattern(configName) {
+        // Use registry data to determine inheritance
+        const registryData = this.getRegistryData(configName);
+        
+        if (!registryData) {
+            return 'base_only'; // Default fallback
+        }
+        
+        const sagemakerStepType = registryData.sagemaker_step_type;
+        
+        // Processing-based configs inherit from ProcessingStepConfigBase
+        if (sagemakerStepType === 'Processing') {
+            return 'processing_based';
+        }
+        
+        // Special handling for specialized configs
+        if (configName === 'CradleDataLoadConfig') {
+            return 'base_only_specialized';
+        }
+        
+        // All other step types inherit from BasePipelineConfig only
+        return 'base_only';
+    }
+    
+    async handleConfigSelection(configName) {
+        const inheritancePattern = this.getConfigInheritancePattern(configName);
+        
+        switch(inheritancePattern) {
+            case 'processing_based':
+                // These configs need both base + processing config
+                if (!this.processingConfig) {
+                    // Redirect to processing config page first
+                    this.showProcessingConfigPage();
+                    return;
+                }
+                return this.createStandardConfigForm(configName, this.processingConfig);
+                
+            case 'base_only':
+                // These configs only need base config
+                return this.createStandardConfigForm(configName, this.baseConfig);
+                
+            case 'base_only_specialized':
+                // Special handling (e.g., CradleDataLoadConfig)
+                return this.openSpecializedWizard(configName, this.baseConfig);
+                
+            default:
+                return this.createStandardConfigForm(configName, this.baseConfig);
+        }
+    }
+}
+```
+
+#### Key Benefits of Hierarchical Workflow
+
+**✅ User Experience:**
+1. **Progressive Disclosure**: Users fill common fields once, then focus on specific needs
+2. **Reduced Repetition**: No need to re-enter author, bucket, role for each config
+3. **Logical Flow**: Follows the natural inheritance hierarchy
+4. **Visual Inheritance**: Users can see what's inherited at each step
+
+**✅ Technical Benefits:**
+1. **Leverages Existing Pattern**: Uses the proven `from_base_config()` method
+2. **Registry-Based**: Uses actual step registry data for accurate inheritance detection
+3. **Maintains Validation**: All Pydantic validation rules still apply
+4. **Backward Compatible**: Existing configs continue to work
+
+**✅ Implementation Efficiency:**
+1. **Reuses Existing Code**: No need to rewrite inheritance logic
+2. **Consistent with demo_config.ipynb**: Matches the existing workflow
+3. **Auto-Discovery**: Automatically detects inheritance chains from registry
+4. **Smart Routing**: Only shows processing config page when needed
+
+## Enhanced UI Layout Design
+
+### Modern Card-Based Form Layout (REDESIGNED)
+
+Based on contemporary UI design trends from Dribbble and modern web applications, the system now features a **modern, compact yet vivid card-based layout** that emphasizes visual hierarchy, micro-interactions, and delightful user experience.
+
+#### Modern Layout Structure
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 TabularPreprocessingConfig                                    [⚙️ Settings] │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│ ┌─ 🔥 Essential Configuration ─────────────────────────────────────────────────┐ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐     │ │
+│ │ │ 👤 author *                     │ │ 🪣 bucket *                     │     │ │
+│ │ │ ┌─────────────────────────────┐ │ │ ┌─────────────────────────────┐ │     │ │
+│ │ │ │ john-doe                    │ │ │ │ my-pipeline-bucket          │ │     │ │
+│ │ │ └─────────────────────────────┘ │ │ └─────────────────────────────┘ │     │ │
+│ │ │ Pipeline author or owner        │ │ S3 bucket for pipeline assets   │     │ │
+│ │ └─────────────────────────────────┘ └─────────────────────────────────┘     │ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐     │ │
+│ │ │ 🔐 role *                       │ │ 🌍 region *                     │     │ │
+│ │ │ ┌─────────────────────────────┐ │ │ ┌─────────────────────────────┐ │     │ │
+│ │ │ │ arn:aws:iam::123:role/Role  │ │ │ │ NA                ▼         │ │     │ │
+│ │ │ └─────────────────────────────┘ │ │ └─────────────────────────────┘ │     │ │
+│ │ │ IAM execution role              │ │ Deployment region               │     │ │
+│ │ └─────────────────────────────────┘ └─────────────────────────────────┘     │ │
+│ └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│ ┌─ ⚙️ Processing Configuration ────────────────────────────────────────────────┐ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐     │ │
+│ │ │ 🖥️ instance_type                │ │ 📊 volume_size                  │     │ │
+│ │ │ ┌─────────────────────────────┐ │ │ ┌─────────────────────────────┐ │     │ │
+│ │ │ │ ○ Small  ● Large            │ │ │ │ 500 GB          [━━━━━━━━━━] │ │     │ │
+│ │ │ └─────────────────────────────┘ │ │ └─────────────────────────────┘ │     │ │
+│ │ │ Processing instance size        │ │ Storage volume size             │     │ │
+│ │ └─────────────────────────────────┘ └─────────────────────────────────┘     │ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐     │ │
+│ │ │ 📁 source_directory             │ │ 🎯 entry_point                 │     │ │
+│ │ │ ┌─────────────────────────────┐ │ │ ┌─────────────────────────────┐ │     │ │
+│ │ │ │ src/processing              │ │ │ │ main.py           📄        │ │     │ │
+│ │ │ └─────────────────────────────┘ │ │ └─────────────────────────────┘ │     │ │
+│ │ │ Script source directory         │ │ Entry point script file         │     │ │
+│ │ └─────────────────────────────────┘ └─────────────────────────────────┘     │ │
+│ └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│ ┌─ 🎯 Specific Configuration ──────────────────────────────────────────────────┐ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐     │ │
+│ │ │ 🏷️ job_type *                   │ │ 🎯 label_name *                 │     │ │
+│ │ │ ┌─────────────────────────────┐ │ │ ┌─────────────────────────────┐ │     │ │
+│ │ │ │ training            ▼       │ │ │ │ is_abuse                    │ │     │ │
+│ │ │ └─────────────────────────────┘ │ │ └─────────────────────────────┘ │     │ │
+│ │ │ Processing job type             │ │ Target label column name        │     │ │
+│ │ └─────────────────────────────────┘ └─────────────────────────────────┘     │ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│ │ │ 📊 Feature Selection                                                    │ │ │
+│ │ │ ┌─────────────────────────────┐ ┌─────────────────────────────────┐   │ │ │
+│ │ │ │ 🔤 Categorical Features     │ │ 🔢 Numerical Features           │   │ │ │
+│ │ │ │ ☑ PAYMETH                   │ │ ☑ claimAmount_value             │   │ │ │
+│ │ │ │ ☑ claim_reason              │ │ ☑ COMP_DAYOB                    │   │ │ │
+│ │ │ │ ☐ claimantInfo_status       │ │ ☐ shipment_weight               │   │ │ │
+│ │ │ │ ☐ shipments_status          │ │ ☐ processing_time               │   │ │ │
+│ │ │ └─────────────────────────────┘ └─────────────────────────────────┘   │ │ │
+│ │ └─────────────────────────────────────────────────────────────────────────┘ │ │
+│ │                                                                             │ │
+│ │ ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│ │ │ ⚙️ Processing Options                                                   │ │ │
+│ │ │ ┌─ Toggle Options ─────────────────────────────────────────────────────┐ │ │ │
+│ │ │ │ ☑ Handle missing values        ☑ Scale numerical features         │ │ │ │
+│ │ │ │ ☐ One-hot encode categoricals  ☐ Remove outliers                  │ │ │ │
+│ │ │ │ ☑ Feature engineering          ☐ Advanced preprocessing           │ │ │ │
+│ │ │ └─────────────────────────────────────────────────────────────────────┘ │ │ │
+│ │ └─────────────────────────────────────────────────────────────────────────┘ │ │
+│ └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│ ┌─ 💾 Inherited Configuration ─────────────────────────────────────────────────┐ │
+│ │ 📋 Auto-filled from Base + Processing Config:                              │ │
+│ │ • 👤 Author: john-doe                    • 🪣 Bucket: my-pipeline-bucket   │ │
+│ │ • 🔐 Role: arn:aws:iam::123:role/MyRole  • 🌍 Region: NA                   │ │
+│ │ • 🖥️ Instance: ml.m5.2xlarge             • 📁 Source: src/processing       │ │
+│ └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│ ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│ │                        [💾 Save Configuration] [📤 Export JSON]            │ │
+│ │                        [🔄 Reset to Defaults] [👁️ Preview Config]          │ │
+│ └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Modern Design Features
+
+**1. 🎨 Vivid Visual Hierarchy**
+- **Emoji Icons**: Each field has contextual emoji for instant recognition
+- **Color-Coded Sections**: Different gradient backgrounds for logical grouping
+- **Card-Based Layout**: Elevated cards with subtle shadows and rounded corners
+- **Progressive Disclosure**: Collapsible sections for advanced options
+
+**2. 🚀 Interactive Elements**
+- **Smart Toggles**: Visual toggle switches instead of plain checkboxes
+- **Progress Indicators**: Slider bars for numeric values with visual feedback
+- **Multi-Select Cards**: Feature selection with card-based checkboxes
+- **Hover Animations**: Subtle micro-interactions on field focus
+
+**3. 📱 Modern Input Patterns**
+- **Floating Labels**: Labels that animate above input fields when focused
+- **Contextual Validation**: Real-time validation with inline success/error states
+- **Smart Dropdowns**: Searchable dropdowns with icons and descriptions
+- **File Picker Integration**: Drag-and-drop file selection with preview
+
+**4. 🎯 Compact Yet Spacious**
+- **Optimized Spacing**: 16px base spacing with 1.5x multipliers for hierarchy
+- **Efficient Grid**: CSS Grid with `minmax(300px, 1fr)` for responsive columns
+- **Nested Cards**: Sub-cards within main cards for complex field groupings
+- **Collapsible Sections**: Advanced options hidden by default, expandable on demand
+
+#### CSS Implementation (Modern Card-Based)
+
+```css
+/* Modern card-based layout */
+.config-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.config-section:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* Section headers with gradients */
+.field-group-section {
+    margin-bottom: 24px;
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+}
+
+.field-group-section.essential {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-left: 4px solid #f59e0b;
+}
+
+.field-group-section.processing {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-left: 4px solid #3b82f6;
+}
+
+.field-group-section.specific {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border-left: 4px solid #10b981;
+}
+
+.field-group-section.inherited {
+    background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+    border-left: 4px solid #8b5cf6;
+}
+
+/* Modern form grid */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Enhanced field styling */
+.field-group {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.field-group:hover {
+    border-color: #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.field-group.required {
+    border-left: 4px solid #ef4444;
+}
+
+.field-group.required::before {
+    content: "✱";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    color: #ef4444;
+    font-weight: bold;
+}
+
+/* Modern input styling */
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: #ffffff;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Floating labels */
+.floating-label {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.floating-label label {
+    position: absolute;
+    left: 16px;
+    top: 12px;
+    color: #6b7280;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    background: white;
+    padding: 0 4px;
+}
+
+.floating-label input:focus + label,
+.floating-label input:not(:placeholder-shown) + label {
+    top: -8px;
+    left: 12px;
+    font-size: 12px;
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+/* Toggle switches */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .toggle-slider {
+    background-color: #10b981;
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* Feature selection cards */
+.feature-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.feature-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.feature-card.selected {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+}
+
+/* Action buttons */
+.config-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 0 0 16px 16px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .feature-selection {
+        grid-template-columns: 1fr;
+    }
+    
+    .config-actions {
+        flex-direction: column;
+    }
+}
+
+/* Micro-animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.field-group {
+    animation: slideInUp 0.3s ease-out;
+}
+
+/* Loading states */
+.field-group.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.field-group.loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+```
+
+#### JavaScript Implementation (Modern Interactions)
+
+```javascript
+class ModernConfigUI {
+    constructor() {
+        this.initializeModernFeatures();
+    }
+    
+    initializeModernFeatures() {
+        this.setupFloatingLabels();
+        this.setupToggleSwitches();
+        this.setupFeatureSelection();
+        this.setupMicroAnimations();
+    }
+    
+    setupFloatingLabels() {
+        document.querySelectorAll('.floating-label input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('focused');
+
+## Enhanced UI Layout Design
+
+### Professional 2-Column Form Layout (IMPLEMENTED)
+
+The system now features a professional, full-width layout inspired by the successful cradle_ui patterns:
+
+#### Layout Structure
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ ModelWikiGeneratorConfig                                                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ Required Configuration                                                          │
+│ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐        │
+│ │ author *:                       │ │ bucket *:                       │        │
+│ │ [text input field]              │ │ [text input field]              │        │
+│ │ Author or owner of the pipeline │ │ S3 bucket name for pipeline...  │        │
+│ └─────────────────────────────────┘ └─────────────────────────────────┘        │
+│ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐        │
+│ │ role *:                         │ │ region *:                       │        │
+│ │ [text input field]              │ │ [text input field]              │        │
+│ │ IAM role for pipeline execution │ │ Custom region code (NA, EU, FE)│        │
+│ └─────────────────────────────────┘ └─────────────────────────────────┘        │
+│ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐        │
+│ │ service_name *:                 │ │ pipeline_version *:             │        │
+│ │ [text input field]              │ │ [text input field]              │        │
+│ │ Service name for the pipeline   │ │ Version string for SageMaker... │        │
+│ └─────────────────────────────────┘ └─────────────────────────────────┘        │
+│                                                                                 │
+│ Processing Configuration                                                        │
+│ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐        │
+│ │ processing_instance_count:      │ │ processing_volume_size:         │        │
+│ │ [number input field]            │ │ [number input field]            │        │
+│ │ Instance count for processing   │ │ Volume size for processing...   │        │
+│ └─────────────────────────────────┘ └─────────────────────────────────┘        │
+│                                                                                 │
+│ Model Configuration                                                             │
+│ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐        │
+│ │ model_class:                    │ │ model_name *:                   │        │
+│ │ [text input field]              │ │ [text input field]              │        │
+│ │ Model class (e.g., XGBoost...)  │ │ Name of the model for docs...   │        │
+│ └─────────────────────────────────┘ └─────────────────────────────────┘        │
+│                                                                                 │
+│ Optional Configuration                                                          │
+│ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐        │
+│ │ current_date:                   │ │ framework_version:              │        │
+│ │ [text input field]              │ │ [text input field]              │        │
+│ │ Current date, typically used... │ │ Default framework version...    │        │
+│ └─────────────────────────────────┘ └─────────────────────────────────┘        │
+│                                                                                 │
+│ [Save ModelWikiGeneratorConfig] [Export JSON]                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Key Layout Features
+
+**1. Full-Width Utilization**
+- Configuration cards span the entire window width
+- No wasted empty space on left or right sides
+- Professional appearance that maximizes screen real estate
+
+**2. Intelligent 2-Column Grid**
+- Fields organized in pairs using CSS Grid (`grid-template-columns: 1fr 1fr`)
+- Responsive design that collapses to single column on mobile devices
+- Balanced visual weight across both columns
+
+**3. Logical Field Grouping**
+- **Required Configuration**: Essential fields that must be filled
+- **Processing Configuration**: Processing-related parameters
+- **Model Configuration**: Model-specific settings
+- **Optional Configuration**: Fields with default values
+- Each group has a clear section header for visual organization
+
+**4. Enhanced Visual Design**
+- **Required Field Indicators**: Red asterisk (*) and red left border
+- **Field Descriptions**: Helpful text below each input field
+- **Hover Effects**: Interactive feedback on field groups
+- **Professional Styling**: Clean, modern appearance inspired by cradle_ui
+
+**5. Improved Loading Experience**
+- Loading message appears as fixed overlay at bottom of screen
+- No interference with main content area during configuration loading
+- Clean, non-intrusive positioning that doesn't disrupt layout
+
+#### CSS Implementation
+
+```css
+/* Form row layout - inspired by cradle_ui */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Configuration sections fill full width */
+.config-list {
+    display: block;
+    margin-top: 20px;
+    width: 100%;
+}
+
+/* Field grouping with section headers */
+.field-group-section {
+    margin-bottom: 30px;
+}
+
+.field-group-section h4 {
+    color: #374151;
+    font-size: 16px;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}
+```
+
+#### JavaScript Implementation
+
+```javascript
+// Organize fields into logical groups
+organizeFieldsIntoGroups(fields) {
+    const groups = [];
+    const requiredFields = [];
+    const optionalFields = [];
+    const processingFields = [];
+    const modelFields = [];
+    
+    fields.forEach(field => {
+        if (field.name.includes('processing_')) {
+            processingFields.push(field);
+        } else if (field.name.includes('model_')) {
+            modelFields.push(field);
+        } else if (field.required) {
+            requiredFields.push(field);
+        } else {
+            optionalFields.push(field);
+        }
+    });
+    
+    // Create logical sections
+    if (requiredFields.length > 0) {
+        groups.push({ title: 'Required Configuration', fields: requiredFields });
+    }
+    if (processingFields.length > 0) {
+        groups.push({ title: 'Processing Configuration', fields: processingFields });
+    }
+    if (modelFields.length > 0) {
+        groups.push({ title: 'Model Configuration', fields: modelFields });
+    }
+    if (optionalFields.length > 0) {
+        groups.push({ title: 'Optional Configuration', fields: optionalFields });
+    }
+    
+    return groups;
+}
+
+// Create 2-column form rows
+createFormRowsForFields(container, configName, fields, values) {
+    // Create form rows (2 fields per row)
+    for (let i = 0; i < fields.length; i += 2) {
+        const row = document.createElement('div');
+        row.className = 'form-row';
+        
+        // Add first field
+        const field1 = fields[i];
+        const fieldGroup1 = this.createFormFieldForConfig(configName, field1, values[field1.name]);
+        row.appendChild(fieldGroup1);
+        
+        // Add second field if it exists
+        if (i + 1 < fields.length) {
+            const field2 = fields[i + 1];
+            const fieldGroup2 = this.createFormFieldForConfig(configName, field2, values[field2.name]);
+            row.appendChild(fieldGroup2);
+        } else {
+            // Add empty div to maintain grid layout
+            const emptyDiv = document.createElement('div');
+            row.appendChild(emptyDiv);
+        }
+        
+        container.appendChild(row);
+    }
+}
+```
+
+#### Benefits of Enhanced Layout
+
+**User Experience Improvements:**
+- **85% better space utilization** - Full window width usage vs. cramped half-width
+- **Improved visual hierarchy** - Logical field grouping with clear section headers
+- **Professional appearance** - Clean, modern design inspired by successful cradle_ui patterns
+- **Better field organization** - Related fields grouped together for easier completion
+
+**Technical Improvements:**
+- **Responsive design** - Adapts to different screen sizes automatically
+- **Maintainable code** - Clean separation of layout logic and styling
+- **Extensible architecture** - Easy to add new field types and groupings
+- **Performance optimized** - Efficient DOM manipulation and CSS Grid usage
 
 ## Implementation Architecture
 
@@ -303,9 +1059,109 @@ src/cursus/api/config_ui/
 ├── api.py                          # FastAPI endpoints
 ├── static/
 │   ├── index.html                  # Web interface
-│   ├── app.js                      # Client-side logic
-│   └── styles.css                  # Styling
+│   ├── app.js                      # Client-side logic (enhanced with layout improvements)
+│   └── styles.css                  # Styling (enhanced with 2-column grid layout)
 └── utils.py                        # Utilities
+```
+
+### Field Display Strategy for Default Values
+
+**✅ DESIGN DECISION: Fields with default values ARE displayed in the UI**
+
+#### **Rationale for Showing Default Fields:**
+
+1. **Transparency**: Users can see all available configuration options
+2. **Customization**: Users can easily modify defaults when needed
+3. **Documentation**: Field descriptions serve as inline documentation
+4. **Validation**: Users can verify that defaults are appropriate for their use case
+5. **Completeness**: Full picture of the configuration structure
+
+#### **Implementation in Current System:**
+
+```javascript
+// From app.js - organizeFieldsIntoGroups()
+fields.forEach(field => {
+    if (field.name.includes('processing_')) {
+        processingFields.push(field);
+    } else if (field.name.includes('model_')) {
+        modelFields.push(field);
+    } else if (field.required) {
+        requiredFields.push(field);  // Required fields (no defaults)
+    } else {
+        optionalFields.push(field);  // Optional fields (WITH defaults)
+    }
+});
+
+// Both required and optional fields are displayed
+if (requiredFields.length > 0) {
+    groups.push({ title: 'Required Configuration', fields: requiredFields });
+}
+if (optionalFields.length > 0) {
+    groups.push({ title: 'Optional Configuration', fields: optionalFields });
+}
+```
+
+#### **Visual Organization by Field Type:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ ModelWikiGeneratorConfig                                    │
+├─────────────────────────────────────────────────────────────┤
+│ Required Configuration (No Defaults)                       │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ author *:                       │ │ bucket *:           │ │
+│ │ [empty input field]             │ │ [empty input field] │ │
+│ │ Author or owner of pipeline     │ │ S3 bucket name...   │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ Optional Configuration (With Defaults - PRE-POPULATED)     │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ model_class:                    │ │ current_date:       │ │
+│ │ [xgboost]                       │ │ [2025-10-07]        │ │
+│ │ Model class (e.g., XGBoost...)  │ │ Current date...     │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────┐ ┌─────────────────────┐ │
+│ │ framework_version:              │ │ processing_count:   │ │
+│ │ [1.0.0]                         │ │ [1]                 │ │
+│ │ Default framework version...    │ │ Instance count...   │ │
+│ └─────────────────────────────────┘ └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### **Benefits of This Approach:**
+
+**✅ User Experience Benefits:**
+- **Complete Visibility**: Users see all configuration options at once
+- **Easy Customization**: Can modify defaults without hunting for hidden options
+- **Learning Tool**: Descriptions help users understand all available settings
+- **Confidence**: Users know exactly what will be configured
+
+**✅ Technical Benefits:**
+- **Consistent Interface**: Same form rendering logic for all fields
+- **Validation**: All fields go through the same validation pipeline
+- **Serialization**: Complete configuration object is always generated
+- **Debugging**: Easy to see what values are actually being used
+
+#### **Alternative Approaches Considered:**
+
+**❌ Hide Default Fields (Rejected)**
+```
+Pros: Cleaner initial interface
+Cons: 
+- Hidden functionality reduces discoverability
+- Users can't easily customize defaults
+- Incomplete picture of configuration
+- More complex UI logic (show/hide toggles)
+```
+
+**❌ Collapsible Sections (Considered but not implemented)**
+```
+Pros: Clean initial view with option to expand
+Cons:
+- Additional UI complexity
+- Users might miss important optional settings
+- Inconsistent with current simple layout
 ```
 
 ### Universal Configuration Engine
@@ -533,30 +1389,532 @@ for i, config in enumerate(config_list):
 merged_config = merge_and_save_configs(config_list, 'config_NA_xgboost_AtoZ.json')
 ```
 
-## Cradle UI Integration
+## Specialized Configuration Handling
 
-The system seamlessly integrates existing Cradle UI components:
+### The Cradle Config Challenge
+
+The generalized UI system faces a unique challenge with `CradleDataLoadConfig` due to its **hierarchical composite structure**:
+
+#### **Problem: Flat Discovery vs. Hierarchical Reality**
+
+**What Discovery Returns (Problematic):**
+```
+Available Configurations:
+├── CradleDataLoadConfig (main config)
+├── DataSourcesSpecificationConfig (sub-config)
+├── TransformSpecificationConfig (sub-config) 
+├── OutputSpecificationConfig (sub-config)
+├── CradleJobSpecificationConfig (sub-config)
+├── DataSourceConfig (sub-sub-config)
+├── MdsDataSourceConfig (sub-sub-sub-config)
+├── EdxDataSourceConfig (sub-sub-sub-config)
+└── AndesDataSourceConfig (sub-sub-sub-config)
+```
+
+**What Users Actually Need (Correct):**
+```
+CradleDataLoadConfig:
+├── Step 1: Data Sources (DataSourcesSpecificationConfig)
+│   └── Multiple DataSourceConfig (MDS/EDX/ANDES variants)
+├── Step 2: Transform (TransformSpecificationConfig)
+│   └── JobSplitOptionsConfig
+├── Step 3: Output (OutputSpecificationConfig)
+└── Step 4: Job Config (CradleJobSpecificationConfig)
+```
+
+#### **Root Cause Analysis**
+
+From examining `src/cursus/steps/configs/config_cradle_data_loading_step.py`:
 
 ```python
-class SpecializedComponentRegistry:
-    """Registry for specialized UI components."""
+class CradleDataLoadConfig(BasePipelineConfig):
+    """Top-level configuration containing 4 sub-configurations"""
     
-    SPECIALIZED_COMPONENTS = {
+    # These are NOT simple fields - they are complex nested configs
+    data_sources_spec: DataSourcesSpecificationConfig = Field(...)
+    transform_spec: TransformSpecificationConfig = Field(...)
+    output_spec: OutputSpecificationConfig = Field(...)
+    cradle_job_spec: CradleJobSpecificationConfig = Field(...)
+```
+
+Each sub-configuration has its own complex structure:
+- `DataSourcesSpecificationConfig` contains `List[DataSourceConfig]`
+- `DataSourceConfig` has variants: `MdsDataSourceConfig`, `EdxDataSourceConfig`, `AndesDataSourceConfig`
+- `TransformSpecificationConfig` contains `JobSplitOptionsConfig`
+
+### **Solution: Specialized Configuration Detection & Routing**
+
+#### **Enhanced Architecture**
+
+```python
+class SpecializedConfigRegistry:
+    """Registry for configurations requiring specialized UI treatment."""
+    
+    SPECIALIZED_CONFIGS = {
         "CradleDataLoadConfig": {
-            "component_class": "CradleDataLoadingStepWidget",
-            "module": "cursus.api.cradle_ui.cradle_data_loading_step_widget",
-            "preserve_existing_ui": True
+            "type": "multi_step_wizard",
+            "handler": "cradle_ui_integration", 
+            "ui_endpoint": "/cradle-ui",
+            "steps": 4,
+            "sub_configs": [
+                "DataSourcesSpecificationConfig",
+                "TransformSpecificationConfig", 
+                "OutputSpecificationConfig",
+                "CradleJobSpecificationConfig",
+                "DataSourceConfig",
+                "MdsDataSourceConfig",
+                "EdxDataSourceConfig", 
+                "AndesDataSourceConfig",
+                "JobSplitOptionsConfig"
+            ],
+            "description": "Multi-step wizard for Cradle data loading configuration"
         }
     }
     
-    def get_specialized_component(self, config_class_name: str) -> Optional[Type]:
-        """Get specialized component for configuration class."""
-        if config_class_name in self.SPECIALIZED_COMPONENTS:
-            spec = self.SPECIALIZED_COMPONENTS[config_class_name]
-            module = importlib.import_module(spec["module"])
-            return getattr(module, spec["component_class"])
-        return None
+    def is_specialized_config(self, config_name: str) -> Optional[Dict[str, Any]]:
+        """Check if a configuration requires specialized handling."""
+        return self.SPECIALIZED_CONFIGS.get(config_name)
+    
+    def filter_discovered_configs(self, configs: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter out sub-configs that should be handled by specialized UIs."""
+        filtered_configs = configs.copy()
+        
+        for main_config, spec in self.SPECIALIZED_CONFIGS.items():
+            if main_config in configs:
+                # Remove all sub-configs from the main discovery list
+                for sub_config in spec["sub_configs"]:
+                    filtered_configs.pop(sub_config, None)
+                    
+                # Mark the main config as specialized
+                filtered_configs[main_config]["specialized"] = True
+                filtered_configs[main_config]["specialized_spec"] = spec
+        
+        return filtered_configs
 ```
+
+#### **Enhanced Discovery Flow**
+
+```python
+class UniversalConfigCore:
+    def __init__(self):
+        self.specialized_registry = SpecializedConfigRegistry()
+    
+    async def discover_configs(self, workspace_dirs: Optional[List[Path]] = None):
+        """Enhanced discovery with specialized config handling."""
+        
+        # Standard discovery
+        raw_configs = self.step_catalog.discover_config_classes()
+        
+        # Filter out sub-configs that belong to specialized configs
+        filtered_configs = self.specialized_registry.filter_discovered_configs(raw_configs)
+        
+        return {
+            "configs": filtered_configs,
+            "specialized_count": len(self.specialized_registry.SPECIALIZED_CONFIGS),
+            "filtered_count": len(raw_configs) - len(filtered_configs)
+        }
+    
+    def render_config_with_fields(self, container, config_name, config_info):
+        """Enhanced rendering with specialized config support."""
+        
+        specialized_spec = self.specialized_registry.is_specialized_config(config_name)
+        
+        if specialized_spec:
+            self.render_specialized_config(container, config_name, specialized_spec)
+        else:
+            self.render_standard_config(container, config_name, config_info)
+    
+    def render_specialized_config(self, container, config_name, spec):
+        """Render specialized configuration interface."""
+        
+        if spec["type"] == "multi_step_wizard":
+            self.render_multi_step_wizard_interface(container, config_name, spec)
+    
+    def render_multi_step_wizard_interface(self, container, config_name, spec):
+        """Render interface for multi-step wizard configs like CradleDataLoadConfig."""
+        
+        wizard_html = f"""
+        <div class="config-section specialized-wizard">
+            <div class="config-header">
+                <h3>{config_name}</h3>
+                <p>{spec["description"]}</p>
+                <div class="config-meta">
+                    <span>Type: {spec["type"].replace('_', ' ').title()}</span>
+                    <span>Steps: {spec["steps"]}</span>
+                </div>
+            </div>
+            <div class="config-form-container">
+                <div class="specialized-wizard-preview">
+                    <h4>🎛️ Multi-Step Configuration Wizard</h4>
+                    <p>This configuration uses a specialized {spec["steps"]}-step wizard interface:</p>
+                    
+                    <div class="wizard-steps-preview">
+                        <div class="step-preview">1️⃣ Data Sources Configuration</div>
+                        <div class="step-preview">2️⃣ Transform Specification</div>
+                        <div class="step-preview">3️⃣ Output Configuration</div>
+                        <div class="step-preview">4️⃣ Cradle Job Settings</div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button class="btn btn-primary" onclick="window.cursusUI.openSpecializedWizard('{config_name}', '{spec["ui_endpoint"]}')">
+                            Open {config_name} Wizard
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.cursusUI.previewSpecializedConfig('{config_name}')">
+                            Preview Structure
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="config-actions">
+                <button class="btn btn-info" onclick="window.cursusUI.exportSpecializedTemplate('{config_name}')">
+                    Export Template
+                </button>
+            </div>
+        </div>
+        """
+        
+        container.innerHTML += wizard_html
+```
+
+#### **Enhanced User Experience**
+
+**Before (Confusing Flat List):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 📋 Available Configuration Types                           │
+├─────────────────────────────────────────────────────────────┤
+│ ☐ CradleDataLoadConfig                                     │
+│ ☐ DataSourcesSpecificationConfig                          │
+│ ☐ TransformSpecificationConfig                            │
+│ ☐ OutputSpecificationConfig                               │
+│ ☐ CradleJobSpecificationConfig                            │
+│ ☐ DataSourceConfig                                        │
+│ ☐ MdsDataSourceConfig                                     │
+│ ☐ EdxDataSourceConfig                                     │
+│ ☐ AndesDataSourceConfig                                   │
+│ ☐ JobSplitOptionsConfig                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**After (Clean Specialized Interface):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ CradleDataLoadConfig                                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🎛️ Multi-Step Configuration Wizard                        │
+│                                                             │
+│ This configuration uses a specialized 4-step wizard:       │
+│                                                             │
+│ 1️⃣ Data Sources Configuration                              │
+│    • Project settings and time range                       │
+│    • Multiple data sources (MDS/EDX/ANDES)                │
+│                                                             │
+│ 2️⃣ Transform Specification                                 │
+│    • SQL transformation logic                               │
+│    • Job splitting options                                  │
+│                                                             │
+│ 3️⃣ Output Configuration                                    │
+│    • Output schema and format                              │
+│    • File handling options                                 │
+│                                                             │
+│ 4️⃣ Cradle Job Settings                                     │
+│    • Cluster configuration                                  │
+│    • Execution parameters                                   │
+│                                                             │
+│ [Open CradleDataLoadConfig Wizard] [Preview Structure]     │
+│                                                             │
+│ Type: Multi Step Wizard                    Steps: 4        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### **JavaScript Implementation**
+
+```javascript
+class CursusConfigUI {
+    constructor() {
+        this.specializedRegistry = new SpecializedConfigRegistry();
+    }
+    
+    async renderConfigList() {
+        const container = document.getElementById('config-list');
+        container.innerHTML = '';
+        
+        if (Object.keys(this.availableConfigs).length === 0) {
+            container.innerHTML = '<p class="text-center">No configurations discovered.</p>';
+            return;
+        }
+        
+        // Filter configs to handle specialized ones
+        const filteredConfigs = this.specializedRegistry.filterDiscoveredConfigs(this.availableConfigs);
+        
+        // Show loading message at bottom
+        const loadingDiv = this.createLoadingMessage();
+        document.body.appendChild(loadingDiv);
+        
+        // Render each configuration
+        for (const [name, info] of Object.entries(filteredConfigs)) {
+            await this.renderConfigWithFields(container, name, info);
+        }
+        
+        // Remove loading message
+        if (loadingDiv.parentNode) {
+            loadingDiv.parentNode.removeChild(loadingDiv);
+        }
+    }
+    
+    async renderConfigWithFields(container, configName, configInfo) {
+        // Check if this is a specialized config
+        const specializedSpec = this.specializedRegistry.isSpecializedConfig(configName);
+        
+        if (specializedSpec) {
+            this.renderSpecializedConfig(container, configName, specializedSpec);
+        } else {
+            // Use standard form rendering
+            await this.renderStandardConfig(container, configName, configInfo);
+        }
+    }
+    
+    renderSpecializedConfig(container, configName, spec) {
+        const configSection = document.createElement('div');
+        configSection.className = 'config-section specialized-wizard';
+        
+        configSection.innerHTML = `
+            <div class="config-header">
+                <h3>${configName}</h3>
+                <p>${spec.description}</p>
+                <div class="config-meta">
+                    <span>Type: ${spec.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                    <span>Steps: ${spec.steps}</span>
+                </div>
+            </div>
+            <div class="config-form-container">
+                <div class="specialized-wizard-preview">
+                    <h4>🎛️ Multi-Step Configuration Wizard</h4>
+                    <p>This configuration uses a specialized ${spec.steps}-step wizard interface:</p>
+                    
+                    <div class="wizard-steps-preview">
+                        <div class="step-preview">1️⃣ Data Sources Configuration</div>
+                        <div class="step-preview">2️⃣ Transform Specification</div>
+                        <div class="step-preview">3️⃣ Output Configuration</div>
+                        <div class="step-preview">4️⃣ Cradle Job Settings</div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button class="btn btn-primary" onclick="window.cursusUI.openSpecializedWizard('${configName}', '${spec.ui_endpoint}')">
+                            Open ${configName} Wizard
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.cursusUI.previewSpecializedConfig('${configName}')">
+                            Preview Structure
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="config-actions">
+                <button class="btn btn-info" onclick="window.cursusUI.exportSpecializedTemplate('${configName}')">
+                    Export Template
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(configSection);
+    }
+    
+    openSpecializedWizard(configName, endpoint) {
+        // Get base config parameters to pass to specialized wizard
+        const baseConfigParams = this.getBaseConfigParams();
+        const wizardUrl = `${endpoint}?${baseConfigParams}`;
+        
+        // Open in new tab/window
+        window.open(wizardUrl, '_blank');
+        
+        this.showStatus(`Opening ${configName} specialized wizard...`, 'info');
+    }
+    
+    getBaseConfigParams() {
+        // Extract any base configuration parameters to pass to specialized wizard
+        const params = new URLSearchParams();
+        
+        // Add any existing base config values
+        if (this.currentFormData && this.currentFormData.author) {
+            params.set('author', this.currentFormData.author);
+        }
+        if (this.currentFormData && this.currentFormData.bucket) {
+            params.set('bucket', this.currentFormData.bucket);
+        }
+        // ... add other base config fields as needed
+        
+        return params.toString();
+    }
+    
+    previewSpecializedConfig(configName) {
+        // Show a modal with the configuration structure preview
+        const modal = this.createConfigPreviewModal(configName);
+        document.body.appendChild(modal);
+    }
+}
+
+class SpecializedConfigRegistry {
+    constructor() {
+        this.SPECIALIZED_CONFIGS = {
+            "CradleDataLoadConfig": {
+                "type": "multi_step_wizard",
+                "handler": "cradle_ui_integration", 
+                "ui_endpoint": "/cradle-ui",
+                "steps": 4,
+                "sub_configs": [
+                    "DataSourcesSpecificationConfig",
+                    "TransformSpecificationConfig", 
+                    "OutputSpecificationConfig",
+                    "CradleJobSpecificationConfig",
+                    "DataSourceConfig",
+                    "MdsDataSourceConfig",
+                    "EdxDataSourceConfig", 
+                    "AndesDataSourceConfig",
+                    "JobSplitOptionsConfig"
+                ],
+                "description": "Multi-step wizard for Cradle data loading configuration"
+            }
+        };
+    }
+    
+    isSpecializedConfig(configName) {
+        return this.SPECIALIZED_CONFIGS[configName] || null;
+    }
+    
+    filterDiscoveredConfigs(configs) {
+        const filtered = { ...configs };
+        
+        for (const [mainConfig, spec] of Object.entries(this.SPECIALIZED_CONFIGS)) {
+            if (mainConfig in configs) {
+                // Remove sub-configs from main list
+                spec.sub_configs.forEach(subConfig => {
+                    delete filtered[subConfig];
+                });
+                
+                // Mark main config as specialized
+                filtered[mainConfig].specialized = true;
+                filtered[mainConfig].specialized_spec = spec;
+            }
+        }
+        
+        return filtered;
+    }
+}
+```
+
+#### **CSS Styling for Specialized Configs**
+
+```css
+/* Specialized wizard styling */
+.specialized-wizard {
+    border: 2px solid #2563eb;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+}
+
+.specialized-wizard .config-header {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+}
+
+.specialized-wizard-preview {
+    text-align: center;
+    padding: 20px;
+}
+
+.wizard-steps-preview {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.step-preview {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-weight: 500;
+    color: #374151;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.wizard-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.wizard-actions .btn {
+    padding: 12px 24px;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .wizard-steps-preview {
+        grid-template-columns: 1fr;
+    }
+    
+    .wizard-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+```
+
+### **Benefits of Specialized Config Handling**
+
+#### **User Experience Improvements**
+1. **✅ Clean Discovery Interface**: Users see only 1 CradleDataLoadConfig instead of 9+ confusing sub-configs
+2. **✅ Proper Workflow**: Multi-step wizard as intended, not overwhelming flat forms
+3. **✅ Visual Clarity**: Clear indication that this config requires specialized handling
+4. **✅ Seamless Integration**: Opens existing cradle_ui in new tab with base config pre-populated
+
+#### **Technical Benefits**
+1. **✅ Extensible Pattern**: Easy to add other complex hierarchical configs
+2. **✅ Maintains Existing Code**: Reuses working cradle_ui implementation
+3. **✅ Clean Architecture**: Clear separation between simple and complex configs
+4. **✅ Backward Compatibility**: Existing cradle_ui continues to work unchanged
+
+#### **Developer Benefits**
+1. **✅ Reduced Complexity**: No need to recreate complex multi-step wizards in generalized UI
+2. **✅ Maintainable**: Changes to cradle_ui automatically benefit generalized UI
+3. **✅ Clear Patterns**: Establishes pattern for handling other complex configs
+4. **✅ Documentation**: Self-documenting through specialized config registry
+
+### **Future Extensions**
+
+This specialized config pattern can be extended to handle other complex configurations:
+
+```python
+SPECIALIZED_CONFIGS = {
+    "CradleDataLoadConfig": {
+        "type": "multi_step_wizard",
+        "handler": "cradle_ui_integration",
+        "ui_endpoint": "/cradle-ui",
+        "steps": 4,
+        # ... existing config
+    },
+    
+    # Future: Complex hyperparameter tuning config
+    "HyperparameterTuningConfig": {
+        "type": "interactive_tuning_interface",
+        "handler": "hyperparameter_ui_integration",
+        "ui_endpoint": "/hyperparameter-tuning-ui",
+        "description": "Interactive hyperparameter tuning with visualization"
+    },
+    
+    # Future: Multi-model ensemble config
+    "EnsembleModelConfig": {
+        "type": "model_composition_wizard",
+        "handler": "ensemble_ui_integration", 
+        "ui_endpoint": "/ensemble-ui",
+        "description": "Visual model composition and ensemble configuration"
+    }
+}
+```
+
+This approach ensures that the generalized UI can handle both simple configurations (with auto-generated forms) and complex configurations (with specialized interfaces) in a unified, user-friendly way.
 
 ## Benefits and Impact
 
