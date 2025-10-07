@@ -156,11 +156,13 @@ merged_config = merge_and_save_configs(config_list, 'config_NA_xgboost_AtoZ.json
 **Target File**: `src/cursus/api/config_ui/core.py`
 
 **Implementation Tasks**:
-- ✅ Implement `UniversalConfigCore` class with StepCatalog integration
-- ✅ Create field type mapping system for automatic form generation
-- ✅ Implement config class discovery using existing StepCatalog infrastructure
-- ✅ Add form field extraction from Pydantic model definitions
-- ✅ Create inheritance chain analysis for proper field categorization
+- ✅ **COMPLETED** - Implement `UniversalConfigCore` class with StepCatalog integration
+- ✅ **COMPLETED** - Create field type mapping system for automatic form generation
+- ✅ **COMPLETED** - Implement config class discovery using existing StepCatalog infrastructure
+- ✅ **COMPLETED** - Add form field extraction from Pydantic model definitions
+- ✅ **COMPLETED** - Create inheritance chain analysis for proper field categorization
+- ✅ **COMPLETED** - Add BasePipelineConfig and ProcessingStepConfigBase to discovered classes
+- ✅ **COMPLETED** - Fix import paths for ProcessingStepConfigBase across all modules
 
 **Implementation Structure**:
 ```python
@@ -220,11 +222,11 @@ class UniversalConfigCore:
 **Day 3-4: DAG Integration Implementation**
 
 **Implementation Tasks**:
-- ✅ Implement `create_pipeline_config_widget()` method
-- ✅ Integrate with existing StepConfigResolverAdapter for DAG resolution
-- ✅ Create multi-step wizard structure from DAG nodes
-- ✅ Implement config dependency ordering for proper config_list generation
-- ✅ Add pre-population logic using .from_base_config() patterns
+- ✅ **COMPLETED** - Implement `create_pipeline_config_widget()` method
+- ✅ **COMPLETED** - Integrate with existing StepConfigResolverAdapter for DAG resolution
+- ✅ **COMPLETED** - Create multi-step wizard structure from DAG nodes
+- ✅ **COMPLETED** - Implement config dependency ordering for proper config_list generation
+- ✅ **COMPLETED** - Add pre-population logic using .from_base_config() patterns
 
 **Implementation Structure**:
 ```python
@@ -240,10 +242,13 @@ def create_pipeline_config_widget(self, dag: PipelineDAG, base_config: BasePipel
     # Create multi-step wizard
     steps = []
     
-    # Step 1: Base config (always)
-    steps.append({"title": "Base Configuration", "config_class": BasePipelineConfig})
+    # Step 1: Base Pipeline Configuration (always first)
+    steps.append({"title": "Base Pipeline Configuration", "config_class": BasePipelineConfig})
     
-    # Step 2+: Specialized configs
+    # Step 2: Base Processing Configuration (always second, required for processing steps)
+    steps.append({"title": "Processing Configuration", "config_class": ProcessingStepConfigBase})
+    
+    # Step 3+: Specialized configs from DAG
     for node_name, config_instance in config_map.items():
         if config_instance:
             config_class = type(config_instance)
@@ -263,11 +268,11 @@ def create_pipeline_config_widget(self, dag: PipelineDAG, base_config: BasePipel
 - `src/cursus/api/config_ui/utils.py`
 
 **Implementation Tasks**:
-- ✅ Implement factory functions for easy widget creation
-- ✅ Create utility functions for field validation and transformation
-- ✅ Add error handling and logging infrastructure
-- ✅ Implement configuration file management utilities
-- ✅ Create module exports and public API
+- ✅ **COMPLETED** - Implement factory functions for easy widget creation
+- ✅ **COMPLETED** - Create utility functions for field validation and transformation
+- ✅ **COMPLETED** - Add error handling and logging infrastructure
+- ✅ **COMPLETED** - Implement configuration file management utilities
+- ✅ **COMPLETED** - Create module exports and public API
 
 **Implementation Structure**:
 ```python
@@ -292,11 +297,11 @@ def create_pipeline_config_widget(dag: PipelineDAG, base_config: BasePipelineCon
 **Target File**: `src/cursus/api/config_ui/widget.py`
 
 **Implementation Tasks**:
-- ✅ Implement `MultiStepWizard` class with step navigation
-- ✅ Create step validation and state management
-- ✅ Implement configuration storage and retrieval
-- ✅ Add progress tracking and user feedback
-- ✅ Create dependency ordering for config_list generation
+- ✅ **COMPLETED** - Implement `MultiStepWizard` class with step navigation
+- ✅ **COMPLETED** - Create step validation and state management
+- ✅ **COMPLETED** - Implement configuration storage and retrieval
+- ✅ **COMPLETED** - Add progress tracking and user feedback
+- ✅ **COMPLETED** - Create dependency ordering for config_list generation
 
 **Implementation Structure**:
 ```python
@@ -357,11 +362,11 @@ class MultiStepWizard:
 **Day 3-4: Universal Widget Implementation**
 
 **Implementation Tasks**:
-- ✅ Implement `UniversalConfigWidget` class using ipywidgets
-- ✅ Create form rendering system for different field types
-- ✅ Implement validation and error handling
-- ✅ Add save/load functionality for individual configurations
-- ✅ Create specialized components for complex fields (lists, dicts, nested objects)
+- ✅ **COMPLETED** - Implement `UniversalConfigWidget` class using ipywidgets
+- ✅ **COMPLETED** - Create form rendering system for different field types
+- ✅ **COMPLETED** - Implement validation and error handling
+- ✅ **COMPLETED** - Add save/load functionality for individual configurations
+- ✅ **COMPLETED** - Create specialized components for complex fields (lists, dicts, nested objects)
 
 **Implementation Structure**:
 ```python
@@ -625,6 +630,670 @@ class OptimizedUniversalConfigCore(UniversalConfigCore):
 - ✅ Implement health checks and monitoring
 - ✅ Create deployment scripts and CI/CD integration
 - ✅ Add backup and recovery procedures
+
+### **Phase 4: Comprehensive Pytest Testing Suite** (Week 6)
+
+#### **Objective**: Create comprehensive pytest test coverage following best practices and systematic error prevention
+
+**Based on**: [Pytest Best Practices and Troubleshooting Guide](../1_design/pytest_best_practices_and_troubleshooting_guide.md) and [Pytest Test Failure Categories and Prevention](../1_design/pytest_test_failure_categories_and_prevention.md)
+
+#### **Day 1: Test Infrastructure and Core Module Testing**
+
+**Target Directory**: `test/api/config_ui/`
+
+**Implementation Tasks**:
+- ✅ Create test directory structure matching source structure
+- ✅ Implement comprehensive test fixtures following isolation best practices
+- ✅ Create test for `core.py` - UniversalConfigCore class
+- ✅ Apply Source Code First Rule - read all implementations before writing tests
+- ✅ Implement mock path precision for step catalog integration
+
+**Test Structure**:
+```python
+# test/api/config_ui/test_core.py
+import pytest
+from unittest.mock import Mock, MagicMock, patch
+from pathlib import Path
+import tempfile
+
+from cursus.api.config_ui.core import UniversalConfigCore
+from cursus.core.base.config_base import BasePipelineConfig
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+
+class TestUniversalConfigCore:
+    """Comprehensive tests for UniversalConfigCore following pytest best practices."""
+    
+    @pytest.fixture(autouse=True)
+    def reset_global_state(self):
+        """Reset any global state before each test."""
+        # Following Category 17: Global State Management pattern
+        yield
+        # Cleanup after test
+    
+    @pytest.fixture
+    def mock_step_catalog(self):
+        """Mock step catalog with realistic behavior."""
+        # Following Category 1: Mock Path Precision pattern
+        with patch('cursus.api.config_ui.core.StepCatalog') as mock_catalog_class:
+            mock_catalog = Mock()
+            mock_catalog_class.return_value = mock_catalog
+            
+            # Configure realistic discovery behavior
+            mock_catalog.discover_config_classes.return_value = {
+                "BasePipelineConfig": BasePipelineConfig,
+                "ProcessingStepConfigBase": ProcessingStepConfigBase,
+                "CradleDataLoadConfig": Mock(spec=['from_base_config', 'model_fields'])
+            }
+            
+            yield mock_catalog
+    
+    @pytest.fixture
+    def temp_workspace(self):
+        """Create realistic temporary workspace structure."""
+        # Following Category 9: Workspace and Path Resolution pattern
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            
+            # Create realistic directory structure
+            dev_workspace = workspace_root / "dev1"
+            dev_workspace.mkdir(parents=True)
+            
+            for component_type in ["scripts", "contracts", "specs", "configs"]:
+                component_dir = dev_workspace / component_type
+                component_dir.mkdir()
+                sample_file = component_dir / f"sample_{component_type[:-1]}.py"
+                sample_file.write_text(f"# Sample {component_type[:-1]} file")
+            
+            yield workspace_root
+    
+    @pytest.fixture
+    def example_base_config(self):
+        """Create example base configuration for testing."""
+        return BasePipelineConfig(
+            author="test-user",
+            bucket="test-bucket",
+            role="test-role",
+            region="us-west-2",
+            service_name="test-service",
+            pipeline_version="1.0.0",
+            project_root_folder="test-project"
+        )
+    
+    def test_init_with_workspace_dirs(self, temp_workspace, mock_step_catalog):
+        """Test initialization with workspace directories."""
+        # Following Source Code First Rule - read core.py __init__ method first
+        workspace_dirs = [temp_workspace]
+        
+        core = UniversalConfigCore(workspace_dirs=workspace_dirs)
+        
+        assert core.workspace_dirs == [temp_workspace]
+        assert core.field_types is not None
+        assert len(core.field_types) > 0
+    
+    def test_init_without_workspace_dirs(self, mock_step_catalog):
+        """Test initialization without workspace directories."""
+        core = UniversalConfigCore()
+        
+        assert core.workspace_dirs == []
+        assert core.field_types is not None
+    
+    def test_discover_config_classes_success(self, mock_step_catalog):
+        """Test successful config class discovery."""
+        # Following Category 2: Mock Configuration pattern
+        core = UniversalConfigCore()
+        
+        result = core.discover_config_classes()
+        
+        assert isinstance(result, dict)
+        assert "BasePipelineConfig" in result
+        assert "ProcessingStepConfigBase" in result
+        mock_step_catalog.discover_config_classes.assert_called_once()
+    
+    def test_discover_config_classes_with_caching(self, mock_step_catalog):
+        """Test config class discovery caching behavior."""
+        core = UniversalConfigCore()
+        
+        # First call
+        result1 = core.discover_config_classes()
+        # Second call should use cache
+        result2 = core.discover_config_classes()
+        
+        assert result1 == result2
+        # Should only call step catalog once due to caching
+        mock_step_catalog.discover_config_classes.assert_called_once()
+    
+    def test_create_config_widget_success(self, mock_step_catalog, example_base_config):
+        """Test successful config widget creation."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        core = UniversalConfigCore()
+        
+        # Mock the widget creation process
+        with patch('cursus.api.config_ui.core.UniversalConfigWidget') as mock_widget_class:
+            mock_widget = Mock()
+            mock_widget_class.return_value = mock_widget
+            
+            result = core.create_config_widget("BasePipelineConfig", example_base_config)
+            
+            assert result == mock_widget
+            mock_widget_class.assert_called_once()
+    
+    def test_create_config_widget_class_not_found(self, mock_step_catalog):
+        """Test config widget creation with non-existent class."""
+        # Following Category 6: Exception Handling pattern
+        core = UniversalConfigCore()
+        
+        with pytest.raises(ValueError, match="Configuration class 'NonExistentConfig' not found"):
+            core.create_config_widget("NonExistentConfig")
+    
+    def test_create_config_widget_with_from_base_config(self, mock_step_catalog, example_base_config):
+        """Test config widget creation using from_base_config method."""
+        # Following Category 2: Mock Behavior Matching pattern
+        core = UniversalConfigCore()
+        
+        # Mock config class with from_base_config method
+        mock_config_class = Mock()
+        mock_config_instance = Mock()
+        mock_config_class.from_base_config.return_value = mock_config_instance
+        mock_config_instance.model_dump.return_value = {"test": "data"}
+        
+        # Update mock discovery to return our mock class
+        mock_step_catalog.discover_config_classes.return_value = {
+            "TestConfig": mock_config_class
+        }
+        
+        with patch('cursus.api.config_ui.core.UniversalConfigWidget') as mock_widget_class:
+            core.create_config_widget("TestConfig", example_base_config)
+            
+            mock_config_class.from_base_config.assert_called_once_with(example_base_config)
+            mock_widget_class.assert_called_once()
+    
+    def test_get_form_fields_pydantic_v2(self, mock_step_catalog):
+        """Test form field extraction from Pydantic v2 models."""
+        # Following Category 7: Data Structure Fidelity pattern
+        core = UniversalConfigCore()
+        
+        # Create mock config class with model_fields
+        mock_field_info = Mock()
+        mock_field_info.annotation = str
+        mock_field_info.is_required.return_value = True
+        mock_field_info.description = "Test field description"
+        
+        mock_config_class = Mock()
+        mock_config_class.model_fields = {
+            "test_field": mock_field_info,
+            "_private_field": mock_field_info  # Should be excluded
+        }
+        
+        result = core._get_form_fields(mock_config_class)
+        
+        assert len(result) == 1  # Only non-private field
+        assert result[0]["name"] == "test_field"
+        assert result[0]["type"] == "text"
+        assert result[0]["required"] is True
+        assert result[0]["description"] == "Test field description"
+    
+    def test_get_inheritance_chain(self, mock_step_catalog):
+        """Test inheritance chain analysis."""
+        core = UniversalConfigCore()
+        
+        # Test with actual ProcessingStepConfigBase
+        result = core._get_inheritance_chain(ProcessingStepConfigBase)
+        
+        assert isinstance(result, list)
+        assert "ProcessingStepConfigBase" in result
+        # Should not include BasePipelineConfig itself
+        assert "BasePipelineConfig" not in result
+```
+
+#### **Day 2: Widget Module Testing**
+
+**Target File**: `test/api/config_ui/test_widget.py`
+
+**Implementation Tasks**:
+- ✅ Create comprehensive tests for MultiStepWizard class
+- ✅ Test UniversalConfigWidget functionality
+- ✅ Implement fixture isolation for widget state
+- ✅ Test step navigation and validation logic
+- ✅ Apply mock configuration best practices
+
+**Test Structure**:
+```python
+# test/api/config_ui/test_widget.py
+import pytest
+from unittest.mock import Mock, MagicMock, patch
+from pathlib import Path
+
+from cursus.api.config_ui.widget import MultiStepWizard, UniversalConfigWidget
+from cursus.core.base.config_base import BasePipelineConfig
+
+class TestMultiStepWizard:
+    """Comprehensive tests for MultiStepWizard following pytest best practices."""
+    
+    @pytest.fixture
+    def sample_steps(self):
+        """Create sample wizard steps for testing."""
+        return [
+            {
+                "title": "Base Configuration",
+                "config_class": BasePipelineConfig,
+                "config_class_name": "BasePipelineConfig",
+                "required": True
+            },
+            {
+                "title": "Processing Configuration", 
+                "config_class": Mock(),
+                "config_class_name": "ProcessingStepConfigBase",
+                "required": True
+            }
+        ]
+    
+    @pytest.fixture
+    def example_base_config(self):
+        """Create example base configuration."""
+        return BasePipelineConfig(
+            author="test-user",
+            bucket="test-bucket", 
+            role="test-role",
+            region="us-west-2",
+            service_name="test-service",
+            pipeline_version="1.0.0",
+            project_root_folder="test-project"
+        )
+    
+    def test_init_with_steps(self, sample_steps):
+        """Test wizard initialization with steps."""
+        wizard = MultiStepWizard(sample_steps)
+        
+        assert wizard.steps == sample_steps
+        assert wizard.current_step == 0
+        assert isinstance(wizard.completed_configs, dict)
+    
+    def test_get_completed_configs_all_completed(self, sample_steps, example_base_config):
+        """Test getting completed configs when all steps are done."""
+        wizard = MultiStepWizard(sample_steps)
+        
+        # Simulate completed configurations
+        wizard.completed_configs = {
+            "Base Configuration": example_base_config,
+            "Processing Configuration": Mock(spec=BasePipelineConfig)
+        }
+        
+        with patch.object(wizard, '_all_steps_completed', return_value=True):
+            with patch.object(wizard, 'get_dependency_ordered_steps', return_value=["Base Configuration", "Processing Configuration"]):
+                result = wizard.get_completed_configs()
+                
+                assert isinstance(result, list)
+                assert len(result) == 2
+    
+    def test_get_completed_configs_incomplete(self, sample_steps):
+        """Test getting completed configs when steps are incomplete."""
+        wizard = MultiStepWizard(sample_steps)
+        
+        with patch.object(wizard, '_all_steps_completed', return_value=False):
+            with pytest.raises(ValueError, match="Not all required configurations have been completed"):
+                wizard.get_completed_configs()
+    
+    def test_all_steps_completed_true(self, sample_steps, example_base_config):
+        """Test step completion checking when all required steps are done."""
+        wizard = MultiStepWizard(sample_steps)
+        wizard.completed_configs = {
+            "Base Configuration": example_base_config,
+            "Processing Configuration": Mock()
+        }
+        
+        result = wizard._all_steps_completed()
+        assert result is True
+    
+    def test_all_steps_completed_false(self, sample_steps):
+        """Test step completion checking when steps are missing."""
+        wizard = MultiStepWizard(sample_steps)
+        wizard.completed_configs = {
+            "Base Configuration": Mock()
+            # Missing "Processing Configuration"
+        }
+        
+        result = wizard._all_steps_completed()
+        assert result is False
+
+class TestUniversalConfigWidget:
+    """Comprehensive tests for UniversalConfigWidget."""
+    
+    @pytest.fixture
+    def sample_form_data(self):
+        """Create sample form data for widget testing."""
+        return {
+            "config_class": BasePipelineConfig,
+            "config_class_name": "BasePipelineConfig",
+            "fields": [
+                {
+                    "name": "author",
+                    "type": "text",
+                    "required": True,
+                    "description": "Author name"
+                },
+                {
+                    "name": "bucket",
+                    "type": "text", 
+                    "required": True,
+                    "description": "S3 bucket name"
+                }
+            ],
+            "values": {"author": "test-user", "bucket": "test-bucket"},
+            "inheritance_chain": ["BasePipelineConfig"]
+        }
+    
+    def test_init_with_form_data(self, sample_form_data):
+        """Test widget initialization with form data."""
+        widget = UniversalConfigWidget(sample_form_data)
+        
+        assert widget.form_data == sample_form_data
+        assert widget.config_class_name == "BasePipelineConfig"
+        assert len(widget.fields) == 2
+        assert widget.values == {"author": "test-user", "bucket": "test-bucket"}
+    
+    def test_widget_field_access(self, sample_form_data):
+        """Test widget field access and properties."""
+        widget = UniversalConfigWidget(sample_form_data)
+        
+        # Test field access
+        author_field = next(f for f in widget.fields if f["name"] == "author")
+        assert author_field["type"] == "text"
+        assert author_field["required"] is True
+        
+        bucket_field = next(f for f in widget.fields if f["name"] == "bucket")
+        assert bucket_field["type"] == "text"
+        assert bucket_field["required"] is True
+```
+
+#### **Day 3: Utils and API Module Testing**
+
+**Target Files**: 
+- `test/api/config_ui/test_utils.py`
+- `test/api/config_ui/test_api.py`
+
+**Implementation Tasks**:
+- ✅ Test utility functions with edge cases
+- ✅ Test FastAPI endpoints with proper request/response validation
+- ✅ Implement async testing patterns for API endpoints
+- ✅ Test error handling and exception scenarios
+- ✅ Apply Category 10: Async and Concurrency patterns
+
+**Test Structure**:
+```python
+# test/api/config_ui/test_utils.py
+import pytest
+from unittest.mock import Mock, patch
+import tempfile
+from pathlib import Path
+
+from cursus.api.config_ui.utils import (
+    discover_available_configs,
+    create_config_widget,
+    create_example_base_config,
+    validate_config_instance
+)
+
+class TestUtilityFunctions:
+    """Test utility functions following pytest best practices."""
+    
+    def test_discover_available_configs_success(self):
+        """Test successful config discovery."""
+        with patch('cursus.api.config_ui.utils.UniversalConfigCore') as mock_core_class:
+            mock_core = Mock()
+            mock_core_class.return_value = mock_core
+            mock_core.discover_config_classes.return_value = {
+                "BasePipelineConfig": Mock(),
+                "ProcessingStepConfigBase": Mock()
+            }
+            
+            result = discover_available_configs()
+            
+            assert isinstance(result, dict)
+            assert len(result) >= 2
+            mock_core.discover_config_classes.assert_called_once()
+    
+    def test_create_config_widget_success(self):
+        """Test successful widget creation via utility function."""
+        with patch('cursus.api.config_ui.utils.UniversalConfigCore') as mock_core_class:
+            mock_core = Mock()
+            mock_widget = Mock()
+            mock_core_class.return_value = mock_core
+            mock_core.create_config_widget.return_value = mock_widget
+            
+            result = create_config_widget("BasePipelineConfig")
+            
+            assert result == mock_widget
+            mock_core.create_config_widget.assert_called_once_with("BasePipelineConfig", None)
+    
+    def test_create_example_base_config(self):
+        """Test example base config creation."""
+        result = create_example_base_config()
+        
+        assert hasattr(result, 'author')
+        assert hasattr(result, 'bucket')
+        assert hasattr(result, 'role')
+        assert result.author == "example-user"
+    
+    def test_validate_config_instance_valid(self):
+        """Test validation of valid config instance."""
+        mock_config = Mock()
+        mock_config.model_validate.return_value = mock_config
+        
+        result = validate_config_instance(mock_config)
+        
+        assert result["valid"] is True
+        assert result["validated_instance"] == mock_config
+
+# test/api/config_ui/test_api.py
+import pytest
+from fastapi.testclient import TestClient
+from unittest.mock import Mock, patch
+
+from cursus.api.config_ui.api import app
+
+class TestConfigUIAPI:
+    """Test FastAPI endpoints following async testing best practices."""
+    
+    @pytest.fixture
+    def client(self):
+        """Create test client for API testing."""
+        return TestClient(app)
+    
+    def test_root_endpoint(self, client):
+        """Test root endpoint returns API information."""
+        response = client.get("/")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "version" in data
+        assert data["message"] == "Cursus Config UI API"
+    
+    def test_health_check(self, client):
+        """Test health check endpoint."""
+        response = client.get("/health")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert "phase" in data
+    
+    def test_discover_configs_endpoint(self, client):
+        """Test config discovery endpoint."""
+        with patch('cursus.api.config_ui.api.discover_available_configs') as mock_discover:
+            mock_discover.return_value = {
+                "BasePipelineConfig": Mock(),
+                "ProcessingStepConfigBase": Mock()
+            }
+            
+            response = client.post("/api/discover-configs", json={})
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert "config_classes" in data
+            assert data["count"] >= 2
+    
+    def test_config_info_endpoint_success(self, client):
+        """Test config info endpoint with valid class."""
+        with patch('cursus.api.config_ui.api.get_config_info') as mock_get_info:
+            mock_get_info.return_value = {
+                "found": True,
+                "config_class_name": "BasePipelineConfig",
+                "fields": [],
+                "inheritance_chain": [],
+                "field_count": 0,
+                "required_fields": [],
+                "optional_fields": [],
+                "has_from_base_config": True,
+                "docstring": "Base pipeline configuration"
+            }
+            
+            response = client.post("/api/config-info", json={
+                "config_class_name": "BasePipelineConfig"
+            })
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert "config_info" in data
+    
+    def test_config_info_endpoint_not_found(self, client):
+        """Test config info endpoint with invalid class."""
+        with patch('cursus.api.config_ui.api.get_config_info') as mock_get_info:
+            mock_get_info.return_value = {
+                "found": False,
+                "available_classes": ["BasePipelineConfig", "ProcessingStepConfigBase"]
+            }
+            
+            response = client.post("/api/config-info", json={
+                "config_class_name": "NonExistentConfig"
+            })
+            
+            assert response.status_code == 404
+            assert "not found" in response.json()["detail"]
+```
+
+#### **Day 4: Integration and Error Scenario Testing**
+
+**Implementation Tasks**:
+- ✅ Create integration tests for complete workflows
+- ✅ Test error scenarios and edge cases systematically
+- ✅ Implement Category 16: Exception Handling vs Test Expectations patterns
+- ✅ Test global state isolation and cleanup
+- ✅ Validate mock path precision across all modules
+
+**Test Structure**:
+```python
+# test/api/config_ui/test_integration.py
+import pytest
+from unittest.mock import Mock, patch, MagicMock
+import tempfile
+from pathlib import Path
+
+from cursus.api.config_ui import create_config_widget, create_pipeline_config_widget
+from cursus.core.base.config_base import BasePipelineConfig
+
+class TestConfigUIIntegration:
+    """Integration tests for complete config UI workflows."""
+    
+    @pytest.fixture(autouse=True)
+    def reset_global_state(self):
+        """Reset global state before each test."""
+        # Following Category 17: Global State Management
+        yield
+        # Cleanup after test
+    
+    @pytest.fixture
+    def complete_mock_environment(self):
+        """Create complete mock environment for integration testing."""
+        with patch('cursus.api.config_ui.core.StepCatalog') as mock_catalog_class:
+            mock_catalog = Mock()
+            mock_catalog_class.return_value = mock_catalog
+            
+            # Mock comprehensive config discovery
+            mock_catalog.discover_config_classes.return_value = {
+                "BasePipelineConfig": BasePipelineConfig,
+                "ProcessingStepConfigBase": Mock(spec=['from_base_config', 'model_fields']),
+                "CradleDataLoadConfig": Mock(spec=['from_base_config', 'model_fields']),
+                "XGBoostTrainingConfig": Mock(spec=['from_base_config', 'model_fields'])
+            }
+            
+            yield mock_catalog
+    
+    def test_end_to_end_widget_creation(self, complete_mock_environment):
+        """Test complete widget creation workflow."""
+        # Following Category 4: Test Expectations vs Implementation
+        base_config = BasePipelineConfig(
+            author="test-user",
+            bucket="test-bucket",
+            role="test-role", 
+            region="us-west-2",
+            service_name="test-service",
+            pipeline_version="1.0.0",
+            project_root_folder="test-project"
+        )
+        
+        with patch('cursus.api.config_ui.core.UniversalConfigWidget') as mock_widget_class:
+            mock_widget = Mock()
+            mock_widget_class.return_value = mock_widget
+            
+            # Test widget creation for multiple config types
+            widget1 = create_config_widget("BasePipelineConfig", base_config)
+            widget2 = create_config_widget("ProcessingStepConfigBase", base_config)
+            
+            assert widget1 == mock_widget
+            assert widget2 == mock_widget
+            assert mock_widget_class.call_count == 2
+    
+    def test_error_handling_invalid_config_class(self, complete_mock_environment):
+        """Test error handling for invalid configuration classes."""
+        # Following Category 6: Exception Handling pattern
+        with pytest.raises(ValueError, match="Configuration class 'InvalidConfig' not found"):
+            create_config_widget("InvalidConfig")
+    
+    def test_step_catalog_initialization_failure(self):
+        """Test handling of step catalog initialization failure."""
+        # Following Category 16: Exception Handling vs Test Expectations
+        with patch('cursus.api.config_ui.core.StepCatalog') as mock_catalog_class:
+            mock_catalog_class.side_effect = ImportError("Step catalog not available")
+            
+            # Should handle gracefully, not crash
+            from cursus.api.config_ui.core import UniversalConfigCore
+            core = UniversalConfigCore()
+            
+            # Should fall back to base classes only
+            result = core.discover_config_classes()
+            assert "BasePipelineConfig" in result
+            assert "ProcessingStepConfigBase" in result
+    
+    def test_mock_path_precision_validation(self):
+        """Test that all mock paths are correctly configured."""
+        # Following Category 1: Mock Path and Import Issues prevention
+        
+        # Test core module mocking
+        with patch('cursus.api.config_ui.core.StepCatalog') as mock_catalog:
+            from cursus.api.config_ui.core import UniversalConfigCore
+            core = UniversalConfigCore()
+            # Mock should be applied
+            assert mock_catalog.called
+        
+        # Test utils module mocking  
+        with patch('cursus.api.config_ui.utils.UniversalConfigCore') as mock_core:
+            from cursus.api.config_ui.utils import discover_available_configs
+            discover_available_configs()
+            # Mock should be applied
+            assert mock_core.called
+```
+
+#### **Day 5: Performance and Edge Case Testing**
+
+**Implementation Tasks**:
+- ✅ Create performance tests for large configuration sets
+- ✅ Test memory usage and caching behavior
+- ✅ Implement edge case testing for all modules
+- ✅ Test concurrent access and thread safety
+- ✅ Validate error recovery and resilience
 
 ## Risk Management
 
