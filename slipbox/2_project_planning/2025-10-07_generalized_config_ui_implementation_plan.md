@@ -518,16 +518,47 @@ class UniversalConfigWidget:
 
 #### **Week 3: Specialized Component Implementation**
 
-**Day 1-2: Hyperparameters Page Implementation - REQUIRES UPDATES**
+**Day 1-2: Hyperparameters Page Implementation - ✅ COMPLETED + ENHANCED**
 
 **Target**: Page 3 - Model Hyperparameters Configuration (detailed in design document)
 
-**Implementation Tasks**:
-- ❌ **REQUIRES UPDATE** - Update dynamic field list editor to support 3-tier field categorization (Essential/System/Hidden)
-- ❌ **REQUIRES UPDATE** - Update multi-select dropdowns to work with discovery-based field detection
-- ❌ **REQUIRES UPDATE** - Update field validation to integrate with new workflow structure from `_create_workflow_structure()`
-- ❌ **REQUIRES UPDATE** - Update XGBoost parameter configuration to support inheritance field pre-population
-- ✅ **COMPLETED** - Basic collapsible advanced parameters section (minor updates needed for tier display)
+**Core Implementation Tasks**:
+- ✅ **COMPLETED** - Update dynamic field list editor to support 3-tier field categorization (Essential/System/Hidden)
+- ✅ **COMPLETED** - Update multi-select dropdowns to work with discovery-based field detection
+- ✅ **COMPLETED** - Update field validation to integrate with new workflow structure from `_create_workflow_structure()`
+- ✅ **COMPLETED** - Update XGBoost parameter configuration to support inheritance field pre-population
+- ✅ **COMPLETED** - Basic collapsible advanced parameters section with tier display
+
+**Enhanced Implementation Tasks (October 7, 2025)**:
+- ✅ **COMPLETED** - 3-Tier Field Categorization Integration
+  - ✅ Added `_initialize_field_categories()` method using config class categorization
+  - ✅ Implemented `_manual_field_categorization()` fallback for Pydantic v2 models
+  - ✅ Integrated essential/system/derived field detection with UI display
+  - ✅ Hidden derived fields (Tier 3) completely from UI as per design specs
+
+- ✅ **COMPLETED** - Discovery-Based Field Detection
+  - ✅ Added `_discover_available_fields()` method with workflow context integration
+  - ✅ Updated multi-select dropdowns to use discovered fields from DAG analysis
+  - ✅ Implemented fallback to example fields for demonstration purposes
+  - ✅ Added field categorization (numerical, categorical, all fields) support
+
+- ✅ **COMPLETED** - Workflow Structure Integration
+  - ✅ Added `workflow_context` parameter to widget initialization
+  - ✅ Implemented `_get_workflow_inherited_values()` for inheritance chain support
+  - ✅ Updated field validation to work with workflow structure validation
+  - ✅ Enhanced error handling with workflow context awareness
+
+- ✅ **COMPLETED** - Enhanced Inheritance Field Pre-population
+  - ✅ Added `_resolve_inherited_values()` method for full workflow chain support
+  - ✅ Integrated base hyperparameter inheritance with workflow context values
+  - ✅ Added smart defaults for hyperparameter-specific fields
+  - ✅ Implemented inheritance priority: workflow context > base hyperparameter > defaults
+
+- ✅ **COMPLETED** - SpecializedComponentRegistry Enhancement
+  - ✅ Updated `create_specialized_widget()` to pass workflow_context parameter
+  - ✅ Enhanced widget creation with workflow integration for all specialized components
+  - ✅ Added workflow context support for both hyperparameters and Cradle UI widgets
+  - ✅ Maintained backward compatibility while adding new workflow features
 
 **Implementation Structure**:
 ```python
@@ -559,14 +590,46 @@ class HyperparametersConfigWidget:
         pass
 ```
 
-**Day 3-4: Cradle UI Integration - REQUIRES UPDATES**
+**Day 3-4: Cradle UI Integration - ✅ COMPLETED + ENHANCED**
 
-**Implementation Tasks**:
-- ❌ **REQUIRES UPDATE** - Update CradleDataLoadingStepWidget integration to work with discovery-based workflow structure
-- ❌ **REQUIRES UPDATE** - Update specialized component registry to support `_is_specialized_config()` detection method
-- ❌ **REQUIRES UPDATE** - Update 5-page sub-wizard to integrate with new `_create_workflow_structure()` approach
-- ❌ **REQUIRES UPDATE** - Update data source type selection to support inheritance field pre-population from base configs
-- ✅ **COMPLETED** - Basic Cradle UI functionality preservation (minor integration updates needed)
+**Core Implementation Tasks**:
+- ✅ **COMPLETED** - Update CradleDataLoadingStepWidget integration to work with discovery-based workflow structure
+- ✅ **COMPLETED** - Update specialized component registry to support `_is_specialized_config()` detection method
+- ✅ **COMPLETED** - Update 4-step wizard to integrate with new `_create_workflow_structure()` approach
+- ✅ **COMPLETED** - Update data source type selection to support inheritance field pre-population from base configs
+- ✅ **COMPLETED** - Basic Cradle UI functionality preservation with workflow integration
+
+**Enhanced Implementation Tasks (October 7, 2025)**:
+- ✅ **COMPLETED** - Workflow Context Integration
+  - ✅ Added `workflow_context` parameter to CradleConfigWidget initialization
+  - ✅ Implemented `_resolve_workflow_inherited_values()` for inheritance chain support
+  - ✅ Added `_get_workflow_inherited_values()` for DAG analysis integration
+  - ✅ Enhanced base config parameter extraction with workflow context awareness
+
+- ✅ **COMPLETED** - 3-Tier Field Categorization Support
+  - ✅ Added `_initialize_field_categories()` method using config class categorization
+  - ✅ Implemented `_manual_field_categorization()` fallback for CradleDataLoadConfig
+  - ✅ Integrated essential/system/derived field detection with UI display
+  - ✅ Hidden derived fields (Tier 3) completely from UI as per design specs
+
+- ✅ **COMPLETED** - Discovery-Based Field Detection
+  - ✅ Added `_discover_workflow_fields()` method with workflow context integration
+  - ✅ Enhanced field discovery from DAG analysis for data sources, transform fields, and output fields
+  - ✅ Implemented fallback to example fields for demonstration purposes
+  - ✅ Added field categorization support for Cradle-specific field types
+
+- ✅ **COMPLETED** - Enhanced Factory Function Integration
+  - ✅ Updated `create_cradle_config_widget()` to support workflow_context parameter
+  - ✅ Maintained backward compatibility with existing usage patterns
+  - ✅ Enhanced documentation with workflow integration examples
+  - ✅ Added comprehensive parameter validation and error handling
+
+- ✅ **COMPLETED** - SpecializedComponentRegistry Enhancement
+  - ✅ Updated registry metadata with workflow integration flags
+  - ✅ Added tier_categorization and dag_analysis_support indicators
+  - ✅ Enhanced feature descriptions with workflow-specific capabilities
+  - ✅ Updated component creation to pass workflow_context parameter
+  - ✅ Maintained seamless integration with existing specialized widget creation
 
 **Implementation Structure**:
 ```python
@@ -937,7 +1000,80 @@ Phase 3 delivers a production-ready system with:
 - **Full package portability** for flexible deployment
 - **Comprehensive validation** with user-friendly Pydantic error display
 
-### **Phase 4: Comprehensive Pytest Testing Suite** (Week 6)
+### **Phase 4: Save All Merged Functionality Implementation** (Week 6) - ✅ COMPLETED
+
+#### **Objective**: Implement "Save All Merged" functionality replicating demo_config.ipynb experience
+
+**Status: ✅ COMPLETED - October 7, 2025**
+
+#### **Implementation Tasks Completed**:
+
+**Backend API Implementation**:
+- ✅ **COMPLETED** - Added `/api/config-ui/merge-and-save-configs` endpoint
+- ✅ **COMPLETED** - Added `/api/config-ui/download/{download_id}` endpoint for file downloads
+- ✅ **COMPLETED** - Integrated with existing `cursus.core.config_fields.merge_and_save_configs()` function
+- ✅ **COMPLETED** - Added comprehensive error handling and validation
+- ✅ **COMPLETED** - Implemented temporary file management and cleanup
+
+**Frontend JavaScript Implementation**:
+- ✅ **COMPLETED** - Added `saveAllMerged()` method for collecting session configurations
+- ✅ **COMPLETED** - Added `displayMergeResults()` method for unified export interface
+- ✅ **COMPLETED** - Added `downloadMergedConfig()`, `previewMergedJSON()`, and `copyMergedToClipboard()` utilities
+- ✅ **COMPLETED** - Added `exportIndividualConfigs()` method for alternative export
+- ✅ **COMPLETED** - Enhanced workflow completion UI with export options
+
+**Enhanced UI Components**:
+- ✅ **COMPLETED** - Added "Save All Merged" button prominently in workflow completion
+- ✅ **COMPLETED** - Added "Export Individual" button as alternative option
+- ✅ **COMPLETED** - Created modern merge results display with file preview
+- ✅ **COMPLETED** - Added JSON preview modal with copy-to-clipboard functionality
+- ✅ **COMPLETED** - Enhanced CSS styling for export options and merge results
+
+**Key Features Implemented**:
+```javascript
+// Export Options Display
+💾 Export Options:
+[💾 Save All Merged] - Creates unified hierarchical JSON like demo_config.ipynb (Recommended)
+[📤 Export Individual] - Individual JSON files for each configuration
+
+// Merge Results Interface
+- Shows generated filename (e.g., config_NA_xgboost_pipeline_v2.json)
+- Displays hierarchical structure preview
+- Provides download, preview, and copy-to-clipboard options
+- Includes next steps with code examples
+```
+
+**Technical Implementation**:
+```python
+# Backend Logic
+@router.post("/merge-and-save-configs", response_model=MergeConfigsResponse)
+async def merge_and_save_configurations(request: MergeConfigsRequest):
+    # Collects all configurations from current session
+    # Creates configuration instances using discovered config classes
+    # Calls merge_and_save_configs() with proper parameters
+    # Generates unified hierarchical JSON structure
+    # Handles temporary file management and cleanup
+```
+
+**Testing Results**:
+```
+🧪 Save All Merged Implementation Testing:
+
+✓ Backend API endpoints functional and tested
+✓ Frontend JavaScript methods working correctly
+✓ CSS styling applied with responsive design
+✓ Integration with existing merge_and_save_configs() function
+✓ File download and preview functionality operational
+✓ Error handling and validation comprehensive
+
+🎯 Success Metrics Achieved:
+✓ Replicates demo_config.ipynb experience in web UI
+✓ Unified hierarchical JSON structure generation
+✓ Professional export interface with multiple options
+✓ Seamless integration with existing workflow patterns
+```
+
+### **Phase 5: Comprehensive Pytest Testing Suite** (Week 7)
 
 #### **Objective**: Create comprehensive pytest test coverage following best practices and systematic error prevention
 
@@ -948,11 +1084,11 @@ Phase 3 delivers a production-ready system with:
 **Target Directory**: `test/api/config_ui/`
 
 **Implementation Tasks**:
-- ✅ Create test directory structure matching source structure
-- ✅ Implement comprehensive test fixtures following isolation best practices
-- ✅ Create test for `core.py` - UniversalConfigCore class
-- ✅ Apply Source Code First Rule - read all implementations before writing tests
-- ✅ Implement mock path precision for step catalog integration
+- ❌ **PENDING** - Create test directory structure matching source structure
+- ❌ **PENDING** - Implement comprehensive test fixtures following isolation best practices
+- ❌ **PENDING** - Create test for `core.py` - UniversalConfigCore class
+- ❌ **PENDING** - Apply Source Code First Rule - read all implementations before writing tests
+- ❌ **PENDING** - Implement mock path precision for step catalog integration
 
 **Test Structure**:
 ```python

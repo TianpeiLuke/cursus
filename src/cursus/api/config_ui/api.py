@@ -81,6 +81,21 @@ class PipelineWizardResponse(BaseModel):
     wizard_id: str = Field(description="Wizard identifier")
 
 
+class MergeConfigsRequest(BaseModel):
+    """Request model for merging and saving all configurations."""
+    session_configs: Dict[str, Dict[str, Any]] = Field(description="All configurations from current session")
+    filename: Optional[str] = Field(None, description="Optional filename for the merged config")
+    workspace_dirs: Optional[List[str]] = Field(None, description="Optional workspace directories")
+
+
+class MergeConfigsResponse(BaseModel):
+    """Response model for merged configurations."""
+    success: bool = Field(description="Whether merge was successful")
+    merged_config: Dict[str, Any] = Field(description="The merged configuration structure")
+    filename: str = Field(description="Generated filename")
+    download_url: str = Field(description="URL to download the merged config file")
+
+
 class DAGAnalysisRequest(BaseModel):
     """Request model for DAG analysis."""
     pipeline_dag: Dict[str, Any] = Field(description="Pipeline DAG definition")
@@ -444,6 +459,183 @@ async def create_pipeline_wizard(request: PipelineWizardRequest):
     except Exception as e:
         logger.error(f"Pipeline wizard creation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Wizard creation failed: {str(e)}")
+
+
+@router.post("/merge-and-save-configs", response_model=MergeConfigsResponse)
+async def merge_and_save_configurations(request: MergeConfigsRequest):
+    """
+    Merge and save all configurations using the same logic as demo_config.ipynb.
+    
+    This endpoint replicates the merge_and_save_configs() experience from the notebook,
+    creating a unified hierarchical JSON structure with shared vs specific fields.
+    
+    Args:
+        request: Merge request with all session configurations
+        
+    Returns:
+        MergeConfigsResponse with merged config and download info
+    """
+    try:
+        logger.info(f"Merging {len(request.session_configs)} configurations")
+        
+        # Import the merge_and_save_configs function
+        from cursus.core.config_fields import merge_and_save_configs
+        
+        # Discover configuration classes
+        configs = discover_available_configs(workspace_dirs=request.workspace_dirs)
+        
+        # Create config instances from session data
+        config_list = []
+        for config_class_name, form_data in request.session_configs.items():
+            config_class = configs.get(config_class_name)
+            if not config_class:
+                logger.warning(f"Configuration class '{config_class_name}' not found, skipping")
+                continue
+            
+            try:
+                # Create configuration instance
+                config_instance = config_class(**form_data)
+                config_list.append(config_instance)
+                logger.info(f"Created {config_class_name} instance")
+            except Exception as e:
+                logger.error(f"Failed to create {config_class_name} instance: {e}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to create {config_class_name}: {str(e)}"
+                )
+        
+        if not config_list:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid configurations to merge"
+            )
+        
+        # Generate filename if not provided
+        if not request.filename:
+            # Extract region and model info from configs for naming
+            region = "NA"  # Default
+            model_class = "xgboost"  # Default
+            service_name = "pipeline"  # Default
+            
+            # Try to extract from base config if available
+            for config in config_list:
+                if hasattr(config, 'region') and config.region:
+                    region = config.region
+                if hasattr(config, 'service_name') and config.service_name:
+                    service_name = config.service_name
+                # Could add model_class detection logic here
+            
+            filename = f"config_{region}_{model_class}_{service_name}_v2.json"
+        else:
+            filename = request.filename
+            if not filename.endswith('.json'):
+                filename += '.json'
+        
+        # Create temporary file path for merge_and_save_configs
+        import tempfile
+        import os
+        
+        temp_dir = tempfile.mkdtemp()
+        temp_file_path = os.path.join(temp_dir, filename)
+        
+        try:
+            # Call the actual merge_and_save_configs function
+            merged_config = merge_and_save_configs(
+                config_list=config_list,
+                output_file=temp_file_path,
+                workspace_dirs=request.workspace_dirs
+            )
+            
+            # Read the generated file
+            with open(temp_file_path, 'r') as f:
+                merged_json_content = f.read()
+            
+            # Store the merged config for download
+            # In a real implementation, you'd store this in a proper file storage system
+            download_id = f"merged_{hash(merged_json_content) % 100000}"
+            
+            # For now, we'll store it in a simple in-memory cache
+            # In production, use proper file storage (S3, local filesystem, etc.)
+            if not hasattr(merge_and_save_configurations, '_download_cache'):
+                merge_and_save_configurations._download_cache = {}
+            
+            merge_and_save_configurations._download_cache[download_id] = {
+                'content': merged_json_content,
+                'filename': filename,
+                'content_type': 'application/json'
+            }
+            
+            logger.info(f"Successfully merged {len(config_list)} configurations into {filename}")
+            
+            return MergeConfigsResponse(
+                success=True,
+                merged_config=merged_config,
+                filename=filename,
+                download_url=f"/api/config-ui/download/{download_id}"
+            )
+            
+        finally:
+            # Clean up temporary file
+            try:
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+                os.rmdir(temp_dir)
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up temp file: {cleanup_error}")
+        
+    except Exception as e:
+        logger.error(f"Configuration merge failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Merge failed: {str(e)}")
+
+
+@router.get("/download/{download_id}")
+async def download_merged_config(download_id: str):
+    """
+    Download a merged configuration file.
+    
+    Args:
+        download_id: The download identifier from merge response
+        
+    Returns:
+        FileResponse with the merged configuration JSON
+    """
+    try:
+        # Get cached download data
+        if not hasattr(merge_and_save_configurations, '_download_cache'):
+            raise HTTPException(status_code=404, detail="Download not found")
+        
+        download_data = merge_and_save_configurations._download_cache.get(download_id)
+        if not download_data:
+            raise HTTPException(status_code=404, detail="Download not found or expired")
+        
+        # Create temporary file for download
+        import tempfile
+        import os
+        
+        temp_file = tempfile.NamedTemporaryFile(
+            mode='w',
+            suffix='.json',
+            delete=False
+        )
+        
+        try:
+            temp_file.write(download_data['content'])
+            temp_file.close()
+            
+            return FileResponse(
+                path=temp_file.name,
+                filename=download_data['filename'],
+                media_type=download_data['content_type']
+            )
+        except Exception as e:
+            # Clean up on error
+            if os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+            raise e
+        
+    except Exception as e:
+        logger.error(f"Download failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 
 @router.get("/get-latest-config")

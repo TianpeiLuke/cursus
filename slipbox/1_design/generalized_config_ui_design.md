@@ -269,7 +269,7 @@ The core user experience centers around providing a `PipelineDAG` as input, whic
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Step 6: Configuration Completion & Export
+#### Step 6: Configuration Completion & Unified Export
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ ✅ Configuration Complete - All Steps Configured           │
@@ -299,8 +299,58 @@ The core user experience centers around providing a `PipelineDAG` as input, whic
 │ │ ]                                                       │ │
 │ └─────────────────────────────────────────────────────────┘ │
 │                                                             │
-│ [💾 Export Configuration] [🚀 Execute Pipeline]            │
-│ [📋 Save as Template] [🔄 Modify Configuration]           │
+│ 💾 Export Options:                                         │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ [💾 Save All Merged] - Creates unified hierarchical    │ │
+│ │                        JSON like demo_config.ipynb     │ │
+│ │                        (Recommended)                    │ │
+│ │                                                         │ │
+│ │ [📤 Export Individual] - Individual JSON files         │ │
+│ │                          for each configuration         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ [🚀 Execute Pipeline] [📋 Save as Template]                │
+│ [🔄 Modify Configuration]                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Step 7: Unified Configuration Export (Save All Merged)
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💾 Save All Merged - Unified Configuration Export         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ 🎯 Creating Unified Configuration File...                  │
+│                                                             │
+│ ┌─ 📊 Merge Process ──────────────────────────────────────┐ │
+│ │ ✅ Collecting all 7 configurations                     │ │
+│ │ ✅ Applying merge_and_save_configs() logic             │ │
+│ │ ✅ Creating hierarchical JSON structure                │ │
+│ │ ✅ Organizing shared vs specific fields                │ │
+│ │ ✅ Building inverted field index                       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ 📁 Generated File:                                         │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 📄 config_NA_xgboost_AtoZ_v2.json                      │ │
+│ │                                                         │ │
+│ │ Structure:                                              │ │
+│ │ {                                                       │ │
+│ │   "shared": { /* Common fields */ },                   │ │
+│ │   "processing_shared": { /* Processing fields */ },    │ │
+│ │   "specific": {                                         │ │
+│ │     "CradleDataLoadConfig": { /* Step fields */ },     │ │
+│ │     "XGBoostTrainingConfig": { /* Step fields */ },    │ │
+│ │     ...                                                 │ │
+│ │   },                                                    │ │
+│ │   "inverted_index": { /* Field → Steps mapping */ },   │ │
+│ │   "step_list": [ /* All pipeline steps */ ]            │ │
+│ │ }                                                       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ✅ Ready for Pipeline Execution!                           │
+│                                                             │
+│ [⬇️ Download File] [👁️ Preview JSON] [📋 Copy to Clipboard] │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -1234,4 +1284,359 @@ class DAGConfigurationUI {
 - **Extensible Framework**: Supports both simple and specialized configurations
 - **Future-Proof**: Adapts automatically as new step types are added
 
-This comprehensive design provides a **cohesive, logical, and user-focused** approach to universal configuration management, with the PipelineDAG-driven discovery as the core innovation that makes the system both powerful and intuitive.
+### Save All Merged Functionality Design
+
+#### **Unified Configuration Export System**
+
+Building on the successful `demo_config.ipynb` workflow, the system provides a "Save All Merged" functionality that creates unified hierarchical configuration files matching the existing `merge_and_save_configs()` pattern.
+
+#### **Export Options Interface**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💾 Export Options                                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ [💾 Save All Merged] - Creates unified hierarchical    │ │
+│ │                        JSON like demo_config.ipynb     │ │
+│ │                        (Recommended)                    │ │
+│ │                                                         │ │
+│ │ [📤 Export Individual] - Individual JSON files         │ │
+│ │                          for each configuration         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ 🎯 Save All Merged Benefits:                               │
+│ • Unified hierarchical structure                           │
+│ • Shared field optimization                                │
+│ • Inverted field index for analysis                        │
+│ • Compatible with existing pipeline execution              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### **Merge Results Display**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💾 Save All Merged - Configuration Export Complete        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ 📁 Generated File:                                         │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 📄 config_NA_xgboost_pipeline_v2.json                  │ │
+│ │                                                         │ │
+│ │ 📊 Structure Preview:                                   │ │
+│ │ {                                                       │ │
+│ │   "shared": {                                           │ │
+│ │     "author": "john-doe",                               │ │
+│ │     "bucket": "my-pipeline-bucket",                     │ │
+│ │     "role": "arn:aws:iam::123:role/MyRole"              │ │
+│ │   },                                                    │ │
+│ │   "processing_shared": {                                │ │
+│ │     "instance_type": "ml.m5.2xlarge",                   │ │
+│ │     "volume_size": 500                                  │ │
+│ │   },                                                    │ │
+│ │   "specific": {                                         │ │
+│ │     "CradleDataLoadConfig": { /* Step fields */ },     │ │
+│ │     "XGBoostTrainingConfig": { /* Step fields */ }     │ │
+│ │   },                                                    │ │
+│ │   "inverted_index": { /* Field → Steps mapping */ },   │ │
+│ │   "step_list": [ /* All pipeline steps */ ]            │ │
+│ │ }                                                       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ 🎯 Actions:                                                │
+│ [⬇️ Download File] [👁️ Preview JSON] [📋 Copy to Clipboard] │
+│                                                             │
+│ 📋 Next Steps:                                             │
+│ ```python                                                  │
+│ # Load and use the merged configuration                    │
+│ merged_config = load_config('config_NA_xgboost_v2.json')   │
+│ pipeline.execute(merged_config)                            │
+│ ```                                                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### **Backend API Design**
+
+```python
+# New API endpoints for Save All Merged functionality
+@router.post("/merge-and-save-configs", response_model=MergeConfigsResponse)
+async def merge_and_save_configurations(request: MergeConfigsRequest):
+    """
+    Merge all session configurations using merge_and_save_configs() function.
+    
+    Replicates the exact workflow from demo_config.ipynb:
+    1. Collect all configurations from current session
+    2. Create configuration instances using discovered config classes
+    3. Call merge_and_save_configs() with proper parameters
+    4. Generate unified hierarchical JSON structure
+    5. Return download information for file retrieval
+    """
+    try:
+        # Collect configurations from session
+        config_list = []
+        
+        for config_data in request.configurations:
+            config_class = get_config_class(config_data.config_class_name)
+            config_instance = config_class(**config_data.form_data)
+            config_list.append(config_instance)
+        
+        # Use existing merge_and_save_configs function
+        from cursus.core.config_fields import merge_and_save_configs
+        
+        merged_config_path = merge_and_save_configs(
+            config_list=config_list,
+            filename=request.filename or f"config_{request.pipeline_name}_v2.json"
+        )
+        
+        # Generate download ID for file retrieval
+        download_id = str(uuid.uuid4())
+        temp_files[download_id] = merged_config_path
+        
+        return MergeConfigsResponse(
+            success=True,
+            filename=merged_config_path.name,
+            download_id=download_id,
+            file_size=merged_config_path.stat().st_size,
+            config_count=len(config_list),
+            structure_preview=generate_structure_preview(merged_config_path)
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Merge failed: {str(e)}")
+
+@router.get("/download/{download_id}")
+async def download_merged_config(download_id: str):
+    """Download merged configuration file."""
+    if download_id not in temp_files:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    file_path = temp_files[download_id]
+    return FileResponse(
+        path=file_path,
+        filename=file_path.name,
+        media_type='application/json'
+    )
+```
+
+#### **Frontend JavaScript Implementation**
+
+```javascript
+class SaveAllMergedManager {
+    constructor() {
+        this.sessionConfigurations = [];
+        this.mergeResults = null;
+    }
+    
+    async saveAllMerged() {
+        """Collect all session configurations and merge them."""
+        
+        // Collect all configurations from current session
+        const configurations = this.collectSessionConfigurations();
+        
+        if (configurations.length === 0) {
+            this.showError("No configurations found to merge");
+            return;
+        }
+        
+        // Show loading state
+        this.showLoadingState("Merging configurations...");
+        
+        try {
+            // Call backend merge endpoint
+            const response = await fetch('/api/config-ui/merge-and-save-configs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    configurations: configurations,
+                    pipeline_name: this.getPipelineName(),
+                    filename: this.generateFilename()
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Merge failed: ${response.statusText}`);
+            }
+            
+            const mergeResults = await response.json();
+            this.displayMergeResults(mergeResults);
+            
+        } catch (error) {
+            this.showError(`Failed to merge configurations: ${error.message}`);
+        } finally {
+            this.hideLoadingState();
+        }
+    }
+    
+    collectSessionConfigurations() {
+        """Collect all configurations from current session."""
+        
+        const configurations = [];
+        
+        // Collect from workflow data
+        if (window.configWorkflow && window.configWorkflow.completedConfigs) {
+            for (const [configName, configData] of Object.entries(window.configWorkflow.completedConfigs)) {
+                configurations.push({
+                    config_class_name: configData.config_class_name,
+                    form_data: configData.values,
+                    step_name: configData.step_name || configName
+                });
+            }
+        }
+        
+        // Collect from individual forms
+        const forms = document.querySelectorAll('.config-form');
+        forms.forEach(form => {
+            const formData = this.extractFormData(form);
+            if (formData && formData.config_class_name) {
+                configurations.push(formData);
+            }
+        });
+        
+        return configurations;
+    }
+    
+    displayMergeResults(mergeResults) {
+        """Display merge results with download options."""
+        
+        const resultsContainer = document.getElementById('merge-results');
+        
+        resultsContainer.innerHTML = `
+            <div class="merge-results-card">
+                <div class="results-header">
+                    <h3>💾 Save All Merged - Configuration Export Complete</h3>
+                </div>
+                
+                <div class="file-info">
+                    <h4>📁 Generated File:</h4>
+                    <div class="file-details">
+                        <div class="file-name">📄 ${mergeResults.filename}</div>
+                        <div class="file-stats">
+                            <span>📊 ${mergeResults.config_count} configurations merged</span>
+                            <span>💾 ${this.formatFileSize(mergeResults.file_size)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="structure-preview">
+                    <h4>📊 Structure Preview:</h4>
+                    <pre class="json-preview">${JSON.stringify(mergeResults.structure_preview, null, 2)}</pre>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="this.downloadMergedConfig('${mergeResults.download_id}')">
+                        ⬇️ Download File
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.previewMergedJSON('${mergeResults.download_id}')">
+                        👁️ Preview JSON
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.copyMergedToClipboard('${mergeResults.download_id}')">
+                        📋 Copy to Clipboard
+                    </button>
+                </div>
+                
+                <div class="next-steps">
+                    <h4>📋 Next Steps:</h4>
+                    <pre class="code-example">
+# Load and use the merged configuration
+merged_config = load_config('${mergeResults.filename}')
+pipeline.execute(merged_config)
+                    </pre>
+                </div>
+            </div>
+        `;
+        
+        // Store results for later use
+        this.mergeResults = mergeResults;
+    }
+    
+    async downloadMergedConfig(downloadId) {
+        """Trigger download of merged configuration file."""
+        
+        const downloadUrl = `/api/config-ui/download/${downloadId}`;
+        
+        // Create temporary download link
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = this.mergeResults.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    async previewMergedJSON(downloadId) {
+        """Show JSON preview in modal."""
+        
+        try {
+            const response = await fetch(`/api/config-ui/download/${downloadId}`);
+            const jsonData = await response.json();
+            
+            this.showJSONModal(JSON.stringify(jsonData, null, 2));
+            
+        } catch (error) {
+            this.showError(`Failed to load JSON preview: ${error.message}`);
+        }
+    }
+    
+    async copyMergedToClipboard(downloadId) {
+        """Copy merged JSON to clipboard."""
+        
+        try {
+            const response = await fetch(`/api/config-ui/download/${downloadId}`);
+            const jsonData = await response.json();
+            const jsonString = JSON.stringify(jsonData, null, 2);
+            
+            await navigator.clipboard.writeText(jsonString);
+            this.showSuccess("Configuration copied to clipboard!");
+            
+        } catch (error) {
+            this.showError(`Failed to copy to clipboard: ${error.message}`);
+        }
+    }
+    
+    exportIndividualConfigs() {
+        """Export individual configuration files as alternative."""
+        
+        const configurations = this.collectSessionConfigurations();
+        
+        configurations.forEach(config => {
+            const jsonString = JSON.stringify(config.form_data, null, 2);
+            const filename = `${config.config_class_name}.json`;
+            
+            // Create download link
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+        
+        this.showSuccess(`Exported ${configurations.length} individual configuration files`);
+    }
+}
+```
+
+#### **CSS Styling for Export Interface**
+
+```css
+/* Export options styling */
+.export-options {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 24px 0;
+    border: 2px solid #e2e8f0;
+}
+
+.export-option-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 12px 0;
+    border:

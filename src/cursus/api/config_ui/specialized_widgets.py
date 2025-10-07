@@ -20,30 +20,194 @@ logger = logging.getLogger(__name__)
 
 
 class HyperparametersConfigWidget:
-    """Specialized widget for model hyperparameters configuration."""
+    """Specialized widget for model hyperparameters configuration with 3-tier field categorization."""
     
     def __init__(self, 
                  base_hyperparameter: Optional[ModelHyperparameters] = None,
-                 hyperparameter_class: Type[ModelHyperparameters] = XGBoostModelHyperparameters):
+                 hyperparameter_class: Type[ModelHyperparameters] = XGBoostModelHyperparameters,
+                 workflow_context: Optional[Dict[str, Any]] = None):
         """
-        Initialize hyperparameters configuration widget.
+        Initialize hyperparameters configuration widget with workflow integration.
         
         Args:
             base_hyperparameter: Base hyperparameter instance to inherit from
             hyperparameter_class: Target hyperparameter class to create
+            workflow_context: Workflow context from DAG analysis and step structure
         """
         self.base_hyperparameter = base_hyperparameter
         self.hyperparameter_class = hyperparameter_class
+        self.workflow_context = workflow_context or {}
         self.field_widgets = {}
         self.config_instance = None
         self.output = widgets.Output()
         
-        # Initialize with base values if provided
-        self.current_values = {}
-        if base_hyperparameter:
-            self.current_values = base_hyperparameter.get_public_init_fields()
+        # Initialize field categorization using 3-tier system
+        self.field_categories = self._initialize_field_categories()
         
-        logger.info(f"HyperparametersConfigWidget initialized for {hyperparameter_class.__name__}")
+        # Initialize with inherited values from full workflow chain
+        self.current_values = self._resolve_inherited_values()
+        
+        # Discover available fields from workflow context
+        self.available_fields = self._discover_available_fields()
+        
+        logger.info(f"HyperparametersConfigWidget initialized for {hyperparameter_class.__name__} "
+                   f"with {len(self.field_categories['essential'])} essential fields, "
+                   f"{len(self.field_categories['system'])} system fields")
+    
+    def _initialize_field_categories(self) -> Dict[str, List[str]]:
+        """Initialize field categorization using 3-tier system."""
+        try:
+            # Create a temporary instance to get field categorization
+            if self.base_hyperparameter:
+                temp_instance = self.hyperparameter_class.from_base_hyperparam(self.base_hyperparameter)
+            else:
+                # Try to create with minimal required fields
+                temp_instance = self.hyperparameter_class()
+            
+            # Use the config class's categorize_fields method if available
+            if hasattr(temp_instance, 'categorize_fields'):
+                return temp_instance.categorize_fields()
+            else:
+                # Fallback to manual categorization
+                return self._manual_field_categorization()
+                
+        except Exception as e:
+            logger.warning(f"Could not initialize field categories: {e}, using manual categorization")
+            return self._manual_field_categorization()
+    
+    def _manual_field_categorization(self) -> Dict[str, List[str]]:
+        """Manually categorize fields into three tiers."""
+        categories = {
+            "essential": [],  # Tier 1: Required, public
+            "system": [],     # Tier 2: Optional (has default), public  
+            "derived": []     # Tier 3: Public properties (HIDDEN from UI)
+        }
+        
+        # Handle Pydantic v2 model_fields
+        if hasattr(self.hyperparameter_class, 'model_fields'):
+            model_fields = self.hyperparameter_class.model_fields
+            
+            for field_name, field_info in model_fields.items():
+                if field_name.startswith("_"):
+                    continue  # Skip private fields
+                    
+                # Determine if field is required
+                is_required = getattr(field_info, 'is_required', lambda: True)()
+                if callable(is_required):
+                    is_required = is_required()
+                
+                if is_required:
+                    categories["essential"].append(field_name)
+                else:
+                    categories["system"].append(field_name)
+            
+            # Find derived properties (hidden from UI)
+            for attr_name in dir(self.hyperparameter_class):
+                if (not attr_name.startswith("_") 
+                    and attr_name not in model_fields
+                    and isinstance(getattr(self.hyperparameter_class, attr_name, None), property)):
+                    categories["derived"].append(attr_name)
+        
+        logger.debug(f"Manual field categorization: Essential: {len(categories['essential'])}, "
+                    f"System: {len(categories['system'])}, Derived: {len(categories['derived'])}")
+        
+        return categories
+    
+    def _resolve_inherited_values(self) -> Dict[str, Any]:
+        """Resolve inherited values from full workflow chain."""
+        inherited_values = {}
+        
+        # Start with base hyperparameter values if provided
+        if self.base_hyperparameter:
+            try:
+                inherited_values = self.base_hyperparameter.get_public_init_fields()
+                logger.debug(f"Inherited {len(inherited_values)} values from base hyperparameter")
+            except Exception as e:
+                logger.warning(f"Could not get inherited values from base hyperparameter: {e}")
+        
+        # Apply workflow context inheritance if available
+        if self.workflow_context:
+            workflow_inherited = self._get_workflow_inherited_values()
+            inherited_values.update(workflow_inherited)
+            logger.debug(f"Applied {len(workflow_inherited)} workflow inherited values")
+        
+        # Set reasonable defaults for hyperparameter-specific fields
+        hyperparameter_defaults = {
+            'full_field_list': self.available_fields.get('all_fields', []),
+            'tab_field_list': self.available_fields.get('numerical_fields', []),
+            'cat_field_list': self.available_fields.get('categorical_fields', []),
+            'multiclass_categories': [0, 1],
+            'model_class': 'base_model',
+            'lr': 3e-05,
+            'batch_size': 2,
+            'max_epochs': 3,
+            'device': -1,
+            'optimizer': 'SGD',
+            'metric_choices': ['f1_score', 'auroc']
+        }
+        
+        # Only set defaults for fields not already inherited
+        for key, default_value in hyperparameter_defaults.items():
+            if key not in inherited_values:
+                inherited_values[key] = default_value
+        
+        return inherited_values
+    
+    def _get_workflow_inherited_values(self) -> Dict[str, Any]:
+        """Get inherited values from workflow context."""
+        workflow_values = {}
+        
+        # Extract values from workflow context
+        if 'inheritance_chain' in self.workflow_context:
+            inheritance_chain = self.workflow_context['inheritance_chain']
+            for config_data in inheritance_chain:
+                if isinstance(config_data, dict):
+                    # Extract relevant hyperparameter fields
+                    for key, value in config_data.items():
+                        if key in ['model_class', 'lr', 'batch_size', 'max_epochs', 'device', 'optimizer']:
+                            workflow_values[key] = value
+        
+        # Extract field information from DAG analysis if available
+        if 'dag_analysis' in self.workflow_context:
+            dag_analysis = self.workflow_context['dag_analysis']
+            if 'discovered_fields' in dag_analysis:
+                discovered_fields = dag_analysis['discovered_fields']
+                if discovered_fields:
+                    workflow_values['full_field_list'] = discovered_fields.get('all_fields', [])
+                    workflow_values['tab_field_list'] = discovered_fields.get('numerical_fields', [])
+                    workflow_values['cat_field_list'] = discovered_fields.get('categorical_fields', [])
+        
+        return workflow_values
+    
+    def _discover_available_fields(self) -> Dict[str, List[str]]:
+        """Discover available fields from workflow context."""
+        available_fields = {
+            'all_fields': [],
+            'numerical_fields': [],
+            'categorical_fields': []
+        }
+        
+        # Try to get fields from workflow context first
+        if self.workflow_context and 'dag_analysis' in self.workflow_context:
+            dag_analysis = self.workflow_context['dag_analysis']
+            if 'discovered_fields' in dag_analysis:
+                discovered_fields = dag_analysis['discovered_fields']
+                available_fields.update(discovered_fields)
+                logger.debug(f"Discovered {len(available_fields['all_fields'])} fields from workflow context")
+                return available_fields
+        
+        # Fallback to example fields for demonstration
+        example_fields = [
+            'PAYMETH', 'claim_reason', 'claimantInfo_status', 'claimAmount_value', 
+            'COMP_DAYOB', 'shipment_weight', 'is_abuse', 'customer_id'
+        ]
+        
+        available_fields['all_fields'] = example_fields
+        available_fields['numerical_fields'] = ['claimAmount_value', 'COMP_DAYOB', 'shipment_weight']
+        available_fields['categorical_fields'] = ['PAYMETH', 'claim_reason', 'claimantInfo_status']
+        
+        logger.debug(f"Using example fields: {len(available_fields['all_fields'])} total fields")
+        return available_fields
     
     def display(self):
         """Display the hyperparameters configuration interface."""
@@ -441,13 +605,18 @@ class SpecializedComponentRegistry:
             "component_class": "CradleConfigWidget",
             "module": "cursus.api.cradle_ui.jupyter_widget",
             "preserve_existing_ui": True,
-            "description": "Advanced data loading configuration with 5-step wizard interface",
+            "workflow_integration": True,
+            "tier_categorization": True,
+            "dag_analysis_support": True,
+            "description": "Advanced 4-step data loading wizard with workflow integration",
             "features": [
-                "1️⃣ Data Sources Configuration",
-                "2️⃣ Transform Specification", 
-                "3️⃣ Output Configuration",
-                "4️⃣ Cradle Job Settings",
-                "5️⃣ Validation & Preview"
+                "1️⃣ Data Sources Configuration with field discovery",
+                "2️⃣ Transform Specification with workflow context", 
+                "3️⃣ Output Configuration with inheritance chain",
+                "4️⃣ Cradle Job Settings with DAG integration",
+                "🔄 3-tier field categorization (Essential/System/Hidden)",
+                "🎯 Workflow context inheritance and pre-population",
+                "📊 DAG analysis field discovery and validation"
             ],
             "icon": "🎛️",
             "complexity": "advanced"
@@ -502,26 +671,35 @@ class SpecializedComponentRegistry:
     def create_specialized_widget(self, 
                                 config_class_name: str, 
                                 base_config=None, 
+                                workflow_context: Optional[Dict[str, Any]] = None,
                                 **kwargs) -> Optional[Any]:
-        """Create a specialized widget instance."""
+        """Create a specialized widget instance with workflow integration."""
         component_class = self.get_specialized_component(config_class_name)
         if component_class:
             try:
                 if config_class_name == "CradleDataLoadConfig":
-                    # Use existing Cradle UI widget
-                    return component_class(base_config=base_config, **kwargs)
+                    # Use existing Cradle UI widget with workflow context
+                    widget_kwargs = kwargs.copy()
+                    if workflow_context:
+                        widget_kwargs['workflow_context'] = workflow_context
+                    return component_class(base_config=base_config, **widget_kwargs)
                 elif config_class_name in ["ModelHyperparameters", "XGBoostModelHyperparameters"]:
-                    # Use hyperparameters widget
+                    # Use hyperparameters widget with workflow integration
                     from ...core.base.hyperparameters_base import ModelHyperparameters
                     from ...steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
                     
                     hyperparameter_class = XGBoostModelHyperparameters if config_class_name == "XGBoostModelHyperparameters" else ModelHyperparameters
                     return component_class(
                         base_hyperparameter=base_config if isinstance(base_config, ModelHyperparameters) else None,
-                        hyperparameter_class=hyperparameter_class
+                        hyperparameter_class=hyperparameter_class,
+                        workflow_context=workflow_context
                     )
                 else:
-                    return component_class(base_config=base_config, **kwargs)
+                    # Generic widget with workflow context
+                    widget_kwargs = kwargs.copy()
+                    if workflow_context:
+                        widget_kwargs['workflow_context'] = workflow_context
+                    return component_class(base_config=base_config, **widget_kwargs)
             except Exception as e:
                 logger.error(f"Error creating specialized widget for {config_class_name}: {e}")
                 return None

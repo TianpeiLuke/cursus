@@ -938,25 +938,20 @@ class CursusConfigUI {
         try {
             const dag = JSON.parse(dagText);
             
-            const response = await fetch(`${this.apiBase}/create-pipeline-wizard`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    dag: dag,
-                    base_config: this.getBaseConfigFromForm()
-                })
-            });
+            // Step 1: Analyze DAG to discover required configurations
+            const analysisResult = await this.analyzePipelineDAG(dag);
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            // Step 2: Display analysis results to user
+            this.displayDAGAnalysis(analysisResult);
             
-            const result = await response.json();
-            this.renderPipelineWizard(result);
+            // Step 3: Initialize workflow steps
+            this.workflowSteps = analysisResult.workflow_steps;
+            this.currentWorkflowStep = 0;
             
-            this.showStatus('Pipeline wizard created successfully', 'success');
+            // Step 4: Start configuration workflow
+            this.startConfigurationWorkflow();
+            
+            this.showStatus('Pipeline analysis complete - starting workflow', 'success');
             
         } catch (error) {
             console.error('Pipeline wizard error:', error);
@@ -964,6 +959,529 @@ class CursusConfigUI {
         } finally {
             this.showLoading(false);
         }
+    }
+    
+    async analyzePipelineDAG(pipelineDAG) {
+        // Analyze PipelineDAG to discover required configurations
+        
+        const response = await fetch(`${this.apiBase}/analyze-dag`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pipeline_dag: pipelineDAG,
+                base_config: this.getBaseConfigFromForm()
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`DAG analysis failed: HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+    }
+    
+    displayDAGAnalysis(analysisResult) {
+        // Display DAG analysis results to user
+        
+        const container = document.getElementById('pipeline-wizard-container');
+        
+        container.innerHTML = `
+            <div class="dag-analysis-results">
+                <h3>📊 Pipeline Analysis Results</h3>
+                
+                <div class="discovered-steps">
+                    <h4>🔍 Discovered Pipeline Steps:</h4>
+                    <ul class="step-list">
+                        ${analysisResult.discovered_steps.map(step => 
+                            `<li><strong>${step.step_name}</strong> (${step.step_type})</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+                
+                <div class="required-configs">
+                    <h4>⚙️ Required Configurations (Only These Will Be Shown):</h4>
+                    <ul class="config-list">
+                        ${analysisResult.required_configs.map(config => 
+                            `<li>✅ <strong>${config.config_class_name}</strong></li>`
+                        ).join('')}
+                    </ul>
+                    <p class="hidden-configs">❌ Hidden: ${analysisResult.hidden_configs_count} other config types not needed</p>
+                </div>
+                
+                <div class="workflow-summary">
+                    <h4>📋 Configuration Workflow:</h4>
+                    <p>Base Config → Processing Config → ${analysisResult.required_configs.length} Specific Configs</p>
+                    <div class="workflow-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text">Ready to start (0/${analysisResult.total_steps} steps)</div>
+                    </div>
+                </div>
+                
+                <div class="workflow-actions">
+                    <button class="btn btn-primary" onclick="window.cursusUI.startConfigurationWorkflow()">
+                        Start Configuration Workflow
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.cursusUI.resetPipelineWizard()">
+                        Reset
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    startConfigurationWorkflow() {
+        // Start the step-by-step configuration workflow
+        
+        if (!this.workflowSteps || this.workflowSteps.length === 0) {
+            this.showStatus('No workflow steps available', 'error');
+            return;
+        }
+        
+        this.currentWorkflowStep = 0;
+        this.workflowData = {};
+        this.renderCurrentWorkflowStep();
+    }
+    
+    async renderCurrentWorkflowStep() {
+        // Render the current configuration step
+        
+        if (this.currentWorkflowStep >= this.workflowSteps.length) {
+            this.renderWorkflowCompletion();
+            return;
+        }
+        
+        const step = this.workflowSteps[this.currentWorkflowStep];
+        const container = document.getElementById('pipeline-wizard-container');
+        
+        // Render step header
+        container.innerHTML = `
+            <div class="workflow-step-container">
+                <div class="workflow-header">
+                    <h2>🏗️ Configuration Workflow - Step ${step.step_number} of ${this.workflowSteps.length}</h2>
+                    <h3>📋 ${step.title}</h3>
+                    <div class="workflow-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${(this.currentWorkflowStep / this.workflowSteps.length) * 100}%"></div>
+                        </div>
+                        <div class="progress-text">Step ${this.currentWorkflowStep + 1} of ${this.workflowSteps.length}</div>
+                    </div>
+                </div>
+                <div id="workflow-step-content" class="workflow-step-content"></div>
+                <div class="workflow-navigation">
+                    <button class="btn btn-secondary" onclick="window.cursusUI.previousWorkflowStep()" ${this.currentWorkflowStep === 0 ? 'disabled' : ''}>
+                        ← Previous Step
+                    </button>
+                    <button class="btn btn-primary" onclick="window.cursusUI.nextWorkflowStep()">
+                        Continue to Next Step →
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Render step-specific content
+        await this.renderWorkflowStepContent(step);
+    }
+    
+    async renderWorkflowStepContent(step) {
+        // Render content for a specific workflow step
+        
+        const stepContent = document.getElementById('workflow-step-content');
+        
+        if (step.type === 'base') {
+            await this.renderBaseConfigStep(stepContent);
+        } else if (step.type === 'processing') {
+            await this.renderProcessingConfigStep(stepContent);
+        } else if (step.type === 'specific') {
+            await this.renderSpecificConfigStep(stepContent, step);
+        }
+    }
+    
+    async renderSpecificConfigStep(container, step) {
+        // Render a specific configuration step
+        
+        if (step.is_specialized) {
+            // Handle specialized configurations (e.g., CradleDataLoadConfig)
+            container.innerHTML = `
+                <div class="specialized-config-step">
+                    <h4>🎛️ Specialized Configuration</h4>
+                    <p>This step uses a specialized wizard interface:</p>
+                    <div class="specialized-features">
+                        <ul>
+                            <li>1️⃣ Data Sources Configuration with field discovery</li>
+                            <li>2️⃣ Transform Specification with workflow context</li>
+                            <li>3️⃣ Output Configuration with inheritance chain</li>
+                            <li>4️⃣ Cradle Job Settings with DAG integration</li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.cursusUI.openSpecializedWizard('${step.config_class_name}')">
+                        Open ${step.config_class_name} Wizard
+                    </button>
+                    <p class="workflow-note"><small>(Base config will be pre-filled automatically)</small></p>
+                </div>
+            `;
+        } else {
+            // Handle standard configurations with 3-tier field categorization
+            await this.renderStandardConfigStepWithTiers(container, step);
+        }
+    }
+    
+    async renderStandardConfigStepWithTiers(container, step) {
+        // Render standard configuration step with 3-tier field categorization
+        
+        try {
+            // Fetch configuration data with field categories
+            const configData = await this.makeRequest(`${this.apiBase}/create-widget`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    config_class_name: step.config_class_name,
+                    base_config: this.getWorkflowInheritedConfig(),
+                    workflow_context: this.getWorkflowContext()
+                })
+            });
+            
+            // Render with 3-tier categorization
+            this.renderConfigWithTiers(container, configData, step.config_class_name);
+            
+        } catch (error) {
+            console.error(`Error loading step ${step.config_class_name}:`, error);
+            container.innerHTML = `
+                <div class="config-error">
+                    <h4>❌ Configuration Error</h4>
+                    <p>Error loading ${step.config_class_name}: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    renderConfigWithTiers(container, configData, configName) {
+        // Render configuration form with 3-tier field categorization
+        
+        const fieldCategories = configData.field_categories || {
+            essential: [],
+            system: [],
+            derived: []
+        };
+        
+        let formHTML = '<div class="tiered-config-form">';
+        
+        // Tier 1: Essential Fields (Required, no defaults)
+        if (fieldCategories.essential && fieldCategories.essential.length > 0) {
+            formHTML += `
+                <div class="field-tier essential-tier">
+                    <h4>🔥 Essential Configuration (Tier 1)</h4>
+                    <p class="tier-description">Required fields that you must fill - no defaults available</p>
+                    <div class="tier-fields">
+                        ${this.renderTierFields(configData.fields, fieldCategories.essential, configData.values, 'essential')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Tier 2: System Fields (Optional with defaults)
+        if (fieldCategories.system && fieldCategories.system.length > 0) {
+            formHTML += `
+                <div class="field-tier system-tier">
+                    <h4>⚙️ System Configuration (Tier 2)</h4>
+                    <p class="tier-description">Optional fields with defaults - modify if needed for customization</p>
+                    <div class="tier-fields">
+                        ${this.renderTierFields(configData.fields, fieldCategories.system, configData.values, 'system')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Tier 3: Derived Fields (HIDDEN from UI completely)
+        // These are never displayed to users as per design specs
+        
+        // Workflow Context Display
+        if (this.workflowContext && Object.keys(this.workflowContext).length > 0) {
+            formHTML += `
+                <div class="workflow-context-display">
+                    <h4>💾 Inherited from Workflow Context</h4>
+                    <div class="inherited-values">
+                        ${this.renderInheritedValues()}
+                    </div>
+                </div>
+            `;
+        }
+        
+        formHTML += '</div>';
+        
+        container.innerHTML = formHTML;
+        
+        // Initialize form data for this step
+        if (!this.workflowData[configName]) {
+            this.workflowData[configName] = { ...configData.values };
+        }
+        
+        // Bind event listeners for form fields
+        this.bindWorkflowFormEvents(configName);
+    }
+    
+    renderTierFields(allFields, tierFieldNames, values, tierType) {
+        // Render fields for a specific tier
+        
+        const tierFields = allFields.filter(field => tierFieldNames.includes(field.name));
+        let fieldsHTML = '<div class="form-row">';
+        
+        tierFields.forEach((field, index) => {
+            if (index > 0 && index % 2 === 0) {
+                fieldsHTML += '</div><div class="form-row">';
+            }
+            
+            const value = values[field.name] !== undefined ? values[field.name] : '';
+            fieldsHTML += this.renderTierField(field, value, tierType);
+        });
+        
+        fieldsHTML += '</div>';
+        return fieldsHTML;
+    }
+    
+    renderTierField(field, currentValue, tierType) {
+        // Render a single field with tier-specific styling
+        
+        const tierClass = `tier-${tierType}`;
+        const requiredIndicator = field.required ? ' *' : '';
+        const value = currentValue !== undefined ? currentValue : '';
+        
+        let inputHTML = '';
+        
+        switch (field.type) {
+            case 'checkbox':
+                inputHTML = `<input type="checkbox" ${Boolean(value) ? 'checked' : ''} class="form-control ${tierClass}" id="field-${field.name}">`;
+                break;
+            case 'number':
+                inputHTML = `<input type="number" step="any" value="${value}" class="form-control ${tierClass}" id="field-${field.name}">`;
+                break;
+            case 'list':
+                const listValue = Array.isArray(value) ? JSON.stringify(value, null, 2) : value;
+                inputHTML = `<textarea rows="3" class="form-control ${tierClass}" id="field-${field.name}" placeholder='["item1", "item2"]'>${listValue}</textarea>`;
+                break;
+            case 'keyvalue':
+                const kvValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+                inputHTML = `<textarea rows="4" class="form-control ${tierClass}" id="field-${field.name}" placeholder='{"key": "value"}'>${kvValue}</textarea>`;
+                break;
+            default:
+                inputHTML = `<input type="text" value="${value}" class="form-control ${tierClass}" id="field-${field.name}">`;
+        }
+        
+        return `
+            <div class="field-group ${field.required ? 'required' : ''} ${tierClass}">
+                <label class="form-label" for="field-${field.name}">
+                    ${field.name}${requiredIndicator}
+                    <span class="tier-badge tier-${tierType}">${tierType.toUpperCase()}</span>
+                </label>
+                ${inputHTML}
+                ${field.description ? `<div class="field-description">${field.description}</div>` : ''}
+                <div class="field-error" id="error-${field.name}"></div>
+            </div>
+        `;
+    }
+    
+    renderInheritedValues() {
+        // Render inherited values from workflow context
+        
+        if (!this.workflowContext || !this.workflowContext.inherited_values) {
+            return '<p>No inherited values available</p>';
+        }
+        
+        const inherited = this.workflowContext.inherited_values;
+        let inheritedHTML = '<ul class="inherited-list">';
+        
+        Object.entries(inherited).forEach(([key, value]) => {
+            inheritedHTML += `<li><strong>${key}:</strong> ${value}</li>`;
+        });
+        
+        inheritedHTML += '</ul>';
+        return inheritedHTML;
+    }
+    
+    bindWorkflowFormEvents(configName) {
+        // Bind event listeners for workflow form fields
+        
+        const formFields = document.querySelectorAll('#workflow-step-content .form-control');
+        formFields.forEach(field => {
+            const fieldName = field.id.replace('field-', '');
+            
+            field.addEventListener('change', () => this.updateWorkflowFormData(configName, fieldName, field));
+            field.addEventListener('input', () => this.updateWorkflowFormData(configName, fieldName, field));
+        });
+    }
+    
+    updateWorkflowFormData(configName, fieldName, input) {
+        // Update workflow form data for a specific field
+        
+        if (!this.workflowData[configName]) {
+            this.workflowData[configName] = {};
+        }
+        
+        let value = input.value;
+        
+        try {
+            // Handle different field types
+            if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.type === 'number') {
+                value = value === '' ? null : parseFloat(value);
+            } else if (input.tagName === 'TEXTAREA') {
+                // Try to parse as JSON for list/keyvalue fields
+                if (value.trim().startsWith('[') || value.trim().startsWith('{')) {
+                    value = value.trim() ? JSON.parse(value) : (value.trim().startsWith('[') ? [] : {});
+                }
+            }
+            
+            this.workflowData[configName][fieldName] = value;
+            this.clearWorkflowFieldError(fieldName);
+            this.markFormDirty();
+            
+        } catch (error) {
+            this.showWorkflowFieldError(fieldName, `Invalid JSON: ${error.message}`);
+        }
+    }
+    
+    showWorkflowFieldError(fieldName, message) {
+        // Show error for a workflow field
+        const errorDiv = document.getElementById(`error-${fieldName}`);
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    }
+    
+    clearWorkflowFieldError(fieldName) {
+        // Clear error for a workflow field
+        const errorDiv = document.getElementById(`error-${fieldName}`);
+        if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
+    }
+    
+    nextWorkflowStep() {
+        // Move to the next workflow step
+        
+        // Validate current step
+        if (!this.validateCurrentWorkflowStep()) {
+            this.showStatus('Please fix validation errors before continuing', 'error');
+            return;
+        }
+        
+        // Save current step data
+        this.saveCurrentWorkflowStep();
+        
+        // Move to next step
+        this.currentWorkflowStep++;
+        this.renderCurrentWorkflowStep();
+    }
+    
+    previousWorkflowStep() {
+        // Move to the previous workflow step
+        
+        if (this.currentWorkflowStep > 0) {
+            this.currentWorkflowStep--;
+            this.renderCurrentWorkflowStep();
+        }
+    }
+    
+    validateCurrentWorkflowStep() {
+        // Validate the current workflow step
+        
+        // Basic validation - check for required fields
+        const requiredFields = document.querySelectorAll('#workflow-step-content .field-group.required .form-control');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            const fieldName = field.id.replace('field-', '');
+            let value = field.value;
+            
+            if (field.type === 'checkbox') {
+                value = field.checked;
+            }
+            
+            if (!value || (typeof value === 'string' && value.trim() === '')) {
+                this.showWorkflowFieldError(fieldName, `${fieldName} is required`);
+                field.classList.add('error');
+                isValid = false;
+            } else {
+                this.clearWorkflowFieldError(fieldName);
+                field.classList.remove('error');
+            }
+        });
+        
+        return isValid;
+    }
+    
+    saveCurrentWorkflowStep() {
+        // Save the current workflow step data
+        
+        const currentStep = this.workflowSteps[this.currentWorkflowStep];
+        if (currentStep && this.workflowData[currentStep.config_class_name]) {
+            // Mark step as completed
+            currentStep.completed = true;
+            console.log(`Step ${currentStep.title} completed with data:`, this.workflowData[currentStep.config_class_name]);
+        }
+    }
+    
+    renderWorkflowCompletion() {
+        // Render the workflow completion summary
+        
+        const container = document.getElementById('pipeline-wizard-container');
+        
+        const completedSteps = this.workflowSteps.filter(step => step.completed);
+        
+        container.innerHTML = `
+            <div class="workflow-completion">
+                <h2>✅ Configuration Complete - All Steps Configured</h2>
+                
+                <div class="completion-summary">
+                    <h3>📋 Configuration Summary:</h3>
+                    <ul class="completed-configs">
+                        ${this.workflowSteps.map(step => 
+                            `<li class="${step.completed ? 'completed' : 'incomplete'}">
+                                ${step.completed ? '✅' : '⏳'} ${step.title}
+                            </li>`
+                        ).join('')}
+                    </ul>
+                </div>
+                
+                <div class="workflow-results">
+                    <h3>🎯 Ready for Pipeline Execution:</h3>
+                    <div class="config-code-preview">
+                        <pre><code>config_list = [
+    ${Object.keys(this.workflowData).map(configName => `    ${configName.toLowerCase()}_config`).join(',\n')}
+]</code></pre>
+                    </div>
+                </div>
+                
+                <div class="export-options">
+                    <h3>💾 Export Options:</h3>
+                    <div class="export-buttons">
+                        <button class="btn btn-success btn-large" onclick="window.cursusUI.saveAllMerged()">
+                            💾 Save All Merged
+                            <small>Creates unified hierarchical JSON like demo_config.ipynb (Recommended)</small>
+                        </button>
+                        <button class="btn btn-info" onclick="window.cursusUI.exportIndividualConfigs()">
+                            📤 Export Individual
+                            <small>Individual JSON files for each configuration</small>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="completion-actions">
+                    <button class="btn btn-primary" onclick="window.cursusUI.executeWorkflowPipeline()">
+                        🚀 Execute Pipeline
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.cursusUI.saveWorkflowAsTemplate()">
+                        📋 Save as Template
+                    </button>
+                    <button class="btn btn-info" onclick="window.cursusUI.modifyWorkflowConfiguration()">
+                        🔧 Modify Configuration
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     getBaseConfigFromForm() {
@@ -1277,6 +1795,220 @@ class CursusConfigUI {
                 firstErrorField.focus();
             }
         }
+    }
+
+    // Save All Merged - Main functionality replicating demo_config.ipynb experience
+    async saveAllMerged() {
+        try {
+            // Collect all configurations from current session
+            const sessionConfigs = this.getAllSessionConfigs();
+            
+            if (Object.keys(sessionConfigs).length === 0) {
+                this.showStatus('No configurations to merge. Please configure at least one component.', 'warning');
+                return;
+            }
+            
+            this.showLoading(true);
+            this.showStatus('Creating unified configuration file...', 'info');
+            
+            // Call the merge endpoint
+            const response = await fetch(`${this.apiBase}/merge-and-save-configs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_configs: sessionConfigs,
+                    filename: null, // Let backend generate filename
+                    workspace_dirs: null
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            // Display the merge results
+            this.displayMergeResults(result);
+            
+            this.showStatus(`Successfully merged ${Object.keys(sessionConfigs).length} configurations into ${result.filename}`, 'success');
+            
+        } catch (error) {
+            console.error('Save All Merged failed:', error);
+            this.showStatus(`Merge failed: ${error.message}`, 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    getAllSessionConfigs() {
+        // Collect all configurations from the current session
+        const sessionConfigs = {};
+        
+        // From workflow data (if using pipeline wizard)
+        if (this.workflowData && Object.keys(this.workflowData).length > 0) {
+            Object.assign(sessionConfigs, this.workflowData);
+        }
+        
+        // From individual form data (if using discovery mode)
+        if (this.currentFormData && Object.keys(this.currentFormData).length > 0) {
+            Object.assign(sessionConfigs, this.currentFormData);
+        }
+        
+        return sessionConfigs;
+    }
+    
+    displayMergeResults(result) {
+        // Display the merge results in a modal or dedicated section
+        const container = document.getElementById('pipeline-wizard-container') || document.getElementById('config-list');
+        
+        container.innerHTML = `
+            <div class="merge-results">
+                <h2>💾 Save All Merged - Configuration Export Complete</h2>
+                
+                <div class="merge-success">
+                    <h3>🎯 Unified Configuration Created</h3>
+                    <div class="merge-details">
+                        <div class="merge-info">
+                            <h4>📁 Generated File:</h4>
+                            <div class="file-info">
+                                <span class="filename">📄 ${result.filename}</span>
+                                <p class="file-description">Hierarchical JSON structure with shared vs specific fields</p>
+                            </div>
+                        </div>
+                        
+                        <div class="merge-structure">
+                            <h4>📊 Structure Preview:</h4>
+                            <div class="structure-preview">
+                                <pre><code>{
+  "shared": { /* Common fields across all configs */ },
+  "processing_shared": { /* Processing step fields */ },
+  "specific": {
+    ${Object.keys(result.merged_config.specific || {}).map(key => 
+                        `    "${key}": { /* Step-specific fields */ }`
+                    ).join(',\n')}
+  },
+  "inverted_index": { /* Field → Steps mapping */ },
+  "step_list": [ /* All pipeline steps */ ]
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="download-actions">
+                    <h3>✅ Ready for Pipeline Execution!</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-success btn-large" onclick="window.cursusUI.downloadMergedConfig('${result.download_url}', '${result.filename}')">
+                            ⬇️ Download ${result.filename}
+                        </button>
+                        <button class="btn btn-info" onclick="window.cursusUI.previewMergedJSON(${JSON.stringify(result.merged_config).replace(/"/g, '&quot;')})">
+                            👁️ Preview JSON
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.cursusUI.copyMergedToClipboard(${JSON.stringify(result.merged_config).replace(/"/g, '&quot;')})">
+                            📋 Copy to Clipboard
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="next-steps">
+                    <h4>🚀 Next Steps:</h4>
+                    <p>Use this unified configuration file in your pipeline execution:</p>
+                    <div class="code-example">
+                        <pre><code># Load the merged configuration
+from cursus.core.config_fields import load_configs
+config_list = load_configs("${result.filename}")
+
+# Execute your pipeline
+pipeline.run(config_list)</code></pre>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    async downloadMergedConfig(downloadUrl, filename) {
+        try {
+            // Create a temporary link to trigger download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            this.showStatus(`Downloaded ${filename}`, 'success');
+            
+        } catch (error) {
+            console.error('Download failed:', error);
+            this.showStatus(`Download failed: ${error.message}`, 'error');
+        }
+    }
+    
+    previewMergedJSON(mergedConfig) {
+        // Show JSON preview in a modal
+        const modal = document.createElement('div');
+        modal.className = 'json-preview-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>👁️ Merged Configuration Preview</h3>
+                        <button class="modal-close" onclick="this.closest('.json-preview-modal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <pre><code>${JSON.stringify(mergedConfig, null, 2)}</code></pre>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.json-preview-modal').remove()">Close</button>
+                        <button class="btn btn-primary" onclick="window.cursusUI.copyMergedToClipboard(${JSON.stringify(mergedConfig).replace(/"/g, '&quot;')})">
+                            📋 Copy to Clipboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+    
+    copyMergedToClipboard(mergedConfig) {
+        const jsonString = JSON.stringify(mergedConfig, null, 2);
+        
+        navigator.clipboard.writeText(jsonString).then(() => {
+            this.showStatus('Merged configuration copied to clipboard', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            this.showStatus('Copy failed', 'error');
+        });
+    }
+    
+    exportIndividualConfigs() {
+        // Export individual configuration files (existing functionality)
+        const sessionConfigs = this.getAllSessionConfigs();
+        
+        if (Object.keys(sessionConfigs).length === 0) {
+            this.showStatus('No configurations to export', 'warning');
+            return;
+        }
+        
+        // Export each configuration as a separate file
+        Object.entries(sessionConfigs).forEach(([configName, configData]) => {
+            const dataStr = JSON.stringify(configData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `${configName}.json`;
+            link.click();
+        });
+        
+        this.showStatus(`Exported ${Object.keys(sessionConfigs).length} individual configuration files`, 'success');
     }
 }
 

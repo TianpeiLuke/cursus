@@ -21,10 +21,10 @@ from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfi
 
 class CradleConfigWidget:
     """
-    Jupyter widget for Cradle Data Load Configuration.
+    Jupyter widget for Cradle Data Load Configuration with workflow integration.
     
     This widget provides an embedded UI for configuring Cradle data loading
-    that can be used directly in Jupyter notebooks.
+    that can be used directly in Jupyter notebooks with full workflow context support.
     """
     
     def __init__(self, 
@@ -32,9 +32,10 @@ class CradleConfigWidget:
                  job_type: str = "training",
                  width: str = "100%", 
                  height: str = "800px",
-                 server_port: int = 8001):
+                 server_port: int = 8001,
+                 workflow_context: Optional[Dict[str, Any]] = None):
         """
-        Initialize the Cradle Config Widget.
+        Initialize the Cradle Config Widget with workflow integration.
         
         Args:
             base_config: Base pipeline configuration object
@@ -42,20 +43,152 @@ class CradleConfigWidget:
             width: Widget width
             height: Widget height
             server_port: Port where the UI server is running
+            workflow_context: Workflow context from DAG analysis and step structure
         """
         self.base_config = base_config
         self.job_type = job_type
         self.width = width
         self.height = height
         self.server_port = server_port
+        self.workflow_context = workflow_context or {}
         self.config_result = None
         self.server_url = f"http://localhost:{server_port}"
         
         # Unique identifier for this widget instance
         self.widget_id = str(uuid.uuid4())
         
+        # Initialize field categorization using 3-tier system
+        self.field_categories = self._initialize_field_categories()
+        
+        # Resolve inherited values from full workflow chain
+        self.inherited_values = self._resolve_workflow_inherited_values()
+        
+        # Discover available fields from DAG analysis
+        self.available_fields = self._discover_workflow_fields()
+        
         # Create the widget components
         self._create_widgets()
+    
+    def _initialize_field_categories(self) -> Dict[str, List[str]]:
+        """Initialize field categorization using 3-tier system."""
+        try:
+            # If we have a base config, use its categorization method
+            if self.base_config and hasattr(self.base_config, 'categorize_fields'):
+                return self.base_config.categorize_fields()
+            else:
+                # Fallback to manual categorization for CradleDataLoadConfig
+                return self._manual_field_categorization()
+                
+        except Exception as e:
+            # Fallback to basic categorization
+            return {
+                "essential": ["job_type", "data_sources", "transform_sql", "output_schema"],
+                "system": ["cradle_account", "cluster_type", "output_format"],
+                "derived": []
+            }
+    
+    def _manual_field_categorization(self) -> Dict[str, List[str]]:
+        """Manually categorize fields for CradleDataLoadConfig."""
+        return {
+            "essential": [  # Tier 1: Required, user must provide
+                "job_type",
+                "data_sources_spec",
+                "transform_spec", 
+                "output_spec"
+            ],
+            "system": [     # Tier 2: Optional with defaults
+                "cradle_job_spec",
+                "job_split_options",
+                "output_format",
+                "cluster_type"
+            ],
+            "derived": []   # Tier 3: Hidden from UI (computed)
+        }
+    
+    def _resolve_workflow_inherited_values(self) -> Dict[str, Any]:
+        """Resolve inherited values from full workflow chain."""
+        inherited_values = {}
+        
+        # Start with base config values if provided
+        if self.base_config:
+            try:
+                # Extract standard base config fields
+                base_fields = ['author', 'bucket', 'role', 'region', 'service_name', 
+                              'pipeline_version', 'project_root_folder']
+                for field in base_fields:
+                    if hasattr(self.base_config, field):
+                        inherited_values[field] = getattr(self.base_config, field)
+                        
+            except Exception as e:
+                print(f"Warning: Could not extract base config values: {e}")
+        
+        # Apply workflow context inheritance if available
+        if self.workflow_context:
+            workflow_inherited = self._get_workflow_inherited_values()
+            inherited_values.update(workflow_inherited)
+        
+        # Set Cradle-specific defaults
+        cradle_defaults = {
+            'job_type': self.job_type,
+            'output_format': 'PARQUET',
+            'cluster_type': 'STANDARD',
+            'cradle_account': 'default'
+        }
+        
+        # Only set defaults for fields not already inherited
+        for key, default_value in cradle_defaults.items():
+            if key not in inherited_values:
+                inherited_values[key] = default_value
+        
+        return inherited_values
+    
+    def _get_workflow_inherited_values(self) -> Dict[str, Any]:
+        """Get inherited values from workflow context."""
+        workflow_values = {}
+        
+        # Extract values from workflow context
+        if 'inheritance_chain' in self.workflow_context:
+            inheritance_chain = self.workflow_context['inheritance_chain']
+            for config_data in inheritance_chain:
+                if isinstance(config_data, dict):
+                    # Extract relevant Cradle fields
+                    for key, value in config_data.items():
+                        if key in ['job_type', 'output_format', 'cluster_type', 'cradle_account']:
+                            workflow_values[key] = value
+        
+        # Extract step information from DAG analysis if available
+        if 'dag_analysis' in self.workflow_context:
+            dag_analysis = self.workflow_context['dag_analysis']
+            if 'step_context' in dag_analysis:
+                step_context = dag_analysis['step_context']
+                # Use step context to determine job type or other parameters
+                if 'job_type' in step_context:
+                    workflow_values['job_type'] = step_context['job_type']
+        
+        return workflow_values
+    
+    def _discover_workflow_fields(self) -> Dict[str, List[str]]:
+        """Discover available fields from workflow context."""
+        available_fields = {
+            'data_sources': [],
+            'transform_fields': [],
+            'output_fields': []
+        }
+        
+        # Try to get fields from workflow context first
+        if self.workflow_context and 'dag_analysis' in self.workflow_context:
+            dag_analysis = self.workflow_context['dag_analysis']
+            if 'discovered_fields' in dag_analysis:
+                discovered_fields = dag_analysis['discovered_fields']
+                available_fields.update(discovered_fields)
+                return available_fields
+        
+        # Fallback to example fields for demonstration
+        available_fields['data_sources'] = ['mds', 'edx', 'andes']
+        available_fields['transform_fields'] = ['customer_id', 'transaction_amount', 'timestamp']
+        available_fields['output_fields'] = ['processed_data', 'features', 'labels']
+        
+        return available_fields
         
     def _create_widgets(self):
         """Create the widget components."""
@@ -179,9 +312,10 @@ def create_cradle_config_widget(base_config=None,
                                job_type: str = "training",
                                width: str = "100%", 
                                height: str = "800px",
-                               server_port: int = 8001) -> CradleConfigWidget:
+                               server_port: int = 8001,
+                               workflow_context: Optional[Dict[str, Any]] = None) -> CradleConfigWidget:
     """
-    Create a Cradle Configuration Widget for Jupyter notebooks.
+    Create a Cradle Configuration Widget for Jupyter notebooks with workflow integration.
     
     Args:
         base_config: Base pipeline configuration object
@@ -189,16 +323,25 @@ def create_cradle_config_widget(base_config=None,
         width: Widget width
         height: Widget height
         server_port: Port where the UI server is running
+        workflow_context: Workflow context from DAG analysis and step structure
         
     Returns:
         CradleConfigWidget instance
         
     Example:
         ```python
-        # Replace the manual configuration block with:
+        # Basic usage (backward compatible):
         cradle_widget = create_cradle_config_widget(
             base_config=base_config,
             job_type="training"
+        )
+        cradle_widget.display()
+        
+        # Enhanced usage with workflow context:
+        cradle_widget = create_cradle_config_widget(
+            base_config=base_config,
+            job_type="training",
+            workflow_context=workflow_context
         )
         cradle_widget.display()
         
@@ -213,7 +356,8 @@ def create_cradle_config_widget(base_config=None,
         job_type=job_type,
         width=width,
         height=height,
-        server_port=server_port
+        server_port=server_port,
+        workflow_context=workflow_context
     )
 
 
