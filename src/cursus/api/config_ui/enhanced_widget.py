@@ -240,7 +240,7 @@ class EnhancedMultiStepWizard:
         
         # Use existing merge_and_save_configs functionality
         try:
-            from cursus.core.config_fields import merge_and_save_configs
+            from ...core.config_fields import merge_and_save_configs
             
             config_list = self.get_completed_configs()
             merged_config_path = merge_and_save_configs(

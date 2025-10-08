@@ -188,7 +188,7 @@ class NativeFileManager:
         """Save merged configurations using existing merge logic."""
         try:
             # Try to reuse existing merge_and_save_configs function
-            from cursus.core.config_fields import merge_and_save_configs
+            from ....core.config_fields import merge_and_save_configs
             
             if not filename:
                 filename = self._generate_smart_filename(config_list)

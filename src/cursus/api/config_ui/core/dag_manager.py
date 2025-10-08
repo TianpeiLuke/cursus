@@ -42,10 +42,17 @@ class DAGConfigurationManager:
         
         # Try to initialize config resolver
         try:
-            from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter
+            from ....step_catalog.adapters.config_resolver import StepConfigResolverAdapter
             self.config_resolver = StepConfigResolverAdapter()
-        except ImportError as e:
-            logger.warning(f"StepConfigResolverAdapter not available: {e}")
+        except ImportError:
+            try:
+                # Fallback: use absolute import with path setup
+                from .import_utils import ensure_cursus_path
+                ensure_cursus_path()
+                from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter
+                self.config_resolver = StepConfigResolverAdapter()
+            except ImportError as e:
+                logger.warning(f"StepConfigResolverAdapter not available: {e}")
         
         logger.info("DAGConfigurationManager initialized")
     
@@ -53,8 +60,12 @@ class DAGConfigurationManager:
         """
         Analyze PipelineDAG to discover required configuration classes.
         
+        Compatible with cursus.api.dag.base_dag.PipelineDAG where:
+        - nodes is a list of strings (step names)
+        - dependencies are managed through DAG structure
+        
         Args:
-            pipeline_dag: The pipeline DAG to analyze
+            pipeline_dag: The pipeline DAG to analyze (PipelineDAG instance)
             
         Returns:
             Dict containing discovered steps, required configs, and workflow structure
@@ -67,13 +78,24 @@ class DAGConfigurationManager:
         
         if hasattr(pipeline_dag, 'nodes'):
             for node in pipeline_dag.nodes:
-                node_name = node if isinstance(node, str) else getattr(node, 'name', str(node))
+                # Handle both PipelineDAG (strings) and mock DAG nodes (objects)
+                if isinstance(node, str):
+                    # Real PipelineDAG node - just a string step name
+                    node_name = node
+                    step_type = self._infer_step_type_from_name(node_name)
+                    dependencies = pipeline_dag.get_dependencies(node_name) if hasattr(pipeline_dag, 'get_dependencies') else []
+                else:
+                    # Mock DAG node with attributes (for testing/demo)
+                    node_name = getattr(node, 'name', str(node))
+                    step_type = getattr(node, 'step_type', self._infer_step_type_from_name(node_name))
+                    dependencies = getattr(node, 'dependencies', [])
+                
                 dag_nodes.append(node_name)
                 
                 discovered_steps.append({
                     "step_name": node_name,
-                    "step_type": getattr(node, 'step_type', 'unknown'),
-                    "dependencies": getattr(node, 'dependencies', [])
+                    "step_type": step_type,
+                    "dependencies": dependencies
                 })
         else:
             logger.warning("Pipeline DAG does not have 'nodes' attribute")
@@ -110,6 +132,37 @@ class DAGConfigurationManager:
                    f"{len(workflow_steps)} workflow steps, {hidden_configs_count} configs hidden")
         
         return analysis_result
+    
+    def _infer_step_type_from_name(self, step_name: str) -> str:
+        """
+        Infer SageMaker step type from step name using cursus registry helper functions.
+        
+        Args:
+            step_name: Name of the pipeline step (may include job type variants)
+            
+        Returns:
+            SageMaker step type from registry or step name as fallback
+        """
+        try:
+            from ....registry.step_names import get_canonical_name_from_file_name, get_sagemaker_step_type
+            
+            # get_canonical_name_from_file_name handles job type suffix removal automatically
+            canonical_name = get_canonical_name_from_file_name(step_name)
+            return get_sagemaker_step_type(canonical_name)
+                
+        except ImportError:
+            try:
+                # Fallback to absolute import
+                from .import_utils import ensure_cursus_path
+                ensure_cursus_path()
+                from cursus.registry.step_names import get_canonical_name_from_file_name, get_sagemaker_step_type
+                
+                canonical_name = get_canonical_name_from_file_name(step_name)
+                return get_sagemaker_step_type(canonical_name)
+                    
+            except (ImportError, ValueError):
+                # Just return the step name as fallback
+                return step_name
     
     def create_dag_driven_widget(self, 
                                 pipeline_dag: Any, 

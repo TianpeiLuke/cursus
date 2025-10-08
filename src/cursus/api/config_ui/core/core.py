@@ -57,7 +57,7 @@ class UniversalConfigCore:
         """Lazy-loaded step catalog with error handling."""
         if self._step_catalog is None:
             try:
-                from cursus.step_catalog.step_catalog import StepCatalog
+                from ....step_catalog.step_catalog import StepCatalog
                 self._step_catalog = StepCatalog(workspace_dirs=self.workspace_dirs)
                 logger.info("Step catalog initialized successfully")
             except ImportError as e:
@@ -198,7 +198,7 @@ class UniversalConfigCore:
         
         # Use existing StepConfigResolverAdapter (matches production pattern)
         try:
-            from cursus.step_catalog.adapters.config_resolver import StepConfigResolverAdapter
+            from ....step_catalog.adapters.config_resolver import StepConfigResolverAdapter
             resolver = StepConfigResolverAdapter()
         except ImportError as e:
             logger.warning(f"StepConfigResolverAdapter not available: {e}")
@@ -476,10 +476,7 @@ class UniversalConfigCore:
     
     def _infer_config_class_from_node_name(self, node_name: str, resolver: Optional[Any]) -> Optional[Dict]:
         """
-        Fallback method to infer config class from node name patterns.
-        
-        Uses similar pattern matching logic as StepConfigResolverAdapter
-        but for discovering requirements rather than resolving instances.
+        Infer config class from node name using registry helper functions.
         
         Args:
             node_name: DAG node name to analyze
@@ -489,67 +486,57 @@ class UniversalConfigCore:
             Configuration class information if found, None otherwise
         """
         try:
-            # Get all available config classes from catalog or discovery
+            # Use registry functions to get canonical name and config class
+            from ....registry.step_names import get_canonical_name_from_file_name, get_config_class_name
+            
+            # Get canonical name (handles job type suffixes automatically)
+            canonical_name = get_canonical_name_from_file_name(node_name)
+            config_class_name = get_config_class_name(canonical_name)
+            
+            # Get the actual config class
             available_config_classes = self.discover_config_classes()
+            config_class = available_config_classes.get(config_class_name)
             
-            # Use resolver's pattern matching to find best match
-            for class_name, config_class in available_config_classes.items():
-                # Simple heuristic: check if node name contains config type keywords
-                config_base = class_name.lower().replace("config", "").replace("step", "")
-                if config_base in node_name.lower():
+            if config_class:
+                return {
+                    "node_name": node_name,
+                    "config_class_name": config_class_name,
+                    "config_class": config_class,
+                    "inheritance_pattern": self._get_inheritance_pattern(config_class),
+                    "is_specialized": self._is_specialized_config(config_class),
+                    "inferred": True
+                }
+                
+        except ImportError:
+            try:
+                # Fallback to absolute import
+                from .import_utils import ensure_cursus_path
+                ensure_cursus_path()
+                from cursus.registry.step_names import get_canonical_name_from_file_name, get_config_class_name
+                
+                canonical_name = get_canonical_name_from_file_name(node_name)
+                config_class_name = get_config_class_name(canonical_name)
+                
+                available_config_classes = self.discover_config_classes()
+                config_class = available_config_classes.get(config_class_name)
+                
+                if config_class:
                     return {
                         "node_name": node_name,
-                        "config_class_name": class_name,
+                        "config_class_name": config_class_name,
                         "config_class": config_class,
                         "inheritance_pattern": self._get_inheritance_pattern(config_class),
                         "is_specialized": self._is_specialized_config(config_class),
                         "inferred": True
                     }
-            
-            # Additional pattern matching for common node name patterns
-            node_lower = node_name.lower()
-            if "cradle" in node_lower and "data" in node_lower:
-                if "CradleDataLoadConfig" in available_config_classes:
-                    config_class = available_config_classes["CradleDataLoadConfig"]
-                    return {
-                        "node_name": node_name,
-                        "config_class_name": "CradleDataLoadConfig",
-                        "config_class": config_class,
-                        "inheritance_pattern": self._get_inheritance_pattern(config_class),
-                        "is_specialized": self._is_specialized_config(config_class),
-                        "inferred": True
-                    }
-            
-            if "xgboost" in node_lower and "training" in node_lower:
-                if "XGBoostTrainingConfig" in available_config_classes:
-                    config_class = available_config_classes["XGBoostTrainingConfig"]
-                    return {
-                        "node_name": node_name,
-                        "config_class_name": "XGBoostTrainingConfig",
-                        "config_class": config_class,
-                        "inheritance_pattern": self._get_inheritance_pattern(config_class),
-                        "is_specialized": self._is_specialized_config(config_class),
-                        "inferred": True
-                    }
-            
-            if "preprocessing" in node_lower or "preprocess" in node_lower:
-                if "TabularPreprocessingConfig" in available_config_classes:
-                    config_class = available_config_classes["TabularPreprocessingConfig"]
-                    return {
-                        "node_name": node_name,
-                        "config_class_name": "TabularPreprocessingConfig",
-                        "config_class": config_class,
-                        "inheritance_pattern": self._get_inheritance_pattern(config_class),
-                        "is_specialized": self._is_specialized_config(config_class),
-                        "inferred": True
-                    }
-            
+                    
+            except (ImportError, ValueError):
+                logger.debug(f"Registry lookup failed for {node_name}, no fallback needed")
+        
+        except ValueError:
             logger.debug(f"Could not infer config class for node: {node_name}")
-            return None
-            
-        except Exception as e:
-            logger.warning(f"Could not infer config class for node {node_name}: {e}")
-            return None
+        
+        return None
     
     def _create_workflow_structure(self, required_configs: List[Dict]) -> List[Dict]:
         """Create logical workflow structure for configuration steps."""

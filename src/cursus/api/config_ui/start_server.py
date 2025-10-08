@@ -37,7 +37,7 @@ def start_server(host="127.0.0.1", port=8003):
         # Handle both relative and absolute imports using centralized path setup
         try:
             # Try relative imports first (when run as module)
-            from web.api import create_config_ui_app
+            from .web.api import create_config_ui_app
         except ImportError:
             # Fallback: Set up cursus path and use absolute imports
             import sys
