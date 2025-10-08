@@ -9,10 +9,10 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
-from ...core.base.config_base import BasePipelineConfig
-from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ....core.base.config_base import BasePipelineConfig
+from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
 from .core import UniversalConfigCore
-from .widget import UniversalConfigWidget, MultiStepWizard
+from ..widgets.widget import UniversalConfigWidget, MultiStepWizard
 
 logger = logging.getLogger(__name__)
 

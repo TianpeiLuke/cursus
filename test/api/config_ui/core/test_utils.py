@@ -384,8 +384,8 @@ class TestUtilsIntegrationScenarios:
         """Test that utils module imports are working correctly."""
         # Following Category 1: Mock Path Issues - verify imports work
         try:
-            from src.cursus.api.config_ui.utils import discover_available_configs
-            from src.cursus.api.config_ui.core import UniversalConfigCore
+            from src.cursus.api.config_ui.core.utils import discover_available_configs
+            from src.cursus.api.config_ui.core.core import UniversalConfigCore
             
             # Imports should work without errors
             assert callable(discover_available_configs)

@@ -51,7 +51,7 @@ def main():
     
     try:
         # Import the app factory function
-        from .api import create_config_ui_app
+        from .web.api import create_config_ui_app
         
         # Create the FastAPI app
         app = create_config_ui_app()

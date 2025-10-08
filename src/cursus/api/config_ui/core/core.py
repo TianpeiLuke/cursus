@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pathlib import Path
 import inspect
 
-from ...core.base.config_base import BasePipelineConfig
-from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ....core.base.config_base import BasePipelineConfig
+from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ class UniversalConfigCore:
         }
         
         # Import here to avoid circular imports
-        from .widget import UniversalConfigWidget
+        from ..widgets.widget import UniversalConfigWidget
         return UniversalConfigWidget(form_data)
     
     def create_pipeline_config_widget(self, 
@@ -207,7 +207,7 @@ class UniversalConfigCore:
         logger.info(f"Created {len(workflow_steps)} workflow steps for pipeline wizard")
         
         # Import here to avoid circular imports
-        from .widget import MultiStepWizard
+        from ..widgets.widget import MultiStepWizard
         return MultiStepWizard(workflow_steps, base_config=base_config, processing_config=processing_config)
     
     def _get_form_fields(self, config_class: Type[BasePipelineConfig]) -> List[Dict[str, Any]]:

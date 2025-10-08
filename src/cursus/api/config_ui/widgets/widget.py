@@ -11,8 +11,8 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 import json
 
-from ...core.base.config_base import BasePipelineConfig
-from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ....core.base.config_base import BasePipelineConfig
+from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -676,7 +676,7 @@ class MultiStepWizard:
             }]
         
         # Use UniversalConfigCore to get fields for standard components
-        from .core import UniversalConfigCore
+        from ..core.core import UniversalConfigCore
         core = UniversalConfigCore()
         return core._get_form_fields(config_class)
     

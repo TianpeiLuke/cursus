@@ -10,8 +10,8 @@ import logging
 from typing import Any, Dict, List, Optional, Type, Union
 from pathlib import Path
 
-from ...core.base.config_base import BasePipelineConfig
-from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ....core.base.config_base import BasePipelineConfig
+from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class DAGConfigurationManager:
             enhanced_steps.append(enhanced_step)
         
         # Import here to avoid circular imports
-        from .widget import MultiStepWizard
+        from ..widgets.widget import MultiStepWizard
         wizard = MultiStepWizard(enhanced_steps, base_config=base_config, processing_config=processing_config)
         
         # Add DAG analysis context to wizard

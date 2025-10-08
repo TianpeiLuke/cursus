@@ -11,10 +11,10 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 import json
 
-from ...core.base.hyperparameters_base import ModelHyperparameters
-from ...steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
-from ..cradle_ui.services.config_builder import ConfigBuilderService
-from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+from ....core.base.hyperparameters_base import ModelHyperparameters
+from ....steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
+from ...cradle_ui.services.config_builder import ConfigBuilderService
+from ....steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
 
 logger = logging.getLogger(__name__)
 
@@ -685,8 +685,8 @@ class SpecializedComponentRegistry:
                     return component_class(base_config=base_config, **widget_kwargs)
                 elif config_class_name in ["ModelHyperparameters", "XGBoostModelHyperparameters"]:
                     # Use hyperparameters widget with workflow integration
-                    from ...core.base.hyperparameters_base import ModelHyperparameters
-                    from ...steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
+                    from ....core.base.hyperparameters_base import ModelHyperparameters
+                    from ....steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
                     
                     hyperparameter_class = XGBoostModelHyperparameters if config_class_name == "XGBoostModelHyperparameters" else ModelHyperparameters
                     return component_class(

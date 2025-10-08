@@ -13,9 +13,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from pathlib import Path
 
-from .core import UniversalConfigCore
-from .utils import discover_available_configs
-from .specialized_widgets import SpecializedComponentRegistry
+from ..core.core import UniversalConfigCore
+from ..core.utils import discover_available_configs
+from ..widgets.specialized_widgets import SpecializedComponentRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ async def create_configuration_widget(request: ConfigWidgetRequest):
             )
         
         # Create widget data using core directly (not the Jupyter widget)
-        from .core import UniversalConfigCore
+        from ..core.core import UniversalConfigCore
         
         core = UniversalConfigCore(workspace_dirs=request.workspace_dirs)
         config_classes = core.discover_config_classes()

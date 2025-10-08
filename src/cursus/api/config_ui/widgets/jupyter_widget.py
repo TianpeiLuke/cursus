@@ -19,7 +19,7 @@ import weakref
 import os
 import re
 
-from ...core.base.config_base import BasePipelineConfig
+from ....core.base.config_base import BasePipelineConfig
 
 
 # Shared utilities and constants

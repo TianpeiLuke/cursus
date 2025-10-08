@@ -11,15 +11,15 @@ Key Components:
 - Factory functions: Easy widget creation interface
 """
 
-from .core import UniversalConfigCore, create_config_widget
-from .dag_manager import DAGConfigurationManager, create_pipeline_config_widget, analyze_pipeline_dag
-from .widget import MultiStepWizard, UniversalConfigWidget
-from .specialized_widgets import (
+from .core.core import UniversalConfigCore, create_config_widget
+from .core.dag_manager import DAGConfigurationManager, create_pipeline_config_widget, analyze_pipeline_dag
+from .widgets.widget import MultiStepWizard, UniversalConfigWidget
+from .widgets.specialized_widgets import (
     HyperparametersConfigWidget, 
     SpecializedComponentRegistry,
     create_specialized_widget
 )
-from .jupyter_widget import (
+from .widgets.jupyter_widget import (
     UniversalConfigWidget as JupyterUniversalConfigWidget,
     CompleteConfigUIWidget as JupyterPipelineConfigWidget,
     create_config_widget as create_jupyter_config_widget,
