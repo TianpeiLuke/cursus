@@ -207,17 +207,40 @@ class BaseConfigWidget:
             import subprocess
             import sys
             
-            cmd = [
-                sys.executable, "-m", "src.cursus.api.config_ui.run_server",
-                "--host", "0.0.0.0",
-                "--port", str(self.server_port)
+            # Try multiple command approaches for both pip-installed and development setups
+            commands_to_try = [
+                # Approach 1: Use module execution (works for pip-installed packages)
+                [sys.executable, "-m", "cursus.api.config_ui.start_server", "--host", "0.0.0.0", "--port", str(self.server_port)],
+                # Approach 2: Direct script execution (works for development setups)
+                [sys.executable, "src/cursus/api/config_ui/start_server.py", "--host", "0.0.0.0", "--port", str(self.server_port)]
             ]
             
-            self.server_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
+            server_started = False
+            for cmd in commands_to_try:
+                try:
+                    self.server_process = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE
+                    )
+                    server_started = True
+                    break
+                except Exception as e:
+                    continue
+            
+            if not server_started:
+                # Fallback: try with current working directory context
+                try:
+                    self.server_process = subprocess.Popen(
+                        [sys.executable, "src/cursus/api/config_ui/start_server.py", "--host", "0.0.0.0", "--port", str(self.server_port)],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=str(Path.cwd())
+                    )
+                except Exception as e:
+                    with self.status_output:
+                        print(f"❌ Failed to start server with all approaches: {e}")
+                    return False
             
             time.sleep(3)
             

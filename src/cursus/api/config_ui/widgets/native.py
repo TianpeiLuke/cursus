@@ -13,40 +13,20 @@ import os
 import re
 from pathlib import Path
 
-# Reuse existing components
-# Handle both relative and absolute imports using centralized path setup
+# Reuse existing components - robust imports supporting both development and pip-installed versions
 try:
-    # Try relative imports first (when run as module)
+    # Try relative imports first (preferred for portability)
     from ..core import UniversalConfigCore
-except ImportError:
-    # Fallback: Set up cursus path and use absolute imports
-    import sys
-    from pathlib import Path
-    
-    # Add the core directory to path for import_utils
-    current_dir = Path(__file__).parent
-    core_dir = current_dir.parent / 'core'
-    if str(core_dir) not in sys.path:
-        sys.path.insert(0, str(core_dir))
-    
-    from ..core.import_utils import ensure_cursus_path
-    ensure_cursus_path()
-    
-    from cursus.api.config_ui.core import UniversalConfigCore
-# Handle DAGConfigurationManager import
-try:
     from ..core.dag_manager import DAGConfigurationManager
-except ImportError:
-    from cursus.api.config_ui.core.dag_manager import DAGConfigurationManager
-
-# Handle SpecializedComponentRegistry import
-try:
     from .specialized_widgets import SpecializedComponentRegistry
 except ImportError:
+    # Fallback to absolute imports for edge cases
+    from cursus.api.config_ui.core import UniversalConfigCore
+    from cursus.api.config_ui.core.dag_manager import DAGConfigurationManager
     from cursus.api.config_ui.widgets.specialized_widgets import SpecializedComponentRegistry
 
 
-class SageMakerFieldRenderer:
+class NativeFieldRenderer:
     """
     Renders configuration fields as native ipywidgets.
     
@@ -170,9 +150,9 @@ class SageMakerFieldRenderer:
             widget.tooltip = f"Inherited from base configuration"
 
 
-class SageMakerFileManager:
+class NativeFileManager:
     """
-    Handles file operations for SageMaker environment.
+    Handles file operations for native notebook environments.
     
     Provides direct file system access without server dependencies.
     """
@@ -242,9 +222,9 @@ class SageMakerFileManager:
         return self.save_config(merged_data, filename)
 
 
-class SageMakerConfigWidget:
+class NativeConfigWidget:
     """
-    Server-free configuration widget for SageMaker environments.
+    Server-free configuration widget for native notebook environments.
     
     Reuses UniversalConfigCore for all configuration logic while providing
     native ipywidgets interface instead of web forms.
@@ -264,18 +244,14 @@ class SageMakerConfigWidget:
         if not self.config_class:
             raise ValueError(f"Configuration class {config_class_name} not found")
         
-        # Reuse existing field categorization
-        if hasattr(self.config_class, 'categorize_fields'):
-            temp_instance = self.config_class() if not base_config else self.config_class.from_base_config(base_config)
-            self.field_categories = temp_instance.categorize_fields()
-        else:
-            self.field_categories = self._manual_field_categorization()
+        # Use manual field categorization - don't create instances until user provides input
+        self.field_categories = self._manual_field_categorization()
         
         # Create native ipywidgets interface
-        self.field_renderer = SageMakerFieldRenderer(self.field_categories)
+        self.field_renderer = NativeFieldRenderer(self.field_categories)
         self.widgets = {}
         self.validation_output = None
-        self.file_manager = SageMakerFileManager()
+        self.file_manager = NativeFileManager()
         self._create_widgets()
     
     def _manual_field_categorization(self):
@@ -484,9 +460,9 @@ class SageMakerConfigWidget:
         return form_data
 
 
-class SageMakerPipelineWidget:
+class NativePipelineWidget:
     """
-    Multi-step pipeline configuration widget for SageMaker environments.
+    Multi-step pipeline configuration widget for native notebook environments.
     
     Reuses DAGConfigurationManager for pipeline analysis and workflow generation
     while providing native ipywidgets multi-step interface.
@@ -517,7 +493,7 @@ class SageMakerPipelineWidget:
         self.current_step = 0
         self.completed_configs = {}
         self.step_widgets = {}
-        self.file_manager = SageMakerFileManager()
+        self.file_manager = NativeFileManager()
         
         # Create UI components
         self._create_widgets()
@@ -629,7 +605,7 @@ class SageMakerPipelineWidget:
         
         # Create step widget
         base_config = self.completed_configs.get('BasePipelineConfig')
-        step_widget = SageMakerConfigWidget(step['config_class_name'], base_config=base_config)
+        step_widget = NativeConfigWidget(step['config_class_name'], base_config=base_config)
         
         self.step_widgets[self.current_step] = step_widget
         
@@ -748,11 +724,11 @@ class SageMakerPipelineWidget:
 
 
 # Factory functions for easy usage
-def create_sagemaker_config_widget(config_class_name: str, base_config=None, **kwargs):
-    """Create SageMaker configuration widget."""
-    return SageMakerConfigWidget(config_class_name, base_config, **kwargs)
+def create_native_config_widget(config_class_name: str, base_config=None, **kwargs):
+    """Create native configuration widget."""
+    return NativeConfigWidget(config_class_name, base_config, **kwargs)
 
 
-def create_sagemaker_pipeline_widget(dag_name: str = None, pipeline_dag=None, **kwargs):
-    """Create SageMaker pipeline configuration widget."""
-    return SageMakerPipelineWidget(dag_name, pipeline_dag, **kwargs)
+def create_native_pipeline_widget(dag_name: str = None, pipeline_dag=None, **kwargs):
+    """Create native pipeline configuration widget."""
+    return NativePipelineWidget(dag_name, pipeline_dag, **kwargs)

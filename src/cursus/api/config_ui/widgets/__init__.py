@@ -20,13 +20,13 @@ try:
         create_complete_config_ui_widget as create_jupyter_pipeline_config_widget,
         EnhancedSaveAllMergedWidget as UniversalConfigWidgetWithServer
     )
-    from .sagemaker import (
-        SageMakerConfigWidget,
-        SageMakerPipelineWidget,
-        SageMakerFieldRenderer,
-        SageMakerFileManager,
-        create_sagemaker_config_widget,
-        create_sagemaker_pipeline_widget
+    from .native import (
+        NativeConfigWidget,
+        NativePipelineWidget,
+        NativeFieldRenderer,
+        NativeFileManager,
+        create_native_config_widget,
+        create_native_pipeline_widget
     )
 except ImportError:
     # Fallback: Set up cursus path and use absolute imports
@@ -55,13 +55,13 @@ except ImportError:
         create_complete_config_ui_widget as create_jupyter_pipeline_config_widget,
         EnhancedSaveAllMergedWidget as UniversalConfigWidgetWithServer
     )
-    from cursus.api.config_ui.widgets.sagemaker import (
-        SageMakerConfigWidget,
-        SageMakerPipelineWidget,
-        SageMakerFieldRenderer,
-        SageMakerFileManager,
-        create_sagemaker_config_widget,
-        create_sagemaker_pipeline_widget
+    from cursus.api.config_ui.widgets.native import (
+        NativeConfigWidget,
+        NativePipelineWidget,
+        NativeFieldRenderer,
+        NativeFileManager,
+        create_native_config_widget,
+        create_native_pipeline_widget
     )
 
 __all__ = [
@@ -75,10 +75,10 @@ __all__ = [
     'create_jupyter_config_widget', 
     'create_jupyter_pipeline_config_widget',
     'UniversalConfigWidgetWithServer',
-    'SageMakerConfigWidget',
-    'SageMakerPipelineWidget',
-    'SageMakerFieldRenderer',
-    'SageMakerFileManager',
-    'create_sagemaker_config_widget',
-    'create_sagemaker_pipeline_widget'
+    'NativeConfigWidget',
+    'NativePipelineWidget',
+    'NativeFieldRenderer',
+    'NativeFileManager',
+    'create_native_config_widget',
+    'create_native_pipeline_widget'
 ]
