@@ -13,22 +13,10 @@ from IPython.display import display, HTML, Javascript
 import json
 import re
 
-# Handle both relative and absolute imports using centralized path setup
-try:
-    # Try relative imports first (when run as module)
-    from ...core.base.config_base import BasePipelineConfig
-    from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
-    from .core.core import UniversalConfigCore
-    from .core.dag_manager import DAGConfigurationManager
-except ImportError:
-    # Fallback: Set up cursus path and use absolute imports
-    from .core.import_utils import ensure_cursus_path
-    ensure_cursus_path()
-    
-    from cursus.core.base.config_base import BasePipelineConfig
-    from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
-    from cursus.api.config_ui.core.core import UniversalConfigCore
-    from cursus.api.config_ui.core.dag_manager import DAGConfigurationManager
+from ...core.base.config_base import BasePipelineConfig
+from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from .core.core import UniversalConfigCore
+from .core.dag_manager import DAGConfigurationManager
 
 logger = logging.getLogger(__name__)
 
@@ -316,187 +304,57 @@ class SageMakerOptimizations:
     """SageMaker-specific optimizations and enhancements."""
     
     def enhance_clipboard_support(self):
-        """Enhanced clipboard support for SageMaker environment using proven native.py approach."""
-        # Use the same comprehensive clipboard support from native.py
+        """Enhanced clipboard support - simplified and reliable."""
         display(HTML("""
         <script>
-        // Enhanced clipboard functionality with comprehensive debug logging (from native.py)
-        window.clipboardDebugLog = [];
-        
-        function debugLog(message) {
-            const timestamp = new Date().toISOString();
-            const logEntry = `[${timestamp}] ${message}`;
-            console.log(logEntry);
-            window.clipboardDebugLog.push(logEntry);
-        }
-        
-        function enhanceClipboardSupport() {
-            debugLog('🔧 INIT: Starting clipboard support initialization...');
-            debugLog(`🌐 Browser: ${navigator.userAgent}`);
-            debugLog(`📍 Location: ${window.location.href}`);
-            debugLog(`🔒 HTTPS: ${window.location.protocol === 'https:'}`);
+        // Simple, reliable clipboard support
+        function addClipboardSupport() {
+            console.log('🔧 Adding clipboard support...');
             
-            // Check clipboard API availability
-            debugLog('🔍 Checking clipboard API availability...');
-            if (navigator.clipboard) {
-                debugLog('✅ navigator.clipboard exists');
-                if (navigator.clipboard.readText) {
-                    debugLog('✅ navigator.clipboard.readText exists');
-                } else {
-                    debugLog('❌ navigator.clipboard.readText NOT available');
-                }
-                if (navigator.clipboard.writeText) {
-                    debugLog('✅ navigator.clipboard.writeText exists');
-                } else {
-                    debugLog('❌ navigator.clipboard.writeText NOT available');
-                }
-            } else {
-                debugLog('❌ navigator.clipboard NOT available');
-            }
+            // Find all input fields
+            const selectors = [
+                'input[type="text"]',
+                'textarea',
+                'input:not([type])',
+                '.widget-text input',
+                '.widget-textarea textarea',
+                '.jupyter-widgets input'
+            ];
             
-            // Add clipboard support to all text input fields
-            setTimeout(function() {
-                debugLog('⏰ Delayed execution: Adding clipboard to text fields...');
-                addClipboardToTextFields();
-            }, 1000);
-            
-            // Multiple retries to catch dynamically created widgets
-            setTimeout(function() {
-                debugLog('⏰ Retry 1: Re-scanning for text fields...');
-                addClipboardToTextFields();
-            }, 3000);
-            
-            setTimeout(function() {
-                debugLog('⏰ Retry 2: Final re-scan for text fields...');
-                addClipboardToTextFields();
-            }, 6000);
-        }
-        
-        function addClipboardToTextFields() {
-            // Find all text input fields in the widget
-            const textInputs = document.querySelectorAll('input[type="text"], textarea, input:not([type])');
-            debugLog(`🔍 SCAN: Found ${textInputs.length} potential text input fields`);
-            
-            // Also try more specific selectors for ipywidgets
-            const ipyWidgetInputs = document.querySelectorAll('.widget-text input, .widget-textarea textarea');
-            debugLog(`🔍 SCAN: Found ${ipyWidgetInputs.length} ipywidget text inputs`);
-            
-            // Combine all inputs
-            const allInputs = new Set([...textInputs, ...ipyWidgetInputs]);
-            debugLog(`🔍 SCAN: Total unique inputs: ${allInputs.size}`);
-            
-            let processedCount = 0;
-            allInputs.forEach(function(input, index) {
-                debugLog(`🔧 PROCESS: Setting up field ${index}`);
-                debugLog(`   • Tag: ${input.tagName}`);
-                debugLog(`   • Type: ${input.type || 'undefined'}`);
-                debugLog(`   • Class: ${input.className}`);
-                debugLog(`   • ReadOnly: ${input.readOnly}`);
-                debugLog(`   • Disabled: ${input.disabled}`);
-                
-                // Remove existing listeners to avoid duplicates
-                const newInput = input.cloneNode(true);
-                input.parentNode.replaceChild(newInput, input);
-                
-                // Add comprehensive event listeners with ipywidgets-specific handling
-                newInput.addEventListener('paste', function(e) {
-                    debugLog(`📋 PASTE EVENT: Detected in field ${index}`);
-                    debugLog(`   • Event type: ${e.type}`);
-                    debugLog(`   • ClipboardData available: ${!!e.clipboardData}`);
-                    
-                    if (e.clipboardData) {
-                        const pastedText = e.clipboardData.getData('text');
-                        debugLog(`   • Pasted text length: ${pastedText.length}`);
-                        debugLog(`   • Pasted text preview: "${pastedText.substring(0, 50)}..."`);
-                        
-                        // For ipywidgets, we need to manually set the value and trigger change
-                        newInput.value = pastedText;
-                        
-                        // Trigger input event to notify ipywidgets
-                        const inputEvent = new Event('input', { bubbles: true });
-                        newInput.dispatchEvent(inputEvent);
-                        
-                        // Also trigger change event
-                        const changeEvent = new Event('change', { bubbles: true });
-                        newInput.dispatchEvent(changeEvent);
-                        
-                        debugLog(`✅ PASTE APPLIED: Set field ${index} value to: "${pastedText}"`);
-                        
-                        // Show visual feedback
-                        showPasteFeedback(newInput);
-                    }
-                    
-                    // Let the default paste behavior work
-                    setTimeout(function() {
-                        debugLog(`✅ PASTE RESULT: Field ${index} final value: "${newInput.value}"`);
-                    }, 50);
-                });
-                
-                newInput.addEventListener('keydown', function(e) {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-                        debugLog(`⌨️ CTRL+V DETECTED: In field ${index}`);
-                        
-                        // For ipywidgets, we need to handle Ctrl+V manually
-                        e.preventDefault(); // Prevent default paste
-                        
-                        if (navigator.clipboard && navigator.clipboard.readText) {
-                            debugLog(`🔄 MANUAL PASTE: Reading from clipboard API...`);
-                            navigator.clipboard.readText().then(function(text) {
-                                debugLog(`📋 CLIPBOARD READ: Got text: "${text.substring(0, 50)}..."`);
-                                
-                                // Set the value manually
-                                newInput.value = text;
-                                
-                                // Trigger events to notify ipywidgets
-                                const inputEvent = new Event('input', { bubbles: true });
-                                newInput.dispatchEvent(inputEvent);
-                                
-                                const changeEvent = new Event('change', { bubbles: true });
-                                newInput.dispatchEvent(changeEvent);
-                                
-                                debugLog(`✅ MANUAL PASTE SUCCESS: Field ${index} set to: "${text}"`);
-                                
-                                // Show visual feedback
-                                showPasteFeedback(newInput);
-                            }).catch(function(err) {
-                                debugLog(`❌ CLIPBOARD READ FAILED: ${err}`);
-                                debugLog(`🔄 FALLBACK: Trying execCommand paste...`);
-                                
-                                // Fallback to execCommand
-                                try {
-                                    document.execCommand('paste');
-                                    debugLog(`✅ EXECCOMMAND PASTE: Attempted`);
-                                } catch (execErr) {
-                                    debugLog(`❌ EXECCOMMAND FAILED: ${execErr}`);
-                                }
-                            });
-                        } else {
-                            debugLog(`🔄 FALLBACK PASTE: No clipboard API, trying execCommand...`);
-                            try {
-                                document.execCommand('paste');
-                                debugLog(`✅ EXECCOMMAND PASTE: Attempted`);
-                            } catch (execErr) {
-                                debugLog(`❌ EXECCOMMAND FAILED: ${execErr}`);
-                            }
-                        }
-                    }
-                });
-                
-                // Ensure the field is properly configured for clipboard
-                newInput.style.userSelect = 'text';
-                newInput.style.webkitUserSelect = 'text';
-                newInput.readOnly = false;
-                newInput.disabled = false;
-                
-                debugLog(`✅ SETUP COMPLETE: Field ${index} configured for clipboard`);
-                processedCount++;
+            let allInputs = new Set();
+            selectors.forEach(selector => {
+                document.querySelectorAll(selector).forEach(input => allInputs.add(input));
             });
             
-            debugLog(`🎯 SUMMARY: Processed ${processedCount} text input fields`);
+            console.log(`Found ${allInputs.size} input fields`);
+            
+            // Add clipboard support to each field
+            allInputs.forEach((input, index) => {
+                // Enable text selection
+                input.style.userSelect = 'text';
+                input.style.webkitUserSelect = 'text';
+                
+                // Add paste event listener
+                input.addEventListener('paste', function(e) {
+                    console.log(`📋 Paste in field ${index}`);
+                    
+                    // Let default paste work, then trigger ipywidgets events
+                    setTimeout(() => {
+                        // Trigger events for ipywidgets
+                        const events = ['input', 'change'];
+                        events.forEach(eventType => {
+                            const event = new Event(eventType, { bubbles: true });
+                            input.dispatchEvent(event);
+                        });
+                        
+                        // Show visual feedback
+                        showPasteFeedback(input);
+                    }, 10);
+                });
+            });
         }
         
         function showPasteFeedback(input) {
-            // Show visual feedback for successful paste
             const feedback = document.createElement('div');
             feedback.textContent = '✅ Pasted!';
             feedback.style.cssText = `
@@ -508,7 +366,6 @@ class SageMakerOptimizations:
                 font-size: 12px;
                 z-index: 1000;
                 pointer-events: none;
-                animation: fadeInOut 2s ease-in-out;
             `;
             
             const rect = input.getBoundingClientRect();
@@ -519,51 +376,28 @@ class SageMakerOptimizations:
             setTimeout(() => feedback.remove(), 2000);
         }
         
-        // Add CSS for animations
+        // Add CSS for text selection
         const style = document.createElement('style');
         style.textContent = `
-            @keyframes fadeInOut {
-                0% { opacity: 0; transform: translateY(-10px); }
-                20% { opacity: 1; transform: translateY(0); }
-                80% { opacity: 1; transform: translateY(0); }
-                100% { opacity: 0; transform: translateY(-10px); }
-            }
-            
-            .form-control, .form-field input, .form-field textarea, .form-field select,
-            .widget-text input, .widget-textarea textarea {
+            .widget-text input, .widget-textarea textarea, .jupyter-widgets input {
                 user-select: text !important;
                 -webkit-user-select: text !important;
-                -moz-user-select: text !important;
-                -ms-user-select: text !important;
             }
         `;
         document.head.appendChild(style);
         
-        // Initialize clipboard support when DOM is ready
-        debugLog('🚀 STARTUP: Initializing clipboard support...');
-        if (document.readyState === 'loading') {
-            debugLog('📄 DOM: Still loading, waiting for DOMContentLoaded...');
-            document.addEventListener('DOMContentLoaded', enhanceClipboardSupport);
-        } else {
-            debugLog('📄 DOM: Already loaded, initializing immediately...');
-            enhanceClipboardSupport();
-        }
+        // Initialize clipboard support with retries
+        addClipboardSupport();
+        setTimeout(addClipboardSupport, 1000);
+        setTimeout(addClipboardSupport, 3000);
+        setTimeout(addClipboardSupport, 5000);
         
-        // Global function to get debug logs
-        window.getClipboardDebugLogs = function() {
-            return window.clipboardDebugLog.join('\\n');
-        };
-        
-        // Global function to clear debug logs
-        window.clearClipboardDebugLogs = function() {
-            window.clipboardDebugLog = [];
-        };
+        console.log('✅ Clipboard support initialized');
         </script>
         
         <div style="background-color: #d1fae5; border: 1px solid #10b981; padding: 10px; border-radius: 4px; margin: 5px 0;">
             <strong>📋 Enhanced Clipboard Support Active!</strong> 
             Ctrl+C/Ctrl+V now works in all form fields with visual feedback.
-            <br><small>Check browser console (F12) for detailed clipboard debug information if needed.</small>
         </div>
         """))
     
@@ -629,7 +463,7 @@ class SageMakerOptimizations:
         
         preview_html = HTML(
             value=f"<div style='background: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px;'>"
-                  f"<strong>💡 Save Preview:</strong> Will save as <strong>{default_filename}</strong> in current directory</div>"
+                  f"<strong>� Save Preview:</strong> Will save as <strong>{default_filename}</strong> in current directory</div>"
         )
         
         # Update preview when inputs change

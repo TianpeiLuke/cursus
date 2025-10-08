@@ -10,18 +10,8 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pathlib import Path
 import inspect
 
-# Handle both relative and absolute imports using centralized path setup
-try:
-    # Try relative imports first (when run as module)
-    from ....core.base.config_base import BasePipelineConfig
-    from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
-except ImportError:
-    # Fallback: Set up cursus path and use absolute imports
-    from .import_utils import ensure_cursus_path
-    ensure_cursus_path()
-    
-    from cursus.core.base.config_base import BasePipelineConfig
-    from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
+from ....core.base.config_base import BasePipelineConfig
+from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -506,13 +496,98 @@ class UniversalConfigCore:
                     "inferred": True
                 }
                 
-        except (ImportError, ValueError):
-            logger.debug(f"Registry lookup failed for {node_name}")
+        except (ImportError, ValueError) as e:
+            logger.debug(f"Registry lookup failed for {node_name}: {e}")
         
+        # Enhanced fallback: Try pattern matching for common job type suffixes
+        return self._fallback_config_inference(node_name)
+    
+    def _fallback_config_inference(self, node_name: str) -> Optional[Dict]:
+        """
+        Fallback method to infer config class using pattern matching.
+        
+        This ensures that nodes with job type suffixes (like _training, _calibration)
+        still get mapped to appropriate config classes for separate user configuration.
+        
+        Args:
+            node_name: DAG node name to analyze
+            
+        Returns:
+            Configuration class information if found, None otherwise
+        """
+        # Common patterns for job type suffixes
+        job_type_patterns = [
+            ("_training", ""),
+            ("_calibration", ""),
+            ("_evaluation", ""),
+            ("_inference", ""),
+            ("_validation", ""),
+        ]
+        
+        available_config_classes = self.discover_config_classes()
+        
+        # Try removing job type suffixes and matching to known config classes
+        for suffix, replacement in job_type_patterns:
+            if node_name.endswith(suffix):
+                base_name = node_name[:-len(suffix)] + replacement
+                
+                # Try direct mapping to config class names
+                potential_config_names = [
+                    f"{base_name}Config",
+                    f"{base_name}StepConfig", 
+                    base_name,
+                ]
+                
+                # Handle naming anomalies that violate the standard convention
+                if base_name == "CradleDataLoading":
+                    potential_config_names.insert(0, "CradleDataLoadConfig")  # Anomaly: missing "ing"
+                
+                for config_name in potential_config_names:
+                    if config_name in available_config_classes:
+                        config_class = available_config_classes[config_name]
+                        logger.info(f"Fallback mapping: {node_name} → {config_name}")
+                        return {
+                            "node_name": node_name,
+                            "config_class_name": config_name,
+                            "config_class": config_class,
+                            "inheritance_pattern": self._get_inheritance_pattern(config_class),
+                            "is_specialized": self._is_specialized_config(config_class),
+                            "inferred": True,
+                            "fallback_used": True
+                        }
+        
+        # Try exact name matching (for nodes without job type suffixes)
+        potential_config_names = [
+            f"{node_name}Config",
+            f"{node_name}StepConfig",
+            node_name,
+        ]
+        
+        for config_name in potential_config_names:
+            if config_name in available_config_classes:
+                config_class = available_config_classes[config_name]
+                logger.info(f"Direct mapping: {node_name} → {config_name}")
+                return {
+                    "node_name": node_name,
+                    "config_class_name": config_name,
+                    "config_class": config_class,
+                    "inheritance_pattern": self._get_inheritance_pattern(config_class),
+                    "is_specialized": self._is_specialized_config(config_class),
+                    "inferred": True,
+                    "direct_match": True
+                }
+        
+        logger.warning(f"No config class found for node: {node_name}")
         return None
     
     def _create_workflow_structure(self, required_configs: List[Dict]) -> List[Dict]:
-        """Create logical workflow structure for configuration steps."""
+        """
+        Create logical workflow structure for configuration steps.
+        
+        Each DAG node gets its own configuration step, even if they share
+        the same config class type (e.g., CradleDataLoading_training and 
+        CradleDataLoading_calibration both get separate configuration pages).
+        """
         workflow_steps = []
         
         # Step 1: Always start with Base Configuration
@@ -541,24 +616,38 @@ class UniversalConfigCore:
                 "required": True
             })
         
-        # Step 3+: Add specific configurations
+        # Step 3+: Add specific configurations - ONE STEP PER DAG NODE
         step_number = len(workflow_steps) + 1
         for config in required_configs:
+            # Create a unique title that includes the DAG node name
+            # This makes it clear which instance of the config this is for
+            node_name = config["node_name"]
+            config_class_name = config["config_class_name"]
+            
+            # Create descriptive title that shows both the config type and the specific DAG node
+            if node_name != config_class_name:
+                title = f"{config_class_name} ({node_name})"
+            else:
+                title = config_class_name
+            
             workflow_steps.append({
                 "step_number": step_number,
-                "title": config["config_class_name"],
+                "title": title,
                 "config_class": config["config_class"],
-                "config_class_name": config["config_class_name"],
-                "step_name": config["node_name"],
+                "config_class_name": config_class_name,
+                "step_name": node_name,  # This is the DAG node name
                 "type": "specific",
                 "inheritance_pattern": config["inheritance_pattern"],
                 "is_specialized": config["is_specialized"],
                 "required": True,
-                "inferred": config.get("inferred", False)
+                "inferred": config.get("inferred", False),
+                "fallback_used": config.get("fallback_used", False),
+                "direct_match": config.get("direct_match", False)
             })
             step_number += 1
         
         logger.info(f"Created workflow structure with {len(workflow_steps)} steps")
+        logger.info(f"Specific config steps: {len(required_configs)} (one per DAG node)")
         return workflow_steps
     
     def _get_inheritance_pattern(self, config_class: Type[BasePipelineConfig]) -> str:
