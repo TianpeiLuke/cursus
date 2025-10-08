@@ -867,6 +867,18 @@ body {
     font-size: 1rem;
     transition: all 0.2s ease;
     background: white;
+    /* Ensure clipboard operations work */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    /* Enable paste operations */
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    -khtml-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
 }
 
 .form-control:focus {
@@ -914,6 +926,157 @@ body {
     gap: 1rem;
     font-size: 0.875rem;
     color: #6b7280;
+}
+
+/* DAG Analysis Results */
+.dag-analysis-results {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.discovered-steps {
+    margin-bottom: 2rem;
+}
+
+.discovered-steps h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.step-card {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.step-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.step-info {
+    font-weight: 500;
+    color: #1a1a1a;
+    font-size: 1rem;
+    width: 100%;
+}
+
+.step-name {
+    font-weight: 500;
+    color: #1a1a1a;
+    font-size: 1rem;
+}
+
+.step-type {
+    font-size: 0.875rem;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.required-configs {
+    margin-bottom: 2rem;
+}
+
+.required-configs h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.config-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.config-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.config-icon {
+    font-size: 1.25rem;
+    color: #22c55e;
+    flex-shrink: 0;
+}
+
+.config-name {
+    font-weight: 500;
+    color: #1a1a1a;
+    font-size: 1rem;
+    flex: 1;
+}
+
+.hidden-configs {
+    display: none;
+}
+
+.workflow-summary {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.workflow-summary h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.workflow-summary p {
+    color: #6b7280;
+    margin-bottom: 1rem;
+}
+
+.workflow-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
 }
 
 /* Responsive Design */

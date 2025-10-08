@@ -398,8 +398,7 @@ class CursusConfigUI {
                     <div class="step-cards">
                         ${(analysisResult.discovered_steps || []).map(step => `
                             <div class="step-card">
-                                <div class="step-name">${step.step_name}</div>
-                                <div class="step-type">${step.step_type}</div>
+                                <div class="step-info">${step.step_name || step.name}: ${step.step_type === 'pipeline_step' ? 'Step' : step.step_type}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -433,26 +432,38 @@ class CursusConfigUI {
     }
 
     async analyzePipelineDAG(pipelineDAG) {
-        // Mock analysis for now - in real implementation this would call the backend
+        console.log('Analyzing pipeline DAG:', pipelineDAG);
+        
+        // Ensure nodes have proper structure for display
+        const nodes = (pipelineDAG.nodes || []).map(node => ({
+            step_name: node.name || node.step_name || 'Unknown Step',
+            step_type: node.type || node.step_type || 'pipeline_step',
+            name: node.name || node.step_name || 'Unknown Step',
+            type: node.type || node.step_type || 'pipeline_step'
+        }));
+        
+        console.log('Processed nodes for analysis:', nodes);
+        
         return {
-            discovered_steps: pipelineDAG.nodes || [],
-            required_configs: (pipelineDAG.nodes || []).map(node => ({
+            discovered_steps: nodes,
+            required_configs: nodes.map(node => ({
                 config_class_name: `${node.name}Config`,
                 step_name: node.name,
-                is_specialized: node.name === 'cradle_data_loading'
+                is_specialized: node.name === 'CradleDataLoading_training' || node.name === 'CradleDataLoading_calibration'
             })),
             workflow_steps: [
                 { step_number: 1, title: 'Base Configuration', type: 'base', config_class_name: 'BasePipelineConfig' },
                 { step_number: 2, title: 'Processing Configuration', type: 'processing', config_class_name: 'ProcessingStepConfigBase' },
-                ...(pipelineDAG.nodes || []).map((node, index) => ({
+                ...nodes.map((node, index) => ({
                     step_number: index + 3,
                     title: `${node.name}Config`,
                     type: 'specific',
                     config_class_name: `${node.name}Config`,
-                    is_specialized: node.name === 'cradle_data_loading'
+                    step_name: node.name,
+                    is_specialized: node.name === 'CradleDataLoading_training' || node.name === 'CradleDataLoading_calibration'
                 }))
             ],
-            total_steps: 2 + (pipelineDAG.nodes || []).length,
+            total_steps: 2 + nodes.length,
             hidden_configs_count: 47
         };
     }
@@ -749,6 +760,22 @@ class CursusConfigUI {
             
             field.addEventListener('change', () => this.updateWorkflowFormData(configName, fieldName, field));
             field.addEventListener('input', () => this.updateWorkflowFormData(configName, fieldName, field));
+            
+            // Explicitly enable clipboard operations
+            field.addEventListener('paste', (e) => {
+                // Allow default paste behavior
+                setTimeout(() => {
+                    this.updateWorkflowFormData(configName, fieldName, field);
+                }, 10);
+            });
+            
+            // Ensure clipboard operations work properly
+            field.style.webkitUserSelect = 'text';
+            field.style.userSelect = 'text';
+            
+            // Remove any attributes that might block clipboard
+            field.removeAttribute('readonly');
+            field.removeAttribute('disabled');
         });
     }
     
@@ -1046,10 +1073,18 @@ class CursusConfigUI {
                 const dagInfo = JSON.parse(selectedOption.dataset.dagData);
                 console.log('Loading DAG from catalog:', dagInfo);
                 
-                // Return the DAG structure
-                return dagInfo.dag_structure || {
-                    nodes: dagInfo.dag_structure?.nodes || [],
-                    edges: dagInfo.dag_structure?.edges || []
+                // Return the DAG structure with proper node format
+                const dagStructure = dagInfo.dag_structure || {};
+                const nodes = (dagStructure.nodes || []).map(node => ({
+                    name: node.name || 'Unknown',
+                    type: node.type || 'pipeline_step',
+                    step_name: node.name || 'Unknown',
+                    step_type: node.type || 'pipeline_step'
+                }));
+                
+                return {
+                    nodes: nodes,
+                    edges: dagStructure.edges || []
                 };
             } else {
                 // Fallback to hardcoded data if not found

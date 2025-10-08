@@ -775,7 +775,7 @@ async def get_dag_catalog():
                         from cursus.pipeline_catalog.shared_dags.xgboost.complete_e2e_dag import create_xgboost_complete_e2e_dag
                         dag = create_xgboost_complete_e2e_dag()
                         dag_info["dag_structure"] = {
-                            "nodes": [{"name": node, "type": "pipeline_step"} for node in dag.nodes],
+                            "nodes": [{"name": node, "type": _get_sagemaker_step_type(node)} for node in dag.nodes],
                             "edges": [{"from": edge[0], "to": edge[1]} for edge in dag.edges]
                         }
                     elif framework == 'xgboost' and 'simple' in dag_name:
@@ -847,6 +847,66 @@ def setup_static_files(app):
 
 
 # Helper functions
+def _get_sagemaker_step_type(node_name: str) -> str:
+    """
+    Get the proper SageMaker step type for a node name using the registry.
+    
+    Args:
+        node_name: The pipeline step name (e.g., "CradleDataLoading_training")
+        
+    Returns:
+        str: The SageMaker step type (e.g., "Processing", "Training", etc.)
+    """
+    try:
+        # Import the step registry
+        from cursus.registry.step_names_original import STEP_NAMES
+        
+        # Extract the base step name (remove suffixes like _training, _calibration)
+        base_name = node_name
+        
+        # Handle common suffixes
+        suffixes = ['_training', '_calibration', '_validation', '_evaluation', '_inference']
+        for suffix in suffixes:
+            if base_name.endswith(suffix):
+                base_name = base_name[:-len(suffix)]
+                break
+        
+        # Look up in registry
+        if base_name in STEP_NAMES:
+            return STEP_NAMES[base_name]["sagemaker_step_type"]
+        
+        # Handle special cases
+        if "CradleDataLoading" in node_name:
+            return "CradleDataLoading"
+        elif "TabularPreprocessing" in node_name:
+            return "Processing"
+        elif "XGBoostTraining" in node_name:
+            return "Training"
+        elif "PyTorchTraining" in node_name:
+            return "Training"
+        elif "DummyTraining" in node_name:
+            return "Processing"
+        elif "XGBoostModelEval" in node_name:
+            return "Processing"
+        elif "PyTorchModelEval" in node_name:
+            return "Processing"
+        elif "ModelCalibration" in node_name:
+            return "Processing"
+        elif "Package" in node_name:
+            return "Processing"
+        elif "Registration" in node_name:
+            return "MimsModelRegistrationProcessing"
+        elif "Payload" in node_name:
+            return "Processing"
+        else:
+            # Default fallback
+            return "Processing"
+            
+    except Exception as e:
+        logger.warning(f"Failed to get SageMaker step type for {node_name}: {e}")
+        return "Processing"  # Safe fallback
+
+
 def _format_python_args(form_data: Dict[str, Any], indent: int = 4) -> str:
     """Format form data as Python constructor arguments."""
     lines = []

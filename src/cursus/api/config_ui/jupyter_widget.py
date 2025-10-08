@@ -279,23 +279,14 @@ class UniversalConfigWidget(BaseConfigWidget):
             self.status_output
         ])
         
-        # Start polling for configuration availability
-        self._start_config_polling()
+        # Don't start automatic polling - let user manually check
+        # Initial status message will be shown only once when widget is displayed
     
     def _start_config_polling(self):
-        """Start polling for configuration availability."""
-        def poll_config():
-            while True:
-                data = self._make_api_request('GET', '/api/config-ui/get-latest-config', timeout=2)
-                if data and data.get('config_type') == self.config_class_name:
-                    self.get_config_button.disabled = False
-                    with self.status_output:
-                        print(f"✅ Configuration ready for {self.config_class_name}")
-                    break
-                time.sleep(2)
-        
-        polling_thread = threading.Thread(target=poll_config, daemon=True)
-        polling_thread.start()
+        """Start polling for configuration availability (disabled by default)."""
+        # Polling disabled to prevent continuous 404 errors
+        # Users should manually click "Get Configuration" after completing the form
+        pass
     
     def _on_get_config_clicked(self, button):
         """Handle get configuration button click."""
@@ -328,8 +319,12 @@ class UniversalConfigWidget(BaseConfigWidget):
     def display(self):
         """Display the widget."""
         display(self.widget)
+        
         display(HTML(f"""
         <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; margin: 15px 0; color: #212529;">
+            <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <strong>💡 Quick Start:</strong> Complete the configuration form above, then click 'Get Configuration' to retrieve it.
+            </div>
             <h4 style="color: #495057; margin-bottom: 15px; font-weight: 600;">📝 How to Use:</h4>
             <ol style="color: #495057; line-height: 1.6; margin: 0; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Complete the configuration form in the UI above for <strong>{self.config_class_name}</strong></li>
