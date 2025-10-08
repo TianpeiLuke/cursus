@@ -29,7 +29,7 @@ except ImportError:
     if str(core_dir) not in sys.path:
         sys.path.insert(0, str(core_dir))
     
-    from import_utils import ensure_cursus_path
+    from ..core.import_utils import ensure_cursus_path
     ensure_cursus_path()
     
     from cursus.core.base.hyperparameters_base import ModelHyperparameters

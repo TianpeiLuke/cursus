@@ -34,8 +34,26 @@ def start_server(host="127.0.0.1", port=8003):
     print()
     
     try:
-        # Import with absolute path (same as Cradle UI)
-        from cursus.api.config_ui.api import create_config_ui_app
+        # Handle both relative and absolute imports using centralized path setup
+        try:
+            # Try relative imports first (when run as module)
+            from web.api import create_config_ui_app
+        except ImportError:
+            # Fallback: Set up cursus path and use absolute imports
+            import sys
+            from pathlib import Path
+            
+            # Add the core directory to path for import_utils
+            current_dir = Path(__file__).parent
+            core_dir = current_dir / 'core'
+            if str(core_dir) not in sys.path:
+                sys.path.insert(0, str(core_dir))
+            
+            from core.import_utils import ensure_cursus_path
+            ensure_cursus_path()
+            
+            from cursus.api.config_ui.web.api import create_config_ui_app
+        
         import uvicorn
         
         # Create the FastAPI app
