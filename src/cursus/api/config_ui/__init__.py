@@ -124,8 +124,18 @@ def _init_message():
     """Display initialization message when module is imported."""
     import logging
     logger = logging.getLogger(__name__)
-    logger.info("Cursus Config UI initialized with enhanced SageMaker native support")
-    logger.info("95% code reuse from existing infrastructure achieved")
+    # Suppress logger messages in widget output
+    logging.getLogger('cursus.api.config_ui').setLevel(logging.ERROR)
+    logging.getLogger('cursus.core').setLevel(logging.ERROR)
+    logging.getLogger('cursus.step_catalog').setLevel(logging.ERROR)
+    logging.getLogger('cursus.step_catalog.step_catalog').setLevel(logging.ERROR)
+    logging.getLogger('cursus.step_catalog.builder_discovery').setLevel(logging.ERROR)
+    logging.getLogger('cursus.step_catalog.config_discovery').setLevel(logging.ERROR)
+    # Suppress all cursus-related loggers
+    logging.getLogger('cursus').setLevel(logging.ERROR)
+    # Commented out to prevent widget output clutter
+    # logger.info("Cursus Config UI initialized with enhanced SageMaker native support")
+    # logger.info("95% code reuse from existing infrastructure achieved")
 
 # Call initialization
 _init_message()
