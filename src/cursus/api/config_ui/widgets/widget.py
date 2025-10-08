@@ -49,12 +49,13 @@ logger = logging.getLogger(__name__)
 class UniversalConfigWidget:
     """Universal configuration widget for any config type."""
     
-    def __init__(self, form_data: Dict[str, Any]):
+    def __init__(self, form_data: Dict[str, Any], is_final_step: bool = True):
         """
         Initialize universal configuration widget.
         
         Args:
             form_data: Form data containing config class, fields, values, etc.
+            is_final_step: Whether this is the final step in a multi-step wizard
         """
         self.form_data = form_data
         self.config_class = form_data["config_class"]
@@ -62,6 +63,7 @@ class UniversalConfigWidget:
         self.fields = form_data["fields"]
         self.values = form_data["values"]
         self.pre_populated_instance = form_data.get("pre_populated_instance")
+        self.is_final_step = is_final_step
         
         self.widgets = {}
         self.config_instance = None
@@ -408,34 +410,53 @@ class UniversalConfigWidget:
         return widgets.HTML(inherited_html)
     
     def _create_action_buttons(self) -> widgets.Widget:
-        """Create modern action buttons."""
-        save_button = widgets.Button(
-            description="💾 Save Configuration",
-            button_style='success',
-            layout=widgets.Layout(width='200px', height='40px')
-        )
-        cancel_button = widgets.Button(
-            description="❌ Cancel",
-            button_style='',
-            layout=widgets.Layout(width='120px', height='40px')
-        )
-        
-        save_button.on_click(self._on_save_clicked)
-        cancel_button.on_click(self._on_cancel_clicked)
-        
-        # Create button container with modern styling
-        button_html = """
-        <div style='background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
-                    padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;'>
-        </div>
-        """
-        button_bg = widgets.HTML(button_html)
-        button_box = widgets.HBox(
-            [save_button, cancel_button], 
-            layout=widgets.Layout(justify_content='center', margin='20px 0')
-        )
-        
-        return button_box
+        """Create modern action buttons - conditionally show save button only on final step."""
+        if self.is_final_step:
+            # Final step: Show save button
+            save_button = widgets.Button(
+                description="💾 Complete Configuration",
+                button_style='success',
+                layout=widgets.Layout(width='220px', height='40px')
+            )
+            cancel_button = widgets.Button(
+                description="❌ Cancel",
+                button_style='',
+                layout=widgets.Layout(width='120px', height='40px')
+            )
+            
+            save_button.on_click(self._on_save_clicked)
+            cancel_button.on_click(self._on_cancel_clicked)
+            
+            button_box = widgets.HBox(
+                [save_button, cancel_button], 
+                layout=widgets.Layout(justify_content='center', margin='20px 0')
+            )
+            
+            return button_box
+        else:
+            # Intermediate step: Show guidance instead of save button
+            guidance_html = f"""
+            <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                        border: 2px solid #0ea5e9; border-radius: 12px; padding: 20px; margin: 20px 0;
+                        text-align: center;'>
+                <h4 style='margin: 0 0 10px 0; color: #0c4a6e; display: flex; align-items: center; justify-content: center;'>
+                    📋 Step {self.config_class_name}
+                </h4>
+                <p style='margin: 0 0 15px 0; color: #0c4a6e; font-size: 14px;'>
+                    Fill in the fields above and use the <strong>"Next →"</strong> button to continue to the next step.
+                </p>
+                <div style='background: rgba(255, 255, 255, 0.7); border-radius: 8px; padding: 12px; margin: 10px 0;'>
+                    <p style='margin: 0; color: #0369a1; font-size: 13px; font-style: italic;'>
+                        💡 Your configuration will be automatically saved when you click "Next"
+                    </p>
+                </div>
+                <div style='color: #0284c7; font-size: 12px; margin-top: 10px;'>
+                    ⬆️ Use the navigation buttons above to move between steps
+                </div>
+            </div>
+            """
+            
+            return widgets.HTML(guidance_html)
     
     def _on_save_clicked(self, button):
         """Handle save button click."""
@@ -699,7 +720,10 @@ class MultiStepWizard:
                 "pre_populated_instance": step.get("pre_populated")
             }
             
-            self.step_widgets[self.current_step] = UniversalConfigWidget(form_data)
+            # Determine if this is the final step
+            is_final_step = (self.current_step == len(self.steps) - 1)
+            
+            self.step_widgets[self.current_step] = UniversalConfigWidget(form_data, is_final_step=is_final_step)
         
         # Display step
         step_widget = self.step_widgets[self.current_step]
@@ -826,7 +850,8 @@ class MultiStepWizard:
         """Handle previous button click."""
         if self.current_step > 0:
             self.current_step -= 1
-            self.display()
+            # Update navigation and current step without full redisplay
+            self._update_navigation_and_step()
     
     def _on_next_clicked(self, button):
         """Handle next button click."""
@@ -834,7 +859,20 @@ class MultiStepWizard:
         if self._save_current_step():
             if self.current_step < len(self.steps) - 1:
                 self.current_step += 1
-                self.display()
+                # Update navigation and current step without full redisplay
+                self._update_navigation_and_step()
+    
+    def _update_navigation_and_step(self):
+        """Update navigation and current step without full widget recreation."""
+        # Update navigation display
+        with self.navigation_output:
+            clear_output(wait=True)
+            self._display_navigation()
+        
+        # Update current step display
+        with self.output:
+            clear_output(wait=True)
+            self._display_current_step()
     
     def _on_finish_clicked(self, button):
         """Handle finish button click."""

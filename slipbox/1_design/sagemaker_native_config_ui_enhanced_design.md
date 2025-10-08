@@ -872,6 +872,153 @@ class JupyterPerformanceOptimizer:
 
 ## Additional Feature Updates from Implementation Plan
 
+### Multi-Step Wizard Navigation UX Improvement (October 2025)
+
+#### **Problem Identified and Resolved**
+- ✅ **Issue**: Users clicking "Save Configuration" on intermediate steps would see success message but lose navigation buttons, getting stuck without ability to proceed
+- ✅ **Root Cause**: UX conflict between individual step widget save functionality and multi-step wizard navigation flow
+- ✅ **Solution**: Conditional save button display with clear user guidance
+
+#### **Implementation Details**
+```python
+class UniversalConfigWidget:
+    def __init__(self, form_data: Dict[str, Any], is_final_step: bool = True):
+        """Enhanced constructor with final step awareness."""
+        self.is_final_step = is_final_step  # NEW: Controls save button display
+    
+    def _create_action_buttons(self) -> widgets.Widget:
+        """Conditional save button display based on step position."""
+        if self.is_final_step:
+            # Final step: Show "Complete Configuration" button
+            save_button = widgets.Button(
+                description="💾 Complete Configuration",
+                button_style='success'
+            )
+            return widgets.HBox([save_button, cancel_button])
+        else:
+            # Intermediate steps: Show guidance instead of save button
+            guidance_html = f"""
+            <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                        border: 2px solid #0ea5e9; border-radius: 12px; padding: 20px;'>
+                <h4>📋 Step {self.config_class_name}</h4>
+                <p>Fill in the fields above and use the <strong>"Next →"</strong> button to continue.</p>
+                <div style='background: rgba(255, 255, 255, 0.7); padding: 12px;'>
+                    <p>💡 Your configuration will be automatically saved when you click "Next"</p>
+                </div>
+                <div>⬆️ Use the navigation buttons above to move between steps</div>
+            </div>
+            """
+            return widgets.HTML(guidance_html)
+
+class MultiStepWizard:
+    def _display_current_step(self):
+        """Enhanced step display with final step detection."""
+        # Determine if this is the final step
+        is_final_step = (self.current_step == len(self.steps) - 1)
+        
+        # Pass final step flag to widget
+        self.step_widgets[self.current_step] = UniversalConfigWidget(
+            form_data, 
+            is_final_step=is_final_step  # NEW: Controls button behavior
+        )
+```
+
+#### **User Experience Improvements**
+**Before (Problematic Flow):**
+```
+Step 1: Fill fields → Click "Save Configuration" → Success message → STUCK (no navigation)
+```
+
+**After (Improved Flow):**
+```
+Step 1: Fill fields → Click "Next →" → Auto-save → Move to Step 2
+Step 2: Fill fields → Click "Next →" → Auto-save → Move to Step 3
+...
+Final Step: Fill fields → Click "Complete Configuration" → Generate config_list
+```
+
+#### **Visual Design Enhancement**
+- **Intermediate Steps**: Professional guidance box with clear instructions and visual hierarchy
+- **Final Step**: Prominent "Complete Configuration" button with success styling
+- **Navigation Clarity**: Clear indication that navigation buttons are the primary interaction method
+- **Auto-save Feedback**: Users understand their progress is automatically preserved
+
+#### **Technical Benefits**
+- ✅ **Eliminates User Confusion**: Clear workflow with appropriate buttons at each stage
+- ✅ **Maintains Navigation Flow**: Users can always proceed through the wizard
+- ✅ **Preserves Functionality**: All existing save/validation logic preserved
+- ✅ **Professional UX**: Consistent with modern multi-step wizard patterns
+- ✅ **Backward Compatible**: No breaking changes to existing widget functionality
+
+### Verbose Logger Output Suppression (October 2025)
+
+#### **Problem Identified and Resolved**
+- ✅ **Issue**: Verbose INFO/WARNING logger messages from cursus modules appearing in widget output, cluttering the user interface
+- ✅ **Root Cause**: Default logger levels allowing all cursus-related modules to output messages to widget display
+- ✅ **Solution**: Comprehensive logger suppression at widget initialization
+
+#### **Implementation Details**
+```python
+# In widget.py - Comprehensive logger suppression
+import logging
+
+# Suppress logger messages in widget output
+logging.getLogger('cursus.api.config_ui').setLevel(logging.ERROR)
+logging.getLogger('cursus.core').setLevel(logging.ERROR)
+logging.getLogger('cursus.step_catalog').setLevel(logging.ERROR)
+logging.getLogger('cursus.step_catalog.step_catalog').setLevel(logging.ERROR)
+logging.getLogger('cursus.step_catalog.builder_discovery').setLevel(logging.ERROR)
+logging.getLogger('cursus.step_catalog.config_discovery').setLevel(logging.ERROR)
+# Suppress all cursus-related loggers
+logging.getLogger('cursus').setLevel(logging.ERROR)
+
+# In __init__.py - Module initialization suppression
+def _init_message():
+    """Display initialization message when module is imported."""
+    import logging
+    logger = logging.getLogger(__name__)
+    # Suppress logger messages in widget output
+    logging.getLogger('cursus.api.config_ui').setLevel(logging.ERROR)
+    logging.getLogger('cursus.core').setLevel(logging.ERROR)
+    logging.getLogger('cursus.step_catalog').setLevel(logging.ERROR)
+    # ... (comprehensive suppression)
+    
+    # Commented out to prevent widget output clutter
+    # logger.info("Cursus Config UI initialized with enhanced SageMaker native support")
+    # logger.info("95% code reuse from existing infrastructure achieved")
+```
+
+#### **User Experience Improvements**
+**Before (Verbose Output):**
+```
+INFO:cursus.api.config_ui:Cursus Config UI initialized with enhanced SageMaker native support
+INFO:cursus.api.config_ui:95% code reuse from existing infrastructure achieved
+WARNING:cursus.step_catalog.step_catalog:No parent class found for BasePipelineConfig
+INFO:cursus.step_catalog.builder_discovery:🔧 BuilderAutoDiscovery.__init__ starting
+INFO:cursus.step_catalog.builder_discovery:✅ BuilderAutoDiscovery basic initialization complete
+INFO:cursus.step_catalog.config_discovery:Discovered 31 core config classes
+[Widget Interface Appears Here]
+```
+
+**After (Clean Output):**
+```
+[Clean Widget Interface - No Logger Messages]
+```
+
+#### **Technical Benefits**
+- ✅ **Clean User Interface**: No verbose logger messages cluttering widget display
+- ✅ **Professional Appearance**: Widget output focuses on user interaction only
+- ✅ **Improved Readability**: Users see only relevant configuration content
+- ✅ **Reduced Cognitive Load**: No distracting technical messages during workflow
+- ✅ **Production Ready**: Clean output suitable for end-user environments
+
+#### **Comprehensive Suppression Strategy**
+- **Module-Level Suppression**: Applied at widget import to catch all cursus modules
+- **Initialization Suppression**: Prevents startup messages from appearing in widgets
+- **Hierarchical Suppression**: Root 'cursus' logger suppression catches all submodules
+- **Selective Preservation**: ERROR level messages still appear for critical issues
+- **Backward Compatible**: No impact on logging in non-widget contexts
+
 ### Enhanced User Experience Features (Phase 5 Completed)
 
 #### **Enhanced File Save Dialog Implementation**

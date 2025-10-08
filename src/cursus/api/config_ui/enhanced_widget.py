@@ -163,11 +163,33 @@ class EnhancedMultiStepWizard:
         # Display enhanced welcome message
         self._display_enhanced_welcome()
         
-        # Use existing display method (100% reuse)
+        # IMPORTANT: Call base wizard display method directly
+        # This ensures navigation buttons are properly displayed
         self.base_wizard.display()
         
         # Add SageMaker-specific help
         self._display_sagemaker_help()
+    
+    # Ensure all navigation methods are properly delegated
+    def _display_navigation(self):
+        """Delegate navigation display to base wizard."""
+        return self.base_wizard._display_navigation()
+    
+    def _display_current_step(self):
+        """Delegate current step display to base wizard."""
+        return self.base_wizard._display_current_step()
+    
+    def _on_prev_clicked(self, button):
+        """Delegate previous button click to base wizard."""
+        return self.base_wizard._on_prev_clicked(button)
+    
+    def _on_next_clicked(self, button):
+        """Delegate next button click to base wizard."""
+        return self.base_wizard._on_next_clicked(button)
+    
+    def _on_finish_clicked(self, button):
+        """Delegate finish button click to base wizard."""
+        return self.base_wizard._on_finish_clicked(button)
     
     def _display_enhanced_welcome(self):
         """Display enhanced welcome message for SageMaker users."""
@@ -396,8 +418,8 @@ class SageMakerOptimizations:
         </script>
         
         <div style="background-color: #d1fae5; border: 1px solid #10b981; padding: 10px; border-radius: 4px; margin: 5px 0;">
-            <strong>📋 Enhanced Clipboard Support Active!</strong> 
-            Ctrl+C/Ctrl+V now works in all form fields with visual feedback.
+            <strong>📋 Standard Clipboard Support</strong>
+            Copy/paste functionality depends on your browser and VSCode environment.
         </div>
         """))
     
