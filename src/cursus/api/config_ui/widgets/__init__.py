@@ -17,6 +17,14 @@ from .jupyter_widget import (
     create_complete_config_ui_widget as create_jupyter_pipeline_config_widget,
     EnhancedSaveAllMergedWidget as UniversalConfigWidgetWithServer
 )
+from .sagemaker import (
+    SageMakerConfigWidget,
+    SageMakerPipelineWidget,
+    SageMakerFieldRenderer,
+    SageMakerFileManager,
+    create_sagemaker_config_widget,
+    create_sagemaker_pipeline_widget
+)
 
 __all__ = [
     'MultiStepWizard',
@@ -28,5 +36,11 @@ __all__ = [
     'JupyterPipelineConfigWidget',
     'create_jupyter_config_widget', 
     'create_jupyter_pipeline_config_widget',
-    'UniversalConfigWidgetWithServer'
+    'UniversalConfigWidgetWithServer',
+    'SageMakerConfigWidget',
+    'SageMakerPipelineWidget',
+    'SageMakerFieldRenderer',
+    'SageMakerFileManager',
+    'create_sagemaker_config_widget',
+    'create_sagemaker_pipeline_widget'
 ]

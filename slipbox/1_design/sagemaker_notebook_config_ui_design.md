@@ -697,7 +697,7 @@ class SageMakerFileManager:
 
 ```python
 # Step 1: Create widget for specific configuration
-from cursus.api.config_ui.sagemaker import create_sagemaker_config_widget
+from cursus.api.config_ui.widgets.sagemaker import create_sagemaker_config_widget
 
 widget = create_sagemaker_config_widget("BasePipelineConfig")
 widget.display()
@@ -736,7 +736,7 @@ widget.display()
 
 ```python
 # Step 1: Create pipeline widget from DAG
-from cursus.api.config_ui.sagemaker import create_sagemaker_pipeline_widget
+from cursus.api.config_ui.widgets.sagemaker import create_sagemaker_pipeline_widget
 
 pipeline_widget = create_sagemaker_pipeline_widget("xgboost_complete_e2e")
 pipeline_widget.display()
@@ -832,7 +832,7 @@ pipeline_widget.display()
 
 #### **Day 1-2: SageMakerConfigWidget Foundation**
 
-**Target File**: `src/cursus/api/config_ui/sagemaker.py`
+**Target File**: `src/cursus/api/config_ui/widgets/sagemaker.py`
 
 **Implementation Tasks**:
 - Create `SageMakerConfigWidget` class reusing `UniversalConfigCore`
@@ -842,7 +842,7 @@ pipeline_widget.display()
 
 **Code Structure**:
 ```python
-# src/cursus/api/config_ui/sagemaker.py
+# src/cursus/api/config_ui/widgets/sagemaker.py
 import ipywidgets as widgets
 from IPython.display import display, HTML
 from typing import Dict, Any, List, Optional
@@ -851,8 +851,8 @@ import os
 from pathlib import Path
 
 # Reuse existing components
-from .core import UniversalConfigCore
-from .dag_manager import DAGConfigurationManager
+from ..core import UniversalConfigCore
+from ..core.dag_manager import DAGConfigurationManager
 from .specialized_widgets import SpecializedComponentRegistry
 
 class SageMakerConfigWidget:

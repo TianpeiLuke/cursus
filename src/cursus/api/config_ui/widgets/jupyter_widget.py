@@ -19,7 +19,25 @@ import weakref
 import os
 import re
 
-from ....core.base.config_base import BasePipelineConfig
+# Handle both relative and absolute imports using centralized path setup
+try:
+    # Try relative imports first (when run as module)
+    from ....core.base.config_base import BasePipelineConfig
+except ImportError:
+    # Fallback: Set up cursus path and use absolute imports
+    import sys
+    from pathlib import Path
+    
+    # Add the core directory to path for import_utils
+    current_dir = Path(__file__).parent
+    core_dir = current_dir.parent / 'core'
+    if str(core_dir) not in sys.path:
+        sys.path.insert(0, str(core_dir))
+    
+    from import_utils import ensure_cursus_path
+    ensure_cursus_path()
+    
+    from cursus.core.base.config_base import BasePipelineConfig
 
 
 # Shared utilities and constants

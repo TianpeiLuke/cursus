@@ -9,10 +9,29 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
-from ....core.base.config_base import BasePipelineConfig
-from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
+# Handle both relative and absolute imports using centralized path setup
+try:
+    # Try relative imports first (when run as module)
+    from ....core.base.config_base import BasePipelineConfig
+    from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
+except ImportError:
+    # Fallback: Set up cursus path and use absolute imports
+    from .import_utils import ensure_cursus_path
+    ensure_cursus_path()
+    
+    from cursus.core.base.config_base import BasePipelineConfig
+    from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 from .core import UniversalConfigCore
-from ..widgets.widget import UniversalConfigWidget, MultiStepWizard
+
+# Handle widget imports with the same pattern
+try:
+    from ..widgets.widget import UniversalConfigWidget, MultiStepWizard
+except ImportError:
+    # Fallback: Set up cursus path and use absolute imports
+    from .import_utils import ensure_cursus_path
+    ensure_cursus_path()
+    
+    from cursus.api.config_ui.widgets.widget import UniversalConfigWidget, MultiStepWizard
 
 logger = logging.getLogger(__name__)
 

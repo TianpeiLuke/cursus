@@ -13,9 +13,25 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from pathlib import Path
 
-from ..core.core import UniversalConfigCore
-from ..core.utils import discover_available_configs
-from ..widgets.specialized_widgets import SpecializedComponentRegistry
+# Handle both relative and absolute imports using Path(__file__) resolution
+try:
+    # Try relative imports first (when run as module)
+    from ..core.core import UniversalConfigCore
+    from ..core.utils import discover_available_configs
+    from ..widgets.specialized_widgets import SpecializedComponentRegistry
+except ImportError:
+    # Fallback: Add parent directory to path and use absolute imports
+    import sys
+    from pathlib import Path
+    
+    # Get the config_ui directory (parent of web directory)
+    config_ui_dir = Path(__file__).parent.parent
+    if str(config_ui_dir) not in sys.path:
+        sys.path.insert(0, str(config_ui_dir))
+    
+    from core.core import UniversalConfigCore
+    from core.utils import discover_available_configs
+    from widgets.specialized_widgets import SpecializedComponentRegistry
 
 logger = logging.getLogger(__name__)
 

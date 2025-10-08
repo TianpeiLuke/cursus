@@ -50,8 +50,17 @@ def main():
     print()
     
     try:
-        # Import the app factory function
-        from .web.api import create_config_ui_app
+        # Try relative import first (when run as module)
+        try:
+            from .web.api import create_config_ui_app
+        except ImportError:
+            # Fallback to absolute import (when run as script)
+            # Add current directory to path to enable absolute imports
+            current_dir = Path(__file__).parent
+            if str(current_dir) not in sys.path:
+                sys.path.insert(0, str(current_dir))
+            
+            from web.api import create_config_ui_app
         
         # Create the FastAPI app
         app = create_config_ui_app()
@@ -69,13 +78,21 @@ def main():
     except ImportError as e:
         print(f"❌ Import Error: {e}")
         print()
-        print("💡 Solution: Run this script from the correct directory:")
-        print("   cd src/cursus")
-        print("   python -m api.config_ui.run_server")
+        print("💡 Troubleshooting:")
+        print("   Method 1 - Run as module from project root:")
+        print("   cd /path/to/cursus")
+        print("   python -m src.cursus.api.config_ui.run_server")
         print()
-        print("   Or from the config_ui directory:")
+        print("   Method 2 - Run as module from src directory:")
+        print("   cd src")
+        print("   python -m cursus.api.config_ui.run_server")
+        print()
+        print("   Method 3 - Run directly from config_ui directory:")
         print("   cd src/cursus/api/config_ui")
-        print("   python -m run_server")
+        print("   python run_server.py")
+        print()
+        print(f"   Current working directory: {Path.cwd()}")
+        print(f"   Script location: {Path(__file__).parent}")
         sys.exit(1)
         
     except Exception as e:
