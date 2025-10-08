@@ -60,7 +60,7 @@ class UniversalConfigWidget:
         logger.info(f"UniversalConfigWidget initialized for {self.config_class_name}")
     
     def display(self):
-        """Display the configuration form with 3-tier field categorization."""
+        """Display the configuration form with 4-tier field categorization including inheritance."""
         with self.output:
             clear_output(wait=True)
             
@@ -77,11 +77,23 @@ class UniversalConfigWidget:
             title = widgets.HTML(title_html)
             display(title)
             
-            # Categorize fields by tier
-            essential_fields = [f for f in self.fields if f.get('tier') == 'essential' or f.get('required', False)]
-            system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') != 'essential')]
+            # Enhanced 4-tier field categorization with inheritance
+            inherited_fields = [f for f in self.fields if f.get('tier') == 'inherited']
+            essential_fields = [f for f in self.fields if f.get('tier') == 'essential' or (f.get('required', False) and f.get('tier') != 'inherited')]
+            system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') not in ['essential', 'inherited'])]
             
             form_sections = []
+            
+            # NEW: Inherited Fields Section (Tier 3) - Smart Default Value Inheritance ⭐
+            if inherited_fields:
+                inherited_section = self._create_field_section(
+                    "💾 Inherited Fields (Tier 3) - Smart Defaults",
+                    inherited_fields,
+                    "linear-gradient(135deg, #f0f8ff 0%, #e0f2fe 100%)",
+                    "#007bff",
+                    "Auto-filled from parent configurations - can be overridden if needed"
+                )
+                form_sections.append(inherited_section)
             
             # Essential Fields Section (Tier 1)
             if essential_fields:
@@ -105,10 +117,10 @@ class UniversalConfigWidget:
                 )
                 form_sections.append(system_section)
             
-            # Inherited Configuration Display
-            inherited_section = self._create_inherited_section()
-            if inherited_section:
-                form_sections.append(inherited_section)
+            # Legacy Inherited Configuration Display (for backward compatibility)
+            legacy_inherited_section = self._create_inherited_section()
+            if legacy_inherited_section:
+                form_sections.append(legacy_inherited_section)
             
             # Create action buttons with modern styling
             button_section = self._create_action_buttons()
@@ -483,23 +495,26 @@ class UniversalConfigWidget:
 
 
 class MultiStepWizard:
-    """Multi-step pipeline configuration wizard."""
+    """Multi-step pipeline configuration wizard with Smart Default Value Inheritance support."""
     
     def __init__(self, 
                  steps: List[Dict[str, Any]], 
                  base_config: Optional[BasePipelineConfig] = None,
-                 processing_config: Optional[ProcessingStepConfigBase] = None):
+                 processing_config: Optional[ProcessingStepConfigBase] = None,
+                 enable_inheritance: bool = True):
         """
-        Initialize multi-step wizard.
+        Initialize multi-step wizard with Smart Default Value Inheritance support.
         
         Args:
             steps: List of step definitions
             base_config: Base pipeline configuration
             processing_config: Processing configuration
+            enable_inheritance: Enable smart inheritance features (NEW)
         """
         self.steps = steps
         self.base_config = base_config
         self.processing_config = processing_config
+        self.enable_inheritance = enable_inheritance  # NEW: Inheritance support
         self.completed_configs = {}  # Store completed configurations
         self.current_step = 0
         self.step_widgets = {}
@@ -507,7 +522,14 @@ class MultiStepWizard:
         self.output = widgets.Output()
         self.navigation_output = widgets.Output()
         
-        logger.info(f"MultiStepWizard initialized with {len(steps)} steps")
+        # NEW: Initialize completed configs for inheritance
+        if self.enable_inheritance:
+            if base_config:
+                self.completed_configs["BasePipelineConfig"] = base_config
+            if processing_config:
+                self.completed_configs["ProcessingStepConfigBase"] = processing_config
+        
+        logger.info(f"MultiStepWizard initialized with {len(steps)} steps, inheritance={'enabled' if enable_inheritance else 'disabled'}")
     
     def display(self):
         """Display the multi-step wizard interface."""
@@ -672,32 +694,92 @@ class MultiStepWizard:
         step_widget.display()
     
     def _get_step_fields(self, step: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Get form fields for a step."""
+        """Get form fields for a step with Smart Default Value Inheritance support."""
         config_class = step["config_class"]
         config_class_name = step["config_class_name"]
         
         # Check if there's a specialized component for this config type
-        from .specialized_widgets import SpecializedComponentRegistry
-        registry = SpecializedComponentRegistry()
+        try:
+            from .specialized_widgets import SpecializedComponentRegistry
+            registry = SpecializedComponentRegistry()
+            
+            if registry.has_specialized_component(config_class_name):
+                # For specialized components, create a visual interface description
+                spec_info = registry.SPECIALIZED_COMPONENTS[config_class_name]
+                return [{
+                    "name": "specialized_component", 
+                    "type": "specialized", 
+                    "required": False, 
+                    "description": spec_info["description"],
+                    "features": spec_info["features"],
+                    "icon": spec_info["icon"],
+                    "complexity": spec_info["complexity"],
+                    "config_class_name": config_class_name
+                }]
+        except ImportError:
+            # Specialized widgets not available, continue with standard processing
+            pass
         
-        if registry.has_specialized_component(config_class_name):
-            # For specialized components, create a visual interface description
-            spec_info = registry.SPECIALIZED_COMPONENTS[config_class_name]
-            return [{
-                "name": "specialized_component", 
-                "type": "specialized", 
-                "required": False, 
-                "description": spec_info["description"],
-                "features": spec_info["features"],
-                "icon": spec_info["icon"],
-                "complexity": spec_info["complexity"],
-                "config_class_name": config_class_name
-            }]
-        
-        # Use UniversalConfigCore to get fields for standard components
+        # Use UniversalConfigCore with Smart Default Value Inheritance
         from ..core.core import UniversalConfigCore
         core = UniversalConfigCore()
-        return core._get_form_fields(config_class)
+        
+        # NEW: Use inheritance-aware field generation if inheritance is enabled
+        if self.enable_inheritance and hasattr(step, 'inheritance_analysis'):
+            # Use the enhanced inheritance-aware method
+            return core.get_inheritance_aware_form_fields(
+                config_class_name, 
+                step['inheritance_analysis']
+            )
+        elif self.enable_inheritance:
+            # Create inheritance analysis on-the-fly using completed configs
+            inheritance_analysis = self._create_inheritance_analysis(config_class_name)
+            return core.get_inheritance_aware_form_fields(
+                config_class_name, 
+                inheritance_analysis
+            )
+        else:
+            # Fallback to standard field generation
+            return core._get_form_fields(config_class)
+    
+    def _create_inheritance_analysis(self, config_class_name: str) -> Dict[str, Any]:
+        """Create inheritance analysis on-the-fly using StepCatalog and completed configs."""
+        try:
+            # Use UniversalConfigCore's step_catalog for inheritance analysis
+            from ..core.core import UniversalConfigCore
+            core = UniversalConfigCore()
+            
+            if core.step_catalog:
+                # Get parent class and values using StepCatalog methods
+                parent_class = core.step_catalog.get_immediate_parent_config_class(config_class_name)
+                parent_values = core.step_catalog.extract_parent_values_for_inheritance(
+                    config_class_name, self.completed_configs
+                )
+                
+                return {
+                    'inheritance_enabled': True,
+                    'immediate_parent': parent_class,
+                    'parent_values': parent_values,
+                    'total_inherited_fields': len(parent_values)
+                }
+            else:
+                # StepCatalog not available
+                return {
+                    'inheritance_enabled': False,
+                    'immediate_parent': None,
+                    'parent_values': {},
+                    'total_inherited_fields': 0
+                }
+                
+        except Exception as e:
+            logger.warning(f"Failed to create inheritance analysis for {config_class_name}: {e}")
+            return {
+                'inheritance_enabled': False,
+                'immediate_parent': None,
+                'parent_values': {},
+                'total_inherited_fields': 0,
+                'error': str(e)
+            }
     
     def _get_step_values(self, step: Dict[str, Any]) -> Dict[str, Any]:
         """Get pre-populated values for a step."""
