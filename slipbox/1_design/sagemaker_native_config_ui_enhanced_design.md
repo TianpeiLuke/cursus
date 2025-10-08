@@ -1612,6 +1612,192 @@ This ensures that current users can continue their existing workflows while new 
 - Fallback: Environment detection and graceful degradation
 - Monitoring: Error tracking and environment-specific testing
 
+## Smart Default Value Inheritance Integration
+
+### Enhanced UX with Intelligent Field Pre-population
+
+The enhanced SageMaker native widget solution integrates seamlessly with the **Smart Default Value Inheritance system** to provide an even more sophisticated user experience that eliminates redundant data entry across configuration pages.
+
+#### Integration Benefits
+
+**🎯 Elimination of Redundant Input:**
+- Users never re-enter the same information across multiple configuration pages
+- Base config fields (author, bucket, role, region) automatically propagate to processing and step-specific configs
+- 60-70% reduction in configuration time through intelligent pre-population
+
+**🧠 Enhanced Cognitive Experience:**
+- Clear visual distinction between inherited fields (auto-filled) and new fields (user input required)
+- Inheritance indicators show field origin ("From: Base Configuration", "From: Processing Config")
+- Progress indicators highlight how many fields are automatically filled
+
+**🎨 Advanced Visual Design:**
+- Inherited fields displayed in distinct blue-tinted sections with checkmark indicators
+- New fields highlighted in yellow-tinted sections requiring user attention
+- Override capability allows users to modify inherited values when needed
+
+#### Technical Integration Architecture
+
+**Enhanced Widget Creation (Direct Integration):**
+```python
+# Enhanced factory function with inheritance awareness - no separate class needed
+def create_enhanced_pipeline_widget_with_inheritance(
+    pipeline_dag: Any,
+    base_config: BasePipelineConfig,
+    processing_config: Optional[ProcessingStepConfigBase] = None,
+    workspace_dirs: Optional[List[Path]] = None,
+    **kwargs
+):
+    """
+    Create enhanced pipeline widget with Smart Default Value Inheritance.
+    
+    Uses existing UniversalConfigCore with enhanced inheritance parameters.
+    No separate InheritanceAwareConfigCore class needed.
+    """
+    
+    # Use existing UniversalConfigCore with new inheritance parameters
+    core = UniversalConfigCore(workspace_dirs=workspace_dirs)
+    
+    # Create DAG-driven wizard with inheritance support using enhanced existing method
+    wizard = core.create_pipeline_config_widget(
+        pipeline_dag=pipeline_dag,
+        parent_configs=[base_config, processing_config] if processing_config else [base_config],
+        enable_inheritance=True,  # NEW parameter to enable inheritance features
+        **kwargs
+    )
+    
+    # Apply SageMaker-specific enhancements
+    enhanced_widget = EnhancedPipelineConfigWidget()
+    enhanced_widget._enhance_wizard_with_inheritance_styling(wizard)
+    
+    return wizard
+```
+
+**Inheritance-Aware Field Rendering:**
+```python
+class EnhancedPipelineConfigWidget:
+    def _enhance_wizard_with_inheritance_styling(self, wizard):
+        """Add inheritance-aware styling to existing MultiStepWizard."""
+        
+        # Enhance field rendering with inheritance indicators
+        original_render_fields = wizard._render_step_fields
+        
+        def enhanced_render_fields(step_data):
+            # Analyze field inheritance for current step
+            inheritance_analysis = self.inheritance_analyzer.analyze_config_inheritance(
+                step_data['config_class_name'], 
+                wizard.parent_values_cache
+            )
+            
+            # Render inherited fields section
+            if inheritance_analysis['total_inherited_fields'] > 0:
+                self._render_inherited_fields_section(inheritance_analysis)
+            
+            # Render new fields section
+            self._render_new_fields_section(step_data, inheritance_analysis)
+            
+            # Update progress indicator
+            self._update_progress_with_inheritance_info(inheritance_analysis)
+        
+        wizard._render_step_fields = enhanced_render_fields
+```
+
+#### User Experience Enhancement Example
+
+**Before (Standard Enhanced Widget):**
+```
+Step 2: Processing Configuration
+├─ author: [empty field marked required *]
+├─ bucket: [empty field marked required *]
+├─ role: [empty field marked required *]
+├─ processing_instance_type: [ml.m5.2xlarge] (default)
+└─ processing_source_dir: [empty field]
+```
+
+**After (With Smart Default Value Inheritance):**
+```
+Step 2: Processing Configuration
+
+┌─ 💾 Inherited Configuration (Auto-filled) ──────────────┐
+│ ✅ 3 fields automatically filled from Base Config      │
+│                                                         │
+│ 👤 author: lukexie ✓ (From: Base Configuration)        │
+│ 🪣 bucket: my-bucket ✓ (From: Base Configuration)      │
+│ 🔐 role: arn:aws:iam::123:role/MyRole ✓ (From: Base)   │
+│                                                         │
+│ [🔄 Modify Inherited Values] (optional)                │
+└─────────────────────────────────────────────────────────┘
+
+┌─ 🎯 New Configuration (Processing-Specific) ────────────┐
+│ 🖥️ processing_instance_type: [ml.m5.2xlarge] (default) │
+│ 📁 processing_source_dir: [empty field]                │
+└─────────────────────────────────────────────────────────┘
+
+Progress: ●●○○○○○ (2/7) - 3 fields auto-filled ✅
+```
+
+#### Implementation Roadmap Integration
+
+**Phase 1 Enhancement: Core Infrastructure (Weeks 1-2)**
+- Integrate `InheritanceAwareConfigCore` with existing `UniversalConfigCore`
+- Enhance `MultiStepWizard` with inheritance-aware field rendering
+- Add parent value tracking across wizard steps
+
+**Phase 2 Enhancement: Advanced UI (Weeks 3-4)**
+- Implement inheritance-aware CSS styling for SageMaker native widgets
+- Add JavaScript inheritance management for dynamic field behavior
+- Create visual inheritance indicators and progress enhancements
+
+**Phase 3 Enhancement: Integration Testing (Weeks 5-6)**
+- Test inheritance system across all configuration types
+- Validate SageMaker environment compatibility
+- Performance optimization for inheritance analysis
+
+#### Success Metrics Enhancement
+
+**Additional UX Metrics with Inheritance:**
+- **Configuration Time**: Target 70%+ reduction (enhanced from 50% without inheritance)
+- **User Satisfaction**: Target 4.8+ out of 5 (enhanced from 4.5+ without inheritance)
+- **Error Rate**: Target 90%+ reduction in inconsistent field values
+- **Cognitive Load**: Measured reduction in user mental effort
+
+**Technical Performance Metrics:**
+- **Inheritance Analysis Speed**: <100ms for complex configuration hierarchies
+- **Memory Efficiency**: <5% additional memory usage for inheritance tracking
+- **Backward Compatibility**: 100% compatibility with existing non-inheritance workflows
+
+### Reference Documentation
+
+For complete technical specifications and implementation details, see the following companion design documents:
+
+**📋 [Smart Default Value Inheritance Design](./smart_default_value_inheritance_design.md)**
+
+This companion design document provides:
+- Detailed inheritance analysis algorithms
+- Complete CSS and JavaScript implementation
+- Comprehensive user experience design patterns
+- Technical architecture for field origin tracking
+- Advanced features like inheritance path visualization
+
+**📋 [Generalized Config UI Design](./generalized_config_ui_design.md)**
+
+This foundational design document provides:
+- Universal configuration interface system architecture
+- PipelineDAG-driven configuration discovery patterns
+- 3-tier configuration architecture foundations
+- Hierarchical configuration workflow design
+- Save All Merged functionality specifications
+
+**📋 [Cradle Data Load Config UI Design](./cradle_data_load_config_ui_design.md)**
+
+This specialized implementation design document provides:
+- Complete 4-step wizard interface implementation
+- Real-world complex configuration UI patterns
+- Specialized component integration examples
+- Production-ready validation and error handling
+- Hybrid architecture (web + Jupyter) implementation patterns
+
+The integration of Smart Default Value Inheritance with the Enhanced SageMaker Native Widget, building upon the foundational Generalized Config UI Design and proven patterns from the Cradle Data Load Config UI, creates a best-in-class configuration experience that combines the sophistication of the web interface with the intelligence of automatic field pre-population, delivering unprecedented user productivity and satisfaction.
+
 ## Conclusion
 
 The enhanced SageMaker native widget solution represents a strategic approach to providing users with the full sophistication of the web interface while optimizing for the SageMaker environment. By maximizing code reuse (90%+) from existing infrastructure and replicating the exact user experience patterns from `app.js`, the solution delivers:
@@ -1622,18 +1808,21 @@ The enhanced SageMaker native widget solution represents a strategic approach to
 3. **🎨 Visual Consistency**: Identical UI patterns and styling
 4. **⚡ SageMaker Optimization**: Enhanced for restricted environments
 5. **🔧 Maintainability**: Single codebase serving both interfaces
+6. **🧠 Smart Inheritance**: Intelligent field pre-population eliminates redundant input
 
 **Strategic Benefits:**
 - **Unified User Experience**: Same workflow across all deployment environments
 - **Reduced Development Overhead**: Maintain one set of business logic
 - **Future-Proof Architecture**: Easy addition of new features to both interfaces
 - **Enhanced Productivity**: Faster, more reliable configuration workflows
+- **Superior UX**: Best-in-class user experience with intelligent automation
 
 **Implementation Approach:**
 - **Tier 1 (90%)**: Direct reuse of existing core components
 - **Tier 2 (70%)**: Logic extraction from web API and JavaScript patterns
 - **Tier 3 (10%)**: New Jupyter-specific enhancements and optimizations
+- **Tier 4 (NEW)**: Smart Default Value Inheritance system integration
 
 This design provides a clear roadmap for delivering a production-ready enhanced native widget solution that meets all user requirements while maximizing the value of existing development investments. The phased implementation approach ensures steady progress with regular validation milestones, minimizing risk while delivering maximum value.
 
-The solution positions the Cursus framework to provide a best-in-class configuration experience across all deployment environments, from local development to production SageMaker environments, with consistent functionality and user experience throughout.
+The solution positions the Cursus framework to provide a best-in-class configuration experience across all deployment environments, from local development to production SageMaker environments, with consistent functionality, intelligent automation, and superior user experience throughout.
