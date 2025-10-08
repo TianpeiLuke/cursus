@@ -486,7 +486,6 @@ class UniversalConfigCore:
             Configuration class information if found, None otherwise
         """
         try:
-            # Use registry functions to get canonical name and config class
             from ....registry.step_names import get_canonical_name_from_file_name, get_config_class_name
             
             # Get canonical name (handles job type suffixes automatically)
@@ -507,34 +506,8 @@ class UniversalConfigCore:
                     "inferred": True
                 }
                 
-        except ImportError:
-            try:
-                # Fallback to absolute import
-                from .import_utils import ensure_cursus_path
-                ensure_cursus_path()
-                from cursus.registry.step_names import get_canonical_name_from_file_name, get_config_class_name
-                
-                canonical_name = get_canonical_name_from_file_name(node_name)
-                config_class_name = get_config_class_name(canonical_name)
-                
-                available_config_classes = self.discover_config_classes()
-                config_class = available_config_classes.get(config_class_name)
-                
-                if config_class:
-                    return {
-                        "node_name": node_name,
-                        "config_class_name": config_class_name,
-                        "config_class": config_class,
-                        "inheritance_pattern": self._get_inheritance_pattern(config_class),
-                        "is_specialized": self._is_specialized_config(config_class),
-                        "inferred": True
-                    }
-                    
-            except (ImportError, ValueError):
-                logger.debug(f"Registry lookup failed for {node_name}, no fallback needed")
-        
-        except ValueError:
-            logger.debug(f"Could not infer config class for node: {node_name}")
+        except (ImportError, ValueError):
+            logger.debug(f"Registry lookup failed for {node_name}")
         
         return None
     

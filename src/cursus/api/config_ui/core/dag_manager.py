@@ -149,20 +149,10 @@ class DAGConfigurationManager:
             # get_canonical_name_from_file_name handles job type suffix removal automatically
             canonical_name = get_canonical_name_from_file_name(step_name)
             return get_sagemaker_step_type(canonical_name)
-                
-        except ImportError:
-            try:
-                # Fallback to absolute import
-                from .import_utils import ensure_cursus_path
-                ensure_cursus_path()
-                from cursus.registry.step_names import get_canonical_name_from_file_name, get_sagemaker_step_type
-                
-                canonical_name = get_canonical_name_from_file_name(step_name)
-                return get_sagemaker_step_type(canonical_name)
                     
-            except (ImportError, ValueError):
-                # Just return the step name as fallback
-                return step_name
+        except (ImportError, ValueError):
+            # Just return the step name as fallback
+            return step_name
     
     def create_dag_driven_widget(self, 
                                 pipeline_dag: Any, 
