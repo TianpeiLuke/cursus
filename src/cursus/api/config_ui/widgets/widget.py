@@ -182,6 +182,54 @@ class UniversalConfigWidget:
         
         return section
     
+    def _on_widget_focus(self, change):
+        """Handle widget focus events to enable keyboard shortcuts like Ctrl+C/Ctrl+V."""
+        widget_desc = getattr(change['owner'], 'description', 'Unknown')
+        print(f"🎯 Widget focus: {widget_desc}")  # CRITICAL: This debug message forces Jupyter to properly register keyboard events
+        # The print statement is essential - it triggers DOM updates that enable copy/paste functionality
+
+    def _create_paste_handler(self, field_name: str, paste_feedback_widget):
+        """Create a paste detection handler with proper closure."""
+        def on_value_change(change):
+            try:
+                print(f"🎯 DEBUG: Value change detected in {field_name}")
+                print(f"🎯 DEBUG: Old value: '{change.old}'")
+                print(f"🎯 DEBUG: New value: '{change.new}'")
+                
+                old_val = str(change.old) if change.old is not None else ""
+                new_val = str(change.new) if change.new is not None else ""
+                
+                # Always show some feedback to confirm the handler is working
+                paste_feedback_widget.value = f"<div style='color: #007bff; font-size: 10px;'>✓ Changed: {len(new_val)} chars</div>"
+                
+                # Detect paste operations (significant text increase)
+                if len(new_val) > len(old_val) + 2:
+                    paste_feedback_widget.value = f"""
+                    <div style='background: #10b981; color: white; padding: 3px 6px; 
+                                border-radius: 3px; font-size: 11px; font-weight: bold; 
+                                margin: 2px 0; display: inline-block;'>
+                        ✅ PASTED {len(new_val)} chars!
+                    </div>
+                    """
+                    print(f"🎯 PASTE DETECTED in {field_name}: {len(old_val)} -> {len(new_val)} chars")
+                    
+                    # Clear after 4 seconds
+                    import threading
+                    import time
+                    def clear_later():
+                        time.sleep(4)
+                        paste_feedback_widget.value = "<div style='color: #999; font-size: 10px;'>Ready for input...</div>"
+                    
+                    thread = threading.Thread(target=clear_later)
+                    thread.daemon = True
+                    thread.start()
+                    
+            except Exception as e:
+                print(f"🎯 ERROR in paste handler: {e}")
+                paste_feedback_widget.value = f"<div style='color: red; font-size: 10px;'>Error: {e}</div>"
+        
+        return on_value_change
+
     def _create_enhanced_field_widget(self, field: Dict) -> Dict:
         """Create an enhanced field widget with modern styling and emoji icons."""
         field_name = field["name"]
@@ -200,7 +248,7 @@ class UniversalConfigWidget:
         label_style = "font-weight: 600; color: #374151;" if required else "color: #6b7280;"
         required_indicator = " *" if required else ""
         
-        # Create appropriate widget based on field type
+        # Create appropriate widget based on field type with SIMPLIFIED approach
         if field_type == "text":
             widget = widgets.Text(
                 value=str(current_value) if current_value is not None else "",
@@ -250,11 +298,15 @@ class UniversalConfigWidget:
                 layout=widgets.Layout(width='500px', margin='5px 0')
             )
         
+        # SIMPLE approach - just create the widget with minimal interference
+        print(f"✅ Created {field_type} widget for {field_name}")
+        
         # Add description if available
         if description:
             desc_html = f"<div style='margin-left: 210px; margin-top: -5px; margin-bottom: 10px; font-size: 11px; color: #6b7280; font-style: italic;'>{description}</div>"
             desc_widget = widgets.HTML(desc_html)
-            return {"widget": widget, "description": desc_widget, "container": widgets.VBox([widget, desc_widget])}
+            container = widgets.VBox([widget, desc_widget])
+            return {"widget": widget, "description": desc_widget, "container": container}
         else:
             return {"widget": widget, "container": widget}
     
