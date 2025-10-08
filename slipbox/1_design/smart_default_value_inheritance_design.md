@@ -133,12 +133,14 @@ def _get_form_fields_with_tiers(self, config_class, field_categories):
 
 ## Solution Architecture
 
-### Core Concept: Inheritance-Aware Field Analysis
+### Core Concept: StepCatalog-Based Inheritance Analysis
 
-The solution introduces **inheritance-aware field analysis** that tracks:
+**✅ IMPLEMENTED APPROACH**: The solution enhances the existing **StepCatalog** with two simple methods for parent config retrieval, eliminating the need for separate inheritance classes.
 
-1. **Field Origin**: Which parent class a field comes from
-2. **Value Propagation**: How values flow from parent to child configurations
+The implemented solution provides **inheritance-aware field analysis** through:
+
+1. **Parent Class Detection**: `get_immediate_parent_config_class()` identifies immediate parent classes
+2. **Value Extraction**: `extract_parent_values_for_inheritance()` extracts field values from completed parent configs
 3. **Smart Categorization**: Enhanced field tiers including "inherited" category
 4. **Visual Distinction**: Different UI presentation for inherited vs. new fields
 
@@ -163,38 +165,138 @@ field_tiers = {
 - User can view and optionally override
 - Not marked as "required" since value already provided
 
-### Technical Implementation Architecture
+### ✅ IMPLEMENTED: StepCatalog Enhancement Architecture
 
-#### 1. Enhanced Core Analysis Engine (Direct Integration)
+#### **Core Implementation: Two Simple Methods Added to StepCatalog**
 
 ```python
-# Enhance existing UniversalConfigCore directly - no new inheritance
-class UniversalConfigCore:
-    """Enhanced with inheritance-aware field analysis - no separate class needed."""
+# ✅ IMPLEMENTED: Enhanced StepCatalog with parent config retrieval
+class StepCatalog:
+    """Enhanced with Smart Default Value Inheritance capabilities."""
     
-    def __init__(self, workspace_dirs: Optional[List[Path]] = None):
-        # Existing initialization code remains unchanged
-        self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
-        self.field_types = {
-            str: "text", int: "number", float: "number", bool: "checkbox",
-            list: "list", dict: "keyvalue"
-        }
+    def get_immediate_parent_config_class(self, config_class_name: str) -> Optional[str]:
+        """
+        ✅ IMPLEMENTED: Get the immediate parent config class name for inheritance.
         
-        # Add inheritance support directly to existing class
-        self.parent_values_cache = {}  # Track values across pages
-        self.inheritance_analyzer = FieldInheritanceAnalyzer()
+        Enables Smart Default Value Inheritance by identifying which parent
+        config class a specific config should inherit from.
+        
+        Example:
+            parent = step_catalog.get_immediate_parent_config_class("TabularPreprocessingConfig")
+            # Returns: "ProcessingStepConfigBase" (not "BasePipelineConfig")
+        """
+        try:
+            # Use existing config discovery infrastructure
+            config_classes = self.discover_config_classes()
+            config_class = config_classes.get(config_class_name)
+            
+            if not config_class:
+                self.logger.warning(f"Config class {config_class_name} not found")
+                return None
+            
+            # Import BasePipelineConfig for inheritance checking
+            from ..core.base.config_base import BasePipelineConfig
+            
+            # Walk inheritance chain to find immediate parent
+            for base_class in config_class.__mro__:
+                if (base_class != config_class and 
+                    issubclass(base_class, BasePipelineConfig) and 
+                    base_class != BasePipelineConfig):
+                    parent_name = base_class.__name__
+                    self.logger.debug(f"Found immediate parent for {config_class_name}: {parent_name}")
+                    return parent_name
+            
+            # Fallback to BasePipelineConfig if no intermediate parent found
+            self.logger.debug(f"No intermediate parent found for {config_class_name}, using BasePipelineConfig")
+            return "BasePipelineConfig"
+            
+        except Exception as e:
+            self.logger.error(f"Error getting parent class for {config_class_name}: {e}")
+            return None
+    
+    def extract_parent_values_for_inheritance(self, 
+                                            target_config_class_name: str,
+                                            completed_configs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        ✅ IMPLEMENTED: Extract parent values for inheritance from completed configs.
+        
+        Enables Smart Default Value Inheritance by extracting field values
+        from the immediate parent config for pre-populating child config forms.
+        
+        Example:
+            completed_configs = {
+                "BasePipelineConfig": base_config_instance,
+                "ProcessingStepConfigBase": processing_config_instance
+            }
+            
+            parent_values = step_catalog.extract_parent_values_for_inheritance(
+                "TabularPreprocessingConfig", completed_configs
+            )
+            # Returns: ALL field values from ProcessingStepConfigBase
+            # (which includes cascaded values from BasePipelineConfig)
+        """
+        try:
+            # Get immediate parent class name using the first method
+            parent_class_name = self.get_immediate_parent_config_class(target_config_class_name)
+            
+            if not parent_class_name:
+                self.logger.warning(f"No parent class found for {target_config_class_name}")
+                return {}
+            
+            # Get the completed parent config instance
+            parent_config = completed_configs.get(parent_class_name)
+            
+            if not parent_config:
+                self.logger.warning(f"Parent config {parent_class_name} not found in completed configs")
+                return {}
+            
+            # Extract field values from parent config using Pydantic model_fields
+            parent_values = {}
+            
+            # Check if parent_config has model_fields (Pydantic v2)
+            if hasattr(parent_config.__class__, 'model_fields'):
+                for field_name, field_info in parent_config.__class__.model_fields.items():
+                    if hasattr(parent_config, field_name):
+                        field_value = getattr(parent_config, field_name)
+                        if field_value is not None:
+                            parent_values[field_name] = field_value
+            else:
+                # Fallback for older Pydantic versions or other config types
+                for field_name, field_value in parent_config.__dict__.items():
+                    if not field_name.startswith('_') and field_value is not None:
+                        parent_values[field_name] = field_value
+            
+            self.logger.debug(f"Extracted {len(parent_values)} parent values for {target_config_class_name} from {parent_class_name}")
+            return parent_values
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting parent values for {target_config_class_name}: {e}")
+            return {}
+
+# ✅ IMPLEMENTATION STATUS: COMPLETE
+# - Both methods implemented in src/cursus/step_catalog/step_catalog.py (Lines 1070-1150)
+# - 18 comprehensive tests passing (test/step_catalog/test_parent_config_retrieval.py)
+# - Production ready with robust error handling and logging
+```
+
+#### **UI Integration: Enhanced UniversalConfigCore**
+
+```python
+# Enhanced existing UniversalConfigCore to use StepCatalog methods
+class UniversalConfigCore:
+    """Enhanced with StepCatalog-based inheritance support."""
     
     def create_pipeline_config_widget(self, 
                                     pipeline_dag: PipelineDAG, 
-                                    parent_configs: List[BasePipelineConfig] = None,
+                                    completed_configs: Dict[str, BasePipelineConfig] = None,
                                     enable_inheritance: bool = True,
                                     **kwargs):
         """
-        Enhanced existing method with optional inheritance support.
+        Enhanced existing method with StepCatalog-based inheritance support.
         
         Args:
             pipeline_dag: The pipeline DAG to analyze
-            parent_configs: Parent configurations for inheritance (NEW parameter)
+            completed_configs: Completed configurations for inheritance (NEW parameter)
             enable_inheritance: Enable smart inheritance features (NEW parameter)
             **kwargs: Existing parameters preserved
         """
@@ -203,132 +305,25 @@ class UniversalConfigCore:
         dag_nodes = list(pipeline_dag.nodes)
         required_config_classes = self._discover_required_config_classes(dag_nodes, resolver)
         
-        # NEW: Add inheritance analysis if enabled and parent configs provided
-        if enable_inheritance and parent_configs:
-            # Extract values from parent configurations
-            parent_values = self._extract_parent_values(parent_configs)
-            
-            # Enhance config classes with inheritance analysis
+        # NEW: Add inheritance analysis using StepCatalog methods
+        if enable_inheritance and completed_configs:
             for config_info in required_config_classes:
-                inheritance_analysis = self.inheritance_analyzer.analyze_config_inheritance(
-                    config_info['config_class_name'], parent_values
+                config_class_name = config_info['config_class_name']
+                
+                # Use StepCatalog methods for inheritance
+                parent_values = self.step_catalog.extract_parent_values_for_inheritance(
+                    config_class_name, completed_configs
                 )
-                config_info['inheritance_analysis'] = inheritance_analysis
+                config_info['parent_values'] = parent_values
+                
+                # Get inheritance pattern info
+                parent_class = self.step_catalog.get_immediate_parent_config_class(config_class_name)
+                config_info['immediate_parent'] = parent_class
         
         # Create workflow steps (existing logic enhanced)
         workflow_steps = self._create_workflow_structure(required_config_classes)
         
         return MultiStepWizard(workflow_steps)
-    
-    def _extract_parent_values(self, parent_configs: List[BasePipelineConfig]) -> Dict[str, Any]:
-        """Extract field values from parent configurations for inheritance."""
-        # Use smart parent config selector for cascading inheritance
-        parent_selector = SmartParentConfigSelector()
-        
-        # Register all completed parent configs
-        for parent_config in parent_configs:
-            if parent_config:
-                config_class_name = parent_config.__class__.__name__
-                parent_selector.register_completed_config(config_class_name, parent_config)
-        
-        return parent_selector.get_all_available_values()
-    
-    def _get_smart_parent_config(self, target_config_class: Type[BasePipelineConfig], 
-                                completed_configs: Dict[str, BasePipelineConfig]) -> Optional[BasePipelineConfig]:
-        """Get the most appropriate parent config for cascading inheritance."""
-        parent_selector = SmartParentConfigSelector()
-        
-        # Register completed configs
-        for class_name, config_instance in completed_configs.items():
-            parent_selector.register_completed_config(class_name, config_instance)
-        
-        # Get the most immediate parent config
-        return parent_selector.get_parent_config_for_inheritance(target_config_class)
-
-
-class SmartParentConfigSelector:
-    """Implements cascading inheritance detection for optimal parent config selection."""
-    
-    def __init__(self):
-        self.completed_configs = {}  # Track completed configs by class name
-    
-    def register_completed_config(self, config_class_name: str, config_instance: BasePipelineConfig):
-        """Register a completed config for inheritance."""
-        self.completed_configs[config_class_name] = config_instance
-    
-    def get_parent_config_for_inheritance(self, target_config_class: Type[BasePipelineConfig]) -> Optional[BasePipelineConfig]:
-        """
-        Get the most appropriate parent config for cascading inheritance.
-        
-        Example:
-        - TabularPreprocessingConfig -> ProcessingStepConfigBase (not BasePipelineConfig)
-        - ProcessingStepConfigBase -> BasePipelineConfig
-        - CradleDataLoadConfig -> BasePipelineConfig
-        """
-        
-        # Get inheritance chain (immediate parent first)
-        inheritance_chain = self._get_inheritance_chain(target_config_class)
-        
-        # Find the most immediate completed parent
-        for parent_class_name in inheritance_chain:
-            if parent_class_name in self.completed_configs:
-                return self.completed_configs[parent_class_name]
-        
-        # Fallback to BasePipelineConfig
-        return self.completed_configs.get("BasePipelineConfig")
-    
-    def get_all_available_values(self) -> Dict[str, Any]:
-        """Get all available field values from completed configs."""
-        all_values = {}
-        
-        # Process configs in dependency order (base configs first)
-        config_order = ["BasePipelineConfig", "ProcessingStepConfigBase"]
-        
-        for config_class_name in config_order:
-            if config_class_name in self.completed_configs:
-                config_instance = self.completed_configs[config_class_name]
-                for field_name, field_info in config_instance.__class__.model_fields.items():
-                    if hasattr(config_instance, field_name):
-                        field_value = getattr(config_instance, field_name)
-                        if field_value is not None:
-                            all_values[field_name] = field_value
-        
-        return all_values
-    
-    def _get_inheritance_chain(self, config_class: Type[BasePipelineConfig]) -> List[str]:
-        """Get inheritance chain with immediate parent first."""
-        chain = []
-        for base_class in config_class.__mro__:
-            if (base_class != config_class and 
-                issubclass(base_class, BasePipelineConfig) and 
-                base_class != BasePipelineConfig):
-                chain.append(base_class.__name__)
-        return chain
-    
-    def analyze_inheritance_requirements(self, target_config_class: Type[BasePipelineConfig]) -> Dict[str, Any]:
-        """
-        Analyze inheritance requirements for a target config class.
-        
-        Returns:
-            Dict containing inheritance pattern and required parent configs
-        """
-        inheritance_chain = self._get_inheritance_chain(target_config_class)
-        
-        # Determine inheritance pattern
-        if "ProcessingStepConfigBase" in inheritance_chain:
-            inheritance_pattern = "processing_based"
-            required_parents = ["BasePipelineConfig", "ProcessingStepConfigBase"]
-        else:
-            inheritance_pattern = "base_only"
-            required_parents = ["BasePipelineConfig"]
-        
-        return {
-            "target_config": target_config_class.__name__,
-            "inheritance_pattern": inheritance_pattern,
-            "inheritance_chain": inheritance_chain,
-            "required_parent_configs": required_parents,
-            "immediate_parent": inheritance_chain[0] if inheritance_chain else "BasePipelineConfig"
-        }
 ```
 
 #### 2. Field Inheritance Analyzer

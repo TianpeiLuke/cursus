@@ -58,7 +58,7 @@ class FieldSchema(BaseModel):
 class FieldSchemaResponse(BaseModel):
     """Response model for field schema requests."""
     config_type: str = Field(..., description="Configuration type")
-    schema: FieldSchema = Field(..., description="Schema information")
+    field_schema: FieldSchema = Field(..., description="Schema information")
 
 
 class ErrorResponse(BaseModel):
