@@ -20,7 +20,7 @@ from ....steps.configs.config_cradle_data_loading_step import (
     JobSplitOptionsConfig,
     OutputSpecificationConfig,
     CradleJobSpecificationConfig,
-    CradleDataLoadConfig
+    CradleDataLoadingConfig
 )
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ def get_all_config_schemas() -> Dict[str, Dict[str, Any]]:
         "TransformSpecificationConfig": TransformSpecificationConfig,
         "OutputSpecificationConfig": OutputSpecificationConfig,
         "CradleJobSpecificationConfig": CradleJobSpecificationConfig,
-        "CradleDataLoadConfig": CradleDataLoadConfig
+        "CradleDataLoadingConfig": CradleDataLoadingConfig
     }
     
     schemas = {}

@@ -740,7 +740,7 @@ class CradleJobSpecificationConfig(BaseCradleComponentConfig):
         return v
 
 
-class CradleDataLoadConfig(BasePipelineConfig):
+class CradleDataLoadingConfig(BasePipelineConfig):
     """
     Top‐level configuration for creating a CreateCradleDataLoadJobRequest with three-tier field classification.
 
@@ -804,7 +804,7 @@ class CradleDataLoadConfig(BasePipelineConfig):
         return v
 
     @model_validator(mode="after")
-    def initialize_derived_fields(self) -> "CradleDataLoadConfig":
+    def initialize_derived_fields(self) -> "CradleDataLoadingConfig":
         """Initialize all derived fields once after validation."""
         # Initialize base class derived fields first
         super().initialize_derived_fields()

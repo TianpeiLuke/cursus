@@ -289,7 +289,7 @@ class TestStepConfigResolverAdapter:
             adapter = StepConfigResolverAdapter()
             
             # Test special case mappings
-            assert adapter._config_class_to_step_type("CradleDataLoadConfig") == "CradleDataLoading"
+            assert adapter._config_class_to_step_type("CradleDataLoadingConfig") == "CradleDataLoading"
             assert adapter._config_class_to_step_type("PackageStepConfig") == "MIMSPackaging"
             assert adapter._config_class_to_step_type("PackageConfig") == "MIMSPackaging"
     

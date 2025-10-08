@@ -649,7 +649,7 @@ class TestPipelineDAGCompilerValidation:
         mock_preview_data = {
             "data_loading": [
                 {
-                    "config_type": "CradleDataLoadConfig",
+                    "config_type": "CradleDataLoadingConfig",
                     "confidence": 1.0,
                     "method": "direct_name",
                 }
@@ -689,7 +689,7 @@ class TestPipelineDAGCompilerValidation:
         assert isinstance(result, ResolutionPreview)
         assert "data_loading" in result.node_config_map
         assert "training" in result.node_config_map
-        assert result.node_config_map["data_loading"] == "CradleDataLoadConfig"
+        assert result.node_config_map["data_loading"] == "CradleDataLoadingConfig"
         assert result.resolution_confidence["data_loading"] == 1.0
 
     @patch("cursus.core.compiler.dag_compiler.Path")
@@ -842,10 +842,10 @@ class TestPipelineDAGCompilerCompilation:
 
         mock_preview = ResolutionPreview(
             node_config_map={
-                "data_loading": "CradleDataLoadConfig",
+                "data_loading": "CradleDataLoadingConfig",
                 "training": "XGBoostTrainingConfig",
             },
-            config_builder_map={"CradleDataLoadConfig": "CradleDataLoadingStepBuilder"},
+            config_builder_map={"CradleDataLoadingConfig": "CradleDataLoadingStepBuilder"},
             resolution_confidence={"data_loading": 1.0, "training": 0.8},
             ambiguous_resolutions=[],
             recommendations=[],

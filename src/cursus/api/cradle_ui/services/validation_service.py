@@ -9,7 +9,7 @@ import logging
 from pydantic import ValidationError
 
 from ....steps.configs.config_cradle_data_loading_step import (
-    CradleDataLoadConfig,
+    CradleDataLoadingConfig,
     DataSourcesSpecificationConfig,
     DataSourceConfig,
     MdsDataSourceConfig,
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class ValidationService:
-    """Server-side validation service for CradleDataLoadConfig"""
+    """Server-side validation service for CradleDataLoadingConfig"""
     
     def validate_step_data(self, step: int, data: Dict[str, Any]) -> Dict[str, List[str]]:
         """
@@ -287,15 +287,15 @@ class ValidationService:
         except (ValueError, TypeError):
             return False
     
-    def build_final_config(self, ui_data: Dict[str, Any]) -> CradleDataLoadConfig:
+    def build_final_config(self, ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
         """
-        Build final CradleDataLoadConfig from UI data.
+        Build final CradleDataLoadingConfig from UI data.
         
         Args:
             ui_data: Complete UI data from all steps
             
         Returns:
-            CradleDataLoadConfig: Built configuration object
+            CradleDataLoadingConfig: Built configuration object
             
         Raises:
             ValidationError: If configuration data is invalid
@@ -384,7 +384,7 @@ class ValidationService:
                 'source_dir': None
             }
             
-            config = CradleDataLoadConfig(**config_data)
+            config = CradleDataLoadingConfig(**config_data)
             
             return config
             
@@ -392,9 +392,9 @@ class ValidationService:
             logger.error(f"Error building final config: {str(e)}")
             raise ValueError(f"Failed to build configuration: {str(e)}")
     
-    def generate_python_code(self, config: CradleDataLoadConfig) -> str:
+    def generate_python_code(self, config: CradleDataLoadingConfig) -> str:
         """
-        Generate Python code to create the CradleDataLoadConfig.
+        Generate Python code to create the CradleDataLoadingConfig.
         
         Args:
             config: The configuration object
@@ -406,10 +406,10 @@ class ValidationService:
             config_dict = config.model_dump()
             
             # Generate Python code
-            python_code = f"""from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+            python_code = f"""from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 
-# Generated CradleDataLoadConfig
-config = CradleDataLoadConfig(
+# Generated CradleDataLoadingConfig
+config = CradleDataLoadingConfig(
     author="{config.author}",
     bucket="{config.bucket}",
     role="{config.role}",

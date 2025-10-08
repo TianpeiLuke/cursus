@@ -24,7 +24,7 @@ STEP_NAMES = {
     },
     # Data Loading Steps
     "CradleDataLoading": {
-        "config_class": "CradleDataLoadConfig",
+        "config_class": "CradleDataLoadingConfig",
         "builder_step_name": "CradleDataLoadingStepBuilder",
         "spec_type": "CradleDataLoading",
         "sagemaker_step_type": "CradleDataLoading",

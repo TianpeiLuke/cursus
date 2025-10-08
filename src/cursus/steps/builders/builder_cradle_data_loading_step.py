@@ -33,7 +33,7 @@ except ImportError:
     CRADLE_DATA_LOADING_CONTRACT = None
     CONTRACT_AVAILABLE = False
 
-from ..configs.config_cradle_data_loading_step import CradleDataLoadConfig
+from ..configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 from ...core.base.builder_base import StepBuilderBase
 
 # Import constants from the same module used by the data loading step
@@ -61,7 +61,7 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
 
     def __init__(
         self,
-        config: CradleDataLoadConfig,
+        config: CradleDataLoadingConfig,
         sagemaker_session=None,
         role: Optional[str] = None,
         registry_manager: Optional["RegistryManager"] = None,
@@ -71,15 +71,15 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
         Initializes the builder with a specific configuration for the data loading step.
 
         Args:
-            config: A CradleDataLoadConfig instance containing all necessary settings.
+            config: A CradleDataLoadingConfig instance containing all necessary settings.
             sagemaker_session: The SageMaker session object to manage interactions with AWS.
             role: The IAM role ARN to be used by the SageMaker Processing Job.
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
         """
-        if not isinstance(config, CradleDataLoadConfig):
+        if not isinstance(config, CradleDataLoadingConfig):
             raise ValueError(
-                "CradleDataLoadingStepBuilder requires a CradleDataLoadConfig instance."
+                "CradleDataLoadingStepBuilder requires a CradleDataLoadingConfig instance."
             )
 
         # Select specification based on job type
@@ -139,7 +139,7 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
-        self.config: CradleDataLoadConfig = config
+        self.config: CradleDataLoadingConfig = config
 
         # Store contract reference
         self.contract = CRADLE_DATA_LOADING_CONTRACT if CONTRACT_AVAILABLE else None
@@ -161,7 +161,7 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
           - start_date and end_date must exactly match 'YYYY-mm-DDTHH:MM:SS'
           - start_date < end_date
         """
-        self.log_info("Validating CradleDataLoadConfig…")
+        self.log_info("Validating CradleDataLoadingConfig…")
 
         # (1) job_type is already validated by Pydantic, but double-check presence:
         valid_job_types = {"training", "validation", "testing", "calibration"}
@@ -248,7 +248,7 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
                         f"Output '{logical_name}' in spec not found in contract expected_output_paths"
                     )
 
-        self.log_info("CradleDataLoadConfig validation succeeded.")
+        self.log_info("CradleDataLoadingConfig validation succeeded.")
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[Any]:
         """

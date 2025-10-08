@@ -364,7 +364,7 @@ class TestExecutionDocumentGeneratorIntegration:
                         value = getattr(config_obj, attr)
                         print(f"  {attr}: {type(value).__name__} = {str(value)[:100]}...")
                 
-                # For CradleDataLoadConfig, examine the data_sources_spec structure
+                # For CradleDataLoadingConfig, examine the data_sources_spec structure
                 if 'CradleDataLoad' in type(config_obj).__name__:
                     print(f"\n  === Cradle Config Details ===")
                     if hasattr(config_obj, 'data_sources_spec'):

@@ -10,9 +10,9 @@ from typing import Dict, List, Any, Optional
 
 from .base import ExecutionDocumentHelper, ExecutionDocumentGenerationError
 
-# Import CradleDataLoadConfig directly for proper type checking
+# Import CradleDataLoadingConfig directly for proper type checking
 try:
-    from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+    from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig
     CRADLE_CONFIG_AVAILABLE = True
 except ImportError:
     CRADLE_CONFIG_AVAILABLE = False
@@ -98,10 +98,10 @@ class CradleDataLoadingHelper(ExecutionDocumentHelper):
         Returns:
             True if this helper can handle the configuration, False otherwise
         """
-        # First try isinstance check if CradleDataLoadConfig is available
+        # First try isinstance check if CradleDataLoadingConfig is available
         if CRADLE_CONFIG_AVAILABLE:
             try:
-                if isinstance(config, CradleDataLoadConfig):
+                if isinstance(config, CradleDataLoadingConfig):
                     return True
             except Exception:
                 # If isinstance fails, continue to string matching
@@ -211,7 +211,7 @@ class CradleDataLoadingHelper(ExecutionDocumentHelper):
         for attr in required_attrs:
             if not hasattr(config, attr) or getattr(config, attr) is None:
                 raise ValueError(
-                    f"CradleDataLoadConfig missing required attribute: {attr}"
+                    f"CradleDataLoadingConfig missing required attribute: {attr}"
                 )
         
         try:

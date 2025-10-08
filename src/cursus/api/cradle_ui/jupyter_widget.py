@@ -17,7 +17,7 @@ from pathlib import Path
 import uuid
 import weakref
 
-from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+from ...steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 
 class CradleConfigWidget:
     """
@@ -76,7 +76,7 @@ class CradleConfigWidget:
             if self.base_config and hasattr(self.base_config, 'categorize_fields'):
                 return self.base_config.categorize_fields()
             else:
-                # Fallback to manual categorization for CradleDataLoadConfig
+                # Fallback to manual categorization for CradleDataLoadingConfig
                 return self._manual_field_categorization()
                 
         except Exception as e:
@@ -88,7 +88,7 @@ class CradleConfigWidget:
             }
     
     def _manual_field_categorization(self) -> Dict[str, List[str]]:
-        """Manually categorize fields for CradleDataLoadConfig."""
+        """Manually categorize fields for CradleDataLoadingConfig."""
         return {
             "essential": [  # Tier 1: Required, user must provide
                 "job_type",
@@ -277,12 +277,12 @@ class CradleConfigWidget:
         
         return params
     
-    def get_config(self) -> Optional[CradleDataLoadConfig]:
+    def get_config(self) -> Optional[CradleDataLoadingConfig]:
         """
         Get the generated configuration object.
         
         Returns:
-            CradleDataLoadConfig object if available, None otherwise
+            CradleDataLoadingConfig object if available, None otherwise
         """
         return self.config_result
     

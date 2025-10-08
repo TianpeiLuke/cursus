@@ -1,7 +1,7 @@
 """
 Configuration loader for Cradle Data Load Config
 
-This module provides functions to load and save CradleDataLoadConfig objects
+This module provides functions to load and save CradleDataLoadingConfig objects
 from/to JSON files, handling the nested configuration structure properly.
 """
 
@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 
 from ....steps.configs.config_cradle_data_loading_step import (
-    CradleDataLoadConfig,
+    CradleDataLoadingConfig,
     DataSourcesSpecificationConfig,
     DataSourceConfig,
     MdsDataSourceConfig,
@@ -23,9 +23,9 @@ from ....steps.configs.config_cradle_data_loading_step import (
 )
 
 
-def load_cradle_config_from_json(file_path: str) -> CradleDataLoadConfig:
+def load_cradle_config_from_json(file_path: str) -> CradleDataLoadingConfig:
     """
-    Load a CradleDataLoadConfig from a JSON file.
+    Load a CradleDataLoadingConfig from a JSON file.
     
     This function properly handles the nested configuration structure by
     reconstructing all the nested config objects from their dictionaries.
@@ -34,7 +34,7 @@ def load_cradle_config_from_json(file_path: str) -> CradleDataLoadConfig:
         file_path: Path to the JSON file containing the configuration
         
     Returns:
-        CradleDataLoadConfig: The loaded configuration object
+        CradleDataLoadingConfig: The loaded configuration object
         
     Raises:
         FileNotFoundError: If the file doesn't exist
@@ -62,9 +62,9 @@ def load_cradle_config_from_json(file_path: str) -> CradleDataLoadConfig:
         raise ValueError(f"Error loading configuration: {str(e)}")
 
 
-def save_cradle_config_to_json(config: CradleDataLoadConfig, file_path: str) -> None:
+def save_cradle_config_to_json(config: CradleDataLoadingConfig, file_path: str) -> None:
     """
-    Save a CradleDataLoadConfig to a JSON file.
+    Save a CradleDataLoadingConfig to a JSON file.
     
     Args:
         config: The configuration object to save
@@ -84,16 +84,16 @@ def save_cradle_config_to_json(config: CradleDataLoadConfig, file_path: str) -> 
         raise ValueError(f"Error saving configuration: {str(e)}")
 
 
-def _reconstruct_cradle_config(config_data: Dict[str, Any]) -> CradleDataLoadConfig:
+def _reconstruct_cradle_config(config_data: Dict[str, Any]) -> CradleDataLoadingConfig:
     """
-    Reconstruct a CradleDataLoadConfig from a dictionary, properly handling
+    Reconstruct a CradleDataLoadingConfig from a dictionary, properly handling
     all nested configuration objects.
     
     Args:
         config_data: Dictionary containing the configuration data
         
     Returns:
-        CradleDataLoadConfig: The reconstructed configuration object
+        CradleDataLoadingConfig: The reconstructed configuration object
     """
     # Reconstruct data sources specification
     data_sources_spec_data = config_data.get('data_sources_spec', {})
@@ -118,7 +118,7 @@ def _reconstruct_cradle_config(config_data: Dict[str, Any]) -> CradleDataLoadCon
     config_dict['output_spec'] = output_spec
     config_dict['cradle_job_spec'] = cradle_job_spec
     
-    return CradleDataLoadConfig(**config_dict)
+    return CradleDataLoadingConfig(**config_dict)
 
 
 def _reconstruct_data_sources_spec(data: Dict[str, Any]) -> DataSourcesSpecificationConfig:
@@ -183,9 +183,9 @@ def _reconstruct_cradle_job_spec(data: Dict[str, Any]) -> CradleJobSpecification
     return CradleJobSpecificationConfig(**data)
 
 
-def create_config_from_ui_data(ui_data: Dict[str, Any]) -> CradleDataLoadConfig:
+def create_config_from_ui_data(ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
     """
-    Create a CradleDataLoadConfig from UI data format.
+    Create a CradleDataLoadingConfig from UI data format.
     
     This function handles the conversion from the UI's data format
     to the proper nested configuration structure.
@@ -194,7 +194,7 @@ def create_config_from_ui_data(ui_data: Dict[str, Any]) -> CradleDataLoadConfig:
         ui_data: Dictionary containing UI form data
         
     Returns:
-        CradleDataLoadConfig: The created configuration object
+        CradleDataLoadingConfig: The created configuration object
     """
     # This is essentially the same as the validation service's build_final_config
     # but can be used independently

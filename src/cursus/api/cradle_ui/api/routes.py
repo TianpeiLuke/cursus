@@ -140,7 +140,7 @@ async def validate_data_source(request: DataSourceValidationRequest) -> Validati
 @router.post("/build-config", response_model=ConfigBuildResponse)
 async def build_config(request: ConfigBuildRequest) -> ConfigBuildResponse:
     """
-    Build the final CradleDataLoadConfig from UI data and optionally save to file.
+    Build the final CradleDataLoadingConfig from UI data and optionally save to file.
     
     Args:
         request: Configuration build request with all UI data

@@ -380,7 +380,7 @@ class TestGetValidationErrorsWithSuggestions:
         errors = get_validation_errors_with_suggestions(step_data)
         error_text = " ".join(errors)
 
-        assert "CradleDataLoadConfig" in error_text
+        assert "CradleDataLoadingConfig" in error_text
         assert "XGBoostTrainingConfig" in error_text
 
     def test_builder_name_examples(self):

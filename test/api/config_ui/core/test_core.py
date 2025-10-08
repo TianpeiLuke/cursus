@@ -46,7 +46,7 @@ class TestUniversalConfigCore:
             mock_catalog.discover_config_classes.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(spec=['from_base_config', 'model_fields']),
+                "CradleDataLoadingConfig": Mock(spec=['from_base_config', 'model_fields']),
                 "XGBoostTrainingConfig": Mock(spec=['from_base_config', 'model_fields'])
             }
             
@@ -141,7 +141,7 @@ class TestUniversalConfigCore:
         assert isinstance(result, dict)
         assert "BasePipelineConfig" in result
         assert "ProcessingStepConfigBase" in result
-        assert "CradleDataLoadConfig" in result  # From mock step catalog
+        assert "CradleDataLoadingConfig" in result  # From mock step catalog
         assert "XGBoostTrainingConfig" in result  # From mock step catalog
         
         # Verify step catalog was called
@@ -359,13 +359,13 @@ class TestUniversalConfigCore:
         mock_step_catalog.discover_config_classes.return_value = {
             "BasePipelineConfig": BasePipelineConfig,
             "ProcessingStepConfigBase": ProcessingStepConfigBase,
-            "CradleDataLoadConfig": Mock()
+            "CradleDataLoadingConfig": Mock()
         }
         
         result = core._infer_config_class_from_node_name("cradle_data_load", None)
         
         assert result is not None
-        assert result["config_class_name"] == "CradleDataLoadConfig"
+        assert result["config_class_name"] == "CradleDataLoadingConfig"
         assert result["node_name"] == "cradle_data_load"
         assert result["inferred"] is True
     
@@ -412,12 +412,12 @@ class TestUniversalConfigCore:
         assert result == "base_only"
     
     def test_is_specialized_config_cradle(self, mock_step_catalog):
-        """Test specialized config detection for CradleDataLoadConfig."""
+        """Test specialized config detection for CradleDataLoadingConfig."""
         core = UniversalConfigCore()
         
         # Mock config class with correct name
         mock_config_class = Mock()
-        mock_config_class.__name__ = "CradleDataLoadConfig"
+        mock_config_class.__name__ = "CradleDataLoadingConfig"
         
         result = core._is_specialized_config(mock_config_class)
         
@@ -731,7 +731,7 @@ class TestIntegrationScenarios:
             mock_catalog.discover_config_classes.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(spec=['from_base_config', 'model_fields']),
+                "CradleDataLoadingConfig": Mock(spec=['from_base_config', 'model_fields']),
                 "XGBoostTrainingConfig": Mock(spec=['from_base_config', 'model_fields'])
             }
             
@@ -769,7 +769,7 @@ class TestIntegrationScenarios:
             mock_catalog.discover_config_classes.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(),
+                "CradleDataLoadingConfig": Mock(),
                 "XGBoostTrainingConfig": Mock(),
                 "TabularPreprocessingConfig": Mock()
             }

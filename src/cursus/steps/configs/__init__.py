@@ -11,7 +11,7 @@ from .config_processing_step_base import ProcessingStepConfigBase
 from .config_batch_transform_step import BatchTransformStepConfig
 from .config_currency_conversion_step import CurrencyConversionConfig
 from .config_cradle_data_loading_step import (
-    CradleDataLoadConfig,
+    CradleDataLoadingConfig,
     BaseCradleComponentConfig,
     MdsDataSourceConfig,
     EdxDataSourceConfig,
@@ -57,7 +57,7 @@ __all__ = [
     # Step configurations
     "BatchTransformStepConfig",
     "CurrencyConversionConfig",
-    "CradleDataLoadConfig",
+    "CradleDataLoadingConfig",
     "DummyTrainingConfig",
     "ModelCalibrationConfig",
     "XGBoostModelEvalConfig",

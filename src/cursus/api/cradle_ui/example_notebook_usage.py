@@ -100,7 +100,7 @@ print(f"Data Sources: {len(training_config.data_sources_spec.data_sources)}")
     print("✅ Reusable: Save configurations for later use or sharing")
     print("✅ Debuggable: Easy to inspect and troubleshoot configurations")
     print("✅ Compatible: Works in all Jupyter environments")
-    print("✅ Same Result: Identical CradleDataLoadConfig objects as manual approach")
+    print("✅ Same Result: Identical CradleDataLoadingConfig objects as manual approach")
 
 
 # Example notebook cells for the new workflow
@@ -227,7 +227,7 @@ config = load_cradle_config_from_json('cradle_config_training.json')
 config_list.append(config)
 ```
 
-### Result: Identical CradleDataLoadConfig objects, but much easier to create!
+### Result: Identical CradleDataLoadingConfig objects, but much easier to create!
 """
 
 # Usage instructions
@@ -261,7 +261,7 @@ Replace the entire manual configuration block with the widget code.
 ✅ **Error prevention**: Built-in validation and error checking  
 ✅ **Reliable**: File-based approach works in all environments
 ✅ **Reusable**: Save and share configurations easily
-✅ **Identical result**: Same CradleDataLoadConfig objects as manual approach
+✅ **Identical result**: Same CradleDataLoadingConfig objects as manual approach
 ✅ **Debuggable**: Easy to inspect and modify saved configurations
 """
 

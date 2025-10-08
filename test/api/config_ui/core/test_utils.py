@@ -44,7 +44,7 @@ class TestDiscoverAvailableConfigs:
             mock_core.discover_config_classes.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(spec=['from_base_config', 'model_fields']),
+                "CradleDataLoadingConfig": Mock(spec=['from_base_config', 'model_fields']),
                 "XGBoostTrainingConfig": Mock(spec=['from_base_config', 'model_fields'])
             }
             
@@ -78,7 +78,7 @@ class TestDiscoverAvailableConfigs:
         assert len(result) >= 2  # At least base configs
         assert "BasePipelineConfig" in result
         assert "ProcessingStepConfigBase" in result
-        assert "CradleDataLoadConfig" in result  # From mock
+        assert "CradleDataLoadingConfig" in result  # From mock
         assert "XGBoostTrainingConfig" in result  # From mock
         
         # Verify UniversalConfigCore was initialized correctly
@@ -181,14 +181,14 @@ class TestDiscoverAvailableConfigs:
         
         # Configure mock to return real classes mixed with mock classes that have __name__
         mock_cradle_config = Mock()
-        mock_cradle_config.__name__ = "CradleDataLoadConfig"
+        mock_cradle_config.__name__ = "CradleDataLoadingConfig"
         mock_xgboost_config = Mock()
         mock_xgboost_config.__name__ = "XGBoostTrainingConfig"
         
         mock_universal_config_core.discover_config_classes.return_value = {
             "BasePipelineConfig": BasePipelineConfig,
             "ProcessingStepConfigBase": ProcessingStepConfigBase,
-            "CradleDataLoadConfig": mock_cradle_config,
+            "CradleDataLoadingConfig": mock_cradle_config,
             "XGBoostTrainingConfig": mock_xgboost_config
         }
         

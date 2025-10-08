@@ -538,9 +538,6 @@ class UniversalConfigCore:
                     base_name,
                 ]
                 
-                # Handle naming anomalies that violate the standard convention
-                if base_name == "CradleDataLoading":
-                    potential_config_names.insert(0, "CradleDataLoadConfig")  # Anomaly: missing "ing"
                 
                 for config_name in potential_config_names:
                     if config_name in available_config_classes:
@@ -657,8 +654,8 @@ class UniversalConfigCore:
             if base_class.__name__ == "ProcessingStepConfigBase":
                 return "processing_based"
         
-        # Special handling for CradleDataLoadConfig
-        if config_class.__name__ == "CradleDataLoadConfig":
+        # Special handling for CradleDataLoadingConfig
+        if config_class.__name__ == "CradleDataLoadingConfig":
             return "base_only_specialized"
         
         # Default: inherits from BasePipelineConfig only
@@ -667,7 +664,7 @@ class UniversalConfigCore:
     def _is_specialized_config(self, config_class: Type[BasePipelineConfig]) -> bool:
         """Check if configuration requires specialized UI."""
         specialized_configs = {
-            "CradleDataLoadConfig": True,
+            "CradleDataLoadingConfig": True,
             "ModelHyperparameters": True,
             "XGBoostModelHyperparameters": True,
             # Add other specialized configs here as needed

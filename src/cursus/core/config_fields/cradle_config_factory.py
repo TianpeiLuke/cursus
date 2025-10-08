@@ -1,7 +1,7 @@
 """
-Helper functions for creating CradleDataLoadConfig objects with minimal inputs.
+Helper functions for creating CradleDataLoadingConfig objects with minimal inputs.
 
-This module provides utilities to simplify the creation of complex CradleDataLoadConfig
+This module provides utilities to simplify the creation of complex CradleDataLoadingConfig
 objects by deriving nested configurations from essential user inputs.
 
 Author: Luke Xie
@@ -17,7 +17,7 @@ from pathlib import Path
 from ..base.config_base import BasePipelineConfig
 
 from ...steps.configs.config_cradle_data_loading_step import (
-    CradleDataLoadConfig,
+    CradleDataLoadingConfig,
     MdsDataSourceConfig,
     EdxDataSourceConfig,
     DataSourceConfig,
@@ -393,11 +393,11 @@ def create_cradle_data_load_config(
     mds_join_key: str = "objectId",
     edx_join_key: str = "order_id",
     join_type: str = "JOIN",
-) -> CradleDataLoadConfig:
+) -> CradleDataLoadingConfig:
     """
-    Create a CradleDataLoadConfig with minimal required inputs.
+    Create a CradleDataLoadingConfig with minimal required inputs.
 
-    This helper function simplifies the creation of a CradleDataLoadConfig
+    This helper function simplifies the creation of a CradleDataLoadingConfig
     by handling the generation of nested configurations from essential user inputs.
 
     Parameters:
@@ -434,7 +434,7 @@ def create_cradle_data_load_config(
         tag_schema (List[str], optional): Schema for tag data, default provided if not specified
 
     Returns:
-        CradleDataLoadConfig: A fully configured CradleDataLoadConfig object
+        CradleDataLoadingConfig: A fully configured CradleDataLoadingConfig object
     """
     # 1. Derive values and set defaults
 
@@ -574,12 +574,12 @@ def create_cradle_data_load_config(
         job_retry_count=4,  # Default to 4 retries
     )
 
-    # 10. Create the final CradleDataLoadConfig using from_base_config
+    # 10. Create the final CradleDataLoadingConfig using from_base_config
 
     # Use from_base_config to inherit from the base configuration
     # This ensures all base fields (region, role, etc.) are properly inherited
     # while also respecting the three-tier design pattern
-    cradle_data_load_config = CradleDataLoadConfig.from_base_config(
+    cradle_data_load_config = CradleDataLoadingConfig.from_base_config(
         base_config,
         # Add step-specific fields
         job_type=job_type,
@@ -590,7 +590,7 @@ def create_cradle_data_load_config(
         s3_input_override=s3_input_override,
     )
 
-    # Type cast to ensure proper return type (from_base_config should return CradleDataLoadConfig)
+    # Type cast to ensure proper return type (from_base_config should return CradleDataLoadingConfig)
     return cradle_data_load_config  # type: ignore[return-value]
 
 
@@ -623,9 +623,9 @@ def create_training_and_calibration_configs(
     merge_sql: Optional[str] = None,
     transform_sql: Optional[str] = None,
     tag_schema: Optional[List[str]] = None,
-) -> Dict[str, CradleDataLoadConfig]:
+) -> Dict[str, CradleDataLoadingConfig]:
     """
-    Create both training and calibration CradleDataLoadConfig objects with consistent settings.
+    Create both training and calibration CradleDataLoadingConfig objects with consistent settings.
 
     Args:
         role (str): IAM role to use for the pipeline
@@ -658,7 +658,7 @@ def create_training_and_calibration_configs(
         tag_schema (List[str], optional): Schema for tag data
 
     Returns:
-        Dict[str, CradleDataLoadConfig]: Dictionary with 'training' and 'calibration' configs
+        Dict[str, CradleDataLoadingConfig]: Dictionary with 'training' and 'calibration' configs
     """
     # Create training config using the base_config
     training_config = create_cradle_data_load_config(

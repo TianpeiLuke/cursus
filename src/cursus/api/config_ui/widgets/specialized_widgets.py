@@ -17,7 +17,7 @@ try:
     from ....core.base.hyperparameters_base import ModelHyperparameters
     from ....steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
     from ...cradle_ui.services.config_builder import ConfigBuilderService
-    from ....steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+    from ....steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 except ImportError:
     # Fallback: Set up cursus path and use absolute imports
     import sys
@@ -35,7 +35,7 @@ except ImportError:
     from cursus.core.base.hyperparameters_base import ModelHyperparameters
     from cursus.steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
     from cursus.api.cradle_ui.services.config_builder import ConfigBuilderService
-    from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadConfig
+    from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -622,7 +622,7 @@ class SpecializedComponentRegistry:
     """Registry for specialized UI components with enhanced visual integration."""
     
     SPECIALIZED_COMPONENTS = {
-        "CradleDataLoadConfig": {
+        "CradleDataLoadingConfig": {
             "component_class": "CradleConfigWidget",
             "module": "cursus.api.cradle_ui.jupyter_widget",
             "preserve_existing_ui": True,
@@ -698,7 +698,7 @@ class SpecializedComponentRegistry:
         component_class = self.get_specialized_component(config_class_name)
         if component_class:
             try:
-                if config_class_name == "CradleDataLoadConfig":
+                if config_class_name == "CradleDataLoadingConfig":
                     # Use existing Cradle UI widget with workflow context
                     widget_kwargs = kwargs.copy()
                     if workflow_context:

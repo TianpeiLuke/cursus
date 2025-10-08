@@ -1,7 +1,7 @@
 """
 Cradle Data Load Config UI Package
 
-A web-based user interface for creating and managing CradleDataLoadConfig objects
+A web-based user interface for creating and managing CradleDataLoadingConfig objects
 through a guided wizard interface.
 
 This package provides:

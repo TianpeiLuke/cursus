@@ -21,10 +21,10 @@ class TestDetermineStepType:
     def test_cradle_step_type_from_registry(self, mock_get_sagemaker_type, mock_get_config_registry):
         """Test step type determination using registry system."""
         config = Mock()
-        config.__class__.__name__ = "CradleDataLoadConfig"
+        config.__class__.__name__ = "CradleDataLoadingConfig"
         
         # Mock registry responses
-        mock_get_config_registry.return_value = {"CradleDataLoadConfig": "CradleDataLoading"}
+        mock_get_config_registry.return_value = {"CradleDataLoadingConfig": "CradleDataLoading"}
         mock_get_sagemaker_type.return_value = "CradleDataLoading"
         
         step_types = determine_step_type("data_loading", config)
@@ -70,7 +70,7 @@ class TestDetermineStepType:
     def test_fallback_to_legacy_logic(self, mock_get_config_registry):
         """Test fallback to legacy logic when registry fails."""
         config = Mock()
-        config.__class__.__name__ = "CradleDataLoadConfig"
+        config.__class__.__name__ = "CradleDataLoadingConfig"
         
         # Mock registry failure
         mock_get_config_registry.side_effect = Exception("Registry failed")

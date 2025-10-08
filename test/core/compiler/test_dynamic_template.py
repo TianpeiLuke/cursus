@@ -49,7 +49,7 @@ class TestDynamicPipelineTemplate:
             "data_loading": {
                 "job_type": "training",
                 "bucket": "test-bucket",
-                "config_type": "CradleDataLoadConfig",
+                "config_type": "CradleDataLoadingConfig",
             },
             "preprocessing": {
                 "job_type": "training",
@@ -338,7 +338,7 @@ class TestDynamicPipelineTemplate:
         preview_data = {
             "data_loading": [
                 {
-                    "config_type": "CradleDataLoadConfig",
+                    "config_type": "CradleDataLoadingConfig",
                     "confidence": 0.95,
                     "method": "direct_name",
                     "job_type": "training",

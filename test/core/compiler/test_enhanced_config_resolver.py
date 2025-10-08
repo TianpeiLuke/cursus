@@ -33,11 +33,11 @@ class TestEnhancedConfigResolver:
 
         # Create multiple configs of same class with different job types
         self.data_load_training = MagicMock(spec=BasePipelineConfig)
-        type(self.data_load_training).__name__ = "CradleDataLoadConfig"
+        type(self.data_load_training).__name__ = "CradleDataLoadingConfig"
         self.data_load_training.job_type = "training"
 
         self.data_load_calibration = MagicMock(spec=BasePipelineConfig)
-        type(self.data_load_calibration).__name__ = "CradleDataLoadConfig"
+        type(self.data_load_calibration).__name__ = "CradleDataLoadingConfig"
         self.data_load_calibration.job_type = "calibration"
 
         self.preprocess_training = MagicMock(spec=BasePipelineConfig)
@@ -79,8 +79,8 @@ class TestEnhancedConfigResolver:
         # Mock metadata with config_types mapping
         self.metadata = {
             "config_types": {
-                "CradleDataLoading_training": "CradleDataLoadConfig",
-                "CradleDataLoading_calibration": "CradleDataLoadConfig",
+                "CradleDataLoading_training": "CradleDataLoadingConfig",
+                "CradleDataLoading_calibration": "CradleDataLoadingConfig",
                 "TabularPreprocessing_training": "TabularPreprocessingConfig",
                 "TabularPreprocessing_calibration": "TabularPreprocessingConfig",
                 "XGBoostTraining": "XGBoostTrainingConfig",
@@ -145,7 +145,7 @@ class TestEnhancedConfigResolver:
             "calibration_data_load": self.data_load_calibration,
         }
 
-        # The metadata says CradleDataLoading_training maps to CradleDataLoadConfig
+        # The metadata says CradleDataLoading_training maps to CradleDataLoadingConfig
         match = self.resolver._direct_name_matching(
             "CradleDataLoading_training", configs
         )
@@ -273,7 +273,7 @@ class TestEnhancedConfigResolver:
 
         # Check a specific node
         train_data_load = node_resolution.get("CradleDataLoading_training", {})
-        assert train_data_load.get("config_type") == "CradleDataLoadConfig"
+        assert train_data_load.get("config_type") == "CradleDataLoadingConfig"
         assert train_data_load.get("job_type") == "training"
         assert train_data_load.get("method") == "direct_name"
         assert train_data_load.get("confidence") == 1.0
@@ -290,7 +290,7 @@ class TestEnhancedConfigResolver:
                 spec=BasePipelineConfig
             ),  # Another training data load
         }
-        type(ambiguous_configs["data_load_2"]).__name__ = "CradleDataLoadConfig"
+        type(ambiguous_configs["data_load_2"]).__name__ = "CradleDataLoadingConfig"
         ambiguous_configs["data_load_2"].job_type = "training"
 
         # Create a node name that could match either config
@@ -320,7 +320,7 @@ class TestEnhancedConfigResolver:
         # Check that the resolved config is one of our ambiguous configs
         assert node in resolved
         config = resolved[node]
-        assert type(config).__name__ == "CradleDataLoadConfig"
+        assert type(config).__name__ == "CradleDataLoadingConfig"
         assert getattr(config, "job_type", "") == "training"
         assert config in [
             ambiguous_configs["data_load_1"],

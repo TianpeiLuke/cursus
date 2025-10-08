@@ -107,12 +107,12 @@ class TestResolutionPreview:
         """Test the display method of ResolutionPreview."""
         preview = ResolutionPreview(
             node_config_map={
-                "data_loading": "CradleDataLoadConfig",
+                "data_loading": "CradleDataLoadingConfig",
                 "preprocessing": "TabularPreprocessingConfig",
                 "training": "XGBoostTrainingConfig",
             },
             config_builder_map={
-                "CradleDataLoadConfig": "CradleDataLoadingStepBuilder",
+                "CradleDataLoadingConfig": "CradleDataLoadingStepBuilder",
                 "TabularPreprocessingConfig": "TabularPreprocessingStepBuilder",
                 "XGBoostTrainingConfig": "XGBoostTrainingStepBuilder",
             },
@@ -128,14 +128,14 @@ class TestResolutionPreview:
         display = preview.display()
         assert "Resolution Preview" in display
         assert "Node → Configuration Mappings:" in display
-        assert "🟢 data_loading → CradleDataLoadConfig (confidence: 1.00)" in display
+        assert "🟢 data_loading → CradleDataLoadingConfig (confidence: 1.00)" in display
         assert (
             "🟡 preprocessing → TabularPreprocessingConfig (confidence: 0.85)"
             in display
         )
         assert "🔴 training → XGBoostTrainingConfig (confidence: 0.65)" in display
         assert "Configuration → Builder Mappings:" in display
-        assert "✓ CradleDataLoadConfig → CradleDataLoadingStepBuilder" in display
+        assert "✓ CradleDataLoadingConfig → CradleDataLoadingStepBuilder" in display
         assert "⚠️  Ambiguous Resolutions:" in display
         assert "training has 2 similar candidates" in display
         assert "💡 Recommendations:" in display
@@ -164,7 +164,7 @@ class TestConversionReport:
         """Test the detailed_report method of ConversionReport."""
         resolution_details = {
             "data_loading": {
-                "config_type": "CradleDataLoadConfig",
+                "config_type": "CradleDataLoadingConfig",
                 "builder_type": "CradleDataLoadingStepBuilder",
                 "confidence": 1.0,
             },
@@ -191,7 +191,7 @@ class TestConversionReport:
         assert "Average Confidence: 0.90" in detailed
         assert "Step Resolution Details:" in detailed
         assert "data_loading:" in detailed
-        assert "Config: CradleDataLoadConfig" in detailed
+        assert "Config: CradleDataLoadingConfig" in detailed
         assert "Builder: CradleDataLoadingStepBuilder" in detailed
         assert "Confidence: 1.00" in detailed
         assert "preprocessing:" in detailed

@@ -32,7 +32,7 @@ class TestConfigResolver:
     def data_load_config(self):
         """Create mock data load configuration."""
         config = MagicMock(spec=BasePipelineConfig)
-        type(config).__name__ = "CradleDataLoadConfig"
+        type(config).__name__ = "CradleDataLoadingConfig"
         config.job_type = "training"
         return config
 
@@ -307,7 +307,7 @@ class TestConfigResolver:
             "data_loading": [
                 {
                     "config": data_load_config,
-                    "config_type": "CradleDataLoadConfig",
+                    "config_type": "CradleDataLoadingConfig",
                     "confidence": 1.0,
                     "method": "direct_name",
                     "job_type": "training",

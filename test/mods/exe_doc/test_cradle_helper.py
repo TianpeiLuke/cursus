@@ -23,10 +23,10 @@ class TestCradleDataLoadingHelper:
         helper = CradleDataLoadingHelper()
         
         # Create a proper mock class with the right name
-        class MockCradleDataLoadConfig:
+        class MockCradleDataLoadingConfig:
             pass
         
-        mock_config = MockCradleDataLoadConfig()
+        mock_config = MockCradleDataLoadingConfig()
         
         assert helper.can_handle_step("test_step", mock_config) is True
     
@@ -122,7 +122,7 @@ class TestCradleDataLoadingHelper:
         mock_config = Mock()
         mock_config.data_sources_spec = None
         
-        with pytest.raises(ValueError, match="CradleDataLoadConfig missing required attribute"):
+        with pytest.raises(ValueError, match="CradleDataLoadingConfig missing required attribute"):
             helper._build_request(mock_config)
     
     @patch('cursus.mods.exe_doc.cradle_helper.CRADLE_MODELS_AVAILABLE', True)

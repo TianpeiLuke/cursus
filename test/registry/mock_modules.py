@@ -18,7 +18,7 @@ cradle_mock.cradle_data_loading.cradle_data_loading_step.CradleDataLoadingStep =
 cradle_mock.utils = MagicMock()
 cradle_mock.utils.constants = MagicMock()
 
-# Constants needed by the CradleDataLoadConfig
+# Constants needed by the CradleDataLoadingConfig
 cradle_mock.utils.constants.OUTPUT_TYPE_DATA = "DATA"
 cradle_mock.utils.constants.OUTPUT_TYPE_METADATA = "METADATA"
 cradle_mock.utils.constants.OUTPUT_TYPE_SIGNATURE = "SIGNATURE"

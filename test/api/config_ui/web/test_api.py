@@ -57,7 +57,7 @@ class TestFastAPIEndpoints:
         with patch('cursus.api.config_ui.api.discover_available_configs') as mock_discover:
             # Create proper mock config classes with required attributes
             mock_cradle_config = Mock()
-            mock_cradle_config.__name__ = "CradleDataLoadConfig"
+            mock_cradle_config.__name__ = "CradleDataLoadingConfig"
             mock_cradle_config.__module__ = "cursus.steps.configs.config_cradle_data_loading_step"
             mock_cradle_config.__doc__ = "Cradle data loading configuration"
             mock_cradle_config.model_fields = {"field1": Mock(), "field2": Mock()}
@@ -73,7 +73,7 @@ class TestFastAPIEndpoints:
             mock_discover.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": mock_cradle_config,
+                "CradleDataLoadingConfig": mock_cradle_config,
                 "XGBoostTrainingConfig": mock_xgboost_config
             }
             yield mock_discover
@@ -89,7 +89,7 @@ class TestFastAPIEndpoints:
             mock_core.discover_config_classes.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(),
+                "CradleDataLoadingConfig": Mock(),
                 "XGBoostTrainingConfig": Mock()
             }
             
@@ -234,7 +234,7 @@ class TestFastAPIEndpoints:
             mock_registry.has_specialized_component.return_value = True
             
             request_data = {
-                "config_class_name": "CradleDataLoadConfig",
+                "config_class_name": "CradleDataLoadingConfig",
                 "base_config": None,
                 "workspace_dirs": None
             }
@@ -244,7 +244,7 @@ class TestFastAPIEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert data["specialized_component"] is True
-            assert data["config_class_name"] == "CradleDataLoadConfig"
+            assert data["config_class_name"] == "CradleDataLoadingConfig"
             assert data["fields"] == []  # Empty for specialized components
     
     def test_create_configuration_widget_class_not_found(self, client, mock_universal_config_core):
@@ -727,7 +727,7 @@ class TestErrorHandlingAndEdgeCases:
             mock_discover.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(spec=['from_base_config', 'model_fields']),
+                "CradleDataLoadingConfig": Mock(spec=['from_base_config', 'model_fields']),
                 "XGBoostTrainingConfig": Mock(spec=['from_base_config', 'model_fields'])
             }
             yield mock_discover
@@ -743,7 +743,7 @@ class TestErrorHandlingAndEdgeCases:
             mock_core.discover_config_classes.return_value = {
                 "BasePipelineConfig": BasePipelineConfig,
                 "ProcessingStepConfigBase": ProcessingStepConfigBase,
-                "CradleDataLoadConfig": Mock(),
+                "CradleDataLoadingConfig": Mock(),
                 "XGBoostTrainingConfig": Mock()
             }
             

@@ -229,7 +229,7 @@ def get_validation_errors_with_suggestions(step_data: Dict[str, Any]) -> List[st
 
     if any("Config" in error for error in errors):
         detailed_errors.append(
-            "💡 Config class examples: 'CradleDataLoadConfig', 'XGBoostTrainingConfig'"
+            "💡 Config class examples: 'CradleDataLoadingConfig', 'XGBoostTrainingConfig'"
         )
 
     if any("StepBuilder" in error for error in errors):

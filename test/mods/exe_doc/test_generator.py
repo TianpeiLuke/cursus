@@ -73,7 +73,7 @@ class TestExecutionDocumentGenerator:
     def test_identify_relevant_steps(self, mock_load_configs):
         """Test _identify_relevant_steps method."""
         mock_config = Mock()
-        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_config.__class__.__name__ = "CradleDataLoadingConfig"
         mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
@@ -100,7 +100,7 @@ class TestExecutionDocumentGenerator:
     def test_filter_steps_by_helper(self, mock_load_configs):
         """Test _filter_steps_by_helper method."""
         mock_config = Mock()
-        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_config.__class__.__name__ = "CradleDataLoadingConfig"
         mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
@@ -140,7 +140,7 @@ class TestExecutionDocumentGenerator:
         """Test successful execution document filling."""
         # Setup mocks
         mock_config = Mock()
-        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_config.__class__.__name__ = "CradleDataLoadingConfig"
         mock_config.job_type = "Training"  # Add job_type for step name transformation
         mock_load_configs.return_value = {"step1": mock_config}
         
@@ -256,7 +256,7 @@ class TestExecutionDocumentGenerator:
         generator = ExecutionDocumentGenerator("test_config.json")
         
         config = Mock()
-        config.__class__.__name__ = "CradleDataLoadConfig"
+        config.__class__.__name__ = "CradleDataLoadingConfig"
         
         assert generator._is_execution_doc_relevant(config) is True
         
@@ -290,7 +290,7 @@ class TestExecutionDocumentGenerator:
     def test_conditional_helper_processing(self, mock_load_configs):
         """Test that helpers are only called when relevant steps exist."""
         mock_config = Mock()
-        mock_config.__class__.__name__ = "CradleDataLoadConfig"
+        mock_config.__class__.__name__ = "CradleDataLoadingConfig"
         mock_load_configs.return_value = {"step1": mock_config}
         
         generator = ExecutionDocumentGenerator("test_config.json")
