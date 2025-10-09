@@ -438,6 +438,171 @@ class TestFieldDefinitionsIntegration:
             assert field_name in field_names, f"Missing ANDES-specific field: {field_name}"
 
 
+class TestCradleDataLoadingConfigIntegration:
+    """Test that CradleDataLoadingConfig uses comprehensive field definitions instead of specialized widgets."""
+    
+    def test_cradle_config_not_in_specialized_registry(self):
+        """Test that CradleDataLoadingConfig is NOT in the specialized widget registry."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        # This verifies our fix - CradleDataLoadingConfig should be removed from specialized registry
+        
+        from cursus.api.config_ui.widgets.specialized_widgets import SpecializedComponentRegistry
+        
+        registry = SpecializedComponentRegistry()
+        
+        # CRITICAL: CradleDataLoadingConfig should NOT be in specialized registry
+        has_specialized = registry.has_specialized_component("CradleDataLoadingConfig")
+        assert not has_specialized, "CradleDataLoadingConfig should NOT be in specialized registry after fix"
+        
+        # Verify it's not in the SPECIALIZED_COMPONENTS dict
+        assert "CradleDataLoadingConfig" not in registry.SPECIALIZED_COMPONENTS, \
+            "CradleDataLoadingConfig should be removed from SPECIALIZED_COMPONENTS"
+    
+    def test_cradle_config_uses_comprehensive_field_definitions(self):
+        """Test that CradleDataLoadingConfig uses comprehensive field definitions from field_definitions.py."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        # This verifies the core integration works correctly
+        
+        from cursus.api.config_ui.core.core import UniversalConfigCore
+        
+        # Mock the config class
+        mock_config_class = Mock()
+        mock_config_class.__name__ = "CradleDataLoadingConfig"
+        
+        core = UniversalConfigCore()
+        
+        # Should use comprehensive field definitions
+        fields = core._get_form_fields(mock_config_class)
+        
+        # CRITICAL: Should have comprehensive fields (40+ fields), not just 4 basic fields
+        assert len(fields) >= 40, f"Expected 40+ comprehensive fields, got {len(fields)}"
+        assert len(fields) <= 50, f"Expected at most 50 fields, got {len(fields)}"
+        
+        # Verify it has the expected field structure from field_definitions.py
+        field_names = [f["name"] for f in fields]
+        
+        # Should have inherited fields
+        inherited_fields = ["author", "bucket", "role", "region", "service_name", "pipeline_version", "project_root_folder"]
+        for field_name in inherited_fields:
+            assert field_name in field_names, f"Missing inherited field: {field_name}"
+        
+        # Should have essential cradle fields
+        essential_fields = ["start_date", "end_date", "data_source_name", "data_source_type", "transform_sql", "job_type", "cradle_account"]
+        for field_name in essential_fields:
+            assert field_name in field_names, f"Missing essential field: {field_name}"
+        
+        # Should have system fields
+        system_fields = ["output_format", "cluster_type", "job_retry_count", "split_job"]
+        for field_name in system_fields:
+            assert field_name in field_names, f"Missing system field: {field_name}"
+        
+        # Should have conditional fields for different data source types
+        mds_fields = ["mds_service", "mds_region", "mds_org_id"]
+        edx_fields = ["edx_provider", "edx_subject", "edx_dataset"]
+        andes_fields = ["andes_provider", "andes_table_name"]
+        
+        for field_name in mds_fields + edx_fields + andes_fields:
+            assert field_name in field_names, f"Missing data source specific field: {field_name}"
+    
+    def test_cradle_config_field_tiers_are_comprehensive(self):
+        """Test that CradleDataLoadingConfig fields have proper 3-tier categorization."""
+        # Following Category 7: Data Structure Fidelity pattern
+        
+        from cursus.api.config_ui.core.core import UniversalConfigCore
+        
+        mock_config_class = Mock()
+        mock_config_class.__name__ = "CradleDataLoadingConfig"
+        
+        core = UniversalConfigCore()
+        fields = core._get_form_fields(mock_config_class)
+        
+        # Count fields by tier
+        tier_counts = {"inherited": 0, "essential": 0, "system": 0}
+        for field in fields:
+            tier = field.get("tier", "unknown")
+            if tier in tier_counts:
+                tier_counts[tier] += 1
+        
+        # Should have fields in all three tiers
+        assert tier_counts["inherited"] > 0, "Should have inherited fields (Tier 3)"
+        assert tier_counts["essential"] > 0, "Should have essential fields (Tier 1)"
+        assert tier_counts["system"] > 0, "Should have system fields (Tier 2)"
+        
+        # Verify reasonable distribution
+        total_fields = sum(tier_counts.values())
+        assert tier_counts["inherited"] >= 5, f"Should have at least 5 inherited fields, got {tier_counts['inherited']}"
+        assert tier_counts["essential"] >= 10, f"Should have at least 10 essential fields, got {tier_counts['essential']}"
+        assert tier_counts["system"] >= 10, f"Should have at least 10 system fields, got {tier_counts['system']}"
+    
+    def test_cradle_config_widget_creation_uses_field_definitions(self):
+        """Test that creating a widget for CradleDataLoadingConfig uses comprehensive field definitions."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        # This is the end-to-end test that verifies the user's issue is fixed
+        
+        from cursus.api.config_ui.core.core import UniversalConfigCore
+        from cursus.core.base.config_base import BasePipelineConfig
+        
+        # Create base config for testing
+        base_config = BasePipelineConfig(
+            author="test-user",
+            bucket="test-bucket", 
+            role="arn:aws:iam::123456789012:role/TestRole",
+            region="NA",
+            service_name="test-service",
+            pipeline_version="1.0.0",
+            project_root_folder="test-project"
+        )
+        
+        # Mock step catalog to avoid import errors
+        with patch('cursus.step_catalog.step_catalog.StepCatalog') as mock_catalog_class:
+            mock_catalog = Mock()
+            mock_catalog_class.return_value = mock_catalog
+            mock_catalog.discover_config_classes.return_value = {}
+            
+            core = UniversalConfigCore()
+            
+            # Create a proper mock class that behaves like a real class
+            class MockCradleDataLoadingConfig:
+                pass
+                
+            # Set the __name__ attribute correctly
+            MockCradleDataLoadingConfig.__name__ = "CradleDataLoadingConfig"
+            mock_config_class = MockCradleDataLoadingConfig
+            
+            with patch.object(core, 'discover_config_classes') as mock_discover:
+                mock_discover.return_value = {"CradleDataLoadingConfig": mock_config_class}
+                
+                # Mock UniversalConfigWidget to avoid widget creation complexity
+                with patch('cursus.api.config_ui.widgets.widget.UniversalConfigWidget') as mock_widget_class:
+                    mock_widget = Mock()
+                    mock_widget_class.return_value = mock_widget
+                    
+                    # Create widget - this should use comprehensive field definitions
+                    widget = core.create_config_widget("CradleDataLoadingConfig", base_config=base_config)
+                    
+                    assert widget is not None, "Widget creation should succeed"
+                    
+                    # Verify that UniversalConfigWidget was called with comprehensive field data
+                    mock_widget_class.assert_called_once()
+                    call_args = mock_widget_class.call_args[0][0]  # First positional argument (form_data)
+                    
+                    # Check that form_data contains comprehensive fields
+                    assert "fields" in call_args, "form_data should contain fields"
+                    fields = call_args["fields"]
+                    
+                    # Should have comprehensive fields (40+ fields), not just 4 basic fields
+                    assert len(fields) >= 40, f"Expected 40+ comprehensive fields, got {len(fields)}"
+                    assert len(fields) <= 50, f"Expected at most 50 fields, got {len(fields)}"
+                    
+                    # Verify field structure matches field_definitions.py
+                    field_names = [f["name"] for f in fields]
+                    
+                    # Should have key cradle fields
+                    key_fields = ["start_date", "end_date", "data_source_type", "transform_sql", "job_type"]
+                    for field_name in key_fields:
+                        assert field_name in field_names, f"Missing key field: {field_name}"
+
+
 class TestFieldDefinitionsErrorHandling:
     """Test error handling and edge cases for field definitions."""
     

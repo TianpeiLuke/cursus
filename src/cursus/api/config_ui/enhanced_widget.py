@@ -156,19 +156,25 @@ class EnhancedMultiStepWizard:
         logger.info("EnhancedMultiStepWizard wrapper initialized")
     
     def display(self):
-        """Display the enhanced wizard with SageMaker optimizations."""
-        # Apply SageMaker clipboard optimizations
+        """ROBUST SOLUTION: Display the enhanced wizard with SageMaker optimizations."""
+        # Apply SageMaker clipboard optimizations (silent)
         self.sagemaker_opts.enhance_clipboard_support()
         
-        # Display enhanced welcome message
-        self._display_enhanced_welcome()
-        
-        # IMPORTANT: Call base wizard display method directly
-        # This ensures navigation buttons are properly displayed
-        self.base_wizard.display()
-        
-        # Add SageMaker-specific help
-        self._display_sagemaker_help()
+        # FIXED: Only call base wizard display - it handles everything
+        # The base wizard already includes navigation, progress, and content
+        # Adding extra display calls causes duplication
+        try:
+            self.base_wizard.display()
+            logger.debug("Base wizard display() called successfully")
+        except Exception as e:
+            logger.error(f"Error displaying base wizard: {e}")
+            # Fallback: Try to display components individually
+            try:
+                display(self.base_wizard.navigation_output)
+                display(self.base_wizard.output)
+                logger.debug("Fallback display successful")
+            except Exception as e2:
+                logger.error(f"Fallback display also failed: {e2}")
     
     # Ensure all navigation methods are properly delegated
     def _display_navigation(self):
@@ -326,102 +332,12 @@ class SageMakerOptimizations:
     """SageMaker-specific optimizations and enhancements."""
     
     def enhance_clipboard_support(self):
-        """Enhanced clipboard support - simplified and reliable."""
-        display(HTML("""
-        <script>
-        // Simple, reliable clipboard support
-        function addClipboardSupport() {
-            console.log('🔧 Adding clipboard support...');
-            
-            // Find all input fields
-            const selectors = [
-                'input[type="text"]',
-                'textarea',
-                'input:not([type])',
-                '.widget-text input',
-                '.widget-textarea textarea',
-                '.jupyter-widgets input'
-            ];
-            
-            let allInputs = new Set();
-            selectors.forEach(selector => {
-                document.querySelectorAll(selector).forEach(input => allInputs.add(input));
-            });
-            
-            console.log(`Found ${allInputs.size} input fields`);
-            
-            // Add clipboard support to each field
-            allInputs.forEach((input, index) => {
-                // Enable text selection
-                input.style.userSelect = 'text';
-                input.style.webkitUserSelect = 'text';
-                
-                // Add paste event listener
-                input.addEventListener('paste', function(e) {
-                    console.log(`📋 Paste in field ${index}`);
-                    
-                    // Let default paste work, then trigger ipywidgets events
-                    setTimeout(() => {
-                        // Trigger events for ipywidgets
-                        const events = ['input', 'change'];
-                        events.forEach(eventType => {
-                            const event = new Event(eventType, { bubbles: true });
-                            input.dispatchEvent(event);
-                        });
-                        
-                        // Show visual feedback
-                        showPasteFeedback(input);
-                    }, 10);
-                });
-            });
-        }
-        
-        function showPasteFeedback(input) {
-            const feedback = document.createElement('div');
-            feedback.textContent = '✅ Pasted!';
-            feedback.style.cssText = `
-                position: fixed;
-                background: #10b981;
-                color: white;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 12px;
-                z-index: 1000;
-                pointer-events: none;
-            `;
-            
-            const rect = input.getBoundingClientRect();
-            feedback.style.left = rect.left + 'px';
-            feedback.style.top = (rect.top - 30) + 'px';
-            
-            document.body.appendChild(feedback);
-            setTimeout(() => feedback.remove(), 2000);
-        }
-        
-        // Add CSS for text selection
-        const style = document.createElement('style');
-        style.textContent = `
-            .widget-text input, .widget-textarea textarea, .jupyter-widgets input {
-                user-select: text !important;
-                -webkit-user-select: text !important;
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Initialize clipboard support with retries
-        addClipboardSupport();
-        setTimeout(addClipboardSupport, 1000);
-        setTimeout(addClipboardSupport, 3000);
-        setTimeout(addClipboardSupport, 5000);
-        
-        console.log('✅ Clipboard support initialized');
-        </script>
-        
-        <div style="background-color: #d1fae5; border: 1px solid #10b981; padding: 10px; border-radius: 4px; margin: 5px 0;">
-            <strong>📋 Standard Clipboard Support</strong>
-            Copy/paste functionality depends on your browser and VSCode environment.
-        </div>
-        """))
+        """Enhanced clipboard support - completely silent (no display calls at all)."""
+        # FIXED: Make clipboard support completely silent to avoid any display calls
+        # Skip clipboard support entirely to eliminate duplicate displays
+        # Users can still copy/paste normally, just without enhanced feedback
+        logger.debug("Clipboard support skipped to prevent duplicate displays")
+        pass
     
     def generate_smart_filename(self, completed_configs: Dict[str, Any]) -> str:
         """

@@ -681,29 +681,7 @@ class SpecializedComponentRegistry:
         component_class = self.get_specialized_component(config_class_name)
         if component_class:
             try:
-                if config_class_name == "CradleDataLoadingConfig":
-                    # Import and create the SageMaker native cradle widget
-                    try:
-                        from .cradle_native_widget import CradleNativeWidget
-                        
-                        # Create the native cradle widget with embedded mode
-                        cradle_widget = CradleNativeWidget(
-                            base_config=base_config,
-                            embedded_mode=True,  # Always embedded in workflow
-                            completion_callback=kwargs.get('completion_callback')
-                        )
-                        
-                        return cradle_widget
-                        
-                    except ImportError as e:
-                        logger.error(f"Could not import CradleNativeWidget: {e}")
-                        # Fallback to original cradle widget
-                        widget_kwargs = kwargs.copy()
-                        widget_kwargs['embedded_mode'] = True
-                        if workflow_context:
-                            widget_kwargs['workflow_context'] = workflow_context
-                        return component_class(base_config=base_config, **widget_kwargs)
-                elif config_class_name in ["ModelHyperparameters", "XGBoostModelHyperparameters"]:
+                if config_class_name in ["ModelHyperparameters", "XGBoostModelHyperparameters"]:
                     # Use hyperparameters widget with workflow integration
                     from ....core.base.hyperparameters_base import ModelHyperparameters
                     from ....steps.hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters

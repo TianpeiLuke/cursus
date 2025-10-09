@@ -172,7 +172,7 @@ class DAGConfigurationManager:
         
         # Import here to avoid circular imports
         from ..widgets.widget import MultiStepWizard
-        wizard = MultiStepWizard(enhanced_steps, base_config=base_config, processing_config=processing_config)
+        wizard = MultiStepWizard(enhanced_steps, base_config=base_config, processing_config=processing_config, core=self.core)
         
         # Add DAG analysis context to wizard
         wizard.dag_analysis = analysis_result

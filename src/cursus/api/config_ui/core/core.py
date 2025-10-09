@@ -280,18 +280,30 @@ class UniversalConfigCore:
         """
         config_class_name = config_class.__name__
         
+        logger.info(f"🔍 _get_form_fields called for {config_class_name}")
+        
         # Special handling for CradleDataLoadingConfig - use comprehensive field definitions
         if config_class_name == "CradleDataLoadingConfig":
+            logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using comprehensive field definitions")
             try:
                 from .field_definitions import get_cradle_data_loading_fields
-                logger.info(f"Using comprehensive field definitions for {config_class_name}")
-                return get_cradle_data_loading_fields()
+                fields = get_cradle_data_loading_fields()
+                logger.info(f"✅ Successfully imported comprehensive field definitions for {config_class_name}: {len(fields)} fields")
+                logger.info(f"📋 First few comprehensive fields: {[f['name'] for f in fields[:5]]}")
+                return fields
             except ImportError as e:
-                logger.warning(f"Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")
+                logger.error(f"❌ Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")
+        else:
+            logger.info(f"ℹ️ {config_class_name} does not match CradleDataLoadingConfig - using standard field discovery")
         
         # Standard field discovery for other classes
+        logger.info(f"🔍 Using standard field discovery for {config_class_name}")
         field_categories = self._categorize_fields(config_class)
-        return self._get_form_fields_with_tiers(config_class, field_categories)
+        fields = self._get_form_fields_with_tiers(config_class, field_categories)
+        logger.info(f"📊 Standard field discovery returned {len(fields)} fields for {config_class_name}")
+        if len(fields) > 0:
+            logger.info(f"📋 First few standard fields: {[f['name'] for f in fields[:5]]}")
+        return fields
     
     def _categorize_fields(self, config_class: Type[BasePipelineConfig]) -> Dict[str, List[str]]:
         """
@@ -468,131 +480,92 @@ class UniversalConfigCore:
                     f"(excluded {len(field_categories['derived'])} derived fields)")
         return fields
     
-    def get_inheritance_aware_form_fields(self, 
+    def get_inheritance_aware_form_fields(self,
                                         config_class_name: str,
                                         inheritance_analysis: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Generate form fields with Smart Default Value Inheritance awareness.
-        
+
+        CRITICAL FIX: This method now starts with comprehensive field definitions
+        and adds inheritance information, rather than using raw Pydantic introspection.
+
         This method creates the enhanced 4-tier field system:
         - Tier 1 (essential): Required fields with no defaults (NEW to this config)
-        - Tier 2 (system): Optional fields with defaults (NEW to this config)  
+        - Tier 2 (system): Optional fields with defaults (NEW to this config)
         - Tier 3 (inherited): Fields inherited from parent configs (NEW TIER)
         - Tier 4 (derived): Computed fields (hidden from UI)
-        
+
         Args:
             config_class_name: Name of the configuration class
             inheritance_analysis: Optional inheritance analysis from StepCatalog
-            
+
         Returns:
             List of enhanced field definitions with inheritance information
         """
         # Get the config class
         config_classes = self.discover_config_classes()
         config_class = config_classes.get(config_class_name)
-        
+
         if not config_class:
             logger.warning(f"Config class {config_class_name} not found for inheritance-aware field generation")
             return []
-        
-        # Get standard field categorization
-        field_categories = self._categorize_fields(config_class)
-        enhanced_fields = []
-        
+
+        # CRITICAL FIX: Start with comprehensive field definitions instead of raw Pydantic
+        logger.info(f"🔍 Getting comprehensive fields for inheritance-aware generation: {config_class_name}")
+        base_fields = self._get_form_fields(config_class)
+        logger.info(f"📊 Got {len(base_fields)} comprehensive fields as base for inheritance")
+
         # Extract parent values if inheritance analysis is provided
         parent_values = {}
         immediate_parent = None
         if inheritance_analysis and inheritance_analysis.get('inheritance_enabled'):
             parent_values = inheritance_analysis.get('parent_values', {})
             immediate_parent = inheritance_analysis.get('immediate_parent')
-        
-        # Handle Pydantic v2 model_fields
-        if hasattr(config_class, 'model_fields'):
-            for field_name, field_info in config_class.model_fields.items():
-                # Skip derived fields (Tier 4) - hidden from UI
-                if field_name in field_categories.get('derived', []):
-                    continue
-                
-                # Get field type
-                field_type = getattr(field_info, 'annotation', str)
-                if hasattr(field_type, '__origin__'):
-                    field_type = field_type.__origin__
-                
-                # Determine if field is required
-                is_required = getattr(field_info, 'is_required', lambda: True)()
-                if callable(is_required):
-                    is_required = is_required()
-                
-                # Get description
-                description = ""
-                if hasattr(field_info, 'description') and field_info.description:
-                    description = field_info.description
-                
-                # Get default value
-                default_value = None
-                if hasattr(field_info, 'default'):
-                    try:
-                        default = field_info.default
-                        if default is not None and str(type(default)) != "<class 'pydantic_core._pydantic_core.PydanticUndefinedType'>":
-                            if isinstance(default, (str, int, float, bool, list, dict)):
-                                default_value = default
-                            else:
-                                try:
-                                    default_value = str(default)
-                                except:
-                                    default_value = None
-                    except Exception as e:
-                        logger.debug(f"Could not extract default for field {field_name}: {e}")
-                        default_value = None
-                
-                # NEW: Determine smart tier with inheritance awareness
-                if field_name in parent_values:
-                    # Tier 3: Inherited field - pre-populated with parent value
-                    smart_tier = 'inherited'
-                    field_required = False  # Override: not required since we have parent value
-                    field_default = parent_values[field_name]
-                    is_pre_populated = True
-                    inherited_from = immediate_parent
-                    inheritance_note = f"Auto-filled from {immediate_parent}" if immediate_parent else "Auto-filled from parent"
-                elif is_required:
-                    # Tier 1: Essential field - required, no default, NEW to this config
-                    smart_tier = 'essential'
-                    field_required = True
-                    field_default = default_value
-                    is_pre_populated = False
-                    inherited_from = None
-                    inheritance_note = None
-                else:
-                    # Tier 2: System field - optional, has default, NEW to this config
-                    smart_tier = 'system'
-                    field_required = False
-                    field_default = default_value
-                    is_pre_populated = False
-                    inherited_from = None
-                    inheritance_note = None
-                
-                enhanced_fields.append({
-                    "name": field_name,
-                    "type": self.field_types.get(field_type, "text"),
-                    "required": field_required,
-                    "tier": smart_tier,  # Enhanced tier with inheritance
-                    "original_tier": "essential" if is_required else "system",  # Original categorization
-                    "description": description,
-                    "default": field_default,
-                    "is_pre_populated": is_pre_populated,
-                    "inherited_from": inherited_from,
-                    "inheritance_note": inheritance_note,
-                    "can_override": smart_tier == 'inherited'  # Only inherited fields can be overridden
+            logger.info(f"🔍 Inheritance enabled: {len(parent_values)} parent values from {immediate_parent}")
+
+        # Enhance each comprehensive field with inheritance information
+        enhanced_fields = []
+        for field in base_fields:
+            field_name = field["name"]
+            
+            # Create enhanced field based on comprehensive field
+            enhanced_field = field.copy()  # Start with comprehensive field definition
+            
+            # NEW: Determine smart tier with inheritance awareness
+            if field_name in parent_values:
+                # Tier 3: Inherited field - pre-populated with parent value
+                enhanced_field.update({
+                    "tier": 'inherited',
+                    "required": False,  # Override: not required since we have parent value
+                    "default": parent_values[field_name],
+                    "is_pre_populated": True,
+                    "inherited_from": immediate_parent,
+                    "inheritance_note": f"Auto-filled from {immediate_parent}" if immediate_parent else "Auto-filled from parent",
+                    "can_override": True,
+                    "original_tier": field.get("tier", "system")  # Preserve original tier
                 })
-        
+            else:
+                # Keep original tier and add inheritance metadata
+                original_tier = field.get("tier", "system")
+                enhanced_field.update({
+                    "tier": original_tier,
+                    "is_pre_populated": False,
+                    "inherited_from": None,
+                    "inheritance_note": None,
+                    "can_override": False,
+                    "original_tier": original_tier
+                })
+            
+            enhanced_fields.append(enhanced_field)
+
         # Log inheritance statistics
         inherited_count = len([f for f in enhanced_fields if f['tier'] == 'inherited'])
         essential_count = len([f for f in enhanced_fields if f['tier'] == 'essential'])
         system_count = len([f for f in enhanced_fields if f['tier'] == 'system'])
-        
-        logger.info(f"Generated inheritance-aware fields for {config_class_name}: "
-                   f"{inherited_count} inherited, {essential_count} essential, {system_count} system")
-        
+
+        logger.info(f"✅ Generated inheritance-aware fields for {config_class_name}: "
+                   f"{len(enhanced_fields)} total ({inherited_count} inherited, {essential_count} essential, {system_count} system)")
+
         return enhanced_fields
     
     def _get_inheritance_chain(self, config_class: Type[BasePipelineConfig]) -> List[str]:

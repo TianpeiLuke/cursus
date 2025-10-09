@@ -11,14 +11,14 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 import json
 
-# Suppress logger messages in widget output
-logging.getLogger('cursus.api.config_ui').setLevel(logging.ERROR)
-logging.getLogger('cursus.core').setLevel(logging.ERROR)
+# TEMPORARILY ENABLE LOGGING FOR DEBUGGING
+logging.getLogger('cursus.api.config_ui').setLevel(logging.INFO)
+logging.getLogger('cursus.core').setLevel(logging.INFO)
 logging.getLogger('cursus.step_catalog').setLevel(logging.ERROR)
 logging.getLogger('cursus.step_catalog.step_catalog').setLevel(logging.ERROR)
 logging.getLogger('cursus.step_catalog.builder_discovery').setLevel(logging.ERROR)
 logging.getLogger('cursus.step_catalog.config_discovery').setLevel(logging.ERROR)
-# Suppress all cursus-related loggers
+# Suppress all cursus-related loggers except config_ui
 logging.getLogger('cursus').setLevel(logging.ERROR)
 
 # Handle both relative and absolute imports using centralized path setup
@@ -170,10 +170,23 @@ class UniversalConfigWidget:
         # Ensure content is rendered
         self.render()
         
-        # Display the output
-        display(self.output)
-        self._is_displayed = True
-        logger.debug(f"Widget displayed for {self.config_class_name}")
+        # ROBUST SOLUTION: Enhanced display for VS Code compatibility
+        try:
+            # Primary display method
+            display(self.output)
+            self._is_displayed = True
+            logger.debug(f"Widget displayed for {self.config_class_name}")
+        except Exception as e:
+            logger.error(f"Error displaying widget: {e}")
+            # Fallback: Try to display content directly
+            try:
+                with self.output:
+                    pass  # Content already rendered
+                display(self.output)
+                self._is_displayed = True
+                logger.debug(f"Fallback display successful for {self.config_class_name}")
+            except Exception as e2:
+                logger.error(f"Fallback display also failed: {e2}")
     
     def _create_field_section(self, title: str, fields: List[Dict], bg_gradient: str, border_color: str, description: str) -> widgets.Widget:
         """Create a modern field section with tier-specific styling."""
@@ -653,7 +666,8 @@ class MultiStepWizard:
                  steps: List[Dict[str, Any]], 
                  base_config: Optional[BasePipelineConfig] = None,
                  processing_config: Optional[ProcessingStepConfigBase] = None,
-                 enable_inheritance: bool = True):
+                 enable_inheritance: bool = True,
+                 core: Optional['UniversalConfigCore'] = None):
         """
         Initialize multi-step wizard with Smart Default Value Inheritance support.
         
@@ -662,6 +676,7 @@ class MultiStepWizard:
             base_config: Base pipeline configuration
             processing_config: Processing configuration
             enable_inheritance: Enable smart inheritance features (NEW)
+            core: UniversalConfigCore instance to use (CRITICAL FIX)
         """
         self.steps = steps
         self.base_config = base_config
@@ -670,6 +685,9 @@ class MultiStepWizard:
         self.completed_configs = {}  # Store completed configurations
         self.current_step = 0
         self.step_widgets = {}
+        
+        # CRITICAL FIX: Store the core instance to avoid creating new ones
+        self.core = core
         
         self.output = widgets.Output()
         self.navigation_output = widgets.Output()
@@ -690,29 +708,157 @@ class MultiStepWizard:
         logger.info(f"MultiStepWizard initialized with {len(steps)} steps, inheritance={'enabled' if enable_inheritance else 'disabled'}")
     
     def display(self):
-        """ROBUST SOLUTION: Display the multi-step wizard interface with VS Code compatibility."""
-        # Clear and populate navigation
-        with self.navigation_output:
-            clear_output(wait=True)
-            self._display_navigation()
+        """HOLISTIC SOLUTION: Display using widget assignment to avoid nested display() calls."""
+        # STEP 1: Create navigation widgets directly (not in output widget)
+        self.navigation_widgets = self._create_navigation_widgets_direct()
         
-        # Clear and populate main content
+        # STEP 2: Populate main output with content
         with self.output:
             clear_output(wait=True)
             self._display_current_step()
         
-        # ROBUST SOLUTION: VS Code-compatible widget display
-        # Create a container that holds both navigation and content
-        wizard_container = widgets.VBox([
-            self.navigation_output,
+        # STEP 3: Create a single container with direct navigation widgets and main output
+        # This avoids nested display() calls that cause duplication
+        self._main_container = widgets.VBox([
+            self.navigation_widgets,  # Direct widget assignment - no display() call
             self.output
         ], layout=widgets.Layout(width='100%'))
         
-        # Force widget rendering in VS Code with proper metadata
-        self._ensure_vscode_widget_display(wizard_container)
+        # STEP 4: Display the container widget directly
+        display(self._main_container)
+    
+    def _create_navigation_widgets_direct(self):
+        """Create navigation widgets directly without using Output widgets."""
+        # Get current step info
+        current_step_info = self.steps[self.current_step] if self.current_step < len(self.steps) else {"title": "Complete"}
         
-        # Display the container once
-        display(wizard_container)
+        # Enhanced progress indicator
+        progress_percent = ((self.current_step + 1) / len(self.steps)) * 100
+        
+        # Create step indicators
+        step_indicators = []
+        step_details = []
+        for i, step in enumerate(self.steps):
+            if i < self.current_step:
+                step_indicators.append("●")
+                step_details.append(f"✅ {step['title']}")
+            elif i == self.current_step:
+                step_indicators.append("●")
+                step_details.append(f"🔄 {step['title']} (Current)")
+            else:
+                step_indicators.append("○")
+                step_details.append(f"⏳ {step['title']}")
+        
+        # Create overview HTML
+        step_overview_html = f"""
+        <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                    border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px; margin-bottom: 15px;'>
+            <h4 style='margin: 0 0 10px 0; color: #0c4a6e;'>📋 Configuration Workflow Overview</h4>
+            <div style='font-size: 13px; line-height: 1.6;'>
+                {' <br>'.join(step_details)}
+            </div>
+        </div>
+        """
+        
+        progress_html = f"""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);'>
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;'>
+                <h2 style='margin: 0; font-size: 24px;'>🎯 Pipeline Configuration Wizard</h2>
+                <div style='font-size: 14px; opacity: 0.9;'>
+                    Step {self.current_step + 1} of {len(self.steps)}
+                </div>
+            </div>
+            
+            <div style='margin-bottom: 15px;'>
+                <h3 style='margin: 0; font-size: 18px; opacity: 0.95;'>{current_step_info["title"]}</h3>
+                <p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;'>
+                    {current_step_info.get("description", "Configure the settings for this step")}
+                </p>
+            </div>
+            
+            <div style='margin-bottom: 15px;'>
+                <div style='background: rgba(255, 255, 255, 0.2); height: 12px; border-radius: 6px; overflow: hidden;'>
+                    <div style='background: linear-gradient(90deg, #10b981 0%, #059669 100%); height: 100%; width: {progress_percent}%; 
+                                border-radius: 6px; transition: width 0.5s ease; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);'></div>
+                </div>
+            </div>
+            
+            <div style='display: flex; justify-content: space-between; align-items: center;'>
+                <div style='font-size: 14px; opacity: 0.8; letter-spacing: 2px;'>
+                    Progress: {' '.join(step_indicators)} ({self.current_step + 1}/{len(self.steps)})
+                </div>
+                <div style='font-size: 12px; opacity: 0.7;'>
+                    {progress_percent:.0f}% Complete
+                </div>
+            </div>
+        </div>
+        """
+        
+        # Create HTML widgets
+        overview_widget = widgets.HTML(step_overview_html)
+        progress_widget = widgets.HTML(progress_html)
+        
+        # Create navigation buttons with enhanced styling
+        prev_button = widgets.Button(
+            description="← Previous",
+            disabled=(self.current_step == 0),
+            layout=widgets.Layout(width='140px', height='45px'),
+            style={'button_color': '#6b7280' if self.current_step == 0 else '#374151'},
+            tooltip=f"Go back to: {self.steps[self.current_step - 1]['title'] if self.current_step > 0 else 'N/A'}"
+        )
+        
+        next_button = widgets.Button(
+            description="Next →",
+            button_style='primary',
+            disabled=(self.current_step == len(self.steps) - 1),
+            layout=widgets.Layout(width='140px', height='45px'),
+            tooltip=f"Continue to: {self.steps[self.current_step + 1]['title'] if self.current_step < len(self.steps) - 1 else 'N/A'}"
+        )
+        
+        finish_button = widgets.Button(
+            description="🎉 Complete Workflow",
+            button_style='success',
+            disabled=(self.current_step != len(self.steps) - 1),
+            layout=widgets.Layout(width='180px', height='45px'),
+            tooltip="Finish configuration and generate config_list"
+        )
+        
+        # Attach event handlers
+        prev_button.on_click(self._on_prev_clicked)
+        next_button.on_click(self._on_next_clicked)
+        finish_button.on_click(self._on_finish_clicked)
+        
+        # Store button references for navigation control
+        self.prev_button = prev_button
+        self.next_button = next_button
+        self.finish_button = finish_button
+        
+        # Apply navigation disabled state if needed
+        if self.navigation_disabled:
+            self.prev_button.disabled = True
+            self.next_button.disabled = True
+            self.finish_button.disabled = True
+        
+        # Create navigation container
+        nav_box = widgets.HBox(
+            [prev_button, next_button, finish_button], 
+            layout=widgets.Layout(
+                justify_content='center', 
+                margin='15px 0',
+                padding='20px',
+                border='2px solid #e2e8f0',
+                border_radius='12px'
+            )
+        )
+        
+        # Return complete navigation section as VBox
+        return widgets.VBox([
+            overview_widget,
+            progress_widget,
+            nav_box
+        ])
     
     def _ensure_vscode_widget_display(self, widget):
         """Ensure proper widget display in VS Code Jupyter extension."""
@@ -928,28 +1074,32 @@ class MultiStepWizard:
             
             self.step_widgets[self.current_step] = UniversalConfigWidget(form_data, is_final_step=is_final_step)
         
-        # ROBUST SOLUTION: Use the safe display system
+        # BALANCED FIX: Render widget and display its output widget (not content) to avoid duplication
+        # This displays the widget's output container, not the individual content elements
         step_widget = self.step_widgets[self.current_step]
-        widget_output = step_widget.display()  # Returns the output widget (safe method)
         
-        # Display the output widget - this ensures single, consistent display
-        if widget_output:
-            display(widget_output)
-        else:
-            # Fallback: force display if needed
-            step_widget.show()
+        # Ensure the widget is rendered (idempotent operation)
+        step_widget.render()
+        
+        # Display the widget's output container - this shows the content without duplication
+        # The output widget contains all the rendered content as a single unit
+        display(step_widget.output)
     
     def _get_step_fields(self, step: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get form fields for a step with Smart Default Value Inheritance support."""
         config_class = step["config_class"]
         config_class_name = step["config_class_name"]
         
+        logger.info(f"🔍 Getting step fields for {config_class_name}")
+        
         # Check if there's a specialized component for this config type
         try:
             from .specialized_widgets import SpecializedComponentRegistry
             registry = SpecializedComponentRegistry()
             
+            logger.info(f"🔍 Checking if {config_class_name} has specialized component...")
             if registry.has_specialized_component(config_class_name):
+                logger.info(f"❌ {config_class_name} has specialized component - this should NOT happen after our fix!")
                 # For specialized components, create a visual interface description
                 spec_info = registry.SPECIALIZED_COMPONENTS[config_class_name]
                 return [{
@@ -962,31 +1112,47 @@ class MultiStepWizard:
                     "complexity": spec_info["complexity"],
                     "config_class_name": config_class_name
                 }]
-        except ImportError:
-            # Specialized widgets not available, continue with standard processing
-            pass
+            else:
+                logger.info(f"✅ {config_class_name} does NOT have specialized component - will use comprehensive fields")
+        except ImportError as e:
+            logger.info(f"⚠️ Specialized widgets not available: {e}, continuing with standard processing")
         
-        # Use UniversalConfigCore with Smart Default Value Inheritance
-        from ..core.core import UniversalConfigCore
-        core = UniversalConfigCore()
+        # CRITICAL FIX: Use the core instance passed to constructor instead of creating new one
+        if self.core:
+            core = self.core
+            logger.info(f"🔍 Using provided UniversalConfigCore instance to get fields for {config_class_name}")
+        else:
+            # Fallback: create new instance if none provided (backward compatibility)
+            from ..core.core import UniversalConfigCore
+            core = UniversalConfigCore()
+            logger.warning(f"🔍 No core instance provided, creating new UniversalConfigCore for {config_class_name}")
         
         # NEW: Use inheritance-aware field generation if inheritance is enabled
         if self.enable_inheritance and hasattr(step, 'inheritance_analysis'):
+            logger.info(f"🔍 Using inheritance-aware field generation with existing analysis")
             # Use the enhanced inheritance-aware method
-            return core.get_inheritance_aware_form_fields(
+            fields = core.get_inheritance_aware_form_fields(
                 config_class_name, 
                 step['inheritance_analysis']
             )
         elif self.enable_inheritance:
+            logger.info(f"🔍 Creating inheritance analysis on-the-fly for {config_class_name}")
             # Create inheritance analysis on-the-fly using completed configs
             inheritance_analysis = self._create_inheritance_analysis(config_class_name)
-            return core.get_inheritance_aware_form_fields(
+            fields = core.get_inheritance_aware_form_fields(
                 config_class_name, 
                 inheritance_analysis
             )
         else:
+            logger.info(f"🔍 Using standard field generation for {config_class_name}")
             # Fallback to standard field generation
-            return core._get_form_fields(config_class)
+            fields = core._get_form_fields(config_class)
+        
+        logger.info(f"📊 Got {len(fields)} fields for {config_class_name}")
+        if len(fields) > 0:
+            logger.info(f"📋 First few fields: {[f['name'] for f in fields[:5]]}")
+        
+        return fields
     
     def _create_inheritance_analysis(self, config_class_name: str) -> Dict[str, Any]:
         """Create inheritance analysis on-the-fly using StepCatalog and completed configs."""
@@ -1028,7 +1194,28 @@ class MultiStepWizard:
             }
     
     def _get_step_values(self, step: Dict[str, Any]) -> Dict[str, Any]:
-        """Get pre-populated values for a step."""
+        """Get pre-populated values for a step with auto-fill support for base_config."""
+        # NEW: Auto-fill first step with base_config values if it's BasePipelineConfig
+        step_index = self.steps.index(step) if step in self.steps else -1
+        if (step_index == 0 and 
+            self.base_config and 
+            step["config_class_name"] == "BasePipelineConfig"):
+            
+            logger.info(f"Auto-filling first step with base_config values: {type(self.base_config)}")
+            
+            # Extract values from base_config
+            if hasattr(self.base_config, 'model_dump'):
+                base_values = self.base_config.model_dump()
+                logger.debug(f"Extracted {len(base_values)} values from base_config using model_dump()")
+                return base_values
+            elif hasattr(self.base_config, '__dict__'):
+                base_values = {k: v for k, v in self.base_config.__dict__.items() 
+                              if not k.startswith('_') and v is not None}
+                logger.debug(f"Extracted {len(base_values)} values from base_config using __dict__")
+                return base_values
+            else:
+                logger.warning("base_config has no model_dump() or __dict__ method")
+        
         # Check for pre-populated instance
         if "pre_populated" in step and step["pre_populated"]:
             instance = step["pre_populated"]
@@ -1078,13 +1265,21 @@ class MultiStepWizard:
                 self._update_navigation_and_step()
     
     def _update_navigation_and_step(self):
-        """Update navigation and current step without full widget recreation."""
-        # Update navigation display
-        with self.navigation_output:
-            clear_output(wait=True)
-            self._display_navigation()
+        """HOLISTIC SOLUTION: Update navigation and step using widget replacement - ZERO display() calls."""
+        # STEP 1: Create new navigation widgets (no display() calls)
+        new_navigation_widgets = self._create_navigation_widgets_direct()
         
-        # Update current step display
+        # STEP 2: Replace the navigation widgets in the container
+        # This should always work since display() creates _main_container
+        if hasattr(self, '_main_container') and self._main_container:
+            # Update the container's children with new navigation widgets
+            self._main_container.children = (new_navigation_widgets, self.output)
+        else:
+            # This should never happen - log error but don't call display()
+            logger.error("_main_container not found - navigation update failed")
+            return
+        
+        # STEP 3: Update current step display (this is safe as it's in self.output)
         with self.output:
             clear_output(wait=True)
             self._display_current_step()
