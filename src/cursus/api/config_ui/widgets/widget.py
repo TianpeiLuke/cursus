@@ -69,10 +69,17 @@ class UniversalConfigWidget:
         self.config_instance = None
         self.output = widgets.Output()
         
+        # ROBUST SOLUTION: Display state management
+        self._is_rendered = False  # Track if content has been rendered
+        self._is_displayed = False  # Track if output has been displayed
+        
         logger.info(f"UniversalConfigWidget initialized for {self.config_class_name}")
     
-    def display(self):
-        """Display the configuration form with 4-tier field categorization including inheritance."""
+    def render(self):
+        """ROBUST SOLUTION: Render widget content (internal method)."""
+        if self._is_rendered:
+            return  # Already rendered, skip
+        
         with self.output:
             clear_output(wait=True)
             
@@ -142,7 +149,31 @@ class UniversalConfigWidget:
             form_box = widgets.VBox(form_sections, layout=widgets.Layout(padding='10px'))
             display(form_box)
         
+        self._is_rendered = True  # Mark as rendered
+        logger.debug(f"Widget content rendered for {self.config_class_name}")
+    
+    def display(self):
+        """ROBUST SOLUTION: Safe display method - ensures content is rendered but not duplicated."""
+        # Always render content first (idempotent)
+        self.render()
+        
+        # Return the output widget for external display
+        # This allows the caller to decide when/how to display it
+        return self.output
+    
+    def show(self):
+        """ROBUST SOLUTION: Force display the widget output (for standalone use)."""
+        if self._is_displayed:
+            logger.debug(f"Widget already displayed for {self.config_class_name}, skipping duplicate display")
+            return
+        
+        # Ensure content is rendered
+        self.render()
+        
+        # Display the output
         display(self.output)
+        self._is_displayed = True
+        logger.debug(f"Widget displayed for {self.config_class_name}")
     
     def _create_field_section(self, title: str, fields: List[Dict], bg_gradient: str, border_color: str, description: str) -> widgets.Widget:
         """Create a modern field section with tier-specific styling."""
@@ -565,18 +596,85 @@ class MultiStepWizard:
         logger.info(f"MultiStepWizard initialized with {len(steps)} steps, inheritance={'enabled' if enable_inheritance else 'disabled'}")
     
     def display(self):
-        """Display the multi-step wizard interface."""
+        """ROBUST SOLUTION: Display the multi-step wizard interface with VS Code compatibility."""
+        # Clear and populate navigation
         with self.navigation_output:
             clear_output(wait=True)
             self._display_navigation()
         
+        # Clear and populate main content
         with self.output:
             clear_output(wait=True)
             self._display_current_step()
         
-        # Display navigation and main content
-        display(self.navigation_output)
-        display(self.output)
+        # ROBUST SOLUTION: VS Code-compatible widget display
+        # Create a container that holds both navigation and content
+        wizard_container = widgets.VBox([
+            self.navigation_output,
+            self.output
+        ], layout=widgets.Layout(width='100%'))
+        
+        # Force widget rendering in VS Code with proper metadata
+        self._ensure_vscode_widget_display(wizard_container)
+        
+        # Display the container once
+        display(wizard_container)
+    
+    def _ensure_vscode_widget_display(self, widget):
+        """Ensure proper widget display in VS Code Jupyter extension."""
+        try:
+            # Force widget model creation and synchronization
+            if hasattr(widget, '_model_id') and widget._model_id is None:
+                widget._model_id = widget._gen_model_id()
+            
+            # Ensure all child widgets are properly initialized
+            def _init_widget_recursive(w):
+                if hasattr(w, 'children'):
+                    for child in w.children:
+                        if hasattr(child, '_model_id') and child._model_id is None:
+                            child._model_id = child._gen_model_id()
+                        _init_widget_recursive(child)
+            
+            _init_widget_recursive(widget)
+            
+            # Add VS Code specific display hints
+            from IPython.display import display, HTML, Javascript
+            
+            # Display JavaScript to ensure widget rendering
+            display(Javascript("""
+            // VS Code Jupyter Widget Display Enhancement
+            (function() {
+                console.log('🔧 Ensuring VS Code widget compatibility...');
+                
+                // Force widget manager to render widgets
+                if (window.Jupyter && window.Jupyter.notebook) {
+                    // Classic Jupyter
+                    console.log('📝 Classic Jupyter detected');
+                } else if (window.requirejs) {
+                    // VS Code or JupyterLab
+                    console.log('🆚 VS Code/JupyterLab detected');
+                    
+                    // Ensure widget manager is loaded
+                    setTimeout(function() {
+                        const widgets = document.querySelectorAll('.widget-area, .jp-OutputArea-child');
+                        console.log(`Found ${widgets.length} widget areas`);
+                        
+                        // Force re-render of widget areas
+                        widgets.forEach(function(widget, index) {
+                            if (widget.style.display === 'none') {
+                                widget.style.display = 'block';
+                                console.log(`Showed hidden widget ${index}`);
+                            }
+                        });
+                    }, 100);
+                }
+                
+                console.log('✅ Widget compatibility check complete');
+            })();
+            """))
+            
+        except Exception as e:
+            logger.warning(f"Widget display enhancement failed: {e}")
     
     def _display_navigation(self):
         """Display enhanced navigation controls with detailed step visualization."""
@@ -700,7 +798,7 @@ class MultiStepWizard:
         display(nav_box)
     
     def _display_current_step(self):
-        """Display the current step."""
+        """ROBUST SOLUTION: Display the current step using safe display methods."""
         if self.current_step >= len(self.steps):
             return
         
@@ -725,9 +823,16 @@ class MultiStepWizard:
             
             self.step_widgets[self.current_step] = UniversalConfigWidget(form_data, is_final_step=is_final_step)
         
-        # Display step
+        # ROBUST SOLUTION: Use the safe display system
         step_widget = self.step_widgets[self.current_step]
-        step_widget.display()
+        widget_output = step_widget.display()  # Returns the output widget (safe method)
+        
+        # Display the output widget - this ensures single, consistent display
+        if widget_output:
+            display(widget_output)
+        else:
+            # Fallback: force display if needed
+            step_widget.show()
     
     def _get_step_fields(self, step: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get form fields for a step with Smart Default Value Inheritance support."""
@@ -895,7 +1000,7 @@ class MultiStepWizard:
             logger.info("Pipeline configuration wizard completed successfully")
     
     def _save_current_step(self) -> bool:
-        """Save the current step configuration."""
+        """Save the current step configuration and update inheritance chain."""
         if self.current_step not in self.step_widgets:
             return True
         
@@ -933,11 +1038,23 @@ class MultiStepWizard:
             config_class = step["config_class"]
             config_instance = config_class(**form_data)
             
-            # Store completed configuration
+            # Store completed configuration with BOTH step title and class name for inheritance
             step_key = step["title"]
-            self.completed_configs[step_key] = config_instance
+            config_class_name = step["config_class_name"]
             
-            logger.info(f"Step '{step_key}' saved successfully")
+            self.completed_configs[step_key] = config_instance
+            self.completed_configs[config_class_name] = config_instance  # CRITICAL: Add class name mapping
+            
+            # CRITICAL: Update base_config and processing_config references for inheritance
+            if config_class_name == "BasePipelineConfig":
+                self.base_config = config_instance
+                logger.info("Updated base_config reference for inheritance")
+            elif config_class_name == "ProcessingStepConfigBase":
+                self.processing_config = config_instance
+                logger.info("Updated processing_config reference for inheritance")
+            
+            logger.info(f"Step '{step_key}' saved successfully with inheritance support")
+            logger.debug(f"Available configs for inheritance: {list(self.completed_configs.keys())}")
             return True
             
         except Exception as e:
