@@ -952,11 +952,16 @@ class MultiStepWizard:
         return {}
     
     def _on_prev_clicked(self, button):
-        """Handle previous button click."""
-        if self.current_step > 0:
-            self.current_step -= 1
-            # Update navigation and current step without full redisplay
-            self._update_navigation_and_step()
+        """Handle previous button click with state preservation."""
+        # ENHANCED: Save current step before going back
+        if self._save_current_step():  # ✅ Save current changes
+            if self.current_step > 0:
+                self.current_step -= 1
+                # Update navigation and current step without full redisplay
+                self._update_navigation_and_step()
+        else:
+            # Show validation error if save fails
+            self._show_validation_error("Please fix validation errors before navigating")
     
     def _on_next_clicked(self, button):
         """Handle next button click."""
@@ -1105,3 +1110,14 @@ class MultiStepWizard:
                 ordered_steps.append(step_title)
         
         return ordered_steps
+    
+    def _show_validation_error(self, message: str):
+        """Show validation error with professional styling."""
+        error_html = f"""
+        <div style='background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; 
+                    padding: 12px; border-radius: 8px; margin: 10px 0;'>
+            <strong>⚠️ Validation Error:</strong> {message}
+        </div>
+        """
+        with self.output:
+            display(widgets.HTML(error_html))
