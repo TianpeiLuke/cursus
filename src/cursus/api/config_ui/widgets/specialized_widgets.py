@@ -622,26 +622,9 @@ class SpecializedComponentRegistry:
     """Registry for specialized UI components with enhanced visual integration."""
     
     SPECIALIZED_COMPONENTS = {
-        "CradleDataLoadingConfig": {
-            "component_class": "CradleConfigWidget",
-            "module": "cursus.api.cradle_ui.jupyter_widget",
-            "preserve_existing_ui": True,
-            "workflow_integration": True,
-            "tier_categorization": True,
-            "dag_analysis_support": True,
-            "description": "Advanced 4-step data loading wizard with workflow integration",
-            "features": [
-                "1️⃣ Data Sources Configuration with field discovery",
-                "2️⃣ Transform Specification with workflow context", 
-                "3️⃣ Output Configuration with inheritance chain",
-                "4️⃣ Cradle Job Settings with DAG integration",
-                "🔄 3-tier field categorization (Essential/System/Hidden)",
-                "🎯 Workflow context inheritance and pre-population",
-                "📊 DAG analysis field discovery and validation"
-            ],
-            "icon": "🎛️",
-            "complexity": "advanced"
-        },
+        # REMOVED: CradleDataLoadingConfig - Now uses standard single-page form processing
+        # This eliminates the complex nested widget pattern and VBox errors
+        # CradleDataLoadingConfig will now fall back to UniversalConfigWidget with comprehensive field definitions
         "ModelHyperparameters": {
             "component_class": "HyperparametersConfigWidget",
             "module": "cursus.api.config_ui.specialized_widgets",

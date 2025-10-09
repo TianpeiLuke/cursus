@@ -278,10 +278,19 @@ class UniversalConfigCore:
         Returns:
             List of field definitions for form generation
         """
-        # Get field categories using the config class's categorize_fields method if available
-        field_categories = self._categorize_fields(config_class)
+        config_class_name = config_class.__name__
         
-        # Use the enhanced method that supports 3-tier categorization
+        # Special handling for CradleDataLoadingConfig - use comprehensive field definitions
+        if config_class_name == "CradleDataLoadingConfig":
+            try:
+                from .field_definitions import get_cradle_data_loading_fields
+                logger.info(f"Using comprehensive field definitions for {config_class_name}")
+                return get_cradle_data_loading_fields()
+            except ImportError as e:
+                logger.warning(f"Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")
+        
+        # Standard field discovery for other classes
+        field_categories = self._categorize_fields(config_class)
         return self._get_form_fields_with_tiers(config_class, field_categories)
     
     def _categorize_fields(self, config_class: Type[BasePipelineConfig]) -> Dict[str, List[str]]:

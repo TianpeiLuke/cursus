@@ -244,13 +244,77 @@ class UniversalConfigWidget:
         label_style = "font-weight: 600; color: #374151;" if required else "color: #6b7280;"
         required_indicator = " *" if required else ""
         
-        # Create appropriate widget based on field type with SIMPLIFIED approach
+        # Create appropriate widget based on field type with ENHANCED support for new types
         if field_type == "text":
             widget = widgets.Text(
                 value=str(current_value) if current_value is not None else "",
                 description=f"{emoji_icon} {field_name}{required_indicator}:",
                 style={'description_width': '200px'},
                 layout=widgets.Layout(width='500px', margin='5px 0')
+            )
+        elif field_type == "datetime":
+            # NEW: Enhanced datetime field widget
+            widget = widgets.Text(
+                value=str(current_value) if current_value else "",
+                placeholder=field.get("placeholder", "YYYY-MM-DDTHH:MM:SS"),
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='400px', margin='5px 0')
+            )
+        elif field_type == "code_editor":
+            # NEW: Enhanced code editor field widget (textarea with SQL syntax)
+            widget = widgets.Textarea(
+                value=str(current_value) if current_value else field.get("default", ""),
+                placeholder=f"Enter {field.get('language', 'code')}...",
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='800px', height=field.get('height', '150px'), margin='5px 0')
+            )
+        elif field_type == "tag_list":
+            # NEW: Enhanced tag list field widget (comma-separated values)
+            if isinstance(current_value, list):
+                value_str = ", ".join(str(item) for item in current_value)
+            else:
+                value_str = str(current_value) if current_value else ""
+            widget = widgets.Text(
+                value=value_str,
+                placeholder="Enter comma-separated values",
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='600px', margin='5px 0')
+            )
+        elif field_type == "radio":
+            # NEW: Enhanced radio button field widget
+            options = field.get("options", [])
+            default_value = field.get("default")
+            selected_value = current_value if current_value in options else default_value
+            widget = widgets.RadioButtons(
+                options=options,
+                value=selected_value if selected_value in options else None,
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(margin='10px 0')
+            )
+        elif field_type == "dropdown":
+            # NEW: Enhanced dropdown field widget
+            options = field.get("options", [])
+            default_value = field.get("default")
+            selected_value = current_value if current_value in options else default_value
+            widget = widgets.Dropdown(
+                options=options,
+                value=selected_value if selected_value in options else (options[0] if options else None),
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='300px', margin='5px 0')
+            )
+        elif field_type == "textarea":
+            # NEW: Enhanced textarea field widget
+            widget = widgets.Textarea(
+                value=str(current_value) if current_value else field.get("default", ""),
+                description=f"{emoji_icon} {field_name}{required_indicator}:",
+                placeholder=field.get("placeholder", "Enter text..."),
+                style={'description_width': '200px'},
+                layout=widgets.Layout(width='600px', height='100px', margin='5px 0')
             )
         elif field_type == "number":
             widget = widgets.FloatText(
@@ -1046,7 +1110,7 @@ class MultiStepWizard:
             logger.info("Pipeline configuration wizard completed successfully")
     
     def _save_current_step(self) -> bool:
-        """Save the current step configuration and update inheritance chain."""
+        """Save the current step configuration with enhanced data transformation and ValidationService integration."""
         if self.current_step not in self.step_widgets:
             return True
         
@@ -1078,17 +1142,38 @@ class MultiStepWizard:
                     logger.warning(f"Specialized widget does not support get_config() for '{step['title']}'")
                     return False
             else:
-                # EXISTING: Handle standard widget form data collection
+                # ENHANCED: Handle standard widget form data collection with new field types
                 form_data = {}
                 for field_name, widget in step_widget.widgets.items():
                     value = widget.value
                     
-                    # Convert values based on field type
+                    # Handle special field types with enhanced conversion
                     field_info = next((f for f in step_widget.fields if f["name"] == field_name), None)
                     if field_info:
                         field_type = field_info["type"]
                         
-                        if field_type == "list":
+                        if field_type == "tag_list":
+                            # Convert comma-separated string back to list
+                            if isinstance(value, str):
+                                value = [item.strip() for item in value.split(",") if item.strip()]
+                            elif not isinstance(value, list):
+                                value = []
+                        elif field_type == "radio":
+                            # Radio button value is already correct
+                            pass
+                        elif field_type == "datetime":
+                            # Keep as string, validation happens in config creation
+                            value = str(value) if value else ""
+                        elif field_type == "code_editor":
+                            # Keep as string for SQL code
+                            value = str(value) if value else ""
+                        elif field_type == "textarea":
+                            # Keep as string
+                            value = str(value) if value else ""
+                        elif field_type == "dropdown":
+                            # Dropdown value is already correct
+                            pass
+                        elif field_type == "list":
                             try:
                                 value = json.loads(value) if isinstance(value, str) else value
                             except json.JSONDecodeError:
@@ -1099,17 +1184,43 @@ class MultiStepWizard:
                             except json.JSONDecodeError:
                                 value = {}
                         elif field_type == "number":
-                            value = float(value) if value != "" else 0.0
+                            try:
+                                value = float(value) if value != "" else field_info.get("default", 0.0)
+                            except (ValueError, TypeError):
+                                value = field_info.get("default", 0.0)
+                        elif field_type == "checkbox":
+                            value = bool(value)
                     
                     form_data[field_name] = value
                 
-                # Create configuration instance
+                # Enhanced config creation with ValidationService integration
                 config_class = step["config_class"]
-                config_instance = config_class(**form_data)
+                config_class_name = step["config_class_name"]
+                
+                if config_class_name == "CradleDataLoadingConfig":
+                    # Transform flat form data to nested ui_data structure for ValidationService
+                    ui_data = self._transform_cradle_form_data(form_data)
+                    
+                    # REUSE ORIGINAL VALIDATION AND CONFIG BUILDING LOGIC
+                    try:
+                        from ...cradle_ui.services.validation_service import ValidationService
+                        validation_service = ValidationService()
+                        config_instance = validation_service.build_final_config(ui_data)
+                        logger.info(f"Created CradleDataLoadingConfig using ValidationService with {len(ui_data)} ui_data fields")
+                    except ImportError as e:
+                        logger.warning(f"ValidationService not available: {e}, falling back to direct config creation")
+                        # Fallback: Create config directly (less robust but functional)
+                        config_instance = config_class(**form_data)
+                    except Exception as e:
+                        logger.error(f"ValidationService failed: {e}, falling back to direct config creation")
+                        # Fallback: Create config directly
+                        config_instance = config_class(**form_data)
+                else:
+                    # Standard config creation for other classes
+                    config_instance = config_class(**form_data)
                 
                 # Store completed configuration with BOTH step title and class name for inheritance
                 step_key = step["title"]
-                config_class_name = step["config_class_name"]
                 
                 self.completed_configs[step_key] = config_instance
                 self.completed_configs[config_class_name] = config_instance  # CRITICAL: Add class name mapping
@@ -1122,13 +1233,115 @@ class MultiStepWizard:
                     self.processing_config = config_instance
                     logger.info("Updated processing_config reference for inheritance")
                 
-                logger.info(f"Step '{step_key}' saved successfully with inheritance support")
+                logger.info(f"Step '{step_key}' saved successfully with enhanced data transformation")
                 logger.debug(f"Available configs for inheritance: {list(self.completed_configs.keys())}")
                 return True
             
         except Exception as e:
             logger.error(f"Error saving step: {e}")
             return False
+    
+    def _transform_cradle_form_data(self, form_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Transform flat form data into ui_data structure expected by ValidationService.build_final_config().
+        
+        This creates the exact same nested structure that the original cradle_ui expects,
+        ensuring 100% compatibility with the proven config building logic.
+        
+        Args:
+            form_data: Flat form data from single-page form
+            
+        Returns:
+            Nested ui_data structure compatible with ValidationService
+        """
+        logger.debug(f"Transforming cradle form data with {len(form_data)} fields")
+        
+        # LEVEL 5: Create leaf data source properties based on type
+        data_source_properties = {}
+        data_source_type = form_data.get("data_source_type", "MDS")
+        
+        if data_source_type == "MDS":
+            data_source_properties["mds_data_source_properties"] = {
+                "service_name": form_data.get("mds_service", "AtoZ"),
+                "region": form_data.get("mds_region", "NA"),
+                "output_schema": form_data.get("mds_output_schema", form_data.get("output_schema", [])),
+                "org_id": form_data.get("mds_org_id", 0),
+                "use_hourly_edx_data_set": form_data.get("mds_use_hourly", False)
+            }
+        elif data_source_type == "EDX":
+            data_source_properties["edx_data_source_properties"] = {
+                "edx_provider": form_data.get("edx_provider", ""),
+                "edx_subject": form_data.get("edx_subject", ""),
+                "edx_dataset": form_data.get("edx_dataset", ""),
+                "edx_manifest_key": form_data.get("edx_manifest_key", ""),
+                "schema_overrides": form_data.get("edx_schema_overrides", [])
+            }
+        elif data_source_type == "ANDES":
+            data_source_properties["andes_data_source_properties"] = {
+                "provider": form_data.get("andes_provider", ""),
+                "table_name": form_data.get("andes_table_name", ""),
+                "andes3_enabled": form_data.get("andes3_enabled", True)
+            }
+        
+        # LEVEL 4: Create DataSourceConfig wrapper
+        data_source_config = {
+            "data_source_name": form_data.get("data_source_name", "RAW_MDS_NA"),
+            "data_source_type": data_source_type,
+            **data_source_properties
+        }
+        
+        # Create ui_data structure that matches ValidationService.build_final_config() expectations
+        ui_data = {
+            # Root level fields (BasePipelineConfig)
+            "job_type": form_data.get("job_type", "training"),
+            "author": form_data.get("author", "test-user"),
+            "bucket": form_data.get("bucket", "test-bucket"),
+            "role": form_data.get("role", "arn:aws:iam::123456789012:role/test-role"),
+            "region": form_data.get("region", "NA"),
+            "service_name": form_data.get("service_name", "test-service"),
+            "pipeline_version": form_data.get("pipeline_version", "1.0.0"),
+            "project_root_folder": form_data.get("project_root_folder", "test-project"),
+            
+            # LEVEL 3: Nested specification structures (exact match with ValidationService expectations)
+            "data_sources_spec": {
+                "start_date": form_data.get("start_date", "2025-01-01T00:00:00"),
+                "end_date": form_data.get("end_date", "2025-04-17T00:00:00"),
+                "data_sources": [data_source_config]  # Single data source for now
+            },
+            
+            "transform_spec": {
+                "transform_sql": form_data.get("transform_sql", "SELECT * FROM input_data"),
+                "job_split_options": {
+                    "split_job": form_data.get("split_job", False),
+                    "days_per_split": form_data.get("days_per_split", 7),
+                    "merge_sql": form_data.get("merge_sql", "SELECT * FROM INPUT") if form_data.get("split_job") else None
+                }
+            },
+            
+            "output_spec": {
+                "output_schema": form_data.get("output_schema", ["objectId", "transactionDate", "is_abuse"]),
+                "pipeline_s3_loc": f"s3://{form_data.get('bucket', 'test-bucket')}/{form_data.get('project_root_folder', 'test-project')}",
+                "output_format": form_data.get("output_format", "PARQUET"),
+                "output_save_mode": form_data.get("output_save_mode", "ERRORIFEXISTS"),
+                "output_file_count": form_data.get("output_file_count", 0),
+                "keep_dot_in_output_schema": form_data.get("keep_dot_in_output_schema", False),
+                "include_header_in_s3_output": form_data.get("include_header_in_s3_output", True)
+            },
+            
+            "cradle_job_spec": {
+                "cradle_account": form_data.get("cradle_account", "Buyer-Abuse-RnD-Dev"),
+                "cluster_type": form_data.get("cluster_type", "STANDARD"),
+                "extra_spark_job_arguments": form_data.get("extra_spark_job_arguments", ""),
+                "job_retry_count": form_data.get("job_retry_count", 1)
+            }
+        }
+        
+        # Add optional fields if present
+        if form_data.get("s3_input_override"):
+            ui_data["s3_input_override"] = form_data["s3_input_override"]
+        
+        logger.debug(f"Transformed ui_data structure with {len(ui_data)} top-level fields")
+        return ui_data
     
     def get_completed_configs(self) -> List[BasePipelineConfig]:
         """
