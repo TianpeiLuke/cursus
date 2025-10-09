@@ -33,7 +33,8 @@ class CradleConfigWidget:
                  width: str = "100%", 
                  height: str = "800px",
                  server_port: int = 8001,
-                 workflow_context: Optional[Dict[str, Any]] = None):
+                 workflow_context: Optional[Dict[str, Any]] = None,
+                 embedded_mode: bool = False):
         """
         Initialize the Cradle Config Widget with workflow integration.
         
@@ -44,6 +45,7 @@ class CradleConfigWidget:
             height: Widget height
             server_port: Port where the UI server is running
             workflow_context: Workflow context from DAG analysis and step structure
+            embedded_mode: Whether widget is embedded in a parent workflow (NEW)
         """
         self.base_config = base_config
         self.job_type = job_type
@@ -51,8 +53,10 @@ class CradleConfigWidget:
         self.height = height
         self.server_port = server_port
         self.workflow_context = workflow_context or {}
+        self.embedded_mode = embedded_mode  # NEW: Embedded mode flag
         self.config_result = None
         self.server_url = f"http://localhost:{server_port}"
+        self.completion_callback = None  # NEW: Callback for embedded mode
         
         # Unique identifier for this widget instance
         self.widget_id = str(uuid.uuid4())
@@ -277,6 +281,10 @@ class CradleConfigWidget:
         
         return params
     
+    def set_completion_callback(self, callback):
+        """Set callback for when 4-step wizard completes (for embedded mode)."""
+        self.completion_callback = callback
+    
     def get_config(self) -> Optional[CradleDataLoadingConfig]:
         """
         Get the generated configuration object.
@@ -286,11 +294,62 @@ class CradleConfigWidget:
         """
         return self.config_result
     
+    def _create_config_instance_from_ui(self) -> CradleDataLoadingConfig:
+        """
+        Create config instance from UI data (placeholder implementation).
+        
+        This method needs to be implemented based on how the cradle UI stores its data.
+        For now, it creates a basic instance with inherited values.
+        """
+        # TODO: Extract actual data from the cradle UI
+        # This is a placeholder implementation
+        config_data = self.inherited_values.copy()
+        
+        # Add some default values for required fields
+        config_data.update({
+            'job_type': self.job_type,
+            'data_sources_spec': {'sources': self.available_fields.get('data_sources', [])},
+            'transform_spec': {'fields': self.available_fields.get('transform_fields', [])},
+            'output_spec': {'format': 'PARQUET', 'fields': self.available_fields.get('output_fields', [])}
+        })
+        
+        return CradleDataLoadingConfig(**config_data)
+    
+    def _notify_completion(self, config_instance):
+        """Notify parent workflow that configuration is complete."""
+        self.config_result = config_instance
+        if self.completion_callback:
+            self.completion_callback(config_instance)
+    
     def display(self):
         """Display the widget."""
         display(self.widget)
         
-        # Display usage instructions
+        # Display different instructions based on mode
+        if self.embedded_mode:
+            self._display_embedded_instructions()
+        else:
+            self._display_standalone_instructions()
+    
+    def _display_embedded_instructions(self):
+        """Display instructions for embedded mode."""
+        display(HTML("""
+        <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <h4 style="color: #0c4a6e; margin-bottom: 10px;">📝 Embedded Cradle Configuration:</h4>
+            <ol style="color: #0c4a6e; line-height: 1.6; margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Complete the 4-step configuration in the UI above</li>
+                <li style="margin-bottom: 8px;">Click <strong>"Finish"</strong> in the UI - configuration will be collected automatically</li>
+                <li style="margin-bottom: 8px;">Continue to next step in the main workflow</li>
+                <li style="margin-bottom: 0;">All configurations will be saved together at the end</li>
+            </ol>
+            <div style="background-color: #dbeafe; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <strong>✨ Workflow Mode:</strong> This configuration will be included in the unified pipeline export.
+            </div>
+        </div>
+        """))
+    
+    def _display_standalone_instructions(self):
+        """Display instructions for standalone mode."""
         display(HTML("""
         <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; margin: 15px 0; color: #212529;">
             <h4 style="color: #495057; margin-bottom: 15px; font-weight: 600;">📝 How to Use:</h4>

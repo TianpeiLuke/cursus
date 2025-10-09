@@ -311,6 +311,32 @@ class UniversalConfigWidget:
         description = field.get("description", "Specialized configuration interface")
         features = field.get("features", [])
         
+        # CRITICAL: Create the actual specialized widget instance
+        try:
+            from .specialized_widgets import SpecializedComponentRegistry
+            registry = SpecializedComponentRegistry()
+            
+            # Create the specialized widget with base config pre-population
+            base_config = self.values  # Pass current form values as base config
+            specialized_widget = registry.create_specialized_widget(
+                config_class_name,
+                base_config=base_config,
+                completion_callback=self._on_specialized_widget_complete
+            )
+            
+            if specialized_widget:
+                logger.info(f"Created specialized widget for {config_class_name}")
+                return {
+                    "widget": specialized_widget,
+                    "container": specialized_widget.display() if hasattr(specialized_widget, 'display') else specialized_widget
+                }
+            else:
+                logger.warning(f"Failed to create specialized widget for {config_class_name}")
+                
+        except Exception as e:
+            logger.error(f"Error creating specialized widget for {config_class_name}: {e}")
+        
+        # Fallback: Create visual placeholder if specialized widget creation fails
         # Create complexity badge
         complexity_colors = {
             "basic": "#10b981",
@@ -354,18 +380,10 @@ class UniversalConfigWidget:
                 </div>
             </div>
             
-            <div style='text-align: center;'>
-                <button style='background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); 
-                               color: white; border: none; padding: 12px 24px; border-radius: 8px; 
-                               font-weight: 600; cursor: pointer; font-size: 14px;
-                               box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
-                               transition: all 0.3s ease;'
-                        onmouseover='this.style.transform="translateY(-2px)"; this.style.boxShadow="0 4px 12px rgba(14, 165, 233, 0.4)";'
-                        onmouseout='this.style.transform="translateY(0px)"; this.style.boxShadow="0 2px 8px rgba(14, 165, 233, 0.3)";'>
-                    {icon} Open {config_class_name} Wizard
-                </button>
-                <p style='margin: 10px 0 0 0; font-size: 11px; color: #6b7280; font-style: italic;'>
-                    Base configuration will be pre-filled automatically
+            <div style='background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin-bottom: 15px;'>
+                <h4 style='margin: 0 0 10px 0; color: #dc2626; font-size: 14px;'>⚠️ Widget Creation Failed</h4>
+                <p style='margin: 0; color: #dc2626; font-size: 13px;'>
+                    Could not create specialized widget for {config_class_name}. Please check the implementation.
                 </p>
             </div>
         </div>
@@ -380,6 +398,12 @@ class UniversalConfigWidget:
             "widget": dummy_widget,
             "container": specialized_display
         }
+    
+    def _on_specialized_widget_complete(self, config_instance):
+        """Handle completion of specialized widget configuration."""
+        logger.info(f"Specialized widget completed with config: {type(config_instance)}")
+        # Store the completed config for later retrieval
+        self.config_instance = config_instance
     
     def _get_field_emoji(self, field_name: str) -> str:
         """Get appropriate emoji icon for field name."""
@@ -586,6 +610,12 @@ class MultiStepWizard:
         self.output = widgets.Output()
         self.navigation_output = widgets.Output()
         
+        # NEW: Navigation control for nested wizards
+        self.navigation_disabled = False
+        self.next_button = None
+        self.prev_button = None
+        self.finish_button = None
+        
         # NEW: Initialize completed configs for inheritance
         if self.enable_inheritance:
             if base_config:
@@ -782,6 +812,17 @@ class MultiStepWizard:
         prev_button.on_click(self._on_prev_clicked)
         next_button.on_click(self._on_next_clicked)
         finish_button.on_click(self._on_finish_clicked)
+        
+        # NEW: Store button references for navigation control
+        self.prev_button = prev_button
+        self.next_button = next_button
+        self.finish_button = finish_button
+        
+        # NEW: Apply navigation disabled state if needed
+        if self.navigation_disabled:
+            self.prev_button.disabled = True
+            self.next_button.disabled = True
+            self.finish_button.disabled = True
         
         # Create enhanced navigation container
         nav_box = widgets.HBox(
@@ -1012,55 +1053,78 @@ class MultiStepWizard:
         step_widget = self.step_widgets[self.current_step]
         step = self.steps[self.current_step]
         
-        # Trigger save on the widget
         try:
-            # Get form data from widget
-            form_data = {}
-            for field_name, widget in step_widget.widgets.items():
-                value = widget.value
+            # Check if this is a specialized widget step
+            if hasattr(step_widget, 'widgets') and 'specialized_component' in step_widget.widgets:
+                # ENHANCED: Handle specialized widget config collection
+                specialized_widget = step_widget.widgets['specialized_component']
                 
-                # Convert values based on field type
-                field_info = next((f for f in step_widget.fields if f["name"] == field_name), None)
-                if field_info:
-                    field_type = field_info["type"]
+                # For cradle widgets, get the config object
+                if hasattr(specialized_widget, 'get_config'):
+                    config_instance = specialized_widget.get_config()
+                    if config_instance:
+                        step_key = step["title"]
+                        config_class_name = step["config_class_name"]
+                        
+                        self.completed_configs[step_key] = config_instance
+                        self.completed_configs[config_class_name] = config_instance
+                        
+                        logger.info(f"Collected specialized config for '{step_key}'")
+                        return True
+                    else:
+                        logger.warning(f"Specialized widget has no config available for '{step['title']}'")
+                        return False
+                else:
+                    logger.warning(f"Specialized widget does not support get_config() for '{step['title']}'")
+                    return False
+            else:
+                # EXISTING: Handle standard widget form data collection
+                form_data = {}
+                for field_name, widget in step_widget.widgets.items():
+                    value = widget.value
                     
-                    if field_type == "list":
-                        try:
-                            value = json.loads(value) if isinstance(value, str) else value
-                        except json.JSONDecodeError:
-                            value = []
-                    elif field_type == "keyvalue":
-                        try:
-                            value = json.loads(value) if isinstance(value, str) else value
-                        except json.JSONDecodeError:
-                            value = {}
-                    elif field_type == "number":
-                        value = float(value) if value != "" else 0.0
+                    # Convert values based on field type
+                    field_info = next((f for f in step_widget.fields if f["name"] == field_name), None)
+                    if field_info:
+                        field_type = field_info["type"]
+                        
+                        if field_type == "list":
+                            try:
+                                value = json.loads(value) if isinstance(value, str) else value
+                            except json.JSONDecodeError:
+                                value = []
+                        elif field_type == "keyvalue":
+                            try:
+                                value = json.loads(value) if isinstance(value, str) else value
+                            except json.JSONDecodeError:
+                                value = {}
+                        elif field_type == "number":
+                            value = float(value) if value != "" else 0.0
+                    
+                    form_data[field_name] = value
                 
-                form_data[field_name] = value
-            
-            # Create configuration instance
-            config_class = step["config_class"]
-            config_instance = config_class(**form_data)
-            
-            # Store completed configuration with BOTH step title and class name for inheritance
-            step_key = step["title"]
-            config_class_name = step["config_class_name"]
-            
-            self.completed_configs[step_key] = config_instance
-            self.completed_configs[config_class_name] = config_instance  # CRITICAL: Add class name mapping
-            
-            # CRITICAL: Update base_config and processing_config references for inheritance
-            if config_class_name == "BasePipelineConfig":
-                self.base_config = config_instance
-                logger.info("Updated base_config reference for inheritance")
-            elif config_class_name == "ProcessingStepConfigBase":
-                self.processing_config = config_instance
-                logger.info("Updated processing_config reference for inheritance")
-            
-            logger.info(f"Step '{step_key}' saved successfully with inheritance support")
-            logger.debug(f"Available configs for inheritance: {list(self.completed_configs.keys())}")
-            return True
+                # Create configuration instance
+                config_class = step["config_class"]
+                config_instance = config_class(**form_data)
+                
+                # Store completed configuration with BOTH step title and class name for inheritance
+                step_key = step["title"]
+                config_class_name = step["config_class_name"]
+                
+                self.completed_configs[step_key] = config_instance
+                self.completed_configs[config_class_name] = config_instance  # CRITICAL: Add class name mapping
+                
+                # CRITICAL: Update base_config and processing_config references for inheritance
+                if config_class_name == "BasePipelineConfig":
+                    self.base_config = config_instance
+                    logger.info("Updated base_config reference for inheritance")
+                elif config_class_name == "ProcessingStepConfigBase":
+                    self.processing_config = config_instance
+                    logger.info("Updated processing_config reference for inheritance")
+                
+                logger.info(f"Step '{step_key}' saved successfully with inheritance support")
+                logger.debug(f"Available configs for inheritance: {list(self.completed_configs.keys())}")
+                return True
             
         except Exception as e:
             logger.error(f"Error saving step: {e}")
@@ -1121,3 +1185,36 @@ class MultiStepWizard:
         """
         with self.output:
             display(widgets.HTML(error_html))
+    
+    def _handle_navigation_control(self, action: str):
+        """Handle navigation control from nested wizards."""
+        if action == 'disable_navigation':
+            self.navigation_disabled = True
+            if self.prev_button:
+                self.prev_button.disabled = True
+            if self.next_button:
+                self.next_button.disabled = True
+            if self.finish_button:
+                self.finish_button.disabled = True
+            logger.debug("Navigation disabled by nested wizard")
+        elif action == 'enable_navigation':
+            self.navigation_disabled = False
+            if self.prev_button:
+                self.prev_button.disabled = (self.current_step == 0)
+            if self.next_button:
+                self.next_button.disabled = (self.current_step == len(self.steps) - 1)
+            if self.finish_button:
+                self.finish_button.disabled = (self.current_step != len(self.steps) - 1)
+            logger.debug("Navigation enabled by nested wizard")
+    
+    def _setup_specialized_widget_callbacks(self, step_widget, config_class_name: str):
+        """Set up callbacks for specialized widgets to control navigation."""
+        if config_class_name == "CradleDataLoadingConfig":
+            # Check if the widget has specialized components
+            if hasattr(step_widget, 'widgets') and 'specialized_component' in step_widget.widgets:
+                specialized_widget = step_widget.widgets['specialized_component']
+                
+                # Set up navigation callback if the specialized widget supports it
+                if hasattr(specialized_widget, 'set_navigation_callback'):
+                    specialized_widget.set_navigation_callback(self._handle_navigation_control)
+                    logger.debug(f"Set up navigation callback for {config_class_name}")
