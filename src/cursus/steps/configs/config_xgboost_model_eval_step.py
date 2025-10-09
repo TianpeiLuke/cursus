@@ -15,7 +15,6 @@ from pathlib import Path
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
-from ..hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
 
 # Import the script contract
 from ..contracts.xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
@@ -44,9 +43,14 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
 
-    hyperparameters: XGBoostModelHyperparameters = Field(
+    id_name: str = Field(
         ...,
-        description="XGBoost model hyperparameters config, including id_name, label_name, field lists, etc.",
+        description="Name of the ID field in the dataset (required for evaluation).",
+    )
+
+    label_name: str = Field(
+        ...,
+        description="Name of the label field in the dataset (required for evaluation).",
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -110,24 +114,18 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
                 f"job_type must be one of {valid_job_types}, got '{self.job_type}'"
             )
 
-        if not isinstance(self.hyperparameters, XGBoostModelHyperparameters):
-            raise ValueError(
-                "hyperparameters must be an instance of XGBoostModelHyperparameters"
-            )
-
         # Validate required fields from script contract
-        contract = self.get_script_contract()
-
-        # Check required environment variables from contract
-        if not self.hyperparameters.id_name:
+        if not self.id_name:
             raise ValueError(
-                "hyperparameters.id_name must be provided (required by model evaluation contract)"
+                "id_name must be provided (required by model evaluation contract)"
             )
 
-        if not self.hyperparameters.label_name:
+        if not self.label_name:
             raise ValueError(
-                "hyperparameters.label_name must be provided (required by model evaluation contract)"
+                "label_name must be provided (required by model evaluation contract)"
             )
+
+        logger.debug(f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for evaluation")
 
         return self
 
@@ -148,18 +146,11 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         # Add model evaluation specific environment variables
         env_vars.update(
             {
-                "ID_FIELD": self.hyperparameters.id_name,
-                "LABEL_FIELD": self.hyperparameters.label_name,
+                "ID_FIELD": self.id_name,
+                "LABEL_FIELD": self.label_name,
                 "JOB_TYPE": self.job_type,
             }
         )
-
-        # Add evaluation metrics if available
-        if (
-            hasattr(self.hyperparameters, "eval_metric_list")
-            and self.hyperparameters.eval_metric_list
-        ):
-            env_vars["EVAL_METRICS"] = ",".join(self.hyperparameters.eval_metric_list)
 
         # Add eval metric choices
         if self.eval_metric_choices:
@@ -196,7 +187,8 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
         # Add model evaluation specific fields
         eval_fields = {
             # Tier 1 - Essential User Inputs
-            "hyperparameters": self.hyperparameters,
+            "id_name": self.id_name,
+            "label_name": self.label_name,
             # Tier 2 - System Inputs with Defaults
             "processing_entry_point": self.processing_entry_point,
             "job_type": self.job_type,

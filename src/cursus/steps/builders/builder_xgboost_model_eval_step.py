@@ -85,7 +85,8 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
             "processing_volume_size",
             "pipeline_name",
             "job_type",
-            "hyperparameters",
+            "id_name",
+            "label_name",
             "xgboost_framework_version",
         ]
 
@@ -154,11 +155,10 @@ class XGBoostModelEvalStepBuilder(StepBuilderBase):
         env_vars = super()._get_environment_variables()
 
         # Add evaluation-specific environment variables
-        if hasattr(self.config, "hyperparameters"):
-            if hasattr(self.config.hyperparameters, "id_name"):
-                env_vars["ID_FIELD"] = str(self.config.hyperparameters.id_name)
-            if hasattr(self.config.hyperparameters, "label_name"):
-                env_vars["LABEL_FIELD"] = str(self.config.hyperparameters.label_name)
+        if hasattr(self.config, "id_name"):
+            env_vars["ID_FIELD"] = str(self.config.id_name)
+        if hasattr(self.config, "label_name"):
+            env_vars["LABEL_FIELD"] = str(self.config.label_name)
 
         self.log_info("Evaluation environment variables: %s", env_vars)
         return env_vars
