@@ -13,14 +13,8 @@ Based on analysis of the actual source code:
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-import sys
-from pathlib import Path
 
-# Add src to path for imports
-src_path = Path(__file__).parent.parent.parent.parent.parent / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
+# Import the classes we're testing - use proper imports without path manipulation
 from cursus.core.base.config_base import BasePipelineConfig
 from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 from cursus.api.config_ui.widgets.widget import MultiStepWizard, UniversalConfigWidget
@@ -30,10 +24,10 @@ from cursus.api.config_ui.core.core import UniversalConfigCore
 class TestSmartDefaultValueInheritance:
     """Test suite for Smart Default Value Inheritance in Multi-Step Wizard."""
     
-    def setup_method(self):
-        """Set up test fixtures."""
-        # Create test base configuration with user data
-        self.test_base_config = BasePipelineConfig(
+    @pytest.fixture
+    def test_base_config(self):
+        """Create test base configuration with user data."""
+        return BasePipelineConfig(
             author="lukexie",
             bucket="test-sagemaker-bucket",
             role="arn:aws:iam::123456789012:role/TestSageMakerRole",
@@ -42,13 +36,18 @@ class TestSmartDefaultValueInheritance:
             pipeline_version="1.0.0",
             project_root_folder="test-project"
         )
-        
-        # Create mock DAG for testing
-        self.mock_dag = Mock()
-        self.mock_dag.nodes = ["TestStep1", "TestStep2"]
-        
-        # Create test steps for multi-step wizard
-        self.test_steps = [
+    
+    @pytest.fixture
+    def mock_dag(self):
+        """Create mock DAG for testing."""
+        mock_dag = Mock()
+        mock_dag.nodes = ["TestStep1", "TestStep2"]
+        return mock_dag
+    
+    @pytest.fixture
+    def test_steps(self):
+        """Create test steps for multi-step wizard."""
+        return [
             {
                 "step_number": 1,
                 "title": "Base Configuration",
@@ -67,12 +66,12 @@ class TestSmartDefaultValueInheritance:
             }
         ]
     
-    def test_base_config_storage_with_inheritance_keys(self):
+    def test_base_config_storage_with_inheritance_keys(self, test_steps, test_base_config):
         """Test that base config is stored with proper keys for inheritance."""
         # Create multi-step wizard with inheritance enabled
         wizard = MultiStepWizard(
-            steps=self.test_steps,
-            base_config=self.test_base_config,
+            steps=test_steps,
+            base_config=test_base_config,
             enable_inheritance=True
         )
         
@@ -125,18 +124,18 @@ class TestSmartDefaultValueInheritance:
         assert base_config_by_class.bucket == "test-sagemaker-bucket"
         assert base_config_by_class.role == "arn:aws:iam::123456789012:role/TestSageMakerRole"
     
-    def test_processing_config_inherits_base_values(self):
+    def test_processing_config_inherits_base_values(self, test_steps, test_base_config):
         """Test that processing config step shows inherited values from base config."""
         # Create multi-step wizard with inheritance enabled
         wizard = MultiStepWizard(
-            steps=self.test_steps,
-            base_config=self.test_base_config,
+            steps=test_steps,
+            base_config=test_base_config,
             enable_inheritance=True
         )
         
         # Simulate completed base config
-        wizard.completed_configs["BasePipelineConfig"] = self.test_base_config
-        wizard.base_config = self.test_base_config
+        wizard.completed_configs["BasePipelineConfig"] = test_base_config
+        wizard.base_config = test_base_config
         
         # Move to processing config step
         wizard.current_step = 1
@@ -193,7 +192,7 @@ class TestSmartDefaultValueInheritance:
             ]
             
             # Get step fields for processing config
-            step = self.test_steps[1]
+            step = test_steps[1]
             fields = wizard._get_step_fields(step)
             
             # Verify inheritance analysis was called
@@ -215,19 +214,19 @@ class TestSmartDefaultValueInheritance:
             assert bucket_field['tier'] == 'inherited', "Bucket should be inherited"
             assert bucket_field['default'] == 'test-sagemaker-bucket', "Bucket should have inherited value"
     
-    def test_inheritance_analysis_creation(self):
+    def test_inheritance_analysis_creation(self, test_steps, test_base_config):
         """Test that inheritance analysis is created correctly."""
         wizard = MultiStepWizard(
-            steps=self.test_steps,
-            base_config=self.test_base_config,
+            steps=test_steps,
+            base_config=test_base_config,
             enable_inheritance=True
         )
         
         # Add completed base config
-        wizard.completed_configs["BasePipelineConfig"] = self.test_base_config
+        wizard.completed_configs["BasePipelineConfig"] = test_base_config
         
         # Mock UniversalConfigCore and step catalog
-        with patch('cursus.api.config_ui.widgets.widget.UniversalConfigCore') as mock_core_class:
+        with patch('cursus.api.config_ui.core.core.UniversalConfigCore') as mock_core_class:
             mock_core = Mock()
             mock_core_class.return_value = mock_core
             
@@ -249,11 +248,11 @@ class TestSmartDefaultValueInheritance:
             assert analysis['parent_values']['bucket'] == "test-sagemaker-bucket"
             assert analysis['total_inherited_fields'] == 2
     
-    def test_inheritance_disabled_fallback(self):
+    def test_inheritance_disabled_fallback(self, test_steps, test_base_config):
         """Test behavior when inheritance is disabled."""
         wizard = MultiStepWizard(
-            steps=self.test_steps,
-            base_config=self.test_base_config,
+            steps=test_steps,
+            base_config=test_base_config,
             enable_inheritance=False  # Inheritance disabled
         )
         
@@ -261,7 +260,7 @@ class TestSmartDefaultValueInheritance:
         wizard.current_step = 1
         
         # Mock UniversalConfigCore
-        with patch('cursus.api.config_ui.widgets.widget.UniversalConfigCore') as mock_core_class:
+        with patch('cursus.api.config_ui.core.core.UniversalConfigCore') as mock_core_class:
             mock_core = Mock()
             mock_core_class.return_value = mock_core
             
@@ -277,18 +276,18 @@ class TestSmartDefaultValueInheritance:
             ]
             
             # Get step fields
-            step = self.test_steps[1]
+            step = test_steps[1]
             fields = wizard._get_step_fields(step)
             
             # Verify standard field generation was used
             mock_core._get_form_fields.assert_called_once()
             mock_core.get_inheritance_aware_form_fields.assert_not_called()
     
-    def test_processing_config_storage_updates_reference(self):
+    def test_processing_config_storage_updates_reference(self, test_steps, test_base_config):
         """Test that processing config storage updates the processing_config reference."""
         wizard = MultiStepWizard(
-            steps=self.test_steps,
-            base_config=self.test_base_config,
+            steps=test_steps,
+            base_config=test_base_config,
             enable_inheritance=True
         )
         
@@ -339,11 +338,11 @@ class TestSmartDefaultValueInheritance:
         assert processing_config.bucket == "test-sagemaker-bucket"  # Inherited
         assert processing_config.processing_instance_count == 2  # New
     
-    def test_end_to_end_inheritance_workflow(self):
+    def test_end_to_end_inheritance_workflow(self, test_steps):
         """Test complete end-to-end inheritance workflow."""
         # Create wizard
         wizard = MultiStepWizard(
-            steps=self.test_steps,
+            steps=test_steps,
             base_config=None,  # Start with no base config
             enable_inheritance=True
         )
@@ -377,7 +376,7 @@ class TestSmartDefaultValueInheritance:
         # Step 2: Move to processing config and verify inheritance
         wizard.current_step = 1
         
-        with patch('cursus.api.config_ui.widgets.widget.UniversalConfigCore') as mock_core_class:
+        with patch('cursus.api.config_ui.core.core.UniversalConfigCore') as mock_core_class:
             mock_core = Mock()
             mock_core_class.return_value = mock_core
             
@@ -399,16 +398,16 @@ class TestSmartDefaultValueInheritance:
             assert analysis['parent_values']['author'] == "lukexie"
             assert len(analysis['parent_values']) == 3
     
-    def test_inheritance_error_handling(self):
+    def test_inheritance_error_handling(self, test_steps, test_base_config):
         """Test graceful handling of inheritance errors."""
         wizard = MultiStepWizard(
-            steps=self.test_steps,
-            base_config=self.test_base_config,
+            steps=test_steps,
+            base_config=test_base_config,
             enable_inheritance=True
         )
         
         # Mock UniversalConfigCore to raise exception
-        with patch('cursus.api.config_ui.widgets.widget.UniversalConfigCore') as mock_core_class:
+        with patch('cursus.api.config_ui.core.core.UniversalConfigCore') as mock_core_class:
             mock_core = Mock()
             mock_core_class.return_value = mock_core
             mock_core.step_catalog = None  # No step catalog available
