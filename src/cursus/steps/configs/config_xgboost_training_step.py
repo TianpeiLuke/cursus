@@ -15,7 +15,6 @@ from pathlib import Path
 import json
 from datetime import datetime
 
-from ..hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
 from ...core.base.config_base import BasePipelineConfig
 
 
@@ -36,11 +35,6 @@ class XGBoostTrainingConfig(BasePipelineConfig):
 
     training_entry_point: str = Field(
         description="Entry point script for XGBoost training."
-    )
-
-    # XGBoost specific hyperparameters object
-    hyperparameters: XGBoostModelHyperparameters = Field(
-        description="Hyperparameters specific to XGBoost model training."
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -115,43 +109,6 @@ class XGBoostTrainingConfig(BasePipelineConfig):
 
         return self
 
-    @model_validator(mode="after")
-    def validate_hyperparameter_fields(self) -> "XGBoostTrainingConfig":
-        """
-        Validate field lists from hyperparameters.
-        """
-        # Validate hyperparameters presence
-        if not self.hyperparameters:
-            raise ValueError("XGBoost hyperparameters must be provided.")
-
-        # Validate field lists
-        all_fields = set(self.hyperparameters.full_field_list)
-
-        # Check tab_field_list
-        if not set(self.hyperparameters.tab_field_list).issubset(all_fields):
-            raise ValueError(
-                "All fields in tab_field_list must be in full_field_list (from hyperparameters)."
-            )
-
-        # Check cat_field_list
-        if not set(self.hyperparameters.cat_field_list).issubset(all_fields):
-            raise ValueError(
-                "All fields in cat_field_list must be in full_field_list (from hyperparameters)."
-            )
-
-        # Check label_name
-        if self.hyperparameters.label_name not in all_fields:
-            raise ValueError(
-                f"label_name '{self.hyperparameters.label_name}' must be in full_field_list (from hyperparameters)."
-            )
-
-        # Check id_name
-        if self.hyperparameters.id_name not in all_fields:
-            raise ValueError(
-                f"id_name '{self.hyperparameters.id_name}' must be in full_field_list (from hyperparameters)."
-            )
-
-        return self
 
     @field_validator("training_instance_type")
     @classmethod
@@ -218,27 +175,7 @@ class XGBoostTrainingConfig(BasePipelineConfig):
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
         }
 
-        # Hyperparameters require special handling since it's a Pydantic model
-        if self.hyperparameters:
-            # Get hyperparameters as a dictionary (initialized appropriately)
-            training_fields["hyperparameters"] = self.hyperparameters
-
         # Combine base fields and training fields (training fields take precedence if overlap)
         init_fields = {**base_fields, **training_fields}
 
         return init_fields
-
-    def to_hyperparameter_dict(self) -> Dict[str, Any]:
-        """Convert configuration to hyperparameter dictionary for training."""
-        # Get hyperparameters from the model
-        hyperparam_dict = self.hyperparameters.serialize_config()
-
-        # Add derived properties from hyperparameters object
-        # These properties are not included by default in serialize_config
-        hyperparam_dict["objective"] = self.hyperparameters.objective
-        hyperparam_dict["eval_metric"] = json.dumps(self.hyperparameters.eval_metric)
-
-        # Add any training config-specific hyperparameters
-        # (currently none, but this allows for future extensions)
-
-        return hyperparam_dict
