@@ -169,7 +169,7 @@ CradleDataLoadingConfig (Single Page Form) - LEVEL 1 (Root)
 
 **LEVEL 1 (Root):**
 - `CradleDataLoadingConfig` (contains all Level 3 components)
-```
+
 
 ## Single-Page UI Design
 
