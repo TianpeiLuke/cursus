@@ -183,7 +183,7 @@ class EnhancedMultiStepWizard:
             logger.error(f"Error updating enhanced wizard step display: {e}")
     
     def display(self):
-        """ANTI-DUPLICATION SOLUTION: Display the enhanced wizard with duplication prevention."""
+        """ENHANCED SOLUTION: Display with proper button handler override."""
         # Check if already displayed to prevent duplication
         if hasattr(self, '_display_called') and self._display_called:
             logger.debug("Display already called, skipping to prevent duplication")
@@ -195,12 +195,24 @@ class EnhancedMultiStepWizard:
         # Mark as displayed to prevent future duplications
         self._display_called = True
         
-        # ANTI-DUPLICATION: Only call base wizard display once
+        # ENHANCED SOLUTION: Display base wizard then override button handlers
         try:
+            logger.debug("About to call base wizard display()...")
             self.base_wizard.display()
             logger.debug("Base wizard display() called successfully")
+            
+            # CRITICAL FIX: Override button handlers to use enhanced wizard methods
+            logger.debug("About to call _override_button_handlers()...")
+            try:
+                self._override_button_handlers()
+                logger.debug("Button handlers overridden to use enhanced wizard methods")
+            except Exception as e:
+                logger.error(f"Failed to override button handlers: {e}")
+                import traceback
+                traceback.print_exc()
+            
         except Exception as e:
-            logger.error(f"Error displaying base wizard: {e}")
+            logger.error(f"Error displaying enhanced wizard: {e}")
             # Reset flag on error so user can try again
             self._display_called = False
             # Fallback: Try to display components individually
@@ -212,6 +224,95 @@ class EnhancedMultiStepWizard:
             except Exception as e2:
                 logger.error(f"Fallback display also failed: {e2}")
                 self._display_called = False  # Reset on complete failure
+    
+    def _override_button_handlers(self):
+        """CRITICAL FIX: Override button handlers to use enhanced wizard methods."""
+        try:
+            # Find the navigation buttons in the main container
+            main_container = getattr(self.base_wizard, '_main_container', None)
+            if not main_container:
+                logger.warning("No _main_container found, searching for buttons in navigation widgets")
+                # Try to find buttons in navigation widgets
+                self._find_and_override_buttons_in_widgets()
+                return
+            
+            # Search for buttons in the main container
+            buttons_found = self._find_and_override_buttons_recursive(main_container)
+            
+            if buttons_found:
+                logger.debug(f"Successfully overridden {buttons_found} button handlers")
+            else:
+                logger.warning("No buttons found to override")
+                
+        except Exception as e:
+            logger.error(f"Error overriding button handlers: {e}")
+    
+    def _find_and_override_buttons_in_widgets(self):
+        """Find and override buttons in navigation widgets."""
+        try:
+            # Check if base wizard has navigation widgets created by display()
+            if hasattr(self.base_wizard, 'navigation_widgets'):
+                self._find_and_override_buttons_recursive(self.base_wizard.navigation_widgets)
+                return
+            
+            # Fallback: Look for button attributes directly
+            for attr_name in ['next_button', 'prev_button', 'finish_button']:
+                if hasattr(self.base_wizard, attr_name):
+                    button = getattr(self.base_wizard, attr_name)
+                    if button and hasattr(button, '_click_handlers'):
+                        self._override_single_button(button, attr_name)
+                        
+        except Exception as e:
+            logger.error(f"Error finding buttons in widgets: {e}")
+    
+    def _find_and_override_buttons_recursive(self, widget):
+        """Recursively find and override button handlers in widget tree."""
+        buttons_found = 0
+        
+        try:
+            # Check if this widget is a button
+            if hasattr(widget, 'description') and hasattr(widget, '_click_handlers'):
+                description = getattr(widget, 'description', '')
+                
+                if 'Next' in description:
+                    self._override_single_button(widget, 'next')
+                    buttons_found += 1
+                elif 'Previous' in description:
+                    self._override_single_button(widget, 'prev')
+                    buttons_found += 1
+                elif 'Complete Workflow' in description:
+                    self._override_single_button(widget, 'finish')
+                    buttons_found += 1
+            
+            # Recursively search children
+            if hasattr(widget, 'children'):
+                for child in widget.children:
+                    buttons_found += self._find_and_override_buttons_recursive(child)
+                    
+        except Exception as e:
+            logger.debug(f"Error in recursive button search: {e}")
+        
+        return buttons_found
+    
+    def _override_single_button(self, button, button_type):
+        """Override a single button's click handler."""
+        try:
+            # Clear existing handlers
+            button._click_handlers.callbacks.clear()
+            
+            # Add enhanced wizard handler based on button type
+            if button_type == 'next':
+                button.on_click(self._on_next_clicked)
+                logger.debug("Next button handler overridden to use enhanced wizard method")
+            elif button_type == 'prev':
+                button.on_click(self._on_prev_clicked)
+                logger.debug("Previous button handler overridden to use enhanced wizard method")
+            elif button_type == 'finish':
+                button.on_click(self._on_finish_clicked)
+                logger.debug("Finish button handler overridden to use enhanced wizard method")
+                
+        except Exception as e:
+            logger.error(f"Error overriding {button_type} button handler: {e}")
     
     # Ensure all navigation methods are properly delegated
     def _display_navigation(self):
