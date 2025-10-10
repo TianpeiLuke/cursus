@@ -781,6 +781,353 @@ class TestDataTransformationErrorHandling:
         assert mds_props["output_schema"] == []
 
 
+class TestDynamicDataSourcesIntegration:
+    """
+    PHASE 3 INTEGRATION TESTS: Dynamic Data Sources with Multiple Data Sources Support
+    
+    Following pytest best practices guides to test the enhanced _transform_cradle_form_data
+    method that now supports multiple data sources from DataSourcesManager.
+    
+    CRITICAL ERRORS PREVENTED:
+    - Category 1: Mock Path Issues - Mock at correct import locations
+    - Category 2: Mock Configuration - Proper side_effect setup for DataSourcesManager
+    - Category 4: Test Expectations vs Implementation - Based on actual source behavior
+    - Category 12: NoneType Attribute Access - Handle None values defensively
+    """
+    
+    @pytest.fixture
+    def multiple_data_sources_form_data(self):
+        """Create form data with multiple data sources from DataSourcesManager."""
+        # Following Category 7: Data Structure Fidelity pattern
+        # Based on actual DataSourcesManager.get_all_data_sources() output structure
+        return {
+            "job_type": "training",
+            "author": "test-user",
+            "bucket": "test-bucket",
+            "role": "arn:aws:iam::123456789012:role/test-role",
+            "region": "NA",
+            "service_name": "test-service",
+            "pipeline_version": "1.0.0",
+            "project_root_folder": "test-project",
+            "start_date": "2025-01-01T00:00:00",
+            "end_date": "2025-04-17T00:00:00",
+            "transform_sql": "SELECT mds.objectId, mds.transactionDate, edx.is_abuse FROM mds_source mds JOIN edx_source edx ON mds.objectId = edx.order_id",
+            "cradle_account": "Buyer-Abuse-RnD-Dev",
+            # PHASE 2 ENHANCEMENT: Multiple data sources from DataSourcesManager
+            "data_sources": [
+                {
+                    "data_source_type": "MDS",
+                    "data_source_name": "RAW_MDS_NA",
+                    "service_name": "AtoZ",
+                    "region": "NA",
+                    "output_schema": [
+                        {"field_name": "objectId", "field_type": "STRING"},
+                        {"field_name": "transactionDate", "field_type": "STRING"}
+                    ],
+                    "org_id": 0,
+                    "use_hourly_edx_data_set": False
+                },
+                {
+                    "data_source_type": "EDX",
+                    "data_source_name": "RAW_EDX_EU",
+                    "edx_provider": "provider1",
+                    "edx_subject": "subject1",
+                    "edx_dataset": "dataset1",
+                    "edx_manifest_key": '["manifest1"]',
+                    "schema_overrides": [
+                        {"field_name": "order_id", "field_type": "STRING"}
+                    ]
+                },
+                {
+                    "data_source_type": "ANDES",
+                    "data_source_name": "RAW_ANDES_NA",
+                    "provider": "provider-uuid-123",
+                    "table_name": "andes_table",
+                    "andes3_enabled": True
+                }
+            ]
+        }
+    
+    @pytest.fixture
+    def dynamic_data_sources_wizard(self):
+        """Create wizard for testing dynamic data sources integration."""
+        steps = [{"title": "Cradle Data Loading", "config_class": Mock(), "config_class_name": "CradleDataLoadingConfig"}]
+        return MultiStepWizard(steps)
+    
+    def test_transform_multiple_data_sources_structure(self, dynamic_data_sources_wizard, multiple_data_sources_form_data):
+        """Test transformation of multiple data sources maintains correct structure."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        # Based on PHASE 2 enhanced _transform_cradle_form_data implementation
+        result = dynamic_data_sources_wizard._transform_cradle_form_data(multiple_data_sources_form_data)
+        
+        # Verify top-level structure is maintained
+        assert isinstance(result, dict)
+        assert "data_sources_spec" in result
+        
+        # Verify multiple data sources are processed
+        data_sources_spec = result["data_sources_spec"]
+        assert "data_sources" in data_sources_spec
+        assert isinstance(data_sources_spec["data_sources"], list)
+        assert len(data_sources_spec["data_sources"]) == 3  # MDS + EDX + ANDES
+        
+        # Verify each data source has correct structure
+        data_sources = data_sources_spec["data_sources"]
+        
+        # Check MDS data source
+        mds_source = data_sources[0]
+        assert mds_source["data_source_type"] == "MDS"
+        assert mds_source["data_source_name"] == "RAW_MDS_NA"
+        assert "mds_data_source_properties" in mds_source
+        
+        # Check EDX data source
+        edx_source = data_sources[1]
+        assert edx_source["data_source_type"] == "EDX"
+        assert edx_source["data_source_name"] == "RAW_EDX_EU"
+        assert "edx_data_source_properties" in edx_source
+        
+        # Check ANDES data source
+        andes_source = data_sources[2]
+        assert andes_source["data_source_type"] == "ANDES"
+        assert andes_source["data_source_name"] == "RAW_ANDES_NA"
+        assert "andes_data_source_properties" in andes_source
+    
+    def test_transform_multiple_data_sources_type_specific_properties(self, dynamic_data_sources_wizard, multiple_data_sources_form_data):
+        """Test that multiple data sources have correct type-specific properties."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        result = dynamic_data_sources_wizard._transform_cradle_form_data(multiple_data_sources_form_data)
+        
+        data_sources = result["data_sources_spec"]["data_sources"]
+        
+        # Verify MDS-specific properties
+        mds_source = data_sources[0]
+        mds_props = mds_source["mds_data_source_properties"]
+        assert mds_props["service_name"] == "AtoZ"
+        assert mds_props["region"] == "NA"
+        assert mds_props["output_schema"] == [
+            {"field_name": "objectId", "field_type": "STRING"},
+            {"field_name": "transactionDate", "field_type": "STRING"}
+        ]
+        assert mds_props["org_id"] == 0
+        assert mds_props["use_hourly_edx_data_set"] is False
+        
+        # Verify EDX-specific properties
+        edx_source = data_sources[1]
+        edx_props = edx_source["edx_data_source_properties"]
+        assert edx_props["edx_provider"] == "provider1"
+        assert edx_props["edx_subject"] == "subject1"
+        assert edx_props["edx_dataset"] == "dataset1"
+        assert edx_props["edx_manifest_key"] == '["manifest1"]'
+        assert edx_props["schema_overrides"] == [
+            {"field_name": "order_id", "field_type": "STRING"}
+        ]
+        
+        # Verify ANDES-specific properties
+        andes_source = data_sources[2]
+        andes_props = andes_source["andes_data_source_properties"]
+        assert andes_props["provider"] == "provider-uuid-123"
+        assert andes_props["table_name"] == "andes_table"
+        assert andes_props["andes3_enabled"] is True
+    
+    def test_transform_empty_data_sources_fallback(self, dynamic_data_sources_wizard):
+        """Test transformation with empty data sources creates default MDS source."""
+        # Following Category 16: Exception Handling vs Test Expectations
+        # Based on PHASE 2 implementation: creates default MDS source when no data sources provided
+        form_data_no_sources = {
+            "job_type": "training",
+            "bucket": "test-bucket",
+            "project_root_folder": "test-project",
+            "data_sources": []  # Empty data sources list
+        }
+        
+        result = dynamic_data_sources_wizard._transform_cradle_form_data(form_data_no_sources)
+        
+        # Should create default MDS data source
+        data_sources = result["data_sources_spec"]["data_sources"]
+        assert len(data_sources) == 1
+        
+        default_source = data_sources[0]
+        assert default_source["data_source_type"] == "MDS"
+        assert default_source["data_source_name"] == "RAW_MDS_NA"
+        assert "mds_data_source_properties" in default_source
+        
+        # Verify default MDS properties
+        mds_props = default_source["mds_data_source_properties"]
+        assert mds_props["service_name"] == "AtoZ"
+        assert mds_props["region"] == "NA"
+        assert mds_props["output_schema"] == ["objectId", "transactionDate"]
+        assert mds_props["org_id"] == 0
+        assert mds_props["use_hourly_edx_data_set"] is False
+    
+    def test_transform_unknown_data_source_type_handling(self, dynamic_data_sources_wizard):
+        """Test transformation handles unknown data source types gracefully."""
+        # Following Category 16: Exception Handling vs Test Expectations
+        form_data_unknown_type = {
+            "job_type": "training",
+            "bucket": "test-bucket",
+            "project_root_folder": "test-project",
+            "data_sources": [
+                {
+                    "data_source_type": "UNKNOWN_TYPE",
+                    "data_source_name": "RAW_UNKNOWN_NA",
+                    "some_field": "some_value"
+                }
+            ]
+        }
+        
+        result = dynamic_data_sources_wizard._transform_cradle_form_data(form_data_unknown_type)
+        
+        # Should handle unknown type gracefully by defaulting to MDS
+        data_sources = result["data_sources_spec"]["data_sources"]
+        assert len(data_sources) == 1
+        
+        # Based on PHASE 2 implementation: unknown types default to MDS properties
+        unknown_source = data_sources[0]
+        assert unknown_source["data_source_type"] == "UNKNOWN_TYPE"  # Preserves original type
+        assert "mds_data_source_properties" in unknown_source  # But uses MDS properties as fallback
+        
+        # Verify fallback MDS properties are applied
+        mds_props = unknown_source["mds_data_source_properties"]
+        assert mds_props["service_name"] == "AtoZ"
+        assert mds_props["region"] == "NA"
+    
+    def test_save_current_step_with_data_sources_manager_integration(self, dynamic_data_sources_wizard):
+        """Test _save_current_step with DataSourcesManager integration."""
+        # Following Category 2: Mock Configuration pattern
+        # Test the PHASE 2 enhancement: special handling for DataSourcesManager
+        
+        # Create mock DataSourcesManager
+        mock_data_sources_manager = Mock()
+        mock_data_sources_manager.get_all_data_sources.return_value = [
+            {
+                "data_source_type": "MDS",
+                "data_source_name": "RAW_MDS_NA",
+                "service_name": "AtoZ",
+                "region": "NA"
+            },
+            {
+                "data_source_type": "EDX",
+                "data_source_name": "RAW_EDX_EU",
+                "edx_provider": "provider1",
+                "edx_subject": "subject1"
+            }
+        ]
+        
+        # Create step widget with DataSourcesManager
+        step_widget = Mock()
+        step_widget.widgets = {
+            "job_type": Mock(value="training"),
+            "data_sources": mock_data_sources_manager,  # DataSourcesManager instance
+            "transform_sql": Mock(value="SELECT * FROM test")
+        }
+        step_widget.fields = [
+            {"name": "job_type", "type": "radio"},
+            {"name": "data_sources", "type": "dynamic_data_sources"},
+            {"name": "transform_sql", "type": "code_editor"}
+        ]
+        
+        dynamic_data_sources_wizard.step_widgets[0] = step_widget
+        
+        # Mock ValidationService for CradleDataLoadingConfig
+        with patch('cursus.api.cradle_ui.services.validation_service.ValidationService') as mock_vs_class:
+            mock_service = Mock()
+            mock_config = Mock()
+            mock_service.build_final_config.return_value = mock_config
+            mock_vs_class.return_value = mock_service
+            
+            result = dynamic_data_sources_wizard._save_current_step()
+            
+            assert result is True
+            
+            # Verify DataSourcesManager.get_all_data_sources was called
+            mock_data_sources_manager.get_all_data_sources.assert_called_once()
+            
+            # Verify ValidationService was called with transformed data
+            mock_service.build_final_config.assert_called_once()
+            
+            # Verify config was stored
+            assert "Cradle Data Loading" in dynamic_data_sources_wizard.completed_configs
+            assert "CradleDataLoadingConfig" in dynamic_data_sources_wizard.completed_configs
+    
+    def test_backward_compatibility_single_data_source(self, dynamic_data_sources_wizard):
+        """Test backward compatibility with single data source configurations."""
+        # Following Category 4: Test Expectations vs Implementation pattern
+        # Ensure existing single data source workflows still work
+        
+        single_source_form_data = {
+            "job_type": "training",
+            "bucket": "test-bucket",
+            "project_root_folder": "test-project",
+            "data_sources": [
+                {
+                    "data_source_type": "MDS",
+                    "data_source_name": "RAW_MDS_NA",
+                    "service_name": "AtoZ",
+                    "region": "NA",
+                    "output_schema": ["objectId", "transactionDate"]
+                }
+            ]
+        }
+        
+        result = dynamic_data_sources_wizard._transform_cradle_form_data(single_source_form_data)
+        
+        # Should work exactly like before
+        assert "data_sources_spec" in result
+        data_sources = result["data_sources_spec"]["data_sources"]
+        assert len(data_sources) == 1
+        
+        mds_source = data_sources[0]
+        assert mds_source["data_source_type"] == "MDS"
+        assert mds_source["data_source_name"] == "RAW_MDS_NA"
+        assert "mds_data_source_properties" in mds_source
+        
+        mds_props = mds_source["mds_data_source_properties"]
+        assert mds_props["service_name"] == "AtoZ"
+        assert mds_props["region"] == "NA"
+        assert mds_props["output_schema"] == ["objectId", "transactionDate"]
+    
+    def test_validation_service_integration_multiple_data_sources(self, dynamic_data_sources_wizard, multiple_data_sources_form_data):
+        """Test ValidationService integration with multiple data sources transformation."""
+        # Following Category 1: Mock Path Precision pattern
+        # Test that ValidationService receives correctly transformed multiple data sources
+        
+        step_widget = Mock()
+        step_widget.widgets = {
+            "data_sources": Mock()
+        }
+        # Configure the data_sources widget to return multiple data sources
+        step_widget.widgets["data_sources"].get_all_data_sources.return_value = multiple_data_sources_form_data["data_sources"]
+        step_widget.fields = [{"name": "data_sources", "type": "dynamic_data_sources"}]
+        
+        dynamic_data_sources_wizard.step_widgets[0] = step_widget
+        
+        with patch('cursus.api.cradle_ui.services.validation_service.ValidationService') as mock_vs_class:
+            mock_service = Mock()
+            mock_config = Mock()
+            mock_service.build_final_config.return_value = mock_config
+            mock_vs_class.return_value = mock_service
+            
+            result = dynamic_data_sources_wizard._save_current_step()
+            
+            assert result is True
+            
+            # Verify ValidationService was called
+            mock_service.build_final_config.assert_called_once()
+            
+            # Get the ui_data that was passed to ValidationService
+            call_args = mock_service.build_final_config.call_args[0]
+            ui_data = call_args[0]
+            
+            # Verify ui_data contains multiple data sources
+            assert "data_sources_spec" in ui_data
+            assert len(ui_data["data_sources_spec"]["data_sources"]) == 3
+            
+            # Verify each data source type is present
+            data_source_types = [ds["data_source_type"] for ds in ui_data["data_sources_spec"]["data_sources"]]
+            assert "MDS" in data_source_types
+            assert "EDX" in data_source_types
+            assert "ANDES" in data_source_types
+
+
 class TestDataTransformationValidationServiceIntegration:
     """Test integration with ValidationService based on actual source implementation."""
     
