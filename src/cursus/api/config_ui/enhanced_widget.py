@@ -168,8 +168,19 @@ class EnhancedMultiStepWizard:
         return self.base_wizard._get_step_values(step)
     
     def _update_navigation_and_step(self):
-        """Delegate to base wizard's _update_navigation_and_step method."""
-        return self.base_wizard._update_navigation_and_step()
+        """Update navigation and step display for enhanced wizard."""
+        # Force state synchronization first
+        self._force_sync_state()
+        
+        # Update the current step display in the base wizard's output
+        try:
+            with self.base_wizard.output:
+                from IPython.display import clear_output
+                clear_output(wait=True)
+                self.base_wizard._display_current_step()
+            logger.debug("Enhanced wizard step display updated successfully")
+        except Exception as e:
+            logger.error(f"Error updating enhanced wizard step display: {e}")
     
     def display(self):
         """ANTI-DUPLICATION SOLUTION: Display the enhanced wizard with duplication prevention."""
@@ -219,10 +230,29 @@ class EnhancedMultiStepWizard:
         return result
     
     def _on_next_clicked(self, button):
-        """Delegate next button click to base wizard with state sync."""
+        """Delegate next button click to base wizard with detailed logging and state sync."""
+        logger.info(f"🔘 ENHANCED: Next button clicked - Enhanced step: {self.current_step}, Base step: {self.base_wizard.current_step}")
+        
+        # Get current step info for logging
+        if self.current_step < len(self.steps):
+            current_step_info = self.steps[self.current_step]
+            logger.info(f"🔘 ENHANCED: Current step details: {current_step_info['title']} ({current_step_info['config_class_name']})")
+        
+        # Log the delegation
+        logger.info(f"🔘 ENHANCED: Delegating to base wizard _on_next_clicked...")
+        
+        # Delegate to base wizard
         result = self.base_wizard._on_next_clicked(button)
+        
+        logger.info(f"🔘 ENHANCED: Base wizard returned: {result}")
+        logger.info(f"🔘 ENHANCED: After delegation - Enhanced step: {self.current_step}, Base step: {self.base_wizard.current_step}")
+        
         # Force state synchronization after navigation
+        logger.info(f"🔘 ENHANCED: Calling _force_sync_state()...")
         self._force_sync_state()
+        
+        logger.info(f"🔘 ENHANCED: After sync - Enhanced step: {self.current_step}, Base step: {self.base_wizard.current_step}")
+        
         return result
     
     def _on_finish_clicked(self, button):

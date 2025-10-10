@@ -1519,13 +1519,61 @@ class MultiStepWizard:
             self._show_validation_error("Please fix validation errors before navigating")
     
     def _on_next_clicked(self, button):
-        """Handle next button click."""
-        # Save current step
-        if self._save_current_step():
+        """Handle next button click with detailed logging."""
+        logger.info(f"🔘 Next button clicked - Current step: {self.current_step}")
+        
+        # Get current step info for logging
+        if self.current_step < len(self.steps):
+            current_step_info = self.steps[self.current_step]
+            logger.info(f"🔘 Current step details: {current_step_info['title']} ({current_step_info['config_class_name']})")
+        
+        # Save current step with detailed logging
+        logger.info(f"🔘 Attempting to save current step {self.current_step}...")
+        save_result = self._save_current_step()
+        logger.info(f"🔘 Save result for step {self.current_step}: {save_result}")
+        
+        if save_result:
+            logger.info(f"✅ Step {self.current_step} saved successfully")
+            
             if self.current_step < len(self.steps) - 1:
+                old_step = self.current_step
                 self.current_step += 1
+                
+                # Get next step info for logging
+                next_step_info = self.steps[self.current_step]
+                logger.info(f"🔘 Navigating from step {old_step} to step {self.current_step}")
+                logger.info(f"🔘 Next step details: {next_step_info['title']} ({next_step_info['config_class_name']})")
+                
                 # Update navigation and current step without full redisplay
+                logger.info(f"🔘 Calling _update_navigation_and_step()...")
                 self._update_navigation_and_step()
+                logger.info(f"✅ Navigation update completed for step {self.current_step}")
+            else:
+                logger.info(f"🔘 Already at final step {self.current_step}, no navigation needed")
+        else:
+            logger.error(f"❌ Failed to save step {self.current_step}, navigation blocked")
+            
+            # Get detailed error info
+            if self.current_step < len(self.steps):
+                failed_step_info = self.steps[self.current_step]
+                logger.error(f"❌ Failed step details: {failed_step_info['title']} ({failed_step_info['config_class_name']})")
+                
+                # Check if widget exists and can provide more info
+                if self.current_step in self.step_widgets:
+                    step_widget = self.step_widgets[self.current_step]
+                    logger.error(f"❌ Widget exists for failed step: {type(step_widget)}")
+                    
+                    # Try to get config to see what fails
+                    try:
+                        config_instance = step_widget.get_config()
+                        if config_instance:
+                            logger.error(f"❌ Widget has config instance: {type(config_instance)}")
+                        else:
+                            logger.error(f"❌ Widget get_config() returned None - this is the issue!")
+                    except Exception as e:
+                        logger.error(f"❌ Widget get_config() failed: {e}")
+                else:
+                    logger.error(f"❌ No widget found for failed step {self.current_step}")
     
     def _update_navigation_and_step(self):
         """HOLISTIC SOLUTION: Update navigation and step using widget replacement - ZERO display() calls."""
@@ -1569,11 +1617,16 @@ class MultiStepWizard:
     
     def _save_current_step(self) -> bool:
         """Save the current step configuration with enhanced data transformation and ValidationService integration."""
+        logger.info(f"🔍 _save_current_step called for step {self.current_step}")
+        
         if self.current_step not in self.step_widgets:
+            logger.info(f"✅ No widget for step {self.current_step}, returning True")
             return True
         
         step_widget = self.step_widgets[self.current_step]
         step = self.steps[self.current_step]
+        
+        logger.info(f"🔍 Saving step {self.current_step}: {step['title']} ({step['config_class_name']})")
         
         try:
             # Check if this is a specialized widget step
