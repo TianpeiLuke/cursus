@@ -1892,7 +1892,90 @@ The comprehensive analysis reveals that **the hybrid approach with sub-config gr
 - **Maintainable Architecture**: Clear separation between static and dynamic sections
 - **Extensible Design**: Easy to add new data source types or dynamic sections
 
-## Key Findings and Recommendations
+## Key Findings and Learnings
+
+### **🎉 IMPLEMENTATION COMPLETE: Holistic Refactor with Field Partitioning Success**
+
+**Date: 2025-10-09 22:30 PST**
+
+Our comprehensive refactor has been **successfully completed** with all major UI/UX issues resolved and a critical field partitioning breakthrough achieved.
+
+### **🔴 CRITICAL FIX: UniversalConfigCore Parameter Propagation**
+
+**The Most Important Fix**: The critical issue was that **UniversalConfigCore instances were not being passed through the widget creation chain**, causing field definitions to use default discovery instead of the curated field definitions.
+
+**Root Cause**: Widget creation methods were not propagating the `config_core` parameter, so widgets were creating new UniversalConfigCore instances instead of using the one with curated field definitions.
+
+**Solution Implemented**: **Complete Parameter Propagation Chain**
+
+```python
+# File 1: src/cursus/api/config_ui/core/core.py - CRITICAL FIXES
+def create_config_widget(self, config_class_name: str, ...):
+    # CRITICAL FIX: Pass config_core to widget
+    return UniversalConfigWidget(form_data, config_core=self)
+
+def create_pipeline_config_widget(self, pipeline_dag, base_config, ...):
+    # CRITICAL FIX: Pass config_core to MultiStepWizard
+    return MultiStepWizard(..., core=self)
+
+# File 2: src/cursus/api/config_ui/widgets/widget.py - CRITICAL FIXES
+def __init__(self, form_data: Dict[str, Any], is_final_step: bool = True, config_core=None):
+    # CRITICAL FIX: Store config_core for field definitions
+    self.config_core = config_core
+
+def _create_field_sections_by_subconfig(self):
+    # CRITICAL FIX: Pass the config_core instance to get correct field definitions
+    field_blocks = get_cradle_fields_by_sub_config(config_core=self.config_core)
+
+def _create_dynamic_data_sources_widget(self, field: Dict):
+    # CRITICAL FIX: Pass config_core to DataSourcesManager
+    data_sources_manager = DataSourcesManager(initial_data, config_core=self.config_core)
+```
+
+**Impact**: This fix ensures that **curated field definitions are actually used** instead of being overridden by default discovery. Without this fix, all our field partitioning and UI improvements would be ignored.
+
+### **✅ CRITICAL BREAKTHROUGH: Field Partitioning Architecture**
+
+**Problem Identified**: The Job Configuration section was incorrectly displaying ALL fields from CradleDataLoadingConfig instead of just root-level fields, causing confusion and poor UX.
+
+**Root Cause**: The field discovery logic was not properly partitioning fields by their source (Pydantic sub-config, inherited, or truly root-level).
+
+**Solution Implemented**: **3-Way Field Partitioning Strategy**
+
+```python
+# FIELD PARTITIONING: Get root-level fields using exclusion-based filtering
+if cradle_config_class:
+    # Step 1: Build exclusion list of all fields that belong to sub-configs or are inherited
+    excluded_field_names = set()
+    
+    # Add all inherited field names to exclusion list
+    for inherited_field in field_blocks["inherited"]:
+        excluded_field_names.add(inherited_field["name"])
+    
+    # Add all sub-config field names to exclusion list
+    for section_name in ["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"]:
+        for field in field_blocks[section_name]:
+            excluded_field_names.add(field["name"])
+    
+    # Add sub-config object names themselves to exclusion list
+    excluded_field_names.update(["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"])
+    
+    # Step 2: Get all fields from main config and filter out excluded ones
+    main_fields = config_core._get_form_fields(cradle_config_class, _recursion_guard)
+    for field in main_fields:
+        field_name = field["name"]
+        # CLEAN PARTITIONING: Only include fields that are truly root-level
+        if field_name not in excluded_field_names:
+            field["section"] = "root"
+            field["tier"] = "essential" if field.get("required", False) else "system"
+            field_blocks["root"].append(field)
+```
+
+**Test Results**: ✅ **FIELD PARTITIONING TEST COMPLETE!**
+- **Job Configuration Section**: Now contains only truly root-level fields (like `job_type`)
+- **Clean Separation**: Each field appears in exactly one section
+- **No Field Overlap**: Zero duplicate field assignments detected
+- **Proper Section Organization**: All sub-config fields correctly placed in their respective sections
 
 ### **✅ CRITICAL DISCOVERY: Step Catalog Config Discovery Works Perfectly**
 

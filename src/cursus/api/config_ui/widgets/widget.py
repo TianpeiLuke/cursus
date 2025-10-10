@@ -50,13 +50,14 @@ logger = logging.getLogger(__name__)
 class UniversalConfigWidget:
     """Universal configuration widget for any config type."""
     
-    def __init__(self, form_data: Dict[str, Any], is_final_step: bool = True):
+    def __init__(self, form_data: Dict[str, Any], is_final_step: bool = True, config_core=None):
         """
         Initialize universal configuration widget.
         
         Args:
             form_data: Form data containing config class, fields, values, etc.
             is_final_step: Whether this is the final step in a multi-step wizard
+            config_core: UniversalConfigCore instance for field definitions (CRITICAL FIX)
         """
         self.form_data = form_data
         self.config_class = form_data["config_class"]
@@ -66,6 +67,9 @@ class UniversalConfigWidget:
         self.pre_populated_instance = form_data.get("pre_populated_instance")
         self.is_final_step = is_final_step
         
+        # CRITICAL FIX: Store config_core for field definitions
+        self.config_core = config_core
+        
         self.widgets = {}
         self.config_instance = None
         self.output = widgets.Output()
@@ -74,7 +78,7 @@ class UniversalConfigWidget:
         self._is_rendered = False  # Track if content has been rendered
         self._is_displayed = False  # Track if output has been displayed
         
-        logger.info(f"UniversalConfigWidget initialized for {self.config_class_name}")
+        logger.info(f"UniversalConfigWidget initialized for {self.config_class_name} with config_core: {config_core is not None}")
     
     def render(self):
         """ROBUST SOLUTION: Render widget content (internal method)."""
@@ -107,39 +111,6 @@ class UniversalConfigWidget:
                 system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') not in ['essential', 'inherited'])]
                 
                 form_sections = self._create_field_sections_by_tier(inherited_fields, essential_fields, system_fields)
-            
-            # NEW: Inherited Fields Section (Tier 3) - Smart Default Value Inheritance ⭐
-            if inherited_fields:
-                inherited_section = self._create_field_section(
-                    "💾 Inherited Fields (Tier 3) - Smart Defaults",
-                    inherited_fields,
-                    "linear-gradient(135deg, #f0f8ff 0%, #e0f2fe 100%)",
-                    "#007bff",
-                    "Auto-filled from parent configurations - can be overridden if needed"
-                )
-                form_sections.append(inherited_section)
-            
-            # Essential Fields Section (Tier 1)
-            if essential_fields:
-                essential_section = self._create_field_section(
-                    "🔥 Essential User Inputs (Tier 1)",
-                    essential_fields,
-                    "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
-                    "#f59e0b",
-                    "Required fields that must be filled by user"
-                )
-                form_sections.append(essential_section)
-            
-            # System Fields Section (Tier 2)
-            if system_fields:
-                system_section = self._create_field_section(
-                    "⚙️ System Inputs (Tier 2)",
-                    system_fields,
-                    "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
-                    "#3b82f6",
-                    "Optional fields with defaults, user-modifiable"
-                )
-                form_sections.append(system_section)
             
             # Legacy Inherited Configuration Display (for backward compatibility)
             legacy_inherited_section = self._create_inherited_section()
@@ -281,12 +252,22 @@ class UniversalConfigWidget:
             )
         elif field_type == "code_editor":
             # NEW: Enhanced code editor field widget (textarea with SQL syntax)
+            # Special handling for transform_sql to give it a much larger window
+            if field_name == "transform_sql":
+                height = '300px'  # Much larger for SQL editing
+                width = '900px'   # Wider for SQL queries
+                placeholder = "Enter your SQL transformation query here...\n\nExample:\nSELECT objectId, transactionDate, is_abuse\nFROM input_data\nWHERE transactionDate >= '2025-01-01'\nAND is_abuse IS NOT NULL"
+            else:
+                height = field.get('height', '150px')
+                width = '800px'
+                placeholder = f"Enter {field.get('language', 'code')}..."
+            
             widget = widgets.Textarea(
                 value=str(current_value) if current_value else field.get("default", ""),
-                placeholder=f"Enter {field.get('language', 'code')}...",
+                placeholder=placeholder,
                 description=f"{emoji_icon} {field_name}{required_indicator}:",
                 style={'description_width': '200px'},
-                layout=widgets.Layout(width='800px', height=field.get('height', '150px'), margin='5px 0')
+                layout=widgets.Layout(width=width, height=height, margin='5px 0')
             )
         elif field_type == "tag_list":
             # NEW: Enhanced tag list field widget (comma-separated values)
@@ -587,14 +568,21 @@ class UniversalConfigWidget:
         try:
             from ..core.field_definitions import get_cradle_fields_by_sub_config, get_sub_config_section_metadata
             
-            # Get field blocks organized by sub-config
-            field_blocks = get_cradle_fields_by_sub_config()
+            # CRITICAL FIX: Pass the config_core instance to get the correct field definitions
+            field_blocks = get_cradle_fields_by_sub_config(config_core=self.config_core)
             section_metadata = get_sub_config_section_metadata()
+            
+            logger.info(f"Using config_core: {self.config_core is not None} for field definitions")
             
             form_sections = []
             
-            # Create sections in the desired order
-            section_order = ["inherited", "root", "data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"]
+            # Create sections in the requested order:
+            # 1. Data Sources Specification 
+            # 2. Transform Specification 
+            # 3. Output Specification
+            # 4. Cradle Job Specification
+            # 5. Inherited Configuration
+            section_order = ["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec", "inherited"]
             
             for section_name in section_order:
                 if section_name in field_blocks and field_blocks[section_name]:
@@ -610,6 +598,21 @@ class UniversalConfigWidget:
                         metadata.get("description", f"Configure {section_name} settings")
                     )
                     form_sections.append(section)
+            
+            # Add root fields if they exist (job_type, etc.)
+            if "root" in field_blocks and field_blocks["root"]:
+                root_fields = field_blocks["root"]
+                root_metadata = section_metadata.get("root", {})
+                
+                root_section = self._create_field_section(
+                    root_metadata.get("title", "🎯 Job Configuration"),
+                    root_fields,
+                    root_metadata.get("bg_gradient", "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"),
+                    root_metadata.get("border_color", "#f59e0b"),
+                    root_metadata.get("description", "Select job type and advanced options")
+                )
+                # Insert root section at the beginning
+                form_sections.insert(0, root_section)
             
             logger.info(f"Created {len(form_sections)} sub-config sections for CradleDataLoadingConfig")
             return form_sections
@@ -1280,6 +1283,24 @@ class MultiStepWizard:
         
         return fields
     
+    def _find_base_config(self) -> Optional[Any]:
+        """Find base config under any of the possible keys - robust key resolution."""
+        possible_keys = [
+            "BasePipelineConfig",           # Class name
+            "Base Configuration",           # Step title variant 1
+            "Base Pipeline Configuration",  # Step title variant 2
+            "Base Config",                  # Step title variant 3
+        ]
+        
+        for key in possible_keys:
+            if key in self.completed_configs:
+                logger.debug(f"Found base config under key: '{key}'")
+                return self.completed_configs[key]
+        
+        logger.warning(f"Base config not found under any of these keys: {possible_keys}")
+        logger.debug(f"Available keys in completed_configs: {list(self.completed_configs.keys())}")
+        return None
+    
     def _create_inheritance_analysis(self, config_class_name: str) -> Dict[str, Any]:
         """Create inheritance analysis on-the-fly using StepCatalog and completed configs."""
         try:
@@ -1320,12 +1341,16 @@ class MultiStepWizard:
             }
     
     def _get_step_values(self, step: Dict[str, Any]) -> Dict[str, Any]:
-        """Get pre-populated values for a step with auto-fill support for base_config."""
-        # NEW: Auto-fill first step with base_config values if it's BasePipelineConfig
+        """Get pre-populated values for a step with robust base config lookup and universal inherited field population."""
         step_index = self.steps.index(step) if step in self.steps else -1
+        config_class_name = step["config_class_name"]
+        
+        logger.info(f"🔍 Getting step values for {config_class_name} (step {step_index + 1})")
+        
+        # Auto-fill first step with base_config values if it's BasePipelineConfig
         if (step_index == 0 and 
             self.base_config and 
-            step["config_class_name"] == "BasePipelineConfig"):
+            config_class_name == "BasePipelineConfig"):
             
             logger.info(f"Auto-filling first step with base_config values: {type(self.base_config)}")
             
@@ -1342,17 +1367,58 @@ class MultiStepWizard:
             else:
                 logger.warning("base_config has no model_dump() or __dict__ method")
         
+        # UNIVERSAL INHERITED FIELD POPULATION: Use robust base config lookup for any step with inherited fields
+        base_config_instance = self._find_base_config()
+        if base_config_instance:
+            logger.info(f"Found base config for {config_class_name} - extracting inherited values")
+            
+            # Extract inherited values from base config
+            inherited_values = {}
+            if hasattr(base_config_instance, 'model_dump'):
+                inherited_values = base_config_instance.model_dump()
+                logger.debug(f"Extracted {len(inherited_values)} inherited values using model_dump()")
+            elif hasattr(base_config_instance, '__dict__'):
+                inherited_values = {k: v for k, v in base_config_instance.__dict__.items() 
+                                  if not k.startswith('_') and v is not None}
+                logger.debug(f"Extracted {len(inherited_values)} inherited values using __dict__")
+            
+            # Add step-specific defaults for CradleDataLoadingConfig
+            if config_class_name == "CradleDataLoadingConfig":
+                step_values = inherited_values.copy()
+                step_values.update({
+                    "job_type": "training",
+                    "start_date": "2025-01-01T00:00:00",
+                    "end_date": "2025-04-17T00:00:00",
+                    "transform_sql": "SELECT * FROM input_data",
+                    "output_schema": ["objectId", "transactionDate", "is_abuse"],
+                    "output_format": "PARQUET",
+                    "cradle_account": "Buyer-Abuse-RnD-Dev",
+                    "cluster_type": "STANDARD"
+                })
+                logger.info(f"Auto-filled {config_class_name} with {len(step_values)} values including {len(inherited_values)} inherited values")
+                return step_values
+            else:
+                # For other config types, just return inherited values
+                logger.info(f"Auto-filled {config_class_name} with {len(inherited_values)} inherited values")
+                return inherited_values
+        else:
+            logger.debug(f"No base config found for {config_class_name} - checking other sources")
+        
         # Check for pre-populated instance
         if "pre_populated" in step and step["pre_populated"]:
             instance = step["pre_populated"]
             if hasattr(instance, 'model_dump'):
-                return instance.model_dump()
+                values = instance.model_dump()
+                logger.debug(f"Using pre-populated instance with {len(values)} values")
+                return values
             else:
                 return {}
         
         # Check for pre-populated data
         if "pre_populated_data" in step and step["pre_populated_data"]:
-            return step["pre_populated_data"]
+            values = step["pre_populated_data"]
+            logger.debug(f"Using pre-populated data with {len(values)} values")
+            return values
         
         # Try to create from base config
         if "base_config" in step and step["base_config"]:
@@ -1363,10 +1429,13 @@ class MultiStepWizard:
                 try:
                     instance = config_class.from_base_config(base_config)
                     if hasattr(instance, 'model_dump'):
-                        return instance.model_dump()
+                        values = instance.model_dump()
+                        logger.debug(f"Created from base config with {len(values)} values")
+                        return values
                 except Exception as e:
                     logger.warning(f"Failed to create from base config: {e}")
         
+        logger.debug(f"No values found for {config_class_name} - returning empty dict")
         return {}
     
     def _on_prev_clicked(self, button):

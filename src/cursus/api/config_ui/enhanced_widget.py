@@ -155,26 +155,44 @@ class EnhancedMultiStepWizard:
         
         logger.info("EnhancedMultiStepWizard wrapper initialized")
     
+    def _find_base_config(self):
+        """Delegate to base wizard's _find_base_config method."""
+        return self.base_wizard._find_base_config()
+    
+    def _get_step_values(self, step):
+        """Delegate to base wizard's _get_step_values method."""
+        return self.base_wizard._get_step_values(step)
+    
     def display(self):
-        """ROBUST SOLUTION: Display the enhanced wizard with SageMaker optimizations."""
+        """ANTI-DUPLICATION SOLUTION: Display the enhanced wizard with duplication prevention."""
+        # Check if already displayed to prevent duplication
+        if hasattr(self, '_display_called') and self._display_called:
+            logger.debug("Display already called, skipping to prevent duplication")
+            return
+        
         # Apply SageMaker clipboard optimizations (silent)
         self.sagemaker_opts.enhance_clipboard_support()
         
-        # FIXED: Only call base wizard display - it handles everything
-        # The base wizard already includes navigation, progress, and content
-        # Adding extra display calls causes duplication
+        # Mark as displayed to prevent future duplications
+        self._display_called = True
+        
+        # ANTI-DUPLICATION: Only call base wizard display once
         try:
             self.base_wizard.display()
             logger.debug("Base wizard display() called successfully")
         except Exception as e:
             logger.error(f"Error displaying base wizard: {e}")
+            # Reset flag on error so user can try again
+            self._display_called = False
             # Fallback: Try to display components individually
             try:
                 display(self.base_wizard.navigation_output)
                 display(self.base_wizard.output)
                 logger.debug("Fallback display successful")
+                self._display_called = True  # Mark as successful
             except Exception as e2:
                 logger.error(f"Fallback display also failed: {e2}")
+                self._display_called = False  # Reset on complete failure
     
     # Ensure all navigation methods are properly delegated
     def _display_navigation(self):
@@ -231,6 +249,7 @@ class EnhancedMultiStepWizard:
         """
         display(HTML(help_html))
     
+    
     def get_completed_configs(self) -> List[BasePipelineConfig]:
         """
         Get completed configurations using existing method (100% reuse).
@@ -256,20 +275,24 @@ class EnhancedMultiStepWizard:
         
         # Use existing merge_and_save_configs functionality
         try:
-            from ...core.config_fields import merge_and_save_configs
+            from ...steps.configs import merge_and_save_configs
             
             config_list = self.get_completed_configs()
-            merged_config_path = merge_and_save_configs(
+            merged_config_result = merge_and_save_configs(
                 config_list=config_list,
-                filename=filename
+                output_file=filename
             )
             
             # Enhanced result with metadata
+            # The function returns a dict, so we need to handle the filename properly
+            from pathlib import Path
+            file_path = Path(filename)
+            
             result = {
                 "success": True,
-                "filename": merged_config_path.name,
-                "file_path": str(merged_config_path),
-                "file_size": merged_config_path.stat().st_size,
+                "filename": file_path.name,
+                "file_path": str(file_path),
+                "file_size": file_path.stat().st_size,
                 "config_count": len(config_list),
                 "sagemaker_optimized": True
             }
@@ -322,10 +345,6 @@ class EnhancedMultiStepWizard:
         else:
             return f"{size_bytes / (1024 * 1024):.1f} MB"
     
-    # Delegate all other methods to base wizard
-    def __getattr__(self, name):
-        """Delegate unknown attributes to base wizard."""
-        return getattr(self.base_wizard, name)
 
 
 class SageMakerOptimizations:

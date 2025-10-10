@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_cradle_fields_by_sub_config(config_core=None) -> Dict[str, List[Dict[str, Any]]]:
+def get_cradle_fields_by_sub_config(config_core=None, _recursion_guard=None) -> Dict[str, List[Dict[str, Any]]]:
     """
     Get Cradle Data Loading fields organized by major sub-config blocks.
     
@@ -62,7 +62,7 @@ def get_cradle_fields_by_sub_config(config_core=None) -> Dict[str, List[Dict[str
     # Get inherited fields from BasePipelineConfig
     base_config_class = all_config_classes.get("BasePipelineConfig")
     if base_config_class:
-        inherited_fields = config_core._get_form_fields(base_config_class)
+        inherited_fields = config_core._get_form_fields(base_config_class, _recursion_guard)
         for field in inherited_fields:
             field["section"] = "inherited"
             field["tier"] = "inherited"
@@ -70,14 +70,19 @@ def get_cradle_fields_by_sub_config(config_core=None) -> Dict[str, List[Dict[str
     
     # Get data sources specification fields
     if data_sources_spec_class:
-        ds_fields = config_core._get_form_fields(data_sources_spec_class)
+        ds_fields = config_core._get_form_fields(data_sources_spec_class, _recursion_guard)
         for field in ds_fields:
+            # CRITICAL FIX: Skip the original data_sources field - we'll replace it with dynamic version
+            if field["name"] == "data_sources":
+                logger.info(f"Skipping original data_sources field (type: {field.get('type')}) - will be replaced with dynamic version")
+                continue
+                
             field["section"] = "data_sources_spec"
             # Set tier based on field requirements
             field["tier"] = "essential" if field.get("required", False) else "system"
             field_blocks["data_sources_spec"].append(field)
     
-    # Add the special dynamic data sources field
+    # Add the special dynamic data sources field (this replaces the original data_sources field)
     dynamic_data_sources_field = {
         "name": "data_sources",
         "type": "dynamic_data_sources",
@@ -88,17 +93,33 @@ def get_cradle_fields_by_sub_config(config_core=None) -> Dict[str, List[Dict[str
     }
     field_blocks["data_sources_spec"].append(dynamic_data_sources_field)
     
+    # Remove any duplicate data_sources fields from ALL sections to avoid conflicts
+    for section_name, fields in field_blocks.items():
+        original_count = len(fields)
+        field_blocks[section_name] = [f for f in fields if not (f.get("name") == "data_sources" and f.get("type") != "dynamic_data_sources")]
+        removed_count = original_count - len(field_blocks[section_name])
+        if removed_count > 0:
+            logger.info(f"Removed {removed_count} duplicate data_sources fields from {section_name} section")
+    
     # Get transform specification fields
     if transform_spec_class:
-        transform_fields = config_core._get_form_fields(transform_spec_class)
+        transform_fields = config_core._get_form_fields(transform_spec_class, _recursion_guard)
         for field in transform_fields:
             field["section"] = "transform_spec"
             field["tier"] = "essential" if field.get("required", False) else "system"
+            
+            # CRITICAL FIX: Override transform_sql to be code_editor type with larger window
+            if field["name"] == "transform_sql":
+                field["type"] = "code_editor"
+                field["language"] = "sql"
+                field["height"] = "300px"
+                field["description"] = "SQL transformation query to process the input data"
+            
             field_blocks["transform_spec"].append(field)
     
     # Get output specification fields
     if output_spec_class:
-        output_fields = config_core._get_form_fields(output_spec_class)
+        output_fields = config_core._get_form_fields(output_spec_class, _recursion_guard)
         for field in output_fields:
             field["section"] = "output_spec"
             field["tier"] = "essential" if field.get("required", False) else "system"
@@ -106,22 +127,43 @@ def get_cradle_fields_by_sub_config(config_core=None) -> Dict[str, List[Dict[str
     
     # Get cradle job specification fields
     if cradle_job_spec_class:
-        job_fields = config_core._get_form_fields(cradle_job_spec_class)
+        job_fields = config_core._get_form_fields(cradle_job_spec_class, _recursion_guard)
         for field in job_fields:
             field["section"] = "cradle_job_spec"
             field["tier"] = "essential" if field.get("required", False) else "system"
             field_blocks["cradle_job_spec"].append(field)
     
-    # Get root-level fields from main config (excluding sub-configs)
+    # FIELD PARTITIONING: Get root-level fields using exclusion-based filtering
     if cradle_config_class:
-        main_fields = config_core._get_form_fields(cradle_config_class)
+        # Step 1: Build exclusion list of all fields that belong to sub-configs or are inherited
+        excluded_field_names = set()
+        
+        # Add all inherited field names to exclusion list
+        for inherited_field in field_blocks["inherited"]:
+            excluded_field_names.add(inherited_field["name"])
+        
+        # Add all sub-config field names to exclusion list
+        for section_name in ["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"]:
+            for field in field_blocks[section_name]:
+                excluded_field_names.add(field["name"])
+        
+        # Add sub-config object names themselves to exclusion list
+        excluded_field_names.update(["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"])
+        
+        logger.info(f"Field partitioning: excluding {len(excluded_field_names)} fields from root section: {sorted(excluded_field_names)}")
+        
+        # Step 2: Get all fields from main config and filter out excluded ones
+        main_fields = config_core._get_form_fields(cradle_config_class, _recursion_guard)
         for field in main_fields:
             field_name = field["name"]
-            # Only include fields that are not sub-config objects
-            if field_name not in ["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"]:
+            # CLEAN PARTITIONING: Only include fields that are truly root-level
+            if field_name not in excluded_field_names:
                 field["section"] = "root"
                 field["tier"] = "essential" if field.get("required", False) else "system"
                 field_blocks["root"].append(field)
+                logger.info(f"Added root-level field: {field_name}")
+            else:
+                logger.debug(f"Excluded field from root section: {field_name} (belongs to sub-config or inherited)")
     
     logger.info(f"Generated field blocks using discovery-based approach:")
     for block_name, fields in field_blocks.items():

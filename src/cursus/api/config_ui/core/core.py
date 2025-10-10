@@ -162,7 +162,7 @@ class UniversalConfigCore:
         
         # Import here to avoid circular imports
         from ..widgets.widget import UniversalConfigWidget
-        return UniversalConfigWidget(form_data)
+        return UniversalConfigWidget(form_data, config_core=self)
     
     def create_pipeline_config_widget(self, 
                                     pipeline_dag: Any, 
@@ -266,51 +266,70 @@ class UniversalConfigCore:
         
         # Import here to avoid circular imports
         from ..widgets.widget import MultiStepWizard
-        return MultiStepWizard(workflow_steps, base_config=base_config, processing_config=processing_config, enable_inheritance=enable_inheritance)
+        return MultiStepWizard(workflow_steps, base_config=base_config, processing_config=processing_config, enable_inheritance=enable_inheritance, core=self)
     
-    def _get_form_fields(self, config_class: Type[BasePipelineConfig]) -> List[Dict[str, Any]]:
+    def _get_form_fields(self, config_class: Type[BasePipelineConfig], _recursion_guard: Optional[set] = None) -> List[Dict[str, Any]]:
         """
         Extract form fields from Pydantic model with 3-tier categorization.
         
         Args:
             config_class: Configuration class to analyze
+            _recursion_guard: Internal parameter to prevent infinite recursion
             
         Returns:
             List of field definitions for form generation
         """
         config_class_name = config_class.__name__
         
+        # Initialize recursion guard
+        if _recursion_guard is None:
+            _recursion_guard = set()
+        
+        # Check for recursion
+        if config_class_name in _recursion_guard:
+            logger.warning(f"🔄 Recursion detected for {config_class_name}, using standard field discovery")
+            field_categories = self._categorize_fields(config_class)
+            return self._get_form_fields_with_tiers(config_class, field_categories)
+        
+        # Add to recursion guard
+        _recursion_guard.add(config_class_name)
+        
         logger.info(f"🔍 _get_form_fields called for {config_class_name}")
         
-        # Special handling for CradleDataLoadingConfig - use discovery-based sub-config organization
-        if config_class_name == "CradleDataLoadingConfig":
-            logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using discovery-based sub-config organization")
-            try:
-                from .field_definitions import get_cradle_fields_by_sub_config
-                field_blocks = get_cradle_fields_by_sub_config(config_core=self)
-                
-                # Convert sub-config blocks to flat field list for backward compatibility
-                fields = []
-                for block_name, block_fields in field_blocks.items():
-                    fields.extend(block_fields)
-                
-                logger.info(f"✅ Successfully imported discovery-based field definitions for {config_class_name}: {len(fields)} fields from {len(field_blocks)} blocks")
-                logger.info(f"📊 Field blocks: {[(name, len(block_fields)) for name, block_fields in field_blocks.items()]}")
-                logger.info(f"📋 First few fields: {[f['name'] for f in fields[:5]]}")
-                return fields
-            except ImportError as e:
-                logger.error(f"❌ Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")
-        else:
-            logger.info(f"ℹ️ {config_class_name} does not match CradleDataLoadingConfig - using standard field discovery")
+        try:
+            # Special handling for CradleDataLoadingConfig - use discovery-based sub-config organization
+            if config_class_name == "CradleDataLoadingConfig":
+                logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using discovery-based sub-config organization")
+                try:
+                    from .field_definitions import get_cradle_fields_by_sub_config
+                    field_blocks = get_cradle_fields_by_sub_config(config_core=self, _recursion_guard=_recursion_guard)
+                    
+                    # Convert sub-config blocks to flat field list for backward compatibility
+                    fields = []
+                    for block_name, block_fields in field_blocks.items():
+                        fields.extend(block_fields)
+                    
+                    logger.info(f"✅ Successfully imported discovery-based field definitions for {config_class_name}: {len(fields)} fields from {len(field_blocks)} blocks")
+                    logger.info(f"📊 Field blocks: {[(name, len(block_fields)) for name, block_fields in field_blocks.items()]}")
+                    logger.info(f"📋 First few fields: {[f['name'] for f in fields[:5]]}")
+                    return fields
+                except ImportError as e:
+                    logger.error(f"❌ Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")
+            else:
+                logger.info(f"ℹ️ {config_class_name} does not match CradleDataLoadingConfig - using standard field discovery")
+            
+            # Standard field discovery for other classes
+            logger.info(f"🔍 Using standard field discovery for {config_class_name}")
+            field_categories = self._categorize_fields(config_class)
+            fields = self._get_form_fields_with_tiers(config_class, field_categories)
+            logger.info(f"📊 Standard field discovery returned {len(fields)} fields for {config_class_name}")
+            if len(fields) > 0:
+                logger.info(f"📋 First few standard fields: {[f['name'] for f in fields[:5]]}")
+            return fields
         
-        # Standard field discovery for other classes
-        logger.info(f"🔍 Using standard field discovery for {config_class_name}")
-        field_categories = self._categorize_fields(config_class)
-        fields = self._get_form_fields_with_tiers(config_class, field_categories)
-        logger.info(f"📊 Standard field discovery returned {len(fields)} fields for {config_class_name}")
-        if len(fields) > 0:
-            logger.info(f"📋 First few standard fields: {[f['name'] for f in fields[:5]]}")
-        return fields
+        finally:
+            # Remove from recursion guard
+            _recursion_guard.discard(config_class_name)
     
     def _categorize_fields(self, config_class: Type[BasePipelineConfig]) -> Dict[str, List[str]]:
         """

@@ -164,27 +164,33 @@ class DataSourcesManager:
         """Render all data sources with add/remove functionality."""
         self.data_source_widgets = []
         
-        with self.container:
-            clear_output(wait=True)
-            
-            # Render each data source
-            for i, source_data in enumerate(self.data_sources):
-                widget_group = self._create_data_source_widget(source_data, i)
-                self.data_source_widgets.append(widget_group)
-                display(widget_group["widget"])
-            
-            # Add data source button
-            add_button = widgets.Button(
-                description="+ Add Data Source",
-                button_style='info',
-                layout=widgets.Layout(width='150px', margin='10px 0')
-            )
-            
-            def on_add_click(button):
-                self.add_data_source()
-            
-            add_button.on_click(on_add_click)
-            display(add_button)
+        # Clear container children instead of using context manager
+        self.container.children = []
+        
+        # Create new children list
+        new_children = []
+        
+        # Render each data source
+        for i, source_data in enumerate(self.data_sources):
+            widget_group = self._create_data_source_widget(source_data, i)
+            self.data_source_widgets.append(widget_group)
+            new_children.append(widget_group["widget"])
+        
+        # Add data source button
+        add_button = widgets.Button(
+            description="+ Add Data Source",
+            button_style='info',
+            layout=widgets.Layout(width='150px', margin='10px 0')
+        )
+        
+        def on_add_click(button):
+            self.add_data_source()
+        
+        add_button.on_click(on_add_click)
+        new_children.append(add_button)
+        
+        # Update container children
+        self.container.children = new_children
     
     def _create_data_source_widget(self, source_data, index):
         """Create widget for a single data source with type-specific fields."""
@@ -276,7 +282,7 @@ class DataSourcesManager:
             return widgets.Text(
                 value=str(default_value) if default_value else "",
                 description=f"{field_name}:",
-                placeholder=field_def.get("placeholder", ""),
+                placeholder=field_def.get("placeholder") or "",
                 style={'description_width': '120px'},
                 layout=widgets.Layout(width='300px', margin='5px 0')
             )
