@@ -159,9 +159,17 @@ class EnhancedMultiStepWizard:
         """Delegate to base wizard's _find_base_config method."""
         return self.base_wizard._find_base_config()
     
+    def _get_step_fields(self, step):
+        """Delegate to base wizard's _get_step_fields method."""
+        return self.base_wizard._get_step_fields(step)
+    
     def _get_step_values(self, step):
         """Delegate to base wizard's _get_step_values method."""
         return self.base_wizard._get_step_values(step)
+    
+    def _update_navigation_and_step(self):
+        """Delegate to base wizard's _update_navigation_and_step method."""
+        return self.base_wizard._update_navigation_and_step()
     
     def display(self):
         """ANTI-DUPLICATION SOLUTION: Display the enhanced wizard with duplication prevention."""
@@ -204,16 +212,38 @@ class EnhancedMultiStepWizard:
         return self.base_wizard._display_current_step()
     
     def _on_prev_clicked(self, button):
-        """Delegate previous button click to base wizard."""
-        return self.base_wizard._on_prev_clicked(button)
+        """Delegate previous button click to base wizard with state sync."""
+        result = self.base_wizard._on_prev_clicked(button)
+        # Force state synchronization after navigation
+        self._force_sync_state()
+        return result
     
     def _on_next_clicked(self, button):
-        """Delegate next button click to base wizard."""
-        return self.base_wizard._on_next_clicked(button)
+        """Delegate next button click to base wizard with state sync."""
+        result = self.base_wizard._on_next_clicked(button)
+        # Force state synchronization after navigation
+        self._force_sync_state()
+        return result
     
     def _on_finish_clicked(self, button):
-        """Delegate finish button click to base wizard."""
-        return self.base_wizard._on_finish_clicked(button)
+        """Delegate finish button click to base wizard with state sync."""
+        result = self.base_wizard._on_finish_clicked(button)
+        # Force state synchronization after navigation
+        self._force_sync_state()
+        return result
+    
+    def _force_sync_state(self):
+        """Force synchronization of all state from base wizard."""
+        # Sync all state attributes
+        self.current_step = self.base_wizard.current_step
+        self.completed_configs = self.base_wizard.completed_configs
+        self.steps = self.base_wizard.steps
+        
+        # Also sync any other attributes that might have changed
+        if hasattr(self.base_wizard, 'step_widgets'):
+            self.step_widgets = self.base_wizard.step_widgets
+        
+        logger.debug(f"Force state sync: current_step={self.current_step}, base_step={self.base_wizard.current_step}")
     
     def _display_enhanced_welcome(self):
         """Display enhanced welcome message for SageMaker users."""

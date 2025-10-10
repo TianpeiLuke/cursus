@@ -785,7 +785,75 @@ class UniversalConfigWidget:
         Returns:
             Configuration instance if saved, None otherwise
         """
-        return self.config_instance
+        # If config_instance already exists, return it
+        if self.config_instance:
+            return self.config_instance
+        
+        # If no config_instance, try to create it from current widget values
+        try:
+            return self._create_config_from_current_values()
+        except Exception as e:
+            logger.error(f"Error creating config from current values: {e}")
+            return None
+    
+    def _create_config_from_current_values(self) -> Optional[BasePipelineConfig]:
+        """Create configuration instance from current widget values."""
+        try:
+            # Collect form data from current widget values
+            form_data = {}
+            for field_name, widget in self.widgets.items():
+                # Handle special widget types
+                if field_name == "data_sources" and hasattr(widget, 'get_all_data_sources'):
+                    # Collect multiple data sources from DataSourcesManager
+                    data_sources_list = widget.get_all_data_sources()
+                    form_data[field_name] = data_sources_list
+                    continue
+                
+                value = widget.value
+                
+                # Convert values based on field type
+                field_info = next((f for f in self.fields if f["name"] == field_name), None)
+                if field_info:
+                    field_type = field_info["type"]
+                    
+                    if field_type == "tag_list":
+                        # Convert comma-separated string back to list
+                        if isinstance(value, str):
+                            value = [item.strip() for item in value.split(",") if item.strip()]
+                        elif not isinstance(value, list):
+                            value = []
+                    elif field_type == "list":
+                        try:
+                            value = json.loads(value) if isinstance(value, str) else value
+                        except json.JSONDecodeError:
+                            value = []
+                    elif field_type == "keyvalue":
+                        try:
+                            value = json.loads(value) if isinstance(value, str) else value
+                        except json.JSONDecodeError:
+                            value = {}
+                    elif field_type == "number":
+                        try:
+                            value = float(value) if value != "" else field_info.get("default", 0.0)
+                        except (ValueError, TypeError):
+                            value = field_info.get("default", 0.0)
+                    elif field_type == "checkbox":
+                        value = bool(value)
+                
+                form_data[field_name] = value
+            
+            # Create configuration instance
+            config_instance = self.config_class(**form_data)
+            
+            # Cache the instance for future calls
+            self.config_instance = config_instance
+            
+            logger.info(f"Created config instance from current values: {self.config_class_name}")
+            return config_instance
+            
+        except Exception as e:
+            logger.error(f"Error creating config from current values: {e}")
+            return None
 
 
 class MultiStepWizard:
