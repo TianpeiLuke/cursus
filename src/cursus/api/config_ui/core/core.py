@@ -282,14 +282,21 @@ class UniversalConfigCore:
         
         logger.info(f"🔍 _get_form_fields called for {config_class_name}")
         
-        # Special handling for CradleDataLoadingConfig - use comprehensive field definitions
+        # Special handling for CradleDataLoadingConfig - use discovery-based sub-config organization
         if config_class_name == "CradleDataLoadingConfig":
-            logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using comprehensive field definitions")
+            logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using discovery-based sub-config organization")
             try:
-                from .field_definitions import get_cradle_data_loading_fields
-                fields = get_cradle_data_loading_fields()
-                logger.info(f"✅ Successfully imported comprehensive field definitions for {config_class_name}: {len(fields)} fields")
-                logger.info(f"📋 First few comprehensive fields: {[f['name'] for f in fields[:5]]}")
+                from .field_definitions import get_cradle_fields_by_sub_config
+                field_blocks = get_cradle_fields_by_sub_config(config_core=self)
+                
+                # Convert sub-config blocks to flat field list for backward compatibility
+                fields = []
+                for block_name, block_fields in field_blocks.items():
+                    fields.extend(block_fields)
+                
+                logger.info(f"✅ Successfully imported discovery-based field definitions for {config_class_name}: {len(fields)} fields from {len(field_blocks)} blocks")
+                logger.info(f"📊 Field blocks: {[(name, len(block_fields)) for name, block_fields in field_blocks.items()]}")
+                logger.info(f"📋 First few fields: {[f['name'] for f in fields[:5]]}")
                 return fields
             except ImportError as e:
                 logger.error(f"❌ Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")

@@ -26,6 +26,7 @@ try:
     # Try relative imports first (when run as module)
     from ....core.base.config_base import BasePipelineConfig
     from ....steps.configs.config_processing_step_base import ProcessingStepConfigBase
+    from ..core.data_sources_manager import DataSourcesManager
 except ImportError:
     # Fallback: Set up cursus path and use absolute imports
     import sys
@@ -96,12 +97,16 @@ class UniversalConfigWidget:
             title = widgets.HTML(title_html)
             display(title)
             
-            # Enhanced 4-tier field categorization with inheritance
-            inherited_fields = [f for f in self.fields if f.get('tier') == 'inherited']
-            essential_fields = [f for f in self.fields if f.get('tier') == 'essential' or (f.get('required', False) and f.get('tier') != 'inherited')]
-            system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') not in ['essential', 'inherited'])]
-            
-            form_sections = []
+            # Check if this is CradleDataLoadingConfig for sub-config grouping
+            if self.config_class_name == "CradleDataLoadingConfig":
+                form_sections = self._create_field_sections_by_subconfig()
+            else:
+                # Enhanced 4-tier field categorization with inheritance for other configs
+                inherited_fields = [f for f in self.fields if f.get('tier') == 'inherited']
+                essential_fields = [f for f in self.fields if f.get('tier') == 'essential' or (f.get('required', False) and f.get('tier') != 'inherited')]
+                system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') not in ['essential', 'inherited'])]
+                
+                form_sections = self._create_field_sections_by_tier(inherited_fields, essential_fields, system_fields)
             
             # NEW: Inherited Fields Section (Tier 3) - Smart Default Value Inheritance ⭐
             if inherited_fields:
@@ -359,6 +364,9 @@ class UniversalConfigWidget:
                 style={'description_width': '200px'},
                 layout=widgets.Layout(width='500px', height='100px', margin='5px 0')
             )
+        elif field_type == "dynamic_data_sources":
+            # NEW: Create dynamic data sources widget
+            return self._create_dynamic_data_sources_widget(field)
         elif field_type == "specialized":
             # Create specialized configuration interface
             return self._create_specialized_field_widget(field)
@@ -476,6 +484,39 @@ class UniversalConfigWidget:
             "container": specialized_display
         }
     
+    def _create_dynamic_data_sources_widget(self, field: Dict) -> Dict:
+        """Create dynamic data sources widget section."""
+        
+        # Initialize data sources manager with discovery-based field templates
+        initial_data = self.values.get("data_sources", [])
+        
+        # Pass the config core if available for discovery
+        config_core = getattr(self, 'config_core', None)
+        data_sources_manager = DataSourcesManager(initial_data, config_core=config_core)
+        
+        # Create section container with styling
+        section_html = """
+        <div style='margin: 10px 0;'>
+            <h5 style='margin: 10px 0; color: #374151; display: flex; align-items: center;'>
+                📊 Data Sources (Dynamic List)
+            </h5>
+            <p style='margin: 5px 0 15px 0; font-size: 12px; color: #6b7280; font-style: italic;'>
+                Configure one or more data sources for your job. Click "Add Data Source" to add additional sources.
+            </p>
+        </div>
+        """
+        
+        section_header = widgets.HTML(section_html)
+        section_container = widgets.VBox([
+            section_header,
+            data_sources_manager.container
+        ])
+        
+        return {
+            "widget": data_sources_manager,  # Store manager for data collection
+            "container": section_container
+        }
+    
     def _on_specialized_widget_complete(self, config_instance):
         """Handle completion of specialized widget configuration."""
         logger.info(f"Specialized widget completed with config: {type(config_instance)}")
@@ -541,6 +582,91 @@ class UniversalConfigWidget:
         
         return widgets.HTML(inherited_html)
     
+    def _create_field_sections_by_subconfig(self) -> List[widgets.Widget]:
+        """Create field sections organized by sub-config blocks for CradleDataLoadingConfig."""
+        try:
+            from ..core.field_definitions import get_cradle_fields_by_sub_config, get_sub_config_section_metadata
+            
+            # Get field blocks organized by sub-config
+            field_blocks = get_cradle_fields_by_sub_config()
+            section_metadata = get_sub_config_section_metadata()
+            
+            form_sections = []
+            
+            # Create sections in the desired order
+            section_order = ["inherited", "root", "data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"]
+            
+            for section_name in section_order:
+                if section_name in field_blocks and field_blocks[section_name]:
+                    fields = field_blocks[section_name]
+                    metadata = section_metadata.get(section_name, {})
+                    
+                    # Create section with metadata styling
+                    section = self._create_field_section(
+                        metadata.get("title", f"{section_name.title()} Configuration"),
+                        fields,
+                        metadata.get("bg_gradient", "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)"),
+                        metadata.get("border_color", "#9ca3af"),
+                        metadata.get("description", f"Configure {section_name} settings")
+                    )
+                    form_sections.append(section)
+            
+            logger.info(f"Created {len(form_sections)} sub-config sections for CradleDataLoadingConfig")
+            return form_sections
+            
+        except Exception as e:
+            logger.error(f"Error creating sub-config sections: {e}")
+            # Fallback to tier-based organization
+            return self._create_field_sections_by_tier_fallback()
+    
+    def _create_field_sections_by_tier(self, inherited_fields: List[Dict], essential_fields: List[Dict], system_fields: List[Dict]) -> List[widgets.Widget]:
+        """Create field sections organized by tier for non-CradleDataLoadingConfig."""
+        form_sections = []
+        
+        # NEW: Inherited Fields Section (Tier 3) - Smart Default Value Inheritance ⭐
+        if inherited_fields:
+            inherited_section = self._create_field_section(
+                "💾 Inherited Fields (Tier 3) - Smart Defaults",
+                inherited_fields,
+                "linear-gradient(135deg, #f0f8ff 0%, #e0f2fe 100%)",
+                "#007bff",
+                "Auto-filled from parent configurations - can be overridden if needed"
+            )
+            form_sections.append(inherited_section)
+        
+        # Essential Fields Section (Tier 1)
+        if essential_fields:
+            essential_section = self._create_field_section(
+                "🔥 Essential User Inputs (Tier 1)",
+                essential_fields,
+                "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                "#f59e0b",
+                "Required fields that must be filled by user"
+            )
+            form_sections.append(essential_section)
+        
+        # System Fields Section (Tier 2)
+        if system_fields:
+            system_section = self._create_field_section(
+                "⚙️ System Inputs (Tier 2)",
+                system_fields,
+                "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                "#3b82f6",
+                "Optional fields with defaults, user-modifiable"
+            )
+            form_sections.append(system_section)
+        
+        return form_sections
+    
+    def _create_field_sections_by_tier_fallback(self) -> List[widgets.Widget]:
+        """Fallback method to create sections by tier when sub-config organization fails."""
+        # Enhanced 4-tier field categorization with inheritance for fallback
+        inherited_fields = [f for f in self.fields if f.get('tier') == 'inherited']
+        essential_fields = [f for f in self.fields if f.get('tier') == 'essential' or (f.get('required', False) and f.get('tier') != 'inherited')]
+        system_fields = [f for f in self.fields if f.get('tier') == 'system' or (not f.get('required', False) and f.get('tier') not in ['essential', 'inherited'])]
+        
+        return self._create_field_sections_by_tier(inherited_fields, essential_fields, system_fields)
+
     def _create_action_buttons(self) -> widgets.Widget:
         """Create modern action buttons - conditionally show save button only on final step."""
         if self.is_final_step:
@@ -1337,9 +1463,17 @@ class MultiStepWizard:
                     logger.warning(f"Specialized widget does not support get_config() for '{step['title']}'")
                     return False
             else:
-                # ENHANCED: Handle standard widget form data collection with new field types
+                # ENHANCED: Handle standard widget form data collection with new field types and dynamic data sources
                 form_data = {}
                 for field_name, widget in step_widget.widgets.items():
+                    # PHASE 2 ENHANCEMENT: Special handling for dynamic data sources
+                    if field_name == "data_sources" and hasattr(widget, 'get_all_data_sources'):
+                        # Collect multiple data sources from DataSourcesManager
+                        data_sources_list = widget.get_all_data_sources()
+                        form_data[field_name] = data_sources_list
+                        logger.info(f"Collected {len(data_sources_list)} data sources from DataSourcesManager")
+                        continue
+                    
                     value = widget.value
                     
                     # Handle special field types with enhanced conversion
@@ -1438,52 +1572,95 @@ class MultiStepWizard:
     
     def _transform_cradle_form_data(self, form_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Transform flat form data into ui_data structure expected by ValidationService.build_final_config().
+        PHASE 2 ENHANCEMENT: Transform form data with multiple data sources support.
         
         This creates the exact same nested structure that the original cradle_ui expects,
-        ensuring 100% compatibility with the proven config building logic.
+        ensuring 100% compatibility with the proven config building logic, but now
+        supports multiple data sources from DataSourcesManager.
         
         Args:
-            form_data: Flat form data from single-page form
+            form_data: Form data from single-page form with multiple data sources
             
         Returns:
             Nested ui_data structure compatible with ValidationService
         """
         logger.debug(f"Transforming cradle form data with {len(form_data)} fields")
         
-        # LEVEL 5: Create leaf data source properties based on type
-        data_source_properties = {}
-        data_source_type = form_data.get("data_source_type", "MDS")
+        # PHASE 2 ENHANCEMENT: Process multiple data sources from DataSourcesManager
+        data_sources_list = form_data.get("data_sources", [])
+        logger.info(f"Processing {len(data_sources_list)} data sources for transformation")
         
-        if data_source_type == "MDS":
-            data_source_properties["mds_data_source_properties"] = {
-                "service_name": form_data.get("mds_service", "AtoZ"),
-                "region": form_data.get("mds_region", "NA"),
-                "output_schema": form_data.get("mds_output_schema", form_data.get("output_schema", [])),
-                "org_id": form_data.get("mds_org_id", 0),
-                "use_hourly_edx_data_set": form_data.get("mds_use_hourly", False)
+        # Transform each data source to the expected format
+        transformed_data_sources = []
+        for i, source_data in enumerate(data_sources_list):
+            data_source_type = source_data.get("data_source_type", "MDS")
+            logger.debug(f"Transforming data source {i+1}: {data_source_type}")
+            
+            # Create type-specific properties based on actual config structure
+            if data_source_type == "MDS":
+                data_source_properties = {
+                    "mds_data_source_properties": {
+                        "service_name": source_data.get("service_name", "AtoZ"),
+                        "region": source_data.get("region", "NA"),
+                        "output_schema": source_data.get("output_schema", []),
+                        "org_id": source_data.get("org_id", 0),
+                        "use_hourly_edx_data_set": source_data.get("use_hourly_edx_data_set", False)
+                    }
+                }
+            elif data_source_type == "EDX":
+                data_source_properties = {
+                    "edx_data_source_properties": {
+                        "edx_provider": source_data.get("edx_provider", ""),
+                        "edx_subject": source_data.get("edx_subject", ""),
+                        "edx_dataset": source_data.get("edx_dataset", ""),
+                        "edx_manifest_key": source_data.get("edx_manifest_key", ""),
+                        "schema_overrides": source_data.get("schema_overrides", [])
+                    }
+                }
+            elif data_source_type == "ANDES":
+                data_source_properties = {
+                    "andes_data_source_properties": {
+                        "provider": source_data.get("provider", ""),
+                        "table_name": source_data.get("table_name", ""),
+                        "andes3_enabled": source_data.get("andes3_enabled", True)
+                    }
+                }
+            else:
+                # Default to MDS if type is unknown
+                logger.warning(f"Unknown data source type: {data_source_type}, defaulting to MDS")
+                data_source_properties = {
+                    "mds_data_source_properties": {
+                        "service_name": "AtoZ",
+                        "region": "NA",
+                        "output_schema": ["objectId", "transactionDate"],
+                        "org_id": 0,
+                        "use_hourly_edx_data_set": False
+                    }
+                }
+            
+            # Create data source config
+            data_source_config = {
+                "data_source_name": source_data.get("data_source_name", f"RAW_{data_source_type}_NA"),
+                "data_source_type": data_source_type,
+                **data_source_properties
             }
-        elif data_source_type == "EDX":
-            data_source_properties["edx_data_source_properties"] = {
-                "edx_provider": form_data.get("edx_provider", ""),
-                "edx_subject": form_data.get("edx_subject", ""),
-                "edx_dataset": form_data.get("edx_dataset", ""),
-                "edx_manifest_key": form_data.get("edx_manifest_key", ""),
-                "schema_overrides": form_data.get("edx_schema_overrides", [])
-            }
-        elif data_source_type == "ANDES":
-            data_source_properties["andes_data_source_properties"] = {
-                "provider": form_data.get("andes_provider", ""),
-                "table_name": form_data.get("andes_table_name", ""),
-                "andes3_enabled": form_data.get("andes3_enabled", True)
-            }
+            transformed_data_sources.append(data_source_config)
         
-        # LEVEL 4: Create DataSourceConfig wrapper
-        data_source_config = {
-            "data_source_name": form_data.get("data_source_name", "RAW_MDS_NA"),
-            "data_source_type": data_source_type,
-            **data_source_properties
-        }
+        # Fallback: If no data sources provided, create a default MDS source
+        if not transformed_data_sources:
+            logger.warning("No data sources found, creating default MDS data source")
+            default_data_source = {
+                "data_source_name": "RAW_MDS_NA",
+                "data_source_type": "MDS",
+                "mds_data_source_properties": {
+                    "service_name": "AtoZ",
+                    "region": "NA",
+                    "output_schema": ["objectId", "transactionDate"],
+                    "org_id": 0,
+                    "use_hourly_edx_data_set": False
+                }
+            }
+            transformed_data_sources.append(default_data_source)
         
         # Create ui_data structure that matches ValidationService.build_final_config() expectations
         ui_data = {
@@ -1501,7 +1678,7 @@ class MultiStepWizard:
             "data_sources_spec": {
                 "start_date": form_data.get("start_date", "2025-01-01T00:00:00"),
                 "end_date": form_data.get("end_date", "2025-04-17T00:00:00"),
-                "data_sources": [data_source_config]  # Single data source for now
+                "data_sources": transformed_data_sources  # PHASE 2: Multiple data sources support
             },
             
             "transform_spec": {
@@ -1535,7 +1712,7 @@ class MultiStepWizard:
         if form_data.get("s3_input_override"):
             ui_data["s3_input_override"] = form_data["s3_input_override"]
         
-        logger.debug(f"Transformed ui_data structure with {len(ui_data)} top-level fields")
+        logger.info(f"Transformed ui_data structure with {len(transformed_data_sources)} data sources")
         return ui_data
     
     def get_completed_configs(self) -> List[BasePipelineConfig]:

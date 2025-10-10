@@ -1,14 +1,258 @@
 """
-Comprehensive field definitions for specialized configurations.
+Field definitions for configuration UI - Discovery-Based Approach with Sub-Config Organization
 
-This module provides detailed field definitions for configuration classes that require
-custom field layouts and enhanced UI components beyond standard Pydantic field discovery.
+This module uses dynamic discovery instead of hardcoded field definitions and organizes
+fields by major sub-config blocks for optimal user experience.
 """
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 
+def get_cradle_fields_by_sub_config(config_core=None) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Get Cradle Data Loading fields organized by major sub-config blocks.
+    
+    This function organizes fields into four logical blocks that match the actual
+    CradleDataLoadingConfig structure, enabling the widget to create distinct
+    sections for each major specification component.
+    
+    Args:
+        config_core: Optional UniversalConfigCore instance for discovery
+        
+    Returns:
+        Dict with keys for each sub-config block:
+        - 'inherited': Fields from BasePipelineConfig
+        - 'data_sources_spec': Time range + dynamic data sources
+        - 'transform_spec': SQL transformation + job splitting
+        - 'output_spec': Output schema, format, and file options
+        - 'cradle_job_spec': Cluster, account, and execution settings
+        - 'root': Top-level fields like job_type
+    """
+    if config_core is None:
+        from .core import UniversalConfigCore
+        config_core = UniversalConfigCore()
+    
+    # Get all discovered config classes
+    all_config_classes = config_core.discover_config_classes()
+    
+    # Get the main config class and sub-config classes
+    cradle_config_class = all_config_classes.get("CradleDataLoadingConfig")
+    data_sources_spec_class = all_config_classes.get("DataSourcesSpecificationConfig")
+    transform_spec_class = all_config_classes.get("TransformSpecificationConfig")
+    output_spec_class = all_config_classes.get("OutputSpecificationConfig")
+    cradle_job_spec_class = all_config_classes.get("CradleJobSpecificationConfig")
+    
+    if not cradle_config_class:
+        logger.warning("CradleDataLoadingConfig not found in discovery, using fallback")
+        return get_cradle_fields_by_sub_config_fallback()
+    
+    # Initialize the result structure
+    field_blocks = {
+        "inherited": [],
+        "data_sources_spec": [],
+        "transform_spec": [],
+        "output_spec": [],
+        "cradle_job_spec": [],
+        "root": []
+    }
+    
+    # Get inherited fields from BasePipelineConfig
+    base_config_class = all_config_classes.get("BasePipelineConfig")
+    if base_config_class:
+        inherited_fields = config_core._get_form_fields(base_config_class)
+        for field in inherited_fields:
+            field["section"] = "inherited"
+            field["tier"] = "inherited"
+            field_blocks["inherited"].append(field)
+    
+    # Get data sources specification fields
+    if data_sources_spec_class:
+        ds_fields = config_core._get_form_fields(data_sources_spec_class)
+        for field in ds_fields:
+            field["section"] = "data_sources_spec"
+            # Set tier based on field requirements
+            field["tier"] = "essential" if field.get("required", False) else "system"
+            field_blocks["data_sources_spec"].append(field)
+    
+    # Add the special dynamic data sources field
+    dynamic_data_sources_field = {
+        "name": "data_sources",
+        "type": "dynamic_data_sources",
+        "section": "data_sources_spec",
+        "tier": "essential",
+        "required": True,
+        "description": "Configure one or more data sources for your job"
+    }
+    field_blocks["data_sources_spec"].append(dynamic_data_sources_field)
+    
+    # Get transform specification fields
+    if transform_spec_class:
+        transform_fields = config_core._get_form_fields(transform_spec_class)
+        for field in transform_fields:
+            field["section"] = "transform_spec"
+            field["tier"] = "essential" if field.get("required", False) else "system"
+            field_blocks["transform_spec"].append(field)
+    
+    # Get output specification fields
+    if output_spec_class:
+        output_fields = config_core._get_form_fields(output_spec_class)
+        for field in output_fields:
+            field["section"] = "output_spec"
+            field["tier"] = "essential" if field.get("required", False) else "system"
+            field_blocks["output_spec"].append(field)
+    
+    # Get cradle job specification fields
+    if cradle_job_spec_class:
+        job_fields = config_core._get_form_fields(cradle_job_spec_class)
+        for field in job_fields:
+            field["section"] = "cradle_job_spec"
+            field["tier"] = "essential" if field.get("required", False) else "system"
+            field_blocks["cradle_job_spec"].append(field)
+    
+    # Get root-level fields from main config (excluding sub-configs)
+    if cradle_config_class:
+        main_fields = config_core._get_form_fields(cradle_config_class)
+        for field in main_fields:
+            field_name = field["name"]
+            # Only include fields that are not sub-config objects
+            if field_name not in ["data_sources_spec", "transform_spec", "output_spec", "cradle_job_spec"]:
+                field["section"] = "root"
+                field["tier"] = "essential" if field.get("required", False) else "system"
+                field_blocks["root"].append(field)
+    
+    logger.info(f"Generated field blocks using discovery-based approach:")
+    for block_name, fields in field_blocks.items():
+        logger.info(f"  {block_name}: {len(fields)} fields")
+    
+    return field_blocks
+
+
+def get_cradle_fields_by_sub_config_fallback() -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Fallback field organization if discovery fails.
+    
+    Returns:
+        Minimal field blocks to ensure the system still works
+    """
+    logger.warning("Using fallback field blocks for CradleDataLoadingConfig")
+    
+    return {
+        "inherited": [
+            {"name": "author", "type": "text", "tier": "inherited", "required": True, "section": "inherited"},
+            {"name": "bucket", "type": "text", "tier": "inherited", "required": True, "section": "inherited"},
+            {"name": "role", "type": "text", "tier": "inherited", "required": True, "section": "inherited"},
+        ],
+        "data_sources_spec": [
+            {"name": "start_date", "type": "datetime", "section": "data_sources_spec", "tier": "essential", "required": True},
+            {"name": "end_date", "type": "datetime", "section": "data_sources_spec", "tier": "essential", "required": True},
+            {"name": "data_sources", "type": "dynamic_data_sources", "section": "data_sources_spec", "tier": "essential", "required": True},
+        ],
+        "transform_spec": [
+            {"name": "transform_sql", "type": "code_editor", "language": "sql", "section": "transform_spec", "tier": "essential", "required": True},
+        ],
+        "output_spec": [
+            {"name": "output_schema", "type": "tag_list", "section": "output_spec", "tier": "essential", "required": True},
+            {"name": "output_format", "type": "dropdown", "section": "output_spec", "tier": "system", "default": "PARQUET", "options": ["PARQUET", "CSV", "JSON"]},
+        ],
+        "cradle_job_spec": [
+            {"name": "cradle_account", "type": "text", "section": "cradle_job_spec", "tier": "essential", "required": True}
+        ],
+        "root": [
+            {"name": "job_type", "type": "radio", "section": "root", "tier": "essential", "required": True, 
+             "options": ["training", "validation", "testing", "calibration"]},
+        ]
+    }
+
+
+def get_sub_config_section_metadata() -> Dict[str, Dict[str, Any]]:
+    """
+    Get metadata for each sub-config section for widget styling and organization.
+    
+    Returns:
+        Dict mapping section names to their display metadata
+    """
+    return {
+        "inherited": {
+            "title": "💾 Inherited Configuration",
+            "description": "Configuration inherited from parent pipeline steps",
+            "bg_gradient": "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
+            "border_color": "#9ca3af",
+            "tier": "inherited",
+            "collapsible": True,
+            "collapsed_by_default": True,
+            "icon": "💾"
+        },
+        "data_sources_spec": {
+            "title": "📊 Data Sources Specification",
+            "description": "Configure time range and data sources for your job",
+            "bg_gradient": "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+            "border_color": "#f59e0b",
+            "tier": "essential",
+            "collapsible": False,
+            "icon": "📊"
+        },
+        "transform_spec": {
+            "title": "⚙️ Transform Specification",
+            "description": "Configure SQL transformation and job splitting options",
+            "bg_gradient": "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+            "border_color": "#f59e0b",
+            "tier": "essential",
+            "collapsible": False,
+            "icon": "⚙️"
+        },
+        "output_spec": {
+            "title": "📤 Output Specification",
+            "description": "Configure output schema, format, and file options",
+            "bg_gradient": "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+            "border_color": "#3b82f6",
+            "tier": "system",
+            "collapsible": True,
+            "icon": "📤"
+        },
+        "cradle_job_spec": {
+            "title": "🎛️ Cradle Job Specification",
+            "description": "Configure cluster, account, and execution settings",
+            "bg_gradient": "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+            "border_color": "#3b82f6",
+            "tier": "system",
+            "collapsible": True,
+            "icon": "🎛️"
+        },
+        "root": {
+            "title": "🎯 Job Configuration",
+            "description": "Select job type and advanced options",
+            "bg_gradient": "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+            "border_color": "#f59e0b",
+            "tier": "essential",
+            "collapsible": False,
+            "icon": "🎯"
+        }
+    }
+
+
+# DEPRECATED: Legacy functions kept for backward compatibility
 def get_cradle_data_loading_fields() -> List[Dict[str, Any]]:
+    """
+    DEPRECATED: Use get_cradle_fields_by_sub_config() instead.
+    
+    This function is kept for backward compatibility but will be removed.
+    """
+    logger.warning("get_cradle_data_loading_fields() is deprecated, use get_cradle_fields_by_sub_config()")
+    
+    # Convert new format to old format for backward compatibility
+    field_blocks = get_cradle_fields_by_sub_config()
+    all_fields = []
+    
+    for block_name, fields in field_blocks.items():
+        all_fields.extend(fields)
+    
+    return all_fields
+
+
+def get_legacy_cradle_data_loading_fields() -> List[Dict[str, Any]]:
     """
     Get comprehensive field definition for CradleDataLoadingConfig single-page form.
     
