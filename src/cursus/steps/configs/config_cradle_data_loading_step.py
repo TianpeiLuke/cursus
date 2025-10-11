@@ -698,14 +698,19 @@ class OutputSpecificationConfig(BaseCradleComponentConfig):
         description="List of column names to emit (e.g. ['objectId','transactionDate',…])."
     )
 
+    # ===== System Inputs with Defaults (Tier 2) =====
+    # These are fields with reasonable defaults that users can override
+
+    job_type: str = Field(
+        default="training",
+        description="One of ['training','validation','testing','calibration'] to indicate which dataset this job is pulling"
+    )
+
     # Pipeline S3 location - needed for output_path calculation
     pipeline_s3_loc: Optional[str] = Field(
         default=None,
         description="S3 location for pipeline artifacts (inherited from parent config)",
     )
-
-    # ===== System Inputs with Defaults (Tier 2) =====
-    # These are fields with reasonable defaults that users can override
 
     output_format: str = Field(
         default="PARQUET",
@@ -757,6 +762,14 @@ class OutputSpecificationConfig(BaseCradleComponentConfig):
 
         if not self.output_path.startswith("s3://"):
             raise ValueError("output_path must start with 's3://'")
+
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: str) -> str:
+        allowed = {"training", "validation", "testing", "calibration"}
+        if v not in allowed:
+            raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
+        return v
 
     @field_validator("output_format")
     @classmethod
@@ -888,9 +901,9 @@ class CradleDataLoadingConfig(BasePipelineConfig):
         # Initialize base class derived fields first
         super().initialize_derived_fields()
 
-        # Pass the job_type to the output_spec
-        if hasattr(self.output_spec, "job_type"):
-            self.output_spec.job_type = self.job_type
+        # Override the output_spec job_type with the parent's job_type
+        # This ensures consistency between parent and child configs
+        self.output_spec.job_type = self.job_type
 
         # Pass the pipeline_s3_loc to output_spec for output_path calculation
         if hasattr(self, "pipeline_s3_loc"):
