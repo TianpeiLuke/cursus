@@ -215,6 +215,10 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
     """
     Configuration for EDX data source with three-tier field classification.
 
+    Supports two input modes:
+    1. Direct ARN input: Provide edx_arn directly
+    2. Component-based input: Provide edx_provider, edx_subject, edx_dataset, edx_manifest_key
+
     Fields are organized into three tiers:
     1. Tier 1: Essential User Inputs - fields that users must explicitly provide
     2. Tier 2: System Inputs with Defaults - fields with reasonable defaults that can be overridden
@@ -222,17 +226,7 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
     """
 
     # ===== Essential User Inputs (Tier 1) =====
-    # These are fields that users must explicitly provide
-
-    edx_provider: str = Field(description="Provider portion of the EDX manifest ARN")
-
-    edx_subject: str = Field(description="Subject portion of the EDX manifest ARN")
-
-    edx_dataset: str = Field(description="Dataset portion of the EDX manifest ARN")
-
-    edx_manifest_key: str = Field(
-        description="Manifest key in format '[\"xxx\",...]' that completes the ARN"
-    )
+    # These are fields that users must always explicitly provide
 
     schema_overrides: List[Dict[str, Any]] = Field(
         description=(
@@ -242,7 +236,33 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
-    # None currently for this class
+    # Control field that determines requirement of component fields
+
+    edx_arn: Optional[str] = Field(
+        default=None,
+        description="Complete EDX manifest ARN. If provided, individual components are ignored."
+    )
+
+    # Conditionally required fields (required only when edx_arn is None)
+    edx_provider: Optional[str] = Field(
+        default=None,
+        description="Provider portion of the EDX manifest ARN (required if edx_arn not provided)"
+    )
+
+    edx_subject: Optional[str] = Field(
+        default=None,
+        description="Subject portion of the EDX manifest ARN (required if edx_arn not provided)"
+    )
+
+    edx_dataset: Optional[str] = Field(
+        default=None,
+        description="Dataset portion of the EDX manifest ARN (required if edx_arn not provided)"
+    )
+
+    edx_manifest_key: Optional[str] = Field(
+        default=None,
+        description="Manifest key in format '[\"xxx\",...]' (required if edx_arn not provided)"
+    )
 
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
@@ -251,18 +271,60 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
 
     @property
     def edx_manifest(self) -> str:
-        """Get EDX manifest ARN derived from provider, subject, dataset and key."""
+        """Get EDX manifest ARN from direct input or built from components."""
         if self._edx_manifest is None:
-            self._edx_manifest = (
-                f"arn:amazon:edx:iad::manifest/"
-                f"{self.edx_provider}/{self.edx_subject}/{self.edx_dataset}/{self.edx_manifest_key}"
-            )
+            if self.edx_arn is not None:
+                # Mode 1: Direct ARN input
+                self._edx_manifest = self.edx_arn
+            else:
+                # Mode 2: Build from components (existing logic)
+                self._edx_manifest = (
+                    f"arn:amazon:edx:iad::manifest/"
+                    f"{self.edx_provider}/{self.edx_subject}/{self.edx_dataset}/{self.edx_manifest_key}"
+                )
         return self._edx_manifest
+
+    def categorize_fields(self) -> Dict[str, List[str]]:
+        """Dynamic field categorization based on edx_arn presence."""
+        categories = {
+            "essential": ["schema_overrides"],  # Always required
+            "system": ["edx_arn"],  # Control field
+            "derived": ["edx_manifest"]  # Computed property
+        }
+        
+        # Component fields are system-level but conditionally required
+        component_fields = ["edx_provider", "edx_subject", "edx_dataset", "edx_manifest_key"]
+        
+        if self.edx_arn is None:
+            # When no ARN provided, components become essential
+            categories["essential"].extend(component_fields)
+        else:
+            # When ARN provided, components are just system fields
+            categories["system"].extend(component_fields)
+        
+        return categories
+
+    @field_validator("edx_arn")
+    @classmethod
+    def validate_edx_arn_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate EDX ARN format if provided."""
+        if v is None:
+            return v
+        
+        if not v.startswith("arn:amazon:edx:"):
+            raise ValueError(
+                f"edx_arn must start with 'arn:amazon:edx:', got '{v}'"
+            )
+        
+        return v
 
     @field_validator("edx_manifest_key")
     @classmethod
-    def validate_manifest_key_format(cls, v: str) -> str:
-        """Validate that edx_manifest_key is in the format '[...]'"""
+    def validate_manifest_key_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that edx_manifest_key is in the format '[...]' if provided."""
+        if v is None:
+            return v
+        
         if not (v.startswith("[") and v.endswith("]")):
             raise ValueError(
                 f"edx_manifest_key must be in format '[\"xxx\",...]', got '{v}'"
@@ -270,13 +332,37 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
         return v
 
     @model_validator(mode="after")
-    def initialize_derived_fields(self) -> "EdxDataSourceConfig":
-        """Initialize derived fields after validation."""
-        # Initialize the manifest using the key
-        self._edx_manifest = (
-            f"arn:amazon:edx:iad::manifest/"
-            f"{self.edx_provider}/{self.edx_subject}/{self.edx_dataset}/{self.edx_manifest_key}"
-        )
+    def validate_edx_input_mode(self) -> "EdxDataSourceConfig":
+        """Ensure either edx_arn OR all component fields are provided."""
+        
+        has_arn = self.edx_arn is not None
+        component_fields = [self.edx_provider, self.edx_subject, self.edx_dataset, self.edx_manifest_key]
+        has_components = all(field is not None for field in component_fields)
+        has_any_components = any(field is not None for field in component_fields)
+        
+        if has_arn and has_any_components:
+            raise ValueError(
+                "Cannot provide both edx_arn and component fields "
+                "(edx_provider, edx_subject, edx_dataset, edx_manifest_key). "
+                "Use either edx_arn OR the individual components."
+            )
+        
+        if not has_arn and not has_components:
+            missing_fields = [
+                name for name, value in [
+                    ("edx_provider", self.edx_provider),
+                    ("edx_subject", self.edx_subject), 
+                    ("edx_dataset", self.edx_dataset),
+                    ("edx_manifest_key", self.edx_manifest_key)
+                ] if value is None
+            ]
+            raise ValueError(
+                f"When edx_arn is not provided, all component fields are required. "
+                f"Missing: {missing_fields}"
+            )
+        
+        # Initialize derived field (will be computed by property)
+        self._edx_manifest = None
         return self
 
 
