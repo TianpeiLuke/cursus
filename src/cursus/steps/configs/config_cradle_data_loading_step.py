@@ -349,13 +349,6 @@ class AndesDataSourceConfig(BaseCradleComponentConfig):
         if not v or not v.strip():
             raise ValueError("table_name cannot be empty")
 
-        # Add any specific table name format validation rules here
-        # For example, if table names must be lowercase and hyphenated:
-        if not re.match(r"^[a-z0-9-]+$", v):
-            raise ValueError(
-                "table_name must contain only lowercase letters, numbers, and hyphens"
-            )
-
         return v
 
     def __str__(self) -> str:
