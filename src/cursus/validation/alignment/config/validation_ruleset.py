@@ -264,7 +264,7 @@ def validate_step_type_configuration() -> List[str]:
 def get_validation_ruleset_for_step_name(step_name: str, workspace_id: str = None) -> Optional[ValidationRuleset]:
     """Get validation ruleset for a step name using registry integration."""
     try:
-        from cursus.registry.step_names import get_sagemaker_step_type
+        from ....registry.step_names import get_sagemaker_step_type
         sagemaker_step_type = get_sagemaker_step_type(step_name, workspace_id)
         return get_validation_ruleset(sagemaker_step_type)
     except (ImportError, ValueError) as e:
@@ -274,7 +274,7 @@ def get_validation_ruleset_for_step_name(step_name: str, workspace_id: str = Non
 def is_validation_level_enabled_for_step_name(step_name: str, level: ValidationLevel, workspace_id: str = None) -> bool:
     """Check if a validation level is enabled for a step name using registry integration."""
     try:
-        from cursus.registry.step_names import get_sagemaker_step_type
+        from ....registry.step_names import get_sagemaker_step_type
         sagemaker_step_type = get_sagemaker_step_type(step_name, workspace_id)
         return is_validation_level_enabled(sagemaker_step_type, level)
     except (ImportError, ValueError):
@@ -284,7 +284,7 @@ def is_validation_level_enabled_for_step_name(step_name: str, level: ValidationL
 def get_enabled_validation_levels_for_step_name(step_name: str, workspace_id: str = None) -> Set[ValidationLevel]:
     """Get all enabled validation levels for a step name using registry integration."""
     try:
-        from cursus.registry.step_names import get_sagemaker_step_type
+        from ....registry.step_names import get_sagemaker_step_type
         sagemaker_step_type = get_sagemaker_step_type(step_name, workspace_id)
         return get_enabled_validation_levels(sagemaker_step_type)
     except (ImportError, ValueError):
@@ -294,7 +294,7 @@ def get_enabled_validation_levels_for_step_name(step_name: str, workspace_id: st
 def is_step_name_excluded(step_name: str, workspace_id: str = None) -> bool:
     """Check if a step name is excluded from validation using registry integration."""
     try:
-        from cursus.registry.step_names import get_sagemaker_step_type
+        from ....registry.step_names import get_sagemaker_step_type
         sagemaker_step_type = get_sagemaker_step_type(step_name, workspace_id)
         return is_step_type_excluded(sagemaker_step_type)
     except (ImportError, ValueError):

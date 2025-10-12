@@ -8,8 +8,8 @@ replacing the separate level tester classes with a unified approach.
 from typing import Dict, Any, List, Optional
 import logging
 
-from cursus.step_catalog import StepCatalog
-from cursus.validation.alignment.config import ValidationLevel
+from ....step_catalog import StepCatalog
+from ..config import ValidationLevel
 
 logger = logging.getLogger(__name__)
 
