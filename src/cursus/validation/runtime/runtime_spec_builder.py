@@ -48,7 +48,7 @@ class PipelineTestingSpecBuilder:
 
     def __init__(self, test_data_dir: str = "test/integration/runtime", step_catalog: Optional['StepCatalog'] = None):
         self.test_data_dir = Path(test_data_dir)
-        self.specs_dir = self.test_data_dir / ".specs"  # ScriptExecutionSpec storage
+        self.specs_dir = self.test_data_dir / "specs"  # ScriptExecutionSpec storage
         self.scripts_dir = self.test_data_dir / "scripts"  # Test script files
 
         # Initialize contract discovery manager
