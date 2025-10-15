@@ -30,6 +30,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "CradleDataLoading",
         "description": "Cradle data loading step",
     },
+    "DummyDataLoading": {
+        "config_class": "DummyDataLoadingConfig",
+        "builder_step_name": "DummyDataLoadingStepBuilder",
+        "spec_type": "DummyDataLoading",
+        "sagemaker_step_type": "Processing",
+        "description": "Dummy data loading step that processes user-provided data instead of calling Cradle services",
+    },
     # Processing Steps
     "TabularPreprocessing": {
         "config_class": "TabularPreprocessingConfig",
