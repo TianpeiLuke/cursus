@@ -88,6 +88,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Training",
         "description": "XGBoost model training step",
     },
+    "LightGBMTraining": {
+        "config_class": "LightGBMTrainingConfig",
+        "builder_step_name": "LightGBMTrainingStepBuilder",
+        "spec_type": "LightGBMTraining",
+        "sagemaker_step_type": "Training",
+        "description": "LightGBM model training step using built-in algorithm",
+    },
     "DummyTraining": {
         "config_class": "DummyTrainingConfig",
         "builder_step_name": "DummyTrainingStepBuilder",
