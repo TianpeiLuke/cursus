@@ -158,21 +158,13 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """
         Constructs a dictionary of environment variables to be passed to the training job.
-        These variables are used to control the behavior of the training script
-        without needing to pass them as hyperparameters.
+        For built-in algorithms, minimal environment variables are needed.
 
         Returns:
             A dictionary of environment variables.
         """
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
-
-        # Add LightGBM-specific environment variables
-        lightgbm_env_vars = {
-            "LIGHTGBM_MODEL_CLASS": "lightgbm",
-        }
-        
-        env_vars.update(lightgbm_env_vars)
 
         # Add environment variables from config if they exist
         if hasattr(self.config, "env") and self.config.env:
