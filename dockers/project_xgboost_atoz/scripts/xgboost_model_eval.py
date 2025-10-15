@@ -868,7 +868,7 @@ def evaluate_model(
     ids = df[id_col].values
     X = df[feature_columns].values
 
-    dmatrix = xgb.DMatrix(X)
+    dmatrix = xgb.DMatrix(X, feature_names=feature_columns)
     y_prob = model.predict(dmatrix)
     logger.info(f"Model prediction shape: {y_prob.shape}")
     if len(y_prob.shape) == 1:
