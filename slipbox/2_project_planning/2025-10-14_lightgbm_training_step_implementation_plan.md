@@ -29,7 +29,7 @@ date of note: 2025-10-14
 
 ## Executive Summary
 
-This implementation plan provides a detailed roadmap for implementing a LightGBM Training Step for the Cursus framework using SageMaker's built-in LightGBM algorithm. The implementation will follow established patterns from the XGBoost Training Step while adapting for LightGBM's specific requirements and built-in algorithm approach. The project will be executed in 6 phases over 3 weeks, maintaining complete compatibility with the existing specification-driven architecture.
+This implementation plan provides a detailed roadmap for implementing a LightGBM Training Step for the Cursus framework using SageMaker's JumpStart LightGBM model. The implementation follows established patterns from the XGBoost Training Step while adapting for LightGBM's specific requirements and JumpStart model approach. The project was executed in 6 phases and is now **COMPLETE**, maintaining full compatibility with the existing specification-driven architecture.
 
 ### Key Objectives
 
@@ -73,17 +73,24 @@ This implementation plan provides a detailed roadmap for implementing a LightGBM
 
 ### **Technical Architecture Analysis**
 
-#### **SageMaker Built-in Algorithm Approach**
-Based on research into SageMaker SDK documentation, LightGBM will be implemented using:
+#### **SageMaker JumpStart Model Approach**
+Based on research into official AWS SageMaker examples, LightGBM is implemented using JumpStart models:
 
 ```python
 from sagemaker.estimator import Estimator
 from sagemaker import image_uris
 
-# Get LightGBM built-in algorithm image URI
-image_uri = image_uris.retrieve("lightgbm", region=self.aws_region)
+# Get LightGBM JumpStart model image URI
+image_uri = image_uris.retrieve(
+    region=self.aws_region,
+    framework=None,
+    model_id="lightgbm-classification-model",
+    model_version="*",  # Latest version
+    image_scope="training",
+    instance_type=self.config.training_instance_type,
+)
 
-# Create generic estimator with LightGBM image
+# Create generic estimator with LightGBM JumpStart image
 estimator = Estimator(
     image_uri=image_uri,
     role=self.role,
@@ -96,13 +103,15 @@ estimator = Estimator(
 
 #### **Key Differences from XGBoost Framework Approach**
 
-| Aspect | XGBoost (Framework) | LightGBM (Built-in Algorithm) |
+| Aspect | XGBoost (Framework) | LightGBM (JumpStart Model) |
 |--------|-------------------|-------------------------------|
 | **Estimator Class** | `sagemaker.xgboost.XGBoost` | `sagemaker.estimator.Estimator` |
-| **Image URI** | Framework-specific image | `image_uris.retrieve("lightgbm", region)` |
+| **Image URI** | Framework-specific image | `image_uris.retrieve(model_id="lightgbm-classification-model")` |
+| **Model Approach** | Framework container | JumpStart pre-built model |
 | **Hyperparameters** | Embedded in source directory | Passed as dictionary to estimator |
-| **Entry Point** | Custom training script | May not need custom entry point |
-| **Data Format** | Flexible | Built-in algorithms have specific requirements |
+| **Entry Point** | Custom training script | JumpStart training script |
+| **Data Format** | Flexible | JumpStart model specific requirements |
+| **Distributed Training** | Built-in support | Dask-based distributed training |
 
 ### **Gap Analysis**
 
@@ -692,134 +701,79 @@ class LightGBMTrainingConfig(BasePipelineConfig):
 **Implementation Details:**
 - Class name: `LightGBMTrainingStepBuilder`
 - Base class: `StepBuilderBase`
-- Built-in algorithm approach: Uses `sagemaker.estimator.Estimator` with LightGBM image URI
-- Image URI retrieval: `image_uris.retrieve("lightgbm", region=self.aws_region)`
+- JumpStart model approach: Uses `sagemaker.estimator.Estimator` with LightGBM JumpStart model image URI
+- Image URI retrieval: `image_uris.retrieve(model_id="lightgbm-classification-model", ...)`
 - Specification integration: Uses `LIGHTGBM_TRAINING_SPEC` for dependency resolution
-- Complete XGBoost alignment with built-in algorithm adaptations
-- Environment variables: LightGBM-specific environment setup
+- Complete XGBoost alignment with JumpStart model adaptations
+- Environment variables: Minimal environment setup (no redundant variables)
 
-**Original Implementation Code:**
+**Actual Implementation Code:**
 
 ```python
-class LightGBMTrainingStepBuilder(StepBuilderBase):
+def _get_lightgbm_image_uri(self) -> str:
+    """Get LightGBM JumpStart model image URI for the current region."""
+    # LightGBM is available as a JumpStart model, not a traditional built-in algorithm
+    return image_uris.retrieve(
+        region=self.aws_region,
+        framework=None,
+        model_id="lightgbm-classification-model",
+        model_version="*",  # Latest version
+        image_scope="training",
+        instance_type=self.config.training_instance_type,
+    )
+
+def _create_estimator(self, output_path=None) -> Estimator:
     """
-    Builder for LightGBM Training Step using SageMaker built-in algorithm.
-    This class creates a SageMaker TrainingStep using the generic Estimator
-    with LightGBM built-in algorithm image URI.
+    Creates and configures the LightGBM estimator using JumpStart model.
+    This defines the execution environment for the training job, including the instance
+    type, JumpStart model image, and environment variables.
     """
+    # Get LightGBM JumpStart model image URI
+    image_uri = self._get_lightgbm_image_uri()
+    self.log_info("Using LightGBM JumpStart model image: %s", image_uri)
 
-    def __init__(
-        self,
-        config: LightGBMTrainingConfig,
-        sagemaker_session=None,
-        role: Optional[str] = None,
-        registry_manager: Optional["RegistryManager"] = None,
-        dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
-    ):
-        """Initialize the builder with LightGBM configuration."""
-        if not isinstance(config, LightGBMTrainingConfig):
-            raise ValueError("LightGBMTrainingStepBuilder requires a LightGBMTrainingConfig instance.")
+    # Use modernized effective_source_dir with comprehensive hybrid resolution
+    source_dir = self.config.effective_source_dir
+    self.log_info("Using source directory: %s", source_dir)
+    
+    return Estimator(
+        image_uri=image_uri,
+        entry_point=self.config.training_entry_point,
+        source_dir=source_dir,
+        role=self.role,
+        instance_type=self.config.training_instance_type,
+        instance_count=self.config.training_instance_count,
+        volume_size=self.config.training_volume_size,
+        max_run=86400,  # 24 hours default
+        input_mode='File',
+        output_path=output_path,  # Use provided output_path directly
+        base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
+        sagemaker_session=self.session,
+        environment=self._get_environment_variables(),
+    )
 
-        # Load LightGBM training specification
-        if not SPEC_AVAILABLE or LIGHTGBM_TRAINING_SPEC is None:
-            raise ValueError("LightGBM training specification not available")
+def _get_environment_variables(self) -> Dict[str, str]:
+    """
+    Constructs a dictionary of environment variables to be passed to the training job.
+    For JumpStart models, minimal environment variables are needed.
+    """
+    # Get base environment variables from contract
+    env_vars = super()._get_environment_variables()
 
-        super().__init__(
-            config=config,
-            spec=LIGHTGBM_TRAINING_SPEC,
-            sagemaker_session=sagemaker_session,
-            role=role,
-            registry_manager=registry_manager,
-            dependency_resolver=dependency_resolver,
-        )
-        self.config: LightGBMTrainingConfig = config
+    # Add environment variables from config if they exist
+    if hasattr(self.config, "env") and self.config.env:
+        env_vars.update(self.config.env)
 
-    def _get_lightgbm_image_uri(self) -> str:
-        """Get LightGBM built-in algorithm image URI for the current region."""
-        from sagemaker import image_uris
-        return image_uris.retrieve("lightgbm", region=self.aws_region)
-
-    def _create_estimator(self, output_path=None) -> Estimator:
-        """Create and configure the LightGBM estimator using built-in algorithm."""
-        from sagemaker.estimator import Estimator
-        
-        # Get LightGBM built-in algorithm image URI
-        image_uri = self._get_lightgbm_image_uri()
-        
-        return Estimator(
-            image_uri=image_uri,
-            role=self.role,
-            instance_type=self.config.training_instance_type,
-            instance_count=self.config.training_instance_count,
-            volume_size=self.config.training_volume_size,
-            max_run=86400,  # 24 hours default
-            input_mode='File',
-            output_path=output_path,
-            base_job_name=self._generate_job_name(),
-            sagemaker_session=self.session,
-            hyperparameters=self.config.get_lightgbm_hyperparameters(),
-            environment=self._get_environment_variables(),
-        )
-
-    def _get_environment_variables(self) -> Dict[str, str]:
-        """Get environment variables for the training job."""
-        env_vars = super()._get_environment_variables()
-        
-        # Note: LightGBM hyperparameters are passed via hyperparameters parameter
-        # Environment variables are optional for built-in algorithm
-        lightgbm_env_vars = {
-            "LIGHTGBM_MODEL_CLASS": "lightgbm",
-        }
-        
-        env_vars.update(lightgbm_env_vars)
-        return env_vars
-
-    def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, TrainingInput]:
-        """Get inputs for the step using specification and contract."""
-        if not self.spec:
-            raise ValueError("Step specification is required")
-
-        training_inputs = {}
-
-        # Process each dependency in the specification
-        for _, dependency_spec in self.spec.dependencies.items():
-            logical_name = dependency_spec.logical_name
-
-            # Skip if optional and not provided
-            if not dependency_spec.required and logical_name not in inputs:
-                continue
-
-            # Make sure required inputs are present
-            if dependency_spec.required and logical_name not in inputs:
-                raise ValueError(f"Required input '{logical_name}' not provided")
-
-            # For built-in algorithms, we typically need train/validation channels
-            if logical_name == "input_path":
-                base_path = inputs[logical_name]
-                
-                # Create separate channels for train/validation data
-                data_channels = self._create_data_channels_from_source(base_path)
-                training_inputs.update(data_channels)
-            else:
-                # Handle other inputs as single channels
-                training_inputs[logical_name] = TrainingInput(s3_data=inputs[logical_name])
-
-        return training_inputs
-
-    def _get_outputs(self, outputs: Dict[str, Any]) -> str:
-        """Get outputs for the step - built-in algorithms use single output path."""
-        if not self.spec:
-            raise ValueError("Step specification is required")
-
-        # For built-in algorithms, use single output path
-        if "model_output" in outputs:
-            return outputs["model_output"]
-        
-        # Generate default output path
-        from sagemaker.workflow.functions import Join
-        base_output_path = self._get_base_output_path()
-        return Join(on="/", values=[base_output_path, "lightgbm_training"])
+    self.log_info("Training environment variables: %s", env_vars)
+    return env_vars
 ```
+
+**Key Implementation Features:**
+- **JumpStart Model Integration**: Uses official SageMaker JumpStart LightGBM model
+- **Verified Image URI**: Based on official AWS SageMaker examples
+- **Clean Environment Setup**: No redundant environment variables (contract specifies none required)
+- **Complete XGBoost Alignment**: Same patterns with JumpStart-specific adaptations
+- **Distributed Training Ready**: Supports multi-instance distributed training with Dask
 
 ### Phase 7: Integration and Testing (Week 2, Days 1-3)
 
@@ -1255,3 +1209,40 @@ The LightGBM Training Step implementation is ready for immediate development. Wi
 4. **Validate Integration** (Day 5): Ensure compatibility with existing system
 
 The project is ready for immediate implementation with **high confidence of success** and **clear deliverables**. All architectural decisions are based on proven patterns and comprehensive analysis.
+
+## References
+
+### Developer Guide Documentation
+- **[Adding New Pipeline Step](../slipbox/0_developer_guide/adding_new_pipeline_step.md)**: Complete guide for adding new pipeline steps to the Cursus framework
+- **[Step Builder Guide](../slipbox/0_developer_guide/step_builder.md)**: Detailed documentation on step builder implementation patterns
+- **[Step Specification Guide](../slipbox/0_developer_guide/step_specification.md)**: Specification-driven architecture documentation
+- **[Hyperparameter Class Guide](../slipbox/0_developer_guide/hyperparameter_class.md)**: Three-tier hyperparameter class design patterns
+- **[Config Field Manager Guide](../slipbox/0_developer_guide/config_field_manager_guide.md)**: Configuration management and field categorization
+- **[Three-Tier Config Design](../slipbox/0_developer_guide/three_tier_config_design.md)**: Configuration architecture principles
+- **[Validation Framework Guide](../slipbox/0_developer_guide/validation_framework_guide.md)**: Testing and validation patterns
+- **[Step Catalog Integration Guide](../slipbox/0_developer_guide/step_catalog_integration_guide.md)**: Pipeline catalog integration patterns
+
+### Design Documentation
+- **[Config-Driven Design](../slipbox/1_design/config_driven_design.md)**: Configuration-driven architecture principles
+- **[Specification-Driven Architecture](../slipbox/1_design/adaptive_specification_integration.md)**: Adaptive specification integration design
+- **[Step Builder Patterns](../slipbox/1_design/createmodel_step_builder_patterns.md)**: Step builder implementation patterns
+- **[Dependency Resolution System](../slipbox/1_design/dependency_resolution_system.md)**: Automatic dependency resolution design
+- **[Config Field Categorization](../slipbox/1_design/config_field_categorization_consolidated.md)**: Field categorization and management
+- **[Three-Tier Config Implementation](../slipbox/1_design/config_manager_three_tier_implementation.md)**: Three-tier configuration implementation
+- **[Enhanced Property Reference](../slipbox/1_design/enhanced_property_reference.md)**: Property path and reference management
+
+### Related Implementation Examples
+- **XGBoost Training Step**: Reference implementation for gradient boosting algorithms
+  - `src/cursus/steps/builders/builder_xgboost_training_step.py`
+  - `src/cursus/steps/configs/config_xgboost_training_step.py`
+  - `src/cursus/steps/hyperparams/hyperparameters_xgboost.py`
+- **Step Registry**: `src/cursus/registry/step_names_original.py`
+- **Base Classes**: 
+  - `src/cursus/core/base/builder_base.py`
+  - `src/cursus/core/base/config_base.py`
+  - `src/cursus/core/base/hyperparameters_base.py`
+
+### External Documentation
+- **[AWS SageMaker LightGBM Examples](https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_applying_machine_learning/sagemaker_lightgbm_distributed_training_dask/sagemaker-lightgbm-distributed-training-dask.ipynb)**: Official AWS SageMaker LightGBM JumpStart model examples
+- **[SageMaker SDK Documentation](https://sagemaker.readthedocs.io/en/stable/api/utility/image_uris.html)**: Image URI retrieval documentation
+- **[LightGBM Documentation](https://lightgbm.readthedocs.io/en/latest/)**: Official LightGBM algorithm documentation

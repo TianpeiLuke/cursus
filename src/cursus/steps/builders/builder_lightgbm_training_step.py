@@ -115,8 +115,16 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         self.log_info("LightGBMTrainingConfig validation succeeded.")
 
     def _get_lightgbm_image_uri(self) -> str:
-        """Get LightGBM built-in algorithm image URI for the current region."""
-        return image_uris.retrieve("lightgbm", region=self.aws_region)
+        """Get LightGBM JumpStart model image URI for the current region."""
+        # LightGBM is available as a JumpStart model, not a traditional built-in algorithm
+        return image_uris.retrieve(
+            region=self.aws_region,
+            framework=None,
+            model_id="lightgbm-classification-model",
+            model_version="*",  # Latest version
+            image_scope="training",
+            instance_type=self.config.training_instance_type,
+        )
 
     def _create_estimator(self, output_path=None) -> Estimator:
         """
