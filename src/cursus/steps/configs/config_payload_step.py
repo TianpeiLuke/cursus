@@ -32,41 +32,15 @@ class PayloadConfig(ProcessingStepConfigBase):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
-
-    # Model registration fields
-    model_owner: str = Field(description="Team ID of model owner")
-
-    model_domain: str = Field(description="Domain for model registration")
-
-    model_objective: str = Field(description="Objective of model registration")
-
-    # Variable lists for input and output
-    source_model_inference_output_variable_list: Dict[str, str] = Field(
-        description="Dictionary of output variables and their types (NUMERIC or TEXT)"
-    )
-
-    source_model_inference_input_variable_list: Union[
-        Dict[str, str], List[List[str]]
-    ] = Field(
-        description="Input variables and their types. Can be either:\n"
-        "1. Dictionary: {'var1': 'NUMERIC', 'var2': 'TEXT'}\n"
-        "2. List of pairs: [['var1', 'NUMERIC'], ['var2', 'TEXT']]"
-    )
-
-    # Performance metrics
-    expected_tps: int = Field(ge=1, description="Expected transactions per second")
-
-    max_latency_in_millisecond: int = Field(
-        ge=100, le=10000, description="Maximum acceptable latency in milliseconds"
-    )
+    
+    # NOTE: Variable lists removed - script gets all variable information from hyperparameters.json
+    # The script extracts field information from hyperparameters using:
+    # - full_field_list, tab_field_list, cat_field_list from hyperparameters
+    # - Creates variable list dynamically using create_model_variable_list()
+    # Config-based variable lists were redundant and unused.
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
-
-    # Model framework settings
-    framework: str = Field(
-        default="xgboost", description="ML framework used for the model"
-    )
 
     # Entry point script
     processing_entry_point: str = Field(
@@ -82,11 +56,6 @@ class PayloadConfig(ProcessingStepConfigBase):
     source_model_inference_response_types: List[str] = Field(
         default=["application/json"],
         description="Response type for model inference output. Must be exactly ['text/csv'] or ['application/json']",
-    )
-
-    # Performance thresholds
-    max_acceptable_error_rate: float = Field(
-        default=0.2, ge=0.0, le=1.0, description="Maximum acceptable error rate (0-1)"
     )
 
     # Default values for payload generation
@@ -127,96 +96,8 @@ class PayloadConfig(ProcessingStepConfigBase):
 
     # Removed sample_payload_s3_key property - S3 path construction should happen in builders/scripts
 
-    # Validators for inputs
-
-    @field_validator("source_model_inference_input_variable_list")
-    @classmethod
-    def validate_input_variable_list(
-        cls, v: Union[Dict[str, str], List[List[str]]]
-    ) -> Union[Dict[str, str], List[List[str]]]:
-        """
-        Validate input variable list format with string types.
-
-        Args:
-            v: Either a dictionary of variable names to types,
-               or a list of [variable_name, variable_type] pairs
-
-        Returns:
-            Original value if valid, without modification
-        """
-        if not v:  # If empty
-            raise ValueError("Input variable list cannot be empty")
-
-        # Handle dictionary format
-        if isinstance(v, dict):
-            for key, value in v.items():
-                if not isinstance(key, str):
-                    raise ValueError(
-                        f"Key must be string, got {type(key)} for key: {key}"
-                    )
-
-                # Check if string value is valid
-                if not isinstance(value, str):
-                    raise ValueError(f"Value must be string, got {type(value)}")
-
-                if value.upper() not in cls._VALID_TYPES:
-                    raise ValueError(f"Value must be 'NUMERIC' or 'TEXT', got: {value}")
-            return v
-
-        # Handle list format
-        elif isinstance(v, list):
-            for item in v:
-                if not isinstance(item, list) or len(item) != 2:
-                    raise ValueError(
-                        "Each item must be a list of [variable_name, variable_type]"
-                    )
-
-                var_name, var_type = item
-                if not isinstance(var_name, str):
-                    raise ValueError(
-                        f"Variable name must be string, got {type(var_name)}"
-                    )
-
-                if not isinstance(var_type, str):
-                    raise ValueError(f"Type must be string, got {type(var_type)}")
-
-                if var_type.upper() not in cls._VALID_TYPES:
-                    raise ValueError(
-                        f"Type must be 'NUMERIC' or 'TEXT', got: {var_type}"
-                    )
-            return v
-
-        else:
-            raise ValueError("Must be either a dictionary or a list of pairs")
-
-    @field_validator("source_model_inference_output_variable_list")
-    @classmethod
-    def validate_output_variable_list(cls, v: Dict[str, str]) -> Dict[str, str]:
-        """
-        Validate output variable dictionary format with string types.
-
-        Args:
-            v: Dictionary mapping variable names to types
-
-        Returns:
-            Original dictionary if valid, without modification
-        """
-        if not v:  # If empty dictionary
-            raise ValueError("Output variable list cannot be empty")
-
-        for key, value in v.items():
-            # Validate key is a string
-            if not isinstance(key, str):
-                raise ValueError(f"Key must be string, got {type(key)} for key: {key}")
-
-            # Check if string value is valid
-            if not isinstance(value, str):
-                raise ValueError(f"Value must be string, got {type(value)}")
-
-            if value.upper() not in cls._VALID_TYPES:
-                raise ValueError(f"Value must be 'NUMERIC' or 'TEXT', got: {value}")
-
-        return v
+    # Removed validators for variable lists since those fields were removed
+    # Script gets all variable information from hyperparameters.json
 
     # Model validators
 
@@ -229,48 +110,9 @@ class PayloadConfig(ProcessingStepConfigBase):
         # No additional derived fields to initialize for PayloadConfig
         return self
 
-    @model_validator(mode="after")
-    def validate_special_fields(self) -> "PayloadConfig":
-        """Validate special fields configuration if provided"""
-        if not self.special_field_values:
-            return self
-
-        # Check if all special fields are in input variable list
-        invalid_fields = []
-        input_vars = self.source_model_inference_input_variable_list
-
-        for field_name in self.special_field_values:
-            if isinstance(input_vars, dict):
-                if field_name not in input_vars:
-                    invalid_fields.append(field_name)
-                else:
-                    field_type = input_vars[field_name]
-                    if field_type.upper() != "TEXT":
-                        raise ValueError(
-                            f"Special field '{field_name}' must be of type TEXT, "
-                            f"got {field_type}"
-                        )
-            else:  # List format
-                field_found = False
-                for var_name, var_type in input_vars:
-                    if var_name == field_name:
-                        field_found = True
-                        if var_type.upper() != "TEXT":
-                            raise ValueError(
-                                f"Special field '{field_name}' must be of type TEXT, "
-                                f"got {var_type}"
-                            )
-                        break
-                if not field_found:
-                    invalid_fields.append(field_name)
-
-        if invalid_fields:
-            raise ValueError(
-                f"Special fields not found in input variable list: {invalid_fields}"
-            )
-
-        # No model_copy - just return self directly
-        return self
+    # Removed validate_special_fields validator since it referenced the removed variable list fields
+    # Special field validation is no longer needed since the script gets variables from hyperparameters
+    # and special_field_values is optional with proper defaults
 
     # Methods for payload generation and paths
 
@@ -298,54 +140,11 @@ class PayloadConfig(ProcessingStepConfigBase):
     # Removed get_script_path() method - using inherited implementation from base config
     # The base config's implementation handles script path resolution properly
 
-    # Input/output variable helpers
-
-    def get_normalized_input_variables(self) -> List[List[str]]:
-        """
-        Get input variables normalized to list format with string types.
-        Compatible with format from create_model_variable_list.
-
-        Returns:
-            List of [name, type] pairs with string types
-        """
-        input_vars = self.source_model_inference_input_variable_list
-        result = []
-
-        if isinstance(input_vars, dict):
-            # Convert dict to list format
-            for name, var_type in input_vars.items():
-                type_str = str(var_type).upper()
-                result.append([name, type_str])
-        else:
-            # Already list format, just standardize types
-            for name, var_type in input_vars:
-                type_str = str(var_type).upper()
-                result.append([name, type_str])
-
-        return result
-
-    def get_input_variables_as_dict(self) -> Dict[str, str]:
-        """
-        Get input variables as a dictionary mapping names to string types.
-        Compatible with the second return value from create_model_variable_json.
-
-        Returns:
-            Dictionary mapping variable names to string types
-        """
-        input_vars = self.source_model_inference_input_variable_list
-        result = {}
-
-        # Already in dict format
-        if isinstance(input_vars, dict):
-            for name, var_type in input_vars.items():
-                result[name] = str(var_type).upper()
-
-        # Convert list format to dict format
-        else:
-            for name, var_type in input_vars:
-                result[name] = str(var_type).upper()
-
-        return result
+    # Removed redundant input/output variable helper methods:
+    # - get_normalized_input_variables() - duplicates script logic
+    # - get_input_variables_as_dict() - duplicates script logic
+    # These methods duplicate processing logic that belongs in the script, not config.
+    # Config should only provide the raw data, not process it.
 
     # Removed model_dump() method - it was redundant, just calling super().model_dump()
     # Using inherited implementation from base config
