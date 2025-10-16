@@ -82,7 +82,7 @@ prefix = "/opt/ml/"
 input_path = os.path.join(prefix, "input/data")
 output_path = os.path.join(prefix, "output/data")
 model_path = os.path.join(prefix, "model")
-hparam_path = os.path.join(prefix, "input/config/hyperparameters.json")
+hparam_path = os.path.join(prefix, "code/hyperparams/hyperparameters.json")
 checkpoint_path = os.environ.get("SM_CHECKPOINT_DIR", "/opt/ml/checkpoints")
 train_channel = "train"
 train_path = os.path.join(input_path, train_channel)
@@ -753,7 +753,7 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/input/config",  # Source directory path
+        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path
     }
 
     # Define input and output paths using contract logical names

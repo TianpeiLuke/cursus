@@ -34,9 +34,11 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
+                "StratifiedSampling",
+                "RiskTableMapping",
+                "MissingValueImputation",
                 "ProcessingStep",
                 "DataLoad",
-                "RiskTableMapping",
             ],
             semantic_keywords=[
                 "data",
@@ -53,23 +55,17 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
         DependencySpec(
             logical_name="hyperparameters_s3_uri",
             dependency_type=DependencyType.HYPERPARAMETERS,
-            required=False,
-            compatible_sources=[
-                "HyperparameterPrep",
-                "ProcessingStep",
-                "ConfigGeneration",
-                "HyperparameterTuning",
-            ],
+            required=False,  # Can be generated internally
+            compatible_sources=["HyperparameterPrep", "ProcessingStep"],
             semantic_keywords=[
                 "config",
                 "params",
                 "hyperparameters",
                 "settings",
                 "hyperparams",
-                "configuration",
             ],
             data_type="S3Uri",
-            description="S3 URI containing hyperparameters configuration directory (optional)",
+            description="S3 URI containing hyperparameters configuration file (optional - falls back to source directory)",
         ),
     ],
     outputs=[

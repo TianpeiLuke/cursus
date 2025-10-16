@@ -35,9 +35,10 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
             compatible_sources=[
                 "TabularPreprocessing",
                 "StratifiedSampling",
+                "RiskTableMapping",
+                "MissingValueImputation",
                 "ProcessingStep",
                 "DataLoad",
-                "RiskTableMapping",
             ],
             semantic_keywords=[
                 "data",

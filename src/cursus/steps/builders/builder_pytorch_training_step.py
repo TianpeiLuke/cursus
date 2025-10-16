@@ -113,7 +113,7 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
         """
         Creates and configures the PyTorch estimator for the SageMaker Training Job.
         This defines the execution environment for the training script, including the instance
-        type, framework version, and hyperparameters.
+        type, framework version, and environment variables.
 
         Args:
             output_path: Optional override for model output path. If provided, this will be used
@@ -122,22 +122,11 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
         Returns:
             An instance of sagemaker.pytorch.PyTorch.
         """
-        # Convert hyperparameters object to dict if available
-        hyperparameters = {}
-        if hasattr(self.config, "hyperparameters") and self.config.hyperparameters:
-            # If the hyperparameters object has a to_dict method, use it
-            if hasattr(self.config.hyperparameters, "to_dict"):
-                hyperparameters.update(self.config.hyperparameters.to_dict())
-            # Otherwise add all non-private attributes
-            else:
-                for key, value in vars(self.config.hyperparameters).items():
-                    if not key.startswith("_"):
-                        hyperparameters[key] = value
+        # Note: Hyperparameters are now embedded in the source directory
+        # and loaded by the training script from /opt/ml/code/hyperparams/
 
-        # Use source directory with hybrid resolution fallback
-        source_dir = (
-            self.config.effective_source_dir
-        )
+        # Use modernized effective_source_dir with comprehensive hybrid resolution
+        source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
         
         return PyTorch(
@@ -150,7 +139,6 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             instance_count=self.config.training_instance_count,
             volume_size=self.config.training_volume_size,
             base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
-            hyperparameters=hyperparameters,
             sagemaker_session=self.session,
             output_path=output_path,  # Use provided output_path directly
             environment=self._get_environment_variables(),
@@ -231,8 +219,7 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
         Get inputs for the step using specification and contract.
 
         This method creates TrainingInput objects for each dependency defined in the specification.
-        Unlike XGBoost training, PyTorch training receives hyperparameters directly via the estimator constructor,
-        so we only need to handle the data inputs here.
+        After refactor: Only handles data inputs, hyperparameters are embedded in source directory.
 
         Args:
             inputs: Input data sources keyed by logical name
@@ -250,14 +237,14 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             raise ValueError("Script contract is required for input mapping")
 
         training_inputs = {}
-        matched_inputs = set()  # Track which inputs we've handled
 
         # Process each dependency in the specification
         for _, dependency_spec in self.spec.dependencies.items():
             logical_name = dependency_spec.logical_name
 
-            # Skip if already handled
-            if logical_name in matched_inputs:
+            # Skip hyperparameters_s3_uri if configured to do so
+            if logical_name == "hyperparameters_s3_uri" and self.config.skip_hyperparameters_s3_uri:
+                self.log_info("Skipping hyperparameters_s3_uri channel as configured (hyperparameters loaded from script folder)")
                 continue
 
             # Skip if optional and not provided
@@ -272,20 +259,30 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             container_path = None
             if logical_name in self.contract.expected_input_paths:
                 container_path = self.contract.expected_input_paths[logical_name]
+
+                # Handle input_path - create single data channel for PyTorch
+                if logical_name == "input_path":
+                    base_path = inputs[logical_name]
+
+                    # Create data channel using helper method
+                    data_channel = self._create_data_channel_from_source(base_path)
+                    training_inputs.update(data_channel)
+                    self.log_info(
+                        "Created data channel from %s: %s", logical_name, base_path
+                    )
+                else:
+                    # For other inputs, use logical name as channel
+                    training_inputs[logical_name] = TrainingInput(
+                        s3_data=inputs[logical_name]
+                    )
+                    self.log_info(
+                        "Created %s channel from %s: %s",
+                        logical_name,
+                        logical_name,
+                        inputs[logical_name],
+                    )
             else:
                 raise ValueError(f"No container path found for input: {logical_name}")
-
-            # Handle input_path (the only dependency we should have after removing config)
-            if logical_name == "input_path":
-                base_path = inputs[logical_name]
-
-                # Create data channel using helper method
-                data_channel = self._create_data_channel_from_source(base_path)
-                training_inputs.update(data_channel)
-                self.log_info(
-                    "Created data channel from %s: %s", logical_name, base_path
-                )
-                matched_inputs.add(logical_name)
 
         return training_inputs
 

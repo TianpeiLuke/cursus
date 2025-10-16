@@ -40,40 +40,21 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         description="Python version for the SageMaker PyTorch container.",
     )
 
-    # Hyperparameters object
+    # Hyperparameters handling configuration
+    skip_hyperparameters_s3_uri: bool = Field(
+        default=True, 
+        description="Whether to skip hyperparameters_s3_uri channel during _get_inputs. "
+                   "If True (default), hyperparameters are loaded from script folder. "
+                   "If False, hyperparameters_s3_uri channel is created as TrainingInput."
+    )
+
+    # Hyperparameters object (optional for backward compatibility)
     hyperparameters: Optional[ModelHyperparameters] = Field(
-        None, description="Model hyperparameters"
+        None, description="Model hyperparameters (optional when using external JSON files)"
     )
 
     model_config = BasePipelineConfig.model_config
 
-    @model_validator(mode="after")
-    def validate_field_lists(self) -> "PyTorchTrainingConfig":
-        """Validate field lists from hyperparameters"""
-        if not self.hyperparameters:
-            raise ValueError("hyperparameters must be provided")
-
-        # Check if all fields in tab_field_list and cat_field_list are in full_field_list
-        all_fields = set(self.hyperparameters.full_field_list)
-
-        if not set(self.hyperparameters.tab_field_list).issubset(all_fields):
-            raise ValueError("All fields in tab_field_list must be in full_field_list")
-
-        if not set(self.hyperparameters.cat_field_list).issubset(all_fields):
-            raise ValueError("All fields in cat_field_list must be in full_field_list")
-
-        # Check if label_name and id_name are in full_field_list
-        if self.hyperparameters.label_name not in all_fields:
-            raise ValueError(
-                f"label_name '{self.hyperparameters.label_name}' must be in full_field_list"
-            )
-
-        if self.hyperparameters.id_name not in all_fields:
-            raise ValueError(
-                f"id_name '{self.hyperparameters.id_name}' must be in full_field_list"
-            )
-
-        return self
 
     @field_validator("training_instance_type")
     @classmethod
