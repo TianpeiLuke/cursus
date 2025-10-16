@@ -36,6 +36,11 @@ try:
 except ImportError:
     SpecAutoDiscovery = None
 
+try:
+    from .script_discovery import ScriptAutoDiscovery
+except ImportError:
+    ScriptAutoDiscovery = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -99,6 +104,7 @@ class StepCatalog:
         self.builder_discovery = self._initialize_builder_discovery()
         self.contract_discovery = self._initialize_contract_discovery()
         self.spec_discovery = self._initialize_spec_discovery()
+        self.script_discovery = self._initialize_script_discovery()
         
         # Simple in-memory indexes (US4: Efficient Scaling)
         self._step_index: Dict[str, StepInfo] = {}
@@ -1007,6 +1013,33 @@ class StepCatalog:
             self.logger.error(f"Error initializing SpecAutoDiscovery: {e}")
             return None
     
+    def _initialize_script_discovery(self) -> Optional['ScriptAutoDiscovery']:
+        """
+        Initialize ScriptAutoDiscovery component with proper error handling.
+        
+        Returns:
+            ScriptAutoDiscovery instance or None if initialization fails
+        """
+        try:
+            if ScriptAutoDiscovery is None:
+                self.logger.warning("ScriptAutoDiscovery not available due to import failure")
+                return None
+            
+            # Support priority workspace for interactive runtime testing
+            priority_workspace_dir = None
+            if self.workspace_dirs:
+                # Use first workspace as priority (can be enhanced later)
+                priority_workspace_dir = self.workspace_dirs[0]
+            
+            return ScriptAutoDiscovery(
+                self.package_root, 
+                self.workspace_dirs, 
+                priority_workspace_dir=priority_workspace_dir
+            )
+        except Exception as e:
+            self.logger.error(f"Error initializing ScriptAutoDiscovery: {e}")
+            return None
+    
     def _find_package_root(self) -> Path:
         """
         Find cursus package root using relative path navigation.
@@ -1675,3 +1708,143 @@ class StepCatalog:
         except Exception as e:
             self.logger.error(f"Error extracting parent values for {target_config_class_name}: {e}")
             return {}
+    
+    # SCRIPT DISCOVERY METHODS: Interactive Runtime Testing Support
+    def discover_script_files(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Discover script files from package and workspaces with prioritization.
+        
+        This method enables script discovery for interactive runtime testing by
+        finding scripts referenced in config and contract entry points.
+        
+        Args:
+            project_id: Optional project ID for workspace-specific discovery
+            
+        Returns:
+            Dictionary mapping script names to ScriptInfo objects
+        """
+        try:
+            if self.script_discovery:
+                return self.script_discovery.discover_script_files(project_id)
+            else:
+                self.logger.warning("ScriptAutoDiscovery not available, cannot discover script files")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error discovering script files: {e}")
+            return {}
+    
+    def discover_scripts_from_dag(self, dag) -> Dict[str, Any]:
+        """
+        Discover scripts referenced in a DAG with intelligent node-to-script mapping.
+        
+        This method enables DAG-guided script discovery for interactive runtime testing
+        by mapping DAG nodes to actual script files using step catalog intelligence.
+        
+        Args:
+            dag: PipelineDAG object
+            
+        Returns:
+            Dictionary mapping script names to ScriptInfo objects
+        """
+        try:
+            if self.script_discovery:
+                return self.script_discovery.discover_scripts_from_dag(dag)
+            else:
+                self.logger.warning("ScriptAutoDiscovery not available, cannot discover scripts from DAG")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Error discovering scripts from DAG: {e}")
+            return {}
+    
+    def load_script_info(self, script_name: str) -> Optional[Any]:
+        """
+        Load script information for a specific script with workspace-aware discovery.
+        
+        This method enables script information retrieval for interactive runtime testing
+        with workspace prioritization support.
+        
+        Args:
+            script_name: Name of the script to load info for
+            
+        Returns:
+            ScriptInfo object or None if not found
+        """
+        try:
+            if self.script_discovery:
+                return self.script_discovery.load_script_info(script_name)
+            else:
+                self.logger.warning(f"ScriptAutoDiscovery not available, cannot load script info for {script_name}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Error loading script info for {script_name}: {e}")
+            return None
+    
+    def get_script_info(self, script_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get information about a script in dictionary format.
+        
+        This method provides script information for interactive runtime testing
+        in a user-friendly dictionary format.
+        
+        Args:
+            script_name: Name of the script
+            
+        Returns:
+            Dictionary with script information or None if not found
+        """
+        try:
+            if self.script_discovery:
+                return self.script_discovery.get_script_info(script_name)
+            else:
+                self.logger.warning(f"ScriptAutoDiscovery not available, cannot get script info for {script_name}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Error getting script info for {script_name}: {e}")
+            return None
+    
+    def list_available_scripts(self) -> List[str]:
+        """
+        List all available script names.
+        
+        This method enables script enumeration for interactive runtime testing
+        by listing all discovered script names.
+        
+        Returns:
+            List of script names that have been discovered
+        """
+        try:
+            if self.script_discovery:
+                return self.script_discovery.list_available_scripts()
+            else:
+                self.logger.warning("ScriptAutoDiscovery not available, cannot list available scripts")
+                return []
+        except Exception as e:
+            self.logger.error(f"Error listing available scripts: {e}")
+            return []
+    
+    def get_script_discovery_stats(self) -> Dict[str, Any]:
+        """
+        Get script discovery statistics.
+        
+        This method provides discovery statistics for interactive runtime testing
+        to help users understand the script discovery process.
+        
+        Returns:
+            Dictionary with script discovery statistics
+        """
+        try:
+            if self.script_discovery:
+                return self.script_discovery.get_discovery_stats()
+            else:
+                self.logger.warning("ScriptAutoDiscovery not available, cannot get discovery stats")
+                return {
+                    "package_scripts": 0,
+                    "workspace_scripts": {},
+                    "total_scripts": 0,
+                    "cached_scripts": 0,
+                    "discovery_complete": False,
+                    "priority_workspace": None
+                }
+        except Exception as e:
+            self.logger.error(f"Error getting script discovery stats: {e}")
+            return {"error": str(e)}
