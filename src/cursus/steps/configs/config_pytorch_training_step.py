@@ -15,6 +15,16 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     Input/output paths are now provided via step specifications and dependencies.
     """
 
+    # ===== Essential User Inputs (Tier 1) =====
+    # These are fields that users must explicitly provide
+
+    training_entry_point: str = Field(
+        description="Entry point script for Pytorch training."
+    )
+
+    # ===== System Inputs with Defaults (Tier 2) =====
+    # These are fields with reasonable defaults that users can override
+
     # Instance configuration
     training_instance_type: str = Field(
         default="ml.g5.12xlarge", description="Instance type for training job."
@@ -24,11 +34,6 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     )
     training_volume_size: int = Field(
         default=30, ge=1, description="Volume size (GB) for training instances."
-    )
-
-    # Script mode configuration
-    training_entry_point: str = Field(
-        default="train.py", description="Entry point script for training."
     )
 
     # Framework versions for SageMaker PyTorch container
