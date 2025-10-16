@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.9] - 2025-10-16
+
+### Added
+- **Interactive Runtime Testing Factory** - New comprehensive factory system for interactive runtime testing
+  - **DAG Config Factory** - Complete factory system for DAG configuration generation with early validation
+  - **Configuration Generator** - Advanced configuration generation with field extraction and mapping
+  - **Field Extractor** - Intelligent field extraction system for configuration classes
+  - **Config Class Mapper** - Enhanced mapping system for configuration class discovery and management
+
+- **Enhanced UI System** - Major improvements to user interface and configuration management
+  - **Universal Config UI** - Generalized UI system for configuration management across all step types
+  - **Smart Default Values** - Intelligent default value population with base config inheritance
+  - **Single Page Integration** - Unified single-page UI design for better user experience
+  - **Jupyter Notebook Integration** - Complete integration with Jupyter notebooks for interactive development
+
+- **New ML Pipeline Steps** - Expanded step library with additional ML capabilities
+  - **LightGBM Training Step** - Complete LightGBM training step with JumpStart integration
+  - **Dummy Data Loading Step** - Utility step for testing and development workflows
+  - **Enhanced Cradle Data Loading** - Improved cradle data loading with dynamic data source support
+
+### Enhanced
+- **Configuration System Improvements** - Major enhancements to configuration management architecture
+  - **Inheritance-Aware Field Generation** - Enhanced field generation with proper inheritance handling
+  - **Unified Hyperparameter Location** - Standardized hyperparameter handling across all training steps
+  - **Reduced Configuration Redundancy** - Eliminated redundant fields in payload step configurations
+  - **Enhanced Config Factory** - Improved configuration factory with better validation and error handling
+
+- **Runtime Testing Infrastructure** - Comprehensive improvements to runtime testing capabilities
+  - **Script Runtime Testing** - Enhanced script-level runtime testing with better validation
+  - **Script Discovery System** - Improved script discovery and validation mechanisms
+  - **Runtime DAG Testing** - Enhanced DAG-level runtime testing with better error reporting
+  - **API Config Factory Testing** - Complete test suite for API configuration factory components
+
+- **Code Quality and Organization** - Major code cleanup and optimization efforts
+  - **UI Code Redundancy Reduction** - Significant reduction in UI-related code redundancy
+  - **Relative Import Migration** - Continued migration to relative imports for better modularity
+  - **Path Security Improvements** - Fixed path reversal vulnerability and enhanced security measures
+  - **Configuration Field Optimization** - Removed redundant hyperparameter fields and improved efficiency
+
+- **User Experience Improvements** - Enhanced user interface and interaction design
+  - **Verbose Message Support** - Added comprehensive verbose messaging for better debugging
+  - **Smart UI Defaults** - Intelligent default value handling in UI components
+  - **Previous Button Functionality** - Fixed navigation issues in UI workflows
+  - **Window Duplication Fixes** - Resolved UI rendering issues and window management problems
+
+### Fixed
+- **UI System Stability** - Comprehensive fixes to user interface reliability
+  - **Rendering Issue Resolution** - Fixed various UI rendering problems and display issues
+  - **Window Management** - Resolved duplicated window issues and improved window handling
+  - **Navigation Fixes** - Fixed Previous button functionality and navigation flow
+  - **Widget Integration** - Improved widget integration and interaction handling
+
+- **Configuration Management Fixes** - Enhanced configuration system reliability
+  - **Hyperparameter Field Cleanup** - Removed redundant hyperparameter fields from configurations
+  - **Config Validation** - Improved configuration validation and error handling
+  - **Field Generation** - Fixed inheritance-aware field generation issues
+  - **Default Value Handling** - Enhanced default value population and management
+
+- **Testing Infrastructure Fixes** - Improved testing framework reliability
+  - **Test Error Resolution** - Fixed multiple test errors across validation and runtime modules
+  - **Mock Infrastructure** - Enhanced mock infrastructure for better test isolation
+  - **Test Execution** - Improved test execution reliability and error reporting
+  - **Integration Testing** - Fixed integration test issues and improved coverage
+
+- **Security and Vulnerability Fixes** - Critical security improvements
+  - **Path Reversal Vulnerability** - Fixed path reversal security vulnerability
+  - **Input Validation** - Enhanced input validation and sanitization
+  - **Security Hardening** - Improved overall security posture and vulnerability management
+
+### Technical Details
+- **Factory Architecture** - Complete factory system for configuration generation with intelligent field extraction
+- **UI Framework** - Universal UI framework with smart defaults and inheritance-aware field handling
+- **Runtime Testing** - Enhanced runtime testing infrastructure with comprehensive validation capabilities
+- **Configuration Management** - Improved configuration system with reduced redundancy and better validation
+- **Security Enhancements** - Critical security fixes and vulnerability remediation
+
+### Quality Assurance
+- **Test Coverage** - Expanded test coverage for factory system and UI components
+- **Configuration Validation** - Enhanced configuration validation with early error detection
+- **UI Testing** - Comprehensive UI testing with improved user experience validation
+- **Security Testing** - Enhanced security testing and vulnerability assessment
+
+### Performance Improvements
+- **UI Performance** - Optimized UI performance with reduced code redundancy and better rendering
+- **Configuration Processing** - Improved configuration processing speed with enhanced factory system
+- **Runtime Testing Performance** - Optimized runtime testing execution with better resource management
+- **Memory Usage** - Reduced memory footprint through code optimization and redundancy elimination
+
 ## [1.3.8] - 2025-10-05
 
 ### Enhanced
