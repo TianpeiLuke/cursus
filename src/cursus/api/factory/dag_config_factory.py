@@ -57,7 +57,8 @@ class DAGConfigFactory:
         self._config_class_map = self.config_mapper.map_dag_to_config_classes(dag)
         self.base_config = None  # BasePipelineConfig instance
         self.base_processing_config = None  # BaseProcessingStepConfig instance
-        self.step_configs: Dict[str, Dict[str, Any]] = {}
+        self.step_configs: Dict[str, Dict[str, Any]] = {}  # Raw inputs for serialization
+        self.step_config_instances: Dict[str, BaseModel] = {}  # Validated instances
         
         logger.info(f"Initialized DAGConfigFactory for DAG with {len(self._config_class_map)} steps")
     
@@ -214,19 +215,49 @@ class DAGConfigFactory:
         # Extract step-specific fields (exclude base config fields)
         return self._extract_step_specific_fields(config_class)
     
-    def set_step_config(self, step_name: str, **kwargs) -> None:
+    def set_step_config(self, step_name: str, **kwargs) -> BaseModel:
         """
-        Set configuration for a specific step.
+        Set configuration for a specific step with immediate validation.
+        
+        Creates and validates the config instance immediately using the proper
+        from_base_config pattern, providing early feedback to users.
         
         Args:
             step_name: Name of the step to configure
             **kwargs: Step-specific configuration field values
+            
+        Returns:
+            The created and validated config instance
+            
+        Raises:
+            ValueError: If configuration is invalid or prerequisites not met
         """
         if step_name not in self._config_class_map:
             raise ValueError(f"Step '{step_name}' not found in DAG")
         
-        self.step_configs[step_name] = kwargs
-        logger.info(f"Configuration set for step: {step_name}")
+        config_class = self._config_class_map[step_name]
+        
+        # Check prerequisites before attempting configuration
+        self._validate_prerequisites_for_step(step_name, config_class)
+        
+        try:
+            # Create instance immediately with validation using proper inheritance
+            config_instance = self._create_config_instance_with_inheritance(
+                config_class, kwargs
+            )
+            
+            # Store both raw inputs (for serialization) and validated instance
+            self.step_configs[step_name] = kwargs
+            self.step_config_instances[step_name] = config_instance
+            
+            logger.info(f"✅ {step_name} configured successfully using {config_class.__name__}")
+            return config_instance
+            
+        except Exception as e:
+            # Enhanced error message with context for better debugging
+            error_context = self._build_error_context(step_name, config_class, kwargs, e)
+            logger.error(f"❌ Configuration failed for {step_name}: {error_context}")
+            raise ValueError(f"Configuration validation failed for {step_name}: {error_context}")
     
     def get_configuration_status(self) -> Dict[str, bool]:
         """
@@ -248,19 +279,28 @@ class DAGConfigFactory:
     
     def generate_all_configs(self) -> List[BaseModel]:
         """
-        Generate final list of config instances with enhanced validation guardrails.
+        Generate final list of config instances.
         
-        Includes enhanced validation to ensure all essential (tier 1) fields
-        are provided before configuration generation as a guardrail.
+        With early validation enabled, this method now primarily returns the
+        pre-validated instances created during set_step_config calls.
         
         Returns:
             List of configured instances ready for pipeline execution
         """
-        # Enhanced validation: Check all essential fields are provided
-        validation_errors = self._validate_essential_fields()
-        if validation_errors:
-            error_msg = "Essential field validation failed:\n" + "\n".join(validation_errors)
-            raise ConfigurationIncompleteError(error_msg)
+        # Check that all steps are configured
+        missing_steps = self.get_pending_steps()
+        if missing_steps:
+            raise ValueError(f"Missing configuration for steps: {missing_steps}")
+        
+        # If we have pre-validated instances, return them
+        if len(self.step_config_instances) == len(self._config_class_map):
+            configs = list(self.step_config_instances.values())
+            logger.info(f"✅ Returning {len(configs)} pre-validated configuration instances")
+            return configs
+        
+        # Fallback: generate instances using the traditional approach
+        # This handles cases where configs were loaded from state or set via old API
+        logger.warning("Some configs not pre-validated, falling back to traditional generation")
         
         if not self.base_config:
             raise ValueError("Base configuration must be set before generating configs")
@@ -462,3 +502,213 @@ class DAGConfigFactory:
             self.set_base_processing_config(**state['base_processing_config_dict'])
         
         logger.info(f"Factory state loaded from: {file_path}")
+    
+    def _validate_prerequisites_for_step(self, step_name: str, config_class: Type[BaseModel]) -> None:
+        """
+        Validate that required base configs are set before step configuration.
+        
+        Args:
+            step_name: Name of the step being configured
+            config_class: Configuration class for the step
+            
+        Raises:
+            ValueError: If required base configurations are missing
+        """
+        if self._inherits_from_processing_config(config_class):
+            if not self.base_config:
+                raise ValueError(f"Step '{step_name}' requires base config to be set first")
+            if not self.base_processing_config:
+                raise ValueError(f"Step '{step_name}' requires base processing config to be set first")
+        
+        elif self._inherits_from_base_config(config_class):
+            if not self.base_config:
+                raise ValueError(f"Step '{step_name}' requires base config to be set first")
+    
+    def _create_config_instance_with_inheritance(self, 
+                                               config_class: Type[BaseModel], 
+                                               step_inputs: Dict[str, Any]) -> BaseModel:
+        """
+        Create config instance using proper from_base_config pattern with inheritance.
+        
+        Args:
+            config_class: Configuration class to instantiate
+            step_inputs: Step-specific input values
+            
+        Returns:
+            Configuration instance with proper inheritance applied
+        """
+        # Ensure config generator is available
+        if not self.config_generator:
+            self.config_generator = ConfigurationGenerator(
+                base_config=self.base_config,
+                base_processing_config=self.base_processing_config
+            )
+        
+        # Determine inheritance strategy and create instance
+        if self._inherits_from_processing_config(config_class):
+            return self._create_with_processing_inheritance(config_class, step_inputs)
+        elif self._inherits_from_base_config(config_class):
+            return self._create_with_base_inheritance(config_class, step_inputs)
+        else:
+            # Standalone configuration class
+            return config_class(**step_inputs)
+    
+    def _create_with_processing_inheritance(self, 
+                                          config_class: Type[BaseModel], 
+                                          step_inputs: Dict[str, Any]) -> BaseModel:
+        """
+        Create config instance with processing config inheritance using from_base_config.
+        
+        Args:
+            config_class: Configuration class that inherits from ProcessingStepConfigBase
+            step_inputs: Step-specific input values
+            
+        Returns:
+            Configuration instance with processing inheritance applied
+        """
+        # Try from_base_config first (preferred method)
+        if hasattr(config_class, 'from_base_config'):
+            try:
+                return config_class.from_base_config(
+                    self.base_processing_config, 
+                    **step_inputs
+                )
+            except Exception as e:
+                logger.warning(f"from_base_config failed for {config_class.__name__}: {e}")
+                # Fall through to manual combination
+        
+        # Fallback: combine all inputs manually
+        combined_inputs = {}
+        if self.base_config:
+            combined_inputs.update(self.config_generator._extract_config_values(self.base_config))
+        if self.base_processing_config:
+            combined_inputs.update(self.config_generator._extract_config_values(self.base_processing_config))
+        combined_inputs.update(step_inputs)
+        
+        return config_class(**combined_inputs)
+    
+    def _create_with_base_inheritance(self, 
+                                    config_class: Type[BaseModel], 
+                                    step_inputs: Dict[str, Any]) -> BaseModel:
+        """
+        Create config instance with base config inheritance using from_base_config.
+        
+        Args:
+            config_class: Configuration class that inherits from BasePipelineConfig
+            step_inputs: Step-specific input values
+            
+        Returns:
+            Configuration instance with base inheritance applied
+        """
+        # Try from_base_config first (preferred method)
+        if hasattr(config_class, 'from_base_config'):
+            try:
+                return config_class.from_base_config(
+                    self.base_config, 
+                    **step_inputs
+                )
+            except Exception as e:
+                logger.warning(f"from_base_config failed for {config_class.__name__}: {e}")
+                # Fall through to manual combination
+        
+        # Fallback: combine inputs manually
+        combined_inputs = {}
+        if self.base_config:
+            combined_inputs.update(self.config_generator._extract_config_values(self.base_config))
+        combined_inputs.update(step_inputs)
+        
+        return config_class(**combined_inputs)
+    
+    def _inherits_from_base_config(self, config_class: Type[BaseModel]) -> bool:
+        """
+        Check if config class inherits from BasePipelineConfig.
+        
+        Args:
+            config_class: Configuration class to check
+            
+        Returns:
+            True if class inherits from BasePipelineConfig
+        """
+        try:
+            from ...core.base.config_base import BasePipelineConfig
+            return issubclass(config_class, BasePipelineConfig)
+        except (ImportError, TypeError):
+            # Fallback to string matching if import fails
+            try:
+                mro = getattr(config_class, '__mro__', [])
+                for base_class in mro:
+                    if hasattr(base_class, '__name__') and 'BasePipelineConfig' in base_class.__name__:
+                        return True
+                return False
+            except Exception:
+                return False
+    
+    def _build_error_context(self, step_name: str, config_class: Type[BaseModel], 
+                           step_inputs: Dict[str, Any], error: Exception) -> str:
+        """
+        Build detailed error context for better debugging.
+        
+        Args:
+            step_name: Name of the step that failed
+            config_class: Configuration class that failed
+            step_inputs: Input values that were provided
+            error: The exception that occurred
+            
+        Returns:
+            Detailed error context string
+        """
+        context_parts = [
+            f"Step: {step_name}",
+            f"Config Class: {config_class.__name__}",
+            f"Has from_base_config: {hasattr(config_class, 'from_base_config')}",
+            f"Inherits from processing: {self._inherits_from_processing_config(config_class)}",
+            f"Inherits from base: {self._inherits_from_base_config(config_class)}",
+            f"Step inputs: {list(step_inputs.keys())}",
+            f"Error: {str(error)}"
+        ]
+        
+        return " | ".join(context_parts)
+    
+    def update_step_config(self, step_name: str, **kwargs) -> BaseModel:
+        """
+        Update existing step configuration with new values.
+        
+        Args:
+            step_name: Name of the step to update
+            **kwargs: New configuration values to merge
+            
+        Returns:
+            Updated and validated config instance
+            
+        Raises:
+            ValueError: If step not configured yet or update fails
+        """
+        if step_name not in self.step_configs:
+            raise ValueError(f"Step '{step_name}' not configured yet. Use set_step_config first.")
+        
+        # Merge with existing configuration
+        updated_inputs = {**self.step_configs[step_name], **kwargs}
+        
+        # Use set_step_config to validate and update
+        return self.set_step_config(step_name, **updated_inputs)
+    
+    def get_step_config_instance(self, step_name: str) -> Optional[BaseModel]:
+        """
+        Get the validated config instance for a step.
+        
+        Args:
+            step_name: Name of the step
+            
+        Returns:
+            The validated config instance, or None if not configured
+        """
+        return self.step_config_instances.get(step_name)
+    
+    def get_all_config_instances(self) -> Dict[str, BaseModel]:
+        """
+        Get all validated config instances.
+        
+        Returns:
+            Dictionary mapping step names to validated config instances
+        """
+        return self.step_config_instances.copy()
