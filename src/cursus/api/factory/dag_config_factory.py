@@ -374,23 +374,27 @@ class DAGConfigFactory:
     
     def _inherits_from_processing_config(self, config_class: Type[BaseModel]) -> bool:
         """
-        Check if config class inherits from BaseProcessingStepConfig.
+        Check if config class inherits from ProcessingStepConfigBase.
         
         Args:
             config_class: Configuration class to check
             
         Returns:
-            True if class inherits from BaseProcessingStepConfig
+            True if class inherits from ProcessingStepConfigBase
         """
         try:
-            # Check method resolution order for BaseProcessingStepConfig
-            mro = getattr(config_class, '__mro__', [])
-            for base_class in mro:
-                if hasattr(base_class, '__name__') and 'BaseProcessingStepConfig' in base_class.__name__:
-                    return True
-            return False
-        except Exception:
-            return False
+            from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+            return issubclass(config_class, ProcessingStepConfigBase)
+        except (ImportError, TypeError):
+            # Fallback to string matching if import fails
+            try:
+                mro = getattr(config_class, '__mro__', [])
+                for base_class in mro:
+                    if hasattr(base_class, '__name__') and 'ProcessingStepConfigBase' in base_class.__name__:
+                        return True
+                return False
+            except Exception:
+                return False
     
     def get_factory_summary(self) -> Dict[str, Any]:
         """
