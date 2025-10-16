@@ -188,11 +188,53 @@ class DAGConfigFactory:
         """
         Get list of steps that still need configuration.
         
+        Steps with only tier 2+ (optional) fields besides inherited fields
+        are considered auto-configurable and not pending.
+        
         Returns:
-            List of step names that haven't been configured yet
+            List of step names that haven't been configured yet and require user input
         """
-        return [step_name for step_name in self._config_class_map.keys() 
-                if step_name not in self.step_configs]
+        pending_steps = []
+        
+        for step_name in self._config_class_map.keys():
+            if step_name in self.step_configs:
+                continue  # Already configured
+            
+            # Check if step can be auto-configured (only has tier 2+ fields)
+            if self.can_auto_configure_step(step_name):
+                continue  # Can be auto-configured, not pending
+            
+            pending_steps.append(step_name)
+        
+        return pending_steps
+    
+    def can_auto_configure_step(self, step_name: str) -> bool:
+        """
+        Check if a step can be auto-configured (only has tier 2+ fields besides inherited).
+        
+        Args:
+            step_name: Name of the step to check
+            
+        Returns:
+            True if step can be auto-configured, False if it requires user input
+        """
+        if step_name not in self._config_class_map:
+            return False
+        
+        config_class = self._config_class_map[step_name]
+        
+        # Check if prerequisites are met
+        try:
+            self._validate_prerequisites_for_step(step_name, config_class)
+        except ValueError:
+            return False  # Prerequisites not met, can't auto-configure
+        
+        # Get step-specific requirements (excluding inherited fields)
+        step_requirements = self.get_step_requirements(step_name)
+        essential_step_fields = [req['name'] for req in step_requirements if req['required']]
+        
+        # If there are no essential step-specific fields, it can be auto-configured
+        return len(essential_step_fields) == 0
     
     def get_step_requirements(self, step_name: str) -> List[Dict[str, Any]]:
         """
@@ -259,6 +301,55 @@ class DAGConfigFactory:
             logger.error(f"❌ Configuration failed for {step_name}: {error_context}")
             raise ValueError(f"Configuration validation failed for {step_name}: {error_context}")
     
+    def auto_configure_step_if_possible(self, step_name: str) -> Optional[BaseModel]:
+        """
+        Auto-configure a step if it only has tier 2+ (optional) fields besides inherited fields.
+        
+        This method checks if a step can be configured with just the inherited base config
+        fields, without requiring any tier 1 (essential) step-specific fields.
+        
+        Args:
+            step_name: Name of the step to auto-configure
+            
+        Returns:
+            The created config instance if auto-configuration succeeded, None otherwise
+        """
+        if step_name not in self._config_class_map:
+            return None
+        
+        config_class = self._config_class_map[step_name]
+        
+        # Check if prerequisites are met
+        try:
+            self._validate_prerequisites_for_step(step_name, config_class)
+        except ValueError:
+            return None  # Prerequisites not met, can't auto-configure
+        
+        # Get step-specific requirements (excluding inherited fields)
+        step_requirements = self.get_step_requirements(step_name)
+        essential_step_fields = [req['name'] for req in step_requirements if req['required']]
+        
+        # If there are essential step-specific fields, we can't auto-configure
+        if essential_step_fields:
+            return None
+        
+        # Try to auto-configure with empty step inputs (only inherited fields)
+        try:
+            config_instance = self._create_config_instance_with_inheritance(
+                config_class, {}  # Empty step inputs - only use inherited fields
+            )
+            
+            # Store the auto-configured instance
+            self.step_configs[step_name] = {}
+            self.step_config_instances[step_name] = config_instance
+            
+            logger.info(f"✅ {step_name} auto-configured successfully (only tier 2+ fields)")
+            return config_instance
+            
+        except Exception as e:
+            logger.debug(f"Auto-configuration failed for {step_name}: {e}")
+            return None
+    
     def get_configuration_status(self) -> Dict[str, bool]:
         """
         Check which configurations have been filled in.
@@ -281,18 +372,23 @@ class DAGConfigFactory:
         """
         Generate final list of config instances.
         
-        With early validation enabled, this method now primarily returns the
-        pre-validated instances created during set_step_config calls.
+        Automatically configures steps that only have tier 2+ fields, then validates
+        that all essential steps are configured before generating final instances.
         
         Returns:
             List of configured instances ready for pipeline execution
         """
-        # Check that all steps are configured
+        # Auto-configure steps that only have tier 2+ fields
+        auto_configured_count = self._auto_configure_eligible_steps()
+        if auto_configured_count > 0:
+            logger.info(f"✅ Auto-configured {auto_configured_count} steps with only tier 2+ fields")
+        
+        # Check that all steps are configured (after auto-configuration)
         missing_steps = self.get_pending_steps()
         if missing_steps:
             raise ValueError(f"Missing configuration for steps: {missing_steps}")
         
-        # If we have pre-validated instances, return them
+        # If we have pre-validated instances for all steps, return them
         if len(self.step_config_instances) == len(self._config_class_map):
             configs = list(self.step_config_instances.values())
             logger.info(f"✅ Returning {len(configs)} pre-validated configuration instances")
@@ -323,6 +419,25 @@ class DAGConfigFactory:
         except Exception as e:
             logger.error(f"Configuration generation failed: {e}")
             raise ValueError(f"Failed to generate configurations: {e}")
+    
+    def _auto_configure_eligible_steps(self) -> int:
+        """
+        Auto-configure all steps that are eligible (only have tier 2+ fields).
+        
+        Returns:
+            Number of steps that were auto-configured
+        """
+        auto_configured_count = 0
+        
+        for step_name in self._config_class_map.keys():
+            if step_name in self.step_configs:
+                continue  # Already configured
+            
+            # Try to auto-configure this step
+            if self.auto_configure_step_if_possible(step_name):
+                auto_configured_count += 1
+        
+        return auto_configured_count
     
     def _validate_essential_fields(self) -> List[str]:
         """
