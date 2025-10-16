@@ -1,7 +1,8 @@
 """
 Configuration builder service for Cradle Data Load Config UI
 
-This module provides services for building and exporting configuration objects.
+Simplified service using factory system for configuration generation.
+Preserves only unique cradle-specific validation and export functionality.
 """
 
 from typing import Dict, Any, Optional
@@ -9,13 +10,84 @@ import json
 import logging
 from datetime import datetime
 
+# Direct factory import - no wrapper methods
+from ...factory import ConfigurationGenerator
+from ....core.base.config_base import BasePipelineConfig
 from ....steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigBuilderService:
-    """Service for building and exporting configuration objects."""
+    """Simplified service using factory system for configuration generation."""
+    
+    def __init__(self):
+        """Initialize with direct factory usage."""
+        pass
+    
+    def validate_and_build_config(self, ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
+        """
+        Simplified config building using factory directly.
+        
+        Args:
+            ui_data: Complete UI data from all steps
+            
+        Returns:
+            Built and validated CradleDataLoadingConfig
+            
+        Raises:
+            ValueError: If validation fails or required data is missing
+        """
+        try:
+            # Extract configs
+            base_config_data = ui_data.get('base_config', {})
+            step_config_data = ui_data.get('step_config', {})
+            
+            # Use factory directly - no wrapper generator
+            if base_config_data:
+                generator = ConfigurationGenerator(base_config=BasePipelineConfig(**base_config_data))
+                config = generator.generate_config_instance(CradleDataLoadingConfig, step_config_data)
+            else:
+                config = CradleDataLoadingConfig(**{**base_config_data, **step_config_data})
+            
+            # Only preserve unique cradle validation
+            self._validate_built_config(config)
+            return config
+            
+        except Exception as e:
+            logger.error(f"Error building config: {str(e)}")
+            raise ValueError(f"Failed to build configuration: {str(e)}")
+    
+    def _validate_built_config(self, config: CradleDataLoadingConfig) -> None:
+        """
+        Only cradle-specific validation (unique business logic only).
+        
+        Args:
+            config: Built configuration to validate
+            
+        Raises:
+            ValueError: If validation fails
+        """
+        try:
+            # Keep only unique cradle validation rules
+            if not config.job_type:
+                raise ValueError("Job type is required")
+            
+            if not config.data_sources_spec.data_sources:
+                raise ValueError("At least one data source is required")
+            
+            if not config.transform_spec.transform_sql:
+                raise ValueError("Transform SQL is required")
+            
+            if not config.output_spec.output_schema:
+                raise ValueError("Output schema is required")
+            
+            if not config.cradle_job_spec.cradle_account:
+                raise ValueError("Cradle account is required")
+            
+        except Exception as e:
+            logger.error(f"Config validation failed: {str(e)}")
+            raise
     
     def export_config(
         self, 
@@ -33,9 +105,6 @@ class ConfigBuilderService:
             
         Returns:
             Exported configuration as string
-            
-        Raises:
-            ValueError: If format is not supported
         """
         try:
             if format.lower() == "json":
@@ -50,21 +119,10 @@ class ConfigBuilderService:
             raise ValueError(f"Failed to export configuration: {str(e)}")
     
     def _export_as_json(self, config: Dict[str, Any], include_comments: bool) -> str:
-        """
-        Export configuration as JSON.
-        
-        Args:
-            config: Configuration dictionary
-            include_comments: Whether to include comments
-            
-        Returns:
-            JSON string representation
-        """
+        """Export configuration as JSON."""
         try:
-            # Create a clean copy for export
-            export_config = self._prepare_config_for_export(config)
+            export_config = dict(config)  # Simple copy
             
-            # Add metadata if comments are requested
             if include_comments:
                 export_config["_metadata"] = {
                     "generated_by": "Cradle Data Load Config UI",
@@ -72,7 +130,6 @@ class ConfigBuilderService:
                     "version": "1.0.0"
                 }
             
-            # Pretty print JSON with indentation
             return json.dumps(export_config, indent=2, default=str)
             
         except Exception as e:
@@ -80,16 +137,7 @@ class ConfigBuilderService:
             raise
     
     def _export_as_python(self, config: Dict[str, Any], include_comments: bool) -> str:
-        """
-        Export configuration as Python code.
-        
-        Args:
-            config: Configuration dictionary
-            include_comments: Whether to include comments
-            
-        Returns:
-            Python code string
-        """
+        """Export configuration as Python code."""
         try:
             lines = []
             
@@ -98,212 +146,15 @@ class ConfigBuilderService:
                     "# Cradle Data Load Configuration",
                     f"# Generated by Cradle Data Load Config UI on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                     "",
-                    "from cursus.steps.configs.config_cradle_data_loading_step import (",
-                    "    CradleDataLoadingConfig,",
-                    "    DataSourcesSpecificationConfig,",
-                    "    DataSourceConfig,",
-                    "    MdsDataSourceConfig,",
-                    "    EdxDataSourceConfig,",
-                    "    AndesDataSourceConfig,",
-                    "    TransformSpecificationConfig,",
-                    "    JobSplitOptionsConfig,",
-                    "    OutputSpecificationConfig,",
-                    "    CradleJobSpecificationConfig",
-                    ")",
+                    "from cursus.steps.configs.config_cradle_data_loading_step import CradleDataLoadingConfig",
                     "",
                 ])
             
-            # Generate Python code for the configuration
             lines.append("# Create the configuration")
-            lines.append("config = " + self._dict_to_python_code(config, indent=0))
+            lines.append(f"config = {repr(config)}")
             
             return "\n".join(lines)
             
         except Exception as e:
             logger.error(f"Error exporting as Python: {str(e)}")
             raise
-    
-    def _prepare_config_for_export(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Prepare configuration dictionary for export by cleaning up internal fields.
-        
-        Args:
-            config: Raw configuration dictionary
-            
-        Returns:
-            Cleaned configuration dictionary
-        """
-        # Create a deep copy to avoid modifying the original
-        import copy
-        clean_config = copy.deepcopy(config)
-        
-        # Remove any internal fields that shouldn't be exported
-        internal_fields = ["_metadata", "__model_type__", "__model_module__"]
-        for field in internal_fields:
-            clean_config.pop(field, None)
-        
-        return clean_config
-    
-    def _dict_to_python_code(self, obj: Any, indent: int = 0) -> str:
-        """
-        Convert a dictionary to Python code representation.
-        
-        Args:
-            obj: Object to convert
-            indent: Current indentation level
-            
-        Returns:
-            Python code string representation
-        """
-        indent_str = "    " * indent
-        
-        if isinstance(obj, dict):
-            if not obj:
-                return "{}"
-            
-            lines = ["{"]
-            for key, value in obj.items():
-                value_str = self._dict_to_python_code(value, indent + 1)
-                lines.append(f"{indent_str}    {repr(key)}: {value_str},")
-            lines.append(f"{indent_str}}}")
-            return "\n".join(lines)
-            
-        elif isinstance(obj, list):
-            if not obj:
-                return "[]"
-            
-            lines = ["["]
-            for item in obj:
-                item_str = self._dict_to_python_code(item, indent + 1)
-                lines.append(f"{indent_str}    {item_str},")
-            lines.append(f"{indent_str}]")
-            return "\n".join(lines)
-            
-        elif isinstance(obj, str):
-            return repr(obj)
-        elif isinstance(obj, (int, float, bool)) or obj is None:
-            return repr(obj)
-        else:
-            # For other types, convert to string representation
-            return repr(str(obj))
-    
-    def validate_and_build_config(self, ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
-        """
-        Validate and build a CradleDataLoadingConfig from UI data.
-        
-        Args:
-            ui_data: Complete UI data from all steps
-            
-        Returns:
-            Built and validated CradleDataLoadingConfig
-            
-        Raises:
-            ValueError: If validation fails or required data is missing
-        """
-        try:
-            # Import validation service to build the config
-            from .validation_service import ValidationService
-            validation_service = ValidationService()
-            
-            # Build the configuration using the validation service
-            config = validation_service.build_final_config(ui_data)
-            
-            # Additional validation can be added here if needed
-            self._validate_built_config(config)
-            
-            return config
-            
-        except Exception as e:
-            logger.error(f"Error building config: {str(e)}")
-            raise ValueError(f"Failed to build configuration: {str(e)}")
-    
-    def _validate_built_config(self, config: CradleDataLoadingConfig) -> None:
-        """
-        Perform additional validation on the built configuration.
-        
-        Args:
-            config: Built configuration to validate
-            
-        Raises:
-            ValueError: If validation fails
-        """
-        try:
-            # Validate that the configuration is complete
-            if not config.job_type:
-                raise ValueError("Job type is required")
-            
-            if not config.data_sources_spec.data_sources:
-                raise ValueError("At least one data source is required")
-            
-            if not config.transform_spec.transform_sql:
-                raise ValueError("Transform SQL is required")
-            
-            if not config.output_spec.output_schema:
-                raise ValueError("Output schema is required")
-            
-            if not config.cradle_job_spec.cradle_account:
-                raise ValueError("Cradle account is required")
-            
-            # Additional business logic validation can be added here
-            
-        except Exception as e:
-            logger.error(f"Config validation failed: {str(e)}")
-            raise
-    
-    def create_config_summary(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Create a summary of the configuration for display purposes.
-        
-        Args:
-            config: Configuration dictionary
-            
-        Returns:
-            Configuration summary dictionary
-        """
-        try:
-            summary = {
-                "data_sources_count": 0,
-                "time_range": "",
-                "transform_type": "Custom SQL",
-                "output_format": "PARQUET",
-                "cluster_type": "STANDARD",
-                "job_type": None
-            }
-            
-            # Extract data sources information
-            if "data_sources_spec" in config:
-                data_sources_spec = config["data_sources_spec"]
-                if "data_sources" in data_sources_spec:
-                    summary["data_sources_count"] = len(data_sources_spec["data_sources"])
-                
-                # Create time range string
-                start_date = data_sources_spec.get("start_date", "")
-                end_date = data_sources_spec.get("end_date", "")
-                if start_date and end_date:
-                    summary["time_range"] = f"{start_date} to {end_date}"
-            
-            # Extract output format
-            if "output_spec" in config:
-                output_spec = config["output_spec"]
-                summary["output_format"] = output_spec.get("output_format", "PARQUET")
-            
-            # Extract cluster type
-            if "cradle_job_spec" in config:
-                cradle_job_spec = config["cradle_job_spec"]
-                summary["cluster_type"] = cradle_job_spec.get("cluster_type", "STANDARD")
-            
-            # Extract job type
-            summary["job_type"] = config.get("job_type")
-            
-            return summary
-            
-        except Exception as e:
-            logger.error(f"Error creating config summary: {str(e)}")
-            return {
-                "data_sources_count": 0,
-                "time_range": "Unknown",
-                "transform_type": "Unknown",
-                "output_format": "Unknown",
-                "cluster_type": "Unknown",
-                "job_type": None
-            }

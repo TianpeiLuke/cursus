@@ -35,7 +35,7 @@ Usage:
 from .dag_config_factory import DAGConfigFactory, ConfigurationIncompleteError
 from .config_class_mapper import ConfigClassMapper
 from .configuration_generator import ConfigurationGenerator
-from .field_extractor import extract_field_requirements, print_field_requirements
+from .field_extractor import extract_field_requirements, print_field_requirements, categorize_field_requirements
 
 __all__ = [
     'DAGConfigFactory',
@@ -43,5 +43,6 @@ __all__ = [
     'ConfigurationGenerator',
     'ConfigurationIncompleteError',
     'extract_field_requirements',
-    'print_field_requirements'
+    'print_field_requirements',
+    'categorize_field_requirements'
 ]

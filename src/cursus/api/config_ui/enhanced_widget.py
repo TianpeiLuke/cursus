@@ -16,7 +16,8 @@ import re
 from ...core.base.config_base import BasePipelineConfig
 from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
 from .core.core import UniversalConfigCore
-from .core.dag_manager import DAGConfigurationManager
+# DAGConfigurationManager functionality replaced by direct factory imports
+from ..factory import DAGConfigFactory, ConfigClassMapper
 
 logger = logging.getLogger(__name__)
 

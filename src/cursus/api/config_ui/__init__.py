@@ -7,7 +7,8 @@ Provides both web-based and native Jupyter widget interfaces for pipeline config
 
 # Core infrastructure (existing)
 from .core.core import UniversalConfigCore, create_config_widget
-from .core.dag_manager import DAGConfigurationManager, create_pipeline_config_widget, analyze_pipeline_dag
+# DAGConfigurationManager functionality replaced by direct factory imports
+from ..factory import DAGConfigFactory, ConfigClassMapper
 from .core.utils import discover_available_configs, create_example_base_config
 
 # Widget infrastructure (existing)

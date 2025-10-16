@@ -9,7 +9,8 @@ management, and processing.
 try:
     # Try relative imports first (when run as module)
     from .core import UniversalConfigCore, create_config_widget
-    from .dag_manager import DAGConfigurationManager, create_pipeline_config_widget, analyze_pipeline_dag
+    # DAGConfigurationManager functionality replaced by direct factory imports
+    from ...factory import DAGConfigFactory, ConfigClassMapper
     from .utils import discover_available_configs
 except ImportError:
     # Fallback: Set up cursus path and use absolute imports

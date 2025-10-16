@@ -26,10 +26,33 @@ from ..schemas.response_schemas import (
 )
 from ..services.config_builder import ConfigBuilderService
 from ..services.validation_service import ValidationService
-from ..utils.field_extractors import (
-    extract_field_schema,
-    get_data_source_variant_schemas,
+from ...factory import (
+    extract_field_requirements,
 )
+
+def get_data_source_variant_schemas():
+    """
+    Get schemas for all data source variants using factory field extraction.
+    
+    Returns:
+        Dict mapping data source type to schema information
+    """
+    try:
+        # Import the data source config classes
+        from ....steps.configs.config_cradle_data_loading_step import (
+            MdsDataSourceConfig,
+            EdxDataSourceConfig,
+            AndesDataSourceConfig
+        )
+        
+        return {
+            "MDS": {"fields": extract_field_requirements(MdsDataSourceConfig)},
+            "EDX": {"fields": extract_field_requirements(EdxDataSourceConfig)},
+            "ANDES": {"fields": extract_field_requirements(AndesDataSourceConfig)}
+        }
+    except Exception as e:
+        logger.error(f"Error getting data source variant schemas: {e}")
+        return {}
 
 logger = logging.getLogger(__name__)
 

@@ -168,109 +168,65 @@ class UniversalConfigCore:
                                     pipeline_dag: Any, 
                                     base_config: BasePipelineConfig,
                                     processing_config: Optional[ProcessingStepConfigBase] = None,
-                                    completed_configs: Optional[Dict[str, BasePipelineConfig]] = None,
-                                    enable_inheritance: bool = True,
                                     **kwargs) -> 'MultiStepWizard':
         """
-        Create DAG-driven pipeline configuration widget with Smart Default Value Inheritance support.
-        
-        Uses the same infrastructure as DynamicPipelineTemplate but for discovery
-        rather than resolution of existing configurations.
+        Simplified widget creation using factory directly.
         
         Args:
             pipeline_dag: Pipeline DAG definition
             base_config: Base pipeline configuration
             processing_config: Optional processing configuration
-            completed_configs: Optional completed configurations for inheritance (NEW)
-            enable_inheritance: Enable smart inheritance features (NEW)
-            **kwargs: Additional arguments (e.g., hyperparameters)
+            **kwargs: Additional arguments
             
         Returns:
-            MultiStepWizard instance with inheritance support
+            MultiStepWizard instance with factory integration
         """
-        logger.info("Creating DAG-driven pipeline configuration widget with Smart Default Value Inheritance")
+        logger.info("Creating DAG-driven pipeline configuration widget using factory system")
         
-        # Use existing StepConfigResolverAdapter (matches production pattern)
+        # Use factory directly - no wrapper logic
+        from ...factory import DAGConfigFactory
+        
+        try:
+            factory = DAGConfigFactory(pipeline_dag)
+            factory.set_base_config(**base_config.model_dump())
+            
+            if processing_config:
+                factory.set_base_processing_config(**processing_config.model_dump())
+            
+            logger.info("Factory-driven widget creation successful")
+            
+            # Import here to avoid circular imports
+            from ..widgets.widget import MultiStepWizard
+            return MultiStepWizard(factory=factory, base_config=base_config, processing_config=processing_config, core=self, **kwargs)
+            
+        except Exception as e:
+            logger.error(f"Factory-driven widget creation failed: {e}")
+            # Fallback to manual workflow creation for compatibility
+            return self._create_fallback_widget(pipeline_dag, base_config, processing_config, **kwargs)
+    
+    def _create_fallback_widget(self, pipeline_dag: Any, base_config: BasePipelineConfig, processing_config: Optional[ProcessingStepConfigBase] = None, **kwargs) -> 'MultiStepWizard':
+        """Fallback widget creation for compatibility."""
+        logger.info("Using fallback widget creation")
+        
+        # Extract DAG nodes for fallback
+        dag_nodes = list(pipeline_dag.nodes) if hasattr(pipeline_dag, 'nodes') else []
+        
+        # Use existing discovery logic as fallback
         try:
             from ....step_catalog.adapters.config_resolver import StepConfigResolverAdapter
             resolver = StepConfigResolverAdapter()
-        except ImportError as e:
-            logger.warning(f"StepConfigResolverAdapter not available: {e}")
+        except ImportError:
             resolver = None
         
-        # Extract DAG nodes (matches DynamicPipelineTemplate._create_config_map pattern)
-        dag_nodes = list(pipeline_dag.nodes) if hasattr(pipeline_dag, 'nodes') else []
-        logger.info(f"Extracted {len(dag_nodes)} nodes from pipeline DAG")
-        
-        # Discover required config classes (UI-specific, not resolution)
         required_config_classes = self._discover_required_config_classes(dag_nodes, resolver)
-        
-        # NEW: Add Smart Default Value Inheritance analysis using StepCatalog methods
-        if enable_inheritance and self.step_catalog:
-            logger.info("Enhancing config classes with Smart Default Value Inheritance")
-            
-            # Build completed configs dictionary if not provided
-            if completed_configs is None:
-                completed_configs = {}
-                if base_config:
-                    completed_configs["BasePipelineConfig"] = base_config
-                if processing_config:
-                    completed_configs["ProcessingStepConfigBase"] = processing_config
-            
-            # Enhance each required config class with inheritance analysis
-            for config_info in required_config_classes:
-                config_class_name = config_info['config_class_name']
-                
-                try:
-                    # Use StepCatalog methods for Smart Default Value Inheritance
-                    parent_class = self.step_catalog.get_immediate_parent_config_class(config_class_name)
-                    parent_values = self.step_catalog.extract_parent_values_for_inheritance(
-                        config_class_name, completed_configs
-                    )
-                    
-                    # Add inheritance information to config info
-                    config_info['inheritance_analysis'] = {
-                        'immediate_parent': parent_class,
-                        'parent_values': parent_values,
-                        'total_inherited_fields': len(parent_values),
-                        'inheritance_enabled': True
-                    }
-                    
-                    logger.debug(f"Enhanced {config_class_name} with {len(parent_values)} inherited fields from {parent_class}")
-                    
-                except Exception as e:
-                    logger.warning(f"Failed to analyze inheritance for {config_class_name}: {e}")
-                    # Graceful degradation - config still works without inheritance
-                    config_info['inheritance_analysis'] = {
-                        'immediate_parent': None,
-                        'parent_values': {},
-                        'total_inherited_fields': 0,
-                        'inheritance_enabled': False,
-                        'error': str(e)
-                    }
-        else:
-            logger.info("Smart Default Value Inheritance disabled or StepCatalog unavailable")
-            # Add empty inheritance analysis for consistency
-            for config_info in required_config_classes:
-                config_info['inheritance_analysis'] = {
-                    'immediate_parent': None,
-                    'parent_values': {},
-                    'total_inherited_fields': 0,
-                    'inheritance_enabled': False
-                }
-        
-        # Create multi-step wizard with inheritance support
         workflow_steps = self._create_workflow_structure(required_config_classes)
         
-        logger.info(f"Created {len(workflow_steps)} workflow steps for pipeline wizard with inheritance support")
-        
-        # Import here to avoid circular imports
         from ..widgets.widget import MultiStepWizard
-        return MultiStepWizard(workflow_steps, base_config=base_config, processing_config=processing_config, enable_inheritance=enable_inheritance, core=self)
+        return MultiStepWizard(workflow_steps, base_config=base_config, processing_config=processing_config, core=self, **kwargs)
     
     def _get_form_fields(self, config_class: Type[BasePipelineConfig], _recursion_guard: Optional[set] = None) -> List[Dict[str, Any]]:
         """
-        Extract form fields from Pydantic model with 3-tier categorization.
+        Extract form fields using factory field extractor.
         
         Args:
             config_class: Configuration class to analyze
@@ -279,232 +235,37 @@ class UniversalConfigCore:
         Returns:
             List of field definitions for form generation
         """
+        # Import factory field extractor directly
+        from ...factory import extract_field_requirements, categorize_field_requirements
+        
         config_class_name = config_class.__name__
+        logger.info(f"🔍 _get_form_fields called for {config_class_name} - using factory field extractor")
         
-        # Initialize recursion guard
-        if _recursion_guard is None:
-            _recursion_guard = set()
+        # Special handling for CradleDataLoadingConfig - use discovery-based sub-config organization
+        if config_class_name == "CradleDataLoadingConfig":
+            logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using discovery-based sub-config organization")
+            try:
+                from .field_definitions import get_cradle_fields_by_sub_config
+                field_blocks = get_cradle_fields_by_sub_config(config_core=self, _recursion_guard=_recursion_guard)
+                
+                # Convert sub-config blocks to flat field list for backward compatibility
+                fields = []
+                for block_name, block_fields in field_blocks.items():
+                    fields.extend(block_fields)
+                
+                logger.info(f"✅ Successfully imported discovery-based field definitions for {config_class_name}: {len(fields)} fields from {len(field_blocks)} blocks")
+                return fields
+            except ImportError as e:
+                logger.error(f"❌ Could not import field definitions for {config_class_name}: {e}, falling back to factory extraction")
         
-        # Check for recursion
-        if config_class_name in _recursion_guard:
-            logger.warning(f"🔄 Recursion detected for {config_class_name}, using standard field discovery")
-            field_categories = self._categorize_fields(config_class)
-            return self._get_form_fields_with_tiers(config_class, field_categories)
-        
-        # Add to recursion guard
-        _recursion_guard.add(config_class_name)
-        
-        logger.info(f"🔍 _get_form_fields called for {config_class_name}")
-        
+        # Use factory field extraction for all other classes
         try:
-            # Special handling for CradleDataLoadingConfig - use discovery-based sub-config organization
-            if config_class_name == "CradleDataLoadingConfig":
-                logger.info(f"✅ {config_class_name} matches CradleDataLoadingConfig - using discovery-based sub-config organization")
-                try:
-                    from .field_definitions import get_cradle_fields_by_sub_config
-                    field_blocks = get_cradle_fields_by_sub_config(config_core=self, _recursion_guard=_recursion_guard)
-                    
-                    # Convert sub-config blocks to flat field list for backward compatibility
-                    fields = []
-                    for block_name, block_fields in field_blocks.items():
-                        fields.extend(block_fields)
-                    
-                    logger.info(f"✅ Successfully imported discovery-based field definitions for {config_class_name}: {len(fields)} fields from {len(field_blocks)} blocks")
-                    logger.info(f"📊 Field blocks: {[(name, len(block_fields)) for name, block_fields in field_blocks.items()]}")
-                    logger.info(f"📋 First few fields: {[f['name'] for f in fields[:5]]}")
-                    return fields
-                except ImportError as e:
-                    logger.error(f"❌ Could not import field definitions for {config_class_name}: {e}, falling back to standard discovery")
-            else:
-                logger.info(f"ℹ️ {config_class_name} does not match CradleDataLoadingConfig - using standard field discovery")
-            
-            # Standard field discovery for other classes
-            logger.info(f"🔍 Using standard field discovery for {config_class_name}")
-            field_categories = self._categorize_fields(config_class)
-            fields = self._get_form_fields_with_tiers(config_class, field_categories)
-            logger.info(f"📊 Standard field discovery returned {len(fields)} fields for {config_class_name}")
-            if len(fields) > 0:
-                logger.info(f"📋 First few standard fields: {[f['name'] for f in fields[:5]]}")
-            return fields
-        
-        finally:
-            # Remove from recursion guard
-            _recursion_guard.discard(config_class_name)
-    
-    def _categorize_fields(self, config_class: Type[BasePipelineConfig]) -> Dict[str, List[str]]:
-        """
-        Categorize all fields into three tiers using the config class's method if available.
-        
-        Args:
-            config_class: Configuration class to analyze
-            
-        Returns:
-            Dictionary with categorized field lists
-        """
-        # Try to use the config class's categorize_fields method if available
-        if hasattr(config_class, 'categorize_fields'):
-            try:
-                # Create a temporary instance to call the method
-                temp_instance = None
-                if hasattr(config_class, 'model_fields'):
-                    # For Pydantic models, try to create with minimal data
-                    try:
-                        temp_instance = config_class()
-                    except Exception:
-                        # If we can't create an instance, fall back to manual categorization
-                        pass
-                
-                if temp_instance and hasattr(temp_instance, 'categorize_fields'):
-                    return temp_instance.categorize_fields()
-            except Exception as e:
-                logger.debug(f"Could not use categorize_fields method for {config_class.__name__}: {e}")
-        
-        # Fallback to manual categorization
-        return self._manual_field_categorization(config_class)
-    
-    def _manual_field_categorization(self, config_class: Type[BasePipelineConfig]) -> Dict[str, List[str]]:
-        """
-        Manually categorize fields into three tiers.
-        
-        Args:
-            config_class: Configuration class to analyze
-            
-        Returns:
-            Dictionary with categorized field lists
-        """
-        categories = {
-            "essential": [],  # Tier 1: Required, public
-            "system": [],     # Tier 2: Optional (has default), public  
-            "derived": []     # Tier 3: Public properties (HIDDEN from UI)
-        }
-        
-        # Handle Pydantic v2 model_fields
-        if hasattr(config_class, 'model_fields'):
-            model_fields = config_class.model_fields
-            
-            for field_name, field_info in model_fields.items():
-                if field_name.startswith("_"):
-                    continue  # Skip private fields
-                    
-                # Determine if field is required
-                is_required = getattr(field_info, 'is_required', lambda: True)()
-                if callable(is_required):
-                    is_required = is_required()
-                
-                if is_required:
-                    categories["essential"].append(field_name)
-                else:
-                    categories["system"].append(field_name)
-            
-            # Find derived properties (hidden from UI)
-            for attr_name in dir(config_class):
-                if (not attr_name.startswith("_") 
-                    and attr_name not in model_fields
-                    and isinstance(getattr(config_class, attr_name, None), property)):
-                    categories["derived"].append(attr_name)
-        
-        # Fallback for classes without model_fields
-        else:
-            try:
-                signature = inspect.signature(config_class.__init__)
-                for param_name, param in signature.parameters.items():
-                    if param_name != 'self' and not param_name.startswith("_"):
-                        is_required = param.default == inspect.Parameter.empty
-                        if is_required:
-                            categories["essential"].append(param_name)
-                        else:
-                            categories["system"].append(param_name)
-            except Exception as e:
-                logger.warning(f"Failed to categorize fields for {config_class.__name__}: {e}")
-        
-        logger.debug(f"Field categorization for {config_class.__name__}: "
-                    f"Essential: {len(categories['essential'])}, "
-                    f"System: {len(categories['system'])}, "
-                    f"Derived: {len(categories['derived'])}")
-        
-        return categories
-    
-    def _get_form_fields_with_tiers(self, config_class: Type[BasePipelineConfig], field_categories: Dict[str, List[str]]) -> List[Dict[str, Any]]:
-        """Extract form fields with 3-tier categorization - only Tier 1 + Tier 2."""
-        fields = []
-        
-        # Only include essential (Tier 1) and system (Tier 2) fields
-        # Derived fields (Tier 3) are completely excluded from UI
-        fields_to_include = field_categories["essential"] + field_categories["system"]
-        
-        # Handle Pydantic v2 model_fields
-        if hasattr(config_class, 'model_fields'):
-            for field_name, field_info in config_class.model_fields.items():
-                if field_name in fields_to_include:
-                    # Get field type
-                    field_type = getattr(field_info, 'annotation', str)
-                    if hasattr(field_type, '__origin__'):
-                        # Handle generic types like Optional[str], List[str], etc.
-                        field_type = field_type.__origin__
-                    
-                    # Determine if field is required
-                    is_required = getattr(field_info, 'is_required', lambda: True)()
-                    if callable(is_required):
-                        is_required = is_required()
-                    
-                    # Get description
-                    description = ""
-                    if hasattr(field_info, 'description') and field_info.description:
-                        description = field_info.description
-                    
-                    # Get default value - handle PydanticUndefinedType properly
-                    default_value = None
-                    if hasattr(field_info, 'default'):
-                        try:
-                            # Check if default is PydanticUndefinedType or similar
-                            default = field_info.default
-                            if default is not None and str(type(default)) != "<class 'pydantic_core._pydantic_core.PydanticUndefinedType'>":
-                                # Only use serializable defaults
-                                if isinstance(default, (str, int, float, bool, list, dict)):
-                                    default_value = default
-                                else:
-                                    # Try to convert to string for complex types
-                                    try:
-                                        default_value = str(default)
-                                    except:
-                                        default_value = None
-                        except Exception as e:
-                            logger.debug(f"Could not extract default for field {field_name}: {e}")
-                            default_value = None
-                    
-                    fields.append({
-                        "name": field_name,
-                        "type": self.field_types.get(field_type, "text"),
-                        "required": is_required,  # True for Tier 1, False for Tier 2
-                        "tier": "essential" if is_required else "system",
-                        "description": description,
-                        "default": default_value
-                    })
-        
-        # Fallback for classes without model_fields
-        else:
-            try:
-                signature = inspect.signature(config_class.__init__)
-                for param_name, param in signature.parameters.items():
-                    if param_name in fields_to_include:
-                        field_type = param.annotation if param.annotation != inspect.Parameter.empty else str
-                        is_required = param.default == inspect.Parameter.empty
-                        default_value = param.default if param.default != inspect.Parameter.empty else None
-                        
-                        fields.append({
-                            "name": param_name,
-                            "type": self.field_types.get(field_type, "text"),
-                            "required": is_required,
-                            "tier": "essential" if is_required else "system",
-                            "description": f"Parameter: {param_name}",
-                            "default": default_value
-                        })
-            except Exception as e:
-                logger.warning(f"Failed to extract fields from {config_class.__name__}: {e}")
-        
-        logger.debug(f"Extracted {len(fields)} UI fields from {config_class.__name__} "
-                    f"(excluded {len(field_categories['derived'])} derived fields)")
-        return fields
+            requirements = extract_field_requirements(config_class)
+            logger.info(f"📊 Factory field extraction returned {len(requirements)} fields for {config_class_name}")
+            return requirements
+        except Exception as e:
+            logger.error(f"❌ Factory field extraction failed for {config_class_name}: {e}")
+            return []
     
     def get_inheritance_aware_form_fields(self,
                                         config_class_name: str,
@@ -614,47 +375,50 @@ class UniversalConfigCore:
     
     def _discover_required_config_classes(self, dag_nodes: List[str], resolver: Optional[Any]) -> List[Dict]:
         """
-        Discover what configuration classes are needed for the DAG nodes.
+        Discover what configuration classes are needed for the DAG nodes using factory system.
         
-        This is different from production resolve_config_map() because:
-        - Production: Maps nodes to existing config instances from saved file
-        - UI: Discovers what config classes users need to create from scratch
+        This method now uses ConfigClassMapper from the factory system for robust
+        DAG node to configuration class mapping with registry integration.
         
         Args:
             dag_nodes: List of DAG node names (extracted same as production)
-            resolver: StepConfigResolverAdapter instance
+            resolver: StepConfigResolverAdapter instance (optional, factory handles fallbacks)
             
         Returns:
             List of required configuration class information
         """
+        # Import factory mapper directly - no wrapper methods
+        from ...factory import ConfigClassMapper
+        
         required_configs = []
+        mapper = ConfigClassMapper()
         
         for node_name in dag_nodes:
-            if resolver and hasattr(resolver, 'catalog'):
-                # Use step catalog to determine required config class
-                try:
-                    step_info = resolver.catalog.get_step_info(node_name)
+            try:
+                # Use factory mapper for robust config class resolution
+                config_class = mapper.resolve_node_to_config_class(node_name)
+                
+                if config_class:
+                    required_configs.append({
+                        "node_name": node_name,
+                        "config_class_name": config_class.__name__,
+                        "config_class": config_class,
+                        "inheritance_pattern": self._get_inheritance_pattern(config_class),
+                        "is_specialized": self._is_specialized_config(config_class),
+                        "factory_resolved": True
+                    })
+                else:
+                    logger.warning(f"Factory mapper could not resolve config class for node: {node_name}")
                     
-                    if step_info and hasattr(step_info, 'config_class') and step_info.config_class:
-                        config_class = resolver.catalog.get_config_class(step_info.config_class)
-                        if config_class:
-                            required_configs.append({
-                                "node_name": node_name,
-                                "config_class_name": step_info.config_class,
-                                "config_class": config_class,
-                                "inheritance_pattern": self._get_inheritance_pattern(config_class),
-                                "is_specialized": self._is_specialized_config(config_class)
-                            })
-                            continue
-                except Exception as e:
-                    logger.debug(f"Failed to get step info for {node_name}: {e}")
-            
-            # Fallback: Try to infer from node name patterns
-            inferred_config = self._infer_config_class_from_node_name(node_name, resolver)
-            if inferred_config:
-                required_configs.append(inferred_config)
+            except Exception as e:
+                logger.debug(f"Factory mapper failed for {node_name}: {e}")
+                # Fallback: Try manual inference (preserve existing fallback logic)
+                inferred_config = self._infer_config_class_from_node_name(node_name, resolver)
+                if inferred_config:
+                    inferred_config["factory_resolved"] = False
+                    required_configs.append(inferred_config)
         
-        logger.info(f"Discovered {len(required_configs)} required config classes from {len(dag_nodes)} DAG nodes")
+        logger.info(f"Factory-based discovery: {len(required_configs)} required config classes from {len(dag_nodes)} DAG nodes")
         return required_configs
     
     def _infer_config_class_from_node_name(self, node_name: str, resolver: Optional[Any]) -> Optional[Dict]:

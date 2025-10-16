@@ -31,6 +31,9 @@ def get_cradle_fields_by_sub_config(config_core=None, _recursion_guard=None) -> 
         - 'cradle_job_spec': Cluster, account, and execution settings
         - 'root': Top-level fields like job_type
     """
+    # Import factory field extractor directly
+    from ...factory import extract_field_requirements
+    
     if config_core is None:
         from .core import UniversalConfigCore
         config_core = UniversalConfigCore()

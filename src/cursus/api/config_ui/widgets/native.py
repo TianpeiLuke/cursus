@@ -17,7 +17,8 @@ from pathlib import Path
 try:
     # Try relative imports first (preferred for portability)
     from ..core import UniversalConfigCore
-    from ..core.dag_manager import DAGConfigurationManager
+    # DAGConfigurationManager functionality replaced by direct factory imports
+    from ...factory import DAGConfigFactory, ConfigClassMapper
     from .specialized_widgets import SpecializedComponentRegistry
 except ImportError:
     # Fallback to absolute imports for edge cases
