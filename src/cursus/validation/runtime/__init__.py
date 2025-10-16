@@ -17,6 +17,9 @@ from .runtime_models import (
     RuntimeTestingConfiguration,
 )
 from .runtime_spec_builder import PipelineTestingSpecBuilder
+
+# NEW: Interactive factory (primary user interface)
+from .interactive_factory import InteractiveRuntimeTestingFactory
 from .workspace_aware_spec_builder import WorkspaceAwarePipelineTestingSpecBuilder
 from ...step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter as ContractDiscoveryManager, ContractDiscoveryResult
 
@@ -41,6 +44,10 @@ from .runtime_inference import (
 
 # Main API exports - Simplified to user requirements only
 __all__ = [
+    # Primary Interactive Interface
+    "InteractiveRuntimeTestingFactory",
+    
+    # Core Components
     "RuntimeTester",
     "ScriptTestResult",
     "DataCompatibilityResult",

@@ -1,8 +1,10 @@
 """
-Pipeline Testing Specification Builder
+Pipeline Testing Specification Builder - Streamlined Core Intelligence
 
-Builder to generate PipelineTestingSpec from DAG with intelligent node-to-script resolution,
-workspace-first file discovery, and comprehensive dual identity management.
+Streamlined builder focused on core intelligent node-to-script resolution,
+workspace-first file discovery, and contract-aware path resolution.
+
+Redundant interactive methods removed - use InteractiveRuntimeTestingFactory instead.
 """
 
 import json
@@ -37,13 +39,16 @@ except ImportError:
 
 class PipelineTestingSpecBuilder:
     """
-    Builder to generate PipelineTestingSpec from DAG with intelligent node-to-script resolution.
+    Streamlined builder focused on core intelligent node-to-script resolution.
 
-    Handles the core challenge of mapping DAG node names to script files through:
+    Core Intelligence Methods (used by InteractiveRuntimeTestingFactory):
     1. Registry-based canonical name resolution
     2. PascalCase to snake_case conversion with special cases
     3. Workspace-first file discovery with fuzzy matching fallback
-    4. ScriptExecutionSpec creation with dual identity management
+    4. Contract-aware path resolution with intelligent defaults
+    5. Step catalog integration for enhanced script discovery
+
+    Interactive methods removed - use InteractiveRuntimeTestingFactory for user interaction.
     """
 
     def __init__(self, test_data_dir: str = "test/integration/runtime", step_catalog: Optional['StepCatalog'] = None):
@@ -63,451 +68,16 @@ class PipelineTestingSpecBuilder:
         (self.test_data_dir / "output").mkdir(parents=True, exist_ok=True)
         (self.test_data_dir / "results").mkdir(parents=True, exist_ok=True)
 
-        # NEW: Step Catalog Integration (Phase 1)
+        # Step Catalog Integration
         self.step_catalog = step_catalog or self._initialize_step_catalog()
 
-    # Phase 1: Step Catalog Integration Methods
-
-    def _initialize_step_catalog(self):
-        """
-        Initialize step catalog with unified workspace resolution.
-        
-        Priority order:
-        1. test_data_dir (primary testing workspace)
-        2. Additional development workspaces from environment
-        3. Package-only discovery (for deployment scenarios)
-        """
-        try:
-            from ...step_catalog import StepCatalog
-        except ImportError:
-            # Step catalog not available, return None for optional enhancement
-            return None
-        
-        import os
-        workspace_dirs = []
-        
-        # Priority 1: Use test_data_dir as primary workspace
-        if self.test_data_dir:
-            test_workspace = self.test_data_dir / "scripts"
-            if test_workspace.exists():
-                workspace_dirs.append(test_workspace)
-            else:
-                if self.test_data_dir.exists():
-                    workspace_dirs.append(self.test_data_dir)
-        
-        # Priority 2: Add development workspaces from environment
-        dev_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
-        for workspace in dev_workspaces:
-            if workspace and Path(workspace).exists():
-                workspace_path = Path(workspace)
-                if workspace_path not in workspace_dirs:
-                    workspace_dirs.append(workspace_path)
-        
-        # Initialize with unified workspace list or package-only
-        try:
-            return StepCatalog(workspace_dirs=workspace_dirs if workspace_dirs else None)
-        except Exception:
-            # Silently ignore errors for optional enhancement
-            return None
-
-    def _resolve_script_with_step_catalog_if_available(self, node_name: str) -> Optional[ScriptExecutionSpec]:
-        """Simple script resolution using step catalog (optional enhancement)."""
-        if not self.step_catalog:
-            return None
-            
-        try:
-            # Use step catalog's pipeline node resolution
-            step_info = self.step_catalog.resolve_pipeline_node(node_name)
-            
-            if step_info and step_info.file_components.get('script'):
-                script_metadata = step_info.file_components['script']
-                
-                # Get contract-aware paths if available
-                paths = self._get_contract_aware_paths_if_available(node_name, str(self.test_data_dir))
-                
-                spec = ScriptExecutionSpec(
-                    script_name=script_metadata.path.stem,
-                    step_name=node_name,
-                    script_path=str(script_metadata.path),
-                    input_paths=paths["input_paths"] if paths["input_paths"] else self._get_default_input_paths(script_metadata.path.stem),
-                    output_paths=paths["output_paths"] if paths["output_paths"] else self._get_default_output_paths(script_metadata.path.stem),
-                    environ_vars=self._get_default_environ_vars(),
-                    job_args=self._get_default_job_args(script_metadata.path.stem)
-                )
-                
-                return spec
-        except Exception:
-            # Silently ignore errors for optional enhancement
-            pass
-        
-        return None
-    
-    def _get_contract_aware_paths_if_available(self, step_name: str, test_workspace_root: str) -> Dict[str, Dict[str, str]]:
-        """Simple contract-aware path resolution using step catalog (optional enhancement)."""
-        paths = {"input_paths": {}, "output_paths": {}}
-        if self.step_catalog:
-            try:
-                contract = self.step_catalog.load_contract_class(step_name)
-                if contract:
-                    if hasattr(contract, 'get_input_paths'):
-                        contract_inputs = contract.get_input_paths()
-                        if contract_inputs:
-                            paths["input_paths"] = {
-                                name: str(Path(test_workspace_root) / "input" / name)
-                                for name in contract_inputs.keys()
-                            }
-                    if hasattr(contract, 'get_output_paths'):
-                        contract_outputs = contract.get_output_paths()
-                        if contract_outputs:
-                            paths["output_paths"] = {
-                                name: str(Path(test_workspace_root) / "output" / name)
-                                for name in contract_outputs.keys()
-                            }
-            except Exception:
-                # Silently ignore errors for optional enhancement
-                pass
-        return paths
-
-    def build_from_dag(
-        self, dag: PipelineDAG, validate: bool = True
-    ) -> PipelineTestingSpec:
-        """
-        Build PipelineTestingSpec from a PipelineDAG with automatic saved spec loading and validation
-
-        Args:
-            dag: Pipeline DAG structure to copy and build specs for
-            validate: Whether to validate that all specs are properly filled
-
-        Returns:
-            Complete PipelineTestingSpec ready for runtime testing
-
-        Raises:
-            ValueError: If validation fails and required specs are missing or incomplete
-        """
-        script_specs = {}
-        missing_specs = []
-        incomplete_specs = []
-
-        # Load or create specs for each DAG node
-        for node in dag.nodes:
-            try:
-                spec = self._load_or_create_script_spec(node)
-                script_specs[node] = spec
-
-                # Check if spec is complete (has required fields filled)
-                if validate and not self._is_spec_complete(spec):
-                    incomplete_specs.append(node)
-
-            except FileNotFoundError:
-                missing_specs.append(node)
-
-        # Validate all specs are present and complete
-        if validate:
-            self._validate_specs_completeness(
-                dag.nodes, missing_specs, incomplete_specs
-            )
-
-        return PipelineTestingSpec(
-            dag=dag,  # Copy the DAG structure
-            script_specs=script_specs,
-            test_workspace_root=str(self.test_data_dir),
-        )
-
-    def _load_or_create_script_spec(self, node_name: str) -> ScriptExecutionSpec:
-        """Load saved ScriptExecutionSpec or create default if not found"""
-        try:
-            # Try to load saved spec using auto-generated filename
-            saved_spec = ScriptExecutionSpec.load_from_file(
-                node_name, str(self.specs_dir)
-            )
-            print(
-                f"Loaded saved spec for {node_name} (last updated: {saved_spec.last_updated})"
-            )
-            return saved_spec
-        except FileNotFoundError:
-            # Create default spec if no saved spec found
-            print(f"Creating default spec for {node_name}")
-            default_spec = ScriptExecutionSpec.create_default(
-                node_name, node_name, str(self.test_data_dir)
-            )
-
-            # Save the default spec for future use
-            self.save_script_spec(default_spec)
-
-            return default_spec
-        except Exception as e:
-            print(f"Warning: Could not load saved spec for {node_name}: {e}")
-            # Create default spec if loading failed
-            print(f"Creating default spec for {node_name}")
-            default_spec = ScriptExecutionSpec.create_default(
-                node_name, node_name, str(self.test_data_dir)
-            )
-
-            # Save the default spec for future use
-            self.save_script_spec(default_spec)
-
-            return default_spec
-
-    def save_script_spec(self, spec: ScriptExecutionSpec) -> None:
-        """Save ScriptExecutionSpec to local file for reuse"""
-        saved_path = spec.save_to_file(str(self.specs_dir))
-        print(f"Saved spec for {spec.script_name} to {saved_path}")
-
-    def update_script_spec(self, node_name: str, **updates) -> ScriptExecutionSpec:
-        """Update specific fields in a ScriptExecutionSpec and save it"""
-        # Load existing spec or create default
-        existing_spec = self._load_or_create_script_spec(node_name)
-
-        # Update fields
-        spec_dict = existing_spec.model_dump()
-        spec_dict.update(updates)
-
-        # Create updated spec
-        updated_spec = ScriptExecutionSpec(**spec_dict)
-
-        # Save updated spec
-        self.save_script_spec(updated_spec)
-
-        return updated_spec
-
-    def list_saved_specs(self) -> List[str]:
-        """List all saved ScriptExecutionSpec names based on naming pattern"""
-        spec_files = list(self.specs_dir.glob("*_runtime_test_spec.json"))
-        # Extract script name from filename pattern: {script_name}_runtime_test_spec.json
-        return [f.stem.replace("_runtime_test_spec", "") for f in spec_files]
-
-    def get_script_spec_by_name(
-        self, script_name: str
-    ) -> Optional[ScriptExecutionSpec]:
-        """Get ScriptExecutionSpec by script name (for step name matching)"""
-        try:
-            return ScriptExecutionSpec.load_from_file(script_name, str(self.specs_dir))
-        except FileNotFoundError:
-            return None
-        except Exception as e:
-            print(f"Error loading spec for {script_name}: {e}")
-            return None
-
-    def match_step_to_spec(
-        self, step_name: str, available_specs: List[str]
-    ) -> Optional[str]:
-        """
-        Match a pipeline step name to the most appropriate ScriptExecutionSpec
-
-        Args:
-            step_name: Name of the pipeline step
-            available_specs: List of available spec names
-
-        Returns:
-            Best matching spec name or None if no good match found
-        """
-        # Direct match
-        if step_name in available_specs:
-            return step_name
-
-        # Try common variations
-        variations = [
-            step_name.lower(),
-            step_name.replace("_", ""),
-            step_name.replace("-", "_"),
-            step_name.split("_")[0],  # First part of compound names
-        ]
-
-        for variation in variations:
-            if variation in available_specs:
-                return variation
-
-        # Fuzzy matching - find specs that contain step name parts
-        step_parts = step_name.lower().split("_")
-        best_match = None
-        best_score = 0
-
-        for spec_name in available_specs:
-            spec_parts = spec_name.lower().split("_")
-            common_parts = set(step_parts) & set(spec_parts)
-            score = len(common_parts) / max(len(step_parts), len(spec_parts))
-
-            if score > best_score and score > 0.5:  # At least 50% match
-                best_match = spec_name
-                best_score = score
-
-        return best_match
-
-    def _is_spec_complete(self, spec: ScriptExecutionSpec) -> bool:
-        """
-        Check if a ScriptExecutionSpec has all required fields properly filled
-
-        Args:
-            spec: ScriptExecutionSpec to validate
-
-        Returns:
-            True if spec is complete, False otherwise
-        """
-        # Check required fields are not empty
-        if not spec.script_name or not spec.step_name:
-            return False
-
-        # Check that essential paths are provided
-        if not spec.input_paths or not spec.output_paths:
-            return False
-
-        # Check that input/output paths are not just empty strings
-        if not any(path.strip() for path in spec.input_paths.values()):
-            return False
-
-        if not any(path.strip() for path in spec.output_paths.values()):
-            return False
-
-        return True
-
-    def _validate_specs_completeness(
-        self,
-        dag_nodes: List[str],
-        missing_specs: List[str],
-        incomplete_specs: List[str],
-    ) -> None:
-        """
-        Validate that all DAG nodes have complete ScriptExecutionSpecs
-
-        Args:
-            dag_nodes: List of all DAG node names
-            missing_specs: List of nodes with missing specs
-            incomplete_specs: List of nodes with incomplete specs
-
-        Raises:
-            ValueError: If validation fails with detailed error message
-        """
-        if missing_specs or incomplete_specs:
-            error_messages = []
-
-            if missing_specs:
-                error_messages.append(
-                    f"Missing ScriptExecutionSpec files for nodes: {', '.join(missing_specs)}"
-                )
-                error_messages.append(
-                    "Please create ScriptExecutionSpec for these nodes using:"
-                )
-                for node in missing_specs:
-                    error_messages.append(
-                        f"  builder.update_script_spec('{node}', input_paths={{...}}, output_paths={{...}})"
-                    )
-
-            if incomplete_specs:
-                error_messages.append(
-                    f"Incomplete ScriptExecutionSpec for nodes: {', '.join(incomplete_specs)}"
-                )
-                error_messages.append("Please update these specs with required fields:")
-                for node in incomplete_specs:
-                    error_messages.append(
-                        f"  builder.update_script_spec('{node}', input_paths={{...}}, output_paths={{...}})"
-                    )
-
-            error_messages.append(
-                f"\nAll {len(dag_nodes)} DAG nodes must have complete ScriptExecutionSpec before testing."
-            )
-            error_messages.append(
-                "Use builder.update_script_spec(node_name, **fields) to fill in missing information."
-            )
-
-            raise ValueError("\n".join(error_messages))
-
-    def update_script_spec_interactive(self, node_name: str) -> ScriptExecutionSpec:
-        """
-        Interactively update a ScriptExecutionSpec by prompting user for missing fields
-
-        Args:
-            node_name: Name of the DAG node to update
-
-        Returns:
-            Updated ScriptExecutionSpec
-        """
-        # Load existing spec or create default
-        existing_spec = self._load_or_create_script_spec(node_name)
-
-        print(f"\nUpdating ScriptExecutionSpec for node: {node_name}")
-        print(f"Current spec: {existing_spec.script_name}")
-
-        # Prompt for input paths
-        if not existing_spec.input_paths or not any(
-            path.strip() for path in existing_spec.input_paths.values()
-        ):
-            print("\nInput paths are required. Current:", existing_spec.input_paths)
-            input_path = input(
-                f"Enter input path for {node_name} (e.g., 'test/data/{node_name}/input'): "
-            ).strip()
-            if input_path:
-                existing_spec.input_paths = {"data_input": input_path}
-
-        # Prompt for output paths
-        if not existing_spec.output_paths or not any(
-            path.strip() for path in existing_spec.output_paths.values()
-        ):
-            print("\nOutput paths are required. Current:", existing_spec.output_paths)
-            output_path = input(
-                f"Enter output path for {node_name} (e.g., 'test/data/{node_name}/output'): "
-            ).strip()
-            if output_path:
-                existing_spec.output_paths = {"data_output": output_path}
-
-        # Prompt for environment variables (optional)
-        if not existing_spec.environ_vars:
-            env_vars = input(
-                f"Enter environment variables for {node_name} (JSON format, or press Enter for defaults): "
-            ).strip()
-            if env_vars:
-                try:
-                    existing_spec.environ_vars = json.loads(env_vars)
-                except json.JSONDecodeError:
-                    print("Invalid JSON format, using defaults")
-                    existing_spec.environ_vars = {"LABEL_FIELD": "label"}
-            else:
-                existing_spec.environ_vars = {"LABEL_FIELD": "label"}
-
-        # Prompt for job arguments (optional)
-        if not existing_spec.job_args:
-            job_args = input(
-                f"Enter job arguments for {node_name} (JSON format, or press Enter for defaults): "
-            ).strip()
-            if job_args:
-                try:
-                    existing_spec.job_args = json.loads(job_args)
-                except json.JSONDecodeError:
-                    print("Invalid JSON format, using defaults")
-                    existing_spec.job_args = {"job_type": "testing"}
-            else:
-                existing_spec.job_args = {"job_type": "testing"}
-
-        # Save updated spec
-        self.save_script_spec(existing_spec)
-        print(f"Updated and saved ScriptExecutionSpec for {node_name}")
-
-        return existing_spec
-
-    def get_script_main_params(self, spec: ScriptExecutionSpec) -> Dict[str, Any]:
-        """
-        Get parameters ready for script main() function call
-
-        Returns:
-            Dictionary with input_paths, output_paths, environ_vars, job_args ready for main()
-        """
-        return {
-            "input_paths": spec.input_paths,
-            "output_paths": spec.output_paths,
-            "environ_vars": spec.environ_vars,
-            "job_args": (
-                argparse.Namespace(**spec.job_args)
-                if spec.job_args
-                else argparse.Namespace(job_type="testing")
-            ),
-        }
-
-    # New intelligent node-to-script resolution methods
+    # === CORE INTELLIGENCE METHODS (Used by InteractiveRuntimeTestingFactory) ===
 
     def resolve_script_execution_spec_from_node(
         self, node_name: str
     ) -> ScriptExecutionSpec:
         """
-        Resolve ScriptExecutionSpec from PipelineDAG node name using intelligent resolution.
+        Core intelligent script resolution from PipelineDAG node name.
 
         Multi-step resolution process:
         1. Registry-based canonical name extraction
@@ -555,7 +125,7 @@ class PipelineTestingSpecBuilder:
             spec = ScriptExecutionSpec.create_default(
                 script_name=script_name,  # For file discovery (snake_case)
                 step_name=node_name,  # For DAG node matching (PascalCase + job type)
-                test_workspace_root=str(self.test_data_dir),
+                test_data_dir=str(self.test_data_dir),
             )
 
             # Update with intelligent script path and contract-aware defaults
@@ -575,15 +145,11 @@ class PipelineTestingSpecBuilder:
             )
 
             enhanced_spec = ScriptExecutionSpec(**spec_dict)
-
-            # Save for future use
-            self.save_script_spec(enhanced_spec)
-
             return enhanced_spec
 
     def _canonical_to_script_name(self, canonical_name: str) -> str:
         """
-        Convert canonical step name (PascalCase) to script name (snake_case).
+        Core name conversion logic - convert canonical step name (PascalCase) to script name (snake_case).
 
         Handles special cases for compound technical terms:
         - XGBoost -> xgboost (not x_g_boost)
@@ -621,7 +187,7 @@ class PipelineTestingSpecBuilder:
 
     def _find_script_file(self, script_name: str) -> Path:
         """
-        Find actual script file using step catalog with fallback to legacy discovery.
+        Core script discovery logic - find actual script file using step catalog with fallback.
 
         Priority order:
         1. Step catalog script discovery - unified discovery system
@@ -680,18 +246,266 @@ class PipelineTestingSpecBuilder:
         # Priority 5: Create placeholder script
         return self._create_placeholder_script(script_name)
 
-    def _find_in_workspace(self, script_name: str) -> Optional[Path]:
+    def get_script_main_params(self, spec: ScriptExecutionSpec) -> Dict[str, Any]:
         """
-        Find script in core framework workspace.
+        Core parameter extraction - get parameters ready for script main() function call.
 
-        Searches common locations for cursus step scripts.
+        Returns:
+            Dictionary with input_paths, output_paths, environ_vars, job_args ready for main()
+        """
+        return {
+            "input_paths": spec.input_paths,
+            "output_paths": spec.output_paths,
+            "environ_vars": spec.environ_vars,
+            "job_args": (
+                argparse.Namespace(**spec.job_args)
+                if spec.job_args
+                else argparse.Namespace(job_type="testing")
+            ),
+        }
+
+    def _get_contract_aware_input_paths(
+        self, script_name: str, canonical_name: Optional[str] = None
+    ) -> Dict[str, str]:
+        """
+        Contract-aware path resolution - get input paths using contract discovery with fallback.
 
         Args:
             script_name: snake_case script name
+            canonical_name: PascalCase canonical name (optional)
 
         Returns:
-            Path to script if found, None otherwise
+            Dictionary of logical_name -> local_path mappings
         """
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(
+            script_name, canonical_name
+        )
+
+        if (contract_result is not None and 
+            hasattr(contract_result, 'contract') and 
+            contract_result.contract is not None):
+            contract_paths = self.contract_manager.get_contract_input_paths(
+                contract_result.contract, script_name
+            )
+            if contract_paths:
+                return contract_paths
+
+        # Fallback to generic defaults
+        return self._get_default_input_paths(script_name)
+
+    def _get_contract_aware_output_paths(
+        self, script_name: str, canonical_name: Optional[str] = None
+    ) -> Dict[str, str]:
+        """
+        Contract-aware path resolution - get output paths using contract discovery with fallback.
+
+        Args:
+            script_name: snake_case script name
+            canonical_name: PascalCase canonical name (optional)
+
+        Returns:
+            Dictionary of logical_name -> local_path mappings
+        """
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(
+            script_name, canonical_name
+        )
+
+        if (contract_result is not None and 
+            hasattr(contract_result, 'contract') and 
+            contract_result.contract is not None):
+            contract_paths = self.contract_manager.get_contract_output_paths(
+                contract_result.contract, script_name
+            )
+            if contract_paths:
+                return contract_paths
+
+        # Fallback to generic defaults
+        return self._get_default_output_paths(script_name)
+
+    # === STEP CATALOG INTEGRATION METHODS ===
+
+    def _initialize_step_catalog(self):
+        """
+        Initialize step catalog with unified workspace resolution.
+        
+        Priority order:
+        1. test_data_dir (primary testing workspace)
+        2. Additional development workspaces from environment
+        3. Package-only discovery (for deployment scenarios)
+        """
+        try:
+            from ...step_catalog import StepCatalog
+        except ImportError:
+            # Step catalog not available, return None for optional enhancement
+            return None
+        
+        import os
+        workspace_dirs = []
+        
+        # Priority 1: Use test_data_dir as primary workspace
+        if self.test_data_dir:
+            test_workspace = self.test_data_dir / "scripts"
+            if test_workspace.exists():
+                workspace_dirs.append(test_workspace)
+            else:
+                if self.test_data_dir.exists():
+                    workspace_dirs.append(self.test_data_dir)
+        
+        # Priority 2: Add development workspaces from environment
+        dev_workspaces = os.environ.get('CURSUS_DEV_WORKSPACES', '').split(':')
+        for workspace in dev_workspaces:
+            if workspace and Path(workspace).exists():
+                workspace_path = Path(workspace)
+                if workspace_path not in workspace_dirs:
+                    workspace_dirs.append(workspace_path)
+        
+        # Initialize with unified workspace list or package-only
+        try:
+            return StepCatalog(workspace_dirs=workspace_dirs if workspace_dirs else None)
+        except Exception:
+            # Silently ignore errors for optional enhancement
+            return None
+
+    def _resolve_script_with_step_catalog_if_available(self, node_name: str) -> Optional[ScriptExecutionSpec]:
+        """Enhanced script resolution using step catalog (used by InteractiveRuntimeTestingFactory)."""
+        if not self.step_catalog:
+            return None
+            
+        try:
+            # Use step catalog's pipeline node resolution
+            step_info = self.step_catalog.resolve_pipeline_node(node_name)
+            
+            if step_info and step_info.file_components.get('script'):
+                script_metadata = step_info.file_components['script']
+                
+                # Get contract-aware paths if available
+                paths = self._get_contract_aware_paths_if_available(node_name, str(self.test_data_dir))
+                
+                spec = ScriptExecutionSpec(
+                    script_name=script_metadata.path.stem,
+                    step_name=node_name,
+                    script_path=str(script_metadata.path),
+                    input_paths=paths["input_paths"] if paths["input_paths"] else self._get_default_input_paths(script_metadata.path.stem),
+                    output_paths=paths["output_paths"] if paths["output_paths"] else self._get_default_output_paths(script_metadata.path.stem),
+                    environ_vars=self._get_default_environ_vars(),
+                    job_args=self._get_default_job_args(script_metadata.path.stem)
+                )
+                
+                return spec
+        except Exception:
+            # Silently ignore errors for optional enhancement
+            pass
+        
+        return None
+    
+    def _get_contract_aware_paths_if_available(self, step_name: str, test_workspace_root: str) -> Dict[str, Dict[str, str]]:
+        """Contract-aware path resolution using step catalog (used by InteractiveRuntimeTestingFactory)."""
+        paths = {"input_paths": {}, "output_paths": {}}
+        if self.step_catalog:
+            try:
+                contract = self.step_catalog.load_contract_class(step_name)
+                if contract:
+                    if hasattr(contract, 'get_input_paths'):
+                        contract_inputs = contract.get_input_paths()
+                        if contract_inputs:
+                            paths["input_paths"] = {
+                                name: str(Path(test_workspace_root) / "input" / name)
+                                for name in contract_inputs.keys()
+                            }
+                    if hasattr(contract, 'get_output_paths'):
+                        contract_outputs = contract.get_output_paths()
+                        if contract_outputs:
+                            paths["output_paths"] = {
+                                name: str(Path(test_workspace_root) / "output" / name)
+                                for name in contract_outputs.keys()
+                            }
+            except Exception:
+                # Silently ignore errors for optional enhancement
+                pass
+        return paths
+
+    # === LEGACY SUPPORT METHODS (Minimal Implementation) ===
+
+    def build_from_dag(
+        self, dag: PipelineDAG, validate: bool = True
+    ) -> PipelineTestingSpec:
+        """
+        Legacy method - build PipelineTestingSpec from DAG.
+        
+        NOTE: For interactive workflow, use InteractiveRuntimeTestingFactory instead.
+        This method provides basic functionality for backward compatibility.
+        """
+        script_specs = {}
+        
+        # Simple spec creation for each DAG node
+        for node in dag.nodes:
+            try:
+                spec = self.resolve_script_execution_spec_from_node(node)
+                script_specs[node] = spec
+            except Exception as e:
+                if validate:
+                    raise ValueError(f"Failed to resolve spec for node '{node}': {str(e)}")
+                # Create minimal fallback spec
+                script_specs[node] = ScriptExecutionSpec.create_default(
+                    script_name=node.lower(),
+                    step_name=node,
+                    test_data_dir=str(self.test_data_dir)
+                )
+
+        return PipelineTestingSpec(
+            dag=dag,
+            script_specs=script_specs,
+            test_workspace_root=str(self.test_data_dir),
+        )
+
+    # === PRIVATE HELPER METHODS ===
+
+    def _get_contract_aware_environ_vars(
+        self, script_name: str, canonical_name: Optional[str] = None
+    ) -> Dict[str, str]:
+        """Get environment variables using contract discovery with fallback."""
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(
+            script_name, canonical_name
+        )
+
+        if (contract_result is not None and 
+            hasattr(contract_result, 'contract') and 
+            contract_result.contract is not None):
+            contract_env_vars = self.contract_manager.get_contract_environ_vars(
+                contract_result.contract
+            )
+            if contract_env_vars:
+                return contract_env_vars
+
+        # Fallback to generic defaults
+        return self._get_default_environ_vars()
+
+    def _get_contract_aware_job_args(
+        self, script_name: str, canonical_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get job arguments using contract discovery with fallback."""
+        # Try to discover and use contract
+        contract_result = self.contract_manager.discover_contract(
+            script_name, canonical_name
+        )
+
+        if (contract_result is not None and 
+            hasattr(contract_result, 'contract') and 
+            contract_result.contract is not None):
+            contract_job_args = self.contract_manager.get_contract_job_args(
+                contract_result.contract, script_name
+            )
+            if contract_job_args:
+                return contract_job_args
+
+        # Fallback to generic defaults
+        return self._get_default_job_args(script_name)
+
+    def _find_in_workspace(self, script_name: str) -> Optional[Path]:
+        """Find script in core framework workspace."""
         # Common locations for cursus step scripts
         search_paths = [
             Path("src/cursus/steps/scripts"),
@@ -711,17 +525,7 @@ class PipelineTestingSpecBuilder:
         return None
 
     def _find_fuzzy_match(self, script_name: str) -> Optional[Path]:
-        """
-        Find script using fuzzy matching for error recovery.
-
-        Looks for similar script names in the test workspace.
-
-        Args:
-            script_name: snake_case script name
-
-        Returns:
-            Path to best matching script if found, None otherwise
-        """
+        """Find script using fuzzy matching for error recovery."""
         if not self.scripts_dir.exists():
             return None
 
@@ -737,28 +541,10 @@ class PipelineTestingSpecBuilder:
                 best_ratio = ratio
                 best_match = script_file
 
-        if best_match:
-            print(
-                f"Fuzzy match: '{script_name}' -> '{best_match.name}' (similarity: {best_ratio:.2f})"
-            )
-
         return best_match
 
     def _create_placeholder_script(self, script_name: str) -> Path:
-        """
-        Create placeholder script for missing scripts.
-
-        Creates a basic Python script template that can be used for testing.
-
-        Args:
-            script_name: snake_case script name
-
-        Returns:
-            Path to created placeholder script
-
-        Raises:
-            FileNotFoundError: If placeholder cannot be created
-        """
+        """Create placeholder script for missing scripts."""
         placeholder_path = self.scripts_dir / f"{script_name}.py"
 
         try:
@@ -808,145 +594,12 @@ if __name__ == "__main__":
             with open(placeholder_path, "w") as f:
                 f.write(placeholder_content)
 
-            print(f"Created placeholder script: {placeholder_path}")
             return placeholder_path
 
         except OSError as e:
             raise FileNotFoundError(
                 f"Cannot create placeholder script '{placeholder_path}': {str(e)}"
             )
-
-    # Contract-aware methods that replace generic defaults
-
-    def _get_contract_aware_input_paths(
-        self, script_name: str, canonical_name: Optional[str] = None
-    ) -> Dict[str, str]:
-        """
-        Get input paths using contract discovery with fallback to generic defaults.
-
-        Args:
-            script_name: snake_case script name
-            canonical_name: PascalCase canonical name (optional)
-
-        Returns:
-            Dictionary of logical_name -> local_path mappings
-        """
-        # Try to discover and use contract
-        contract_result = self.contract_manager.discover_contract(
-            script_name, canonical_name
-        )
-
-        if contract_result.contract is not None:
-            print(
-                f"Using contract '{contract_result.contract_name}' for input paths (method: {contract_result.discovery_method})"
-            )
-            contract_paths = self.contract_manager.get_contract_input_paths(
-                contract_result.contract, script_name
-            )
-            if contract_paths:
-                return contract_paths
-
-        # Fallback to generic defaults
-        print(f"No contract found for '{script_name}', using generic input paths")
-        return self._get_default_input_paths(script_name)
-
-    def _get_contract_aware_output_paths(
-        self, script_name: str, canonical_name: Optional[str] = None
-    ) -> Dict[str, str]:
-        """
-        Get output paths using contract discovery with fallback to generic defaults.
-
-        Args:
-            script_name: snake_case script name
-            canonical_name: PascalCase canonical name (optional)
-
-        Returns:
-            Dictionary of logical_name -> local_path mappings
-        """
-        # Try to discover and use contract
-        contract_result = self.contract_manager.discover_contract(
-            script_name, canonical_name
-        )
-
-        if contract_result.contract is not None:
-            print(
-                f"Using contract '{contract_result.contract_name}' for output paths (method: {contract_result.discovery_method})"
-            )
-            contract_paths = self.contract_manager.get_contract_output_paths(
-                contract_result.contract, script_name
-            )
-            if contract_paths:
-                return contract_paths
-
-        # Fallback to generic defaults
-        print(f"No contract found for '{script_name}', using generic output paths")
-        return self._get_default_output_paths(script_name)
-
-    def _get_contract_aware_environ_vars(
-        self, script_name: str, canonical_name: Optional[str] = None
-    ) -> Dict[str, str]:
-        """
-        Get environment variables using contract discovery with fallback to generic defaults.
-
-        Args:
-            script_name: snake_case script name
-            canonical_name: PascalCase canonical name (optional)
-
-        Returns:
-            Dictionary of environment variable mappings
-        """
-        # Try to discover and use contract
-        contract_result = self.contract_manager.discover_contract(
-            script_name, canonical_name
-        )
-
-        if contract_result.contract is not None:
-            print(
-                f"Using contract '{contract_result.contract_name}' for environment variables (method: {contract_result.discovery_method})"
-            )
-            contract_env_vars = self.contract_manager.get_contract_environ_vars(
-                contract_result.contract
-            )
-            if contract_env_vars:
-                return contract_env_vars
-
-        # Fallback to generic defaults
-        print(
-            f"No contract found for '{script_name}', using generic environment variables"
-        )
-        return self._get_default_environ_vars()
-
-    def _get_contract_aware_job_args(
-        self, script_name: str, canonical_name: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Get job arguments using contract discovery with fallback to generic defaults.
-
-        Args:
-            script_name: snake_case script name
-            canonical_name: PascalCase canonical name (optional)
-
-        Returns:
-            Dictionary of job argument mappings
-        """
-        # Try to discover and use contract
-        contract_result = self.contract_manager.discover_contract(
-            script_name, canonical_name
-        )
-
-        if contract_result.contract is not None:
-            print(
-                f"Using contract '{contract_result.contract_name}' for job arguments (method: {contract_result.discovery_method})"
-            )
-            contract_job_args = self.contract_manager.get_contract_job_args(
-                contract_result.contract, script_name
-            )
-            if contract_job_args:
-                return contract_job_args
-
-        # Fallback to generic defaults
-        print(f"No contract found for '{script_name}', using generic job arguments")
-        return self._get_default_job_args(script_name)
 
     # Generic fallback methods (kept for backward compatibility and fallback)
 
