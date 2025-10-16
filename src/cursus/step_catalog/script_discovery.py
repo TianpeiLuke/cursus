@@ -230,6 +230,77 @@ class ScriptAutoDiscovery:
         self.logger.info(f"Discovered {len(discovered_scripts)} scripts from DAG with {len(dag.nodes)} nodes")
         return discovered_scripts
     
+    def discover_scripts_from_config_instances(self, loaded_configs: Dict[str, Any]) -> Dict[str, ScriptInfo]:
+        """
+        Discover scripts from already-loaded config instances with definitive validation.
+        
+        This method provides config-based script discovery that eliminates phantom scripts
+        by only discovering scripts that have actual entry points defined in config instances.
+        
+        Args:
+            loaded_configs: Dictionary mapping step names to config instances (from load_configs)
+            
+        Returns:
+            Dictionary mapping script names to ScriptInfo objects
+        """
+        discovered_scripts = {}
+        
+        self.logger.info(f"Starting config instance-based script discovery for {len(loaded_configs)} configs")
+        
+        for step_name, config_instance in loaded_configs.items():
+            try:
+                script_info = self._extract_script_from_config_instance(config_instance, step_name)
+                if script_info:
+                    discovered_scripts[script_info.script_name] = script_info
+                    self.logger.debug(f"Discovered script {script_info.script_name} from config instance {step_name}")
+                else:
+                    self.logger.debug(f"No script entry point found in config instance {step_name}")
+                    
+            except Exception as e:
+                self.logger.warning(f"Error extracting script from config instance {step_name}: {e}")
+                continue
+        
+        self.logger.info(f"Config instance-based discovery found {len(discovered_scripts)} validated scripts")
+        return discovered_scripts
+    
+    def discover_scripts_from_dag_and_configs(self, dag, loaded_configs: Dict[str, Any]) -> Dict[str, ScriptInfo]:
+        """
+        Discover scripts using both DAG nodes and loaded config instances for definitive validation.
+        
+        This method combines DAG-based filtering with config-based validation to eliminate
+        phantom scripts and provide accurate script discovery.
+        
+        Args:
+            dag: PipelineDAG object
+            loaded_configs: Dictionary mapping step names to config instances
+            
+        Returns:
+            Dictionary mapping script names to ScriptInfo objects
+        """
+        discovered_scripts = {}
+        
+        self.logger.info(f"Starting DAG + config instance script discovery for {len(dag.nodes)} DAG nodes")
+        
+        # First, discover all scripts from config instances
+        config_scripts = self.discover_scripts_from_config_instances(loaded_configs)
+        
+        # Then, filter to only scripts that correspond to DAG nodes
+        for node_name in dag.nodes:
+            # Check if this DAG node has a corresponding config
+            if node_name in loaded_configs:
+                config_instance = loaded_configs[node_name]
+                script_info = self._extract_script_from_config_instance(config_instance, node_name)
+                if script_info:
+                    discovered_scripts[script_info.script_name] = script_info
+                    self.logger.debug(f"DAG node {node_name} -> script {script_info.script_name}")
+                else:
+                    self.logger.debug(f"DAG node {node_name} has no script entry point (data transformation only)")
+            else:
+                self.logger.warning(f"DAG node {node_name} has no corresponding config instance")
+        
+        self.logger.info(f"DAG + config discovery found {len(discovered_scripts)} validated scripts from {len(dag.nodes)} DAG nodes")
+        return discovered_scripts
+    
     def _map_dag_node_to_script(self, node_name: str, available_scripts: Dict[str, ScriptInfo]) -> Optional[ScriptInfo]:
         """
         Map a DAG node name to a script using intelligent resolution.
@@ -838,6 +909,309 @@ class ScriptAutoDiscovery:
             self.logger.debug(f"Registry lookup failed for {contract_class_name}: {e}")
             # Simple fallback
             return contract_class_name.replace('Contract', '').replace('ScriptContract', '')
+    
+    def _extract_script_from_config_instance(self, config_instance: Any, step_name: str) -> Optional[ScriptInfo]:
+        """
+        Extract script information from a loaded config instance with definitive validation.
+        
+        This method provides the core functionality for config instance-based script discovery,
+        eliminating phantom scripts by only discovering scripts with actual entry points.
+        
+        Args:
+            config_instance: Loaded configuration instance (from load_configs)
+            step_name: Name of the step/DAG node
+            
+        Returns:
+            ScriptInfo object or None if no script entry point found
+        """
+        try:
+            # Check for script entry points in priority order (definitive validation)
+            entry_point_value = None
+            entry_point_field = None
+            
+            # Priority order for script entry points
+            entry_point_fields = [
+                'processing_entry_point',
+                'training_entry_point', 
+                'script_path',
+                'inference_entry_point'
+            ]
+            
+            for field_name in entry_point_fields:
+                if hasattr(config_instance, field_name):
+                    field_value = getattr(config_instance, field_name)
+                    if field_value and isinstance(field_value, str):
+                        entry_point_value = field_value
+                        entry_point_field = field_name
+                        break
+            
+            if not entry_point_value:
+                # No script entry point found - this is a data transformation step
+                self.logger.debug(f"No script entry point found in config instance for {step_name}")
+                return None
+            
+            # Extract script name from entry point
+            script_name = self._extract_script_name_from_entry_point(entry_point_value)
+            if not script_name:
+                self.logger.warning(f"Could not extract script name from entry point {entry_point_value} for {step_name}")
+                return None
+            
+            # Find actual script file using config instance information
+            script_path = self._find_script_file_from_config_instance(config_instance, script_name, entry_point_value)
+            if not script_path:
+                self.logger.warning(f"Script file not found for {script_name} from config instance {step_name}")
+                return None
+            
+            # Determine workspace ID based on script path
+            workspace_id = self._determine_workspace_id_from_path(script_path)
+            
+            # Create ScriptInfo with enhanced metadata
+            script_info = ScriptInfo(
+                script_name=script_name,
+                step_name=step_name,
+                script_path=script_path,
+                workspace_id=workspace_id
+            )
+            
+            # Add metadata from config instance
+            script_info.metadata = {
+                'entry_point_field': entry_point_field,
+                'entry_point_value': entry_point_value,
+                'config_type': config_instance.__class__.__name__,
+                'source_dir': self._extract_source_dir_from_config_instance(config_instance),
+                'environment_variables': self._extract_environment_variables_from_config_instance(config_instance),
+                'job_arguments': self._extract_job_arguments_from_config_instance(config_instance)
+            }
+            
+            self.logger.debug(f"Successfully extracted script {script_name} from config instance {step_name}")
+            return script_info
+            
+        except Exception as e:
+            self.logger.warning(f"Error extracting script from config instance {step_name}: {e}")
+            return None
+    
+    def _find_script_file_from_config_instance(self, config_instance: Any, script_name: str, entry_point_value: str) -> Optional[Path]:
+        """
+        Find script file path using config instance information with workspace prioritization.
+        
+        Args:
+            config_instance: Loaded configuration instance
+            script_name: Name of the script (without .py extension)
+            entry_point_value: Entry point value from config
+            
+        Returns:
+            Path to script file or None if not found
+        """
+        script_filename = f"{script_name}.py"
+        
+        # Strategy 1: Use config instance's get_script_path method if available
+        try:
+            if hasattr(config_instance, 'get_script_path'):
+                script_path = config_instance.get_script_path()
+                if script_path:
+                    script_path_obj = Path(script_path)
+                    if script_path_obj.exists():
+                        self.logger.debug(f"Found script using config.get_script_path(): {script_path_obj}")
+                        return script_path_obj
+        except Exception as e:
+            self.logger.debug(f"Could not use config.get_script_path() approach: {e}")
+        
+        # Strategy 2: Use effective_source_dir from config instance
+        source_dir = self._extract_source_dir_from_config_instance(config_instance)
+        if source_dir:
+            source_path = Path(source_dir)
+            if source_path.exists():
+                script_path = source_path / script_filename
+                if script_path.exists():
+                    self.logger.debug(f"Found script using config source_dir: {script_path}")
+                    return script_path
+        
+        # Strategy 3: Search priority workspace if specified
+        if self.priority_workspace_dir:
+            workspace_scripts_dir = self.priority_workspace_dir / "scripts"
+            if workspace_scripts_dir.exists():
+                script_path = workspace_scripts_dir / script_filename
+                if script_path.exists():
+                    self.logger.debug(f"Found script in priority workspace: {script_path}")
+                    return script_path
+        
+        # Strategy 4: Search all workspace directories
+        for workspace_dir in self.workspace_dirs:
+            workspace_path = Path(workspace_dir)
+            workspace_scripts_dir = workspace_path / "scripts"
+            if workspace_scripts_dir.exists():
+                script_path = workspace_scripts_dir / script_filename
+                if script_path.exists():
+                    self.logger.debug(f"Found script in workspace {workspace_path.name}: {script_path}")
+                    return script_path
+        
+        # Strategy 5: Fallback to package scripts
+        package_scripts_dir = self.package_root / "steps" / "scripts"
+        if package_scripts_dir.exists():
+            script_path = package_scripts_dir / script_filename
+            if script_path.exists():
+                self.logger.debug(f"Found script in package scripts: {script_path}")
+                return script_path
+        
+        self.logger.warning(f"Script file not found: {script_filename}")
+        return None
+    
+    def _extract_source_dir_from_config_instance(self, config_instance: Any) -> Optional[str]:
+        """
+        Extract source directory from config instance.
+        
+        Args:
+            config_instance: Loaded configuration instance
+            
+        Returns:
+            Source directory path if found, None otherwise
+        """
+        # Priority order for source directory fields
+        source_dir_fields = [
+            'portable_processing_source_dir',
+            'processing_source_dir',
+            'source_dir',
+            'portable_source_dir',
+            'effective_source_dir'
+        ]
+        
+        for field_name in source_dir_fields:
+            if hasattr(config_instance, field_name):
+                field_value = getattr(config_instance, field_name)
+                if field_value and isinstance(field_value, str):
+                    return field_value
+        
+        return None
+    
+    def _extract_environment_variables_from_config_instance(self, config_instance: Any) -> Dict[str, str]:
+        """
+        Extract environment variables from config instance using simple naming rules.
+        
+        Rule: All environment variables are CAPITAL_CASE, corresponding config fields are lowercase.
+        For example: LABEL_FIELD -> label_field, TRAIN_RATIO -> train_ratio
+        
+        Args:
+            config_instance: Loaded configuration instance
+            
+        Returns:
+            Dictionary of environment variables from config
+        """
+        environ_vars = {
+            'PYTHONPATH': '/opt/ml/code',
+            'CURSUS_ENV': 'testing'
+        }
+        
+        # Define common environment variable patterns that scripts expect
+        # Rule: CAPITAL_CASE env var -> lowercase config field
+        env_var_patterns = [
+            'LABEL_FIELD',      # -> label_field or label_name
+            'TRAIN_RATIO',      # -> train_ratio
+            'TEST_VAL_RATIO',   # -> test_val_ratio
+            'FRAMEWORK_VERSION', # -> framework_version
+            'PYTHON_VERSION',   # -> py_version or python_version
+            'PROCESSING_FRAMEWORK_VERSION'  # -> processing_framework_version
+        ]
+        
+        for env_var in env_var_patterns:
+            # Convert CAPITAL_CASE to lowercase for config field lookup
+            config_field = env_var.lower()
+            
+            # Try direct field name match first
+            if hasattr(config_instance, config_field):
+                field_value = getattr(config_instance, config_field)
+                if field_value is not None:
+                    environ_vars[env_var] = str(field_value)
+                    continue
+            
+            # Try common variations for specific fields
+            field_variations = self._get_config_field_variations(env_var)
+            for variation in field_variations:
+                if hasattr(config_instance, variation):
+                    field_value = getattr(config_instance, variation)
+                    if field_value is not None:
+                        environ_vars[env_var] = str(field_value)
+                        break
+        
+        return environ_vars
+    
+    def _get_config_field_variations(self, env_var: str) -> List[str]:
+        """
+        Get common config field name variations for an environment variable.
+        
+        Args:
+            env_var: Environment variable name in CAPITAL_CASE
+            
+        Returns:
+            List of possible config field names
+        """
+        # Common variations for specific environment variables
+        variations = {
+            'LABEL_FIELD': ['label_name', 'label_field'],
+            'PYTHON_VERSION': ['py_version', 'python_version'],
+            'FRAMEWORK_VERSION': ['framework_version'],
+            'PROCESSING_FRAMEWORK_VERSION': ['processing_framework_version'],
+            'TRAIN_RATIO': ['train_ratio'],
+            'TEST_VAL_RATIO': ['test_val_ratio']
+        }
+        
+        return variations.get(env_var, [])
+    
+    def _extract_job_arguments_from_config_instance(self, config_instance: Any) -> Dict[str, Any]:
+        """
+        Extract job arguments from config instance based on actual script usage patterns.
+        
+        Args:
+            config_instance: Loaded configuration instance
+            
+        Returns:
+            Dictionary of job arguments from config
+        """
+        job_args = {}
+        
+        # Map config fields to job arguments
+        field_mappings = {
+            'job_type': 'job_type',
+            'training_instance_type': 'instance_type',
+            'processing_instance_type': 'instance_type',
+            'hyperparameters': 'hyperparameters'
+        }
+        
+        for config_field, job_arg in field_mappings.items():
+            if hasattr(config_instance, config_field):
+                field_value = getattr(config_instance, config_field)
+                if field_value is not None:
+                    job_args[job_arg] = field_value
+        
+        return job_args
+    
+    def _determine_workspace_id_from_path(self, script_path: Path) -> str:
+        """
+        Determine workspace ID from script path.
+        
+        Args:
+            script_path: Path to the script file
+            
+        Returns:
+            Workspace ID string
+        """
+        # Check if script is in any workspace directory
+        for workspace_dir in self.workspace_dirs:
+            workspace_path = Path(workspace_dir)
+            try:
+                script_path.relative_to(workspace_path)
+                return workspace_path.name
+            except ValueError:
+                continue
+        
+        # Check if script is in package
+        try:
+            script_path.relative_to(self.package_root)
+            return "package"
+        except ValueError:
+            pass
+        
+        # Default fallback
+        return "unknown"
     
     
     def get_script_info(self, script_name: str) -> Optional[Dict[str, Any]]:
