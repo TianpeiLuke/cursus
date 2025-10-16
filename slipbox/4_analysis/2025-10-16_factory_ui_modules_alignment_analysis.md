@@ -745,77 +745,315 @@ def get_field_requirements(self, step_name="CradleDataLoading"):
 - **Consistent behavior** with other UI modules
 - **Future extensibility** for multi-step cradle workflows
 
-### Phase 5C: Factory-Driven Base Classes
+### Phase 5C: Refactor Existing UI Modules Using Composition
 
-#### **Create Unified Factory-First Foundation**
+#### **Refactor Existing Structures to Use Composition with Factory**
+
+**Design Principle**: Refactor existing UI module classes to use composition with existing factory components directly, rather than creating new data structures or inheritance hierarchies.
 
 ```python
-# NEW: Factory-driven base class for all UI modules
-class FactoryDrivenUIBase:
-    """Base class for all UI modules using factory-first approach."""
-    
-    def __init__(self, dag_or_config_name):
-        if isinstance(dag_or_config_name, str):
-            # Single config mode (for cradle UI)
-            simple_dag = PipelineDAG()
-            simple_dag.add_node(dag_or_config_name)
-            self.factory = DAGConfigFactory(simple_dag)
-            self.single_config_mode = True
-        else:
-            # Multi-step mode (for config UI)
-            self.factory = DAGConfigFactory(dag_or_config_name)
-            self.single_config_mode = False
-    
-    # Unified interface methods
-    def get_field_requirements(self, step_name=None):
-        if self.single_config_mode and step_name is None:
-            step_name = list(self.factory.get_config_class_map().keys())[0]
-        return self.factory.get_step_requirements(step_name)
-    
-    def set_base_configuration(self, **config_data):
-        return self.factory.set_base_config(**config_data)
-    
-    def set_step_configuration(self, step_name, **config_data):
-        return self.factory.set_step_config(step_name, **config_data)
-    
-    def get_configuration_status(self):
-        return self.factory.get_configuration_status()
-    
-    def get_pending_steps(self):
-        return self.factory.get_pending_steps()
-    
-    def generate_configurations(self):
-        return self.factory.generate_all_configs()
+# REFACTORING APPROACH: Modify existing UI classes to compose existing factory components
 
-# Enhanced Config UI using base class
-class FactoryDrivenConfigCore(FactoryDrivenUIBase):
-    def create_config_widget(self, step_name, **kwargs):
-        requirements = self.get_field_requirements(step_name)
-        # Create widget with factory-provided requirements
-        return self._create_widget_from_requirements(requirements, **kwargs)
+# 1. Refactor Existing UniversalConfigCore (Config UI)
+class UniversalConfigCore:
+    """
+    REFACTORED: Existing config UI core class modified to use composition.
+    No new data structures - just compose existing DAGConfigFactory directly.
+    """
+    
+    def __init__(self, workspace_dirs: Optional[List[Union[str, Path]]] = None):
+        # Keep existing initialization
+        self.workspace_dirs = [Path(d) if isinstance(d, str) else d for d in (workspace_dirs or [])]
+        self._step_catalog = None
+        self._config_classes_cache = None
+        
+        # NEW: Add factory composition capability (no new data structure)
+        self._factory = None  # Lazy-loaded factory
+        
+        # Keep existing field types mapping
+        self.field_types = {
+            str: "text", int: "number", float: "number",
+            bool: "checkbox", list: "list", dict: "keyvalue"
+        }
+    
+    def _get_or_create_factory(self, dag):
+        """Lazy factory creation - reuse existing DAGConfigFactory."""
+        if self._factory is None or self._factory != dag:
+            self._factory = DAGConfigFactory(dag)
+        return self._factory
+    
+    def create_pipeline_config_widget(self, 
+                                    pipeline_dag: Any, 
+                                    base_config: BasePipelineConfig,
+                                    processing_config: Optional[ProcessingStepConfigBase] = None,
+                                    **kwargs) -> 'MultiStepWizard':
+        """
+        REFACTORED: Use composition with existing DAGConfigFactory.
+        No new data structures - just compose existing factory directly.
+        """
+        # Compose existing factory directly
+        factory = self._get_or_create_factory(pipeline_dag)
+        factory.set_base_config(**base_config.model_dump())
+        
+        if processing_config:
+            factory.set_base_processing_config(**processing_config.model_dump())
+        
+        # Use existing MultiStepWizard but pass factory for enhanced capabilities
+        return MultiStepWizard(
+            factory=factory,  # Compose existing factory
+            base_config=base_config, 
+            processing_config=processing_config,
+            core=self,
+            **kwargs
+        )
+    
+    def get_inheritance_aware_form_fields(self,
+                                        config_class_name: str,
+                                        inheritance_analysis: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        REFACTORED: Use existing factory field extraction with simple enhancement.
+        No new data structures - just enhance existing factory output.
+        """
+        # Use existing config discovery
+        config_classes = self.discover_config_classes()
+        config_class = config_classes.get(config_class_name)
 
-# Enhanced Cradle UI using base class
-class FactoryDrivenCradleBuilder(FactoryDrivenUIBase):
+        if not config_class:
+            return []
+
+        # Use existing factory field extraction directly
+        from ...factory import extract_field_requirements
+        base_fields = extract_field_requirements(config_class)
+
+        # Simple inheritance enhancement (no new component)
+        if inheritance_analysis and inheritance_analysis.get('inheritance_enabled'):
+            parent_values = inheritance_analysis.get('parent_values', {})
+            immediate_parent = inheritance_analysis.get('immediate_parent')
+            
+            for field in base_fields:
+                field_name = field["name"]
+                if field_name in parent_values:
+                    field.update({
+                        "tier": 'inherited',
+                        "required": False,
+                        "default": parent_values[field_name],
+                        "is_pre_populated": True,
+                        "inherited_from": immediate_parent,
+                        "can_override": True
+                    })
+
+        return base_fields
+    
+    # Keep all existing methods unchanged
+    def discover_config_classes(self) -> Dict[str, Type[BasePipelineConfig]]:
+        """Keep existing implementation unchanged."""
+        if self._config_classes_cache is not None:
+            return self._config_classes_cache
+        # ... existing implementation
+    
+    def create_config_widget(self, config_class_name: str, base_config: Optional[BasePipelineConfig] = None, **kwargs):
+        """Keep existing implementation unchanged."""
+        # ... existing implementation
+
+# 2. Refactor Existing ConfigBuilderService (Cradle UI)
+class ConfigBuilderService:
+    """
+    REFACTORED: Existing cradle UI service modified to use composition.
+    No new data structures - just compose existing factory components directly.
+    """
+    
     def __init__(self):
-        super().__init__("CradleDataLoading")
+        # Keep existing initialization
+        self.logger = logging.getLogger(__name__)
+        
+        # NEW: Add factory composition capability (no new data structure)
+        self._factory = None  # Lazy-loaded factory for enhanced workflow
     
-    def build_config(self, ui_data):
-        self.set_base_configuration(**ui_data.get('base_config', {}))
-        self.set_step_configuration("CradleDataLoading", **ui_data.get('step_config', {}))
+    def _get_or_create_single_step_factory(self, step_name="CradleDataLoading"):
+        """Create factory for single-step workflow using existing DAGConfigFactory."""
+        if self._factory is None:
+            # Use existing PipelineDAG and DAGConfigFactory
+            simple_dag = PipelineDAG()
+            simple_dag.add_node(step_name)
+            self._factory = DAGConfigFactory(simple_dag)
+        return self._factory
+    
+    def validate_and_build_config(self, ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
+        """
+        REFACTORED: Enhanced with optional factory workflow.
+        Keep existing implementation but add factory workflow option.
+        """
+        # OPTION 1: Use existing implementation (backward compatibility)
+        if not ui_data.get('use_factory_workflow', False):
+            # Keep existing implementation unchanged
+            return self._build_config_existing_way(ui_data)
         
-        configs = self.generate_configurations()
-        config = configs[0]
+        # OPTION 2: Use factory workflow (enhanced capabilities)
+        return self._build_config_with_factory_workflow(ui_data)
+    
+    def _build_config_existing_way(self, ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
+        """Keep existing implementation unchanged for backward compatibility."""
+        # Extract configuration data
+        base_config_data = ui_data.get('base_config', {})
+        processing_config_data = ui_data.get('processing_config', {})
+        step_config_data = ui_data.get('step_config', {})
         
-        # Preserve unique cradle validation
+        # Use existing ConfigurationGenerator approach
+        base_config = BasePipelineConfig(**base_config_data) if base_config_data else None
+        
+        # Use existing inheritance detection
+        temp_generator = ConfigurationGenerator(base_config=base_config)
+        
+        if temp_generator._inherits_from_processing_config(CradleDataLoadingConfig):
+            processing_config = ProcessingStepConfigBase(**processing_config_data)
+        else:
+            processing_config = None
+        
+        # Generate config using existing approach
+        generator = ConfigurationGenerator(
+            base_config=base_config,
+            base_processing_config=processing_config
+        )
+        
+        config = generator.generate_config_instance(CradleDataLoadingConfig, step_config_data)
+        
+        # Keep existing validation
         self._validate_built_config(config)
         return config
+    
+    def _build_config_with_factory_workflow(self, ui_data: Dict[str, Any]) -> CradleDataLoadingConfig:
+        """NEW: Enhanced workflow using existing factory composition."""
+        # Compose existing factory directly
+        factory = self._get_or_create_single_step_factory()
+        
+        # Use existing factory methods
+        factory.set_base_config(**ui_data.get('base_config', {}))
+        
+        if 'processing_config' in ui_data:
+            factory.set_base_processing_config(**ui_data['processing_config'])
+        
+        factory.set_step_config("CradleDataLoading", **ui_data.get('step_config', {}))
+        
+        # Generate using existing factory
+        configs = factory.generate_all_configs()
+        config = configs[0]
+        
+        # Keep existing validation
+        self._validate_built_config(config)
+        return config
+    
+    def get_field_requirements(self) -> List[Dict[str, Any]]:
+        """NEW: Add field requirements capability using existing factory."""
+        factory = self._get_or_create_single_step_factory()
+        return factory.get_step_requirements("CradleDataLoading")
+    
+    def get_configuration_status(self) -> Dict[str, Any]:
+        """NEW: Add status tracking capability using existing factory."""
+        if self._factory:
+            return self._factory.get_configuration_status()
+        return {"CradleDataLoading": False}
+    
+    # Keep all existing methods unchanged
+    def export_config(self, config: CradleDataLoadingConfig, format: str = "json", include_comments: bool = True) -> str:
+        """Keep existing implementation unchanged."""
+        # ... existing implementation
+    
+    def _validate_built_config(self, config: CradleDataLoadingConfig) -> None:
+        """Keep existing implementation unchanged."""
+        # ... existing implementation
+
+# 3. Refactor Existing MultiStepWizard (Config UI Widget)
+class MultiStepWizard:
+    """
+    REFACTORED: Existing widget class modified to optionally use factory composition.
+    No new data structures - just enhance existing class with factory capabilities.
+    """
+    
+    def __init__(self, 
+                 workflow_steps=None,  # Keep existing parameter
+                 factory=None,         # NEW: Optional factory composition
+                 base_config=None, 
+                 processing_config=None, 
+                 core=None, 
+                 **kwargs):
+        
+        # Keep existing initialization
+        self.workflow_steps = workflow_steps or []
+        self.base_config = base_config
+        self.processing_config = processing_config
+        self.core = core
+        
+        # NEW: Optional factory composition (no new data structure)
+        self.factory = factory  # Compose existing DAGConfigFactory if provided
+        
+        # If factory provided, enhance capabilities
+        if self.factory:
+            self._enhance_with_factory_capabilities()
+    
+    def _enhance_with_factory_capabilities(self):
+        """Enhance existing widget with factory capabilities."""
+        # Add factory-based workflow steps if not provided
+        if not self.workflow_steps:
+            config_map = self.factory.get_config_class_map()
+            self.workflow_steps = self._create_steps_from_factory(config_map)
+    
+    def get_workflow_progress(self) -> Dict[str, Any]:
+        """NEW: Add workflow progress using existing factory."""
+        if not self.factory:
+            return {"progress_percentage": 0, "total_steps": len(self.workflow_steps)}
+        
+        # Use existing factory methods
+        status = self.factory.get_configuration_status()
+        pending = self.factory.get_pending_steps()
+        
+        completed = sum(1 for configured in status.values() if configured)
+        total = len(status)
+        
+        return {
+            "total_steps": total,
+            "completed_steps": completed,
+            "pending_steps": pending,
+            "progress_percentage": (completed / total * 100) if total > 0 else 0.0,
+            "next_step": pending[0] if pending else None
+        }
+    
+    def get_step_requirements(self, step_name: str) -> List[Dict[str, Any]]:
+        """NEW: Add step requirements using existing factory."""
+        if self.factory:
+            return self.factory.get_step_requirements(step_name)
+        return []
+    
+    # Keep all existing methods unchanged
+    def create_step_widget(self, step_config, **kwargs):
+        """Keep existing implementation unchanged."""
+        # ... existing implementation
+    
+    def _create_steps_from_factory(self, config_map: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """NEW: Create workflow steps from factory config map."""
+        steps = []
+        for step_name, config_class in config_map.items():
+            steps.append({
+                "step_name": step_name,
+                "config_class": config_class,
+                "config_class_name": config_class.__name__,
+                "display_name": step_name.replace("_", " ").title()
+            })
+        return steps
 ```
 
-**Benefits**:
-- **Unified API** across all UI modules
-- **Consistent behavior** and capabilities
-- **Simplified implementation** for new UI modules
-- **Factory-first architecture** throughout
+**Refactoring Benefits**:
+- ✅ **No New Data Structures**: Enhanced existing classes instead of creating new components
+- ✅ **Backward Compatibility**: Preserved all existing functionality during enhancement
+- ✅ **Optional Enhancement**: Factory capabilities added as optional features
+- ✅ **Lazy Loading**: Factory composition only when needed
+- ✅ **Gradual Migration**: Can migrate incrementally without breaking changes
+- ✅ **Code Reduction**: Avoided creating unnecessary abstraction layers
+
+**Design Principles Applied**:
+- **Refactoring Over Recreation**: Enhanced existing structures instead of building new ones
+- **Composition Over Inheritance**: Added factory composition to existing classes
+- **Backward Compatibility**: Preserved existing APIs while adding new capabilities
+- **Optional Enhancement**: Factory features available when needed, existing functionality unchanged
 
 ## Expected Benefits Summary
 

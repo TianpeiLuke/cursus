@@ -218,7 +218,7 @@ class UniversalConfigCore:
         except ImportError:
             resolver = None
         
-        required_config_classes = self._discover_required_config_classes(dag_nodes, resolver)
+        required_config_classes = self._discover_required_config_classes(pipeline_dag, resolver)
         workflow_steps = self._create_workflow_structure(required_config_classes)
         
         from ..widgets.widget import MultiStepWizard
@@ -373,52 +373,77 @@ class UniversalConfigCore:
         logger.debug(f"Inheritance chain for {config_class.__name__}: {chain}")
         return chain
     
-    def _discover_required_config_classes(self, dag_nodes: List[str], resolver: Optional[Any]) -> List[Dict]:
+    def _discover_required_config_classes(self, pipeline_dag: Any, resolver: Optional[Any]) -> List[Dict]:
         """
-        Discover what configuration classes are needed for the DAG nodes using factory system.
+        CONSOLIDATED: Use factory's get_config_class_map() directly instead of manual discovery.
         
-        This method now uses ConfigClassMapper from the factory system for robust
-        DAG node to configuration class mapping with registry integration.
+        This method now uses DAGConfigFactory.get_config_class_map() which provides
+        the exact same functionality with robust DAG node to configuration class mapping.
         
         Args:
-            dag_nodes: List of DAG node names (extracted same as production)
-            resolver: StepConfigResolverAdapter instance (optional, factory handles fallbacks)
+            pipeline_dag: Pipeline DAG object (used directly by factory)
+            resolver: StepConfigResolverAdapter instance (not used - factory handles resolution)
             
         Returns:
             List of required configuration class information
         """
-        # Import factory mapper directly - no wrapper methods
-        from ...factory import ConfigClassMapper
+        logger.info("🔄 CONSOLIDATED: Using factory get_config_class_map() instead of manual discovery")
+        
+        # Use factory directly with the actual pipeline_dag - this replaces 200+ lines of manual logic
+        from ...factory import DAGConfigFactory
+        
+        try:
+            factory = DAGConfigFactory(pipeline_dag)
+            config_class_map = factory.get_config_class_map()
+            
+            # Convert factory mapping to expected format
+            required_configs = []
+            for node_name, config_class in config_class_map.items():
+                required_configs.append({
+                    "node_name": node_name,
+                    "config_class_name": config_class.__name__,
+                    "config_class": config_class,
+                    "inheritance_pattern": self._get_inheritance_pattern(config_class),
+                    "is_specialized": self._is_specialized_config(config_class),
+                    "factory_resolved": True
+                })
+            
+            logger.info(f"✅ Factory-based discovery: {len(required_configs)} required config classes from pipeline DAG")
+            return required_configs
+            
+        except Exception as e:
+            logger.warning(f"Factory discovery failed: {e}, falling back to manual discovery")
+            # Extract DAG nodes for fallback
+            dag_nodes = list(pipeline_dag.nodes) if hasattr(pipeline_dag, 'nodes') else []
+            return self._manual_discovery_fallback(dag_nodes, resolver)
+    
+    def _manual_discovery_fallback(self, dag_nodes: List[str], resolver: Optional[Any]) -> List[Dict]:
+        """
+        Manual discovery fallback for compatibility when factory fails.
+        
+        This preserves the original manual discovery logic as a fallback mechanism
+        to ensure backward compatibility when factory-based discovery fails.
+        
+        Args:
+            dag_nodes: List of DAG node names
+            resolver: StepConfigResolverAdapter instance (optional)
+            
+        Returns:
+            List of required configuration class information
+        """
+        logger.info("🔄 Using manual discovery fallback")
         
         required_configs = []
-        mapper = ConfigClassMapper()
         
         for node_name in dag_nodes:
-            try:
-                # Use factory mapper for robust config class resolution
-                config_class = mapper.resolve_node_to_config_class(node_name)
-                
-                if config_class:
-                    required_configs.append({
-                        "node_name": node_name,
-                        "config_class_name": config_class.__name__,
-                        "config_class": config_class,
-                        "inheritance_pattern": self._get_inheritance_pattern(config_class),
-                        "is_specialized": self._is_specialized_config(config_class),
-                        "factory_resolved": True
-                    })
-                else:
-                    logger.warning(f"Factory mapper could not resolve config class for node: {node_name}")
-                    
-            except Exception as e:
-                logger.debug(f"Factory mapper failed for {node_name}: {e}")
-                # Fallback: Try manual inference (preserve existing fallback logic)
-                inferred_config = self._infer_config_class_from_node_name(node_name, resolver)
-                if inferred_config:
-                    inferred_config["factory_resolved"] = False
-                    required_configs.append(inferred_config)
+            # Try manual inference (preserve existing fallback logic)
+            inferred_config = self._infer_config_class_from_node_name(node_name, resolver)
+            if inferred_config:
+                inferred_config["factory_resolved"] = False
+                inferred_config["manual_fallback"] = True
+                required_configs.append(inferred_config)
         
-        logger.info(f"Factory-based discovery: {len(required_configs)} required config classes from {len(dag_nodes)} DAG nodes")
+        logger.info(f"Manual fallback discovery: {len(required_configs)} required config classes from {len(dag_nodes)} DAG nodes")
         return required_configs
     
     def _infer_config_class_from_node_name(self, node_name: str, resolver: Optional[Any]) -> Optional[Dict]:
