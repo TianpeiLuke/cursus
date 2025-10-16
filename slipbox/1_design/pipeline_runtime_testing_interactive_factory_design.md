@@ -259,31 +259,52 @@ class InteractiveRuntimeTestingFactory:
         """Execute comprehensive DAG-guided end-to-end testing."""
 ```
 
-#### **2. Script Discovery Engine**
-**Purpose**: Intelligent script discovery and analysis from DAG structure
-**Responsibility**: Map DAG nodes to actual script files and analyze testing requirements
+#### **2. ScriptAutoDiscovery (Step Catalog Integration)**
+**Purpose**: Intelligent script discovery and analysis integrated with step catalog system
+**Responsibility**: Map DAG nodes to actual script files using step catalog's ScriptAutoDiscovery
 
 ```python
-class ScriptDiscoveryEngine:
-    """
-    Discovers and analyzes scripts from DAG structure.
-    
-    Key Features:
-    - Maps DAG nodes to actual script files using step catalog
-    - Analyzes script dependencies and execution order
-    - Identifies scripts requiring user configuration vs auto-configurable
-    - Provides script metadata for requirements extraction
-    """
-    
+# ScriptAutoDiscovery is now part of the step catalog system
+from cursus.step_catalog import StepCatalog
+
+class InteractiveRuntimeTestingFactory:
+    def __init__(self, dag: PipelineDAG, workspace_dir: str):
+        # Use step catalog with integrated script discovery
+        self.step_catalog = StepCatalog(workspace_dirs=[Path(workspace_dir)])
+        
     def discover_scripts_from_dag(self, dag: PipelineDAG) -> Dict[str, ScriptInfo]:
-        """Discover all scripts referenced in DAG with metadata."""
+        """
+        Discover scripts referenced in DAG using step catalog's ScriptAutoDiscovery.
         
-    def analyze_script_dependencies(self, dag: PipelineDAG) -> Dict[str, List[str]]:
-        """Analyze script dependencies for testing order."""
+        Key Features:
+        - Uses step catalog's ScriptAutoDiscovery for intelligent script mapping
+        - Leverages registry integration for canonical name resolution
+        - Supports workspace prioritization (user scripts override package scripts)
+        - Uses same script path resolution as step builders (config.get_script_path())
+        - Regex-based entry point detection for future-proof discovery
         
-    def classify_scripts_by_configuration_needs(self, scripts: Dict[str, ScriptInfo]) -> Dict[str, List[str]]:
-        """Classify scripts into manual-config vs auto-configurable categories."""
+        Returns:
+            Dictionary mapping script names to ScriptInfo objects
+        """
+        return self.step_catalog.discover_scripts_from_dag(dag)
+    
+    def get_script_info(self, script_name: str) -> Optional[Dict[str, Any]]:
+        """Get detailed script information using step catalog."""
+        return self.step_catalog.get_script_info(script_name)
+    
+    def list_available_scripts(self) -> List[str]:
+        """List all available scripts using step catalog."""
+        return self.step_catalog.list_available_scripts()
 ```
+
+**Step Catalog ScriptAutoDiscovery Features:**
+- **Registry Integration**: Uses `get_canonical_name_from_file_name()` for intelligent name resolution
+- **Step Builder Pattern**: Uses `config.get_script_path()` same as processing step builders
+- **Workspace Prioritization**: User workspace scripts take priority over package scripts
+- **Entry Point Discovery**: Regex-based detection of `*entry_point` fields in configs and contracts
+- **Clear Priority Strategy**: workspace/scripts → effective_source_dir → package scripts
+- **DAG Node Mapping**: Intelligent mapping of DAG nodes to actual script files
+- **Error Recovery**: Fuzzy matching and multiple fallback strategies
 
 #### **3. Testing Requirements Extractor**
 **Purpose**: Extract and analyze testing requirements for each script
