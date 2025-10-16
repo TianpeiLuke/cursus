@@ -60,6 +60,11 @@ from .type_aware_config_serializer import (
     deserialize_config as _deserialize_config,
 )
 from .step_catalog_aware_categorizer import StepCatalogAwareConfigFieldCategorizer
+from .inheritance_aware_field_generator import (
+    InheritanceAwareFieldGenerator,
+    get_inheritance_aware_field_generator,
+    get_inheritance_aware_form_fields,
+)
 # CircularReferenceTracker eliminated - functionality moved to UnifiedConfigManager's simple tracker
 # TierRegistry eliminated - functionality moved to UnifiedConfigManager
 
@@ -139,6 +144,10 @@ __all__ = [
     "register_config_class",  # Convenient alias for the decorator
     # Enhanced categorization
     "StepCatalogAwareConfigFieldCategorizer",  # Enhanced field categorizer
+    # Inheritance-aware field generation - NEW CONSOLIDATED COMPONENT
+    "InheritanceAwareFieldGenerator",  # Centralized inheritance-aware field generation
+    "get_inheritance_aware_field_generator",  # Factory function for field generator
+    "get_inheritance_aware_form_fields",  # Convenience function for direct usage
     # Config class detection functionality
     "ConfigClassDetector",
     "detect_config_classes_from_json",

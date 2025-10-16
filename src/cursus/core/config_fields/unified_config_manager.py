@@ -280,6 +280,92 @@ class UnifiedConfigManager:
             "derived": derived_fields,
         }
     
+    def get_inheritance_aware_form_fields(self,
+                                        config_class_name: str,
+                                        config_class: Optional[Type[BaseModel]] = None,
+                                        inheritance_analysis: Optional[Dict[str, Any]] = None,
+                                        project_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get inheritance-aware form fields using the centralized field generator.
+        
+        CONSOLIDATED: This method provides access to inheritance-aware field generation
+        through the unified_config_manager, delegating to the specialized field generator.
+        
+        Args:
+            config_class_name: Name of the configuration class
+            config_class: Optional config class (will be discovered if not provided)
+            inheritance_analysis: Optional inheritance analysis from StepCatalog
+            project_id: Optional project ID for workspace-specific processing
+            
+        Returns:
+            List of enhanced field definitions with inheritance information
+        """
+        try:
+            # Import here to avoid circular imports
+            from .inheritance_aware_field_generator import get_inheritance_aware_field_generator
+            
+            # Get field generator with current workspace configuration
+            generator = get_inheritance_aware_field_generator(
+                workspace_dirs=self.workspace_dirs,
+                project_id=project_id or getattr(self, 'project_id', None)
+            )
+            
+            # Delegate to specialized field generator
+            return generator.get_inheritance_aware_form_fields(
+                config_class_name, config_class, inheritance_analysis
+            )
+            
+        except ImportError as e:
+            logger.error(f"Could not import inheritance-aware field generator: {e}")
+            # Fallback to basic field extraction
+            return self._get_basic_form_fields(config_class_name, config_class)
+    
+    def _get_basic_form_fields(self,
+                             config_class_name: str,
+                             config_class: Optional[Type[BaseModel]] = None) -> List[Dict[str, Any]]:
+        """
+        Basic form field extraction fallback.
+        
+        Args:
+            config_class_name: Name of the configuration class
+            config_class: Optional config class
+            
+        Returns:
+            Basic field definitions
+        """
+        if config_class is None:
+            config_classes = self.get_config_classes()
+            config_class = config_classes.get(config_class_name)
+            
+            if not config_class:
+                logger.warning(f"Config class {config_class_name} not found")
+                return []
+        
+        fields = []
+        
+        # Extract basic field information from Pydantic model
+        for field_name, field_info in config_class.model_fields.items():
+            try:
+                field_type = field_info.annotation
+                field_required = field_info.is_required()
+                field_default = getattr(field_info, 'default', None)
+                field_description = getattr(field_info, 'description', '')
+                
+                fields.append({
+                    'name': field_name,
+                    'type': str(field_type),
+                    'required': field_required,
+                    'default': field_default,
+                    'description': field_description,
+                    'tier': 'essential' if field_required else 'system'
+                })
+                
+            except Exception as e:
+                logger.debug(f"Could not extract field {field_name}: {e}")
+                continue
+        
+        return fields
+    
     def _verify_essential_structure(self, merged: Dict[str, Any]) -> None:
         """
         Simplified verification method covering critical requirements only.

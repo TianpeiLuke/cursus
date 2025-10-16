@@ -273,14 +273,8 @@ class UniversalConfigCore:
         """
         Generate form fields with Smart Default Value Inheritance awareness.
 
-        CRITICAL FIX: This method now starts with comprehensive field definitions
-        and adds inheritance information, rather than using raw Pydantic introspection.
-
-        This method creates the enhanced 4-tier field system:
-        - Tier 1 (essential): Required fields with no defaults (NEW to this config)
-        - Tier 2 (system): Optional fields with defaults (NEW to this config)
-        - Tier 3 (inherited): Fields inherited from parent configs (NEW TIER)
-        - Tier 4 (derived): Computed fields (hidden from UI)
+        CONSOLIDATED: This method now uses the centralized inheritance-aware field generator
+        from the core config_fields module instead of manual inheritance logic.
 
         Args:
             config_class_name: Name of the configuration class
@@ -289,71 +283,50 @@ class UniversalConfigCore:
         Returns:
             List of enhanced field definitions with inheritance information
         """
+        logger.info(f"🔄 CONSOLIDATED: Using centralized inheritance-aware field generator for {config_class_name}")
+        
+        try:
+            # Import from core config_fields module
+            from ....core.config_fields import get_inheritance_aware_form_fields
+            
+            # Use centralized inheritance-aware field generation
+            enhanced_fields = get_inheritance_aware_form_fields(
+                config_class_name=config_class_name,
+                inheritance_analysis=inheritance_analysis,
+                workspace_dirs=self.workspace_dirs,
+                project_id=getattr(self, 'project_id', None)
+            )
+            
+            logger.info(f"✅ Centralized field generation returned {len(enhanced_fields)} enhanced fields")
+            return enhanced_fields
+            
+        except ImportError as e:
+            logger.error(f"Could not import centralized inheritance-aware field generator: {e}")
+            # Fallback to basic field extraction
+            return self._get_form_fields_fallback(config_class_name)
+    
+    def _get_form_fields_fallback(self, config_class_name: str) -> List[Dict[str, Any]]:
+        """
+        Fallback form field extraction when centralized generator is not available.
+        
+        Args:
+            config_class_name: Name of the configuration class
+            
+        Returns:
+            Basic field definitions
+        """
+        logger.info(f"Using fallback form field extraction for {config_class_name}")
+        
         # Get the config class
         config_classes = self.discover_config_classes()
         config_class = config_classes.get(config_class_name)
 
         if not config_class:
-            logger.warning(f"Config class {config_class_name} not found for inheritance-aware field generation")
+            logger.warning(f"Config class {config_class_name} not found")
             return []
 
-        # CRITICAL FIX: Start with comprehensive field definitions instead of raw Pydantic
-        logger.info(f"🔍 Getting comprehensive fields for inheritance-aware generation: {config_class_name}")
-        base_fields = self._get_form_fields(config_class)
-        logger.info(f"📊 Got {len(base_fields)} comprehensive fields as base for inheritance")
-
-        # Extract parent values if inheritance analysis is provided
-        parent_values = {}
-        immediate_parent = None
-        if inheritance_analysis and inheritance_analysis.get('inheritance_enabled'):
-            parent_values = inheritance_analysis.get('parent_values', {})
-            immediate_parent = inheritance_analysis.get('immediate_parent')
-            logger.info(f"🔍 Inheritance enabled: {len(parent_values)} parent values from {immediate_parent}")
-
-        # Enhance each comprehensive field with inheritance information
-        enhanced_fields = []
-        for field in base_fields:
-            field_name = field["name"]
-            
-            # Create enhanced field based on comprehensive field
-            enhanced_field = field.copy()  # Start with comprehensive field definition
-            
-            # NEW: Determine smart tier with inheritance awareness
-            if field_name in parent_values:
-                # Tier 3: Inherited field - pre-populated with parent value
-                enhanced_field.update({
-                    "tier": 'inherited',
-                    "required": False,  # Override: not required since we have parent value
-                    "default": parent_values[field_name],
-                    "is_pre_populated": True,
-                    "inherited_from": immediate_parent,
-                    "inheritance_note": f"Auto-filled from {immediate_parent}" if immediate_parent else "Auto-filled from parent",
-                    "can_override": True,
-                    "original_tier": field.get("tier", "system")  # Preserve original tier
-                })
-            else:
-                # Keep original tier and add inheritance metadata
-                original_tier = field.get("tier", "system")
-                enhanced_field.update({
-                    "tier": original_tier,
-                    "is_pre_populated": False,
-                    "inherited_from": None,
-                    "inheritance_note": None,
-                    "can_override": False,
-                    "original_tier": original_tier
-                })
-            
-            enhanced_fields.append(enhanced_field)
-
-        # Log inheritance statistics
-        inherited_count = len([f for f in enhanced_fields if f['tier'] == 'inherited'])
-        essential_count = len([f for f in enhanced_fields if f['tier'] == 'essential'])
-        system_count = len([f for f in enhanced_fields if f['tier'] == 'system'])
-
-        logger.info(f"✅ Generated inheritance-aware fields for {config_class_name}: "
-                   f"{len(enhanced_fields)} total ({inherited_count} inherited, {essential_count} essential, {system_count} system)")
-
-        return enhanced_fields
+        # Use existing _get_form_fields method as fallback
+        return self._get_form_fields(config_class)
     
     def _get_inheritance_chain(self, config_class: Type[BasePipelineConfig]) -> List[str]:
         """
