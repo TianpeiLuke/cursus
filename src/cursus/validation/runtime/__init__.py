@@ -23,6 +23,9 @@ from .interactive_factory import InteractiveRuntimeTestingFactory
 from .workspace_aware_spec_builder import WorkspaceAwarePipelineTestingSpecBuilder
 from ...step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter as ContractDiscoveryManager, ContractDiscoveryResult
 
+# NEW: Unified script path resolution (Phase 1)
+from .config_aware_script_resolver import ConfigAwareScriptPathResolver
+
 # Enhanced logical name matching components
 from .logical_name_matching import (
     PathSpec,
@@ -55,6 +58,10 @@ __all__ = [
     "WorkspaceAwarePipelineTestingSpecBuilder",
     "ContractDiscoveryManager",
     "ContractDiscoveryResult",
+    
+    # Unified Script Path Resolution (Phase 1)
+    "ConfigAwareScriptPathResolver",
+    
     # Enhanced logical name matching exports
     "PathSpec",
     "PathMatch",

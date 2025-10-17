@@ -17,6 +17,7 @@ from difflib import SequenceMatcher
 from ...api.dag.base_dag import PipelineDAG
 from .runtime_models import ScriptExecutionSpec, PipelineTestingSpec
 from ...step_catalog.adapters.contract_adapter import ContractDiscoveryManagerAdapter as ContractDiscoveryManager
+from .config_aware_script_resolver import ConfigAwareScriptPathResolver
 
 try:
     from ...registry.step_names import get_step_name_from_spec_type
@@ -58,6 +59,9 @@ class PipelineTestingSpecBuilder:
 
         # Initialize contract discovery manager
         self.contract_manager = ContractDiscoveryManager(str(self.test_data_dir))
+        
+        # Initialize unified script resolver (Phase 3 enhancement)
+        self.script_resolver = ConfigAwareScriptPathResolver()
 
         # Ensure directories exist
         self.specs_dir.mkdir(parents=True, exist_ok=True)
@@ -72,6 +76,73 @@ class PipelineTestingSpecBuilder:
         self.step_catalog = step_catalog or self._initialize_step_catalog()
 
     # === CORE INTELLIGENCE METHODS (Used by InteractiveRuntimeTestingFactory) ===
+
+    def resolve_script_execution_spec_from_config(
+        self, node_name: str, config_instance: Any
+    ) -> ScriptExecutionSpec:
+        """
+        NEW: Config-aware script resolution using unified resolver (Phase 3 enhancement).
+        
+        This method uses the unified ConfigAwareScriptPathResolver to provide
+        reliable script path resolution from config instances, eliminating
+        unreliable discovery methods.
+        
+        Args:
+            node_name: DAG node name (e.g., "TabularPreprocessing_training")
+            config_instance: Config instance containing entry point and source directory
+            
+        Returns:
+            ScriptExecutionSpec with reliable script path from unified resolver
+            
+        Raises:
+            ValueError: If config instance cannot resolve to a valid script
+        """
+        # Use unified resolver for reliable script path resolution
+        script_path = self.script_resolver.resolve_script_path(config_instance)
+        
+        if not script_path:
+            # Get validation info for detailed error message
+            validation_info = self.script_resolver.validate_config_for_script_resolution(config_instance)
+            raise ValueError(
+                f"No script found for node '{node_name}' using config-based resolution:\n"
+                f"  - Config type: {validation_info['config_type']}\n"
+                f"  - Has entry point: {validation_info['has_entry_point']}\n"
+                f"  - Entry point: {validation_info['entry_point']}\n"
+                f"  - Has source dir: {validation_info['has_source_dir']}\n"
+                f"  - Source dir: {validation_info['source_dir']}\n"
+                f"  - Can resolve script: {validation_info['can_resolve_script']}"
+            )
+        
+        # Extract script name from path for spec creation
+        script_name = Path(script_path).stem
+        
+        # Try to load existing spec first, then create new one
+        try:
+            existing_spec = ScriptExecutionSpec.load_from_file(
+                script_name, str(self.specs_dir)
+            )
+            # Update with reliable path and step name
+            existing_spec.script_path = script_path
+            existing_spec.step_name = node_name
+            return existing_spec
+        except FileNotFoundError:
+            # Create new spec with config-aware defaults
+            spec = ScriptExecutionSpec.create_default(
+                script_name=script_name,
+                step_name=node_name,
+                test_data_dir=str(self.test_data_dir),
+            )
+            
+            # Update with reliable script path and config-aware defaults
+            spec_dict = spec.model_dump()
+            spec_dict["script_path"] = script_path  # RELIABLE PATH FROM UNIFIED RESOLVER
+            spec_dict["input_paths"] = self._get_config_aware_input_paths(config_instance, script_name)
+            spec_dict["output_paths"] = self._get_config_aware_output_paths(config_instance, script_name)
+            spec_dict["environ_vars"] = self._get_config_aware_environ_vars(config_instance)
+            spec_dict["job_args"] = self._get_config_aware_job_args(config_instance)
+            
+            enhanced_spec = ScriptExecutionSpec(**spec_dict)
+            return enhanced_spec
 
     def resolve_script_execution_spec_from_node(
         self, node_name: str
@@ -459,6 +530,92 @@ class PipelineTestingSpecBuilder:
             script_specs=script_specs,
             test_workspace_root=str(self.test_data_dir),
         )
+
+    # === CONFIG-AWARE HELPER METHODS (Phase 3 Enhancement) ===
+
+    def _get_config_aware_input_paths(self, config_instance: Any, script_name: str) -> Dict[str, str]:
+        """Get input paths from config instance with fallback to defaults."""
+        # Try to extract input paths from config instance
+        input_path_fields = [
+            'input_paths',
+            'data_input_paths', 
+            'processing_input_paths',
+            'training_input_paths'
+        ]
+        
+        for field in input_path_fields:
+            if hasattr(config_instance, field):
+                field_value = getattr(config_instance, field)
+                if isinstance(field_value, dict) and field_value:
+                    return field_value
+        
+        # Fallback to contract-aware resolution
+        return self._get_contract_aware_input_paths(script_name)
+
+    def _get_config_aware_output_paths(self, config_instance: Any, script_name: str) -> Dict[str, str]:
+        """Get output paths from config instance with fallback to defaults."""
+        # Try to extract output paths from config instance
+        output_path_fields = [
+            'output_paths',
+            'data_output_paths',
+            'processing_output_paths', 
+            'training_output_paths'
+        ]
+        
+        for field in output_path_fields:
+            if hasattr(config_instance, field):
+                field_value = getattr(config_instance, field)
+                if isinstance(field_value, dict) and field_value:
+                    return field_value
+        
+        # Fallback to contract-aware resolution
+        return self._get_contract_aware_output_paths(script_name)
+
+    def _get_config_aware_environ_vars(self, config_instance: Any) -> Dict[str, str]:
+        """Get environment variables from config instance with fallback to defaults."""
+        # Try to extract environment variables from config instance
+        env_fields = [
+            'environment_variables',
+            'environ_vars',
+            'env_vars',
+            'runtime_environment'
+        ]
+        
+        for field in env_fields:
+            if hasattr(config_instance, field):
+                field_value = getattr(config_instance, field)
+                if isinstance(field_value, dict) and field_value:
+                    return field_value
+        
+        # Fallback to default environment variables
+        return self._get_default_environ_vars()
+
+    def _get_config_aware_job_args(self, config_instance: Any) -> Dict[str, Any]:
+        """Get job arguments from config instance with fallback to defaults."""
+        # Try to extract job arguments from config instance
+        job_arg_fields = [
+            'job_arguments',
+            'job_args',
+            'hyperparameters',
+            'algorithm_specification'
+        ]
+        
+        for field in job_arg_fields:
+            if hasattr(config_instance, field):
+                field_value = getattr(config_instance, field)
+                if isinstance(field_value, dict) and field_value:
+                    # Convert all values to strings for job arguments
+                    return {k: str(v) for k, v in field_value.items()}
+        
+        # Extract script name from config for fallback
+        script_name = "unknown"
+        if hasattr(config_instance, 'processing_entry_point'):
+            script_name = Path(config_instance.processing_entry_point).stem
+        elif hasattr(config_instance, 'training_entry_point'):
+            script_name = Path(config_instance.training_entry_point).stem
+        
+        # Fallback to default job arguments
+        return self._get_default_job_args(script_name)
 
     # === PRIVATE HELPER METHODS ===
 

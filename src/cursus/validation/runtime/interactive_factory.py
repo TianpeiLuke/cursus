@@ -31,6 +31,7 @@ from ...step_catalog import StepCatalog
 from .runtime_models import ScriptExecutionSpec, PipelineTestingSpec
 from .runtime_spec_builder import PipelineTestingSpecBuilder
 from .runtime_testing import RuntimeTester
+from .config_aware_script_resolver import ConfigAwareScriptPathResolver
 
 
 class InteractiveRuntimeTestingFactory:
@@ -98,7 +99,7 @@ class InteractiveRuntimeTestingFactory:
         
         # Config-based components (None if no config provided)
         self.loaded_configs: Optional[Dict[str, Any]] = None
-        self.script_discovery: Optional[Any] = None
+        self.script_resolver: Optional[ConfigAwareScriptPathResolver] = None
         
         # Initialize logger
         self.logger = logging.getLogger(__name__)
@@ -132,17 +133,10 @@ class InteractiveRuntimeTestingFactory:
                 available_configs=all_configs
             )
             
-            # Initialize enhanced ScriptAutoDiscovery
-            from ...step_catalog.script_discovery import ScriptAutoDiscovery
-            package_root = Path(__file__).parent.parent.parent.parent
-            workspace_dirs = [self.workspace_dir] if self.workspace_dir.exists() else []
+            # Initialize unified script resolver (Phase 2 enhancement)
+            self.script_resolver = ConfigAwareScriptPathResolver()
             
-            self.script_discovery = ScriptAutoDiscovery(
-                package_root=package_root,
-                workspace_dirs=workspace_dirs
-            )
-            
-            # Discover and analyze scripts using config validation
+            # Discover and analyze scripts using unified resolution
             self._discover_and_analyze_scripts_from_config()
             
             self.logger.info(f"✅ Config-based initialization completed with {len(self.loaded_configs)} configs")
@@ -170,59 +164,126 @@ class InteractiveRuntimeTestingFactory:
     
     def _discover_and_analyze_scripts_from_config(self) -> None:
         """
-        Enhanced script discovery using config-based validation - eliminates phantom scripts!
+        Enhanced script discovery using unified ConfigAwareScriptPathResolver - eliminates phantom scripts!
         
-        This method uses the enhanced ScriptAutoDiscovery with config instances to provide
+        This method uses the unified script resolver with config instances to provide
         definitive script validation, eliminating phantom scripts by only discovering
         scripts that have actual entry points defined in config instances.
         """
-        # Use enhanced ScriptAutoDiscovery with config instances
-        discovered_scripts = self.script_discovery.discover_scripts_from_dag_and_configs(
-            self.dag, self.loaded_configs
-        )
-        
-        # Cache enhanced script information with config metadata
-        for script_name, script_info in discovered_scripts.items():
-            metadata = script_info.metadata or {}
+        # Use unified resolver with config instances - eliminates phantom scripts!
+        for node_name in self.dag.nodes:
+            if node_name not in self.loaded_configs:
+                self.logger.debug(f"No config found for DAG node: {node_name}")
+                continue
             
-            self.script_info_cache[script_name] = {
-                'script_name': script_info.script_name,
-                'step_name': script_info.step_name,
-                'script_path': str(script_info.script_path),
-                'workspace_id': script_info.workspace_id,
+            config_instance = self.loaded_configs[node_name]
+            
+            # Use unified resolver to get script path (eliminates phantom scripts)
+            script_path = self.script_resolver.resolve_script_path(config_instance)
+            
+            if not script_path:
+                self.logger.debug(f"Skipping {node_name}: no script entry point (phantom script eliminated)")
+                continue  # Skip configs without scripts - no phantom scripts!
+            
+            # Get config validation info for enhanced metadata
+            validation_info = self.script_resolver.validate_config_for_script_resolution(config_instance)
+            
+            # Extract environment variables and job arguments from config
+            config_environ_vars = self._extract_environ_vars_from_config(config_instance)
+            config_job_args = self._extract_job_args_from_config(config_instance)
+            
+            # Cache enhanced script information with config metadata
+            self.script_info_cache[node_name] = {
+                'script_name': node_name,
+                'step_name': node_name,
+                'script_path': script_path,  # RELIABLE PATH FROM UNIFIED RESOLVER
                 'expected_inputs': ['data_input'],  # Still need user input
                 'expected_outputs': ['data_output'],  # Still need user input
-                'default_input_paths': {'data_input': f"test/data/{script_name}/input"},
-                'default_output_paths': {'data_output': f"test/data/{script_name}/output"},
-                'config_environ_vars': metadata.get('environment_variables', {}),  # From config!
-                'config_job_args': metadata.get('job_arguments', {}),  # From config!
-                'source_dir': metadata.get('source_dir'),
-                'entry_point_field': metadata.get('entry_point_field'),
-                'entry_point_value': metadata.get('entry_point_value'),
-                'config_type': metadata.get('config_type'),
-                'auto_configurable': self._can_auto_configure_from_metadata(metadata),
+                'default_input_paths': {'data_input': f"test/data/{node_name}/input"},
+                'default_output_paths': {'data_output': f"test/data/{node_name}/output"},
+                'config_environ_vars': config_environ_vars,  # From config!
+                'config_job_args': config_job_args,  # From config!
+                'source_dir': validation_info.get('source_dir'),
+                'entry_point_field': validation_info.get('entry_point'),
+                'entry_point_value': validation_info.get('entry_point'),
+                'config_type': validation_info.get('config_type'),
+                'auto_configurable': self._can_auto_configure_from_config_type(validation_info.get('config_type', '')),
                 # Legacy compatibility fields
-                'default_environ_vars': metadata.get('environment_variables', {'CURSUS_ENV': 'testing'}),
-                'default_job_args': metadata.get('job_arguments', {'job_type': 'testing'})
+                'default_environ_vars': config_environ_vars or {'CURSUS_ENV': 'testing'},
+                'default_job_args': config_job_args or {'job_type': 'testing'}
             }
             
             # Determine configuration status
-            if self.script_info_cache[script_name]['auto_configurable']:
-                self.auto_configured_scripts.append(script_name)
+            if self.script_info_cache[node_name]['auto_configurable']:
+                self.auto_configured_scripts.append(node_name)
             else:
-                self.pending_scripts.append(script_name)
+                self.pending_scripts.append(node_name)
         
-        self.logger.info(f"📊 Config-based Script Discovery Summary:")
-        self.logger.info(f"   - Validated scripts: {len(self.script_info_cache)} (no phantom scripts)")
+        self.logger.info(f"📊 Unified Script Discovery Summary:")
+        self.logger.info(f"   - Validated scripts: {len(self.script_info_cache)} (phantom scripts eliminated)")
         self.logger.info(f"   - Auto-configurable: {len(self.auto_configured_scripts)} scripts")
         self.logger.info(f"   - Pending configuration: {len(self.pending_scripts)} scripts")
     
-    def _can_auto_configure_from_metadata(self, metadata: Dict[str, Any]) -> bool:
-        """Check if script can be auto-configured based on config metadata."""
-        config_type = metadata.get('config_type', '')
+    def _can_auto_configure_from_config_type(self, config_type: str) -> bool:
+        """Check if script can be auto-configured based on config type."""
         # Scripts like Package, Registration, Payload can be auto-configured
         auto_configurable_types = ['PackageConfig', 'RegistrationConfig', 'PayloadConfig']
         return any(config_type.endswith(auto_type) for auto_type in auto_configurable_types)
+    
+    def _extract_environ_vars_from_config(self, config_instance) -> Dict[str, str]:
+        """Extract environment variables from config instance."""
+        environ_vars = {}
+        
+        # Check common environment variable fields
+        env_fields = [
+            'environment_variables',
+            'environ_vars', 
+            'env_vars',
+            'runtime_environment'
+        ]
+        
+        for field in env_fields:
+            if hasattr(config_instance, field):
+                field_value = getattr(config_instance, field)
+                if isinstance(field_value, dict):
+                    environ_vars.update(field_value)
+                    break
+        
+        # Add framework-specific environment variables if available
+        if hasattr(config_instance, 'framework_version'):
+            framework_version = getattr(config_instance, 'framework_version')
+            if framework_version:
+                environ_vars['FRAMEWORK_VERSION'] = str(framework_version)
+        
+        return environ_vars
+    
+    def _extract_job_args_from_config(self, config_instance) -> Dict[str, str]:
+        """Extract job arguments from config instance."""
+        job_args = {}
+        
+        # Check common job argument fields
+        job_arg_fields = [
+            'job_arguments',
+            'job_args',
+            'hyperparameters',
+            'algorithm_specification'
+        ]
+        
+        for field in job_arg_fields:
+            if hasattr(config_instance, field):
+                field_value = getattr(config_instance, field)
+                if isinstance(field_value, dict):
+                    # Convert all values to strings for job arguments
+                    job_args.update({k: str(v) for k, v in field_value.items()})
+                    break
+        
+        # Add job type if available
+        if hasattr(config_instance, 'job_type'):
+            job_type = getattr(config_instance, 'job_type')
+            if job_type:
+                job_args['job_type'] = str(job_type)
+        
+        return job_args
     
     # === DAG-GUIDED SCRIPT DISCOVERY ===
     
