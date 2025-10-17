@@ -91,7 +91,6 @@ class PipelineTemplateBase(ABC):
         # Load configurations
         logger.info(f"Loading configs from: {config_path}")
         self.configs = self._load_configs(config_path)
-        self.base_config = self._get_base_config()
 
         # Store loaded configuration data including metadata
         try:
@@ -145,20 +144,6 @@ class PipelineTemplateBase(ABC):
         # Type cast is safe since all config classes should inherit from BasePipelineConfig
         return load_configs(config_path, complete_classes)  # type: ignore[return-value]
 
-    def _get_base_config(self) -> BasePipelineConfig:
-        """
-        Get base configuration.
-
-        Returns:
-            Base configuration
-
-        Raises:
-            ValueError: If base configuration not found
-        """
-        base_config = self.configs.get("Base")
-        if not base_config:
-            raise ValueError("Base configuration not found in config file")
-        return base_config
 
     def _initialize_components(self) -> None:
         """
@@ -167,7 +152,12 @@ class PipelineTemplateBase(ABC):
         This method creates registry manager and dependency resolver if they
         were not provided during initialization.
         """
-        context_name = getattr(self.base_config, "pipeline_name", None)
+        # Extract pipeline_name from any available config (all configs have the same value due to inheritance)
+        context_name = None
+        if self.configs:
+            first_config = next(iter(self.configs.values()))
+            context_name = getattr(first_config, "pipeline_name", None)
+        
         components = create_pipeline_components(context_name)
 
         if not self._registry_manager:
@@ -341,21 +331,28 @@ class PipelineTemplateBase(ABC):
     def _get_pipeline_name(self) -> str:
         """
         Get pipeline name using the rule-based generator.
+        
+        Uses any available config to extract pipeline_name and pipeline_version
+        since all configs inherit these fields from BasePipelineConfig.
 
         Returns:
             Pipeline name
         """
-        # Check if explicit override is provided in the base config
-        explicit_name = getattr(self.base_config, "explicit_pipeline_name", None)
+        if not self.configs:
+            raise ValueError("No configurations available to extract pipeline name")
+        
+        # Use any config to get pipeline fields (all configs have the same values due to inheritance)
+        first_config = next(iter(self.configs.values()))
+        
+        # Check if explicit override is provided
+        explicit_name = getattr(first_config, "explicit_pipeline_name", None)
         if explicit_name:
             from typing import cast
             return cast(str, explicit_name)
 
-        # Get pipeline_name from base_config, with fallback
-        pipeline_name = getattr(self.base_config, "pipeline_name", "mods")
-
-        # Get pipeline_version from base_config, with fallback
-        pipeline_version = getattr(self.base_config, "pipeline_version", "1.0")
+        # Get pipeline_name and pipeline_version from any config (all have same values due to inheritance)
+        pipeline_name = getattr(first_config, "pipeline_name", "cursus")
+        pipeline_version = getattr(first_config, "pipeline_version", "0.0.0")
 
         # Use the rule-based generator
         return generate_pipeline_name(pipeline_name, pipeline_version)

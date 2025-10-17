@@ -426,10 +426,15 @@ class PipelineDAGCompiler:
                 # Import here to avoid circular import
                 from .name_generator import generate_pipeline_name
 
-                # Get base_config from template
-                base_config = template.base_config
-                base_name = getattr(base_config, "pipeline_name", "mods")
-                version = getattr(base_config, "pipeline_version", "1.0")
+                # Get pipeline_name and pipeline_version from any config (all have same values due to inheritance)
+                if template.configs:
+                    first_config = next(iter(template.configs.values()))
+                    base_name = getattr(first_config, "pipeline_name", "cursus")
+                    version = getattr(first_config, "pipeline_version", "0.0.0")
+                else:
+                    base_name = "cursus"
+                    version = "0.0.0"
+                
                 # Generate a name using the same approach as PipelineTemplateBase
                 pipeline.name = generate_pipeline_name(base_name, version)
 
