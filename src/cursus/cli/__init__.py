@@ -9,7 +9,7 @@ from .builder_test_cli import main as builder_test_main
 from .catalog_cli import main as catalog_main
 from .pipeline_cli import main as pipeline_main
 from .registry_cli import main as registry_main
-from .runtime_testing_cli import main as runtime_testing_main
+from .script_testing_cli import main as script_testing_main
 from .workspace_cli import main as workspace_main
 
 __all__ = ["main"]
@@ -28,15 +28,15 @@ Available commands:
   catalog         - Step catalog management
   pipeline        - Pipeline catalog management
   registry        - Registry management tools
-  runtime-testing - Runtime testing for pipeline scripts
+  script-testing  - Script testing for pipeline validation
   workspace       - Workspace management tools
 
 Examples:
 
-  # Runtime Testing - Test pipeline scripts
-  python -m cursus.cli runtime-testing test_script my_script.py
-  python -m cursus.cli runtime-testing validate_contracts --step XGBoostTraining
-  python -m cursus.cli runtime-testing run_integration_tests --workspace my_workspace
+  # Script Testing - Test pipeline scripts
+  python -m cursus.cli script-testing test-script scripts/training.py
+  python -m cursus.cli script-testing test-dag configs/dag.json configs/pipeline.json
+  python -m cursus.cli script-testing quick-test configs/dag.json configs/pipeline.json
 
   # Step Catalog - Discover and manage steps
   python -m cursus.cli catalog list --framework xgboost --limit 10
@@ -89,7 +89,7 @@ For detailed command options:
             "catalog",
             "pipeline",
             "registry",
-            "runtime-testing",
+            "script-testing",
             "workspace",
         ],
         help="CLI command to run",
@@ -124,8 +124,8 @@ For detailed command options:
             return pipeline_main()
         elif args.command == "registry":
             return registry_main()
-        elif args.command == "runtime-testing":
-            return runtime_testing_main()
+        elif args.command == "script-testing":
+            return script_testing_main()
         elif args.command == "workspace":
             return workspace_main()
         else:
