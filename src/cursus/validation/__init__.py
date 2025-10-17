@@ -1,18 +1,9 @@
 """
 Cursus Validation Framework
 
-This module provides validation capabilities for step builders, alignment testing,
-and runtime validation of pipeline components.
+This module provides comprehensive validation capabilities for pipeline components,
+including step builders, alignment testing, runtime validation, and script testing.
 """
-
-# Import runtime testing components that actually exist
-from .runtime import (
-    RuntimeTester,
-    ScriptTestResult,
-    DataCompatibilityResult,
-    PipelineTestingSpecBuilder,
-    WorkspaceAwarePipelineTestingSpecBuilder,
-)
 
 # Import alignment testing components
 from .alignment import unified_alignment_tester
@@ -20,18 +11,33 @@ from .alignment import unified_alignment_tester
 # Import builder testing components
 from .builders import universal_test
 
+# Import simplified script testing framework
+from .script_testing import (
+    test_dag_scripts,
+    ScriptTestingInputCollector,
+    ResultFormatter,
+    ScriptTestResult as ScriptExecutionResult,  # Renamed to avoid conflict
+    execute_single_script,
+    install_script_dependencies,
+    quick_test_dag,
+    get_script_testing_info
+)
+
 # Export available functions and classes
 __all__ = [
-    # Runtime testing components
-    "RuntimeTester",
-    "ScriptTestResult", 
-    "DataCompatibilityResult",
-    "PipelineTestingSpecBuilder",
-    "WorkspaceAwarePipelineTestingSpecBuilder",
     # Alignment testing
     "unified_alignment_tester",
     # Builder testing
     "universal_test",
+    # Script testing framework (simplified)
+    "test_dag_scripts",
+    "ScriptTestingInputCollector",
+    "ResultFormatter",
+    "ScriptExecutionResult",
+    "execute_single_script",
+    "install_script_dependencies",
+    "quick_test_dag",
+    "get_script_testing_info",
 ]
 
 

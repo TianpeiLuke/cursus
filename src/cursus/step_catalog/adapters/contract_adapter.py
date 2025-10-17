@@ -155,7 +155,7 @@ class ContractDiscoveryManagerAdapter:
     """
     Modernized adapter using unified StepCatalog with minimal business logic.
     
-    Replaces: src/cursus/validation/runtime/contract_discovery.py
+    Replaces: src/cursus/validation/script_testing (formerly runtime/contract_discovery.py)
     Focuses on test-specific functionality while leveraging step catalog for discovery.
     """
     
