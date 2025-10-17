@@ -22,7 +22,7 @@ Key Features:
 - Interactive input collection extending DAGConfigFactory patterns
 
 Main API Functions:
-    test_dag_scripts: Main entry point for DAG-guided script testing
+    run_dag_scripts: Main entry point for DAG-guided script testing
     
 Core Components:
     ScriptTestingInputCollector: Extends DAGConfigFactory for input collection
@@ -32,14 +32,13 @@ Core Components:
 
 # Main API - Core script testing functionality
 from .api import (
-    test_dag_scripts,
+    run_dag_scripts,
     execute_single_script,
     install_script_dependencies,
     ScriptTestResult,
     collect_script_inputs_using_dag_factory,
     get_validated_scripts_from_config,
     execute_scripts_in_order,
-    discover_script_with_config_validation,
     resolve_script_dependencies,
     parse_script_imports,
     is_package_installed,
@@ -72,7 +71,7 @@ from .utils import (
 # Export main API components
 __all__ = [
     # Main API function - Primary entry point
-    "test_dag_scripts",
+    "run_dag_scripts",
     
     # Core components
     "ScriptTestingInputCollector",
@@ -89,7 +88,6 @@ __all__ = [
     
     # Execution functions
     "execute_scripts_in_order",
-    "discover_script_with_config_validation",
     "resolve_script_dependencies",
     
     # Package management (valid complexity)
@@ -127,7 +125,7 @@ def get_script_testing_info() -> dict:
         "architecture": "Simplified (800-1,000 lines vs 4,200 lines original)",
         "redundancy": "15-20% (Excellent Efficiency vs 45% original)",
         "infrastructure_reuse": "95% of existing cursus components",
-        "main_api": "test_dag_scripts",
+        "main_api": "run_dag_scripts",
         "core_components": [
             "ScriptTestingInputCollector (extends DAGConfigFactory)",
             "ResultFormatter (preserved well-designed component)",
@@ -179,7 +177,7 @@ def quick_test_dag(dag, config_path: str, workspace_dir: str = "test/integration
         >>> results = quick_test_dag(dag, "pipeline_config/config_NA_xgboost_AtoZ.json")
         >>> print(f"Success: {results['pipeline_success']}")
     """
-    return test_dag_scripts(
+    return run_dag_scripts(
         dag=dag,
         config_path=config_path,
         test_workspace_dir=workspace_dir,

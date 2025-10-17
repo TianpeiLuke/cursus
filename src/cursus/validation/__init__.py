@@ -13,7 +13,7 @@ from .builders import universal_test
 
 # Import simplified script testing framework
 from .script_testing import (
-    test_dag_scripts,
+    run_dag_scripts,
     ScriptTestingInputCollector,
     ResultFormatter,
     ScriptTestResult as ScriptExecutionResult,  # Renamed to avoid conflict
@@ -30,7 +30,7 @@ __all__ = [
     # Builder testing
     "universal_test",
     # Script testing framework (simplified)
-    "test_dag_scripts",
+    "run_dag_scripts",
     "ScriptTestingInputCollector",
     "ResultFormatter",
     "ScriptExecutionResult",

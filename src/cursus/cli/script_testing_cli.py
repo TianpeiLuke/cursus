@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Import our simplified script testing framework
 from ..validation.script_testing import (
-    test_dag_scripts,
+    run_dag_scripts,
     execute_single_script,
     ScriptTestResult,
     ResultFormatter,
@@ -157,7 +157,7 @@ def test_dag(dag_config: str, pipeline_config: str, workspace_dir: str,
         dag = PipelineDAG.from_json(dag_config)
         
         # Test DAG scripts using simplified framework
-        results = test_dag_scripts(
+        results = run_dag_scripts(
             dag=dag,
             config_path=pipeline_config,
             test_workspace_dir=workspace_dir,

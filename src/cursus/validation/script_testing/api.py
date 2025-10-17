@@ -7,7 +7,7 @@ over-engineering by directly reusing DAGConfigFactory, StepCatalog, and
 UnifiedDependencyResolver components.
 
 Key Functions:
-    test_dag_scripts: Main entry point for DAG-guided script testing
+    run_dag_scripts: Main entry point for DAG-guided script testing
     execute_single_script: Execute individual scripts with dependency management
     install_script_dependencies: Handle package dependencies (valid complexity)
 """
@@ -41,14 +41,14 @@ class ScriptTestResult:
         self.execution_time = execution_time
 
 
-def test_dag_scripts(
+def run_dag_scripts(
     dag: PipelineDAG,
     config_path: str,
     test_workspace_dir: str = "test/integration/script_testing",
     collect_inputs: bool = True
 ) -> Dict[str, Any]:
     """
-    Test scripts in DAG order using existing cursus infrastructure.
+    Run scripts in DAG order using existing cursus infrastructure.
     
     This function addresses all 3 user stories with minimal code by extending
     existing components instead of reimplementing them:
@@ -66,11 +66,11 @@ def test_dag_scripts(
         Dictionary with execution results and metadata
         
     Example:
-        >>> from cursus.validation.script_testing import test_dag_scripts
+        >>> from cursus.validation.script_testing import run_dag_scripts
         >>> from cursus.api.dag.base_dag import PipelineDAG
         >>> 
         >>> dag = PipelineDAG.from_json("configs/xgboost_training.json")
-        >>> results = test_dag_scripts(
+        >>> results = run_dag_scripts(
         ...     dag=dag,
         ...     config_path="pipeline_config/config_NA_xgboost_AtoZ.json",
         ...     collect_inputs=True
@@ -91,11 +91,13 @@ def test_dag_scripts(
         
         logger.info(f"Starting DAG-guided script testing with {len(dag.nodes)} nodes")
         
-        # 1. EXTEND: DAGConfigFactory for script input collection (instead of reimplementing)
+        # 1. INTEGRATE: Use ScriptTestingInputCollector for systematic contract-based solution
         user_inputs = {}
         if collect_inputs:
-            user_inputs = collect_script_inputs_using_dag_factory(dag, config_path)
-            logger.info(f"Collected inputs for {len(user_inputs)} scripts")
+            from .input_collector import ScriptTestingInputCollector
+            collector = ScriptTestingInputCollector(dag, config_path)
+            user_inputs = collector.collect_script_inputs_for_dag()
+            logger.info(f"Collected inputs for {len(user_inputs)} scripts using systematic contract-based approach")
         
         # 2. REUSE: DAG traversal (direct use of existing functionality)
         execution_order = dag.topological_sort()
@@ -146,7 +148,8 @@ def collect_script_inputs_using_dag_factory(dag: PipelineDAG, config_path: str) 
         user_inputs = {}
         for script_name in validated_scripts:
             # EXTEND: Use DAGConfigFactory patterns for input collection
-            script_inputs = collect_script_inputs(script_name, dag_factory, all_configs)
+            config = all_configs[script_name]
+            script_inputs = collect_script_inputs(config)
             user_inputs[script_name] = script_inputs
         
         return user_inputs
@@ -185,41 +188,182 @@ def get_validated_scripts_from_config(dag: PipelineDAG, configs: Dict[str, Any])
     return validated_scripts
 
 
-def collect_script_inputs(script_name: str, dag_factory: DAGConfigFactory, configs: Dict[str, Any]) -> Dict[str, Any]:
+def collect_script_inputs(config) -> Dict[str, Any]:
     """
-    Collect inputs for a single script using existing DAGConfigFactory patterns.
+    Extract script path, environment variables, and job arguments from config.
+    
+    This function uses proper config field access patterns instead of direct __dict__ access.
+    It focuses on config-to-script transformation, not path management (that's InputCollector's job).
     
     Args:
-        script_name: Name of the script
-        dag_factory: DAGConfigFactory instance (reused infrastructure)
-        configs: Loaded configuration instances
+        config: Populated config instance (BasePipelineConfig or derived)
         
     Returns:
-        Dictionary with script input configuration
+        Dictionary with script_path, environment_variables, and job_arguments
     """
-    # Get script requirements from config (pre-populated environment variables)
-    config = configs.get(script_name, {})
+    # 1. Extract script path from config entry point fields
+    script_path = extract_script_path_from_config(config)
     
-    # Extract environment variables from config (eliminates manual guesswork)
-    environment_variables = {}
-    if hasattr(config, '__dict__'):
-        for field_name, field_value in config.__dict__.items():
-            if field_value and isinstance(field_value, (str, int, float)):
-                # Convert to environment variable format (CAPITAL_CASE)
-                env_var_name = field_name.upper()
-                environment_variables[env_var_name] = str(field_value)
+    # 2. Extract environment variables using proper config access
+    environ_vars = extract_environment_variables_from_config(config)
     
-    # Simple input collection (users only need to provide paths)
+    # 3. Extract job arguments using proper config access  
+    job_args = extract_job_arguments_from_config(config)
+    
     return {
-        'input_paths': {
-            'data_input': f"test/data/{script_name}/input"
-        },
-        'output_paths': {
-            'data_output': f"test/data/{script_name}/output"
-        },
-        'environment_variables': environment_variables,  # From config (automated)
-        'job_arguments': {}  # From config if available
+        'script_path': script_path,
+        'environment_variables': environ_vars,
+        'job_arguments': job_args
     }
+
+
+def extract_script_path_from_config(config) -> Optional[str]:
+    """
+    Extract script path from config entry point fields using proper config access.
+    
+    Args:
+        config: Config instance with entry point fields
+        
+    Returns:
+        Resolved script path or None if not found
+    """
+    import os
+    
+    # Check for various entry point fields
+    entry_point_fields = [
+        'training_entry_point',
+        'inference_entry_point', 
+        'entry_point'
+    ]
+    
+    for field in entry_point_fields:
+        if hasattr(config, field):
+            entry_point = getattr(config, field)
+            if entry_point:
+                # Combine with source_dir if available
+                if hasattr(config, 'effective_source_dir') and config.effective_source_dir:
+                    script_path = os.path.join(config.effective_source_dir, entry_point)
+                else:
+                    script_path = entry_point
+                
+                # Use hybrid path resolution if available
+                if hasattr(config, 'resolve_hybrid_path'):
+                    try:
+                        resolved_path = config.resolve_hybrid_path(script_path)
+                        if resolved_path and os.path.exists(resolved_path):
+                            return resolved_path
+                    except AttributeError as e:
+                        # Skip hybrid resolution if project_root_folder is missing
+                        logger.debug(f"Hybrid path resolution failed for {script_path}: {e}")
+                        pass
+                
+                # Return the path as-is if it exists
+                if os.path.exists(script_path):
+                    return script_path
+                    
+                # Return the path even if it doesn't exist (for testing scenarios)
+                return script_path
+    
+    return None
+
+
+def extract_environment_variables_from_config(config) -> Dict[str, str]:
+    """
+    Extract environment variables from config using proper field access.
+    
+    Args:
+        config: Config instance
+        
+    Returns:
+        Dictionary of environment variables
+    """
+    environ_vars = {}
+    
+    # Try to use model_dump() but handle errors gracefully
+    config_data = {}
+    try:
+        if hasattr(config, 'model_dump'):
+            config_data = config.model_dump()
+    except AttributeError as e:
+        # If model_dump() fails due to missing fields, fall back to direct attribute access
+        logger.debug(f"model_dump() failed for config, using direct attribute access: {e}")
+        config_data = {}
+    
+    # Extract relevant fields that should become environment variables
+    env_relevant_fields = [
+        'framework_version', 'py_version', 'region', 'aws_region',
+        'model_class', 'service_name', 'author', 'bucket', 'role'
+    ]
+    
+    for field_name in env_relevant_fields:
+        # Try from config_data first, then direct attribute access
+        value = None
+        if field_name in config_data and config_data[field_name] is not None:
+            value = config_data[field_name]
+        elif hasattr(config, field_name):
+            try:
+                value = getattr(config, field_name)
+            except AttributeError:
+                continue
+        
+        if value is not None:
+            env_var_name = field_name.upper()
+            environ_vars[env_var_name] = str(value)
+    
+    # Add derived fields that are commonly used as environment variables
+    derived_env_fields = [
+        'pipeline_name', 'pipeline_s3_loc', 'aws_region'
+    ]
+    
+    for field_name in derived_env_fields:
+        if hasattr(config, field_name):
+            try:
+                value = getattr(config, field_name)
+                if value is not None:
+                    env_var_name = field_name.upper()
+                    environ_vars[env_var_name] = str(value)
+            except Exception:
+                # Skip fields that cause errors
+                pass
+    
+    return environ_vars
+
+
+def extract_job_arguments_from_config(config):
+    """
+    Extract job arguments from config using proper field access.
+    
+    Args:
+        config: Config instance
+        
+    Returns:
+        argparse.Namespace with job arguments
+    """
+    import argparse
+    
+    # Create argparse.Namespace with relevant job parameters
+    job_args = argparse.Namespace()
+    
+    # Extract job-relevant fields using proper attribute access
+    job_relevant_fields = [
+        ('training_instance_type', 'instance_type'),
+        ('training_instance_count', 'instance_count'), 
+        ('training_volume_size', 'volume_size'),
+        ('framework_version', 'framework_version'),
+        ('py_version', 'py_version')
+    ]
+    
+    for config_field, arg_name in job_relevant_fields:
+        if hasattr(config, config_field):
+            value = getattr(config, config_field)
+            if value is not None:
+                setattr(job_args, arg_name, value)
+    
+    # Add default job type if not specified
+    if not hasattr(job_args, 'job_type'):
+        job_args.job_type = getattr(config, 'job_type', 'training')
+    
+    return job_args
 
 
 def execute_scripts_in_order(
@@ -229,14 +373,16 @@ def execute_scripts_in_order(
     config_path: str
 ) -> Dict[str, Any]:
     """
-    Simple script execution with dependency resolution.
+    Execute scripts with proper integration of InputCollector and config-based extraction.
     
-    This function replaces the over-complex 880-line ScriptAssembler with
-    a simple execution loop that reuses existing dependency resolution.
+    This function integrates:
+    - InputCollector: Provides input_paths and output_paths (contract-based logical names)
+    - Config extraction: Provides script_path, environment_variables, and job_arguments
+    - Fixed signature: main(input_paths, output_paths, environ_vars, job_args)
     
     Args:
         execution_order: List of script names in topological order
-        user_inputs: User-provided input configurations
+        user_inputs: Input/output paths from ScriptTestingInputCollector
         dependency_resolver: Existing UnifiedDependencyResolver instance
         config_path: Path to configuration file
         
@@ -246,28 +392,46 @@ def execute_scripts_in_order(
     results = {}
     script_outputs = {}
     
+    # Load configs for script path and environment extraction
+    config_classes = build_complete_config_classes()
+    all_configs = load_configs(config_path, config_classes)
+    
     for node_name in execution_order:
         try:
             logger.info(f"Executing script: {node_name}")
             
-            # 1. Discover script using step catalog + config validation (DIRECT REUSE)
-            script_path = discover_script_with_config_validation(node_name, config_path)
+            # 1. Get input/output paths from InputCollector (contract-based logical names)
+            node_inputs = user_inputs.get(node_name, {})
+            input_paths = node_inputs.get('input_paths', {})
+            output_paths = node_inputs.get('output_paths', {})
+            
+            # 2. Get script path, environment variables, and job arguments from config
+            if node_name not in all_configs:
+                logger.warning(f"No config found for {node_name}, skipping")
+                continue
+                
+            config = all_configs[node_name]
+            config_data = collect_script_inputs(config)
+            
+            script_path = config_data['script_path']
+            environ_vars = config_data['environment_variables']
+            job_args = config_data['job_arguments']
             
             if not script_path:
-                logger.warning(f"No script found for {node_name}, skipping")
+                logger.warning(f"No script path found for {node_name}, skipping")
                 continue
             
-            # 2. Resolve inputs from dependencies (DIRECT REUSE)
-            node_inputs = user_inputs.get(node_name, {})
-            resolved_inputs = resolve_script_dependencies(
-                node_name, script_outputs, node_inputs, dependency_resolver
-            )
+            # 3. Resolve dependencies (add outputs from previous scripts)
+            resolved_input_paths = input_paths.copy()
+            for dep_name, dep_outputs in script_outputs.items():
+                for output_name, output_path in dep_outputs.items():
+                    resolved_input_paths[f"{dep_name}_{output_name}"] = output_path
             
-            # 3. Execute script with dependency management
-            result = execute_single_script(script_path, resolved_inputs)
+            # 4. Execute script with fixed signature
+            result = execute_single_script(script_path, resolved_input_paths, output_paths, environ_vars, job_args)
             results[node_name] = result
             
-            # 4. Register outputs for next scripts
+            # 5. Register outputs for next scripts
             if result.success:
                 script_outputs[node_name] = result.output_files
                 logger.info(f"✅ {node_name} executed successfully")
@@ -287,39 +451,8 @@ def execute_scripts_in_order(
     }
 
 
-def discover_script_with_config_validation(node_name: str, config_path: str) -> Optional[str]:
-    """
-    Discover script path using step catalog + config validation.
-    
-    This function reuses existing step catalog infrastructure for script discovery
-    while adding config-based validation to eliminate phantom scripts.
-    
-    Args:
-        node_name: Name of the DAG node
-        config_path: Path to configuration file
-        
-    Returns:
-        Path to script file if found, None otherwise
-    """
-    try:
-        # REUSE: Existing step catalog for script discovery
-        step_catalog = StepCatalog()
-        
-        # Use step catalog to find script path
-        # This is a simplified version - in full implementation would use
-        # step_catalog.discover_script_for_node(node_name)
-        
-        # For now, return a placeholder path
-        script_path = f"scripts/{node_name}.py"
-        
-        if Path(script_path).exists():
-            return script_path
-        
-        return None
-        
-    except Exception as e:
-        logger.error(f"Script discovery failed for {node_name}: {e}")
-        return None
+# Removed discover_script_with_config_validation - it was redundant
+# Script paths are now properly extracted from config via extract_script_path_from_config()
 
 
 def resolve_script_dependencies(
@@ -362,16 +495,21 @@ def resolve_script_dependencies(
         return node_inputs
 
 
-def execute_single_script(script_path: str, inputs: Dict[str, Any]) -> ScriptTestResult:
+def execute_single_script(script_path: str, input_paths: Dict[str, str], 
+                         output_paths: Dict[str, str], environ_vars: Dict[str, str], 
+                         job_args) -> ScriptTestResult:
     """
-    Execute a single script with inputs and dependency management.
+    Execute a single script with the fixed signature and dependency management.
     
     This function handles the one legitimate complexity in script testing:
     package dependency management (scripts import packages that need installation).
     
     Args:
         script_path: Path to the script file
-        inputs: Resolved input parameters and paths
+        input_paths: Input paths from InputCollector (contract-based logical names)
+        output_paths: Output paths from InputCollector (contract-based logical names)
+        environ_vars: Environment variables from config
+        job_args: Job arguments from config (argparse.Namespace)
         
     Returns:
         ScriptTestResult with execution outcome
@@ -382,8 +520,8 @@ def execute_single_script(script_path: str, inputs: Dict[str, Any]) -> ScriptTes
         # (In SageMaker pipeline, this was isolated as an environment)
         install_script_dependencies(script_path)
         
-        # 2. Simple script execution logic
-        result = import_and_execute_script(script_path, inputs)
+        # 2. Execute script with fixed signature
+        result = import_and_execute_script(script_path, input_paths, output_paths, environ_vars, job_args)
         
         return ScriptTestResult(
             success=True,
@@ -486,13 +624,20 @@ def install_package(package_name: str) -> None:
         raise
 
 
-def import_and_execute_script(script_path: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+def import_and_execute_script(script_path: str, input_paths: Dict[str, str], 
+                            output_paths: Dict[str, str], environ_vars: Dict[str, str], 
+                            job_args) -> Dict[str, Any]:
     """
-    Import and execute a script with given inputs.
+    Import and execute a script with the fixed signature.
+    
+    Uses the testability pattern: main(input_paths, output_paths, environ_vars, job_args)
     
     Args:
         script_path: Path to the script file
-        inputs: Input parameters for the script
+        input_paths: Input paths from InputCollector (contract-based logical names)
+        output_paths: Output paths from InputCollector (contract-based logical names)
+        environ_vars: Environment variables from config
+        job_args: Job arguments from config (argparse.Namespace)
         
     Returns:
         Dictionary with execution results
@@ -509,12 +654,11 @@ def import_and_execute_script(script_path: str, inputs: Dict[str, Any]) -> Dict[
         script_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(script_module)
         
-        # Execute main function if it exists
+        # Execute main function with fixed signature
         if hasattr(script_module, 'main'):
-            result = script_module.main(inputs)
+            result = script_module.main(input_paths, output_paths, environ_vars, job_args)
         else:
-            # If no main function, just return success
-            result = {'status': 'executed', 'message': 'Script executed without main function'}
+            raise ValueError(f"Script {script_path} does not have a main function with the required signature")
         
         execution_time = time.time() - start_time
         
