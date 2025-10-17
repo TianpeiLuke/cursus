@@ -543,97 +543,109 @@ class InteractiveRuntimeTestingFactory:
         return script_info
 ```
 
-#### **2. Config-Based Script Validator**
-**Purpose**: Validate which DAG nodes actually have scripts using config entry points
-**Responsibility**: Eliminate phantom script discovery by checking config for actual script definitions
+#### **2. Enhanced ScriptAutoDiscovery Integration**
+**Purpose**: Leverage enhanced step catalog ScriptAutoDiscovery with config instance-based discovery
+**Responsibility**: Provide definitive script validation and metadata extraction using existing step catalog infrastructure
 
 ```python
-class ConfigScriptValidator:
+# Enhanced Integration with Step Catalog ScriptAutoDiscovery
+from ...step_catalog.script_discovery import ScriptAutoDiscovery
+
+class ConfigBasedScriptDiscovery:
     """
-    Validates script existence using pipeline configuration.
+    Enhanced script discovery using step catalog's ScriptAutoDiscovery with config instances.
     
     Key Features:
-    - Definitive script validation using config entry points
-    - Eliminates phantom script discovery
-    - Extracts script metadata from authoritative config source
+    - Leverages enhanced ScriptAutoDiscovery.discover_scripts_from_config_instances()
+    - Eliminates phantom script discovery through definitive config validation
+    - Extracts environment variables and job arguments using simplified rules
+    - Seamless integration with existing step catalog infrastructure
     """
     
-    def __init__(self, loaded_configs: Dict[str, Any]):
-        """Initialize with loaded pipeline configurations."""
+    def __init__(self, dag: PipelineDAG, loaded_configs: Dict[str, Any], workspace_dir: Optional[str] = None):
+        """Initialize with DAG, loaded configs, and optional workspace directory."""
+        self.dag = dag
         self.loaded_configs = loaded_configs
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize ScriptAutoDiscovery with workspace support
+        from pathlib import Path
+        package_root = Path(__file__).parent.parent.parent.parent  # Adjust as needed
+        workspace_dirs = [Path(workspace_dir)] if workspace_dir else []
+        
+        self.script_discovery = ScriptAutoDiscovery(
+            package_root=package_root,
+            workspace_dirs=workspace_dirs
+        )
+    
+    def discover_validated_scripts(self) -> Dict[str, Any]:
+        """
+        Discover scripts with definitive validation using config instances.
+        
+        Returns:
+            Dictionary mapping script names to enhanced ScriptInfo objects with metadata
+        """
+        # Use enhanced ScriptAutoDiscovery method
+        discovered_scripts = self.script_discovery.discover_scripts_from_dag_and_configs(
+            self.dag, self.loaded_configs
+        )
+        
+        self.logger.info(f"Discovered {len(discovered_scripts)} validated scripts (no phantoms)")
+        return discovered_scripts
+    
+    def get_script_metadata(self, script_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get enhanced metadata for a script including environment variables and job arguments.
+        
+        Args:
+            script_name: Name of the script
+            
+        Returns:
+            Dictionary with script metadata or None if not found
+        """
+        script_info = self.script_discovery.load_script_info(script_name)
+        if not script_info or not script_info.metadata:
+            return None
+        
+        return {
+            'script_name': script_info.script_name,
+            'step_name': script_info.step_name,
+            'script_path': str(script_info.script_path),
+            'workspace_id': script_info.workspace_id,
+            'entry_point_field': script_info.metadata.get('entry_point_field'),
+            'entry_point_value': script_info.metadata.get('entry_point_value'),
+            'config_type': script_info.metadata.get('config_type'),
+            'source_dir': script_info.metadata.get('source_dir'),
+            'environment_variables': script_info.metadata.get('environment_variables', {}),
+            'job_arguments': script_info.metadata.get('job_arguments', {})
+        }
     
     def validate_node_has_script(self, node_name: str) -> bool:
         """
-        Check if DAG node has an actual script defined in config.
+        Check if DAG node has an actual script using step catalog validation.
         
         Args:
             node_name: Name of the DAG node to check
             
         Returns:
-            True if node has a script entry point in config, False otherwise
+            True if node has a validated script, False otherwise
         """
         if node_name not in self.loaded_configs:
             return False
         
-        config = self.loaded_configs[node_name]
-        
-        # Check for any script entry point fields
-        script_fields = [
-            'processing_entry_point',
-            'training_entry_point', 
-            'script_path',
-            'inference_entry_point'
-        ]
-        
-        return any(hasattr(config, field) and getattr(config, field) for field in script_fields)
+        config_instance = self.loaded_configs[node_name]
+        script_info = self.script_discovery._extract_script_from_config_instance(config_instance, node_name)
+        return script_info is not None
     
-    def get_script_entry_point(self, node_name: str) -> Optional[str]:
+    def get_validated_scripts_from_dag(self) -> List[str]:
         """
-        Get the script entry point for a node from config.
+        Get list of DAG nodes that have validated scripts using step catalog discovery.
         
-        Args:
-            node_name: Name of the DAG node
-            
         Returns:
-            Script entry point if found, None otherwise
+            List of script names that have actual entry points
         """
-        if not self.validate_node_has_script(node_name):
-            return None
-        
-        config = self.loaded_configs[node_name]
-        
-        # Priority order for script entry points
-        if hasattr(config, 'processing_entry_point') and config.processing_entry_point:
-            return config.processing_entry_point
-        elif hasattr(config, 'training_entry_point') and config.training_entry_point:
-            return config.training_entry_point
-        elif hasattr(config, 'script_path') and config.script_path:
-            return config.script_path
-        elif hasattr(config, 'inference_entry_point') and config.inference_entry_point:
-            return config.inference_entry_point
-        
-        return None
-    
-    def get_validated_scripts_from_dag(self, dag: PipelineDAG) -> List[str]:
-        """
-        Get list of DAG nodes that have validated scripts in config.
-        
-        Args:
-            dag: Pipeline DAG to analyze
-            
-        Returns:
-            List of node names that have actual scripts
-        """
-        validated_scripts = []
-        
-        for node_name in dag.nodes:
-            if self.validate_node_has_script(node_name):
-                validated_scripts.append(node_name)
-            else:
-                self.logger.debug(f"Node {node_name} has no script entry point - skipping")
-        
-        return validated_scripts
+        discovered_scripts = self.discover_validated_scripts()
+        return list(discovered_scripts.keys())
 ```
 
 #### **3. Config-Aware Requirements Extractor**
