@@ -48,11 +48,11 @@ class TestStreamlinedPipelineTestingSpecBuilder:
         """Create builder with temporary directory"""
         return PipelineTestingSpecBuilder(test_data_dir=temp_dir, step_catalog=None)
 
-    def test_builder_initialization(self):
+    def test_builder_initialization(self, temp_dir):
         """Test PipelineTestingSpecBuilder initialization"""
-        builder = PipelineTestingSpecBuilder()
+        builder = PipelineTestingSpecBuilder(test_data_dir=temp_dir)
 
-        assert str(builder.test_data_dir) == "test/integration/runtime"
+        assert str(builder.test_data_dir) == temp_dir
         assert builder.specs_dir.name == "specs"
         assert builder.scripts_dir.name == "scripts"
 
@@ -119,8 +119,11 @@ class TestStreamlinedPipelineTestingSpecBuilder:
         with pytest.raises(ValueError, match="Registry resolution failed"):
             builder.resolve_script_execution_spec_from_node("UnknownStep_training")
 
-    def test_find_script_file_test_workspace(self, builder):
+    def test_find_script_file_test_workspace(self, temp_dir):
         """Test core script discovery logic - test workspace priority"""
+        # Use temporary directory to avoid creating files in test/integration/runtime
+        builder = PipelineTestingSpecBuilder(test_data_dir=temp_dir)
+        
         # Create a test script in the test workspace
         test_script = builder.scripts_dir / "test_script.py"
         test_script.parent.mkdir(parents=True, exist_ok=True)
@@ -150,8 +153,11 @@ class TestStreamlinedPipelineTestingSpecBuilder:
         found_path = builder._find_script_file("test_script")
         assert found_path == Path("/catalog/scripts/test_script.py")
 
-    def test_find_script_file_creates_placeholder(self, builder):
+    def test_find_script_file_creates_placeholder(self, temp_dir):
         """Test script discovery creates placeholder when not found"""
+        # Use temporary directory to avoid creating files in test/integration/runtime
+        builder = PipelineTestingSpecBuilder(test_data_dir=temp_dir)
+        
         # Should create placeholder script when not found
         found_path = builder._find_script_file("nonexistent_script")
         
