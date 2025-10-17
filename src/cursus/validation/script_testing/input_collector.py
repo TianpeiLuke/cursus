@@ -223,48 +223,32 @@ class ScriptTestingInputCollector:
         Returns:
             Dictionary mapping contract logical names to local test paths
         """
-        print(f"🚨 METHOD ENTRY: _get_default_input_paths called for {script_name}")
-        print(f"🚨 METHOD ENTRY: This should always print if method is called!")
-        
         try:
-            print("DEBUG: Step 1 - Creating ContractDiscoveryManagerAdapter...")
             # SYSTEMATIC: Use existing ContractDiscoveryManagerAdapter infrastructure
             test_data_dir = f"test/data/{script_name}"
             contract_adapter = ContractDiscoveryManagerAdapter(test_data_dir=test_data_dir)
-            print("DEBUG: Step 1 - SUCCESS")
             
-            print("DEBUG: Step 2 - Loading contract...")
             # Load contract using existing systematic approach
             catalog = StepCatalog()
             contract = catalog.load_contract_class(script_name)
-            print(f"DEBUG: Step 2 - Contract loaded: {contract is not None}")
             
             if contract:
-                print("DEBUG: Step 3 - Calling get_contract_input_paths...")
                 # REUSE: Use existing get_contract_input_paths method (systematic solution)
                 adapted_paths = contract_adapter.get_contract_input_paths(contract, script_name)
-                print(f"DEBUG: Step 3 - Result: {adapted_paths}")
-                print(f"DEBUG: Step 3 - Result type: {type(adapted_paths)}")
-                print(f"DEBUG: Step 3 - Result bool: {bool(adapted_paths)}")
                 
                 if adapted_paths:
-                    print(f"DEBUG: SUCCESS - Returning contract logical names: {list(adapted_paths.keys())}")
                     logger.info(f"SUCCESS: Using systematic contract-based input paths for {script_name}: {list(adapted_paths.keys())}")
                     return adapted_paths
                 else:
-                    print("DEBUG: WARNING - Contract found but adapted_paths is empty/None")
                     logger.warning(f"Contract found but no input paths for {script_name}")
             else:
-                print("DEBUG: WARNING - No contract found")
                 logger.warning(f"No contract found for {script_name}")
                 
         except Exception as e:
-            print(f"DEBUG ERROR: Exception in systematic contract-based path resolution for {script_name}: {e}")
-            import traceback
-            print(f"DEBUG ERROR: Full traceback: {traceback.format_exc()}")
+            logger.error(f"Error in systematic contract-based path resolution for {script_name}: {e}")
         
         # Fallback to generic paths if systematic approach fails
-        print(f"DEBUG WARNING: Using fallback generic paths for {script_name}")
+        logger.warning(f"Using fallback generic paths for {script_name}")
         return {
             'data_input': f"test/data/{script_name}/input",
             'model_input': f"test/models/{script_name}/input"
