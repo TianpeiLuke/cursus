@@ -1,22 +1,23 @@
 """
-Shared DAG definition for PyTorch Complete End-to-End Pipeline with Dummy Data Loading
+Shared DAG definition for XGBoost Complete End-to-End Pipeline with Wiki Generation
 
-This module provides the shared DAG definition for a complete PyTorch workflow
-that uses dummy data loading instead of Cradle data loading and PyTorch training
-instead of XGBoost training. This includes training, calibration, packaging, 
-registration, and evaluation.
+This module provides the shared DAG definition for a complete XGBoost workflow
+that includes training, calibration, packaging, registration, evaluation with inference,
+metrics computation, and wiki generation.
 
 The DAG includes:
-1) Dummy Data Loading (training)
+1) Data Loading (training)
 2) Preprocessing (training)
-3) PyTorch Model Training
+3) XGBoost Model Training
 4) Model Calibration
 5) Package Model
 6) Payload Generation
 7) Model Registration
-8) Dummy Data Loading (calibration)
+8) Data Loading (calibration)
 9) Preprocessing (calibration)
-10) Model Evaluation (calibration)
+10) Model Inference (calibration)
+11) Model Metrics Computation
+12) Model Wiki Generation
 """
 
 import logging
@@ -28,91 +29,97 @@ from .. import DAGMetadata
 logger = logging.getLogger(__name__)
 
 
-def create_pytorch_complete_e2e_dummy_dag() -> PipelineDAG:
+def create_xgboost_complete_e2e_with_wiki_dag() -> PipelineDAG:
     """
-    Create a DAG for complete PyTorch E2E pipeline with dummy data loading.
+    Create a DAG for complete XGBoost E2E pipeline with wiki generation.
 
     This DAG represents a complete end-to-end workflow including training,
-    calibration, packaging, registration, and evaluation of a PyTorch model
-    using dummy data loading instead of Cradle services.
+    calibration, packaging, registration, evaluation with inference, metrics
+    computation, and wiki generation of an XGBoost model.
 
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
     """
     dag = PipelineDAG()
 
-    # Add all nodes - using DummyDataLoading and PyTorchTraining
-    dag.add_node("DummyDataLoading_training")  # Dummy data load for training
+    # Add all nodes
+    dag.add_node("CradleDataLoading_training")  # Data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node("PyTorchTraining")  # PyTorch training step
+    dag.add_node("XGBoostTraining")  # XGBoost training step
     dag.add_node(
         "ModelCalibration_calibration"
     )  # Model calibration step with calibration variant
     dag.add_node("Package")  # Package step
     dag.add_node("Registration")  # MIMS registration step
     dag.add_node("Payload")  # Payload step
-    dag.add_node("DummyDataLoading_calibration")  # Dummy data load for calibration
+    dag.add_node("CradleDataLoading_calibration")  # Data load for calibration
     dag.add_node(
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
-    dag.add_node("PyTorchModelEval_calibration")  # Model evaluation step
+    dag.add_node("XGBoostModelInference")  # Model inference step
+    dag.add_node("ModelMetricsComputation")  # Model metrics computation step
+    dag.add_node("ModelWikiGenerator")  # Model wiki generator step
 
     # Training flow
-    dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
-    dag.add_edge("TabularPreprocessing_training", "PyTorchTraining")
+    dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
+    dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
 
     # Calibration flow
-    dag.add_edge("DummyDataLoading_calibration", "TabularPreprocessing_calibration")
+    dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
 
-    # Evaluation flow
-    dag.add_edge("PyTorchTraining", "PyTorchModelEval_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "PyTorchModelEval_calibration")
+    # Inference and evaluation flow
+    dag.add_edge("XGBoostTraining", "XGBoostModelInference")
+    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelInference")
+    dag.add_edge("XGBoostModelInference", "ModelMetricsComputation")
+    dag.add_edge("ModelMetricsComputation", "ModelWikiGenerator")
 
-    # Model calibration flow - depends on model evaluation
-    dag.add_edge("PyTorchModelEval_calibration", "ModelCalibration_calibration")
+    # Model calibration flow - depends on inference
+    dag.add_edge("XGBoostModelInference", "ModelCalibration_calibration")
 
     # Output flow
     dag.add_edge("ModelCalibration_calibration", "Package")
-    dag.add_edge("PyTorchTraining", "Package")  # Raw model is also input to packaging
-    dag.add_edge("PyTorchTraining", "Payload")  # Payload test uses the raw model
+    dag.add_edge("XGBoostTraining", "Package")  # Raw model is also input to packaging
+    dag.add_edge("XGBoostTraining", "Payload")  # Payload test uses the raw model
     dag.add_edge("Package", "Registration")
     dag.add_edge("Payload", "Registration")
 
     logger.info(
-        f"Created PyTorch complete E2E dummy DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
+        f"Created XGBoost complete E2E with wiki DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
     )
     return dag
 
 
 def get_dag_metadata() -> DAGMetadata:
     """
-    Get metadata for the PyTorch complete end-to-end DAG with dummy data loading.
+    Get metadata for the XGBoost complete end-to-end DAG with wiki generation.
 
     Returns:
         DAGMetadata: Metadata describing the DAG structure and purpose
     """
     return DAGMetadata(
-        description="Complete PyTorch end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
+        description="Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, inference, metrics computation, and wiki generation",
         complexity="comprehensive",
-        features=["dummy_data_loading", "training", "calibration", "packaging", "registration", "evaluation"],
-        framework="pytorch",
-        node_count=10,
-        edge_count=11,
+        features=["training", "calibration", "packaging", "registration", "inference", "metrics", "wiki_generation"],
+        framework="xgboost",
+        node_count=12,
+        edge_count=13,
         extra_metadata={
-            "name": "pytorch_complete_e2e_dummy",
+            "name": "xgboost_complete_e2e_with_wiki",
             "task_type": "end_to_end",
             "entry_points": [
-                "DummyDataLoading_training",
-                "DummyDataLoading_calibration",
+                "CradleDataLoading_training",
+                "CradleDataLoading_calibration",
             ],
-            "exit_points": ["Registration"],
+            "exit_points": ["Registration", "ModelWikiGenerator"],
             "required_configs": [
-                "DummyDataLoading_training",
-                "DummyDataLoading_calibration",
+                "CradleDataLoading_training",
+                "CradleDataLoading_calibration",
                 "TabularPreprocessing_training",
                 "TabularPreprocessing_calibration",
-                "PyTorchTraining",
-                "PyTorchModelEval_calibration",
+                "XGBoostTraining",
+                "XGBoostModelInference",
+                "ModelMetricsComputation",
+                "ModelWikiGenerator",
                 "ModelCalibration_calibration",
                 "Package",
                 "Payload",
@@ -124,7 +131,7 @@ def get_dag_metadata() -> DAGMetadata:
 
 def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
     """
-    Validate the structure of the PyTorch complete end-to-end DAG with dummy data loading.
+    Validate the structure of the XGBoost complete end-to-end DAG with wiki generation.
 
     Args:
         dag: The DAG to validate

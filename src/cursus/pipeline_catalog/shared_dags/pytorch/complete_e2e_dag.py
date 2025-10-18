@@ -53,7 +53,7 @@ def create_pytorch_complete_e2e_dag() -> PipelineDAG:
     dag.add_node(
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
-    dag.add_node("ModelMetricsComputation_calibration")  # Model evaluation step
+    dag.add_node("PyTorchModelEval_calibration")  # Model evaluation step
 
     # Training flow
     dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
@@ -63,11 +63,11 @@ def create_pytorch_complete_e2e_dag() -> PipelineDAG:
     dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
 
     # Evaluation flow
-    dag.add_edge("PyTorchTraining", "ModelMetricsComputation_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "ModelMetricsComputation_calibration")
+    dag.add_edge("PyTorchTraining", "PyTorchModelEval_calibration")
+    dag.add_edge("TabularPreprocessing_calibration", "PyTorchModelEval_calibration")
 
     # Model calibration flow - depends on model evaluation
-    dag.add_edge("ModelMetricsComputation_calibration", "ModelCalibration_calibration")
+    dag.add_edge("PyTorchModelEval_calibration", "ModelCalibration_calibration")
 
     # Output flow
     dag.add_edge("ModelCalibration_calibration", "Package")
@@ -110,7 +110,7 @@ def get_dag_metadata() -> DAGMetadata:
                 "TabularPreprocessing_training",
                 "TabularPreprocessing_calibration",
                 "PyTorchTraining",
-                "ModelMetricsComputation_calibration",
+                "PyTorchModelEval_calibration",
                 "ModelCalibration_calibration",
                 "Package",
                 "Payload",
