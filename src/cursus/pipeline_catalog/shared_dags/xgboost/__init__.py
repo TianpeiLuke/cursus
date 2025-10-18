@@ -9,6 +9,8 @@ __all__ = [
     "create_xgboost_training_with_calibration_dag",
     "create_xgboost_training_with_evaluation_dag",
     "create_xgboost_complete_e2e_dag",
+    "create_xgboost_complete_e2e_dummy_dag",
+    "create_xgboost_training_with_evaluation_dummy_dag",
 ]
 
 # Import functions to make them available at package level
@@ -40,6 +42,22 @@ try:
     from .complete_e2e_dag import (
         create_xgboost_complete_e2e_dag,
         get_dag_metadata as get_complete_e2e_metadata,
+    )
+except ImportError:
+    pass
+
+try:
+    from .complete_e2e_dummy_dag import (
+        create_xgboost_complete_e2e_dummy_dag,
+        get_dag_metadata as get_complete_e2e_dummy_metadata,
+    )
+except ImportError:
+    pass
+
+try:
+    from .training_with_evaluation_dummy_dag import (
+        create_xgboost_training_with_evaluation_dummy_dag,
+        get_dag_metadata as get_training_evaluation_dummy_metadata,
     )
 except ImportError:
     pass

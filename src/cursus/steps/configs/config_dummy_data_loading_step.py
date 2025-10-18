@@ -5,7 +5,7 @@ This module implements the configuration class for the Dummy Data Loading step,
 which processes user-provided data instead of calling internal Cradle services.
 """
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, field_validator
 from typing import TYPE_CHECKING, Optional, Dict, Any, Union
 from pathlib import Path
 
@@ -46,6 +46,11 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         description="Entry point script for dummy data loading."
     )
 
+    job_type: str = Field(
+        default="training",
+        description="One of ['training','validation','testing','calibration']",
+    )
+
     # Data processing options
     max_file_size_mb: int = Field(
         default=1000,
@@ -65,6 +70,17 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         "validate_assignment": True,
         "extra": "allow",  # Allow extra fields for type-aware serialization
     }
+
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: str) -> str:
+        """
+        Ensure job_type is one of the allowed values.
+        """
+        allowed = {"training", "validation", "testing", "calibration"}
+        if v not in allowed:
+            raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
+        return v
 
     @model_validator(mode="after")
     def validate_config(self) -> "DummyDataLoadingConfig":
