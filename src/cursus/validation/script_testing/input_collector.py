@@ -21,31 +21,38 @@ logger = logging.getLogger(__name__)
 
 class ScriptTestingInputCollector:
     """
-    Enhanced with optional two-phase dependency resolution.
+    Enhanced with Direct Registry Integration for field value population.
     
     This class reuses the existing 600+ lines of proven interactive collection
-    patterns and optionally integrates with the two-phase dependency resolution system.
+    patterns and integrates directly with ScriptExecutionRegistry for:
+    - Registry-coordinated field population
+    - Message passing between script executions
+    - Dynamic environment variable generation
+    - Dependency-aware path resolution
     """
     
-    def __init__(self, dag: PipelineDAG, config_path: str, use_dependency_resolution: bool = True):
+    def __init__(self, dag: PipelineDAG, config_path: str, registry=None, use_dependency_resolution: bool = True):
         """
-        Initialize with DAG and config path.
+        Initialize with DAG, config path, and optional registry.
         
         Args:
             dag: PipelineDAG instance
             config_path: Path to pipeline configuration JSON file
+            registry: Optional ScriptExecutionRegistry for direct integration
             use_dependency_resolution: Whether to use two-phase dependency resolution
         """
         # REUSE: Existing DAGConfigFactory infrastructure (600+ lines of proven patterns)
         self.dag_factory = DAGConfigFactory(dag)
         self.dag = dag
         self.config_path = config_path
+        self.registry = registry  # NEW: Direct registry reference
         self.use_dependency_resolution = use_dependency_resolution
         
         # Load configs for script validation
         self.loaded_configs = self._load_and_filter_configs()
         
-        logger.info(f"Initialized ScriptTestingInputCollector with {len(self.loaded_configs)} configs, dependency_resolution={use_dependency_resolution}")
+        integration_mode = "registry-integrated" if registry else "standalone"
+        logger.info(f"Initialized ScriptTestingInputCollector with {len(self.loaded_configs)} configs, mode={integration_mode}, dependency_resolution={use_dependency_resolution}")
     
     def _load_and_filter_configs(self) -> Dict[str, Any]:
         """
@@ -72,17 +79,23 @@ class ScriptTestingInputCollector:
     
     def collect_script_inputs_for_dag(self) -> Dict[str, Any]:
         """
-        Enhanced collection with optional two-phase dependency resolution.
+        Enhanced collection with Direct Registry Integration.
         
-        This method can use either two-phase dependency resolution or fallback
-        to existing interactive patterns for backward compatibility.
+        This method supports three modes:
+        1. Registry-integrated collection (NEW)
+        2. Two-phase dependency resolution 
+        3. Manual collection (backward compatibility)
         
         Returns:
             Dictionary mapping script names to their input configurations
         """
         
-        if self.use_dependency_resolution:
-            # NEW: Use two-phase dependency resolution
+        if self.registry:
+            # NEW: Direct registry integration for field population
+            logger.info("Using registry-integrated input collection")
+            return self._collect_inputs_with_registry()
+        elif self.use_dependency_resolution:
+            # Use two-phase dependency resolution
             from .script_dependency_matcher import resolve_script_dependencies
             
             logger.info("Using two-phase dependency resolution for input collection")
@@ -95,6 +108,250 @@ class ScriptTestingInputCollector:
             # FALLBACK: Use existing manual collection for backward compatibility
             logger.info("Using manual input collection (legacy mode)")
             return self._collect_inputs_manually()
+    
+    def _collect_inputs_with_registry(self) -> Dict[str, Any]:
+        """
+        NEW: Registry-coordinated input collection with field value population.
+        
+        This method uses the ScriptExecutionRegistry's 6 integration points to:
+        - Get base configuration from registry
+        - Apply message passing from completed dependencies
+        - Populate field values dynamically
+        - Store resolved inputs back to registry
+        
+        Returns:
+            Dictionary mapping script names to their input configurations
+        """
+        user_inputs = {}
+        
+        logger.info("🔄 Starting registry-coordinated input collection")
+        
+        for node_name in self.dag.topological_sort():
+            try:
+                # Integration Point 3: Get base config from registry
+                node_config = self.registry.get_node_config_for_resolver(node_name)
+                
+                # Integration Point 2: Get dependency outputs for message passing
+                dependency_outputs = self.registry.get_dependency_outputs_for_node(node_name)
+                
+                # Populate field values using registry data
+                script_inputs = self._populate_fields_from_registry(
+                    node_name, node_config, dependency_outputs
+                )
+                
+                # Integration Point 4: Store resolved inputs back to registry
+                self.registry.store_resolved_inputs(node_name, script_inputs)
+                
+                user_inputs[node_name] = script_inputs
+                
+                logger.info(f"✅ Registry-populated inputs for {node_name}: {len(script_inputs)} fields")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to collect registry inputs for {node_name}: {e}")
+                # Fallback to manual collection for this node
+                script_inputs = self._collect_script_inputs(node_name)
+                user_inputs[node_name] = script_inputs
+        
+        logger.info(f"🎯 Registry-coordinated collection completed: {len(user_inputs)} scripts")
+        return user_inputs
+    
+    def _populate_fields_from_registry(self, node_name: str, node_config: Dict[str, Any], 
+                                     dependency_outputs: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Populate field values using registry data and message passing.
+        
+        This method combines:
+        - Base configuration from registry
+        - Dependency outputs via message passing
+        - Contract-based path resolution
+        - Dynamic environment variable generation
+        
+        Args:
+            node_name: Name of the node
+            node_config: Base configuration from registry
+            dependency_outputs: Outputs from completed dependencies
+            
+        Returns:
+            Dictionary containing complete input configuration for script execution
+        """
+        logger.debug(f"🔧 Populating fields for {node_name} with {len(dependency_outputs)} dependency outputs")
+        
+        # Start with base script configuration
+        script_inputs = {
+            'input_paths': {},
+            'output_paths': self._get_default_output_paths(node_name),
+            'environment_variables': {},
+            'job_arguments': {},
+            'script_path': None
+        }
+        
+        # 1. Populate input paths from dependency outputs (message passing)
+        script_inputs['input_paths'].update(dependency_outputs)
+        logger.debug(f"📨 Applied {len(dependency_outputs)} dependency outputs to {node_name}")
+        
+        # 2. Add contract-based paths for missing inputs
+        contract_inputs = self._get_input_paths_with_message_passing(node_name, dependency_outputs)
+        for key, path in contract_inputs.items():
+            if key not in script_inputs['input_paths']:
+                script_inputs['input_paths'][key] = path
+        
+        # 3. Extract and enhance environment variables with registry context
+        config_instance = self.loaded_configs.get(node_name, {})
+        script_inputs['environment_variables'] = self._extract_environment_variables_with_registry(
+            config_instance, node_name
+        )
+        
+        # 4. Extract job arguments from config
+        script_inputs['job_arguments'] = self._extract_job_arguments(config_instance)
+        
+        # 5. Extract script path from config
+        script_inputs['script_path'] = self._extract_script_path_from_config(config_instance)
+        
+        logger.info(f"🎯 Populated {node_name}: {len(script_inputs['input_paths'])} inputs, "
+                   f"{len(script_inputs['environment_variables'])} env vars, "
+                   f"{len(script_inputs['job_arguments'])} job args")
+        
+        return script_inputs
+    
+    def _get_input_paths_with_message_passing(self, node_name: str, dependency_outputs: Dict[str, str]) -> Dict[str, str]:
+        """
+        Get input paths with registry-coordinated message passing.
+        
+        This method applies intelligent mapping between dependency outputs and node inputs:
+        - Direct name matching
+        - Semantic mapping (model → model_path, data → training_data)
+        - Contract-based defaults for missing paths
+        
+        Args:
+            node_name: Name of the node
+            dependency_outputs: Outputs from completed dependencies
+            
+        Returns:
+            Dictionary of input paths with message passing applied
+        """
+        input_paths = {}
+        
+        # Apply intelligent mapping from dependency outputs
+        for output_key, output_path in dependency_outputs.items():
+            # Direct mapping
+            input_paths[output_key] = output_path
+            
+            # Semantic mapping
+            semantic_mapping = self._get_semantic_input_mapping(output_key)
+            if semantic_mapping and semantic_mapping not in input_paths:
+                input_paths[semantic_mapping] = output_path
+                logger.debug(f"📨 Semantic mapping: {output_key} → {semantic_mapping} for {node_name}")
+        
+        # Add contract-based defaults for missing paths
+        contract_paths = self._get_default_input_paths(node_name)
+        for key, path in contract_paths.items():
+            if key not in input_paths:
+                input_paths[key] = path
+        
+        return input_paths
+    
+    def _get_semantic_input_mapping(self, output_key: str) -> str:
+        """
+        Get semantic mapping from output key to input key.
+        
+        Examples:
+        - 'model' → 'model_path'
+        - 'processed_data' → 'training_data'
+        - 'features' → 'feature_data'
+        
+        Args:
+            output_key: Output key from dependency
+            
+        Returns:
+            Mapped input key or None if no mapping found
+        """
+        semantic_rules = {
+            'model': 'model_path',
+            'processed_data': 'training_data',
+            'features': 'feature_data',
+            'predictions': 'prediction_data',
+            'data': 'input_data',
+            'output': 'input_file',
+            'trained_model': 'model_path',
+            'preprocessed_data': 'training_data'
+        }
+        
+        return semantic_rules.get(output_key)
+    
+    def _extract_environment_variables_with_registry(self, config: Any, node_name: str) -> Dict[str, str]:
+        """
+        Extract environment variables with registry-aware population.
+        
+        This method combines:
+        - Base environment variables from config
+        - Registry-specific dynamic variables
+        - Execution context information
+        
+        Args:
+            config: Configuration instance
+            node_name: Name of the node
+            
+        Returns:
+            Dictionary of environment variables with registry enhancements
+        """
+        # Base environment variables from config
+        env_vars = self._extract_environment_variables(config)
+        
+        # Add registry-specific variables if registry available
+        if self.registry:
+            try:
+                # Get execution context from registry
+                execution_summary = self.registry.get_execution_summary()
+                
+                # Add dynamic variables based on registry state
+                registry_vars = {
+                    'PIPELINE_EXECUTION_ID': str(hash(str(execution_summary))),
+                    'NODE_EXECUTION_ORDER': str(self.registry.execution_order.index(node_name)),
+                    'TOTAL_PIPELINE_NODES': str(len(self.dag.nodes)),
+                    'COMPLETED_DEPENDENCIES': ','.join([
+                        dep for dep in self.dag.get_dependencies(node_name)
+                        if self.registry.get_node_status(dep) == 'completed'
+                    ]),
+                    'REGISTRY_MODE': 'enabled'
+                }
+                
+                env_vars.update(registry_vars)
+                logger.debug(f"🔧 Added {len(registry_vars)} registry-specific env vars for {node_name}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to add registry env vars for {node_name}: {e}")
+        
+        return env_vars
+    
+    def _extract_script_path_from_config(self, config: Any) -> str:
+        """
+        Extract script path from config using proper field access.
+        
+        Args:
+            config: Configuration instance
+            
+        Returns:
+            Script path or None if not found
+        """
+        # Check for various entry point fields
+        entry_point_fields = [
+            'training_entry_point',
+            'inference_entry_point', 
+            'entry_point'
+        ]
+        
+        for field in entry_point_fields:
+            if hasattr(config, field):
+                entry_point = getattr(config, field)
+                if entry_point:
+                    # Combine with source_dir if available
+                    if hasattr(config, 'effective_source_dir') and config.effective_source_dir:
+                        import os
+                        return os.path.join(config.effective_source_dir, entry_point)
+                    else:
+                        return entry_point
+        
+        return None
     
     def _collect_inputs_manually(self) -> Dict[str, Any]:
         """
