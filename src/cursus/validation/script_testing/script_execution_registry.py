@@ -517,7 +517,7 @@ class DAGStateConsistency:
         completed_nodes = set()
         
         for node in execution_order:
-            dependencies = dag.get_dependencies(node)
+            dependencies = set(dag.get_dependencies(node))
             
             # All dependencies must be completed before this node
             if not dependencies.issubset(completed_nodes):
