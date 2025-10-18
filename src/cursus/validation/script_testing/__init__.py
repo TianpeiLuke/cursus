@@ -39,7 +39,6 @@ from .api import (
     collect_script_inputs_using_dag_factory,
     get_validated_scripts_from_config,
     execute_scripts_in_order,
-    resolve_script_dependencies,
     parse_script_imports,
     is_package_installed,
     install_package,
@@ -48,6 +47,31 @@ from .api import (
 
 # Input Collection - Extends DAGConfigFactory patterns
 from .input_collector import ScriptTestingInputCollector
+
+# Script Execution Registry - Central state coordinator for DAG execution
+from .script_execution_registry import (
+    ScriptExecutionRegistry,
+    DAGStateConsistency,
+    create_script_execution_registry
+)
+
+# Dependency Resolution - Two-phase dependency resolution system
+from .script_dependency_matcher import (
+    resolve_script_dependencies,
+    prepare_script_testing_inputs,
+    collect_user_inputs_with_dependency_resolution,
+    validate_dependency_resolution_result,
+    get_dependency_resolution_summary
+)
+
+# Script Input Resolution - Step builder pattern adaptation
+from .script_input_resolver import (
+    resolve_script_inputs_using_step_patterns,
+    adapt_step_input_patterns_for_scripts,
+    validate_script_input_resolution,
+    get_script_input_resolution_summary,
+    transform_logical_names_to_actual_paths
+)
 
 # Result Formatting - Well-designed component (15% redundancy - preserved)
 from .result_formatter import ResultFormatter
@@ -78,6 +102,25 @@ __all__ = [
     "ResultFormatter", 
     "ScriptTestResult",
     
+    # Script Execution Registry - Central state coordinator
+    "ScriptExecutionRegistry",
+    "DAGStateConsistency",
+    "create_script_execution_registry",
+    
+    # Dependency Resolution - Two-phase system
+    "resolve_script_dependencies",
+    "prepare_script_testing_inputs",
+    "collect_user_inputs_with_dependency_resolution",
+    "validate_dependency_resolution_result",
+    "get_dependency_resolution_summary",
+    
+    # Script Input Resolution - Step builder patterns
+    "resolve_script_inputs_using_step_patterns",
+    "adapt_step_input_patterns_for_scripts",
+    "validate_script_input_resolution",
+    "get_script_input_resolution_summary",
+    "transform_logical_names_to_actual_paths",
+    
     # Individual script execution
     "execute_single_script",
     "install_script_dependencies",
@@ -88,7 +131,6 @@ __all__ = [
     
     # Execution functions
     "execute_scripts_in_order",
-    "resolve_script_dependencies",
     
     # Package management (valid complexity)
     "parse_script_imports",

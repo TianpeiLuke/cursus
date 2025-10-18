@@ -45,35 +45,34 @@ def run_dag_scripts(
     dag: PipelineDAG,
     config_path: str,
     test_workspace_dir: str = "test/integration/script_testing",
-    collect_inputs: bool = True
+    step_catalog: Optional[StepCatalog] = None,
+    use_dependency_resolution: bool = True
 ) -> Dict[str, Any]:
     """
-    Run scripts in DAG order using existing cursus infrastructure.
-    
-    This function addresses all 3 user stories with minimal code by extending
-    existing components instead of reimplementing them:
-    - US1: Script discovery via step catalog + config validation
-    - US2: Contract-aware path resolution using existing patterns
-    - US3: DAG-guided execution with dependency resolution
-    
+    ENHANCED: Run scripts with ScriptExecutionRegistry integration and message passing.
+
+    This function now uses the ScriptExecutionRegistry for central state coordination,
+    enabling intelligent dependency resolution and automatic message passing between
+    script executions.
+
     Args:
         dag: PipelineDAG instance defining the pipeline structure
         config_path: Path to pipeline configuration JSON file for script validation
         test_workspace_dir: Directory for test workspace and script discovery
-        collect_inputs: Whether to collect user inputs interactively
-        
+        step_catalog: Optional StepCatalog instance (will create if not provided)
+        use_dependency_resolution: Whether to use two-phase dependency resolution
+
     Returns:
         Dictionary with execution results and metadata
-        
+
     Example:
         >>> from cursus.validation.script_testing import run_dag_scripts
         >>> from cursus.api.dag.base_dag import PipelineDAG
-        >>> 
+        >>>
         >>> dag = PipelineDAG.from_json("configs/xgboost_training.json")
         >>> results = run_dag_scripts(
         ...     dag=dag,
-        ...     config_path="pipeline_config/config_NA_xgboost_AtoZ.json",
-        ...     collect_inputs=True
+        ...     config_path="pipeline_config/config_NA_xgboost_AtoZ.json"
         ... )
         >>> print(f"Pipeline success: {results['pipeline_success']}")
     """
@@ -81,39 +80,57 @@ def run_dag_scripts(
         # Validate inputs
         if not isinstance(dag, PipelineDAG):
             raise ValueError("dag must be a PipelineDAG instance")
-            
+
         if not dag.nodes:
             raise ValueError("DAG must contain at least one node")
-            
+
         # Ensure test workspace directory exists
         workspace_path = Path(test_workspace_dir)
         workspace_path.mkdir(parents=True, exist_ok=True)
-        
+
+        # Initialize step catalog
+        if not step_catalog:
+            step_catalog = StepCatalog()
+
         logger.info(f"Starting DAG-guided script testing with {len(dag.nodes)} nodes")
-        
-        # 1. INTEGRATE: Use ScriptTestingInputCollector for systematic contract-based solution
-        user_inputs = {}
-        if collect_inputs:
-            from .input_collector import ScriptTestingInputCollector
-            collector = ScriptTestingInputCollector(dag, config_path)
-            user_inputs = collector.collect_script_inputs_for_dag()
-            logger.info(f"Collected inputs for {len(user_inputs)} scripts using systematic contract-based approach")
-        
-        # 2. REUSE: DAG traversal (direct use of existing functionality)
-        execution_order = dag.topological_sort()
-        logger.info(f"Execution order: {execution_order}")
-        
-        # 3. REUSE: Dependency resolution (direct use of existing component)
-        dependency_resolver = create_dependency_resolver()
-        
-        # 4. Execute scripts with dependency management
-        results = execute_scripts_in_order(
-            execution_order, user_inputs, dependency_resolver, config_path
-        )
-        
+
+        # ENHANCED: Use ScriptExecutionRegistry for state coordination
+        from .script_execution_registry import create_script_execution_registry
+        registry = create_script_execution_registry(dag, step_catalog)
+
+        # REGISTRY-ONLY: Use registry for both dependency resolution modes
+        if use_dependency_resolution:
+            from .script_dependency_matcher import resolve_script_dependencies_with_registry
+            user_inputs = resolve_script_dependencies_with_registry(dag, config_path, step_catalog, registry)
+            logger.info(f"Used registry-coordinated dependency resolution for {len(user_inputs)} scripts")
+        else:
+            # REGISTRY-ONLY: Use existing registry functions with manual mode (no dependency resolution)
+            from .script_dependency_matcher import (
+                prepare_script_testing_inputs, 
+                collect_user_inputs_with_registry_coordination
+            )
+            
+            # Prepare with empty dependency matches (manual mode)
+            prepared_data = prepare_script_testing_inputs(dag, config_path, step_catalog)
+            prepared_data['dependency_matches'] = {}  # Clear dependency matches for manual mode
+            
+            # Initialize registry with manual mode data
+            registry.initialize_from_dependency_matcher(prepared_data)
+            
+            # Use registry coordination but without automatic dependency resolution
+            user_inputs = collect_user_inputs_with_registry_coordination(prepared_data, registry)
+            logger.info(f"Used registry-coordinated manual input collection for {len(user_inputs)} scripts")
+
+        # ENHANCED: Execute with registry coordination and message passing
+        results = execute_scripts_with_registry_coordination(dag, registry)
+
+        # Include registry summary in results
+        results['execution_summary'] = registry.get_execution_summary()
+        results['message_passing_history'] = registry.get_message_passing_history()
+
         logger.info(f"Script testing completed. Success: {results['pipeline_success']}")
         return results
-        
+
     except Exception as e:
         logger.error(f"Script testing failed: {e}")
         raise RuntimeError(f"Failed to test DAG scripts: {e}") from e
@@ -368,72 +385,46 @@ def extract_job_arguments_from_config(config):
 
 def execute_scripts_in_order(
     execution_order: List[str],
-    user_inputs: Dict[str, Any],
-    dependency_resolver,  # UnifiedDependencyResolver (direct reuse)
-    config_path: str
+    user_inputs: Dict[str, Any]  # Complete inputs from two-phase system
 ) -> Dict[str, Any]:
     """
-    Execute scripts with proper integration of InputCollector and config-based extraction.
+    DRAMATICALLY SIMPLIFIED: Execute scripts with complete pre-resolved inputs.
     
-    This function integrates:
-    - InputCollector: Provides input_paths and output_paths (contract-based logical names)
-    - Config extraction: Provides script_path, environment_variables, and job_arguments
-    - Fixed signature: main(input_paths, output_paths, environ_vars, job_args)
+    All complexity (message passing, dependency matching, config extraction) 
+    is handled in input collection phase.
     
     Args:
         execution_order: List of script names in topological order
-        user_inputs: Input/output paths from ScriptTestingInputCollector
-        dependency_resolver: Existing UnifiedDependencyResolver instance
-        config_path: Path to configuration file
+        user_inputs: Complete inputs from two-phase dependency resolution
         
     Returns:
         Dictionary with execution results
     """
     results = {}
-    script_outputs = {}
-    
-    # Load configs for script path and environment extraction
-    config_classes = build_complete_config_classes()
-    all_configs = load_configs(config_path, config_classes)
     
     for node_name in execution_order:
         try:
             logger.info(f"Executing script: {node_name}")
             
-            # 1. Get input/output paths from InputCollector (contract-based logical names)
+            # SIMPLIFIED: Get complete pre-resolved data
             node_inputs = user_inputs.get(node_name, {})
-            input_paths = node_inputs.get('input_paths', {})
-            output_paths = node_inputs.get('output_paths', {})
             
-            # 2. Get script path, environment variables, and job arguments from config
-            if node_name not in all_configs:
-                logger.warning(f"No config found for {node_name}, skipping")
-                continue
-                
-            config = all_configs[node_name]
-            config_data = collect_script_inputs(config)
-            
-            script_path = config_data['script_path']
-            environ_vars = config_data['environment_variables']
-            job_args = config_data['job_arguments']
+            # All information is complete from two-phase resolution:
+            input_paths = node_inputs.get('input_paths', {})        # ✅ Auto-resolved or user-provided
+            output_paths = node_inputs.get('output_paths', {})      # ✅ User-provided
+            environ_vars = node_inputs.get('environment_variables', {})  # ✅ From config
+            job_args = node_inputs.get('job_arguments', {})         # ✅ From config
+            script_path = node_inputs.get('script_path')            # ✅ From config
             
             if not script_path:
                 logger.warning(f"No script path found for {node_name}, skipping")
                 continue
             
-            # 3. Resolve dependencies (add outputs from previous scripts)
-            resolved_input_paths = input_paths.copy()
-            for dep_name, dep_outputs in script_outputs.items():
-                for output_name, output_path in dep_outputs.items():
-                    resolved_input_paths[f"{dep_name}_{output_name}"] = output_path
-            
-            # 4. Execute script with fixed signature
-            result = execute_single_script(script_path, resolved_input_paths, output_paths, environ_vars, job_args)
+            # ULTRA-SIMPLIFIED: Just execute with complete information
+            result = execute_single_script(script_path, input_paths, output_paths, environ_vars, job_args)
             results[node_name] = result
             
-            # 5. Register outputs for next scripts
             if result.success:
-                script_outputs[node_name] = result.output_files
                 logger.info(f"✅ {node_name} executed successfully")
             else:
                 logger.error(f"❌ {node_name} failed: {result.error_message}")
@@ -453,46 +444,6 @@ def execute_scripts_in_order(
 
 # Removed discover_script_with_config_validation - it was redundant
 # Script paths are now properly extracted from config via extract_script_path_from_config()
-
-
-def resolve_script_dependencies(
-    node_name: str,
-    script_outputs: Dict[str, Dict[str, str]],
-    node_inputs: Dict[str, Any],
-    dependency_resolver
-) -> Dict[str, Any]:
-    """
-    Resolve script dependencies using existing UnifiedDependencyResolver.
-    
-    This function directly reuses the existing dependency resolution system
-    instead of reimplementing it.
-    
-    Args:
-        node_name: Name of the current script
-        script_outputs: Outputs from previously executed scripts
-        node_inputs: User-provided inputs for this script
-        dependency_resolver: Existing UnifiedDependencyResolver instance
-        
-    Returns:
-        Dictionary with resolved input paths and parameters
-    """
-    try:
-        # DIRECT REUSE: Existing dependency resolver
-        # This would use dependency_resolver.resolve_script_dependencies()
-        # For now, simple implementation
-        
-        resolved_inputs = node_inputs.copy()
-        
-        # Add outputs from dependent scripts
-        for dep_name, dep_outputs in script_outputs.items():
-            for output_name, output_path in dep_outputs.items():
-                resolved_inputs[f"{dep_name}_{output_name}"] = output_path
-        
-        return resolved_inputs
-        
-    except Exception as e:
-        logger.error(f"Dependency resolution failed for {node_name}: {e}")
-        return node_inputs
 
 
 def execute_single_script(script_path: str, input_paths: Dict[str, str], 
@@ -622,6 +573,70 @@ def install_package(package_name: str) -> None:
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to install {package_name}: {e}")
         raise
+
+
+def execute_scripts_with_registry_coordination(dag: PipelineDAG, registry) -> Dict[str, Any]:
+    """
+    Execute scripts with registry coordination and message passing.
+    
+    This function uses the ScriptExecutionRegistry to coordinate script execution
+    with automatic message passing between nodes.
+    
+    Args:
+        dag: PipelineDAG instance
+        registry: ScriptExecutionRegistry instance
+        
+    Returns:
+        Dictionary with execution results and metadata
+    """
+    script_results = {}
+    successful_scripts = 0
+    execution_order = dag.topological_sort()
+    
+    for node_name in execution_order:
+        try:
+            # Get ready inputs from registry (Integration Point 5)
+            script_inputs = registry.get_ready_node_inputs(node_name)
+            
+            if not script_inputs or 'script_path' not in script_inputs:
+                logger.warning(f"⚠️  {node_name} has no script configuration, skipping")
+                continue
+            
+            logger.info(f"🔄 Executing {node_name} with registry coordination")
+            
+            # Execute script with registry-coordinated inputs
+            result = execute_single_script(
+                script_path=script_inputs['script_path'],
+                input_paths=script_inputs.get('input_paths', {}),
+                output_paths=script_inputs.get('output_paths', {}),
+                environ_vars=script_inputs.get('environment_variables', {}),
+                job_args=script_inputs.get('job_arguments', {})
+            )
+            
+            script_results[node_name] = result
+            
+            # Commit execution results to registry (Integration Point 6)
+            registry.commit_execution_results(node_name, result)
+            
+            if result.success:
+                successful_scripts += 1
+                logger.info(f"✅ {node_name} completed successfully")
+            else:
+                logger.error(f"❌ {node_name} failed: {result.error_message}")
+                
+        except Exception as e:
+            error_result = ScriptTestResult(success=False, error_message=f"Execution failed: {e}")
+            script_results[node_name] = error_result
+            registry.commit_execution_results(node_name, error_result)
+            logger.error(f"❌ {node_name} failed with exception: {e}")
+    
+    return {
+        'pipeline_success': successful_scripts == len([n for n in execution_order if registry.get_ready_node_inputs(n)]),
+        'script_results': script_results,
+        'execution_order': execution_order,
+        'total_scripts': len(execution_order),
+        'successful_scripts': successful_scripts
+    }
 
 
 def import_and_execute_script(script_path: str, input_paths: Dict[str, str], 

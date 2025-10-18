@@ -21,29 +21,31 @@ logger = logging.getLogger(__name__)
 
 class ScriptTestingInputCollector:
     """
-    Extends DAGConfigFactory patterns for script input collection.
+    Enhanced with optional two-phase dependency resolution.
     
     This class reuses the existing 600+ lines of proven interactive collection
-    patterns instead of reimplementing them, achieving maximum infrastructure reuse.
+    patterns and optionally integrates with the two-phase dependency resolution system.
     """
     
-    def __init__(self, dag: PipelineDAG, config_path: str):
+    def __init__(self, dag: PipelineDAG, config_path: str, use_dependency_resolution: bool = True):
         """
         Initialize with DAG and config path.
         
         Args:
             dag: PipelineDAG instance
             config_path: Path to pipeline configuration JSON file
+            use_dependency_resolution: Whether to use two-phase dependency resolution
         """
         # REUSE: Existing DAGConfigFactory infrastructure (600+ lines of proven patterns)
         self.dag_factory = DAGConfigFactory(dag)
         self.dag = dag
         self.config_path = config_path
+        self.use_dependency_resolution = use_dependency_resolution
         
         # Load configs for script validation
         self.loaded_configs = self._load_and_filter_configs()
         
-        logger.info(f"Initialized ScriptTestingInputCollector with {len(self.loaded_configs)} configs")
+        logger.info(f"Initialized ScriptTestingInputCollector with {len(self.loaded_configs)} configs, dependency_resolution={use_dependency_resolution}")
     
     def _load_and_filter_configs(self) -> Dict[str, Any]:
         """
@@ -70,10 +72,33 @@ class ScriptTestingInputCollector:
     
     def collect_script_inputs_for_dag(self) -> Dict[str, Any]:
         """
-        Collect script inputs using existing interactive patterns.
+        Enhanced collection with optional two-phase dependency resolution.
         
-        This method extends DAGConfigFactory patterns for script testing while
-        eliminating phantom scripts through config-based validation.
+        This method can use either two-phase dependency resolution or fallback
+        to existing interactive patterns for backward compatibility.
+        
+        Returns:
+            Dictionary mapping script names to their input configurations
+        """
+        
+        if self.use_dependency_resolution:
+            # NEW: Use two-phase dependency resolution
+            from .script_dependency_matcher import resolve_script_dependencies
+            
+            logger.info("Using two-phase dependency resolution for input collection")
+            return resolve_script_dependencies(
+                dag=self.dag,
+                config_path=self.config_path,
+                step_catalog=StepCatalog()
+            )
+        else:
+            # FALLBACK: Use existing manual collection for backward compatibility
+            logger.info("Using manual input collection (legacy mode)")
+            return self._collect_inputs_manually()
+    
+    def _collect_inputs_manually(self) -> Dict[str, Any]:
+        """
+        Existing manual collection logic (unchanged for backward compatibility).
         
         Returns:
             Dictionary mapping script names to their input configurations
