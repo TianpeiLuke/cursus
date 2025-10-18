@@ -5,6 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-10-17
+
+### Added
+- **Script Testing Infrastructure** - Revolutionary new script testing framework for ML pipeline validation
+  - **Script Execution Registry** - Complete registry system for managing script execution contexts and dependencies
+  - **Script Dependency Matcher** - Advanced dependency resolution system for script testing with intelligent matching
+  - **Script Input Resolver** - Comprehensive input resolution system for script testing with contract-based validation
+  - **Interactive Script Testing API** - New API for interactive script testing with Jupyter notebook integration
+  - **Script Testing CLI** - Command-line interface for script testing operations and validation
+
+- **Enhanced Validation Framework** - Major expansion of validation capabilities for script testing
+  - **Input Collection System** - Advanced input collection with registry integration and dependency resolution
+  - **Contract-Based Testing** - Script testing using contract definitions for input and output validation
+  - **Message Passing System** - Sophisticated message passing for script testing with dependency resolution support
+  - **Test Registry Integration** - Full integration between script testing and execution registry systems
+
+- **Comprehensive Test Suite** - Extensive test coverage for script testing functionality
+  - **Script Testing Tests** - Complete test suite for dummy data loading, missing value imputation, model metrics computation
+  - **Stratified Sampling Tests** - Enhanced tests for stratified sampling with comprehensive validation
+  - **XGBoost Model Inference Tests** - Comprehensive test suite for XGBoost model inference scripts
+  - **Registry Integration Tests** - Tests for registry integration with input collection and dependency resolution
+
+- **Interactive Development Tools** - Enhanced tools for interactive script development and testing
+  - **Refactored Interactive Notebook** - New refactored notebook for interactive script testing with improved functionality
+  - **Script Testing Documentation** - Comprehensive documentation for script testing implementation and design
+  - **Implementation Plans** - Detailed implementation plans for dependency resolution and input collection
+
+### Enhanced
+- **Pipeline Template System** - Major improvements to pipeline template handling
+  - **Template State Management** - Enhanced template state management in pipeline DAG compiler
+  - **Execution Document Integration** - Improved integration between pipeline compilation and execution document generation
+  - **Template Metadata Population** - Better metadata population during pipeline compilation process
+
+- **CLI System Improvements** - Enhanced command-line interface capabilities
+  - **Script Testing CLI** - New CLI module for script testing operations replacing runtime testing CLI
+  - **Improved Integration** - Better integration between CLI components and validation systems
+  - **Enhanced Error Handling** - Improved error handling and user experience in CLI operations
+
+- **Code Organization and Architecture** - Major architectural improvements and code cleanup
+  - **Module Refactoring** - Complete refactoring of runtime testing module to script testing module
+  - **Code Redundancy Reduction** - Significant reduction in code redundancy through architectural improvements
+  - **Simplified Architecture** - Streamlined architecture with clearer separation of concerns
+  - **Enhanced Modularity** - Improved modularity with better component isolation and reusability
+
+### Fixed
+- **Runtime Testing Migration** - Complete migration from runtime testing to script testing architecture
+  - **Module Restructuring** - Moved from `cursus.script_testing` to `cursus.validation.script_testing` for better organization
+  - **Legacy Code Removal** - Removed deprecated runtime testing modules and replaced with script testing framework
+  - **Import Path Updates** - Updated all import paths to reflect new script testing architecture
+  - **Test Infrastructure Migration** - Migrated test infrastructure to support new script testing framework
+
+- **Pipeline Compilation Issues** - Critical fixes to pipeline compilation and template handling
+  - **Template State Issues** - Fixed template state management issues in pipeline DAG compiler
+  - **Execution Document Generation** - Fixed timing issues with execution document generation and template metadata
+  - **Compilation Sequencing** - Improved sequencing of compilation and document filling operations
+
+- **Code Quality Improvements** - Major code quality enhancements through refactoring
+  - **Redundant Code Elimination** - Removed significant amounts of redundant code through architectural improvements
+  - **Module Organization** - Better organization of modules with clearer responsibilities and boundaries
+  - **Import Cleanup** - Cleaned up import statements and dependencies throughout the codebase
+
+### Technical Details
+- **Script Testing Architecture** - Complete script testing framework with registry, dependency resolution, and input collection
+- **Dependency Resolution System** - Advanced dependency resolution with message passing and contract-based validation
+- **Interactive Testing Framework** - Comprehensive framework for interactive script testing with Jupyter integration
+- **Registry Integration** - Full integration between script execution registry and testing infrastructure
+- **Code Reduction Metrics** - Significant code reduction through architectural improvements and redundancy elimination
+
+### Quality Assurance
+- **Comprehensive Testing** - Extensive test coverage for all script testing components and functionality
+- **Integration Validation** - Thorough validation of integration between script testing and existing systems
+- **Documentation Quality** - Enhanced documentation with detailed implementation plans and design documents
+- **Code Standardization** - Improved code quality through refactoring and architectural improvements
+
+### Performance Improvements
+- **Script Testing Performance** - Optimized script testing execution with improved dependency resolution and input collection
+- **Registry Operations** - Enhanced performance of registry operations with better caching and optimization
+- **Template Processing** - Improved template processing performance with better state management
+- **CLI Responsiveness** - Enhanced CLI responsiveness with optimized script testing operations
+
 ## [1.3.9] - 2025-10-16
 
 ### Added
