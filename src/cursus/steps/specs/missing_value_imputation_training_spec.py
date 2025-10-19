@@ -56,7 +56,23 @@ MISSING_VALUE_IMPUTATION_TRAINING_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Processed training data from preprocessing steps for missing value imputation",
-        )
+        ),
+        # Imputation parameters dependency - optional for training mode since training creates them
+        DependencySpec(
+            logical_name="imputation_params",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,
+            compatible_sources=["MissingValueImputation_Training", "ProcessingStep"],
+            semantic_keywords=[
+                "imputation_parameters",
+                "fitted_imputers",
+                "imputation_artifacts",
+                "imputation_model",
+                "training_artifacts",
+            ],
+            data_type="S3Uri",
+            description="Optional pre-existing imputation parameters (training mode creates new ones if not provided)",
+        ),
     ],
     outputs=[
         OutputSpec(
@@ -85,7 +101,7 @@ MISSING_VALUE_IMPUTATION_TRAINING_SPEC = StepSpecification(
                 "training_artifacts",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['data_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['imputation_params'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Fitted imputation parameters from training data for inference mode",
         ),
