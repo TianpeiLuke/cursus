@@ -12,7 +12,7 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     entry_point="missing_value_imputation.py",
     expected_input_paths={
         "data_input": "/opt/ml/processing/input/data",
-        "imputation_params_input": "/opt/ml/processing/input/imputation_params",  # Optional for non-training modes
+        "imputation_params_input": "/opt/ml/processing/input/imputation_params",  # Optional for training modes
     },
     expected_output_paths={
         "data_output": "/opt/ml/processing/output",
