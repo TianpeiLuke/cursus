@@ -27,8 +27,8 @@ from sklearn.metrics import (
 # -------------------------------------------------------------------------
 # Assuming the processor is in a directory that can be imported
 # -------------------------------------------------------------------------
-from ...processing.risk_table_processor import RiskTableMappingProcessor
-from ...processing.numerical_imputation_processor import (
+from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from ...processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 

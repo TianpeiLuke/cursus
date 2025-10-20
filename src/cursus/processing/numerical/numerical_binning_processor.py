@@ -6,7 +6,7 @@ import json
 import logging
 
 
-from .processors import Processor
+from ..processors import Processor
 
 
 logger = logging.getLogger(__name__)

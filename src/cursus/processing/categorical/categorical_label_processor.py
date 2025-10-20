@@ -1,6 +1,6 @@
 # processor/categorical_label_processor.py
 from typing import List
-from .processors import Processor
+from ..processors import Processor
 
 
 class CategoricalLabelProcessor(Processor):

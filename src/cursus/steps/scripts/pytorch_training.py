@@ -31,18 +31,18 @@ warnings.filterwarnings("ignore")
 from ...processing.processors import (
     Processor,
 )
-from ...processing.bsm_processor import (
+from ...processing.nlp.bsm_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from ...processing.bert_tokenize_processor import TokenizationProcessor
-from ...processing.categorical_label_processor import CategoricalLabelProcessor
-from ...processing.multiclass_label_processor import MultiClassLabelProcessor
-from ...processing.bsm_datasets import BSMDataset
-from ...processing.bsm_dataloader import build_collate_batch
+from ...processing.nlp.bert_tokenize_processor import TokenizationProcessor
+from ...processing.categorical.categorical_label_processor import CategoricalLabelProcessor
+from ...processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from ...processing.datasets.bsm_datasets import BSMDataset
+from ...processing.dataloaders.bsm_dataloader import build_collate_batch
 from lightning_models.pl_tab_ae import TabAE
 from lightning_models.pl_text_cnn import TextCNN
 from lightning_models.pl_multimodal_cnn import MultimodalCNN

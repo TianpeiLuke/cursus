@@ -1,7 +1,7 @@
 import re
 from typing import List, Union, Optional, Dict
 
-from .processors import Processor
+from ..processors import Processor
 
 
 class CSChatSplitterProcessor(Processor):

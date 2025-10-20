@@ -2,7 +2,7 @@ import re
 from bs4 import BeautifulSoup
 from typing import List, Union, Dict, Optional
 
-from .processors import Processor
+from ..processors import Processor
 
 
 # Processor 1: Text Normalization

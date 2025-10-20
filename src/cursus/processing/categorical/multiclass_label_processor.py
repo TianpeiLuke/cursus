@@ -2,7 +2,7 @@ import numpy as np
 from typing import List, Union, Optional, Dict
 
 
-from .processors import Processor
+from ..processors import Processor
 
 
 class MultiClassLabelProcessor(Processor):
