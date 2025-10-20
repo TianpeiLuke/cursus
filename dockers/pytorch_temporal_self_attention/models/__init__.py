@@ -4,11 +4,13 @@ Models package for Temporal Self-Attention architecture.
 This package contains the core model components for the TSA framework.
 """
 
-from .categorical_transformer import (
-    CategoricalTransformer,
+# Import from categorical embeddings module
+from .categorical_embeddings import (
     PyTorchCategoricalTransformer,
-    create_categorical_transformer,
-    create_pytorch_categorical_transformer
+    CategoricalEmbeddingLayer,
+    MultiCategoricalEmbedding,
+    create_pytorch_categorical_transformer,
+    create_multi_categorical_embedding
 )
 
 from .order_attention_layer import (
@@ -37,14 +39,13 @@ from .two_seq_moe_order_feature_attention_classifier import (
     create_two_seq_moe_order_feature_attention_classifier
 )
 
-__version__ = "1.0.0"
-
 __all__ = [
-    # Categorical Transformer
-    "CategoricalTransformer",
-    "PyTorchCategoricalTransformer", 
-    "create_categorical_transformer",
+    # Categorical Embeddings
+    "PyTorchCategoricalTransformer",
+    "CategoricalEmbeddingLayer",
+    "MultiCategoricalEmbedding", 
     "create_pytorch_categorical_transformer",
+    "create_multi_categorical_embedding",
     
     # Order Attention Components
     "OrderAttentionLayer",

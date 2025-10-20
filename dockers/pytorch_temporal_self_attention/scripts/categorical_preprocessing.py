@@ -1,13 +1,12 @@
 """
-Categorical Transformer Module for Temporal Self-Attention Model
+Categorical Preprocessing Module for Temporal Self-Attention Model
 
-This module provides categorical feature transformation capabilities with
-PyTorch integration and improved performance for deep learning workflows.
+This module provides categorical feature preprocessing capabilities for
+data pipeline integration and sklearn compatibility.
 """
 
 import numpy as np
 import torch
-import torch.nn as nn
 from typing import Dict, List, Optional, Union, Any
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -297,75 +296,6 @@ class CategoricalTransformer(BaseEstimator, TransformerMixin):
         return self.__repr__()
 
 
-class PyTorchCategoricalTransformer(nn.Module):
-    """
-    PyTorch-native categorical transformer for end-to-end training.
-    
-    This class provides a PyTorch module that can be integrated into
-    neural network architectures for learnable categorical transformations.
-    """
-    
-    def __init__(self, 
-                 vocab_sizes: Dict[str, int],
-                 embedding_dims: Dict[str, int],
-                 column_indices: Dict[str, int],
-                 dropout: float = 0.0):
-        """
-        Initialize PyTorchCategoricalTransformer.
-        
-        Args:
-            vocab_sizes: Dictionary mapping column names to vocabulary sizes
-            embedding_dims: Dictionary mapping column names to embedding dimensions
-            column_indices: Dictionary mapping column names to column indices
-            dropout: Dropout rate for embeddings
-        """
-        super().__init__()
-        
-        self.vocab_sizes = vocab_sizes
-        self.embedding_dims = embedding_dims
-        self.column_indices = column_indices
-        
-        # Create embedding layers for each categorical feature
-        self.embeddings = nn.ModuleDict()
-        for col_name, vocab_size in vocab_sizes.items():
-            embed_dim = embedding_dims.get(col_name, min(50, vocab_size // 2))
-            self.embeddings[col_name] = nn.Embedding(
-                vocab_size, embed_dim, padding_idx=0
-            )
-        
-        # Dropout layer
-        self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-    
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
-        """
-        Forward pass through categorical embeddings.
-        
-        Args:
-            x: Input tensor of categorical indices
-            
-        Returns:
-            Dictionary mapping column names to embedded representations
-        """
-        embeddings = {}
-        
-        for col_name, col_idx in self.column_indices.items():
-            if col_idx < x.shape[-1]:
-                # Extract column and apply embedding
-                col_data = x[..., col_idx].long()
-                embedded = self.embeddings[col_name](col_data)
-                embeddings[col_name] = self.dropout(embedded)
-        
-        return embeddings
-    
-    def get_embedding_dim(self, column_name: str) -> int:
-        """Get embedding dimension for a specific column."""
-        return self.embeddings[column_name].embedding_dim
-    
-    def get_total_embedding_dim(self) -> int:
-        """Get total embedding dimension across all columns."""
-        return sum(emb.embedding_dim for emb in self.embeddings.values())
-
-
 def create_categorical_transformer(categorical_map: Dict[str, Dict[str, int]], 
                                  columns_list: List[str],
                                  default_value: int = 0,
@@ -387,34 +317,4 @@ def create_categorical_transformer(categorical_map: Dict[str, Dict[str, int]],
         columns_list=columns_list,
         default_value=default_value,
         handle_unknown=handle_unknown
-    )
-
-
-def create_pytorch_categorical_transformer(vocab_sizes: Dict[str, int],
-                                         embedding_dims: Optional[Dict[str, int]] = None,
-                                         column_indices: Optional[Dict[str, int]] = None,
-                                         dropout: float = 0.0) -> PyTorchCategoricalTransformer:
-    """
-    Factory function to create PyTorchCategoricalTransformer instance.
-    
-    Args:
-        vocab_sizes: Dictionary mapping column names to vocabulary sizes
-        embedding_dims: Dictionary mapping column names to embedding dimensions
-        column_indices: Dictionary mapping column names to column indices
-        dropout: Dropout rate for embeddings
-        
-    Returns:
-        Configured PyTorchCategoricalTransformer instance
-    """
-    if embedding_dims is None:
-        embedding_dims = {col: min(50, size // 2) for col, size in vocab_sizes.items()}
-    
-    if column_indices is None:
-        column_indices = {col: i for i, col in enumerate(vocab_sizes.keys())}
-    
-    return PyTorchCategoricalTransformer(
-        vocab_sizes=vocab_sizes,
-        embedding_dims=embedding_dims,
-        column_indices=column_indices,
-        dropout=dropout
     )
