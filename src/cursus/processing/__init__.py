@@ -21,6 +21,15 @@ from .categorical.multiclass_label_processor import MultiClassLabelProcessor
 from .numerical.numerical_imputation_processor import NumericalVariableImputationProcessor
 from .numerical.numerical_binning_processor import NumericalBinningProcessor
 
+# Import atomic processors
+from .temporal.time_delta_processor import TimeDeltaProcessor
+from .temporal.sequence_padding_processor import SequencePaddingProcessor
+from .temporal.sequence_ordering_processor import SequenceOrderingProcessor
+from .temporal.temporal_mask_processor import TemporalMaskProcessor
+from .categorical.dictionary_encoding_processor import DictionaryEncodingProcessor
+from .categorical.categorical_imputation_processor import CategoricalImputationProcessor
+from .numerical.minmax_scaling_processor import MinMaxScalingProcessor
+
 # Import text/NLP processors (with optional dependency handling)
 try:
     from .nlp.bert_tokenize_processor import BertTokenizeProcessor
@@ -70,6 +79,14 @@ __all__ = [
     "MultiClassLabelProcessor",
     "NumericalVariableImputationProcessor",
     "NumericalBinningProcessor",
+    # Atomic processors
+    "TimeDeltaProcessor",
+    "SequencePaddingProcessor",
+    "SequenceOrderingProcessor",
+    "TemporalMaskProcessor",
+    "DictionaryEncodingProcessor",
+    "CategoricalImputationProcessor",
+    "MinMaxScalingProcessor",
 ]
 
 # Add optional processors to __all__ if they're available
