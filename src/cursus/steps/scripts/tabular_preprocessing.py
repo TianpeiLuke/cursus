@@ -19,6 +19,41 @@ from sklearn.model_selection import train_test_split
 # --- Helper Functions ---
 
 
+def load_signature_columns(signature_path: str) -> Optional[list]:
+    """
+    Load column names from signature file.
+    
+    Args:
+        signature_path: Path to the signature file directory
+        
+    Returns:
+        List of column names if signature file exists, None otherwise
+    """
+    signature_dir = Path(signature_path)
+    if not signature_dir.exists():
+        return None
+        
+    # Look for signature file in the directory
+    signature_files = list(signature_dir.glob("*"))
+    if not signature_files:
+        return None
+        
+    # Use the first file found (typically named 'signature')
+    signature_file = signature_files[0]
+    
+    try:
+        with open(signature_file, 'r') as f:
+            content = f.read().strip()
+            if content:
+                # Split by comma and strip whitespace
+                columns = [col.strip() for col in content.split(',')]
+                return columns
+    except Exception as e:
+        raise RuntimeError(f"Error reading signature file {signature_file}: {e}")
+    
+    return None
+
+
 def _is_gzipped(path: str) -> bool:
     return path.lower().endswith(".gz")
 
@@ -64,7 +99,7 @@ def _read_json_file(file_path: Path) -> pd.DataFrame:
         return pd.json_normalize(data if isinstance(data, list) else [data])
 
 
-def _read_file_to_df(file_path: Path) -> pd.DataFrame:
+def _read_file_to_df(file_path: Path, column_names: Optional[list] = None) -> pd.DataFrame:
     """Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame."""
     suffix = file_path.suffix.lower()
     if suffix == ".gz":
@@ -72,7 +107,12 @@ def _read_file_to_df(file_path: Path) -> pd.DataFrame:
         if inner_ext in [".csv", ".tsv"]:
             with gzip.open(str(file_path), "rt") as f:
                 sep = _detect_separator_from_sample(f.readline() + f.readline())
-            return pd.read_csv(str(file_path), sep=sep, compression="gzip")
+            # Use column names from signature if provided for CSV/TSV files
+            if column_names:
+                return pd.read_csv(str(file_path), sep=sep, compression="gzip", 
+                                 names=column_names, header=0)
+            else:
+                return pd.read_csv(str(file_path), sep=sep, compression="gzip")
         elif inner_ext == ".json":
             return _read_json_file(file_path)
         elif inner_ext.endswith(".parquet"):
@@ -89,7 +129,11 @@ def _read_file_to_df(file_path: Path) -> pd.DataFrame:
     elif suffix in [".csv", ".tsv"]:
         with open(str(file_path), "rt") as f:
             sep = _detect_separator_from_sample(f.readline() + f.readline())
-        return pd.read_csv(str(file_path), sep=sep)
+        # Use column names from signature if provided for CSV/TSV files
+        if column_names:
+            return pd.read_csv(str(file_path), sep=sep, names=column_names, header=0)
+        else:
+            return pd.read_csv(str(file_path), sep=sep)
     elif suffix == ".json":
         return _read_json_file(file_path)
     elif suffix.endswith(".parquet"):
@@ -98,7 +142,7 @@ def _read_file_to_df(file_path: Path) -> pd.DataFrame:
         raise ValueError(f"Unsupported file type: {file_path}")
 
 
-def combine_shards(input_dir: str) -> pd.DataFrame:
+def combine_shards(input_dir: str, signature_columns: Optional[list] = None) -> pd.DataFrame:
     """Detect and combine all supported data shards in a directory."""
     input_path = Path(input_dir)
     if not input_path.is_dir():
@@ -116,7 +160,7 @@ def combine_shards(input_dir: str) -> pd.DataFrame:
     if not all_shards:
         raise RuntimeError(f"No CSV/JSON/Parquet shards found under {input_dir}")
     try:
-        dfs = [_read_file_to_df(shard) for shard in all_shards]
+        dfs = [_read_file_to_df(shard, signature_columns) for shard in all_shards]
         return pd.concat(dfs, axis=0, ignore_index=True)
     except Exception as e:
         raise RuntimeError(f"Failed to read or concatenate shards: {e}")
@@ -152,8 +196,9 @@ def main(
     test_val_ratio = float(environ_vars.get("TEST_VAL_RATIO", 0.5))
 
     # Extract paths
-    input_data_dir = input_paths.get("data_input", "/opt/ml/processing/input/data")
-    output_dir = output_paths.get("data_output", "/opt/ml/processing/output")
+    input_data_dir = input_paths.get("DATA", "/opt/ml/processing/input/data")
+    input_signature_dir = input_paths.get("SIGNATURE", "/opt/ml/processing/input/signature")
+    output_dir = output_paths.get("processed_data", "/opt/ml/processing/output")
     # Use print function if no logger is provided
     log = logger or print
 
@@ -161,12 +206,19 @@ def main(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # 2. Combine data shards
+    # 2. Load signature columns if available
+    signature_columns = load_signature_columns(input_signature_dir)
+    if signature_columns:
+        log(f"[INFO] Loaded signature with {len(signature_columns)} columns")
+    else:
+        log("[INFO] No signature file found, using default column handling")
+
+    # 3. Combine data shards
     log(f"[INFO] Combining data shards from {input_data_dir}…")
-    df = combine_shards(input_data_dir)
+    df = combine_shards(input_data_dir, signature_columns)
     log(f"[INFO] Combined data shape: {df.shape}")
 
-    # 3. Process columns and labels
+    # 4. Process columns and labels
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
     if label_field not in df.columns:
         raise RuntimeError(
@@ -183,7 +235,7 @@ def main(
     df[label_field] = df[label_field].astype(int)
     log(f"[INFO] Data shape after cleaning labels: {df.shape}")
 
-    # 4. Split data if training, otherwise use the job_type as the single split
+    # 5. Split data if training, otherwise use the job_type as the single split
     if job_type == "training":
         train_df, holdout_df = train_test_split(
             df, train_size=train_ratio, random_state=42, stratify=df[label_field]
@@ -198,7 +250,7 @@ def main(
     else:
         splits = {job_type: df}
 
-    # 5. Save output files
+    # 6. Save output files
     for split_name, split_df in splits.items():
         subfolder = output_path / split_name
         subfolder.mkdir(exist_ok=True)
@@ -233,6 +285,7 @@ if __name__ == "__main__":
 
         # Define standard SageMaker paths - use contract-declared paths directly
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"
+        INPUT_SIGNATURE_DIR = "/opt/ml/processing/input/signature"
         OUTPUT_DIR = "/opt/ml/processing/output"
 
         # Set up logging
@@ -250,12 +303,16 @@ if __name__ == "__main__":
         logger.info(f"  Train Ratio: {TRAIN_RATIO}")
         logger.info(f"  Test/Val Ratio: {TEST_VAL_RATIO}")
         logger.info(f"  Input Directory: {INPUT_DATA_DIR}")
+        logger.info(f"  Input Signature Directory: {INPUT_SIGNATURE_DIR}")
         logger.info(f"  Output Directory: {OUTPUT_DIR}")
 
         # Set up path dictionaries
-        input_paths = {"data_input": INPUT_DATA_DIR}
+        input_paths = {
+            "DATA": INPUT_DATA_DIR,
+            "SIGNATURE": INPUT_SIGNATURE_DIR
+        }
 
-        output_paths = {"data_output": OUTPUT_DIR}
+        output_paths = {"processed_data": OUTPUT_DIR}
 
         # Environment variables dictionary
         environ_vars = {

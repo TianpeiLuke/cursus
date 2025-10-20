@@ -32,7 +32,7 @@ TABULAR_PREPROCESSING_VALIDATION_SPEC = StepSpecification(
             logical_name="DATA",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=["CradleDataLoading", "DataLoad", "ProcessingStep"],
+            compatible_sources=["CradleDataLoading", "DummyDataLoading", "DataLoad", "ProcessingStep"],
             semantic_keywords=[
                 "validation",
                 "val",
@@ -47,6 +47,22 @@ TABULAR_PREPROCESSING_VALIDATION_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Raw validation data for preprocessing",
+        ),
+        DependencySpec(
+            logical_name="SIGNATURE",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,
+            compatible_sources=["CradleDataLoading", "DummyDataLoading"],
+            semantic_keywords=[
+                "signature",
+                "schema",
+                "columns",
+                "column_names",
+                "metadata",
+                "header",
+            ],
+            data_type="S3Uri",
+            description="Column signature file for CSV/TSV data preprocessing",
         )
     ],
     outputs=[

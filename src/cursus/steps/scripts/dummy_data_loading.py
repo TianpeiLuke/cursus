@@ -275,10 +275,13 @@ def process_data_files(data_files: List[Path]) -> pd.DataFrame:
 
 def write_signature_file(signature: List[str], output_dir: Path) -> Path:
     """
-    Write the signature file to the output directory.
+    Write the signature file to the output directory in CSV format.
+    
+    The signature file contains column names separated by commas, matching
+    the format expected by tabular_preprocessing script.
     
     Args:
-        signature: Schema signature dictionary
+        signature: Schema signature list of column names
         output_dir: Output directory path
         
     Returns:
@@ -290,10 +293,11 @@ def write_signature_file(signature: List[str], output_dir: Path) -> Path:
     logger.info(f"Writing signature file: {signature_file}")
     
     try:
+        # Write signature as comma-separated values (CSV format)
         with open(signature_file, 'w') as f:
-            json.dump(signature, f, indent=2)
+            f.write(','.join(signature))
         
-        logger.info("Signature file written successfully")
+        logger.info(f"Signature file written successfully with {len(signature)} columns")
         return signature_file
         
     except Exception as e:

@@ -9,7 +9,10 @@ from ...core.base.contract_base import ScriptContract
 
 TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     entry_point="tabular_preprocessing.py",
-    expected_input_paths={"DATA": "/opt/ml/processing/input/data"},
+    expected_input_paths={
+        "DATA": "/opt/ml/processing/input/data",
+        "SIGNATURE": "/opt/ml/processing/input/signature"
+    },
     expected_output_paths={"processed_data": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - job_type comes from config
@@ -29,20 +32,30 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     description="""
     Tabular preprocessing script that:
     1. Combines data shards from input directory
-    2. Cleans and processes label field
-    3. Splits data into train/test/val for training jobs
-    4. Outputs processed CSV files by split
+    2. Loads column signature for CSV/TSV files if provided
+    3. Cleans and processes label field
+    4. Splits data into train/test/val for training jobs
+    5. Outputs processed CSV files by split
     
     Contract aligned with actual script implementation:
-    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data
+    - Inputs: 
+      * DATA (required) - reads from /opt/ml/processing/input/data
+      * SIGNATURE (optional) - reads from /opt/ml/processing/input/signature
     - Outputs: processed_data (primary) - writes to /opt/ml/processing/output
     - Arguments: job_type (required) - defines processing mode (training/validation/testing)
     
     Script Implementation Details:
     - Reads data shards (CSV, JSON, Parquet) from input/data directory
+    - Loads signature file containing column names for CSV/TSV files
     - Supports gzipped files and various formats
+    - Uses signature column names for CSV/TSV files when available
     - Processes labels (converts categorical to numeric if needed)
     - Splits data based on job_type (training creates train/test/val splits)
     - Outputs processed files to split subdirectories under /opt/ml/processing/output
+    
+    Signature File Format:
+    - CSV format with comma-separated column names
+    - Applied only to CSV/TSV files, ignored for JSON/Parquet formats
+    - Backward compatible - works without signature file
     """,
 )
