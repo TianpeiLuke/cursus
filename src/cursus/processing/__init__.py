@@ -28,7 +28,10 @@ from .temporal.sequence_ordering_processor import SequenceOrderingProcessor
 from .temporal.temporal_mask_processor import TemporalMaskProcessor
 from .categorical.dictionary_encoding_processor import DictionaryEncodingProcessor
 from .categorical.categorical_imputation_processor import CategoricalImputationProcessor
+from .categorical.numerical_categorical_processor import NumericalCategoricalProcessor
+from .categorical.categorical_validation_processor import CategoricalValidationProcessor
 from .numerical.minmax_scaling_processor import MinMaxScalingProcessor
+from .numerical.feature_normalization_processor import FeatureNormalizationProcessor
 
 # Import text/NLP processors (with optional dependency handling)
 try:
@@ -86,7 +89,10 @@ __all__ = [
     "TemporalMaskProcessor",
     "DictionaryEncodingProcessor",
     "CategoricalImputationProcessor",
+    "NumericalCategoricalProcessor",
+    "CategoricalValidationProcessor",
     "MinMaxScalingProcessor",
+    "FeatureNormalizationProcessor",
 ]
 
 # Add optional processors to __all__ if they're available
