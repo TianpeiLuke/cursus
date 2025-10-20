@@ -196,9 +196,9 @@ def main(
     test_val_ratio = float(environ_vars.get("TEST_VAL_RATIO", 0.5))
 
     # Extract paths
-    input_data_dir = input_paths.get("DATA", "/opt/ml/processing/input/data")
-    input_signature_dir = input_paths.get("SIGNATURE", "/opt/ml/processing/input/signature")
-    output_dir = output_paths.get("processed_data", "/opt/ml/processing/output")
+    input_data_dir = input_paths["DATA"]
+    input_signature_dir = input_paths["SIGNATURE"]
+    output_dir = output_paths["processed_data"]
     # Use print function if no logger is provided
     log = logger or print
 
