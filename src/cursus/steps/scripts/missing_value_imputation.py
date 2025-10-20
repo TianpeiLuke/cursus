@@ -742,6 +742,7 @@ def internal_main(
     imputation_config: Dict[str, Any],
     label_field: str,
     imputation_params_input_dir: Optional[str] = None,
+    imputation_params_output_dir: Optional[str] = None,
     load_data_func: Callable = load_split_data,
     save_data_func: Callable = save_output_data,
 ) -> Tuple[Dict[str, pd.DataFrame], SimpleImputationEngine]:
@@ -794,7 +795,10 @@ def internal_main(
 
     # Save fitted artifacts (only for training jobs)
     if job_type == "training":
-        save_imputation_artifacts(imputation_engine, imputation_config, output_path)
+        # Use imputation_params_output_dir if provided, otherwise fall back to output_path
+        params_output_path = Path(imputation_params_output_dir) if imputation_params_output_dir else output_path
+        params_output_path.mkdir(parents=True, exist_ok=True)
+        save_imputation_artifacts(imputation_engine, imputation_config, params_output_path)
 
     # Generate comprehensive report
     if transformed_data:
@@ -868,6 +872,9 @@ def main(
         imputation_config = load_imputation_config(environ_vars)
         label_field = environ_vars.get("LABEL_FIELD", "target")
 
+        # Get imputation parameters output directory
+        imputation_params_output_dir = output_paths.get("imputation_params")
+
         # Execute the internal main logic
         return internal_main(
             job_type=job_type,
@@ -876,6 +883,7 @@ def main(
             imputation_config=imputation_config,
             label_field=label_field,
             imputation_params_input_dir=imputation_params_input_dir,
+            imputation_params_output_dir=imputation_params_output_dir,
         )
 
     except Exception as e:
