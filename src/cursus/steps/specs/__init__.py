@@ -95,6 +95,13 @@ from .temporal_sequence_normalization_testing_spec import TEMPORAL_SEQUENCE_NORM
 from .temporal_sequence_normalization_training_spec import TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC
 from .temporal_sequence_normalization_validation_spec import TEMPORAL_SEQUENCE_NORMALIZATION_VALIDATION_SPEC
 
+# Temporal Feature Engineering specifications
+from .temporal_feature_engineering_spec import TEMPORAL_FEATURE_ENGINEERING_SPEC
+from .temporal_feature_engineering_calibration_spec import TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC
+from .temporal_feature_engineering_testing_spec import TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC
+from .temporal_feature_engineering_training_spec import TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC
+from .temporal_feature_engineering_validation_spec import TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC
+
 __all__ = [
     # Batch Transform specifications
     "BATCH_TRANSFORM_CALIBRATION_SPEC",
@@ -170,4 +177,10 @@ __all__ = [
     "TEMPORAL_SEQUENCE_NORMALIZATION_TESTING_SPEC",
     "TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC",
     "TEMPORAL_SEQUENCE_NORMALIZATION_VALIDATION_SPEC",
+    # Temporal Feature Engineering specifications
+    "TEMPORAL_FEATURE_ENGINEERING_SPEC",
+    "TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC",
+    "TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC",
+    "TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC",
+    "TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC",
 ]

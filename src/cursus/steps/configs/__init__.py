@@ -32,6 +32,7 @@ from .config_model_metrics_computation_step import ModelMetricsComputationConfig
 from .config_model_wiki_generator_step import ModelWikiGeneratorConfig
 from .config_stratified_sampling_step import StratifiedSamplingConfig
 from .config_temporal_sequence_normalization_step import TemporalSequenceNormalizationConfig
+from .config_temporal_feature_engineering_step import TemporalFeatureEngineeringConfig
 from .config_xgboost_model_eval_step import XGBoostModelEvalConfig
 from .config_xgboost_model_inference_step import XGBoostModelInferenceConfig
 from .config_pytorch_model_step import PyTorchModelStepConfig
@@ -75,6 +76,7 @@ __all__ = [
     "ModelWikiGeneratorConfig",
     "StratifiedSamplingConfig",
     "TemporalSequenceNormalizationConfig",
+    "TemporalFeatureEngineeringConfig",
     "XGBoostModelEvalConfig",
     "XGBoostModelInferenceConfig",
     "PyTorchModelStepConfig",

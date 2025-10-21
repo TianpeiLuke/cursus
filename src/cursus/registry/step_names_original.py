@@ -52,6 +52,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Temporal sequence normalization step for machine learning models with configurable sequence operations",
     },
+    "TemporalFeatureEngineering": {
+        "config_class": "TemporalFeatureEngineeringConfig",
+        "builder_step_name": "TemporalFeatureEngineeringStepBuilder",
+        "spec_type": "TemporalFeatureEngineering",
+        "sagemaker_step_type": "Processing",
+        "description": "Temporal feature engineering step that extracts comprehensive temporal features from normalized sequences for machine learning models",
+    },
     "StratifiedSampling": {
         "config_class": "StratifiedSamplingConfig",
         "builder_step_name": "StratifiedSamplingStepBuilder",
