@@ -45,6 +45,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Tabular data preprocessing step",
     },
+    "TemporalSequenceNormalization": {
+        "config_class": "TemporalSequenceNormalizationConfig",
+        "builder_step_name": "TemporalSequenceNormalizationStepBuilder",
+        "spec_type": "TemporalSequenceNormalization",
+        "sagemaker_step_type": "Processing",
+        "description": "Temporal sequence normalization step for machine learning models with configurable sequence operations",
+    },
     "StratifiedSampling": {
         "config_class": "StratifiedSamplingConfig",
         "builder_step_name": "StratifiedSamplingStepBuilder",

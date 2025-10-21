@@ -19,6 +19,7 @@ from .builder_package_step import PackageStepBuilder
 from .builder_payload_step import PayloadStepBuilder
 from .builder_risk_table_mapping_step import RiskTableMappingStepBuilder
 from .builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
+from .builder_temporal_sequence_normalization_step import TemporalSequenceNormalizationStepBuilder
 from .builder_pytorch_training_step import PyTorchTrainingStepBuilder
 from .builder_xgboost_training_step import XGBoostTrainingStepBuilder
 from .s3_utils import S3PathHandler
@@ -38,6 +39,7 @@ __all__ = [
     "PayloadStepBuilder",
     "RiskTableMappingStepBuilder",
     "TabularPreprocessingStepBuilder",
+    "TemporalSequenceNormalizationStepBuilder",
     "PyTorchTrainingStepBuilder",
     "XGBoostTrainingStepBuilder",
     # Utilities
