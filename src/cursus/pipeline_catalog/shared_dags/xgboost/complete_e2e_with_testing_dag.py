@@ -67,7 +67,7 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     dag.add_node("CradleDataLoading_testing")  # Data load for testing
     dag.add_node("TabularPreprocessing_testing")  # Tabular preprocessing for testing
     dag.add_node("XGBoostModelInference_testing")  # Model inference step (testing)
-    dag.add_node("ModelMetricsComputation")  # Model metrics computation step (testing)
+    dag.add_node("ModelMetricsComputation_testing")  # Model metrics computation step (testing)
     dag.add_node("ModelWikiGenerator")  # Model wiki generator step (testing)
 
     # Training flow
