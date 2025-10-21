@@ -23,9 +23,17 @@ from .config_cradle_data_loading_step import (
     OutputSpecificationConfig,
     CradleJobSpecificationConfig,
 )
+from .config_dummy_data_loading_step import DummyDataLoadingConfig
 from .config_dummy_training_step import DummyTrainingConfig
+from .config_lightgbm_training_step import LightGBMTrainingConfig
+from .config_missing_value_imputation_step import MissingValueImputationConfig
 from .config_model_calibration_step import ModelCalibrationConfig
+from .config_model_metrics_computation_step import ModelMetricsComputationConfig
+from .config_model_wiki_generator_step import ModelWikiGeneratorConfig
+from .config_stratified_sampling_step import StratifiedSamplingConfig
+from .config_temporal_sequence_normalization_step import TemporalSequenceNormalizationConfig
 from .config_xgboost_model_eval_step import XGBoostModelEvalConfig
+from .config_xgboost_model_inference_step import XGBoostModelInferenceConfig
 from .config_pytorch_model_step import PyTorchModelStepConfig
 from .config_xgboost_model_step import XGBoostModelStepConfig
 from .config_package_step import PackageConfig
@@ -58,9 +66,17 @@ __all__ = [
     "BatchTransformStepConfig",
     "CurrencyConversionConfig",
     "CradleDataLoadingConfig",
+    "DummyDataLoadingConfig",
     "DummyTrainingConfig",
+    "LightGBMTrainingConfig",
+    "MissingValueImputationConfig",
     "ModelCalibrationConfig",
+    "ModelMetricsComputationConfig",
+    "ModelWikiGeneratorConfig",
+    "StratifiedSamplingConfig",
+    "TemporalSequenceNormalizationConfig",
     "XGBoostModelEvalConfig",
+    "XGBoostModelInferenceConfig",
     "PyTorchModelStepConfig",
     "XGBoostModelStepConfig",
     "PackageConfig",
