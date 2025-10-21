@@ -825,6 +825,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--job_type", type=str, required=True)
     args = parser.parse_args()
 
     # Set up paths using contract-defined paths only

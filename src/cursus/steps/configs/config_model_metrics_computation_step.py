@@ -62,6 +62,10 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         description="Entry point script for model metrics computation.",
     )
 
+    job_type: str = Field(
+        default="calibration",
+        description="Which split to evaluate on (e.g., 'training', 'calibration', 'validation', 'test').",
+    )
 
     amount_field: Optional[str] = Field(
         default="order_amount",
@@ -176,6 +180,13 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
                 "label_name must be provided (required by model metrics computation contract)"
             )
 
+        # Validate job_type
+        valid_job_types = {"training", "calibration", "validation", "testing"}
+        if self.job_type not in valid_job_types:
+            raise ValueError(
+                f"job_type must be one of {valid_job_types}, got '{self.job_type}'"
+            )
+
         # Validate dollar recall configuration
         if self.compute_dollar_recall and not self.amount_field:
             logger.warning(
@@ -262,6 +273,7 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             "label_name": self.label_name,
             # Tier 2 - System Inputs with Defaults
             "processing_entry_point": self.processing_entry_point,
+            "job_type": self.job_type,
             "input_format": self.input_format,
             "compute_dollar_recall": self.compute_dollar_recall,
             "compute_count_recall": self.compute_count_recall,

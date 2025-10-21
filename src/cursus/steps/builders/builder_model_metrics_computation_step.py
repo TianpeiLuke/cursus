@@ -360,10 +360,13 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
         Constructs the list of command-line arguments to be passed to the processing script.
 
         Returns:
-            None since no arguments are needed for model metrics computation
+            List of command-line arguments including job_type
         """
-        self.log_info("No command-line arguments needed for model metrics computation script")
-        return None
+        job_type = self.config.job_type
+        self.log_info("Setting job_type argument to: %s", job_type)
+        
+        # Return job_type argument
+        return ["--job_type", job_type]
 
     def create_step(self, **kwargs) -> ProcessingStep:
         """

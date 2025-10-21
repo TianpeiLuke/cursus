@@ -20,7 +20,7 @@ The DAG includes:
 12) Preprocessing (testing)
 13) Model Inference (testing)
 14) Model Metrics Computation (testing)
-15) Model Wiki Generation (testing)
+15) Model Wiki Generation
 
 Key features: 
 - Calibration path: Same as complete_e2e_with_wiki_dag (includes ModelCalibration)
@@ -88,8 +88,8 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     dag.add_edge("CradleDataLoading_testing", "TabularPreprocessing_testing")
     dag.add_edge("XGBoostTraining", "XGBoostModelInference_testing")
     dag.add_edge("TabularPreprocessing_testing", "XGBoostModelInference_testing")
-    dag.add_edge("XGBoostModelInference_testing", "ModelMetricsComputation")
-    dag.add_edge("ModelMetricsComputation", "ModelWikiGenerator")
+    dag.add_edge("XGBoostModelInference_testing", "ModelMetricsComputation_testing")
+    dag.add_edge("ModelMetricsComputation_testing", "ModelWikiGenerator")
 
     # Output flow (same as original complete_e2e_with_wiki_dag)
     dag.add_edge("ModelCalibration_calibration", "Package")
@@ -146,7 +146,7 @@ def get_dag_metadata() -> DAGMetadata:
                 "XGBoostTraining",
                 "XGBoostModelEval_calibration",
                 "XGBoostModelInference_testing",
-                "ModelMetricsComputation",
+                "ModelMetricsComputation_testing",
                 "ModelWikiGenerator",
                 "ModelCalibration_calibration",
                 "Package",
