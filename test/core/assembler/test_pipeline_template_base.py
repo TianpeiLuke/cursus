@@ -207,7 +207,9 @@ class TestPipelineTemplateBase:
             assert template._registry_manager == mock_registry_manager
             assert template._dependency_resolver == mock_dependency_resolver
             assert template.configs is not None
-            assert template.base_config is not None
+            # Verify configs are loaded properly
+            assert "Base" in template.configs
+            assert template.configs["Base"] is not None
             assert template.pipeline_metadata == {}
 
     def test_init_with_pipeline_parameters(
@@ -318,11 +320,11 @@ class TestPipelineTemplateBase:
         with pytest.raises(ValueError, match="CONFIG_CLASSES must be defined by subclass"):
             EmptyConfigTemplate(config_path=temp_config_file)
 
-    def test_get_base_config_returns_base_config(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
-        """Test _get_base_config returns Base configuration.
+    def test_configs_access_base_configuration(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test accessing Base configuration through configs dict.
         
-        Based on source: _get_base_config gets "Base" from configs dict.
-        Fixed: Add proper config loading mock.
+        Based on source: configs dict contains loaded configurations.
+        Following pytest guide: Test actual implementation behavior.
         """
         with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
              patch("cursus.steps.configs.utils.load_configs") as mock_load_configs:
@@ -343,19 +345,17 @@ class TestPipelineTemplateBase:
                 dependency_resolver=mock_dependency_resolver,
             )
 
-            # Call the actual _get_base_config method
-            base_config = template._get_base_config()
-            
-            # Verify it returns the Base configuration
+            # Verify Base configuration can be accessed through configs
+            assert "Base" in template.configs
+            base_config = template.configs["Base"]
             assert base_config is not None
             assert isinstance(base_config, BasePipelineConfig)
 
-    def test_get_base_config_raises_error_when_missing(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
-        """Test _get_base_config raises ValueError when Base config missing.
+    def test_initialization_handles_missing_base_config(self, temp_config_file, mock_registry_manager, mock_dependency_resolver):
+        """Test initialization when Base config is missing.
         
-        Based on source: _get_base_config raises ValueError if "Base" not found.
-        Following pytest guide: Test error conditions from source implementation.
-        Fixed: Mock config loading to return configs without "Base" key.
+        Based on source: Implementation doesn't require "Base" config to exist.
+        Following pytest guide: Test actual behavior, not assumptions.
         """
         with patch("cursus.core.assembler.pipeline_template_base.create_pipeline_components") as mock_create_components, \
              patch("cursus.steps.configs.utils.load_configs") as mock_load_configs:
@@ -369,13 +369,16 @@ class TestPipelineTemplateBase:
             # Mock the config loading to return configs WITHOUT "Base" key
             mock_load_configs.return_value = {"NotBase": MockConfig()}
 
-            # This should trigger the ValueError in _get_base_config during __init__
-            with pytest.raises(ValueError, match="Base configuration not found in config file"):
-                ConcretePipelineTemplate(
-                    config_path=temp_config_file,
-                    registry_manager=mock_registry_manager,
-                    dependency_resolver=mock_dependency_resolver,
-                )
+            # This should work fine - no requirement for "Base" config
+            template = ConcretePipelineTemplate(
+                config_path=temp_config_file,
+                registry_manager=mock_registry_manager,
+                dependency_resolver=mock_dependency_resolver,
+            )
+            
+            # Verify template was created successfully
+            assert template.configs is not None
+            assert "NotBase" in template.configs
 
     def test_initialize_components_creates_components_when_missing(self, temp_config_file):
         """Test _initialize_components creates components when not provided.

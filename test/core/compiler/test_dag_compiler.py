@@ -754,9 +754,13 @@ class TestPipelineDAGCompilerCompilation:
         mock_pipeline = MagicMock()
         mock_pipeline.name = "original-name"
         mock_template.generate_pipeline.return_value = mock_pipeline
-        mock_template.base_config = MagicMock()
-        mock_template.base_config.pipeline_name = "test-pipeline"
-        mock_template.base_config.pipeline_version = "1.0"
+        
+        # FIXED: Add missing configs attribute that compile() method expects
+        mock_config = MagicMock()
+        mock_config.pipeline_name = "test-pipeline"
+        mock_config.pipeline_version = "1.0"
+        mock_template.configs = {"Base": mock_config}
+        
         compiler.create_template = MagicMock(return_value=mock_template)
 
         # Test compilation

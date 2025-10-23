@@ -86,11 +86,10 @@ class TestDynamicPipelineTemplate:
         if os.path.exists(self.temp_dir):
             os.rmdir(self.temp_dir)
 
-    @patch.object(PipelineTemplateBase, "_get_base_config")
     @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
     @patch("cursus.steps.configs.utils.load_configs")
     def test_init_stores_config_path(
-        self, mock_load_configs, mock_detect_classes, mock_get_base_config
+        self, mock_load_configs, mock_detect_classes
     ):
         """Test that __init__ correctly stores the config_path attribute."""
         # Setup mocks
@@ -104,8 +103,7 @@ class TestDynamicPipelineTemplate:
         # Initialize CONFIG_CLASSES directly for this test
         DynamicPipelineTemplate.CONFIG_CLASSES = {}
 
-        # Mock the base config getter
-        mock_get_base_config.return_value = base_config
+        # Base config is available in mock_configs
 
         # Create the template with mocked step_catalog to avoid import errors
         template = DynamicPipelineTemplate(
@@ -244,11 +242,10 @@ class TestDynamicPipelineTemplate:
         assert config_map_again == expected_config_map
         self.mock_config_resolver.resolve_config_map.assert_not_called()
 
-    @patch.object(PipelineTemplateBase, "_get_base_config")
     @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
     @patch("cursus.steps.configs.utils.load_configs")
     def test_create_step_builder_map(
-        self, mock_load_configs, mock_detect_classes, mock_get_base_config
+        self, mock_load_configs, mock_detect_classes
     ):
         """Test that _create_step_builder_map correctly maps step types to builder classes."""
         # Setup mocks
@@ -272,8 +269,7 @@ class TestDynamicPipelineTemplate:
             "BasePipelineConfig": BasePipelineConfig
         }
 
-        # Mock the base config getter
-        mock_get_base_config.return_value = base_config
+        # Base config is available in mock_configs
 
         # Setup config resolver mock
         config_map = {

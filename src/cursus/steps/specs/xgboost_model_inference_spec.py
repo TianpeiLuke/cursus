@@ -27,7 +27,7 @@ def _get_model_inference_contract():
 
 
 # XGBoost Model Inference Step Specification
-MODEL_INFERENCE_SPEC = StepSpecification(
+XGBOOST_MODEL_INFERENCE_SPEC = StepSpecification(
     step_type=get_spec_step_type("XGBoostModelInference"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_model_inference_contract(),
