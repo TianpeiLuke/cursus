@@ -14,6 +14,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
+from scipy import stats
+from scipy.stats import pearsonr, spearmanr
 import matplotlib.pyplot as plt
 import time
 import sys
@@ -519,6 +521,371 @@ def generate_comprehensive_report(
     }
 
 
+def compute_comparison_metrics(
+    y_true: np.ndarray, 
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray,
+    is_binary: bool = True
+) -> Dict[str, float]:
+    """
+    Compute comparison metrics between new model and previous model scores.
+    Identical to xgboost_model_eval.py implementation.
+    """
+    logger.info("Computing model comparison metrics")
+    
+    comparison_metrics = {}
+    
+    # Basic correlation metrics
+    pearson_corr, pearson_p = pearsonr(y_new_score, y_prev_score)
+    spearman_corr, spearman_p = spearmanr(y_new_score, y_prev_score)
+    
+    comparison_metrics.update({
+        "pearson_correlation": pearson_corr,
+        "pearson_p_value": pearson_p,
+        "spearman_correlation": spearman_corr,
+        "spearman_p_value": spearman_p,
+    })
+    
+    # Performance comparison metrics
+    if is_binary:
+        # Binary classification comparison
+        new_auc = roc_auc_score(y_true, y_new_score)
+        prev_auc = roc_auc_score(y_true, y_prev_score)
+        new_ap = average_precision_score(y_true, y_new_score)
+        prev_ap = average_precision_score(y_true, y_prev_score)
+        
+        # Delta metrics
+        comparison_metrics.update({
+            "new_model_auc": new_auc,
+            "previous_model_auc": prev_auc,
+            "auc_delta": new_auc - prev_auc,
+            "auc_lift_percent": ((new_auc - prev_auc) / prev_auc) * 100 if prev_auc > 0 else 0,
+            "new_model_ap": new_ap,
+            "previous_model_ap": prev_ap,
+            "ap_delta": new_ap - prev_ap,
+            "ap_lift_percent": ((new_ap - prev_ap) / prev_ap) * 100 if prev_ap > 0 else 0,
+        })
+        
+        # F1 score comparison at different thresholds
+        for threshold in [0.3, 0.5, 0.7]:
+            new_f1 = f1_score(y_true, (y_new_score >= threshold).astype(int))
+            prev_f1 = f1_score(y_true, (y_prev_score >= threshold).astype(int))
+            comparison_metrics[f"new_model_f1_at_{threshold}"] = new_f1
+            comparison_metrics[f"previous_model_f1_at_{threshold}"] = prev_f1
+            comparison_metrics[f"f1_delta_at_{threshold}"] = new_f1 - prev_f1
+    
+    # Score distribution comparison
+    comparison_metrics.update({
+        "new_score_mean": float(np.mean(y_new_score)),
+        "previous_score_mean": float(np.mean(y_prev_score)),
+        "new_score_std": float(np.std(y_new_score)),
+        "previous_score_std": float(np.std(y_prev_score)),
+        "score_mean_delta": float(np.mean(y_new_score) - np.mean(y_prev_score)),
+    })
+    
+    # Agreement metrics
+    if is_binary:
+        for threshold in [0.3, 0.5, 0.7]:
+            new_pred = (y_new_score >= threshold).astype(int)
+            prev_pred = (y_prev_score >= threshold).astype(int)
+            agreement = np.mean(new_pred == prev_pred)
+            comparison_metrics[f"prediction_agreement_at_{threshold}"] = agreement
+    
+    logger.info(f"Comparison metrics computed: AUC delta={comparison_metrics.get('auc_delta', 'N/A'):.4f}, "
+                f"Correlation={comparison_metrics.get('pearson_correlation', 'N/A'):.4f}")
+    
+    return comparison_metrics
+
+
+def perform_statistical_tests(
+    y_true: np.ndarray,
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray,
+    is_binary: bool = True
+) -> Dict[str, float]:
+    """
+    Perform statistical significance tests comparing model performances.
+    Identical to xgboost_model_eval.py implementation.
+    """
+    logger.info("Performing statistical significance tests")
+    
+    test_results = {}
+    
+    if is_binary:
+        # McNemar's test for binary classification
+        new_pred = (y_new_score >= 0.5).astype(int)
+        prev_pred = (y_prev_score >= 0.5).astype(int)
+        
+        # Create contingency table for McNemar's test
+        correct_both = np.sum((new_pred == y_true) & (prev_pred == y_true))
+        new_correct_prev_wrong = np.sum((new_pred == y_true) & (prev_pred != y_true))
+        new_wrong_prev_correct = np.sum((new_pred != y_true) & (prev_pred == y_true))
+        wrong_both = np.sum((new_pred != y_true) & (prev_pred != y_true))
+        
+        # McNemar's test statistic
+        if (new_correct_prev_wrong + new_wrong_prev_correct) > 0:
+            mcnemar_stat = ((abs(new_correct_prev_wrong - new_wrong_prev_correct) - 1) ** 2) / (new_correct_prev_wrong + new_wrong_prev_correct)
+            mcnemar_p_value = 1 - stats.chi2.cdf(mcnemar_stat, 1)
+        else:
+            mcnemar_stat = 0.0
+            mcnemar_p_value = 1.0
+            
+        test_results.update({
+            "mcnemar_statistic": mcnemar_stat,
+            "mcnemar_p_value": mcnemar_p_value,
+            "mcnemar_significant": mcnemar_p_value < 0.05,
+            "correct_both": int(correct_both),
+            "new_correct_prev_wrong": int(new_correct_prev_wrong),
+            "new_wrong_prev_correct": int(new_wrong_prev_correct),
+            "wrong_both": int(wrong_both),
+        })
+    
+    # Paired t-test on prediction scores
+    t_stat, t_p_value = stats.ttest_rel(y_new_score, y_prev_score)
+    test_results.update({
+        "paired_t_statistic": t_stat,
+        "paired_t_p_value": t_p_value,
+        "paired_t_significant": t_p_value < 0.05,
+    })
+    
+    # Wilcoxon signed-rank test (non-parametric alternative)
+    try:
+        wilcoxon_stat, wilcoxon_p = stats.wilcoxon(y_new_score, y_prev_score)
+        test_results.update({
+            "wilcoxon_statistic": wilcoxon_stat,
+            "wilcoxon_p_value": wilcoxon_p,
+            "wilcoxon_significant": wilcoxon_p < 0.05,
+        })
+    except ValueError as e:
+        logger.warning(f"Could not perform Wilcoxon test: {e}")
+        test_results.update({
+            "wilcoxon_statistic": np.nan,
+            "wilcoxon_p_value": np.nan,
+            "wilcoxon_significant": False,
+        })
+    
+    logger.info(f"Statistical tests completed: McNemar p={test_results.get('mcnemar_p_value', 'N/A'):.4f}, "
+                f"Paired t-test p={test_results.get('paired_t_p_value', 'N/A'):.4f}")
+    
+    return test_results
+
+
+def plot_comparison_roc_curves(
+    y_true: np.ndarray, 
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray, 
+    output_dir: str
+) -> str:
+    """
+    Plot side-by-side ROC curves comparing new and previous models.
+    Identical to xgboost_model_eval.py implementation.
+    """
+    logger.info("Creating comparison ROC curves")
+    
+    # Calculate ROC curves for both models
+    fpr_new, tpr_new, _ = roc_curve(y_true, y_new_score)
+    fpr_prev, tpr_prev, _ = roc_curve(y_true, y_prev_score)
+    
+    auc_new = roc_auc_score(y_true, y_new_score)
+    auc_prev = roc_auc_score(y_true, y_prev_score)
+    
+    plt.figure(figsize=(10, 6))
+    
+    # Plot both ROC curves
+    plt.plot(fpr_new, tpr_new, 'b-', linewidth=2, 
+             label=f"New Model (AUC = {auc_new:.3f})")
+    plt.plot(fpr_prev, tpr_prev, 'r--', linewidth=2, 
+             label=f"Previous Model (AUC = {auc_prev:.3f})")
+    plt.plot([0, 1], [0, 1], 'k:', alpha=0.6, label="Random")
+    
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"ROC Curve Comparison (Δ AUC = {auc_new - auc_prev:+.3f})")
+    plt.legend(loc="lower right")
+    plt.grid(True, alpha=0.3)
+    
+    out_path = os.path.join(output_dir, "comparison_roc_curves.jpg")
+    plt.savefig(out_path, format="jpg", dpi=150, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved comparison ROC curves to {out_path}")
+    return out_path
+
+
+def plot_comparison_pr_curves(
+    y_true: np.ndarray, 
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray, 
+    output_dir: str
+) -> str:
+    """
+    Plot side-by-side Precision-Recall curves comparing new and previous models.
+    Identical to xgboost_model_eval.py implementation.
+    """
+    logger.info("Creating comparison PR curves")
+    
+    # Calculate PR curves for both models
+    precision_new, recall_new, _ = precision_recall_curve(y_true, y_new_score)
+    precision_prev, recall_prev, _ = precision_recall_curve(y_true, y_prev_score)
+    
+    ap_new = average_precision_score(y_true, y_new_score)
+    ap_prev = average_precision_score(y_true, y_prev_score)
+    
+    plt.figure(figsize=(10, 6))
+    
+    # Plot both PR curves
+    plt.plot(recall_new, precision_new, 'b-', linewidth=2, 
+             label=f"New Model (AP = {ap_new:.3f})")
+    plt.plot(recall_prev, precision_prev, 'r--', linewidth=2, 
+             label=f"Previous Model (AP = {ap_prev:.3f})")
+    
+    # Add baseline (random classifier)
+    baseline = np.mean(y_true)
+    plt.axhline(y=baseline, color='k', linestyle=':', alpha=0.6, 
+                label=f"Random (AP = {baseline:.3f})")
+    
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title(f"Precision-Recall Curve Comparison (Δ AP = {ap_new - ap_prev:+.3f})")
+    plt.legend(loc="lower left")
+    plt.grid(True, alpha=0.3)
+    
+    out_path = os.path.join(output_dir, "comparison_pr_curves.jpg")
+    plt.savefig(out_path, format="jpg", dpi=150, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved comparison PR curves to {out_path}")
+    return out_path
+
+
+def plot_score_scatter(
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray, 
+    y_true: np.ndarray,
+    output_dir: str
+) -> str:
+    """
+    Plot scatter plot of new vs previous model scores, colored by true labels.
+    Identical to xgboost_model_eval.py implementation.
+    """
+    logger.info("Creating score scatter plot")
+    
+    plt.figure(figsize=(10, 8))
+    
+    # Separate positive and negative examples
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+    
+    # Plot negative examples
+    plt.scatter(y_prev_score[neg_mask], y_new_score[neg_mask], 
+                c='lightcoral', alpha=0.6, s=20, label='Negative (0)')
+    
+    # Plot positive examples
+    plt.scatter(y_prev_score[pos_mask], y_new_score[pos_mask], 
+                c='lightblue', alpha=0.6, s=20, label='Positive (1)')
+    
+    # Add diagonal line (perfect correlation)
+    min_score = min(np.min(y_prev_score), np.min(y_new_score))
+    max_score = max(np.max(y_prev_score), np.max(y_new_score))
+    plt.plot([min_score, max_score], [min_score, max_score], 
+             'k--', alpha=0.8, label='Perfect Correlation')
+    
+    # Calculate and display correlation
+    correlation = pearsonr(y_new_score, y_prev_score)[0]
+    
+    plt.xlabel("Previous Model Score")
+    plt.ylabel("New Model Score")
+    plt.title(f"Model Score Comparison (Correlation = {correlation:.3f})")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Add correlation text box
+    textstr = f'Pearson r = {correlation:.3f}'
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+    plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=12,
+             verticalalignment='top', bbox=props)
+    
+    out_path = os.path.join(output_dir, "score_scatter_plot.jpg")
+    plt.savefig(out_path, format="jpg", dpi=150, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved score scatter plot to {out_path}")
+    return out_path
+
+
+def plot_score_distributions(
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray, 
+    y_true: np.ndarray,
+    output_dir: str
+) -> str:
+    """
+    Plot score distributions for both models, separated by true labels.
+    Identical to xgboost_model_eval.py implementation.
+    """
+    logger.info("Creating score distribution plots")
+    
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    
+    # Separate positive and negative examples
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+    
+    # Plot 1: New model score distributions
+    axes[0, 0].hist(y_new_score[neg_mask], bins=30, alpha=0.7, 
+                    color='lightcoral', label='Negative (0)', density=True)
+    axes[0, 0].hist(y_new_score[pos_mask], bins=30, alpha=0.7, 
+                    color='lightblue', label='Positive (1)', density=True)
+    axes[0, 0].set_title('New Model Score Distribution')
+    axes[0, 0].set_xlabel('Score')
+    axes[0, 0].set_ylabel('Density')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+    
+    # Plot 2: Previous model score distributions
+    axes[0, 1].hist(y_prev_score[neg_mask], bins=30, alpha=0.7, 
+                    color='lightcoral', label='Negative (0)', density=True)
+    axes[0, 1].hist(y_prev_score[pos_mask], bins=30, alpha=0.7, 
+                    color='lightblue', label='Positive (1)', density=True)
+    axes[0, 1].set_title('Previous Model Score Distribution')
+    axes[0, 1].set_xlabel('Score')
+    axes[0, 1].set_ylabel('Density')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # Plot 3: Score difference distribution
+    score_diff = y_new_score - y_prev_score
+    axes[1, 0].hist(score_diff[neg_mask], bins=30, alpha=0.7, 
+                    color='lightcoral', label='Negative (0)', density=True)
+    axes[1, 0].hist(score_diff[pos_mask], bins=30, alpha=0.7, 
+                    color='lightblue', label='Positive (1)', density=True)
+    axes[1, 0].axvline(x=0, color='black', linestyle='--', alpha=0.8)
+    axes[1, 0].set_title('Score Difference Distribution (New - Previous)')
+    axes[1, 0].set_xlabel('Score Difference')
+    axes[1, 0].set_ylabel('Density')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # Plot 4: Box plots comparing both models
+    box_data = [y_prev_score[neg_mask], y_new_score[neg_mask], 
+                y_prev_score[pos_mask], y_new_score[pos_mask]]
+    box_labels = ['Prev (Neg)', 'New (Neg)', 'Prev (Pos)', 'New (Pos)']
+    box_colors = ['lightcoral', 'lightcoral', 'lightblue', 'lightblue']
+    
+    bp = axes[1, 1].boxplot(box_data, labels=box_labels, patch_artist=True)
+    for patch, color in zip(bp['boxes'], box_colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+    
+    axes[1, 1].set_title('Score Distribution Comparison')
+    axes[1, 1].set_ylabel('Score')
+    axes[1, 1].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    out_path = os.path.join(output_dir, "score_distributions.jpg")
+    plt.savefig(out_path, format="jpg", dpi=150, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved score distribution plots to {out_path}")
+    return out_path
+
+
 def generate_text_summary(json_report: Dict[str, Any]) -> str:
     """
     Generate a human-readable text summary from the JSON report.
@@ -731,6 +1098,25 @@ def main(
     dollar_recall_fpr = float(environ_vars.get("DOLLAR_RECALL_FPR", "0.1"))
     count_recall_cutoff = float(environ_vars.get("COUNT_RECALL_CUTOFF", "0.1"))
     generate_plots = environ_vars.get("GENERATE_PLOTS", "true").lower() == "true"
+    
+    # Extract comparison mode environment variables
+    comparison_mode = environ_vars.get("COMPARISON_MODE", "false").lower() == "true"
+    previous_score_field = environ_vars.get("PREVIOUS_SCORE_FIELD", "")
+    comparison_metrics = environ_vars.get("COMPARISON_METRICS", "all")
+    statistical_tests = environ_vars.get("STATISTICAL_TESTS", "true").lower() == "true"
+    comparison_plots = environ_vars.get("COMPARISON_PLOTS", "true").lower() == "true"
+    
+    # Guard rail: If PREVIOUS_SCORE_FIELD is empty, disable comparison mode
+    if comparison_mode and (not previous_score_field or previous_score_field.strip() == ""):
+        logger.warning("COMPARISON_MODE is enabled but PREVIOUS_SCORE_FIELD is empty. Disabling comparison mode.")
+        comparison_mode = False
+    
+    logger.info(f"Comparison mode: {comparison_mode}")
+    if comparison_mode:
+        logger.info(f"Previous score field: {previous_score_field}")
+        logger.info(f"Comparison metrics: {comparison_metrics}")
+        logger.info(f"Statistical tests: {statistical_tests}")
+        logger.info(f"Comparison plots: {comparison_plots}")
 
     # Log job info
     logger.info("Running model metrics computation")
@@ -806,8 +1192,55 @@ def main(
         )
         logger.info(f"Generated {len(plot_paths)} visualization plots")
 
+    # Check for comparison mode
+    previous_scores = None
+    if comparison_mode:
+        if previous_score_field in df.columns:
+            previous_scores = df[previous_score_field].values
+            logger.info(f"Found previous model scores in column '{previous_score_field}' with {len(previous_scores)} values")
+        else:
+            logger.warning(f"Comparison mode enabled but column '{previous_score_field}' not found in data. Proceeding with standard evaluation.")
+            comparison_mode = False
+
     # Combine all metrics for saving
     all_metrics = {**standard_metrics, **domain_metrics}
+    
+    # Add comparison metrics if comparison mode is enabled
+    if comparison_mode and previous_scores is not None:
+        logger.info("Computing comparison metrics")
+        
+        # Compute comparison metrics
+        if comparison_metrics in ["all", "basic"]:
+            comp_metrics = compute_comparison_metrics(y_true, scores, previous_scores, is_binary=is_binary)
+            all_metrics.update(comp_metrics)
+        
+        # Perform statistical tests
+        if statistical_tests:
+            stat_results = perform_statistical_tests(y_true, scores, previous_scores, is_binary=is_binary)
+            all_metrics.update(stat_results)
+        
+        # Generate comparison plots
+        if comparison_plots and generate_plots:
+            logger.info("Generating comparison visualizations")
+            comparison_plot_paths = {}
+            
+            if is_binary:
+                comparison_plot_paths["comparison_roc_curves"] = plot_comparison_roc_curves(
+                    y_true, scores, previous_scores, output_plots_dir
+                )
+                comparison_plot_paths["comparison_pr_curves"] = plot_comparison_pr_curves(
+                    y_true, scores, previous_scores, output_plots_dir
+                )
+                comparison_plot_paths["score_scatter_plot"] = plot_score_scatter(
+                    scores, previous_scores, y_true, output_plots_dir
+                )
+                comparison_plot_paths["score_distributions"] = plot_score_distributions(
+                    scores, previous_scores, y_true, output_plots_dir
+                )
+            
+            # Add comparison plots to existing plot paths
+            plot_paths.update(comparison_plot_paths)
+            logger.info(f"Generated {len(comparison_plot_paths)} comparison visualization plots")
     
     # Save metrics in original format (matching xgboost_model_eval.py)
     save_metrics(all_metrics, output_metrics_dir)
@@ -849,6 +1282,11 @@ if __name__ == "__main__":
         "DOLLAR_RECALL_FPR": os.environ.get("DOLLAR_RECALL_FPR", "0.1"),
         "COUNT_RECALL_CUTOFF": os.environ.get("COUNT_RECALL_CUTOFF", "0.1"),
         "GENERATE_PLOTS": os.environ.get("GENERATE_PLOTS", "true"),
+        "COMPARISON_MODE": os.environ.get("COMPARISON_MODE", "false"),
+        "PREVIOUS_SCORE_FIELD": os.environ.get("PREVIOUS_SCORE_FIELD", ""),
+        "COMPARISON_METRICS": os.environ.get("COMPARISON_METRICS", "all"),
+        "STATISTICAL_TESTS": os.environ.get("STATISTICAL_TESTS", "true"),
+        "COMPARISON_PLOTS": os.environ.get("COMPARISON_PLOTS", "true"),
     }
 
     try:

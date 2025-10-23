@@ -66,6 +66,7 @@ class DataIngestionManager:
     def discover_visualization_files(self, plots_dir: str) -> Dict[str, Dict[str, str]]:
         """
         Discover and catalog visualization files for embedding.
+        Includes support for model comparison visualizations.
         """
         visualizations = {}
         
@@ -83,14 +84,30 @@ class DataIngestionManager:
             "multiclass_roc_curves": "Multi-class ROC Analysis"
         }
         
-        for plot_type, description in plot_types.items():
+        # Model comparison plot types
+        comparison_plot_types = {
+            "comparison_roc_curves": "Model Comparison ROC Curves",
+            "comparison_pr_curves": "Model Comparison Precision-Recall Curves",
+            "score_scatter_plot": "Model Score Correlation Analysis",
+            "score_distributions": "Model Score Distribution Comparison",
+            "new_model_roc_curve": "New Model ROC Curve",
+            "new_model_pr_curve": "New Model Precision-Recall Curve",
+            "previous_model_roc_curve": "Previous Model ROC Curve",
+            "previous_model_pr_curve": "Previous Model Precision-Recall Curve"
+        }
+        
+        # Combine all plot types
+        all_plot_types = {**plot_types, **comparison_plot_types}
+        
+        for plot_type, description in all_plot_types.items():
             for ext in [".jpg", ".png", ".jpeg", ".svg"]:
                 plot_path = os.path.join(plots_dir, f"{plot_type}{ext}")
                 if os.path.exists(plot_path):
                     visualizations[plot_type] = {
                         "path": plot_path,
                         "description": description,
-                        "filename": f"{plot_type}{ext}"
+                        "filename": f"{plot_type}{ext}",
+                        "is_comparison": plot_type in comparison_plot_types
                     }
                     self.logger.info(f"Found visualization: {plot_type}")
                     break
@@ -102,11 +119,17 @@ class DataIngestionManager:
             visualizations[plot_key] = {
                 "path": str(file_path),
                 "description": f"Class-specific analysis: {filename}",
-                "filename": filename
+                "filename": filename,
+                "is_comparison": False
             }
             self.logger.info(f"Found class-specific visualization: {plot_key}")
         
-        self.logger.info(f"Discovered {len(visualizations)} visualizations")
+        # Check if comparison visualizations were found
+        comparison_plots = [k for k, v in visualizations.items() if v.get("is_comparison", False)]
+        if comparison_plots:
+            self.logger.info(f"Found {len(comparison_plots)} comparison visualizations")
+        
+        self.logger.info(f"Discovered {len(visualizations)} total visualizations")
         return visualizations
 
 
@@ -176,6 +199,8 @@ This model is designed to {model_purpose}. The model achieves an AUC of {auc_sco
 
 {performance_overview}
 
+{comparison_summary_section}
+
 {roc_analysis_section}
 
 {precision_recall_section}
@@ -185,6 +210,8 @@ This model is designed to {model_purpose}. The model achieves an AUC of {auc_sco
 {threshold_analysis_section}
 
 {multiclass_analysis_section}
+
+{comparison_visualizations_section}
 """
 
     def _get_business_impact_section_template(self) -> str:
@@ -352,6 +379,112 @@ class ContentGenerator:
             overview_parts.append(f"For multiclass classification: Macro AUC of {macro_auc:.3f} and Micro AUC of {micro_auc:.3f}.")
         
         return " ".join(overview_parts)
+    
+    def detect_comparison_mode(self, metrics: Dict[str, Any]) -> bool:
+        """Detect if comparison metrics are present in the data."""
+        comparison_indicators = [
+            "auc_delta", "ap_delta", "pearson_correlation", "spearman_correlation",
+            "new_model_auc", "previous_model_auc", "mcnemar_p_value", "paired_t_p_value"
+        ]
+        return any(indicator in metrics for indicator in comparison_indicators)
+    
+    def generate_comparison_summary(self, metrics: Dict[str, Any]) -> str:
+        """Generate model comparison summary text."""
+        summary_parts = []
+        
+        # AUC comparison
+        auc_delta = metrics.get("auc_delta")
+        if auc_delta is not None:
+            new_auc = metrics.get("new_model_auc", 0)
+            prev_auc = metrics.get("previous_model_auc", 0)
+            lift_percent = metrics.get("auc_lift_percent", 0)
+            
+            if auc_delta > 0.01:
+                summary_parts.append(f"The new model shows significant improvement with AUC delta of +{auc_delta:.3f} ({lift_percent:+.1f}% lift)")
+            elif auc_delta > 0.005:
+                summary_parts.append(f"The new model shows marginal improvement with AUC delta of +{auc_delta:.3f} ({lift_percent:+.1f}% lift)")
+            elif auc_delta > -0.005:
+                summary_parts.append(f"The models perform similarly with AUC delta of {auc_delta:+.3f}")
+            else:
+                summary_parts.append(f"The new model shows performance degradation with AUC delta of {auc_delta:+.3f} ({lift_percent:+.1f}% change)")
+        
+        # Average Precision comparison
+        ap_delta = metrics.get("ap_delta")
+        if ap_delta is not None:
+            ap_lift_percent = metrics.get("ap_lift_percent", 0)
+            if ap_delta > 0.01:
+                summary_parts.append(f"Average Precision improved by {ap_delta:+.3f} ({ap_lift_percent:+.1f}% lift)")
+            elif ap_delta < -0.01:
+                summary_parts.append(f"Average Precision decreased by {ap_delta:+.3f} ({ap_lift_percent:+.1f}% change)")
+        
+        # Correlation summary
+        correlation = metrics.get("pearson_correlation")
+        if correlation is not None:
+            if correlation > 0.9:
+                summary_parts.append(f"Models are highly correlated (r={correlation:.3f}), indicating similar prediction patterns")
+            elif correlation > 0.7:
+                summary_parts.append(f"Models show good correlation (r={correlation:.3f}) with some differences in predictions")
+            elif correlation > 0.5:
+                summary_parts.append(f"Models show moderate correlation (r={correlation:.3f}) with notable prediction differences")
+            else:
+                summary_parts.append(f"Models show low correlation (r={correlation:.3f}), indicating substantially different prediction patterns")
+        
+        return ". ".join(summary_parts) + "." if summary_parts else "Model comparison analysis not available."
+    
+    def generate_statistical_significance_summary(self, metrics: Dict[str, Any]) -> str:
+        """Generate statistical significance test summary."""
+        significance_parts = []
+        
+        # McNemar's test
+        mcnemar_p = metrics.get("mcnemar_p_value")
+        mcnemar_sig = metrics.get("mcnemar_significant", False)
+        if mcnemar_p is not None:
+            if mcnemar_sig:
+                significance_parts.append(f"McNemar's test indicates statistically significant difference (p={mcnemar_p:.4f})")
+            else:
+                significance_parts.append(f"McNemar's test shows no significant difference (p={mcnemar_p:.4f})")
+        
+        # Paired t-test
+        paired_t_p = metrics.get("paired_t_p_value")
+        paired_t_sig = metrics.get("paired_t_significant", False)
+        if paired_t_p is not None:
+            if paired_t_sig:
+                significance_parts.append(f"Paired t-test confirms significant score differences (p={paired_t_p:.4f})")
+            else:
+                significance_parts.append(f"Paired t-test shows no significant score differences (p={paired_t_p:.4f})")
+        
+        # Wilcoxon test
+        wilcoxon_p = metrics.get("wilcoxon_p_value")
+        wilcoxon_sig = metrics.get("wilcoxon_significant", False)
+        if wilcoxon_p is not None and not pd.isna(wilcoxon_p):
+            if wilcoxon_sig:
+                significance_parts.append(f"Wilcoxon test supports significant differences (p={wilcoxon_p:.4f})")
+            else:
+                significance_parts.append(f"Wilcoxon test shows no significant differences (p={wilcoxon_p:.4f})")
+        
+        return ". ".join(significance_parts) + "." if significance_parts else "Statistical significance testing not available."
+    
+    def generate_deployment_recommendation(self, metrics: Dict[str, Any]) -> str:
+        """Generate deployment recommendation based on comparison results."""
+        auc_delta = metrics.get("auc_delta", 0)
+        mcnemar_sig = metrics.get("mcnemar_significant", False)
+        paired_t_sig = metrics.get("paired_t_significant", False)
+        
+        # Strong recommendation criteria
+        if auc_delta > 0.01 and (mcnemar_sig or paired_t_sig):
+            return "✅ **RECOMMENDED FOR DEPLOYMENT**: New model shows significant improvement with statistical validation"
+        
+        # Moderate recommendation criteria
+        elif auc_delta > 0.005:
+            return "⚠️ **CONSIDER FOR DEPLOYMENT**: New model shows marginal improvement - evaluate business impact"
+        
+        # Similar performance
+        elif abs(auc_delta) <= 0.005:
+            return "≈ **SIMILAR PERFORMANCE**: Models perform similarly - consider other factors (complexity, interpretability, etc.)"
+        
+        # Performance degradation
+        else:
+            return "❌ **NOT RECOMMENDED**: New model shows performance degradation compared to previous model"
 
 
 class VisualizationIntegrator:
@@ -548,6 +681,9 @@ class WikiReportAssembler:
         # Generate optional sections
         derived.update(self._generate_optional_sections(context, metrics_source))
         
+        # Generate comparison-specific content if available
+        derived.update(self._generate_comparison_sections(context, standard_metrics))
+        
         return derived
     
     def _generate_visualization_sections(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -652,6 +788,107 @@ class WikiReportAssembler:
         
         # Next steps
         sections["next_steps"] = "Next steps will be determined based on model performance and business requirements."
+        
+        return sections
+    
+    def _generate_comparison_sections(self, context: Dict[str, Any], standard_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate comparison-specific sections based on available comparison data."""
+        sections = {}
+        
+        # Check if comparison mode is detected
+        is_comparison_mode = self.content_generator.detect_comparison_mode(standard_metrics)
+        
+        if is_comparison_mode:
+            # Model Comparison Summary Section
+            comparison_summary = self.content_generator.generate_comparison_summary(standard_metrics)
+            sections["comparison_summary_section"] = f"""
+=== Model Comparison Summary ===
+
+{comparison_summary}
+
+==== Statistical Significance ====
+
+{self.content_generator.generate_statistical_significance_summary(standard_metrics)}
+
+==== Deployment Recommendation ====
+
+{self.content_generator.generate_deployment_recommendation(standard_metrics)}
+"""
+            
+            # Comparison Visualizations Section
+            comparison_viz_parts = []
+            
+            # Side-by-side ROC comparison
+            if "comparison_roc_curves_image" in context:
+                comparison_viz_parts.append(f"""
+==== ROC Curve Comparison ====
+
+{context.get('comparison_roc_curves_description', 'Side-by-side ROC curve comparison between new and previous models.')}
+
+[[Image:{context['comparison_roc_curves_image']}|thumb|ROC Curve Comparison showing performance differences]]
+""")
+            
+            # Side-by-side PR comparison
+            if "comparison_pr_curves_image" in context:
+                comparison_viz_parts.append(f"""
+==== Precision-Recall Curve Comparison ====
+
+{context.get('comparison_pr_curves_description', 'Side-by-side Precision-Recall curve comparison between new and previous models.')}
+
+[[Image:{context['comparison_pr_curves_image']}|thumb|Precision-Recall Curve Comparison]]
+""")
+            
+            # Score correlation analysis
+            if "score_scatter_plot_image" in context:
+                comparison_viz_parts.append(f"""
+==== Model Score Correlation Analysis ====
+
+{context.get('score_scatter_plot_description', 'Scatter plot analysis showing correlation between new and previous model scores.')}
+
+[[Image:{context['score_scatter_plot_image']}|thumb|Score Correlation Analysis]]
+""")
+            
+            # Score distribution comparison
+            if "score_distributions_image" in context:
+                comparison_viz_parts.append(f"""
+==== Score Distribution Comparison ====
+
+{context.get('score_distributions_description', 'Comprehensive comparison of score distributions between models.')}
+
+[[Image:{context['score_distributions_image']}|thumb|Score Distribution Comparison]]
+""")
+            
+            # Individual model visualizations
+            individual_viz_parts = []
+            if "new_model_roc_curve_image" in context:
+                individual_viz_parts.append(f"""
+===== New Model Performance =====
+
+[[Image:{context['new_model_roc_curve_image']}|thumb|New Model ROC Curve]]
+""")
+            
+            if "previous_model_roc_curve_image" in context:
+                individual_viz_parts.append(f"""
+===== Previous Model Performance =====
+
+[[Image:{context['previous_model_roc_curve_image']}|thumb|Previous Model ROC Curve]]
+""")
+            
+            # Combine all comparison visualizations
+            if comparison_viz_parts or individual_viz_parts:
+                sections["comparison_visualizations_section"] = f"""
+=== Model Comparison Visualizations ===
+
+{''.join(comparison_viz_parts)}
+
+{''.join(individual_viz_parts) if individual_viz_parts else ''}
+"""
+            else:
+                sections["comparison_visualizations_section"] = ""
+        else:
+            # No comparison mode detected
+            sections["comparison_summary_section"] = ""
+            sections["comparison_visualizations_section"] = ""
         
         return sections
 

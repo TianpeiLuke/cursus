@@ -120,6 +120,32 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         description="Whether to use large instance type for processing (metrics computation typically needs less resources)"
     )
 
+    # Model comparison configuration (Tier 2 - Optional with defaults)
+    comparison_mode: bool = Field(
+        default=False,
+        description="Enable model comparison functionality to compare with previous model scores",
+    )
+
+    previous_score_field: str = Field(
+        default="",
+        description="Name of the column containing previous model scores for comparison (required when comparison_mode=True)",
+    )
+
+    comparison_metrics: str = Field(
+        default="all",
+        description="Comparison metrics to compute: 'all' for comprehensive metrics, 'basic' for essential metrics only",
+    )
+
+    statistical_tests: bool = Field(
+        default=True,
+        description="Enable statistical significance tests (McNemar's test, paired t-test, Wilcoxon test)",
+    )
+
+    comparison_plots: bool = Field(
+        default=True,
+        description="Enable comparison visualizations (side-by-side ROC/PR curves, scatter plots, distributions)",
+    )
+
     model_config = ProcessingStepConfigBase.model_config
 
     # ===== Derived Fields (Tier 3) =====
@@ -205,6 +231,24 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
                 f"count_recall_cutoff must be between 0 and 1, got {self.count_recall_cutoff}"
             )
 
+        # Validate comparison mode configuration
+        if self.comparison_mode:
+            if not self.previous_score_field or self.previous_score_field.strip() == "":
+                raise ValueError(
+                    "previous_score_field must be provided when comparison_mode is True"
+                )
+            
+            # Validate comparison_metrics value
+            valid_comparison_metrics = {"all", "basic"}
+            if self.comparison_metrics not in valid_comparison_metrics:
+                raise ValueError(
+                    f"comparison_metrics must be one of {valid_comparison_metrics}, got '{self.comparison_metrics}'"
+                )
+            
+            logger.info(f"Comparison mode enabled with previous score field: '{self.previous_score_field}'")
+        else:
+            logger.debug("Comparison mode disabled - standard metrics computation will be performed")
+
         logger.debug(
             f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for metrics computation"
         )
@@ -242,6 +286,17 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         # Add amount field if specified
         if self.amount_field:
             env_vars["AMOUNT_FIELD"] = self.amount_field
+
+        # Add comparison mode environment variables
+        env_vars.update(
+            {
+                "COMPARISON_MODE": str(self.comparison_mode).lower(),
+                "PREVIOUS_SCORE_FIELD": self.previous_score_field,
+                "COMPARISON_METRICS": self.comparison_metrics,
+                "STATISTICAL_TESTS": str(self.statistical_tests).lower(),
+                "COMPARISON_PLOTS": str(self.comparison_plots).lower(),
+            }
+        )
 
         return env_vars
 
@@ -282,6 +337,12 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             "count_recall_cutoff": self.count_recall_cutoff,
             "processing_framework_version": self.processing_framework_version,
             "use_large_processing_instance": self.use_large_processing_instance,
+            # Tier 2 - Comparison mode fields
+            "comparison_mode": self.comparison_mode,
+            "previous_score_field": self.previous_score_field,
+            "comparison_metrics": self.comparison_metrics,
+            "statistical_tests": self.statistical_tests,
+            "comparison_plots": self.comparison_plots,
         }
 
         # Only include optional fields if they're set

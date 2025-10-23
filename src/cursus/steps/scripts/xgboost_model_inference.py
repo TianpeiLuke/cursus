@@ -349,8 +349,8 @@ def generate_predictions(
     logger.info(f"Using {len(available_features)} features for prediction")
     X = df[available_features].values
     
-    # Create XGBoost DMatrix
-    dmatrix = xgb.DMatrix(X)
+    # Create XGBoost DMatrix with feature names for consistency
+    dmatrix = xgb.DMatrix(X, feature_names=available_features)
     
     # Generate predictions
     y_prob = model.predict(dmatrix)
