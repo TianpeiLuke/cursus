@@ -616,28 +616,27 @@ class TestGeneratePredictions:
         mock_dmatrix_instance = MagicMock()
         mock_dmatrix_class.return_value = mock_dmatrix_instance
         
-        # Mock model prediction
-        mock_model.predict.return_value = np.array([0.2, 0.8, 0.3, 0.9, 0.4])
-        
-        # Call generate_predictions
-        predictions = generate_predictions(
-            mock_model, sample_inference_data, feature_columns, hyperparams
-        )
-        
-        # Verify DMatrix was called with feature_names parameter
-        mock_dmatrix_class.assert_called_once()
-        call_args = mock_dmatrix_class.call_args
-        
-        # Check that feature_names was passed as keyword argument
-        assert 'feature_names' in call_args.kwargs
-        assert call_args.kwargs['feature_names'] == feature_columns
-        
-        # Verify model.predict was called with the DMatrix instance
-        mock_model.predict.assert_called_once_with(mock_dmatrix_instance)
-        
-        # Verify predictions are properly formatted
-        assert isinstance(predictions, np.ndarray)
-        assert predictions.shape == (5, 2)  # Binary classification output
+        # Mock model prediction using patch
+        with patch.object(mock_model, 'predict', return_value=np.array([0.2, 0.8, 0.3, 0.9, 0.4])) as mock_predict:
+            # Call generate_predictions
+            predictions = generate_predictions(
+                mock_model, sample_inference_data, feature_columns, hyperparams
+            )
+            
+            # Verify DMatrix was called with feature_names parameter
+            mock_dmatrix_class.assert_called_once()
+            call_args = mock_dmatrix_class.call_args
+            
+            # Check that feature_names was passed as keyword argument
+            assert 'feature_names' in call_args.kwargs
+            assert call_args.kwargs['feature_names'] == feature_columns
+            
+            # Verify model.predict was called with the DMatrix instance
+            mock_predict.assert_called_once_with(mock_dmatrix_instance)
+            
+            # Verify predictions are properly formatted
+            assert isinstance(predictions, np.ndarray)
+            assert predictions.shape == (5, 2)  # Binary classification output
 
     @patch('cursus.steps.scripts.xgboost_model_inference.xgb.DMatrix')
     def test_generate_predictions_dmatrix_feature_names_with_missing_features(self, mock_dmatrix_class, mock_model):
@@ -658,10 +657,9 @@ class TestGeneratePredictions:
         mock_dmatrix_class.return_value = mock_dmatrix_instance
         
         # Mock model prediction
-        mock_model.predict.return_value = np.array([0.2, 0.8, 0.3])
-        
-        # Call generate_predictions
-        predictions = generate_predictions(mock_model, data, feature_columns, hyperparams)
+        with patch.object(mock_model, 'predict', return_value=np.array([0.2, 0.8, 0.3])):
+            # Call generate_predictions
+            predictions = generate_predictions(mock_model, data, feature_columns, hyperparams)
         
         # Verify DMatrix was called with only available feature names
         mock_dmatrix_class.assert_called_once()
@@ -691,10 +689,10 @@ class TestGeneratePredictions:
         with patch('cursus.steps.scripts.xgboost_model_inference.xgb.DMatrix') as mock_dmatrix:
             mock_dmatrix_instance = MagicMock()
             mock_dmatrix.return_value = mock_dmatrix_instance
-            mock_model.predict.return_value = np.array([0.2, 0.8, 0.3, 0.9, 0.4])
-            
-            # Call generate_predictions
-            predictions = generate_predictions(mock_model, sample_inference_data, feature_columns, hyperparams)
+            with patch.object(mock_model, 'predict', return_value=np.array([0.2, 0.8, 0.3, 0.9, 0.4])) as mock_predict:
+                
+                # Call generate_predictions
+                predictions = generate_predictions(mock_model, sample_inference_data, feature_columns, hyperparams)
             
             # Verify the DMatrix call pattern matches evaluation script
             mock_dmatrix.assert_called_once()

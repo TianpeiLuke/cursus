@@ -635,11 +635,11 @@ class TestWriteOutputFiles:
         assert result_path.exists()
         assert result_path.name == "signature"
         
-        # Verify content
+        # Verify content - signature is written as CSV format, not JSON
         with open(result_path, 'r') as f:
-            content = json.load(f)
+            content = f.read().strip()
         
-        assert content == signature
+        assert content == 'col1,col2,col3'
 
     def test_write_metadata_file(self, temp_dir):
         """Test writing metadata file."""

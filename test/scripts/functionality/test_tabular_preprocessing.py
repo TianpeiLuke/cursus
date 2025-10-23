@@ -134,9 +134,12 @@ class TestMainFunction:
 
         job_args = Namespace(job_type="training")
 
-        # Set up input and output paths
-        input_paths = {"data_input": input_data_dir}
-        output_paths = {"data_output": output_dir}
+        # Set up input and output paths - match implementation expectations
+        # Create empty signature directory to avoid file vs directory error
+        signature_dir = os.path.join(temp_dir, "signature")
+        os.makedirs(signature_dir, exist_ok=True)
+        input_paths = {"DATA": input_data_dir, "SIGNATURE": signature_dir}
+        output_paths = {"processed_data": output_dir}
         environ_vars = {
             "LABEL_FIELD": "label",
             "TRAIN_RATIO": "0.6",
@@ -179,9 +182,12 @@ class TestMainFunction:
 
         job_args = Namespace(job_type="validation")
 
-        # Set up input and output paths
-        input_paths = {"data_input": input_data_dir}
-        output_paths = {"data_output": output_dir}
+        # Set up input and output paths - match implementation expectations
+        # Create empty signature directory to avoid file vs directory error
+        signature_dir = os.path.join(temp_dir, "signature")
+        os.makedirs(signature_dir, exist_ok=True)
+        input_paths = {"DATA": input_data_dir, "SIGNATURE": signature_dir}
+        output_paths = {"processed_data": output_dir}
         environ_vars = {
             "LABEL_FIELD": "label",
             "TRAIN_RATIO": "0.8",
@@ -213,9 +219,12 @@ class TestMainFunction:
 
         job_args = Namespace(job_type="training")
 
-        # Set up input and output paths
-        input_paths = {"data_input": input_data_dir}
-        output_paths = {"data_output": output_dir}
+        # Set up input and output paths - match implementation expectations
+        # Create empty signature directory to avoid file vs directory error
+        signature_dir = os.path.join(temp_dir, "signature")
+        os.makedirs(signature_dir, exist_ok=True)
+        input_paths = {"DATA": input_data_dir, "SIGNATURE": signature_dir}
+        output_paths = {"processed_data": output_dir}
         environ_vars = {
             "LABEL_FIELD": "wrong_label",
             "TRAIN_RATIO": "0.8",
