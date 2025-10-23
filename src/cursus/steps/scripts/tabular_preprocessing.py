@@ -22,35 +22,35 @@ from sklearn.model_selection import train_test_split
 def load_signature_columns(signature_path: str) -> Optional[list]:
     """
     Load column names from signature file.
-    
+
     Args:
         signature_path: Path to the signature file directory
-        
+
     Returns:
         List of column names if signature file exists, None otherwise
     """
     signature_dir = Path(signature_path)
     if not signature_dir.exists():
         return None
-        
+
     # Look for signature file in the directory
     signature_files = list(signature_dir.glob("*"))
     if not signature_files:
         return None
-        
+
     # Use the first file found (typically named 'signature')
     signature_file = signature_files[0]
-    
+
     try:
-        with open(signature_file, 'r') as f:
+        with open(signature_file, "r") as f:
             content = f.read().strip()
             if content:
                 # Split by comma and strip whitespace
-                columns = [col.strip() for col in content.split(',')]
+                columns = [col.strip() for col in content.split(",")]
                 return columns
     except Exception as e:
         raise RuntimeError(f"Error reading signature file {signature_file}: {e}")
-    
+
     return None
 
 
@@ -109,17 +109,16 @@ def _read_file_to_df(file_path: Path, column_names: Optional[list] = None) -> pd
                 sep = _detect_separator_from_sample(f.readline() + f.readline())
             # Use column names from signature if provided for CSV/TSV files
             if column_names:
-                return pd.read_csv(str(file_path), sep=sep, compression="gzip", 
-                                 names=column_names, header=0)
+                return pd.read_csv(
+                    str(file_path), sep=sep, compression="gzip", names=column_names, header=0
+                )
             else:
                 return pd.read_csv(str(file_path), sep=sep, compression="gzip")
         elif inner_ext == ".json":
             return _read_json_file(file_path)
         elif inner_ext.endswith(".parquet"):
             with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-                with gzip.open(str(file_path), "rb") as f_in, open(
-                    tmp.name, "wb"
-                ) as f_out:
+                with gzip.open(str(file_path), "rb") as f_in, open(tmp.name, "wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
                 df = pd.read_parquet(tmp.name)
             os.unlink(tmp.name)
@@ -218,34 +217,49 @@ def main(
     df = combine_shards(input_data_dir, signature_columns)
     log(f"[INFO] Combined data shape: {df.shape}")
 
-    # 4. Process columns and labels
+    # 4. Process columns and labels (conditional based on label_field availability)
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
-    if label_field not in df.columns:
-        raise RuntimeError(
-            f"Label field '{label_field}' not found in columns: {df.columns.tolist()}"
-        )
+    
+    # Only process labels if label_field is provided and exists
+    if label_field:
+        if label_field not in df.columns:
+            raise RuntimeError(
+                f"Label field '{label_field}' not found in columns: {df.columns.tolist()}"
+            )
 
-    if not pd.api.types.is_numeric_dtype(df[label_field]):
-        unique_labels = sorted(df[label_field].dropna().unique())
-        label_map = {val: idx for idx, val in enumerate(unique_labels)}
-        df[label_field] = df[label_field].map(label_map)
+        if not pd.api.types.is_numeric_dtype(df[label_field]):
+            unique_labels = sorted(df[label_field].dropna().unique())
+            label_map = {val: idx for idx, val in enumerate(unique_labels)}
+            df[label_field] = df[label_field].map(label_map)
 
-    df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype("Int64")
-    df.dropna(subset=[label_field], inplace=True)
-    df[label_field] = df[label_field].astype(int)
-    log(f"[INFO] Data shape after cleaning labels: {df.shape}")
+        df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype("Int64")
+        df.dropna(subset=[label_field], inplace=True)
+        df[label_field] = df[label_field].astype(int)
+        log(f"[INFO] Data shape after cleaning labels: {df.shape}")
+    else:
+        log("[INFO] No label field provided, skipping label processing")
 
     # 5. Split data if training, otherwise use the job_type as the single split
     if job_type == "training":
-        train_df, holdout_df = train_test_split(
-            df, train_size=train_ratio, random_state=42, stratify=df[label_field]
-        )
-        test_df, val_df = train_test_split(
-            holdout_df,
-            test_size=test_val_ratio,
-            random_state=42,
-            stratify=holdout_df[label_field],
-        )
+        # Use stratified splits if label_field is available, otherwise use random splits
+        if label_field:
+            train_df, holdout_df = train_test_split(
+                df, train_size=train_ratio, random_state=42, stratify=df[label_field]
+            )
+            test_df, val_df = train_test_split(
+                holdout_df,
+                test_size=test_val_ratio,
+                random_state=42,
+                stratify=holdout_df[label_field],
+            )
+        else:
+            # Non-stratified splits when no labels are available
+            train_df, holdout_df = train_test_split(
+                df, train_size=train_ratio, random_state=42
+            )
+            test_df, val_df = train_test_split(
+                holdout_df, test_size=test_val_ratio, random_state=42
+            )
         splits = {"train": train_df, "test": test_df, "val": val_df}
     else:
         splits = {job_type: df}
@@ -278,7 +292,7 @@ if __name__ == "__main__":
 
         # Read configuration from environment variables
         LABEL_FIELD = os.environ.get("LABEL_FIELD")
-        if not LABEL_FIELD:
+        if not LABEL_FIELD and args.job_type != "calibration":
             raise RuntimeError("LABEL_FIELD environment variable must be set.")
         TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
         TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
@@ -299,7 +313,7 @@ if __name__ == "__main__":
         # Log key parameters
         logger.info(f"Starting tabular preprocessing with parameters:")
         logger.info(f"  Job Type: {args.job_type}")
-        logger.info(f"  Label Field: {LABEL_FIELD}")
+        logger.info(f"  Label Field: {LABEL_FIELD if LABEL_FIELD else 'Not specified'}")
         logger.info(f"  Train Ratio: {TRAIN_RATIO}")
         logger.info(f"  Test/Val Ratio: {TEST_VAL_RATIO}")
         logger.info(f"  Input Directory: {INPUT_DATA_DIR}")
@@ -307,10 +321,7 @@ if __name__ == "__main__":
         logger.info(f"  Output Directory: {OUTPUT_DIR}")
 
         # Set up path dictionaries
-        input_paths = {
-            "DATA": INPUT_DATA_DIR,
-            "SIGNATURE": INPUT_SIGNATURE_DIR
-        }
+        input_paths = {"DATA": INPUT_DATA_DIR, "SIGNATURE": INPUT_SIGNATURE_DIR}
 
         output_paths = {"processed_data": OUTPUT_DIR}
 
@@ -331,9 +342,7 @@ if __name__ == "__main__":
         )
 
         # Log completion summary
-        splits_summary = ", ".join(
-            [f"{name}: {df.shape}" for name, df in result.items()]
-        )
+        splits_summary = ", ".join([f"{name}: {df.shape}" for name, df in result.items()])
         logger.info(f"Preprocessing completed successfully. Splits: {splits_summary}")
         sys.exit(0)
     except Exception as e:

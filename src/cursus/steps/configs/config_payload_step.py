@@ -1,4 +1,12 @@
-from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr, ConfigDict, field_serializer
+from pydantic import (
+    BaseModel,
+    Field,
+    model_validator,
+    field_validator,
+    PrivateAttr,
+    ConfigDict,
+    field_serializer,
+)
 from typing import Optional, Dict, List, Any, Union, TYPE_CHECKING, ClassVar
 from pathlib import Path
 from datetime import datetime
@@ -32,13 +40,20 @@ class PayloadConfig(ProcessingStepConfigBase):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
-    
+
     # NOTE: Variable lists removed - script gets all variable information from hyperparameters.json
     # The script extracts field information from hyperparameters using:
     # - full_field_list, tab_field_list, cat_field_list from hyperparameters
     # - Creates variable list dynamically using create_model_variable_list()
     # Config-based variable lists were redundant and unused.
 
+    # Performance metrics
+    expected_tps: int = Field(ge=1, description="Expected transactions per second")
+
+    max_latency_in_millisecond: int = Field(
+        ge=100, le=10000, description="Maximum acceptable latency in milliseconds"
+    )
+    
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
@@ -73,6 +88,11 @@ class PayloadConfig(ProcessingStepConfigBase):
         description="Optional dictionary of special TEXT fields and their template values",
     )
 
+    # Performance thresholds
+    max_acceptable_error_rate: float = Field(
+        default=0.2, ge=0.0, le=1.0, description="Maximum acceptable error rate (0-1)"
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
 
@@ -87,7 +107,7 @@ class PayloadConfig(ProcessingStepConfigBase):
     )
 
     # Custom serializer for Path fields (Pydantic V2 approach)
-    @field_serializer('processing_source_dir', 'source_dir', when_used='json')
+    @field_serializer("processing_source_dir", "source_dir", when_used="json")
     def serialize_path_fields(self, value: Optional[Union[str, Path]]) -> Optional[str]:
         """Serialize Path objects to strings"""
         if value is None:
@@ -115,7 +135,6 @@ class PayloadConfig(ProcessingStepConfigBase):
     # and special_field_values is optional with proper defaults
 
     # Methods for payload generation and paths
-
 
     # Removed ensure_payload_path() and get_full_payload_path() methods
     # These are redundant and not portable - S3 path construction should happen in builders/scripts

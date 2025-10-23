@@ -40,10 +40,15 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
 
-    label_name: str = Field(description="Label field name for the target variable.")
+    # No required fields for tabular preprocessing - all fields have reasonable defaults
 
     # ===== System Fields with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
+
+    label_name: str = Field(
+        default="",
+        description="Label field name for the target variable. Optional for calibration job types.",
+    )
 
     processing_entry_point: str = Field(
         default="tabular_preprocessing.py",
@@ -96,27 +101,13 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
             # Combine with entry point
             if source_dir.startswith("s3://"):
-                self._full_script_path = (
-                    f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
-                )
+                self._full_script_path = f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
             else:
-                self._full_script_path = str(
-                    Path(source_dir) / self.processing_entry_point
-                )
+                self._full_script_path = str(Path(source_dir) / self.processing_entry_point)
 
         return self._full_script_path
 
     # ===== Validators =====
-
-    @field_validator("label_name")
-    @classmethod
-    def validate_label_name(cls, v: str) -> str:
-        """
-        Ensure label_name is a non-empty string.
-        """
-        if not v or not v.strip():
-            raise ValueError("label_name must be a non-empty string")
-        return v
 
     @field_validator("processing_entry_point")
     @classmethod
@@ -164,13 +155,9 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         source_dir = self.effective_source_dir
         if source_dir is not None:
             if source_dir.startswith("s3://"):
-                self._full_script_path = (
-                    f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
-                )
+                self._full_script_path = f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
             else:
-                self._full_script_path = str(
-                    Path(source_dir) / self.processing_entry_point
-                )
+                self._full_script_path = str(Path(source_dir) / self.processing_entry_point)
 
         return self
 

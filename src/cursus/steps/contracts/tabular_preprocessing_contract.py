@@ -11,14 +11,15 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     entry_point="tabular_preprocessing.py",
     expected_input_paths={
         "DATA": "/opt/ml/processing/input/data",
-        "SIGNATURE": "/opt/ml/processing/input/signature"
+        "SIGNATURE": "/opt/ml/processing/input/signature",
     },
     expected_output_paths={"processed_data": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - job_type comes from config
     },
-    required_env_vars=["LABEL_FIELD", "TRAIN_RATIO", "TEST_VAL_RATIO"],
+    required_env_vars=["TRAIN_RATIO", "TEST_VAL_RATIO"],
     optional_env_vars={
+        "LABEL_FIELD": "",
         "CATEGORICAL_COLUMNS": "",
         "NUMERICAL_COLUMNS": "",
         "TEXT_COLUMNS": "",

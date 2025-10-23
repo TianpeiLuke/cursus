@@ -27,9 +27,9 @@ try:
 
     SPECS_AVAILABLE = True
 except ImportError:
-    TABULAR_PREPROCESSING_TRAINING_SPEC = TABULAR_PREPROCESSING_CALIBRATION_SPEC = (
-        TABULAR_PREPROCESSING_VALIDATION_SPEC
-    ) = TABULAR_PREPROCESSING_TESTING_SPEC = None
+    TABULAR_PREPROCESSING_TRAINING_SPEC = (
+        TABULAR_PREPROCESSING_CALIBRATION_SPEC
+    ) = TABULAR_PREPROCESSING_VALIDATION_SPEC = TABULAR_PREPROCESSING_TESTING_SPEC = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -74,15 +74,9 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         # Get specification based on job type
         if job_type == "training" and TABULAR_PREPROCESSING_TRAINING_SPEC is not None:
             spec = TABULAR_PREPROCESSING_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None
-        ):
+        elif job_type == "calibration" and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None:
             spec = TABULAR_PREPROCESSING_CALIBRATION_SPEC
-        elif (
-            job_type == "validation"
-            and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None
-        ):
+        elif job_type == "validation" and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None:
             spec = TABULAR_PREPROCESSING_VALIDATION_SPEC
         elif job_type == "testing" and TABULAR_PREPROCESSING_TESTING_SPEC is not None:
             spec = TABULAR_PREPROCESSING_TESTING_SPEC
@@ -95,9 +89,7 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
                 if hasattr(module, spec_var_name):
                     spec = getattr(module, spec_var_name)
             except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
+                self.log_warning("Could not import specification for job type: %s", job_type)
 
         if not spec:
             raise ValueError(f"No specification found for job type: {job_type}")
@@ -130,7 +122,6 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
             "processing_framework_version",
             "use_large_processing_instance",
             "job_type",
-            "label_name",
         ]
 
         for attr in required_attrs:
@@ -146,9 +137,10 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
-        # Validate label_name
-        if not self.config.label_name or not self.config.label_name.strip():
-            raise ValueError("label_name must be provided and non-empty")
+        # Validate label_name - now optional, but if provided must be non-empty
+        if hasattr(self.config, "label_name") and self.config.label_name is not None:
+            if not self.config.label_name.strip():
+                raise ValueError("label_name must be either None or a non-empty string")
 
     def _create_processor(self) -> SKLearnProcessor:
         """
@@ -186,7 +178,7 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
 
         # Add additional environment variables specific to this step
         if hasattr(self.config, "label_name"):
-            env_vars["LABEL_FIELD"] = self.config.label_name
+            env_vars["LABEL_FIELD"] = self.config.label_name or ""
 
         if hasattr(self.config, "train_ratio"):
             env_vars["TRAIN_RATIO"] = str(self.config.train_ratio)
@@ -303,8 +295,17 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "tabular_preprocessing", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "tabular_preprocessing",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
