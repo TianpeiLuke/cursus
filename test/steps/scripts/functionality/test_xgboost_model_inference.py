@@ -606,6 +606,112 @@ class TestGeneratePredictions:
         assert isinstance(predictions, np.ndarray)
         assert predictions.shape[0] == 0  # Empty predictions for empty data
 
+    @patch('cursus.steps.scripts.xgboost_model_inference.xgb.DMatrix')
+    def test_generate_predictions_dmatrix_with_feature_names(self, mock_dmatrix_class, mock_model, sample_inference_data):
+        """Test that DMatrix is created with feature_names for consistency with evaluation script."""
+        feature_columns = ['feature1', 'feature2', 'feature3']
+        hyperparams = {'objective': 'binary:logistic'}
+        
+        # Mock DMatrix instance
+        mock_dmatrix_instance = MagicMock()
+        mock_dmatrix_class.return_value = mock_dmatrix_instance
+        
+        # Mock model prediction
+        mock_model.predict.return_value = np.array([0.2, 0.8, 0.3, 0.9, 0.4])
+        
+        # Call generate_predictions
+        predictions = generate_predictions(
+            mock_model, sample_inference_data, feature_columns, hyperparams
+        )
+        
+        # Verify DMatrix was called with feature_names parameter
+        mock_dmatrix_class.assert_called_once()
+        call_args = mock_dmatrix_class.call_args
+        
+        # Check that feature_names was passed as keyword argument
+        assert 'feature_names' in call_args.kwargs
+        assert call_args.kwargs['feature_names'] == feature_columns
+        
+        # Verify model.predict was called with the DMatrix instance
+        mock_model.predict.assert_called_once_with(mock_dmatrix_instance)
+        
+        # Verify predictions are properly formatted
+        assert isinstance(predictions, np.ndarray)
+        assert predictions.shape == (5, 2)  # Binary classification output
+
+    @patch('cursus.steps.scripts.xgboost_model_inference.xgb.DMatrix')
+    def test_generate_predictions_dmatrix_feature_names_with_missing_features(self, mock_dmatrix_class, mock_model):
+        """Test DMatrix feature_names parameter when some features are missing from data."""
+        # Data missing some expected features
+        data = pd.DataFrame({
+            'feature1': [1.0, 2.0, 3.0],
+            'feature3': [10.0, 20.0, 30.0],
+            'id': [1, 2, 3]
+            # Missing feature2
+        })
+        
+        feature_columns = ['feature1', 'feature2', 'feature3']
+        hyperparams = {'objective': 'binary:logistic'}
+        
+        # Mock DMatrix instance
+        mock_dmatrix_instance = MagicMock()
+        mock_dmatrix_class.return_value = mock_dmatrix_instance
+        
+        # Mock model prediction
+        mock_model.predict.return_value = np.array([0.2, 0.8, 0.3])
+        
+        # Call generate_predictions
+        predictions = generate_predictions(mock_model, data, feature_columns, hyperparams)
+        
+        # Verify DMatrix was called with only available feature names
+        mock_dmatrix_class.assert_called_once()
+        call_args = mock_dmatrix_class.call_args
+        
+        # Check that feature_names contains only available features
+        assert 'feature_names' in call_args.kwargs
+        available_features = call_args.kwargs['feature_names']
+        assert 'feature1' in available_features
+        assert 'feature3' in available_features
+        assert 'feature2' not in available_features  # Missing from data
+        assert len(available_features) == 2  # Only 2 available features
+        
+        # Verify predictions
+        assert isinstance(predictions, np.ndarray)
+        assert predictions.shape[0] == 3  # 3 samples
+
+    def test_generate_predictions_feature_names_consistency_with_evaluation(self, mock_model, sample_inference_data):
+        """Test that feature_names usage is consistent with evaluation script pattern."""
+        feature_columns = ['feature1', 'feature2', 'feature3']
+        hyperparams = {'objective': 'binary:logistic'}
+        
+        # This test verifies the fix ensures consistency between inference and evaluation scripts
+        # Both should use feature_names in DMatrix creation for proper feature alignment
+        
+        # Mock the DMatrix creation to capture the call
+        with patch('cursus.steps.scripts.xgboost_model_inference.xgb.DMatrix') as mock_dmatrix:
+            mock_dmatrix_instance = MagicMock()
+            mock_dmatrix.return_value = mock_dmatrix_instance
+            mock_model.predict.return_value = np.array([0.2, 0.8, 0.3, 0.9, 0.4])
+            
+            # Call generate_predictions
+            predictions = generate_predictions(mock_model, sample_inference_data, feature_columns, hyperparams)
+            
+            # Verify the DMatrix call pattern matches evaluation script
+            mock_dmatrix.assert_called_once()
+            call_args = mock_dmatrix.call_args
+            
+            # Should have positional arg for data and keyword arg for feature_names
+            assert len(call_args.args) == 1  # X data
+            assert 'feature_names' in call_args.kwargs
+            
+            # Feature names should match available features from data
+            expected_features = ['feature1', 'feature2', 'feature3']  # All available in sample data
+            assert call_args.kwargs['feature_names'] == expected_features
+            
+            # Verify successful prediction
+            assert isinstance(predictions, np.ndarray)
+            assert predictions.shape == (5, 2)
+
 
 class TestLoadEvalData:
     """Tests for load_eval_data function."""

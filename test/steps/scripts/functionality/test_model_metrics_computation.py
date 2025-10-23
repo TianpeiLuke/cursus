@@ -30,6 +30,12 @@ from cursus.steps.scripts.model_metrics_computation import (
     log_metrics_summary,
     save_metrics,
     create_health_check_file,
+    compute_comparison_metrics,
+    perform_statistical_tests,
+    plot_comparison_roc_curves,
+    plot_comparison_pr_curves,
+    plot_score_scatter,
+    plot_score_distributions,
     CONTAINER_PATHS
 )
 
@@ -1007,3 +1013,434 @@ class TestCommonFailurePatterns:
         result = detect_and_load_predictions(str(special_dir))
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3
+
+
+class TestModelComparisonFunctionality:
+    """Tests for new model comparison functionality added to model_metrics_computation."""
+
+    def test_compute_comparison_metrics_binary(self):
+        """Test computing comparison metrics for binary classification."""
+        np.random.seed(42)
+        y_true = np.array([0, 1, 0, 1, 1, 0, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3, 0.6, 0.4])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4, 0.5, 0.3])
+
+        metrics = compute_comparison_metrics(y_true, y_new_score, y_prev_score, is_binary=True)
+
+        # Check that all expected comparison metrics are present
+        expected_keys = [
+            "pearson_correlation", "spearman_correlation",
+            "new_model_auc", "previous_model_auc", "auc_delta", "auc_lift_percent",
+            "new_model_ap", "previous_model_ap", "ap_delta", "ap_lift_percent",
+            "new_score_mean", "previous_score_mean", "score_mean_delta"
+        ]
+        for key in expected_keys:
+            assert key in metrics
+
+        # Check correlation values are in valid range
+        assert -1 <= metrics["pearson_correlation"] <= 1
+        assert -1 <= metrics["spearman_correlation"] <= 1
+
+        # Check AUC values are in valid range
+        assert 0 <= metrics["new_model_auc"] <= 1
+        assert 0 <= metrics["previous_model_auc"] <= 1
+
+        # Check F1 scores at different thresholds
+        for threshold in [0.3, 0.5, 0.7]:
+            assert f"new_model_f1_at_{threshold}" in metrics
+            assert f"previous_model_f1_at_{threshold}" in metrics
+            assert f"f1_delta_at_{threshold}" in metrics
+
+        # Check agreement metrics
+        for threshold in [0.3, 0.5, 0.7]:
+            assert f"prediction_agreement_at_{threshold}" in metrics
+            assert 0 <= metrics[f"prediction_agreement_at_{threshold}"] <= 1
+
+    def test_perform_statistical_tests_binary(self):
+        """Test performing statistical tests for binary classification."""
+        np.random.seed(42)
+        y_true = np.array([0, 1, 0, 1, 1, 0, 1, 0, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3, 0.6, 0.4, 0.8, 0.2])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4, 0.5, 0.3, 0.7, 0.3])
+
+        test_results = perform_statistical_tests(y_true, y_new_score, y_prev_score, is_binary=True)
+
+        # Check McNemar's test results
+        expected_mcnemar_keys = [
+            "mcnemar_statistic", "mcnemar_p_value", "mcnemar_significant",
+            "correct_both", "new_correct_prev_wrong", "new_wrong_prev_correct", "wrong_both"
+        ]
+        for key in expected_mcnemar_keys:
+            assert key in test_results
+
+        # Check paired t-test results
+        expected_ttest_keys = ["paired_t_statistic", "paired_t_p_value", "paired_t_significant"]
+        for key in expected_ttest_keys:
+            assert key in test_results
+
+        # Check Wilcoxon test results
+        expected_wilcoxon_keys = ["wilcoxon_statistic", "wilcoxon_p_value", "wilcoxon_significant"]
+        for key in expected_wilcoxon_keys:
+            assert key in test_results
+
+        # Check p-values are in valid range (0 to 1)
+        assert 0 <= test_results["mcnemar_p_value"] <= 1
+        assert 0 <= test_results["paired_t_p_value"] <= 1
+        if not np.isnan(test_results["wilcoxon_p_value"]):
+            assert 0 <= test_results["wilcoxon_p_value"] <= 1
+
+        # Check significance flags are boolean
+        assert isinstance(test_results["mcnemar_significant"], bool)
+        assert isinstance(test_results["paired_t_significant"], bool)
+        assert isinstance(test_results["wilcoxon_significant"], bool)
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    @patch("cursus.steps.scripts.model_metrics_computation.plt")
+    def test_plot_comparison_roc_curves(self, mock_plt, temp_dir):
+        """Test plotting comparison ROC curves."""
+        output_dir = temp_dir / "output"
+        output_dir.mkdir()
+
+        y_true = np.array([0, 1, 0, 1, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4])
+
+        result_path = plot_comparison_roc_curves(y_true, y_new_score, y_prev_score, str(output_dir))
+
+        # Verify plotting functions were called
+        mock_plt.figure.assert_called_once()
+        mock_plt.plot.assert_called()  # Should be called multiple times for both models
+        mock_plt.savefig.assert_called_once()
+        mock_plt.close.assert_called_once()
+
+        # Check that result path is correct
+        assert "comparison_roc_curves.jpg" in result_path
+
+    @patch("cursus.steps.scripts.model_metrics_computation.plt")
+    def test_plot_comparison_pr_curves(self, mock_plt, temp_dir):
+        """Test plotting comparison PR curves."""
+        output_dir = temp_dir / "output"
+        output_dir.mkdir()
+
+        y_true = np.array([0, 1, 0, 1, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4])
+
+        result_path = plot_comparison_pr_curves(y_true, y_new_score, y_prev_score, str(output_dir))
+
+        # Verify plotting functions were called
+        mock_plt.figure.assert_called_once()
+        mock_plt.plot.assert_called()
+        mock_plt.savefig.assert_called_once()
+        mock_plt.close.assert_called_once()
+
+        # Check that result path is correct
+        assert "comparison_pr_curves.jpg" in result_path
+
+    @patch("cursus.steps.scripts.model_metrics_computation.plt")
+    def test_plot_score_scatter(self, mock_plt, temp_dir):
+        """Test plotting score scatter plot."""
+        output_dir = temp_dir / "output"
+        output_dir.mkdir()
+
+        y_true = np.array([0, 1, 0, 1, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4])
+
+        result_path = plot_score_scatter(y_new_score, y_prev_score, y_true, str(output_dir))
+
+        # Verify plotting functions were called
+        mock_plt.figure.assert_called_once()
+        mock_plt.scatter.assert_called()  # Should be called for positive and negative examples
+        mock_plt.savefig.assert_called_once()
+        mock_plt.close.assert_called_once()
+
+        # Check that result path is correct
+        assert "score_scatter_plot.jpg" in result_path
+
+    @patch("cursus.steps.scripts.model_metrics_computation.plt")
+    def test_plot_score_distributions(self, mock_plt, temp_dir):
+        """Test plotting score distributions."""
+        output_dir = temp_dir / "output"
+        output_dir.mkdir()
+
+        y_true = np.array([0, 1, 0, 1, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4])
+
+        result_path = plot_score_distributions(y_new_score, y_prev_score, y_true, str(output_dir))
+
+        # Verify plotting functions were called
+        mock_plt.subplots.assert_called_once()
+        mock_plt.savefig.assert_called_once()
+        mock_plt.close.assert_called_once()
+
+        # Check that result path is correct
+        assert "score_distributions.jpg" in result_path
+
+    def test_main_function_with_comparison_mode(self, temp_dir):
+        """Test main function with comparison mode enabled."""
+        # Set up test data with previous scores
+        input_dir = temp_dir / "input"
+        input_dir.mkdir()
+        
+        # Create sample predictions data with previous model scores
+        data = pd.DataFrame({
+            'id': range(50),
+            'label': np.random.choice([0, 1], 50, p=[0.7, 0.3]),
+            'prob_class_0': np.random.uniform(0.1, 0.9, 50),
+            'prob_class_1': np.random.uniform(0.1, 0.9, 50),
+            'amount': np.random.uniform(50, 1000, 50),
+            'baseline_score': np.random.uniform(0.1, 0.9, 50)  # Previous model scores
+        })
+        
+        # Normalize probabilities
+        prob_sum = data['prob_class_0'] + data['prob_class_1']
+        data['prob_class_0'] = data['prob_class_0'] / prob_sum
+        data['prob_class_1'] = data['prob_class_1'] / prob_sum
+        
+        predictions_file = input_dir / "predictions.csv"
+        data.to_csv(predictions_file, index=False)
+        
+        output_metrics_dir = temp_dir / "metrics"
+        output_plots_dir = temp_dir / "plots"
+        
+        # Create arguments
+        args = argparse.Namespace()
+        
+        # Environment variables with comparison mode enabled
+        environ_vars = {
+            "ID_FIELD": "id",
+            "LABEL_FIELD": "label",
+            "AMOUNT_FIELD": "amount",
+            "INPUT_FORMAT": "auto",
+            "COMPUTE_DOLLAR_RECALL": "true",
+            "COMPUTE_COUNT_RECALL": "true",
+            "DOLLAR_RECALL_FPR": "0.1",
+            "COUNT_RECALL_CUTOFF": "0.1",
+            "GENERATE_PLOTS": "true",
+            "COMPARISON_MODE": "true",
+            "PREVIOUS_SCORE_FIELD": "baseline_score",
+            "COMPARISON_METRICS": "all",
+            "STATISTICAL_TESTS": "true",
+            "COMPARISON_PLOTS": "true"
+        }
+        
+        # Path dictionaries
+        input_paths = {"processed_data": str(input_dir)}
+        output_paths = {
+            "metrics_output": str(output_metrics_dir),
+            "plots_output": str(output_plots_dir)
+        }
+        
+        # Run main function
+        main(
+            input_paths=input_paths,
+            output_paths=output_paths,
+            environ_vars=environ_vars,
+            job_args=args
+        )
+        
+        # Verify standard outputs
+        assert (output_metrics_dir / "metrics.json").exists()
+        assert (output_metrics_dir / "metrics_summary.txt").exists()
+        assert (output_metrics_dir / "metrics_report.json").exists()
+        
+        # Verify comparison plots were generated
+        assert (output_plots_dir / "comparison_roc_curves.jpg").exists()
+        assert (output_plots_dir / "comparison_pr_curves.jpg").exists()
+        assert (output_plots_dir / "score_scatter_plot.jpg").exists()
+        assert (output_plots_dir / "score_distributions.jpg").exists()
+        
+        # Verify comparison metrics are in the saved metrics
+        with open(output_metrics_dir / "metrics.json", 'r') as f:
+            saved_metrics = json.load(f)
+        
+        # Check for comparison metrics
+        comparison_metric_keys = [
+            "pearson_correlation", "auc_delta", "mcnemar_p_value", "paired_t_p_value"
+        ]
+        for key in comparison_metric_keys:
+            assert key in saved_metrics
+
+    def test_main_function_comparison_mode_disabled_missing_field(self, temp_dir):
+        """Test main function with comparison mode disabled due to missing previous score field."""
+        # Set up test data without previous scores
+        input_dir = temp_dir / "input"
+        input_dir.mkdir()
+        
+        # Create sample predictions data WITHOUT previous model scores
+        data = pd.DataFrame({
+            'id': range(50),
+            'label': np.random.choice([0, 1], 50, p=[0.7, 0.3]),
+            'prob_class_0': np.random.uniform(0.1, 0.9, 50),
+            'prob_class_1': np.random.uniform(0.1, 0.9, 50),
+            'amount': np.random.uniform(50, 1000, 50)
+            # No baseline_score column
+        })
+        
+        # Normalize probabilities
+        prob_sum = data['prob_class_0'] + data['prob_class_1']
+        data['prob_class_0'] = data['prob_class_0'] / prob_sum
+        data['prob_class_1'] = data['prob_class_1'] / prob_sum
+        
+        predictions_file = input_dir / "predictions.csv"
+        data.to_csv(predictions_file, index=False)
+        
+        output_metrics_dir = temp_dir / "metrics"
+        output_plots_dir = temp_dir / "plots"
+        
+        # Create arguments
+        args = argparse.Namespace()
+        
+        # Environment variables with comparison mode enabled but missing field
+        environ_vars = {
+            "ID_FIELD": "id",
+            "LABEL_FIELD": "label",
+            "AMOUNT_FIELD": "amount",
+            "GENERATE_PLOTS": "true",
+            "COMPARISON_MODE": "true",
+            "PREVIOUS_SCORE_FIELD": "baseline_score",  # Field doesn't exist in data
+            "COMPARISON_METRICS": "all",
+            "STATISTICAL_TESTS": "true",
+            "COMPARISON_PLOTS": "true"
+        }
+        
+        # Path dictionaries
+        input_paths = {"processed_data": str(input_dir)}
+        output_paths = {
+            "metrics_output": str(output_metrics_dir),
+            "plots_output": str(output_plots_dir)
+        }
+        
+        # Run main function
+        main(
+            input_paths=input_paths,
+            output_paths=output_paths,
+            environ_vars=environ_vars,
+            job_args=args
+        )
+        
+        # Verify standard outputs exist
+        assert (output_metrics_dir / "metrics.json").exists()
+        assert (output_metrics_dir / "metrics_summary.txt").exists()
+        
+        # Verify comparison plots were NOT generated (comparison mode should be disabled)
+        assert not (output_plots_dir / "comparison_roc_curves.jpg").exists()
+        assert not (output_plots_dir / "comparison_pr_curves.jpg").exists()
+        
+        # Verify comparison metrics are NOT in the saved metrics
+        with open(output_metrics_dir / "metrics.json", 'r') as f:
+            saved_metrics = json.load(f)
+        
+        # Check that comparison metrics are absent
+        comparison_metric_keys = [
+            "pearson_correlation", "auc_delta", "mcnemar_p_value"
+        ]
+        for key in comparison_metric_keys:
+            assert key not in saved_metrics
+
+    def test_main_function_comparison_mode_disabled_empty_field(self, temp_dir):
+        """Test main function with comparison mode disabled due to empty PREVIOUS_SCORE_FIELD."""
+        # Set up test data
+        input_dir = temp_dir / "input"
+        input_dir.mkdir()
+        
+        data = pd.DataFrame({
+            'id': range(20),
+            'label': np.random.choice([0, 1], 20, p=[0.7, 0.3]),
+            'prob_class_0': np.random.uniform(0.1, 0.9, 20),
+            'prob_class_1': np.random.uniform(0.1, 0.9, 20),
+        })
+        
+        # Normalize probabilities
+        prob_sum = data['prob_class_0'] + data['prob_class_1']
+        data['prob_class_0'] = data['prob_class_0'] / prob_sum
+        data['prob_class_1'] = data['prob_class_1'] / prob_sum
+        
+        predictions_file = input_dir / "predictions.csv"
+        data.to_csv(predictions_file, index=False)
+        
+        output_metrics_dir = temp_dir / "metrics"
+        
+        # Create arguments
+        args = argparse.Namespace()
+        
+        # Environment variables with comparison mode enabled but empty PREVIOUS_SCORE_FIELD
+        environ_vars = {
+            "ID_FIELD": "id",
+            "LABEL_FIELD": "label",
+            "GENERATE_PLOTS": "false",  # Disable plots for simpler test
+            "COMPARISON_MODE": "true",
+            "PREVIOUS_SCORE_FIELD": "",  # Empty field should disable comparison
+            "COMPARISON_METRICS": "all",
+            "STATISTICAL_TESTS": "true",
+            "COMPARISON_PLOTS": "true"
+        }
+        
+        # Path dictionaries
+        input_paths = {"processed_data": str(input_dir)}
+        output_paths = {"metrics_output": str(output_metrics_dir)}
+        
+        # Run main function
+        main(
+            input_paths=input_paths,
+            output_paths=output_paths,
+            environ_vars=environ_vars,
+            job_args=args
+        )
+        
+        # Verify standard outputs exist
+        assert (output_metrics_dir / "metrics.json").exists()
+        
+        # Verify comparison metrics are NOT in the saved metrics
+        with open(output_metrics_dir / "metrics.json", 'r') as f:
+            saved_metrics = json.load(f)
+        
+        # Check that comparison metrics are absent
+        assert "pearson_correlation" not in saved_metrics
+        assert "auc_delta" not in saved_metrics
+        assert "mcnemar_p_value" not in saved_metrics
+
+    def test_comparison_functions_consistency_with_xgboost_eval(self):
+        """Test that comparison functions are identical to xgboost_model_eval.py implementation."""
+        # This test verifies that the comparison functions imported from xgboost_model_eval
+        # work identically in the model_metrics_computation context
+        
+        np.random.seed(42)
+        y_true = np.array([0, 1, 0, 1, 1, 0, 1, 0, 1, 0])
+        y_new_score = np.array([0.2, 0.8, 0.1, 0.9, 0.7, 0.3, 0.6, 0.4, 0.8, 0.2])
+        y_prev_score = np.array([0.1, 0.7, 0.2, 0.8, 0.6, 0.4, 0.5, 0.3, 0.7, 0.3])
+        
+        # Test compute_comparison_metrics
+        comp_metrics = compute_comparison_metrics(y_true, y_new_score, y_prev_score, is_binary=True)
+        
+        # Should have all the same keys as the xgboost_model_eval version
+        expected_keys = [
+            "pearson_correlation", "spearman_correlation", "new_model_auc", "previous_model_auc",
+            "auc_delta", "auc_lift_percent", "new_model_ap", "previous_model_ap", "ap_delta", "ap_lift_percent"
+        ]
+        for key in expected_keys:
+            assert key in comp_metrics
+        
+        # Test perform_statistical_tests
+        stat_results = perform_statistical_tests(y_true, y_new_score, y_prev_score, is_binary=True)
+        
+        # Should have all the same keys as the xgboost_model_eval version
+        expected_stat_keys = [
+            "mcnemar_statistic", "mcnemar_p_value", "mcnemar_significant",
+            "paired_t_statistic", "paired_t_p_value", "paired_t_significant",
+            "wilcoxon_statistic", "wilcoxon_p_value", "wilcoxon_significant"
+        ]
+        for key in expected_stat_keys:
+            assert key in stat_results
+        
+        # Verify the functions produce reasonable results
+        assert isinstance(comp_metrics["pearson_correlation"], (int, float))
+        assert isinstance(stat_results["mcnemar_p_value"], (int, float))
+        assert isinstance(stat_results["mcnemar_significant"], bool)
