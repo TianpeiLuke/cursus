@@ -83,6 +83,8 @@ from sklearn.metrics import (
     roc_curve,
     f1_score,
 )
+from scipy import stats
+from scipy.stats import pearsonr, spearmanr
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import time
@@ -720,6 +722,175 @@ def compute_metrics_multiclass(y_true: np.ndarray, y_prob: np.ndarray, n_classes
     return metrics
 
 
+def compute_comparison_metrics(
+    y_true: np.ndarray, 
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray,
+    is_binary: bool = True
+) -> Dict[str, float]:
+    """
+    Compute comparison metrics between new model and previous model scores.
+    
+    Args:
+        y_true: True labels
+        y_new_score: New model prediction scores
+        y_prev_score: Previous model prediction scores  
+        is_binary: Whether this is binary classification
+        
+    Returns:
+        Dictionary of comparison metrics
+    """
+    logger.info("Computing model comparison metrics")
+    
+    comparison_metrics = {}
+    
+    # Basic correlation metrics
+    pearson_corr, pearson_p = pearsonr(y_new_score, y_prev_score)
+    spearman_corr, spearman_p = spearmanr(y_new_score, y_prev_score)
+    
+    comparison_metrics.update({
+        "pearson_correlation": pearson_corr,
+        "pearson_p_value": pearson_p,
+        "spearman_correlation": spearman_corr,
+        "spearman_p_value": spearman_p,
+    })
+    
+    # Performance comparison metrics
+    if is_binary:
+        # Binary classification comparison
+        new_auc = roc_auc_score(y_true, y_new_score)
+        prev_auc = roc_auc_score(y_true, y_prev_score)
+        new_ap = average_precision_score(y_true, y_new_score)
+        prev_ap = average_precision_score(y_true, y_prev_score)
+        
+        # Delta metrics
+        comparison_metrics.update({
+            "new_model_auc": new_auc,
+            "previous_model_auc": prev_auc,
+            "auc_delta": new_auc - prev_auc,
+            "auc_lift_percent": ((new_auc - prev_auc) / prev_auc) * 100 if prev_auc > 0 else 0,
+            "new_model_ap": new_ap,
+            "previous_model_ap": prev_ap,
+            "ap_delta": new_ap - prev_ap,
+            "ap_lift_percent": ((new_ap - prev_ap) / prev_ap) * 100 if prev_ap > 0 else 0,
+        })
+        
+        # F1 score comparison at different thresholds
+        for threshold in [0.3, 0.5, 0.7]:
+            new_f1 = f1_score(y_true, (y_new_score >= threshold).astype(int))
+            prev_f1 = f1_score(y_true, (y_prev_score >= threshold).astype(int))
+            comparison_metrics[f"new_model_f1_at_{threshold}"] = new_f1
+            comparison_metrics[f"previous_model_f1_at_{threshold}"] = prev_f1
+            comparison_metrics[f"f1_delta_at_{threshold}"] = new_f1 - prev_f1
+    
+    # Score distribution comparison
+    comparison_metrics.update({
+        "new_score_mean": float(np.mean(y_new_score)),
+        "previous_score_mean": float(np.mean(y_prev_score)),
+        "new_score_std": float(np.std(y_new_score)),
+        "previous_score_std": float(np.std(y_prev_score)),
+        "score_mean_delta": float(np.mean(y_new_score) - np.mean(y_prev_score)),
+    })
+    
+    # Agreement metrics
+    # For binary classification, compute agreement at different thresholds
+    if is_binary:
+        for threshold in [0.3, 0.5, 0.7]:
+            new_pred = (y_new_score >= threshold).astype(int)
+            prev_pred = (y_prev_score >= threshold).astype(int)
+            agreement = np.mean(new_pred == prev_pred)
+            comparison_metrics[f"prediction_agreement_at_{threshold}"] = agreement
+    
+    logger.info(f"Comparison metrics computed: AUC delta={comparison_metrics.get('auc_delta', 'N/A'):.4f}, "
+                f"Correlation={comparison_metrics.get('pearson_correlation', 'N/A'):.4f}")
+    
+    return comparison_metrics
+
+
+def perform_statistical_tests(
+    y_true: np.ndarray,
+    y_new_score: np.ndarray, 
+    y_prev_score: np.ndarray,
+    is_binary: bool = True
+) -> Dict[str, float]:
+    """
+    Perform statistical significance tests comparing model performances.
+    
+    Args:
+        y_true: True labels
+        y_new_score: New model prediction scores
+        y_prev_score: Previous model prediction scores
+        is_binary: Whether this is binary classification
+        
+    Returns:
+        Dictionary of statistical test results
+    """
+    logger.info("Performing statistical significance tests")
+    
+    test_results = {}
+    
+    if is_binary:
+        # McNemar's test for binary classification
+        # Compare predictions at 0.5 threshold
+        new_pred = (y_new_score >= 0.5).astype(int)
+        prev_pred = (y_prev_score >= 0.5).astype(int)
+        
+        # Create contingency table for McNemar's test
+        # [correct_both, new_correct_prev_wrong]
+        # [new_wrong_prev_correct, wrong_both]
+        correct_both = np.sum((new_pred == y_true) & (prev_pred == y_true))
+        new_correct_prev_wrong = np.sum((new_pred == y_true) & (prev_pred != y_true))
+        new_wrong_prev_correct = np.sum((new_pred != y_true) & (prev_pred == y_true))
+        wrong_both = np.sum((new_pred != y_true) & (prev_pred != y_true))
+        
+        # McNemar's test statistic
+        if (new_correct_prev_wrong + new_wrong_prev_correct) > 0:
+            mcnemar_stat = ((abs(new_correct_prev_wrong - new_wrong_prev_correct) - 1) ** 2) / (new_correct_prev_wrong + new_wrong_prev_correct)
+            mcnemar_p_value = 1 - stats.chi2.cdf(mcnemar_stat, 1)
+        else:
+            mcnemar_stat = 0.0
+            mcnemar_p_value = 1.0
+            
+        test_results.update({
+            "mcnemar_statistic": mcnemar_stat,
+            "mcnemar_p_value": mcnemar_p_value,
+            "mcnemar_significant": mcnemar_p_value < 0.05,
+            "correct_both": int(correct_both),
+            "new_correct_prev_wrong": int(new_correct_prev_wrong),
+            "new_wrong_prev_correct": int(new_wrong_prev_correct),
+            "wrong_both": int(wrong_both),
+        })
+    
+    # Paired t-test on prediction scores
+    t_stat, t_p_value = stats.ttest_rel(y_new_score, y_prev_score)
+    test_results.update({
+        "paired_t_statistic": t_stat,
+        "paired_t_p_value": t_p_value,
+        "paired_t_significant": t_p_value < 0.05,
+    })
+    
+    # Wilcoxon signed-rank test (non-parametric alternative)
+    try:
+        wilcoxon_stat, wilcoxon_p = stats.wilcoxon(y_new_score, y_prev_score)
+        test_results.update({
+            "wilcoxon_statistic": wilcoxon_stat,
+            "wilcoxon_p_value": wilcoxon_p,
+            "wilcoxon_significant": wilcoxon_p < 0.05,
+        })
+    except ValueError as e:
+        logger.warning(f"Could not perform Wilcoxon test: {e}")
+        test_results.update({
+            "wilcoxon_statistic": np.nan,
+            "wilcoxon_p_value": np.nan,
+            "wilcoxon_significant": False,
+        })
+    
+    logger.info(f"Statistical tests completed: McNemar p={test_results.get('mcnemar_p_value', 'N/A'):.4f}, "
+                f"Paired t-test p={test_results.get('paired_t_p_value', 'N/A'):.4f}")
+    
+    return test_results
+
+
 def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
     """
     Load the first .csv or .parquet file found in the evaluation data directory.
@@ -858,10 +1029,16 @@ def evaluate_model(
     hyperparams: Dict[str, Any],
     output_eval_dir: str,
     output_metrics_dir: str,
+    comparison_mode: bool = False,
+    previous_score_field: str = "",
+    comparison_metrics: str = "all",
+    statistical_tests: bool = True,
+    comparison_plots: bool = True,
 ) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
     Also generate and save ROC and PR curves as JPG.
+    Supports optional model comparison functionality.
     """
     logger.info("Evaluating model")
     y_true = df[label_col].values
@@ -888,6 +1065,74 @@ def evaluate_model(
         metrics = compute_metrics_binary(y_true, y_prob)
         plot_and_save_roc_curve(y_true, y_prob[:, 1], output_metrics_dir)
         plot_and_save_pr_curve(y_true, y_prob[:, 1], output_metrics_dir)
+        
+        # Handle comparison mode for binary classification
+        if comparison_mode and previous_score_field in df.columns:
+            logger.info("Running comparison analysis")
+            y_prev_score = df[previous_score_field].values
+            
+            # Compute comparison metrics
+            if comparison_metrics in ["all", "basic"]:
+                comp_metrics = compute_comparison_metrics(y_true, y_prob[:, 1], y_prev_score, is_binary=True)
+                metrics.update(comp_metrics)
+            
+            # Perform statistical tests
+            if statistical_tests:
+                stat_results = perform_statistical_tests(y_true, y_prob[:, 1], y_prev_score, is_binary=True)
+                metrics.update(stat_results)
+            
+            # Generate comparison plots
+            if comparison_plots:
+                # Side-by-side ROC curves
+                plt.figure(figsize=(12, 5))
+                
+                # New model ROC
+                plt.subplot(1, 2, 1)
+                fpr_new, tpr_new, _ = roc_curve(y_true, y_prob[:, 1])
+                auc_new = roc_auc_score(y_true, y_prob[:, 1])
+                plt.plot(fpr_new, tpr_new, label=f"New Model (AUC = {auc_new:.3f})", color='blue')
+                
+                # Previous model ROC
+                fpr_prev, tpr_prev, _ = roc_curve(y_true, y_prev_score)
+                auc_prev = roc_auc_score(y_true, y_prev_score)
+                plt.plot(fpr_prev, tpr_prev, label=f"Previous Model (AUC = {auc_prev:.3f})", color='red')
+                
+                plt.plot([0, 1], [0, 1], "k--", alpha=0.5)
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.title("ROC Curve Comparison")
+                plt.legend()
+                
+                # Score scatter plot
+                plt.subplot(1, 2, 2)
+                plt.scatter(y_prev_score, y_prob[:, 1], alpha=0.5, s=1)
+                plt.plot([0, 1], [0, 1], "r--", alpha=0.5)
+                plt.xlabel("Previous Model Score")
+                plt.ylabel("New Model Score")
+                plt.title(f"Score Correlation (r={metrics.get('pearson_correlation', 0):.3f})")
+                
+                plt.tight_layout()
+                comparison_plot_path = os.path.join(output_metrics_dir, "comparison_roc_curves.jpg")
+                plt.savefig(comparison_plot_path, format="jpg", dpi=150)
+                plt.close()
+                logger.info(f"Saved comparison ROC curves to {comparison_plot_path}")
+                
+                # Score distributions comparison
+                plt.figure(figsize=(10, 6))
+                plt.hist(y_prev_score[y_true == 0], bins=50, alpha=0.5, label="Previous Model (Negative)", color='red', density=True)
+                plt.hist(y_prev_score[y_true == 1], bins=50, alpha=0.5, label="Previous Model (Positive)", color='darkred', density=True)
+                plt.hist(y_prob[y_true == 0, 1], bins=50, alpha=0.5, label="New Model (Negative)", color='blue', density=True)
+                plt.hist(y_prob[y_true == 1, 1], bins=50, alpha=0.5, label="New Model (Positive)", color='darkblue', density=True)
+                plt.xlabel("Prediction Score")
+                plt.ylabel("Density")
+                plt.title("Score Distribution Comparison")
+                plt.legend()
+                
+                dist_plot_path = os.path.join(output_metrics_dir, "score_distributions.jpg")
+                plt.savefig(dist_plot_path, format="jpg", dpi=150)
+                plt.close()
+                logger.info(f"Saved score distributions to {dist_plot_path}")
+        
     else:
         n_classes = y_prob.shape[1]
         logger.info(
@@ -946,6 +1191,25 @@ def main(
     # Extract environment variables
     id_field = environ_vars.get("ID_FIELD", "id")
     label_field = environ_vars.get("LABEL_FIELD", "label")
+    
+    # Extract comparison mode environment variables
+    comparison_mode = environ_vars.get("COMPARISON_MODE", "false").lower() == "true"
+    previous_score_field = environ_vars.get("PREVIOUS_SCORE_FIELD", "")
+    comparison_metrics = environ_vars.get("COMPARISON_METRICS", "all")
+    statistical_tests = environ_vars.get("STATISTICAL_TESTS", "true").lower() == "true"
+    comparison_plots = environ_vars.get("COMPARISON_PLOTS", "true").lower() == "true"
+    
+    # Guard rail: If PREVIOUS_SCORE_FIELD is empty, disable comparison mode
+    if comparison_mode and (not previous_score_field or previous_score_field.strip() == ""):
+        logger.warning("COMPARISON_MODE is enabled but PREVIOUS_SCORE_FIELD is empty. Disabling comparison mode.")
+        comparison_mode = False
+    
+    logger.info(f"Comparison mode: {comparison_mode}")
+    if comparison_mode:
+        logger.info(f"Previous score field: {previous_score_field}")
+        logger.info(f"Comparison metrics: {comparison_metrics}")
+        logger.info(f"Statistical tests: {statistical_tests}")
+        logger.info(f"Comparison plots: {comparison_plots}")
 
     # Log job info
     job_type = job_args.job_type
@@ -987,6 +1251,11 @@ def main(
         hyperparams,
         output_eval_dir,
         output_metrics_dir,
+        comparison_mode=comparison_mode,
+        previous_score_field=previous_score_field,
+        comparison_metrics=comparison_metrics,
+        statistical_tests=statistical_tests,
+        comparison_plots=comparison_plots,
     )
 
     logger.info("Model evaluation script complete")
@@ -1012,6 +1281,11 @@ if __name__ == "__main__":
     environ_vars = {
         "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
         "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
+        "COMPARISON_MODE": os.environ.get("COMPARISON_MODE", "false"),
+        "PREVIOUS_SCORE_FIELD": os.environ.get("PREVIOUS_SCORE_FIELD", ""),
+        "COMPARISON_METRICS": os.environ.get("COMPARISON_METRICS", "all"),
+        "STATISTICAL_TESTS": os.environ.get("STATISTICAL_TESTS", "true"),
+        "COMPARISON_PLOTS": os.environ.get("COMPARISON_PLOTS", "true"),
     }
 
     validate_environment()
