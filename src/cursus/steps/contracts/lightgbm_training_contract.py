@@ -8,7 +8,7 @@ Aligned with XGBoost training contract for consistency.
 
 from .training_script_contract import TrainingScriptContract
 
-LIGHTGBM_TRAIN_CONTRACT = TrainingScriptContract(
+LIGHTGBM_TRAINING_CONTRACT = TrainingScriptContract(
     entry_point="lightgbm_training.py",
     expected_input_paths={
         "input_path": "/opt/ml/input/data",
