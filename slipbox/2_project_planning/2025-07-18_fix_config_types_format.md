@@ -1,3 +1,29 @@
+---
+tags:
+  - project
+  - planning
+  - bug_fix
+  - config_types_format
+  - backward_compatibility
+keywords: 
+  - config types format fix
+  - ConfigMerger save method
+  - backward compatibility
+  - configuration serialization
+  - step name generation
+  - config_types mapping
+  - legacy format support
+  - validation failures
+  - load_configs function
+  - format mismatch resolution
+topics: 
+  - config types format fix plan
+  - configuration serialization compatibility
+  - step name mapping correction
+  - backward compatibility restoration
+language: python
+date of note: 2025-07-18
+---
 # Config Types Format Fix Plan
 
 ## Overview

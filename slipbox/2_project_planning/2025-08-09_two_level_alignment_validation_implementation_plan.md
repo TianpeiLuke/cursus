@@ -1,6 +1,7 @@
 ---
 tags:
-  - project_planning
+  - project
+  - planning
   - implementation_plan
   - validation
   - alignment

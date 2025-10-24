@@ -1,6 +1,7 @@
 ---
 tags:
-  - project_planning
+  - project
+  - planning
   - implementation_plan
   - mcp
   - knowledge_transfer

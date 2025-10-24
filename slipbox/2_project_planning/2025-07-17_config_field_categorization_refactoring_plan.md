@@ -1,3 +1,29 @@
+---
+tags:
+  - project
+  - planning
+  - config_field_categorization
+  - refactoring_plan
+  - modular_architecture
+keywords: 
+  - config field categorization refactoring
+  - modular class-based architecture
+  - ConfigFieldCategorizer
+  - TypeAwareConfigSerializer
+  - ConfigMerger
+  - field categorization rules
+  - job type variant handling
+  - validation modes
+  - backward compatibility
+  - configuration management
+topics: 
+  - config field categorization refactoring plan
+  - modular architecture implementation
+  - configuration management system overhaul
+  - field categorization modernization
+language: python
+date of note: 2025-07-17
+---
 # Config Field Categorization Refactoring Plan
 
 ## Overview
