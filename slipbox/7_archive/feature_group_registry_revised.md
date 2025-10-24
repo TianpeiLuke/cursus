@@ -1,5 +1,6 @@
 ---
 tags:
+  - archive
   - design
   - configuration
   - feature_groups
