@@ -1,3 +1,22 @@
+---
+tags:
+  - project
+  - planning
+  - job_type_variants
+  - pipeline_specs
+keywords: 
+  - job type
+  - variant handling
+  - specification
+  - pipeline
+  - builder
+topics: 
+  - variant specifications
+  - dependency resolution
+  - builder simplification
+language: python
+date of note: 2025-07-04
+---
 # Implementation Plan: Specification-Driven XGBoost End-to-End Pipeline
 
 **Document Version**: 3.0  

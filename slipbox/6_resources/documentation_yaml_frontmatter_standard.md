@@ -71,30 +71,129 @@ date of note: YYYY-MM-DD
    - Format: YYYY-MM-DD
    - Typically extracted from the filename if using date-based naming
 
-## Special Tag Types
+## Knowledge Generation and Coding Workflow
 
-### Entry Point Tag
+The tagging system follows a comprehensive workflow that combines action-driven development with regular operational review processes:
 
-Documents that serve as **Index Notes** connecting to many related notes and primarily used as entry points for query and knowledge access should include `entry_point` as the first tag. These notes do not contain heavy information on their own and serve as major summaries of topics, collections of relevant docs to a query, etc.
-
-```yaml
-tags:
-  - entry_point
-  - documentation
-  - overview
-  - [topic_area]
+```mermaid
+flowchart TD
+    %% Action-Driven Development Cycle
+    A[Design/Analyze] --> B[Plan]
+    B --> C[Act - Coding]
+    C --> D[Test]
+    
+    %% Review Process (Regular/Operational)
+    D --> E{Time for Review?}
+    E -->|After a while<br/>Monthly/Quarterly| F[Review Process]
+    E -->|Continue Development| A
+    
+    %% Review Outcomes
+    F --> G{Knowledge Classification}
+    G -->|Permanent Knowledge| H[Resource]
+    G -->|Index/Navigation| I[Entry Point]
+    G -->|Learning Material| J[Tutorial]
+    G -->|Outdated| K[Archive]
+    G -->|Ready for Production| L[Publish - Code]
+    
+    %% Back to Development
+    H --> M[Knowledge Base]
+    I --> M
+    J --> M
+    K --> N[Historical Reference]
+    L --> O[Production System]
+    
+    %% Cycle Continuation
+    M --> A
+    O --> A
+    
+    %% Styling
+    classDef actionDriven fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef reviewProcess fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef knowledge fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef outcome fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class A,B,C,D actionDriven
+    class E,F,G reviewProcess
+    class H,I,J,M knowledge
+    class K,L,O,N outcome
 ```
 
-Example locations for entry point tags:
-- Main README.md files that serve as documentation hubs
-- Index documents that link to multiple related notes
-- Overview documents that summarize and connect to detailed documentation
-- Getting started guides that serve as navigation entry points
-- Package overview documents that connect to various components
+### Workflow Phases
 
-### Resource Tag
+#### Action-Driven Development Cycle
+**Purpose**: Creating functional code and solutions
+- **Design/Analyze** → **Plan** → **Act (Coding)** → **Test**
+- Fast iteration focused on problem-solving and implementation
+- Documentation tagged with initial generation tags (`design`, `analysis`, `project`, `test`)
 
-Documents that are **beyond one design** and considered as general principles, best practices, common pitfalls, standard operation protocols, or instructions should include `resource` as the first tag:
+#### Review Process (Regular/Operational)
+**Purpose**: Extracting permanent knowledge and categorizing documentation
+- Conducted regularly (monthly/quarterly cycles)
+- Systematic evaluation of accumulated documentation
+- Classification into permanent knowledge categories
+- Application of post-processing tags (`resource`, `archive`, `entry_point`, `tutorial`, `code`)
+
+## Tag Categorization by Knowledge Generation Lifecycle
+
+The tagging system follows this workflow with three distinct phases:
+
+### Phase 1: Initial Generation Tags (Content Creation)
+
+These tags are applied **when the document is first written** to categorize the purpose and content of the document according to the ReAct knowledge generation process:
+
+#### Design Phase Tags
+```yaml
+tags:
+  - design
+  - [design_area]
+  - [component_name]
+```
+Applied when creating architectural designs, system specifications, and technical proposals.
+
+#### Analysis Phase Tags
+```yaml
+tags:
+  - analysis
+  - [analysis_type]
+  - [component_name]
+```
+Applied when conducting analysis of existing systems, performance studies, or comparative evaluations.
+
+#### Project Planning Phase Tags
+```yaml
+tags:
+  - project
+  - planning
+  - [technical_area]
+  - [component]
+```
+Applied when creating implementation roadmaps, project plans, and development strategies.
+
+#### Implementation Phase Tags
+```yaml
+tags:
+  - project
+  - implementation
+  - [technical_area]
+  - [component]
+```
+Applied when documenting implementation progress, development summaries, and execution details.
+
+#### Test Phase Tags
+```yaml
+tags:
+  - test
+  - [test_type]
+  - [component_name]
+```
+Applied when code is ready and test documentation is created for validation frameworks, test suites, and testing methodologies.
+
+### Phase 2: Post-Processing Tags (Review Phase)
+
+These tags are applied **after a period of time** (typically a month or quarter) as part of the review process to label the final destination and status of the document:
+
+#### Resource Tag
+Documents that are **beyond one design** and considered as general principles, best practices, common pitfalls, standard operation protocols, or instructions:
 
 ```yaml
 tags:
@@ -112,9 +211,8 @@ Example locations for resource tags:
 - General instructions and methodology documents
 - Style guides and documentation standards
 
-### Archive Tag
-
-Documents that are considered **outdated** either by a new document or because the code is deprecated and refactored should include `archive` as the first tag:
+#### Archive Tag
+Documents that are considered **outdated** either by a new document or because the code is deprecated and refactored:
 
 ```yaml
 tags:
@@ -131,108 +229,65 @@ Example locations for archive tags:
 - Outdated architectural decisions superseded by new designs
 - Legacy documentation maintained for historical reference
 
-### Code Tags
+#### Entry Point Tag
+Documents that serve as **Index Notes** connecting to many related notes and primarily used as entry points for query and knowledge access:
 
-Documentation for code components should include the module path:
+```yaml
+tags:
+  - entry_point
+  - documentation
+  - overview
+  - [topic_area]
+```
+
+Example locations for entry point tags:
+- Main README.md files that serve as documentation hubs
+- Index documents that link to multiple related notes
+- Overview documents that summarize and connect to detailed documentation
+- Getting started guides that serve as navigation entry points
+- Package overview documents that connect to various components
+
+#### Tutorial Tag
+Documents created during the review stage to extract and summarize existing knowledge for easy access:
+
+```yaml
+tags:
+  - tutorial
+  - reference
+  - [tutorial_type]
+  - [component_name]
+  - [skill_level]
+```
+
+Example locations for tutorial tags:
+- Getting started guides extracted from existing documentation
+- Step-by-step tutorials summarizing complex processes
+- API reference tutorials consolidating usage patterns
+- Implementation tutorials distilling best practices
+- Learning paths created from existing knowledge base
+
+### Phase 3: Publishing Tags (Code Publication)
+
+These tags are applied when documents are **reviewed and ready for code publication**:
+
+#### Code Tag
+Documents for code components that have been reviewed and are ready for publication:
 
 ```yaml
 tags:
   - code
-  - pipeline_api
+  - [module_path]
   - [component_name]
   - [component_purpose]
 ```
 
-### Design Tags
+Example locations for code tags:
+- API documentation for published modules
+- Component documentation for released code
+- Module guides for production-ready systems
+- Implementation documentation for stable features
 
-Documentation for design documents should begin with "design":
-
-```yaml
-tags:
-  - design
-  - reference
-  - [design_area]
-  - [component_name]
-  - [architecture_aspect]
-  - [design_purpose]
-```
-
-Example locations for design tags:
-- Architecture design documents
-- System design specifications
-- Component design documents
-- Technical design proposals
-
-### Project Tags
-
-Project documentation should categorize planning, implementation or analysis:
-
-```yaml
-tags:
-  - project
-  - [planning/implementation/analysis]
-  - [technical_area]
-  - [component]
-```
-
-### Test Tags
-
-Documentation for test components should begin with "test":
-
-```yaml
-tags:
-  - test
-  - [test_type]
-  - [component_name]
-  - [test_purpose]
-```
-
-Example locations for test tags:
-- Test suite documentation
-- Test case specifications
-- Validation framework documentation
-- Test runner guides
-- Testing methodology documents
-
-Common test type subcategories:
-- `unit` - Unit test documentation
-- `integration` - Integration test documentation
-- `validation` - Validation framework documentation
-- `builders` - Step builder test documentation
-- `end_to_end` - End-to-end test documentation
-- `performance` - Performance test documentation
-
-### Analysis Tags
-
-Documentation for analysis documents should begin with "analysis":
-
-```yaml
-tags:
-  - analysis
-  - reference
-  - [analysis_type]
-  - [component_name]
-  - [analysis_purpose]
-```
-
-Example locations for analysis tags:
-- Code analysis documents
-- Performance analysis reports
-- Design analysis documents
-- Implementation analysis
-- Comparative analysis studies
-- Pain point analysis
-- Migration analysis documents
-
-Common analysis type subcategories:
-- `performance` - Performance analysis documentation
-- `design` - Design analysis and evaluation
-- `implementation` - Implementation analysis
-- `migration` - Migration analysis and planning
-- `comparative` - Comparative analysis studies
-- `pain_points` - Pain point identification and analysis
-- `redundancy` - Code redundancy analysis
-- `coverage` - Test coverage analysis
+## Additional Tag Categories
 
 ### Prompt Tags
 
@@ -260,35 +315,6 @@ Common prompt type subcategories:
 - `refinement` - Code refinement prompts
 - `agentic` - Agentic workflow prompts
 - `developer` - Developer assistance prompts
-
-### Tutorial Tags
-
-Documentation for tutorial content should begin with "tutorial":
-
-```yaml
-tags:
-  - tutorial
-  - reference
-  - [tutorial_type]
-  - [component_name]
-  - [skill_level]
-```
-
-Example locations for tutorial tags:
-- Getting started guides
-- Step-by-step tutorials
-- API reference tutorials
-- Implementation tutorials
-- Best practices guides
-
-Common tutorial type subcategories:
-- `getting_started` - Getting started tutorials
-- `api_reference` - API reference documentation
-- `step_development` - Step development tutorials
-- `pipeline_development` - Pipeline development guides
-- `workspace` - Workspace management tutorials
-- `validation` - Validation framework tutorials
-- `registry` - Registry system tutorials
 
 ## Examples
 

@@ -1,7 +1,7 @@
 ---
 tags:
   - project
-  - implementation
+  - planning
   - validation
   - step_builders
   - sagemaker_variants

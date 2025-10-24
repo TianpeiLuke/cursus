@@ -1,7 +1,7 @@
 ---
 tags:
   - project
-  - implementation
+  - planning
   - alignment
   - property_paths
 keywords:

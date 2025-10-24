@@ -1,7 +1,7 @@
 ---
 tags:
   - project
-  - implementation
+  - planning
   - contract_validation
   - alignment
 keywords:

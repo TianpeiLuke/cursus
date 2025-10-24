@@ -3,17 +3,24 @@ tags:
   - project
   - implementation
   - job_type_variants
-  - pipeline_specs
+  - specification_variants
+  - dependency_resolution
 keywords: 
-  - job type
-  - variant handling
-  - specification
-  - pipeline
-  - builder
-topics: 
-  - variant specifications
+  - job type variants
+  - specification variants
+  - training calibration validation testing
+  - dynamic specification selection
+  - semantic keywords
   - dependency resolution
-  - builder simplification
+  - CradleDataLoading
+  - TabularPreprocessing
+  - step builder
+  - pipeline variants
+topics: 
+  - job type variant specifications
+  - dynamic specification selection
+  - semantic keyword matching
+  - pipeline variant creation
 language: python
 date of note: 2025-07-04
 ---

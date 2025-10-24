@@ -1,5 +1,6 @@
 ---
 tags:
+  - archive
   - design
   - configuration
   - registry
