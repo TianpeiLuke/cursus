@@ -1,10 +1,10 @@
 ---
 tags:
+  - entry_point
   - overview
   - architecture
   - package
   - analysis
-  - entry_point
 keywords:
   - cursus package
   - ML pipeline system
