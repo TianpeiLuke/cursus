@@ -89,13 +89,13 @@ def get_calibrated_score_map(
 
 
 def find_first_data_file(data_dir: str) -> str:
-    """Find the first supported data file in directory.
+    """Find the most appropriate data file in directory, handling multiple XGBoost output files.
 
     Args:
         data_dir: Directory to search for data files
 
     Returns:
-        str: Path to the first supported data file found
+        str: Path to the most appropriate data file found
 
     Raises:
         FileNotFoundError: If no supported data file is found
@@ -103,11 +103,54 @@ def find_first_data_file(data_dir: str) -> str:
     if not os.path.isdir(data_dir):
         raise FileNotFoundError(f"Directory does not exist: {data_dir}")
 
+    # Get all files in directory
+    all_files = os.listdir(data_dir)
+    logger.info(f"Found {len(all_files)} files in {data_dir}: {all_files}")
+    
+    # Priority order for XGBoost evaluation/inference outputs
+    priority_files = [
+        "eval_predictions.csv",                    # XGBoost model evaluation output (standard)
+        "eval_predictions_with_comparison.csv",   # XGBoost model evaluation output (comparison)
+        "predictions.csv",                         # XGBoost model inference output (CSV)
+        "predictions.parquet",                     # XGBoost model inference output (Parquet)
+        "predictions.json",                        # XGBoost model inference output (JSON)
+        "processed_data.csv"                       # Legacy format
+    ]
+    
+    # First, check for priority files in order
+    found_priority_files = []
+    for priority_file in priority_files:
+        potential_path = os.path.join(data_dir, priority_file)
+        if os.path.exists(potential_path):
+            found_priority_files.append((priority_file, potential_path))
+    
+    if found_priority_files:
+        # If multiple priority files exist, log them and use the first one
+        if len(found_priority_files) > 1:
+            file_list = [f[0] for f in found_priority_files]
+            logger.warning(f"Multiple XGBoost output files found: {file_list}")
+            logger.warning(f"Using highest priority file: {found_priority_files[0][0]}")
+        else:
+            logger.info(f"Found XGBoost output file: {found_priority_files[0][0]}")
+        
+        return found_priority_files[0][1]
+    
+    # Fallback to any supported file, but warn about multiple files
+    supported_files = []
     for fname in sorted(os.listdir(data_dir)):
         if fname.lower().endswith((".csv", ".parquet", ".json")):
-            return os.path.join(data_dir, fname)
-
-    raise FileNotFoundError(f"No supported data file (.csv, .parquet, .json) found in {data_dir}")
+            supported_files.append(fname)
+    
+    if not supported_files:
+        raise FileNotFoundError(f"No supported data file (.csv, .parquet, .json) found in {data_dir}")
+    
+    if len(supported_files) > 1:
+        logger.warning(f"Multiple supported files found: {supported_files}")
+        logger.warning(f"Using first file alphabetically: {supported_files[0]}")
+    else:
+        logger.info(f"Using data file: {supported_files[0]}")
+    
+    return os.path.join(data_dir, supported_files[0])
 
 
 def load_calibration_dictionary(input_paths: Dict[str, str]) -> Dict[float, float]:
@@ -404,32 +447,70 @@ def main(
         if not evaluation_data_dir:
             raise ValueError("evaluation_data path not provided in input_paths")
         
-        # Look for processed_data.csv.out file
-        calibration_scores_path = None
-        for fname in os.listdir(evaluation_data_dir):
-            if fname == "processed_data.csv.out":
-                calibration_scores_path = os.path.join(evaluation_data_dir, fname)
-                break
-        
-        if not calibration_scores_path:
-            # Fallback to any CSV file
-            calibration_scores_path = find_first_data_file(evaluation_data_dir)
-            logger.warning(f"processed_data.csv.out not found, using {calibration_scores_path}")
+        # Use the same flexible approach as model_calibration.py - find any supported data file
+        calibration_scores_path = find_first_data_file(evaluation_data_dir)
         
         logger.info(f"Loading calibration data from {calibration_scores_path}")
         
-        # Load the data
-        if calibration_scores_path.endswith('.csv'):
-            df_calibration_scores = pd.read_csv(calibration_scores_path)
-        else:
-            raise ValueError(f"Unsupported file format: {calibration_scores_path}")
+        # Load the data with better format support
+        try:
+            if calibration_scores_path.endswith('.csv'):
+                df_calibration_scores = pd.read_csv(calibration_scores_path)
+            elif calibration_scores_path.endswith('.parquet'):
+                df_calibration_scores = pd.read_parquet(calibration_scores_path)
+            elif calibration_scores_path.endswith('.json'):
+                df_calibration_scores = pd.read_json(calibration_scores_path)
+            else:
+                raise ValueError(f"Unsupported file format: {calibration_scores_path}")
+        except Exception as e:
+            raise ValueError(f"Failed to load data from {calibration_scores_path}: {str(e)}")
         
-        # Extract scores from specified field
+        logger.info(f"Loaded dataframe with shape {df_calibration_scores.shape} and columns: {list(df_calibration_scores.columns)}")
+        
+        # Extract scores from specified field with validation
         if score_field not in df_calibration_scores.columns:
             raise ValueError(f"Score field '{score_field}' not found in data columns: {list(df_calibration_scores.columns)}")
         
-        calibration_scores = df_calibration_scores[score_field].values.reshape(-1)
-        logger.info(f"Loaded {len(calibration_scores)} calibration scores from field '{score_field}'")
+        # Extract and validate scores
+        raw_scores = df_calibration_scores[score_field].values
+        
+        # Handle missing values
+        missing_count = pd.isna(raw_scores).sum()
+        if missing_count > 0:
+            logger.warning(f"Found {missing_count} missing values in score field '{score_field}', removing them")
+            valid_mask = ~pd.isna(raw_scores)
+            df_calibration_scores = df_calibration_scores[valid_mask].copy()
+            raw_scores = raw_scores[valid_mask]
+        
+        calibration_scores = raw_scores.reshape(-1)
+        
+        # Basic data quality checks
+        min_score = np.min(calibration_scores)
+        max_score = np.max(calibration_scores)
+        mean_score = np.mean(calibration_scores)
+        std_score = np.std(calibration_scores)
+        unique_scores = len(np.unique(calibration_scores))
+        
+        logger.info(f"Score statistics: min={min_score:.6f}, max={max_score:.6f}, mean={mean_score:.6f}, std={std_score:.6f}")
+        logger.info(f"Loaded {len(calibration_scores)} calibration scores with {unique_scores} unique values from field '{score_field}'")
+        
+        # Validate score range (should be probabilities between 0 and 1)
+        if min_score < 0 or max_score > 1:
+            logger.warning(f"Scores outside [0,1] range: min={min_score:.6f}, max={max_score:.6f}")
+            if min_score < -0.1 or max_score > 1.1:
+                raise ValueError(f"Scores significantly outside probability range [0,1]: min={min_score:.6f}, max={max_score:.6f}")
+            
+            # Clip to valid range
+            calibration_scores = np.clip(calibration_scores, 0.0, 1.0)
+            logger.info("Clipped scores to [0,1] range")
+        
+        # Check for constant scores (would break ROC curve calculation)
+        if std_score < 1e-10:
+            raise ValueError(f"All scores are essentially constant (std={std_score:.2e}), cannot perform calibration")
+        
+        # Warn about low diversity
+        if unique_scores < 10:
+            logger.warning(f"Only {unique_scores} unique score values found, calibration may be less effective")
         
         # Create dataframe for calibration
         raw_score_df = pd.DataFrame({

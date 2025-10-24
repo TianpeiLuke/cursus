@@ -36,6 +36,7 @@ HYPERPARAMETERS_FILE = "hyperparameters.json"
 # Calibration model files
 CALIBRATION_DIR = "calibration"
 CALIBRATION_MODEL_FILE = "calibration_model.pkl"
+PERCENTILE_SCORE_FILE = "percentile_score.pkl"
 CALIBRATION_SUMMARY_FILE = "calibration_summary.json"
 CALIBRATION_MODELS_DIR = "calibration_models"  # For multiclass calibration models
 
@@ -200,21 +201,35 @@ def load_hyperparameters(model_dir: str) -> Dict[str, Any]:
 
 def load_calibration_model(model_dir: str) -> Optional[Any]:
     """
-    Load calibration model if it exists.
+    Load calibration model if it exists. Supports both regular calibration models
+    (calibration_model.pkl) and percentile calibration (percentile_score.pkl).
 
     Args:
         model_dir: Directory containing model artifacts
 
     Returns:
-        Calibration model if found, None otherwise
+        Calibration model if found, None otherwise. Returns a dictionary with
+        'type' and 'data' keys for percentile calibration, or the model object
+        directly for regular calibration.
     """
+    # Check for percentile calibration first
+    percentile_path = os.path.join(model_dir, CALIBRATION_DIR, PERCENTILE_SCORE_FILE)
+    if os.path.exists(percentile_path):
+        logger.info(f"Loading percentile calibration from {percentile_path}")
+        try:
+            with open(percentile_path, "rb") as f:
+                percentile_mapping = pkl.load(f)
+                return {"type": "percentile", "data": percentile_mapping}
+        except Exception as e:
+            logger.warning(f"Failed to load percentile calibration: {e}")
+
     # Check for binary calibration model
     calibration_path = os.path.join(model_dir, CALIBRATION_DIR, CALIBRATION_MODEL_FILE)
     if os.path.exists(calibration_path):
         logger.info(f"Loading binary calibration model from {calibration_path}")
         try:
             with open(calibration_path, "rb") as f:
-                return pkl.load(f)
+                return {"type": "regular", "data": pkl.load(f)}
         except Exception as e:
             logger.warning(f"Failed to load binary calibration model: {e}")
 
@@ -231,7 +246,8 @@ def load_calibration_model(model_dir: str) -> Optional[Any]:
                     )
                     with open(os.path.join(multiclass_dir, file), "rb") as f:
                         calibrators[class_name] = pkl.load(f)
-            return calibrators if calibrators else None
+            if calibrators:
+                return {"type": "regular_multiclass", "data": calibrators}
         except Exception as e:
             logger.warning(f"Failed to load multiclass calibration models: {e}")
 
@@ -239,15 +255,140 @@ def load_calibration_model(model_dir: str) -> Optional[Any]:
     return None
 
 
+def apply_percentile_calibration(scores: np.ndarray, percentile_mapping: List[Tuple[float, float]]) -> np.ndarray:
+    """
+    Apply percentile score mapping to raw scores.
+    
+    Args:
+        scores: Raw model prediction scores (N x 2 for binary classification)
+        percentile_mapping: List of (raw_score, percentile) tuples
+        
+    Returns:
+        Calibrated scores with same shape as input
+    """
+    def interpolate_score(raw_score: float, mapping: List[Tuple[float, float]]) -> float:
+        """Interpolate percentile for a single raw score."""
+        # Handle boundary cases
+        if raw_score <= mapping[0][0]:
+            return mapping[0][1]
+        if raw_score >= mapping[-1][0]:
+            return mapping[-1][1]
+        
+        # Find appropriate range and interpolate
+        for i in range(len(mapping) - 1):
+            if mapping[i][0] <= raw_score <= mapping[i + 1][0]:
+                x1, y1 = mapping[i]
+                x2, y2 = mapping[i + 1]
+                if x2 == x1:
+                    return y1
+                return y1 + (y2 - y1) * (raw_score - x1) / (x2 - x1)
+        return mapping[-1][1]  # Fallback
+    
+    # Apply percentile calibration to class-1 probabilities
+    calibrated = np.zeros_like(scores)
+    for i in range(scores.shape[0]):
+        # For binary classification, calibrate class-1 probability
+        raw_class1_prob = scores[i, 1]
+        calibrated_class1_prob = interpolate_score(raw_class1_prob, percentile_mapping)
+        calibrated[i, 1] = calibrated_class1_prob
+        calibrated[i, 0] = 1 - calibrated_class1_prob
+    
+    return calibrated
+
+
+def apply_regular_binary_calibration(scores: np.ndarray, calibrator: Any) -> np.ndarray:
+    """
+    Apply regular calibration to binary classification scores.
+    
+    Args:
+        scores: Raw model prediction scores (N x 2)
+        calibrator: Trained calibration model (GAM, Isotonic, or Platt)
+        
+    Returns:
+        Calibrated scores with same shape as input
+    """
+    calibrated = np.zeros_like(scores)
+    
+    if hasattr(calibrator, "transform"):
+        # Isotonic regression - expects 1D array
+        calibrated[:, 1] = calibrator.transform(scores[:, 1])  # class 1 probability
+        calibrated[:, 0] = 1 - calibrated[:, 1]  # class 0 probability
+    elif hasattr(calibrator, "predict_proba"):
+        # GAM or Platt scaling - expects 2D array
+        probas = calibrator.predict_proba(scores[:, 1].reshape(-1, 1))
+        calibrated[:, 1] = probas  # class 1 probability
+        calibrated[:, 0] = 1 - probas  # class 0 probability
+    else:
+        logger.warning(f"Unknown binary calibrator type: {type(calibrator)}")
+        return scores  # Fallback to raw scores
+    
+    return calibrated
+
+
+def apply_regular_multiclass_calibration(scores: np.ndarray, calibrators: Dict[str, Any]) -> np.ndarray:
+    """
+    Apply regular calibration to multiclass scores.
+    
+    Args:
+        scores: Raw model prediction scores (N x num_classes)
+        calibrators: Dictionary of calibration models, one per class
+        
+    Returns:
+        Calibrated and normalized scores with same shape as input
+    """
+    calibrated = np.zeros_like(scores)
+    
+    # Apply calibration to each class
+    for i in range(scores.shape[1]):
+        class_name = str(i)
+        if class_name in calibrators:
+            class_calibrator = calibrators[class_name]
+            if hasattr(class_calibrator, "transform"):
+                calibrated[:, i] = class_calibrator.transform(scores[:, i])
+            elif hasattr(class_calibrator, "predict_proba"):
+                calibrated[:, i] = class_calibrator.predict_proba(scores[:, i].reshape(-1, 1))
+            else:
+                calibrated[:, i] = scores[:, i]  # Fallback to raw scores
+        else:
+            calibrated[:, i] = scores[:, i]  # No calibrator for this class
+
+    # Normalize probabilities to sum to 1
+    row_sums = calibrated.sum(axis=1)
+    calibrated = calibrated / row_sums[:, np.newaxis]
+    
+    return calibrated
+
+
+def apply_legacy_calibration(scores: np.ndarray, calibrator: Any, is_multiclass: bool) -> np.ndarray:
+    """
+    Apply legacy calibration format for backward compatibility.
+    
+    Args:
+        scores: Raw model prediction scores
+        calibrator: Legacy calibration model(s)
+        is_multiclass: Whether this is multiclass classification
+        
+    Returns:
+        Calibrated scores
+    """
+    logger.info("Using legacy calibration format")
+    
+    if is_multiclass:
+        return apply_regular_multiclass_calibration(scores, calibrator)
+    else:
+        return apply_regular_binary_calibration(scores, calibrator)
+
+
 def apply_calibration(
     scores: np.ndarray, calibrator: Any, is_multiclass: bool
 ) -> np.ndarray:
     """
-    Apply calibration to raw model scores.
+    Apply calibration to raw model scores. Supports both regular calibration models
+    and percentile calibration.
 
     Args:
         scores: Raw model prediction scores
-        calibrator: Loaded calibration model(s)
+        calibrator: Loaded calibration model(s) or percentile mapping
         is_multiclass: Whether this is a multiclass model
 
     Returns:
@@ -257,51 +398,30 @@ def apply_calibration(
         return scores
 
     try:
-        if is_multiclass:
-            # Handle multiclass calibration - apply each calibrator to corresponding class
-            calibrated = np.zeros_like(scores)
-            for i in range(scores.shape[1]):
-                class_name = str(i)
-                if class_name in calibrator:
-                    if hasattr(calibrator[class_name], "transform"):
-                        calibrated[:, i] = calibrator[class_name].transform(
-                            scores[:, i]
-                        )
-                    elif hasattr(calibrator[class_name], "predict_proba"):
-                        calibrated[:, i] = calibrator[class_name].predict_proba(
-                            scores[:, i].reshape(-1, 1)
-                        )
-                    else:
-                        calibrated[:, i] = scores[:, i]  # Fallback to raw scores
-                else:
-                    calibrated[:, i] = scores[:, i]  # No calibrator for this class
-
-            # Normalize if needed
-            row_sums = calibrated.sum(axis=1)
-            calibrated = calibrated / row_sums[:, np.newaxis]
-            return calibrated
-        else:
-            # Binary calibration - single model
-            if hasattr(calibrator, "transform"):
-                # Reshape for isotonic regression which expects 1D array
-                calibrated = np.zeros_like(scores)
-                calibrated[:, 0] = 1 - calibrator.transform(
-                    scores[:, 1]
-                )  # class 0 probability
-                calibrated[:, 1] = calibrator.transform(
-                    scores[:, 1]
-                )  # class 1 probability
-                return calibrated
-            elif hasattr(calibrator, "predict_proba"):
-                # Reshape for GAM or Platt scaling which expects 2D array
-                calibrated = np.zeros_like(scores)
-                probas = calibrator.predict_proba(scores[:, 1].reshape(-1, 1))
-                calibrated[:, 1] = probas  # class 1 probability
-                calibrated[:, 0] = 1 - probas  # class 0 probability
-                return calibrated
+        # Handle percentile calibration
+        if isinstance(calibrator, dict) and calibrator.get("type") == "percentile":
+            if is_multiclass:
+                logger.warning("Percentile calibration not yet supported for multiclass, using raw scores")
+                return scores
             else:
-                logger.warning(f"Unknown calibrator type: {type(calibrator)}")
-                return scores  # Fallback
+                logger.info("Applying percentile calibration")
+                return apply_percentile_calibration(scores, calibrator["data"])
+        
+        # Handle regular calibration models
+        elif isinstance(calibrator, dict) and calibrator.get("type") in ["regular", "regular_multiclass"]:
+            actual_calibrator = calibrator["data"]
+            
+            if calibrator.get("type") == "regular_multiclass" or is_multiclass:
+                logger.info("Applying regular multiclass calibration")
+                return apply_regular_multiclass_calibration(scores, actual_calibrator)
+            else:
+                logger.info("Applying regular binary calibration")
+                return apply_regular_binary_calibration(scores, actual_calibrator)
+        
+        # Legacy support for direct calibrator objects (backward compatibility)
+        else:
+            return apply_legacy_calibration(scores, calibrator, is_multiclass)
+                    
     except Exception as e:
         logger.error(f"Error applying calibration: {str(e)}", exc_info=True)
         return scores
