@@ -168,6 +168,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Calibrates model prediction scores to accurate probabilities",
     },
+    "PercentileModelCalibration": {
+        "config_class": "PercentileModelCalibrationConfig",
+        "builder_step_name": "PercentileModelCalibrationStepBuilder",
+        "spec_type": "PercentileModelCalibration",
+        "sagemaker_step_type": "Processing",
+        "description": "Creates percentile mapping from model scores using ROC curve analysis for consistent risk interpretation",
+    },
     # Deployment Steps
     "Package": {
         "config_class": "PackageConfig",
@@ -209,15 +216,11 @@ STEP_NAMES = {
 }
 
 # Generate the mappings that existing code expects
-CONFIG_STEP_REGISTRY = {
-    info["config_class"]: step_name for step_name, info in STEP_NAMES.items()
-}
+CONFIG_STEP_REGISTRY = {info["config_class"]: step_name for step_name, info in STEP_NAMES.items()}
 
 BUILDER_STEP_NAMES = {
     step_name: info["builder_step_name"] for step_name, info in STEP_NAMES.items()
 }
 
 # Generate step specification types
-SPEC_STEP_TYPES = {
-    step_name: info["spec_type"] for step_name, info in STEP_NAMES.items()
-}
+SPEC_STEP_TYPES = {step_name: info["spec_type"] for step_name, info in STEP_NAMES.items()}
