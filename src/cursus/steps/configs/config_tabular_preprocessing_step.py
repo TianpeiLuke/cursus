@@ -39,8 +39,12 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
+    # Tabular preprocessing use job_type to determine if it need label_name as required input;
+    # so job_type is essential input here.
 
-    # No required fields for tabular preprocessing - all fields have reasonable defaults
+    job_type: str = Field(
+        description="One of ['training','validation','testing','calibration']",
+    )
 
     # ===== System Fields with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
@@ -53,11 +57,6 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
     processing_entry_point: str = Field(
         default="tabular_preprocessing.py",
         description="Relative path (within processing_source_dir) to the tabular preprocessing script.",
-    )
-
-    job_type: str = Field(
-        default="training",
-        description="One of ['training','validation','testing','calibration']",
     )
 
     train_ratio: float = Field(
