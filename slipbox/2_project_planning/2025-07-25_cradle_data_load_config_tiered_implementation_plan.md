@@ -2,25 +2,25 @@
 tags:
   - project
   - planning
-  - alignment_prevention
-  - four_layer_architecture
-  - contract_validation
+  - cradle_data_load_config
+  - tiered_field_classification
+  - nested_configuration
 keywords: 
-  - script specification alignment
-  - contract validation
-  - logical name consistency
-  - property path alignment
-  - four layer architecture
-  - step builders
-  - SageMaker ProcessingInput
-  - runtime enforcement
-  - cross-step compatibility
-  - alignment validation
+  - Cradle data load configuration
+  - tiered field classification
+  - three-tier field system
+  - nested configuration hierarchy
+  - BaseCradleComponentConfig
+  - essential user inputs
+  - system inputs with defaults
+  - derived fields
+  - configuration inheritance
+  - field categorization
 topics: 
-  - script-specification alignment prevention
-  - four-layer architecture alignment
-  - contract validation framework
-  - logical name consistency
+  - Cradle data load configuration tiered implementation
+  - three-tier field classification system
+  - nested configuration architecture
+  - configuration field inheritance
 language: python
 date of note: 2025-07-25
 ---

@@ -1,26 +1,26 @@
 ---
 tags:
   - project
-  - planning
-  - alignment_prevention
-  - four_layer_architecture
-  - contract_validation
+  - implementation
+  - step_name_consistency
+  - central_registry
+  - naming_standardization
 keywords: 
-  - script specification alignment
-  - contract validation
-  - logical name consistency
-  - property path alignment
-  - four layer architecture
-  - step builders
-  - SageMaker ProcessingInput
-  - runtime enforcement
-  - cross-step compatibility
-  - alignment validation
+  - step name consistency
+  - central registry implementation
+  - STEP_NAMES registry
+  - naming standardization
+  - step type consistency
+  - job type variants
+  - config registry alignment
+  - builder registry alignment
+  - specification step types
+  - pipeline template consistency
 topics: 
-  - script-specification alignment prevention
-  - four-layer architecture alignment
-  - contract validation framework
-  - logical name consistency
+  - step name consistency implementation
+  - central registry architecture
+  - naming standardization framework
+  - step type alignment across components
 language: python
 date of note: 2025-07-07
 ---
