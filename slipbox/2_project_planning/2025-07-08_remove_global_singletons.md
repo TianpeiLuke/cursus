@@ -1,3 +1,29 @@
+---
+tags:
+  - project
+  - implementation
+  - global_singletons_removal
+  - dependency_injection
+  - testing_reliability
+keywords: 
+  - global singleton removal
+  - dependency injection
+  - testing isolation
+  - thread safety
+  - factory pattern
+  - context management
+  - registry manager
+  - dependency resolver
+  - semantic matcher
+  - component refactoring
+topics: 
+  - global singleton removal implementation
+  - dependency injection architecture
+  - testing reliability improvements
+  - thread-safe component design
+language: python
+date of note: 2025-07-08
+---
 # Removing Global Singleton Objects
 
 **Date:** July 12, 2025 (Updated)  

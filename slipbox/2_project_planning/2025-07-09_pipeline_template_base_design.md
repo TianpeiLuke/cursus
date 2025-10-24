@@ -1,3 +1,29 @@
+---
+tags:
+  - project
+  - planning
+  - alignment_prevention
+  - four_layer_architecture
+  - contract_validation
+keywords: 
+  - script specification alignment
+  - contract validation
+  - logical name consistency
+  - property path alignment
+  - four layer architecture
+  - step builders
+  - SageMaker ProcessingInput
+  - runtime enforcement
+  - cross-step compatibility
+  - alignment validation
+topics: 
+  - script-specification alignment prevention
+  - four-layer architecture alignment
+  - contract validation framework
+  - logical name consistency
+language: python
+date of note: 2025-07-09
+---
 # Pipeline Template Base Design
 
 **Date:** July 9, 2025  

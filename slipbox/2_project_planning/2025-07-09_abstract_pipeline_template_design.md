@@ -1,3 +1,29 @@
+---
+tags:
+  - project
+  - design
+  - pipeline_template_architecture
+  - abstract_base_class
+  - template_modernization
+keywords: 
+  - abstract pipeline template design
+  - PipelineTemplateBase
+  - template inheritance
+  - configuration validation
+  - component lifecycle
+  - DAG construction
+  - execution document support
+  - thread safety
+  - factory methods
+  - template standardization
+topics: 
+  - abstract pipeline template design
+  - template architecture modernization
+  - pipeline template base class
+  - template standardization framework
+language: python
+date of note: 2025-07-09
+---
 # Abstract Pipeline Template Design
 
 **Date:** July 11, 2025  

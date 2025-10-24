@@ -1,3 +1,29 @@
+---
+tags:
+  - project
+  - implementation
+  - bug_fix
+  - mims_payload_handling
+  - sagemaker_integration
+keywords: 
+  - MIMS payload path handling
+  - SageMaker directory creation
+  - script contract fix
+  - path conflict resolution
+  - payload archive creation
+  - MIMS registration validation
+  - processing output handling
+  - directory vs file conflict
+  - S3 path generation
+  - pipeline reliability
+topics: 
+  - MIMS payload path handling fix
+  - SageMaker processing output integration
+  - script contract path resolution
+  - pipeline reliability improvements
+language: python
+date of note: 2025-07-12
+---
 # MIMS Payload Path Handling Fix
 
 **Date:** July 12, 2025  
