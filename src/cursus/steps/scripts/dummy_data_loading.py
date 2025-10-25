@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 INPUT_DATA_DIR = "/opt/ml/processing/input/data"
 SIGNATURE_OUTPUT_DIR = "/opt/ml/processing/output/signature"
 METADATA_OUTPUT_DIR = "/opt/ml/processing/output/metadata"
-DATA_OUTPUT_DIR = "/opt/ml/processing/output/place_holder"
+DATA_OUTPUT_DIR = "/opt/ml/processing/output/data"
 
 
 def ensure_directory(directory: Path) -> bool:

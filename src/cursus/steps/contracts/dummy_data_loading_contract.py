@@ -16,7 +16,7 @@ DUMMY_DATA_LOADING_CONTRACT = ScriptContract(
     expected_output_paths={
         "SIGNATURE": "/opt/ml/processing/output/signature",
         "METADATA": "/opt/ml/processing/output/metadata",
-        "DATA": "/opt/ml/processing/output/place_holder",  # Placeholder since actual data goes to S3
+        "DATA": "/opt/ml/processing/output/data",  # Data output directory
     },
     expected_arguments={
         # No expected arguments - using standard paths from contract
