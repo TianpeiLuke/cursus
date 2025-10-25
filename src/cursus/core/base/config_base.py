@@ -96,6 +96,10 @@ class BasePipelineConfig(BaseModel, ABC):
         description="Common source directory for scripts if applicable. Can be overridden by step configs.",
     )
 
+    enable_caching: bool = Field(
+        default=False, description="Enable caching for pipeline steps."
+    )
+
     # ===== Tier 1 Hybrid Resolution Fields =====
     # These fields are required for the hybrid path resolution system
     

@@ -419,7 +419,7 @@ class PipelineAssembler:
             "inputs": inputs,
             "outputs": outputs,
             "dependencies": dependencies,
-            "enable_caching": True,
+            "enable_caching": builder.config.enable_caching,
         }
 
         try:
