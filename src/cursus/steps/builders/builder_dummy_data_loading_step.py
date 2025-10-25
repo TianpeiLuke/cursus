@@ -163,16 +163,24 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
         """
         Constructs a dictionary of environment variables to be passed to the processing job.
         
-        The dummy data loading script does not require any environment variables.
-        It uses only standard SageMaker paths and processes data from the input channel.
+        This method combines:
+        1. Base environment variables from the contract
+        2. Configuration-specific environment variables from config.get_environment_variables()
 
         Returns:
-            A dictionary of environment variables (only base environment variables from contract).
+            A dictionary of environment variables for the processing job.
         """
-        # Get base environment variables from contract (should be empty for this step)
+        # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
 
-        self.log_info("Dummy data loading environment variables: %s", env_vars)
+        # Add configuration-specific environment variables
+        if hasattr(self.config, 'get_environment_variables'):
+            config_env_vars = self.config.get_environment_variables()
+            env_vars.update(config_env_vars)
+            self.log_info("Added configuration environment variables: %s", 
+                         {k: v for k, v in config_env_vars.items() if k.startswith(('WRITE_DATA_SHARDS', 'SHARD_SIZE', 'OUTPUT_FORMAT'))})
+
+        self.log_info("Final dummy data loading environment variables: %s", env_vars)
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:

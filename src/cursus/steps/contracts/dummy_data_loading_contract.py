@@ -24,7 +24,11 @@ DUMMY_DATA_LOADING_CONTRACT = ScriptContract(
     required_env_vars=[
         # No strictly required environment variables
     ],
-    optional_env_vars={},
+    optional_env_vars={
+        "WRITE_DATA_SHARDS": "false",
+        "SHARD_SIZE": "10000",
+        "OUTPUT_FORMAT": "CSV"
+    },
     framework_requirements={"python": ">=3.7", "boto3": ">=1.26.0"},
     description="""
     Dummy data loading script that:
@@ -44,16 +48,27 @@ DUMMY_DATA_LOADING_CONTRACT = ScriptContract(
     - /opt/ml/processing/output/metadata/metadata: Metadata about fields (type information)
     - Data is processed and made available at the specified output location
     
-    Environment Variables:
-    - No environment variables required - data source is provided via INPUT_DATA input channel
+    Environment Variables (Optional):
+    - WRITE_DATA_SHARDS: Enable enhanced data sharding mode (true/false, default: false)
+    - SHARD_SIZE: Number of rows per shard file (integer, default: 10000)
+    - OUTPUT_FORMAT: Output format for data shards (CSV/JSON/PARQUET, default: CSV)
     
     The script performs the following operations:
     - Reads user-provided data from the input data channel
     - Auto-detects data format (CSV, Parquet, JSON)
     - Generates schema signature based on the actual data
     - Writes metadata files with field type information
-    - Processes and copies data to the output location
-    - Processes data from the INPUT_DATA input channel
+    - Processes and outputs data in configurable format:
+      * Legacy mode (default): Writes placeholder file for backward compatibility
+      * Enhanced mode: Writes actual data as shards in part-*.{format} naming convention
+    
+    Enhanced Data Sharding Mode:
+    When WRITE_DATA_SHARDS=true, the script outputs data in a format compatible with
+    tabular preprocessing scripts:
+    - Data is written as multiple shard files (part-00000.csv, part-00001.csv, etc.)
+    - Supports CSV, JSON, and Parquet output formats
+    - Configurable shard size for optimal performance
+    - Maintains full compatibility with downstream processing steps
     
     This script is designed to replace CradleDataLoadingStep by processing
     user-provided data instead of calling internal Cradle services.

@@ -360,12 +360,125 @@ def write_data_placeholder(output_dir: Path) -> Path:
         raise
 
 
+def write_single_shard(df: pd.DataFrame, output_dir: Path, shard_index: int, 
+                      output_format: str) -> Path:
+    """
+    Write a single data shard in the specified format.
+    
+    Args:
+        df: DataFrame to write
+        output_dir: Output directory path
+        shard_index: Index of the shard (for filename)
+        output_format: Output format ('CSV', 'JSON', 'PARQUET')
+        
+    Returns:
+        Path to the written shard file
+        
+    Raises:
+        ValueError: If the format is unsupported
+        Exception: If writing fails
+    """
+    # Map format to file extension
+    format_extensions = {
+        'CSV': 'csv',
+        'JSON': 'json', 
+        'PARQUET': 'parquet'
+    }
+    
+    if output_format not in format_extensions:
+        raise ValueError(f"Unsupported output format: {output_format}. "
+                        f"Supported formats: {list(format_extensions.keys())}")
+    
+    extension = format_extensions[output_format]
+    shard_filename = f"part-{shard_index:05d}.{extension}"
+    shard_path = output_dir / shard_filename
+    
+    logger.info(f"Writing {output_format} shard: {shard_path}")
+    
+    try:
+        if output_format == 'CSV':
+            df.to_csv(shard_path, index=False)
+        elif output_format == 'JSON':
+            df.to_json(shard_path, orient='records', lines=True)
+        elif output_format == 'PARQUET':
+            df.to_parquet(shard_path, index=False)
+        
+        logger.info(f"Successfully wrote {len(df)} rows to {shard_path}")
+        return shard_path
+        
+    except Exception as e:
+        logger.error(f"Error writing {output_format} shard {shard_path}: {str(e)}")
+        raise
+
+
+def write_data_shards(df: pd.DataFrame, output_dir: Path, shard_size: int, 
+                     output_format: str) -> List[Path]:
+    """
+    Write DataFrame as multiple data shards.
+    
+    Args:
+        df: DataFrame to write
+        output_dir: Output directory path
+        shard_size: Number of rows per shard
+        output_format: Output format ('CSV', 'JSON', 'PARQUET')
+        
+    Returns:
+        List of paths to written shard files
+    """
+    ensure_directory(output_dir)
+    
+    written_files = []
+    total_rows = len(df)
+    
+    logger.info(f"Writing {total_rows} rows as shards of size {shard_size} in {output_format} format")
+    
+    if total_rows <= shard_size:
+        # Single shard
+        shard_file = write_single_shard(df, output_dir, 0, output_format)
+        written_files.append(shard_file)
+    else:
+        # Multiple shards
+        for i in range(0, total_rows, shard_size):
+            shard_df = df.iloc[i:i + shard_size]
+            shard_index = i // shard_size
+            shard_file = write_single_shard(shard_df, output_dir, shard_index, output_format)
+            written_files.append(shard_file)
+    
+    logger.info(f"Successfully wrote {len(written_files)} shard files")
+    return written_files
+
+
+def write_data_output(df: pd.DataFrame, output_dir: Path, write_shards: bool = False,
+                     shard_size: int = 10000, output_format: str = "CSV") -> Union[Path, List[Path]]:
+    """
+    Write data output - either as shards or placeholder based on configuration.
+    
+    Args:
+        df: Processed DataFrame
+        output_dir: Output directory path
+        write_shards: If True, write data as shards; if False, write placeholder
+        shard_size: Number of rows per shard file
+        output_format: Output format ('CSV', 'JSON', 'PARQUET')
+        
+    Returns:
+        Path to placeholder file or list of shard file paths
+    """
+    if not write_shards:
+        # Original behavior - write placeholder
+        logger.info("Writing data placeholder (legacy mode)")
+        return write_data_placeholder(output_dir)
+    
+    # New behavior - write data shards
+    logger.info(f"Writing data shards (enhanced mode): format={output_format}, shard_size={shard_size}")
+    return write_data_shards(df, output_dir, shard_size, output_format)
+
+
 def main(
     input_paths: Dict[str, str],
     output_paths: Dict[str, str],
     environ_vars: Dict[str, str],
     job_args: Optional[argparse.Namespace] = None,
-) -> Dict[str, Path]:
+) -> Dict[str, Union[Path, List[Path]]]:
     """
     Main entry point for the Dummy Data Loading script.
     
@@ -380,6 +493,20 @@ def main(
     """
     try:
         logger.info("Starting dummy data loading process")
+        
+        # Get configuration from environment variables
+        write_shards = environ_vars.get("WRITE_DATA_SHARDS", "false").lower() == "true"
+        shard_size = int(environ_vars.get("SHARD_SIZE", "10000"))
+        output_format = environ_vars.get("OUTPUT_FORMAT", "CSV").upper()
+        
+        # Validate output format
+        supported_formats = ['CSV', 'JSON', 'PARQUET']
+        if output_format not in supported_formats:
+            raise ValueError(f"Invalid OUTPUT_FORMAT: {output_format}. "
+                           f"Supported formats: {supported_formats}")
+        
+        logger.info(f"Configuration: WRITE_DATA_SHARDS={write_shards}, "
+                   f"SHARD_SIZE={shard_size}, OUTPUT_FORMAT={output_format}")
         
         # Get input and output directories
         input_data_dir = Path(input_paths["INPUT_DATA"])
@@ -407,12 +534,20 @@ def main(
         # Write output files
         signature_file = write_signature_file(signature, signature_output_dir)
         metadata_file = write_metadata_file(metadata, metadata_output_dir)
-        data_placeholder = write_data_placeholder(data_output_dir)
+        
+        # Write data output (configurable: shards or placeholder)
+        data_output = write_data_output(
+            combined_df, 
+            data_output_dir, 
+            write_shards=write_shards,
+            shard_size=shard_size,
+            output_format=output_format
+        )
         
         result = {
             "signature": signature_file,
             "metadata": metadata_file,
-            "data": data_placeholder
+            "data": data_output
         }
         
         logger.info("Dummy data loading completed successfully")
@@ -434,8 +569,17 @@ if __name__ == "__main__":
             "DATA": DATA_OUTPUT_DIR
         }
         
-        # Environment variables dictionary
-        environ_vars = {}
+        # Read environment variables from system
+        environ_vars = {
+            "WRITE_DATA_SHARDS": os.environ.get("WRITE_DATA_SHARDS", "false"),
+            "SHARD_SIZE": os.environ.get("SHARD_SIZE", "10000"),
+            "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "CSV")
+        }
+        
+        # Log configuration for debugging
+        logger.info(f"Environment configuration:")
+        for key, value in environ_vars.items():
+            logger.info(f"  {key}={value}")
         
         # No command line arguments needed for this script
         args = None

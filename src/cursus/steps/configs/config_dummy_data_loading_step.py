@@ -5,7 +5,7 @@ This module implements the configuration class for the Dummy Data Loading step,
 which processes user-provided data instead of calling internal Cradle services.
 """
 
-from pydantic import Field, model_validator, field_validator
+from pydantic import Field, model_validator, field_validator, PrivateAttr
 from typing import TYPE_CHECKING, Optional, Dict, Any, Union
 from pathlib import Path
 
@@ -64,6 +64,24 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         description="List of supported data formats for processing"
     )
 
+    # Enhanced data sharding options (Tier 2)
+    write_data_shards: bool = Field(
+        default=False,
+        description="Enable enhanced data sharding mode for compatibility with tabular preprocessing"
+    )
+
+    shard_size: int = Field(
+        default=10000,
+        ge=1,
+        le=1000000,
+        description="Number of rows per shard file when data sharding is enabled"
+    )
+
+    output_format: str = Field(
+        default="CSV",
+        description="Output format for data shards (CSV, JSON, PARQUET)"
+    )
+
     # Update to Pydantic V2 style model_config
     model_config = {
         "arbitrary_types_allowed": True,
@@ -81,6 +99,18 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         if v not in allowed:
             raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
         return v
+
+    @field_validator("output_format")
+    @classmethod
+    def validate_output_format(cls, v: str) -> str:
+        """
+        Ensure output_format is one of the allowed values.
+        """
+        allowed = {"CSV", "JSON", "PARQUET"}
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
+        return v_upper
 
     @model_validator(mode="after")
     def validate_config(self) -> "DummyDataLoadingConfig":
@@ -172,6 +202,29 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
             extensions.update(extension_map.get(format_name, set()))
         
         return extensions
+
+    def get_environment_variables(self) -> Dict[str, str]:
+        """Get environment variables for the processing script.
+
+        Returns:
+            dict: Dictionary of environment variables to be passed to the processing script.
+        """
+        env = (
+            super().get_environment_variables()
+            if hasattr(super(), "get_environment_variables")
+            else {}
+        )
+
+        # Add dummy data loading specific environment variables
+        env.update(
+            {
+                "WRITE_DATA_SHARDS": str(self.write_data_shards).lower(),
+                "SHARD_SIZE": str(self.shard_size),
+                "OUTPUT_FORMAT": self.output_format,
+            }
+        )
+
+        return env
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:

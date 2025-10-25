@@ -23,7 +23,10 @@ from cursus.steps.scripts.dummy_data_loading import (
     process_data_files,
     write_signature_file,
     write_metadata_file,
-    write_data_placeholder
+    write_data_placeholder,
+    write_single_shard,
+    write_data_shards,
+    write_data_output
 )
 
 
@@ -1118,3 +1121,473 @@ class TestCommonFailurePatterns:
         
         assert len(result) == 1
         assert result[0] == deep_file
+
+
+class TestEnhancedDataSharding:
+    """Tests for enhanced data sharding functionality."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    @pytest.fixture
+    def sample_data(self):
+        """Create sample DataFrame for testing."""
+        return pd.DataFrame({
+            'id': [1, 2, 3, 4, 5, 6, 7, 8],
+            'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Henry'],
+            'value': [10, 20, 30, 40, 50, 60, 70, 80],
+            'target': ['A', 'B', 'A', 'B', 'A', 'B', 'A', 'B']
+        })
+
+    def test_write_single_shard_csv(self, temp_dir, sample_data):
+        """Test writing a single CSV shard."""
+        result_path = write_single_shard(sample_data, temp_dir, 0, "CSV")
+        
+        assert result_path.exists()
+        assert result_path.name == "part-00000.csv"
+        
+        # Verify content
+        df_read = pd.read_csv(result_path)
+        pd.testing.assert_frame_equal(df_read, sample_data)
+
+    def test_write_single_shard_json(self, temp_dir, sample_data):
+        """Test writing a single JSON shard."""
+        result_path = write_single_shard(sample_data, temp_dir, 1, "JSON")
+        
+        assert result_path.exists()
+        assert result_path.name == "part-00001.json"
+        
+        # Verify content
+        df_read = pd.read_json(result_path, lines=True)
+        # JSON may reorder columns, so check content equality
+        assert len(df_read) == len(sample_data)
+        assert set(df_read.columns) == set(sample_data.columns)
+
+    def test_write_single_shard_parquet(self, temp_dir, sample_data):
+        """Test writing a single Parquet shard."""
+        result_path = write_single_shard(sample_data, temp_dir, 2, "PARQUET")
+        
+        assert result_path.exists()
+        assert result_path.name == "part-00002.parquet"
+        
+        # Verify content
+        df_read = pd.read_parquet(result_path)
+        pd.testing.assert_frame_equal(df_read, sample_data)
+
+    def test_write_single_shard_unsupported_format(self, temp_dir, sample_data):
+        """Test writing shard with unsupported format."""
+        with pytest.raises(ValueError, match="Unsupported output format: XML"):
+            write_single_shard(sample_data, temp_dir, 0, "XML")
+
+    def test_write_data_shards_single_shard(self, temp_dir, sample_data):
+        """Test writing data shards when data fits in single shard."""
+        shard_size = 10  # Larger than sample data
+        
+        result_paths = write_data_shards(sample_data, temp_dir, shard_size, "CSV")
+        
+        assert len(result_paths) == 1
+        assert result_paths[0].name == "part-00000.csv"
+        
+        # Verify content
+        df_read = pd.read_csv(result_paths[0])
+        pd.testing.assert_frame_equal(df_read, sample_data)
+
+    def test_write_data_shards_multiple_shards(self, temp_dir, sample_data):
+        """Test writing data shards when data requires multiple shards."""
+        shard_size = 3  # Smaller than sample data
+        
+        result_paths = write_data_shards(sample_data, temp_dir, shard_size, "CSV")
+        
+        # Should create 3 shards: 3, 3, 2 rows
+        assert len(result_paths) == 3
+        assert result_paths[0].name == "part-00000.csv"
+        assert result_paths[1].name == "part-00001.csv"
+        assert result_paths[2].name == "part-00002.csv"
+        
+        # Verify content by combining all shards
+        combined_data = []
+        for shard_path in result_paths:
+            df_shard = pd.read_csv(shard_path)
+            combined_data.append(df_shard)
+        
+        combined_df = pd.concat(combined_data, ignore_index=True)
+        pd.testing.assert_frame_equal(combined_df, sample_data)
+
+    def test_write_data_shards_json_format(self, temp_dir, sample_data):
+        """Test writing data shards in JSON format."""
+        shard_size = 4
+        
+        result_paths = write_data_shards(sample_data, temp_dir, shard_size, "JSON")
+        
+        assert len(result_paths) == 2  # 4 + 4 rows
+        assert all(path.suffix == ".json" for path in result_paths)
+        
+        # Verify content
+        combined_data = []
+        for shard_path in result_paths:
+            df_shard = pd.read_json(shard_path, lines=True)
+            combined_data.append(df_shard)
+        
+        combined_df = pd.concat(combined_data, ignore_index=True)
+        assert len(combined_df) == len(sample_data)
+        assert set(combined_df.columns) == set(sample_data.columns)
+
+    def test_write_data_output_legacy_mode(self, temp_dir, sample_data):
+        """Test write_data_output in legacy mode (placeholder)."""
+        result = write_data_output(sample_data, temp_dir, write_shards=False)
+        
+        assert isinstance(result, Path)
+        assert result.name == "data_processed"
+        assert result.exists()
+        
+        # Verify placeholder content
+        with open(result, 'r') as f:
+            content = f.read()
+        assert "Data processing completed successfully" in content
+
+    def test_write_data_output_enhanced_mode(self, temp_dir, sample_data):
+        """Test write_data_output in enhanced mode (shards)."""
+        result = write_data_output(
+            sample_data, temp_dir, 
+            write_shards=True, 
+            shard_size=3, 
+            output_format="CSV"
+        )
+        
+        assert isinstance(result, list)
+        assert len(result) == 3  # 3, 3, 2 rows
+        assert all(isinstance(path, Path) for path in result)
+        assert all(path.suffix == ".csv" for path in result)
+        
+        # Verify all files exist
+        assert all(path.exists() for path in result)
+
+
+class TestEnhancedMainFunction:
+    """Tests for enhanced main function with environment variable support."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    def setup_test_environment(self, temp_dir):
+        """Helper to set up test environment with sample data."""
+        # Create input directory with sample data
+        input_dir = temp_dir / "input"
+        input_dir.mkdir()
+        
+        # Create sample data files
+        df1 = pd.DataFrame({
+            'id': [1, 2, 3, 4, 5],
+            'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
+            'value': [10, 20, 30, 40, 50],
+            'target': ['A', 'B', 'A', 'B', 'A']
+        })
+        
+        df2 = pd.DataFrame({
+            'id': [6, 7, 8],
+            'name': ['Frank', 'Grace', 'Henry'],
+            'value': [60, 70, 80],
+            'target': ['B', 'A', 'B']
+        })
+        
+        csv_file = input_dir / "data1.csv"
+        json_file = input_dir / "data2.json"
+        
+        df1.to_csv(csv_file, index=False)
+        df2.to_json(json_file, orient='records', lines=True)
+        
+        # Create output directories
+        signature_dir = temp_dir / "signature"
+        metadata_dir = temp_dir / "metadata"
+        data_dir = temp_dir / "data"
+        
+        return {
+            "input_dir": input_dir,
+            "signature_dir": signature_dir,
+            "metadata_dir": metadata_dir,
+            "data_dir": data_dir,
+            "expected_rows": len(df1) + len(df2)
+        }
+
+    def test_main_function_legacy_mode(self, temp_dir):
+        """Test main function in legacy mode (default behavior)."""
+        dirs = self.setup_test_environment(temp_dir)
+        
+        input_paths = {"INPUT_DATA": str(dirs["input_dir"])}
+        output_paths = {
+            "SIGNATURE": str(dirs["signature_dir"]),
+            "METADATA": str(dirs["metadata_dir"]),
+            "DATA": str(dirs["data_dir"])
+        }
+        environ_vars = {
+            "WRITE_DATA_SHARDS": "false",
+            "SHARD_SIZE": "10000",
+            "OUTPUT_FORMAT": "CSV"
+        }
+        
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify result structure
+        assert isinstance(result, dict)
+        assert "signature" in result
+        assert "metadata" in result
+        assert "data" in result
+        
+        # Verify data output is placeholder (single Path)
+        assert isinstance(result["data"], Path)
+        assert result["data"].name == "data_processed"
+
+    def test_main_function_enhanced_mode_csv(self, temp_dir):
+        """Test main function in enhanced mode with CSV shards."""
+        dirs = self.setup_test_environment(temp_dir)
+        
+        input_paths = {"INPUT_DATA": str(dirs["input_dir"])}
+        output_paths = {
+            "SIGNATURE": str(dirs["signature_dir"]),
+            "METADATA": str(dirs["metadata_dir"]),
+            "DATA": str(dirs["data_dir"])
+        }
+        environ_vars = {
+            "WRITE_DATA_SHARDS": "true",
+            "SHARD_SIZE": "3",
+            "OUTPUT_FORMAT": "CSV"
+        }
+        
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify result structure
+        assert isinstance(result, dict)
+        assert "signature" in result
+        assert "metadata" in result
+        assert "data" in result
+        
+        # Verify data output is list of shard files
+        assert isinstance(result["data"], list)
+        assert len(result["data"]) > 1  # Should have multiple shards
+        assert all(isinstance(path, Path) for path in result["data"])
+        assert all(path.suffix == ".csv" for path in result["data"])
+        assert all(path.name.startswith("part-") for path in result["data"])
+        
+        # Verify signature and metadata still work
+        assert result["signature"].exists()
+        assert result["metadata"].exists()
+        
+        # Verify combined data integrity
+        combined_data = []
+        for shard_path in result["data"]:
+            df_shard = pd.read_csv(shard_path)
+            combined_data.append(df_shard)
+        
+        combined_df = pd.concat(combined_data, ignore_index=True)
+        assert len(combined_df) == dirs["expected_rows"]
+
+    def test_main_function_enhanced_mode_json(self, temp_dir):
+        """Test main function in enhanced mode with JSON shards."""
+        dirs = self.setup_test_environment(temp_dir)
+        
+        input_paths = {"INPUT_DATA": str(dirs["input_dir"])}
+        output_paths = {
+            "SIGNATURE": str(dirs["signature_dir"]),
+            "METADATA": str(dirs["metadata_dir"]),
+            "DATA": str(dirs["data_dir"])
+        }
+        environ_vars = {
+            "WRITE_DATA_SHARDS": "true",
+            "SHARD_SIZE": "4",
+            "OUTPUT_FORMAT": "JSON"
+        }
+        
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify data output is JSON shards
+        assert isinstance(result["data"], list)
+        assert all(path.suffix == ".json" for path in result["data"])
+        
+        # Verify JSON content can be read
+        for shard_path in result["data"]:
+            df_shard = pd.read_json(shard_path, lines=True)
+            assert isinstance(df_shard, pd.DataFrame)
+
+    def test_main_function_enhanced_mode_parquet(self, temp_dir):
+        """Test main function in enhanced mode with Parquet shards."""
+        dirs = self.setup_test_environment(temp_dir)
+        
+        input_paths = {"INPUT_DATA": str(dirs["input_dir"])}
+        output_paths = {
+            "SIGNATURE": str(dirs["signature_dir"]),
+            "METADATA": str(dirs["metadata_dir"]),
+            "DATA": str(dirs["data_dir"])
+        }
+        environ_vars = {
+            "WRITE_DATA_SHARDS": "true",
+            "SHARD_SIZE": "5",
+            "OUTPUT_FORMAT": "PARQUET"
+        }
+        
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Verify data output is Parquet shards
+        assert isinstance(result["data"], list)
+        assert all(path.suffix == ".parquet" for path in result["data"])
+        
+        # Verify Parquet content can be read
+        for shard_path in result["data"]:
+            df_shard = pd.read_parquet(shard_path)
+            assert isinstance(df_shard, pd.DataFrame)
+
+    def test_main_function_invalid_output_format(self, temp_dir):
+        """Test main function with invalid output format."""
+        dirs = self.setup_test_environment(temp_dir)
+        
+        input_paths = {"INPUT_DATA": str(dirs["input_dir"])}
+        output_paths = {
+            "SIGNATURE": str(dirs["signature_dir"]),
+            "METADATA": str(dirs["metadata_dir"]),
+            "DATA": str(dirs["data_dir"])
+        }
+        environ_vars = {
+            "WRITE_DATA_SHARDS": "true",
+            "SHARD_SIZE": "5",
+            "OUTPUT_FORMAT": "XML"  # Invalid format
+        }
+        
+        with pytest.raises(ValueError, match="Invalid OUTPUT_FORMAT: XML"):
+            main(input_paths, output_paths, environ_vars)
+
+    def test_main_function_environment_variable_defaults(self, temp_dir):
+        """Test main function with default environment variable values."""
+        dirs = self.setup_test_environment(temp_dir)
+        
+        input_paths = {"INPUT_DATA": str(dirs["input_dir"])}
+        output_paths = {
+            "SIGNATURE": str(dirs["signature_dir"]),
+            "METADATA": str(dirs["metadata_dir"]),
+            "DATA": str(dirs["data_dir"])
+        }
+        environ_vars = {}  # No environment variables set
+        
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Should default to legacy mode (placeholder)
+        assert isinstance(result["data"], Path)
+        assert result["data"].name == "data_processed"
+
+
+class TestTabularPreprocessingCompatibility:
+    """Tests for compatibility with tabular preprocessing script."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    def test_shard_naming_compatibility(self, temp_dir):
+        """Test that shard files follow the expected naming pattern."""
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col2': ['a', 'b', 'c', 'd', 'e']
+        })
+        
+        result_paths = write_data_shards(df, temp_dir, 2, "CSV")
+        
+        # Verify naming pattern matches tabular preprocessing expectations
+        expected_names = ["part-00000.csv", "part-00001.csv", "part-00002.csv"]
+        actual_names = [path.name for path in result_paths]
+        
+        assert actual_names == expected_names
+
+    def test_signature_format_compatibility(self, temp_dir):
+        """Test that signature format matches tabular preprocessing expectations."""
+        signature = ['id', 'name', 'value', 'target']
+        
+        result_path = write_signature_file(signature, temp_dir)
+        
+        # Verify signature format
+        with open(result_path, 'r') as f:
+            content = f.read().strip()
+        
+        assert content == 'id,name,value,target'
+        
+        # Verify it can be parsed as expected by tabular preprocessing
+        parsed_columns = content.split(',')
+        assert parsed_columns == signature
+
+    def test_end_to_end_compatibility(self, temp_dir):
+        """Test end-to-end compatibility with tabular preprocessing input format."""
+        # Create input data
+        input_dir = temp_dir / "input"
+        input_dir.mkdir()
+        
+        df = pd.DataFrame({
+            'id': [1, 2, 3, 4, 5, 6],
+            'feature1': [10, 20, 30, 40, 50, 60],
+            'feature2': ['A', 'B', 'C', 'A', 'B', 'C'],
+            'target': [0, 1, 0, 1, 0, 1]
+        })
+        
+        csv_file = input_dir / "sample.csv"
+        df.to_csv(csv_file, index=False)
+        
+        # Run dummy data loading in enhanced mode
+        input_paths = {"INPUT_DATA": str(input_dir)}
+        output_paths = {
+            "SIGNATURE": str(temp_dir / "signature"),
+            "METADATA": str(temp_dir / "metadata"),
+            "DATA": str(temp_dir / "data")
+        }
+        environ_vars = {
+            "WRITE_DATA_SHARDS": "true",
+            "SHARD_SIZE": "2",
+            "OUTPUT_FORMAT": "CSV"
+        }
+        
+        result = main(input_paths, output_paths, environ_vars)
+        
+        # Simulate tabular preprocessing input structure
+        tabular_input = temp_dir / "tabular_input"
+        tabular_data_dir = tabular_input / "data"
+        tabular_signature_dir = tabular_input / "signature"
+        
+        tabular_data_dir.mkdir(parents=True)
+        tabular_signature_dir.mkdir(parents=True)
+        
+        # Copy shard files to tabular preprocessing expected location
+        for shard_path in result["data"]:
+            shutil.copy2(shard_path, tabular_data_dir)
+        
+        # Copy signature file
+        shutil.copy2(result["signature"], tabular_signature_dir)
+        
+        # Verify the structure matches tabular preprocessing expectations
+        data_files = list(tabular_data_dir.glob("part-*.csv"))
+        signature_files = list(tabular_signature_dir.glob("signature"))
+        
+        assert len(data_files) == 3  # 2, 2, 2 rows
+        assert len(signature_files) == 1
+        
+        # Verify data can be read and combined as tabular preprocessing would
+        combined_data = []
+        for data_file in sorted(data_files):
+            df_shard = pd.read_csv(data_file)
+            combined_data.append(df_shard)
+        
+        combined_df = pd.concat(combined_data, ignore_index=True)
+        
+        # Verify signature matches combined data columns
+        with open(signature_files[0], 'r') as f:
+            signature_content = f.read().strip()
+        signature_columns = signature_content.split(',')
+        
+        assert set(signature_columns) == set(combined_df.columns)
+        assert len(combined_df) == len(df)
+        
+        # Verify data integrity
+        pd.testing.assert_frame_equal(combined_df.sort_values('id').reset_index(drop=True), 
+                                    df.sort_values('id').reset_index(drop=True))
