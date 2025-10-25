@@ -333,33 +333,6 @@ def write_metadata_file(metadata: Dict[str, Any], output_dir: Path) -> Path:
         raise
 
 
-def write_data_placeholder(output_dir: Path) -> Path:
-    """
-    Write a placeholder file for data output (similar to Cradle behavior).
-    
-    Args:
-        output_dir: Output directory path
-        
-    Returns:
-        Path to the written placeholder file
-    """
-    ensure_directory(output_dir)
-    placeholder_file = output_dir / "data_processed"
-    
-    logger.info(f"Writing data placeholder file: {placeholder_file}")
-    
-    try:
-        with open(placeholder_file, 'w') as f:
-            f.write("Data processing completed successfully\n")
-        
-        logger.info("Data placeholder file written successfully")
-        return placeholder_file
-        
-    except Exception as e:
-        logger.error(f"Error writing data placeholder file: {str(e)}")
-        raise
-
-
 def write_single_shard(df: pd.DataFrame, output_dir: Path, shard_index: int, 
                       output_format: str) -> Path:
     """
@@ -448,27 +421,78 @@ def write_data_shards(df: pd.DataFrame, output_dir: Path, shard_size: int,
     return written_files
 
 
+def write_single_data_file(df: pd.DataFrame, output_dir: Path, output_format: str) -> Path:
+    """
+    Write DataFrame as a single data file.
+    
+    Args:
+        df: DataFrame to write
+        output_dir: Output directory path
+        output_format: Output format ('CSV', 'JSON', 'PARQUET')
+        
+    Returns:
+        Path to the written data file
+        
+    Raises:
+        ValueError: If the format is unsupported
+        Exception: If writing fails
+    """
+    ensure_directory(output_dir)
+    
+    # Map format to file extension
+    format_extensions = {
+        'CSV': 'csv',
+        'JSON': 'json', 
+        'PARQUET': 'parquet'
+    }
+    
+    if output_format not in format_extensions:
+        raise ValueError(f"Unsupported output format: {output_format}. "
+                        f"Supported formats: {list(format_extensions.keys())}")
+    
+    extension = format_extensions[output_format]
+    data_filename = f"data.{extension}"
+    data_path = output_dir / data_filename
+    
+    logger.info(f"Writing single {output_format} data file: {data_path}")
+    
+    try:
+        if output_format == 'CSV':
+            df.to_csv(data_path, index=False)
+        elif output_format == 'JSON':
+            df.to_json(data_path, orient='records', lines=True)
+        elif output_format == 'PARQUET':
+            df.to_parquet(data_path, index=False)
+        
+        logger.info(f"Successfully wrote {len(df)} rows to {data_path}")
+        return data_path
+        
+    except Exception as e:
+        logger.error(f"Error writing {output_format} data file {data_path}: {str(e)}")
+        raise
+
+
 def write_data_output(df: pd.DataFrame, output_dir: Path, write_shards: bool = False,
                      shard_size: int = 10000, output_format: str = "CSV") -> Union[Path, List[Path]]:
     """
-    Write data output - either as shards or placeholder based on configuration.
+    Write data output - either as shards or single file based on configuration.
     
     Args:
         df: Processed DataFrame
         output_dir: Output directory path
-        write_shards: If True, write data as shards; if False, write placeholder
+        write_shards: If True, write data as shards; if False, write single file
         shard_size: Number of rows per shard file
         output_format: Output format ('CSV', 'JSON', 'PARQUET')
         
     Returns:
-        Path to placeholder file or list of shard file paths
+        Path to single data file or list of shard file paths
     """
     if not write_shards:
-        # Original behavior - write placeholder
-        logger.info("Writing data placeholder (legacy mode)")
-        return write_data_placeholder(output_dir)
+        # Write single data file
+        logger.info(f"Writing single data file: format={output_format}")
+        return write_single_data_file(df, output_dir, output_format)
     
-    # New behavior - write data shards
+    # Write data shards
     logger.info(f"Writing data shards (enhanced mode): format={output_format}, shard_size={shard_size}")
     return write_data_shards(df, output_dir, shard_size, output_format)
 
