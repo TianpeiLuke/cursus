@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-10-24
+
+### Added
+- **Percentile-Based Model Calibration** - New advanced calibration capabilities for improved model performance
+  - **Percentile Model Calibration Step** - New step for percentile-based model calibration with enhanced accuracy
+  - **Percentile Inference and Evaluation** - Support for percentile-based inference and evaluation workflows
+  - **Calibration Dictionary System** - Enhanced calibration dictionary for better model calibration management
+  - **Percentile Pipeline Templates** - New pipeline templates with percentile-based calibration workflows
+
+- **Temporal Self-Attention (TSA) Framework** - Comprehensive temporal modeling capabilities
+  - **TSA Lightning Models** - Complete refactoring of temporal self-attention into PyTorch Lightning models
+  - **Temporal Feature Engineering** - Advanced temporal feature engineering capabilities
+  - **Temporal Sequence Normalization** - New step for temporal sequence normalization and preprocessing
+  - **TSA Processing Module** - Comprehensive processing utilities for temporal self-attention workflows
+  - **TSA Analysis Tools** - Analysis and visualization tools for temporal self-attention models
+
+- **Enhanced Processing Infrastructure** - Expanded data processing capabilities
+  - **New Processors Collection** - Additional processors for various data processing tasks
+  - **Categorical Preprocessing Enhancements** - Improved categorical data preprocessing with better handling
+  - **Signature Input Support** - Added signature input support for tabular preprocessing workflows
+  - **Processing Module Expansion** - Extended processing module with new utilities and processors
+
+- **Model Evaluation Enhancements** - Advanced model evaluation and comparison capabilities
+  - **Model Score Comparison** - Added model score comparison in model evaluation and metric computation
+  - **Model Wiki Generator Comparison** - Support for comparison features in model wiki generator
+  - **Job Type Variants** - Enhanced job type variant support for model metric computation and dummy data loading
+
+### Enhanced
+- **Documentation and Organization** - Major improvements to project documentation and structure
+  - **File Tagging System** - Comprehensive file tagging and organization system for better resource management
+  - **Documentation Tags** - Enhanced documentation with improved tagging and categorization
+  - **Planning Documentation** - Updated planning documents with current project status and roadmaps
+  - **Entry Point Documentation** - New cursus package overview and entry point documentation
+  - **Resource Organization** - Systematic moving of files to resource or archive directories for better organization
+
+- **AWS Integration Improvements** - Enhanced AWS functionality and integration
+  - **AWS Function Extensions** - New AWS function extensions for improved cloud integration
+  - **Cache Management** - Disabled cache by default for better performance and reliability
+  - **Robust Fallback Handling** - Enhanced fallback handling and test fixes for better reliability
+
+- **Pipeline and Configuration Enhancements** - Improved pipeline configuration and management
+  - **DAG Config Factory** - Fixed DAG config factory name matching for better pipeline generation
+  - **Payload Config Improvements** - Fixed issues with payload config and removed unnecessary dependencies
+  - **Hyperparameter Updates** - Updated hyperparameters for better model performance
+  - **Development Set Management** - Cleaned up development set handling and removed redundant components
+
+- **Testing Infrastructure** - Comprehensive testing improvements
+  - **Script Testing Framework** - Enhanced script testing with better coverage and reliability
+  - **Test Fixes** - Fixed all tests and improved test reliability across the system
+  - **Robust Test Handling** - Improved test handling with better fallback mechanisms
+
+### Fixed
+- **Contract and Configuration Issues** - Critical fixes to contracts and configurations
+  - **Dummy Data Loading Contract** - Fixed dummy data loading contract for better reliability
+  - **Missing Value Imputation** - Corrected missing value imputation logic and implementation
+  - **Script Errors** - Fixed various script errors and improved script reliability
+  - **Contract Alignment** - Fixed contract alignment issues and improved validation
+
+- **Processing and Pipeline Fixes** - Enhanced processing pipeline reliability
+  - **Tabular Preprocessing** - Removed dependency on label field in tabular preprocessing for better flexibility
+  - **Processing Pipeline Bugs** - Fixed various bugs in processing pipelines and data handling
+  - **Pipeline Template Issues** - Fixed issues in pipeline templates and improved template reliability
+
+- **Code Quality and Cleanup** - Systematic code cleanup and quality improvements
+  - **File Cleanup** - Removed redundant files and cleaned up project structure
+  - **Name Standardization** - Fixed naming inconsistencies across components
+  - **Code Organization** - Improved code organization and removed unnecessary components
+
+### Technical Details
+- **Percentile Calibration Architecture** - Complete percentile-based calibration system with enhanced accuracy and performance
+- **TSA Framework** - Comprehensive temporal self-attention framework with Lightning integration and processing utilities
+- **Processing Pipeline Enhancement** - Expanded processing capabilities with new processors and improved data handling
+- **Model Evaluation System** - Enhanced model evaluation with comparison capabilities and advanced metrics
+- **Documentation System** - Improved documentation organization with tagging and better resource management
+
+### Quality Assurance
+- **Enhanced Testing** - Comprehensive testing improvements with better coverage and reliability
+- **Contract Validation** - Improved contract validation and alignment across all components
+- **Configuration Management** - Better configuration management with enhanced validation and error handling
+- **Code Quality** - Systematic code quality improvements with cleanup and standardization
+
+### Performance Improvements
+- **Cache Optimization** - Disabled cache by default for better performance and reliability
+- **Processing Performance** - Improved processing performance with enhanced algorithms and better resource management
+- **Pipeline Execution** - Optimized pipeline execution with better resource utilization and performance
+- **Model Calibration Performance** - Enhanced model calibration performance with percentile-based approaches
+
 ## [1.4.0] - 2025-10-17
 
 ### Added
