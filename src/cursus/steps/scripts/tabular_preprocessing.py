@@ -297,7 +297,7 @@ if __name__ == "__main__":
         TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
         TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
 
-        # Define standard SageMaker paths - use contract-declared paths directly
+        # Define standard SageMaker paths as constants
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"
         INPUT_SIGNATURE_DIR = "/opt/ml/processing/input/signature"
         OUTPUT_DIR = "/opt/ml/processing/output"
