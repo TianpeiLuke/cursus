@@ -969,6 +969,7 @@ def format_json_record(
     Notes:
         Binary classification (2 classes):
             - legacy-score: raw class-1 probability
+            - score-percentile: calibrated class-1 probability
             - calibrated-score: calibrated class-1 probability
             - custom-output-label: predicted class
         Multiclass (>2 classes):
@@ -992,9 +993,12 @@ def format_json_record(
                 f"Binary classification expects 2 probabilities, got {len(raw_probs)}"
             )
 
-        # Order: legacy-score, calibrated-score, custom-output-label
+        # Order: legacy-score, score-percentile, calibrated-score, custom-output-label
         record = {
             "legacy-score": str(raw_probs[1]),  # Raw class-1 probability
+            "score-percentile": str(
+                calibrated_probs[1]
+            ),  # Same as calibrated-score, more descriptive name
             "calibrated-score": str(
                 calibrated_probs[1]
             ),  # Calibrated class-1 probability
@@ -1037,6 +1041,7 @@ def format_json_response(
             "predictions": [
                 {
                     "legacy-score": "0.7",
+                    "score-percentile": "0.75",
                     "calibrated-score": "0.75",
                     "custom-output-label": "class-1"
                 },
@@ -1086,7 +1091,7 @@ def format_csv_response(
         Tuple of (CSV response string, content type)
 
     Notes:
-        Binary classification ordering: legacy-score, calibrated-score, custom-output-label
+        Binary classification ordering: legacy-score, score-percentile, calibrated-score, custom-output-label
         Multiclass ordering: prob_01, calibrated_prob_01, prob_02, calibrated_prob_02, ..., custom-output-label
     """
     csv_lines = []
@@ -1114,8 +1119,8 @@ def format_csv_response(
             # Output label (using raw scores for prediction)
             prediction = "class-1" if raw_probs[1] > raw_probs[0] else "class-0"
 
-            # Create line with exactly this order: legacy-score, calibrated-score, custom-output-label
-            line = [f"{raw_score:.4f}", f"{calibrated_score:.4f}", prediction]
+            # Create line with exactly this order: legacy-score, score-percentile, calibrated-score, custom-output-label
+            line = [f"{raw_score:.4f}", f"{calibrated_score:.4f}", f"{calibrated_score:.4f}", prediction]
             csv_lines.append(",".join(map(str, line)))
     else:
         # Multiclass - no header
