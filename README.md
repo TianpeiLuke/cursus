@@ -28,18 +28,29 @@ pip install cursus[all]
 ```python
 from cursus.core import compile_dag_to_pipeline
 from cursus.api import PipelineDAG
+from sagemaker.workflow.pipeline_context import PipelineSession
 
 # Create a simple DAG
 dag = PipelineDAG()
-dag.add_node("CradleDataLoading")
-dag.add_node("TabularPreprocessing") 
+dag.add_node("CradleDataLoading_training")
+dag.add_node("TabularPreprocessing_training") 
 dag.add_node("XGBoostTraining")
-dag.add_edge("CradleDataLoading", "TabularPreprocessing")
-dag.add_edge("TabularPreprocessing", "XGBoostTraining")
+dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
+dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
+
+# Set up SageMaker session
+pipeline_session = PipelineSession()
+role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
 
 # Compile to SageMaker pipeline automatically
-pipeline = compile_dag_to_pipeline(dag, pipeline_name="fraud-detection")
-pipeline.start()  # Deploy and run!
+pipeline = compile_dag_to_pipeline(
+    dag=dag,
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    role=role,
+    pipeline_name="fraud-detection"
+)
+pipeline.upsert()  # Deploy and run!
 ```
 
 ### Command Line Interface
@@ -109,55 +120,135 @@ Cursus follows a sophisticated layered architecture:
 ```python
 from cursus.core import compile_dag_to_pipeline
 from cursus.api import PipelineDAG
+from sagemaker.workflow.pipeline_context import PipelineSession
 
 # Create DAG
 dag = PipelineDAG()
-dag.add_node("CradleDataLoading")
+dag.add_node("CradleDataLoading_training")
 dag.add_node("XGBoostTraining")
-dag.add_edge("CradleDataLoading", "XGBoostTraining")
+dag.add_edge("CradleDataLoading_training", "XGBoostTraining")
+
+# Set up SageMaker session
+pipeline_session = PipelineSession()
+role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
 
 # Compile to SageMaker pipeline
-pipeline = compile_dag_to_pipeline(dag, pipeline_name="my-ml-pipeline")
+pipeline = compile_dag_to_pipeline(
+    dag=dag,
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    role=role,
+    pipeline_name="my-ml-pipeline"
+)
 ```
 
 ### Advanced Configuration
 
 ```python
-from cursus.core import compile_dag_to_pipeline
+from cursus.core import compile_dag_to_pipeline, PipelineDAGCompiler
 from cursus.api import PipelineDAG
+from sagemaker.workflow.pipeline_context import PipelineSession
 
 # Create DAG with more complex workflow
 dag = PipelineDAG()
-dag.add_node("CradleDataLoading")
-dag.add_node("TabularPreprocessing")
+dag.add_node("CradleDataLoading_training")
+dag.add_node("TabularPreprocessing_training")
 dag.add_node("XGBoostTraining")
-dag.add_node("XGBoostModelEval")
-dag.add_edge("CradleDataLoading", "TabularPreprocessing")
-dag.add_edge("TabularPreprocessing", "XGBoostTraining")
-dag.add_edge("XGBoostTraining", "XGBoostModelEval")
+dag.add_node("CradleDataLoading_calibration")
+dag.add_node("TabularPreprocessing_calibration")
+dag.add_node("XGBoostModelEval_calibration")
 
-# Compile with custom configuration
-pipeline = compile_dag_to_pipeline(
-    dag=dag,
-    pipeline_name="advanced-ml-pipeline",
-    config_path="config.yaml"
+# Add edges for training flow
+dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
+dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
+
+# Add edges for calibration flow
+dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
+dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
+dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
+
+# Set up SageMaker session
+pipeline_session = PipelineSession()
+role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+
+# Compile with validation and reporting
+compiler = PipelineDAGCompiler(
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    role=role
 )
+
+# Validate DAG before compilation
+validation = compiler.validate_dag_compatibility(dag)
+if validation.is_valid:
+    print(f"✅ DAG validation passed! Confidence: {validation.avg_confidence:.2f}")
+    
+    # Compile with detailed report
+    pipeline, report = compiler.compile_with_report(
+        dag=dag,
+        pipeline_name="advanced-ml-pipeline"
+    )
+    print(f"📊 Pipeline compiled: {report.summary()}")
+else:
+    print("❌ DAG validation failed:", validation.config_errors)
 ```
 
-### Using the Compiler Class
+### Using Pre-built Pipeline Templates
+
+```python
+from cursus.pipeline_catalog.pipelines.xgb_training_simple import XGBoostTrainingSimplePipeline
+from sagemaker.workflow.pipeline_context import PipelineSession
+
+# Set up SageMaker session
+pipeline_session = PipelineSession()
+role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+
+# Use pre-built pipeline template
+pipeline_instance = XGBoostTrainingSimplePipeline(
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    execution_role=role,
+    enable_mods=False,  # Regular pipeline
+    validate=True
+)
+
+# Generate the pipeline
+pipeline = pipeline_instance.generate_pipeline()
+
+# Deploy to SageMaker
+pipeline.upsert()
+print(f"✅ Pipeline '{pipeline.name}' deployed successfully!")
+```
+
+### Using the Compiler Class Directly
 
 ```python
 from cursus.core import PipelineDAGCompiler
 from cursus.api import PipelineDAG
+from cursus.pipeline_catalog.shared_dags.xgboost import create_xgboost_simple_dag
+from sagemaker.workflow.pipeline_context import PipelineSession
 
-# Create DAG
-dag = PipelineDAG()
-dag.add_node("TabularPreprocessing")
-dag.add_node("XGBoostTraining")
-dag.add_edge("TabularPreprocessing", "XGBoostTraining")
+# Create DAG using shared DAG definitions
+dag = create_xgboost_simple_dag()
+
+# Set up SageMaker session
+pipeline_session = PipelineSession()
+role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
 
 # Use compiler for more control
-compiler = PipelineDAGCompiler()
+compiler = PipelineDAGCompiler(
+    config_path="config.json",
+    sagemaker_session=pipeline_session,
+    role=role
+)
+
+# Preview resolution before compilation
+preview = compiler.preview_resolution(dag)
+for node, config_type in preview.node_config_map.items():
+    confidence = preview.resolution_confidence.get(node, 0.0)
+    print(f"   {node} → {config_type} (confidence: {confidence:.2f})")
+
+# Compile the pipeline
 pipeline = compiler.compile(dag, pipeline_name="my-pipeline")
 ```
 
