@@ -451,7 +451,7 @@ def write_single_data_file(df: pd.DataFrame, output_dir: Path, output_format: st
                         f"Supported formats: {list(format_extensions.keys())}")
     
     extension = format_extensions[output_format]
-    data_filename = f"data.{extension}"
+    data_filename = f"part-00000.{extension}"  # Use part-* naming pattern for compatibility
     data_path = output_dir / data_filename
     
     logger.info(f"Writing single {output_format} data file: {data_path}")
