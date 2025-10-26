@@ -102,7 +102,7 @@ class BatchTransformStepBuilder(StepBuilderBase):
         else:
             # Try dynamic import
             try:
-                module_path = f"..pipeline_step_specs.batch_transform_{job_type}_spec"
+                module_path = f"..specs.batch_transform_{job_type}_spec"
                 module = importlib.import_module(module_path, package=__package__)
                 spec_var_name = f"BATCH_TRANSFORM_{job_type.upper()}_SPEC"
                 if hasattr(module, spec_var_name):
