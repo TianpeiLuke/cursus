@@ -390,10 +390,10 @@ CONTAINER_PATHS = {
 }
 
 
-def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any], Optional[Dict[str, Any]]]:
+def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
     Load the trained XGBoost model and all preprocessing artifacts from the specified directory.
-    Returns model, risk_tables, impute_dict, feature_columns, hyperparameters, and feature_selection_info.
+    Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
     """
     logger.info(f"Loading model artifacts from {model_dir}")
     model = xgb.Booster()
@@ -414,22 +414,7 @@ def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], D
         hyperparams = json.load(f)
     logger.info("Loaded hyperparameters.json")
     
-    # Load feature selection information if available (optional)
-    feature_selection_info = None
-    selected_features_path = os.path.join(model_dir, "selected_features.json")
-    if os.path.exists(selected_features_path):
-        try:
-            with open(selected_features_path, "r") as f:
-                feature_selection_info = json.load(f)
-            logger.info("Loaded feature selection artifacts from selected_features.json")
-            logger.info(f"Feature selection applied: {feature_selection_info['selection_metadata']['n_selected_features']} features selected from {feature_selection_info['selection_metadata']['n_original_features']} original features")
-        except Exception as e:
-            logger.warning(f"Found selected_features.json but failed to load: {e}")
-            feature_selection_info = None
-    else:
-        logger.info("No feature selection artifacts found - model trained without feature selection")
-    
-    return model, risk_tables, impute_dict, feature_columns, hyperparams, feature_selection_info
+    return model, risk_tables, impute_dict, feature_columns, hyperparams
 
 
 def preprocess_eval_data(df: pd.DataFrame, feature_columns: List[str], risk_tables: Dict[str, Any], impute_dict: Dict[str, Any]) -> pd.DataFrame:
@@ -1540,7 +1525,7 @@ def main(
     logger.info("Starting model evaluation script")
 
     # Load model artifacts
-    model, risk_tables, impute_dict, feature_columns, hyperparams, feature_selection_info = (
+    model, risk_tables, impute_dict, feature_columns, hyperparams = (
         load_model_artifacts(model_dir)
     )
 
@@ -1559,24 +1544,11 @@ def main(
     # Get the available features (those that exist in the DataFrame)
     available_features = [col for col in feature_columns if col in df.columns]
     
-    # Log feature selection information if available
-    if feature_selection_info:
-        logger.info("=== FEATURE SELECTION INFO ===")
-        selection_metadata = feature_selection_info.get("selection_metadata", {})
-        logger.info(f"Model was trained with feature selection applied")
-        logger.info(f"Original features: {selection_metadata.get('n_original_features', 'Unknown')}")
-        logger.info(f"Selected features: {selection_metadata.get('n_selected_features', 'Unknown')}")
-        logger.info(f"Selection ratio: {selection_metadata.get('selection_ratio', 'Unknown'):.2%}")
-        
-        methods_used = selection_metadata.get('methods_used', [])
-        if methods_used:
-            logger.info(f"Selection methods used: {', '.join(methods_used)}")
-        
-        combination_strategy = selection_metadata.get('combination_strategy', 'Unknown')
-        logger.info(f"Combination strategy: {combination_strategy}")
-        logger.info("===============================")
-    else:
-        logger.info("Model was trained without feature selection")
+    # Log inference strategy
+    logger.info("INFERENCE STRATEGY:")
+    logger.info(f"  → Using {len(available_features)} features for model inference")
+    logger.info(f"  → These are the exact features the model was trained on")
+    logger.info(f"  → Input data will be filtered to these features only")
     
     # Check for comparison mode
     previous_scores = None

@@ -536,64 +536,15 @@ def save_artifacts(
         json.dump(config, f, indent=2, sort_keys=True)
     logger.info(f"Saved hyperparameters configuration to {hyperparameters_file}")
 
-    # Save feature selection artifacts if feature selection was applied
+    # Log feature selection summary if applied (for transparency)
     if feature_selection_applied and original_features is not None:
-        logger.info("Saving feature selection artifacts to model output...")
-        
-        # Create feature selection artifacts for downstream tasks
-        fs_artifacts = {
-            "selected_features": feature_columns,
-            "selection_metadata": {
-                "n_original_features": len(original_features),
-                "n_selected_features": len(feature_columns),
-                "selection_ratio": len(feature_columns) / len(original_features),
-                "original_features": original_features,
-                "feature_reduction": len(original_features) - len(feature_columns),
-                "training_job_applied_fs": True
-            }
-        }
-        
-        # Add original feature selection metadata if available
-        if feature_selection_metadata:
-            fs_artifacts["selection_metadata"].update({
-                "methods_used": feature_selection_metadata.get("methods_used", []),
-                "combination_strategy": feature_selection_metadata.get("combination_strategy", "unknown"),
-                "target_variable": feature_selection_metadata.get("target_variable", config.get("label_name"))
-            })
-            fs_artifacts["method_contributions"] = feature_selection_metadata.get("method_contributions", {})
-        
-        # Save selected_features.json for downstream tasks
-        selected_features_file = os.path.join(model_path, "selected_features.json")
-        with open(selected_features_file, "w") as f:
-            json.dump(fs_artifacts, f, indent=2, sort_keys=True)
-        logger.info(f"Saved feature selection artifacts to {selected_features_file}")
-        
-        # Save feature mapping for reference
-        feature_mapping_file = os.path.join(model_path, "feature_mapping.json")
-        feature_mapping = {
-            "original_to_selected": {
-                "original_features": original_features,
-                "selected_features": feature_columns,
-                "removed_features": [f for f in original_features if f not in feature_columns]
-            },
-            "selection_summary": {
-                "total_original": len(original_features),
-                "total_selected": len(feature_columns),
-                "total_removed": len(original_features) - len(feature_columns),
-                "selection_ratio": len(feature_columns) / len(original_features)
-            }
-        }
-        
-        with open(feature_mapping_file, "w") as f:
-            json.dump(feature_mapping, f, indent=2, sort_keys=True)
-        logger.info(f"Saved feature mapping to {feature_mapping_file}")
-        
-        logger.info(f"✓ Feature selection artifacts saved for downstream tasks")
+        logger.info("✓ Feature selection was applied during training")
         logger.info(f"  - Selected features: {len(feature_columns)}")
         logger.info(f"  - Original features: {len(original_features)}")
         logger.info(f"  - Reduction ratio: {len(feature_columns)/len(original_features):.2%}")
+        logger.info("  - Selected features are saved in feature_columns.txt")
     else:
-        logger.info("No feature selection applied - skipping feature selection artifacts")
+        logger.info("No feature selection applied - using all configured features")
 
 
 # -------------------------------------------------------------------------
