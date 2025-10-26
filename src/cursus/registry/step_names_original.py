@@ -80,6 +80,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Missing value imputation step using statistical methods (mean, median, mode, constant) with pandas-safe values",
     },
+    "FeatureSelection": {
+        "config_class": "FeatureSelectionConfig",
+        "builder_step_name": "FeatureSelectionStepBuilder",
+        "spec_type": "FeatureSelection",
+        "sagemaker_step_type": "Processing",
+        "description": "Feature selection step using multiple statistical and ML-based methods with ensemble combination strategies",
+    },
     "CurrencyConversion": {
         "config_class": "CurrencyConversionConfig",
         "builder_step_name": "CurrencyConversionStepBuilder",

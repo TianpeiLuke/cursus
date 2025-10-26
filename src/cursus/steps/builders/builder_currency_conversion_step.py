@@ -91,7 +91,7 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
             # Try dynamic import
             try:
                 module_path = (
-                    f"..pipeline_step_specs.currency_conversion_{job_type}_spec"
+                    f"..specs.currency_conversion_{job_type}_spec"
                 )
                 module = importlib.import_module(module_path, package=__package__)
                 spec_var_name = f"CURRENCY_CONVERSION_{job_type.upper()}_SPEC"

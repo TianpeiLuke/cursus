@@ -83,9 +83,9 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         else:
             # Try dynamic import
             try:
-                module_path = f"..pipeline_step_specs.preprocessing_{job_type}_spec"
+                module_path = f"..specs.tabular_preprocessing_{job_type}_spec"
                 module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"PREPROCESSING_{job_type.upper()}_SPEC"
+                spec_var_name = f"TABULAR_PREPROCESSING_{job_type.upper()}_SPEC"
                 if hasattr(module, spec_var_name):
                     spec = getattr(module, spec_var_name)
             except (ImportError, AttributeError):

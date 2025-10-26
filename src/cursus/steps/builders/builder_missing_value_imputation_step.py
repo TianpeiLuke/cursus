@@ -100,7 +100,7 @@ class MissingValueImputationStepBuilder(StepBuilderBase):
             else:
                 # Try dynamic import
                 try:
-                    module_path = f"..pipeline_step_specs.missing_value_imputation_{job_type}_spec"
+                    module_path = f"..specs.missing_value_imputation_{job_type}_spec"
                     module = importlib.import_module(module_path, package=__package__)
                     spec_var_name = f"MISSING_VALUE_IMPUTATION_{job_type.upper()}_SPEC"
                     if hasattr(module, spec_var_name):

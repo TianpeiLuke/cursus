@@ -96,7 +96,7 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             # Try dynamic import
             try:
                 module_path = (
-                    f"..pipeline_step_specs.risk_table_mapping_{job_type}_spec"
+                    f"..specs.risk_table_mapping_{job_type}_spec"
                 )
                 module = importlib.import_module(module_path, package=__package__)
                 spec_var_name = f"RISK_TABLE_MAPPING_{job_type.upper()}_SPEC"

@@ -7,45 +7,49 @@ from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
 
-from ..configs.config_stratified_sampling_step import StratifiedSamplingConfig
+from ..configs.config_feature_selection_step import FeatureSelectionConfig
 from ...core.base.builder_base import StepBuilderBase
 
 # Import specifications based on job type
 try:
-    from ..specs.stratified_sampling_training_spec import (
-        STRATIFIED_SAMPLING_TRAINING_SPEC,
+    from ..specs.feature_selection_spec import (
+        FEATURE_SELECTION_SPEC,
     )
-    from ..specs.stratified_sampling_calibration_spec import (
-        STRATIFIED_SAMPLING_CALIBRATION_SPEC,
+    from ..specs.feature_selection_training_spec import (
+        FEATURE_SELECTION_TRAINING_SPEC,
     )
-    from ..specs.stratified_sampling_validation_spec import (
-        STRATIFIED_SAMPLING_VALIDATION_SPEC,
+    from ..specs.feature_selection_validation_spec import (
+        FEATURE_SELECTION_VALIDATION_SPEC,
     )
-    from ..specs.stratified_sampling_testing_spec import (
-        STRATIFIED_SAMPLING_TESTING_SPEC,
+    from ..specs.feature_selection_testing_spec import (
+        FEATURE_SELECTION_TESTING_SPEC,
+    )
+    from ..specs.feature_selection_calibration_spec import (
+        FEATURE_SELECTION_CALIBRATION_SPEC,
     )
 
     SPECS_AVAILABLE = True
 except ImportError:
-    STRATIFIED_SAMPLING_TRAINING_SPEC = STRATIFIED_SAMPLING_CALIBRATION_SPEC = (
-        STRATIFIED_SAMPLING_VALIDATION_SPEC
-    ) = STRATIFIED_SAMPLING_TESTING_SPEC = None
+    FEATURE_SELECTION_SPEC = FEATURE_SELECTION_TRAINING_SPEC = (
+        FEATURE_SELECTION_VALIDATION_SPEC
+    ) = FEATURE_SELECTION_TESTING_SPEC = FEATURE_SELECTION_CALIBRATION_SPEC = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
-class StratifiedSamplingStepBuilder(StepBuilderBase):
+class FeatureSelectionStepBuilder(StepBuilderBase):
     """
-    Builder for a Stratified Sampling ProcessingStep.
+    Builder for a Feature Selection ProcessingStep.
 
     This implementation uses the fully specification-driven approach where inputs, outputs,
-    and behavior are defined by step specifications and script contracts.
+    and behavior are defined by step specifications and script contracts. The builder handles
+    multiple statistical and ML-based feature selection methods with ensemble combination strategies.
     """
 
     def __init__(
         self,
-        config: StratifiedSamplingConfig,
+        config: FeatureSelectionConfig,
         sagemaker_session=None,
         role: Optional[str] = None,
         registry_manager: Optional["RegistryManager"] = None,
@@ -72,32 +76,39 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         job_type = config.job_type.lower()
 
         # Get specification based on job type
-        if job_type == "training" and STRATIFIED_SAMPLING_TRAINING_SPEC is not None:
-            spec = STRATIFIED_SAMPLING_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and STRATIFIED_SAMPLING_CALIBRATION_SPEC is not None
-        ):
-            spec = STRATIFIED_SAMPLING_CALIBRATION_SPEC
+        if job_type == "training" and FEATURE_SELECTION_TRAINING_SPEC is not None:
+            spec = FEATURE_SELECTION_TRAINING_SPEC
         elif (
             job_type == "validation"
-            and STRATIFIED_SAMPLING_VALIDATION_SPEC is not None
+            and FEATURE_SELECTION_VALIDATION_SPEC is not None
         ):
-            spec = STRATIFIED_SAMPLING_VALIDATION_SPEC
-        elif job_type == "testing" and STRATIFIED_SAMPLING_TESTING_SPEC is not None:
-            spec = STRATIFIED_SAMPLING_TESTING_SPEC
+            spec = FEATURE_SELECTION_VALIDATION_SPEC
+        elif job_type == "testing" and FEATURE_SELECTION_TESTING_SPEC is not None:
+            spec = FEATURE_SELECTION_TESTING_SPEC
+        elif (
+            job_type == "calibration"
+            and FEATURE_SELECTION_CALIBRATION_SPEC is not None
+        ):
+            spec = FEATURE_SELECTION_CALIBRATION_SPEC
         else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.stratified_sampling_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"STRATIFIED_SAMPLING_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
+            # Fallback to default spec if available
+            if FEATURE_SELECTION_SPEC is not None:
+                spec = FEATURE_SELECTION_SPEC
                 self.log_warning(
-                    "Could not import specification for job type: %s", job_type
+                    "Using default specification for job type: %s", job_type
                 )
+            else:
+                # Try dynamic import
+                try:
+                    module_path = f"..specs.feature_selection_{job_type}_spec"
+                    module = importlib.import_module(module_path, package=__package__)
+                    spec_var_name = f"FEATURE_SELECTION_{job_type.upper()}_SPEC"
+                    if hasattr(module, spec_var_name):
+                        spec = getattr(module, spec_var_name)
+                except (ImportError, AttributeError):
+                    self.log_warning(
+                        "Could not import specification for job type: %s", job_type
+                    )
 
         if not spec:
             raise ValueError(f"No specification found for job type: {job_type}")
@@ -112,7 +123,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
-        self.config: StratifiedSamplingConfig = config
+        self.config: FeatureSelectionConfig = config
 
     def validate_configuration(self) -> None:
         """
@@ -130,11 +141,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
             "processing_framework_version",
             "use_large_processing_instance",
             "job_type",
-            "strata_column",
-            "sampling_strategy",
-            "target_sample_size",
-            "min_samples_per_stratum",
-            "random_state",
+            "label_field",
         ]
 
         for attr in required_attrs:
@@ -150,35 +157,44 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
-        # Validate strata_column
-        if not self.config.strata_column or not self.config.strata_column.strip():
-            raise ValueError("strata_column must be provided and non-empty")
+        # Validate label_field
+        if not self.config.label_field or not self.config.label_field.strip():
+            raise ValueError("label_field must be provided and non-empty")
 
-        # Validate sampling_strategy
-        if self.config.sampling_strategy not in [
-            "balanced",
-            "proportional_min",
-            "optimal",
-        ]:
-            raise ValueError(f"Invalid sampling_strategy: {self.config.sampling_strategy}")
+        # Validate feature selection methods
+        if not self.config.feature_selection_methods or not self.config.feature_selection_methods.strip():
+            raise ValueError("feature_selection_methods must be provided and non-empty")
 
-        # Validate target_sample_size
-        if self.config.target_sample_size <= 0:
-            raise ValueError("target_sample_size must be positive")
+        # Validate method list
+        valid_methods = {
+            "variance", "correlation", "mutual_info", "chi2", "f_test",
+            "rfe", "importance", "lasso", "permutation"
+        }
+        
+        for method in self.config.method_list:
+            if method not in valid_methods:
+                raise ValueError(
+                    f"Invalid feature selection method: {method}. "
+                    f"Valid methods are: {', '.join(sorted(valid_methods))}"
+                )
 
-        # Validate min_samples_per_stratum
-        if self.config.min_samples_per_stratum <= 0:
-            raise ValueError("min_samples_per_stratum must be positive")
-
-        # Cross-validation: optimal strategy recommendation
-        if (
-            self.config.sampling_strategy == "optimal"
-            and not self.config.variance_column
-        ):
-            self.log_warning(
-                "optimal sampling strategy works best with variance_column specified. "
-                "Using default variance if variance_column is not provided."
+        # Validate combination strategy
+        valid_strategies = {"voting", "ranking", "scoring"}
+        if self.config.combination_strategy not in valid_strategies:
+            raise ValueError(
+                f"Invalid combination_strategy: {self.config.combination_strategy}. "
+                f"Must be one of {valid_strategies}"
             )
+
+        # Validate numeric parameters
+        if self.config.n_features_to_select < 1:
+            raise ValueError("n_features_to_select must be at least 1")
+
+        if not (0.0 <= self.config.correlation_threshold <= 1.0):
+            raise ValueError("correlation_threshold must be between 0.0 and 1.0")
+
+        if self.config.variance_threshold < 0.0:
+            raise ValueError("variance_threshold must be non-negative")
 
     def _create_processor(self) -> SKLearnProcessor:
         """
@@ -208,25 +224,24 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         """
         Create environment variables for the processing job.
 
+        Uses the configuration's environment_variables property which automatically
+        generates all required environment variables from the config fields.
+
         Returns:
             Dict[str, str]: Environment variables for the processing job
         """
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
 
-        # Add required environment variables specific to stratified sampling
-        env_vars["STRATA_COLUMN"] = self.config.strata_column
+        # Get environment variables from config (includes all feature selection settings)
+        config_env_vars = self.config.environment_variables
+        env_vars.update(config_env_vars)
 
-        # Add optional environment variables with defaults
-        env_vars["SAMPLING_STRATEGY"] = self.config.sampling_strategy
-        env_vars["TARGET_SAMPLE_SIZE"] = str(self.config.target_sample_size)
-        env_vars["MIN_SAMPLES_PER_STRATUM"] = str(self.config.min_samples_per_stratum)
-        env_vars["RANDOM_STATE"] = str(self.config.random_state)
+        # Add environment variables from config.env if they exist
+        if hasattr(self.config, "env") and self.config.env:
+            env_vars.update(self.config.env)
 
-        # Add variance_column if specified
-        if self.config.variance_column:
-            env_vars["VARIANCE_COLUMN"] = self.config.variance_column
-
+        self.log_info("Processing environment variables: %s", env_vars)
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
@@ -234,6 +249,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         Get inputs for the step using specification and contract.
 
         This method creates ProcessingInput objects for each dependency defined in the specification.
+        For non-training modes, it handles both processed_data and selected_features inputs.
 
         Args:
             inputs: Input data sources keyed by logical name
@@ -278,6 +294,12 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
                     source=inputs[logical_name],
                     destination=container_path,
                 )
+            )
+            self.log_info(
+                "Added %s input from %s to %s",
+                logical_name,
+                inputs[logical_name],
+                container_path,
             )
 
         return processing_inputs
@@ -326,7 +348,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "stratified_sampling", self.config.job_type, logical_name])
+                destination = Join(on="/", values=[base_output_path, "feature_selection", self.config.job_type, logical_name])
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -348,19 +370,16 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         Constructs the list of command-line arguments to be passed to the processing script.
 
         This implementation uses job_type from the configuration, which is required by the script
-        and also included in the contract's expected_arguments (though we prioritize config).
-        This approach allows different stratified sampling jobs to use different job_type values
-        based on their configuration.
+        and also included in the contract's expected_arguments.
 
         Returns:
             A list of strings representing the command-line arguments.
         """
-        # Get job_type from configuration (takes precedence over contract)
+        # Get job_type from configuration
         job_type = self.config.job_type
         self.log_info("Setting job_type argument to: %s", job_type)
 
-        # For stratified sampling, we always return the job_type from config
-        # The contract has a default job_type, but config value takes precedence
+        # Return job_type argument - the script uses this to determine processing mode
         return ["--job_type", job_type]
 
     def create_step(self, **kwargs) -> ProcessingStep:
@@ -377,57 +396,64 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         Returns:
             Configured ProcessingStep
         """
-        # Extract parameters
-        inputs_raw = kwargs.get("inputs", {})
-        outputs = kwargs.get("outputs", {})
-        dependencies = kwargs.get("dependencies", [])
-        enable_caching = kwargs.get("enable_caching", True)
+        try:
+            # Extract parameters
+            inputs_raw = kwargs.get("inputs", {})
+            outputs = kwargs.get("outputs", {})
+            dependencies = kwargs.get("dependencies", [])
+            enable_caching = kwargs.get("enable_caching", True)
 
-        # Handle inputs
-        inputs = {}
+            # Handle inputs
+            inputs = {}
 
-        # If dependencies are provided, extract inputs from them
-        if dependencies:
-            try:
-                extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-                inputs.update(extracted_inputs)
-            except Exception as e:
-                self.log_warning("Failed to extract inputs from dependencies: %s", e)
+            # If dependencies are provided, extract inputs from them
+            if dependencies:
+                try:
+                    extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                    inputs.update(extracted_inputs)
+                except Exception as e:
+                    self.log_warning("Failed to extract inputs from dependencies: %s", e)
 
-        # Add explicitly provided inputs (overriding any extracted ones)
-        inputs.update(inputs_raw)
+            # Add explicitly provided inputs (overriding any extracted ones)
+            inputs.update(inputs_raw)
 
-        # Add direct keyword arguments (e.g., processed_data from template)
-        for key in ["processed_data", "DATA", "METADATA", "SIGNATURE"]:
-            if key in kwargs and key not in inputs:
-                inputs[key] = kwargs[key]
+            # Add direct keyword arguments (e.g., processed_data, selected_features from template)
+            for key in ["processed_data", "selected_features"]:
+                if key in kwargs and key not in inputs:
+                    inputs[key] = kwargs[key]
 
-        # Create processor and get inputs/outputs
-        processor = self._create_processor()
-        proc_inputs = self._get_inputs(inputs)
-        proc_outputs = self._get_outputs(outputs)
-        job_args = self._get_job_arguments()
+            # Create processor and get inputs/outputs
+            processor = self._create_processor()
+            proc_inputs = self._get_inputs(inputs)
+            proc_outputs = self._get_outputs(outputs)
+            job_args = self._get_job_arguments()
 
-        # Get step name using standardized method with auto-detection
-        step_name = self._get_step_name()
+            # Get step name using standardized method with auto-detection
+            step_name = self._get_step_name()
 
-        # Get script path using modernized method with comprehensive fallbacks
-        script_path = self.config.get_script_path()
-        self.log_info("Using script path: %s", script_path)
+            # Get script path using modernized method with comprehensive fallbacks
+            script_path = self.config.get_script_path()
+            self.log_info("Using script path: %s", script_path)
 
-        # Create step
-        step = ProcessingStep(
-            name=step_name,
-            processor=processor,
-            inputs=proc_inputs,
-            outputs=proc_outputs,
-            code=script_path,
-            job_arguments=job_args,
-            depends_on=dependencies,
-            cache_config=self._get_cache_config(enable_caching),
-        )
+            # Create step
+            step = ProcessingStep(
+                name=step_name,
+                processor=processor,
+                inputs=proc_inputs,
+                outputs=proc_outputs,
+                code=script_path,
+                job_arguments=job_args,
+                depends_on=dependencies,
+                cache_config=self._get_cache_config(enable_caching),
+            )
 
-        # Attach specification to the step for future reference
-        setattr(step, "_spec", self.spec)
+            # Attach specification to the step for future reference
+            setattr(step, "_spec", self.spec)
 
-        return step
+            return step
+
+        except Exception as e:
+            self.log_error(f"Error creating FeatureSelection step: {e}")
+            import traceback
+            self.log_error(traceback.format_exc())
+            raise ValueError(f"Failed to create FeatureSelection step: {str(e)}") from e
