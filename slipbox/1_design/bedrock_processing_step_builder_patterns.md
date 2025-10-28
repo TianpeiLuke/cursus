@@ -291,25 +291,11 @@ def _get_environment_variables(self) -> Dict[str, str]:
 ```python
 def _get_job_arguments(self) -> List[str]:
     """Build command-line arguments for Bedrock processing script."""
-    args = [
-        "--primary-model-id", self.config.primary_model_id,
-        "--batch-size", str(self.config.batch_size),
-        "--max-retries", str(self.config.max_retries),
-        "--input-column", self.config.input_data_column,
-        "--output-prefix", self.config.output_column_prefix,
-        "--response-format", self.config.response_format
-    ]
+    # Following cursus pattern: minimal job arguments, most config in environment variables
+    args = []
     
-    # Add optional arguments
-    if self.config.system_prompt:
-        args.extend(["--system-prompt", self.config.system_prompt])
-        
-    if self.config.response_model_class:
-        args.extend(["--response-model-class", self.config.response_model_class])
-        
-    if self.config.inference_profile_arn:
-        args.extend(["--inference-profile-arn", self.config.inference_profile_arn])
-    
+    # Only essential arguments that might vary per execution
+    # Most configuration should be in environment variables
     return args
 ```
 
@@ -525,10 +511,10 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
             logical_name="prompt_config",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
-            compatible_sources=["ProcessingStep", "PromptPrep"],
-            semantic_keywords=["config", "prompt", "template", "system", "instructions"],
+            compatible_sources=["ProcessingStep", "PromptPrep", "DataLoad"],
+            semantic_keywords=["config", "prompt", "template", "system", "instructions", "prompts"],
             data_type="S3Uri",
-            description="Prompt configuration and templates (optional)"
+            description="Optional prompt configuration files: prompts.json (preferred) or system_prompt.txt/user_prompt_template.txt (fallback)"
         )
     ],
     outputs=[
@@ -567,18 +553,17 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
         "analysis_summary": "/opt/ml/processing/output/summary"
     },
     expected_arguments={
-        "--primary-model-id": "Primary Bedrock model ID to use",
-        "--batch-size": "Batch size for processing",
-        "--max-retries": "Maximum retries for API calls",
-        "--input-column": "Column name containing input data",
-        "--output-prefix": "Prefix for output columns",
-        "--response-format": "Expected response format (json/text/structured)"
+        # Minimal job arguments - most configuration in environment variables
     },
     required_env_vars=[
         "BEDROCK_PRIMARY_MODEL_ID",
         "BEDROCK_FALLBACK_MODEL_ID",
         "BEDROCK_USER_PROMPT_TEMPLATE",
-        "BEDROCK_RESPONSE_FORMAT"
+        "BEDROCK_RESPONSE_FORMAT",
+        "BEDROCK_BATCH_SIZE",
+        "BEDROCK_MAX_RETRIES",
+        "BEDROCK_INPUT_DATA_COLUMN",
+        "BEDROCK_OUTPUT_COLUMN_PREFIX"
     ],
     optional_env_vars={
         "BEDROCK_INFERENCE_PROFILE_ARN": "Inference profile ARN for provisioned throughput",
@@ -586,7 +571,10 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
         "BEDROCK_RESPONSE_MODEL_CLASS": "Pydantic model class for response validation",
         "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "JSON list of models requiring inference profiles",
         "BEDROCK_ON_DEMAND_COMPATIBLE_MODELS": "JSON list of on-demand compatible models",
-        "BEDROCK_ADDITIONAL_INPUT_COLUMNS": "JSON list of additional input columns"
+        "BEDROCK_ADDITIONAL_INPUT_COLUMNS": "JSON list of additional input columns",
+        "BEDROCK_MAX_TOKENS": "Maximum tokens for model response",
+        "BEDROCK_TEMPERATURE": "Temperature parameter for model",
+        "BEDROCK_TOP_P": "Top-p parameter for model"
     },
     framework_requirements={
         "boto3": ">=1.26.0",
@@ -765,12 +753,13 @@ class BedrockProcessingStepConfig(ProcessingStepConfigBase):
         return strategy
 ```
 
-### 4. Processing Script Pattern
+### 4. Processing Script Pattern (Revised Based on Real Implementation)
 
 ```python
 # scripts/bedrock_processing.py
 """
-Bedrock processing script with configurable model management and programmable response models.
+Bedrock processing script following nlp-pipeline patterns with Pydantic model integration.
+Based on real implementation from nlp-pipeline/src/nlp_pipeline/bedrock/rnr_bedrock_main.py
 """
 
 import os
@@ -778,73 +767,96 @@ import json
 import argparse
 import pandas as pd
 import boto3
+import sys
+import traceback
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Callable
 import logging
-from tenacity import retry, stop_after_attempt, wait_exponential
-from botocore.exceptions import ClientError
+from datetime import datetime
+from pydantic import BaseModel, ValidationError
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
 class BedrockProcessor:
-    """Bedrock processing with intelligent model management."""
+    """
+    Bedrock processor following nlp-pipeline patterns with Pydantic model integration.
+    Supports inference profiles and structured output validation.
+    """
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.bedrock_client = None
         self.response_model_class = None
+        self.effective_model_id = config['primary_model_id']
+        self.inference_profile_info = {}
+        
         self._initialize_bedrock_client()
+        self._configure_inference_profile()
         self._load_response_model()
     
     def _initialize_bedrock_client(self):
         """Initialize Bedrock client."""
-        self.bedrock_client = boto3.client('bedrock-runtime')
+        self.bedrock_client = boto3.client('bedrock-runtime', region_name=self.config.get('region_name', 'us-east-1'))
         logger.info("Initialized Bedrock client")
     
+    def _configure_inference_profile(self):
+        """Configure inference profile settings based on model and environment."""
+        model_id = self.config['primary_model_id']
+        inference_profile_arn = self.config.get('inference_profile_arn')
+        
+        # Check if model requires inference profile
+        inference_profile_required = json.loads(
+            self.config.get('inference_profile_required_models', '[]')
+        )
+        
+        if inference_profile_arn:
+            # Use provided ARN
+            os.environ['BEDROCK_INFERENCE_PROFILE_ARN'] = inference_profile_arn
+            self.inference_profile_info = {
+                'arn': inference_profile_arn,
+                'method': 'arn'
+            }
+            logger.info(f"Using inference profile ARN: {inference_profile_arn}")
+            
+        elif model_id in inference_profile_required:
+            # Auto-configure for known models
+            if model_id == "anthropic.claude-sonnet-4-20250514-v1:0":
+                # Use global profile ID for Claude 4
+                self.effective_model_id = "global.anthropic.claude-sonnet-4-20250514-v1:0"
+                self.inference_profile_info = {
+                    'profile_id': 'global.anthropic.claude-sonnet-4-20250514-v1:0',
+                    'original_model_id': model_id,
+                    'method': 'profile_id'
+                }
+                logger.info(f"Auto-configured to use inference profile ID: {self.effective_model_id}")
+            
+            elif 'claude-4' in model_id or 'claude-sonnet-4' in model_id:
+                logger.warning(f"Model {model_id} may require an inference profile. Consider setting BEDROCK_INFERENCE_PROFILE_ARN.")
+        
+        # If model already starts with 'global.', it's already a profile ID
+        if model_id.startswith('global.'):
+            self.inference_profile_info = {
+                'profile_id': model_id,
+                'method': 'profile_id'
+            }
+            logger.info(f"Using provided inference profile ID: {model_id}")
+    
     def _load_response_model(self):
-        """Load response model class if specified."""
+        """Load Pydantic response model class if specified."""
         if self.config.get('response_model_class'):
             try:
                 module_path, class_name = self.config['response_model_class'].rsplit('.', 1)
                 module = __import__(module_path, fromlist=[class_name])
                 self.response_model_class = getattr(module, class_name)
-                logger.info(f"Loaded response model: {self.config['response_model_class']}")
+                logger.info(f"Loaded Pydantic response model: {self.config['response_model_class']}")
             except Exception as e:
                 logger.warning(f"Failed to load response model: {e}")
-    
-    def _determine_model_strategy(self) -> Dict[str, Any]:
-        """Determine model usage strategy."""
-        model_id = self.config['primary_model_id']
-        inference_profile_required = json.loads(
-            self.config.get('inference_profile_required_models', '[]')
-        )
-        
-        strategy = {
-            'primary_model': model_id,
-            'use_inference_profile': False,
-            'fallback_model': self.config['fallback_model_id'],
-            'inference_profile_arn': self.config.get('inference_profile_arn')
-        }
-        
-        if model_id in inference_profile_required:
-            strategy['use_inference_profile'] = True
-            
-            if strategy['inference_profile_arn']:
-                strategy['effective_model'] = strategy['inference_profile_arn']
-            else:
-                # Try global profile ID
-                if 'claude-4' in model_id or 'claude-sonnet-4' in model_id:
-                    global_profile = model_id.replace('anthropic.', 'global.anthropic.')
-                    strategy['effective_model'] = global_profile
-                else:
-                    strategy['effective_model'] = model_id
-        else:
-            strategy['effective_model'] = model_id
-            
-        return strategy
     
     def _format_prompt(self, input_data: str, additional_data: Dict[str, Any] = None) -> str:
         """Format prompt with input data and additional columns."""
@@ -855,9 +867,8 @@ class BedrockProcessor:
             
         return self.config['user_prompt_template'].format(**template_vars)
     
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def _invoke_bedrock(self, prompt: str, strategy: Dict[str, Any]) -> Dict[str, Any]:
-        """Invoke Bedrock with retry logic and fallback."""
+    def _invoke_bedrock(self, prompt: str) -> Dict[str, Any]:
+        """Invoke Bedrock with intelligent fallback strategy."""
         request_body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": int(self.config['max_tokens']),
@@ -869,153 +880,339 @@ class BedrockProcessor:
         if self.config.get('system_prompt'):
             request_body["system"] = self.config['system_prompt']
         
-        # Try primary model/profile
+        # Try primary model/profile first
         try:
             response = self.bedrock_client.invoke_model(
-                modelId=strategy['effective_model'],
+                modelId=self.effective_model_id,
                 body=json.dumps(request_body),
                 contentType="application/json",
                 accept="application/json"
             )
             return json.loads(response['body'].read())
             
-        except ClientError as e:
-            if strategy['use_inference_profile'] and 'ValidationException' in str(e):
-                # Fallback to on-demand model
-                logger.warning(f"Inference profile failed, falling back to: {strategy['fallback_model']}")
-                response = self.bedrock_client.invoke_model(
-                    modelId=strategy['fallback_model'],
-                    body=json.dumps(request_body),
-                    contentType="application/json",
-                    accept="application/json"
-                )
-                return json.loads(response['body'].read())
+        except Exception as e:
+            # Fallback to on-demand model if inference profile fails
+            fallback_model = self.config.get('fallback_model_id')
+            if fallback_model and 'ValidationException' in str(e):
+                logger.warning(f"Inference profile failed, falling back to: {fallback_model}")
+                try:
+                    response = self.bedrock_client.invoke_model(
+                        modelId=fallback_model,
+                        body=json.dumps(request_body),
+                        contentType="application/json",
+                        accept="application/json"
+                    )
+                    return json.loads(response['body'].read())
+                except Exception as fallback_error:
+                    logger.error(f"Fallback model also failed: {fallback_error}")
+                    raise fallback_error
             else:
-                raise
+                raise e
     
-    def _parse_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse Bedrock response based on configuration."""
+    def _parse_response_with_pydantic(self, response: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse Bedrock response using Pydantic model validation."""
         if 'content' in response and len(response['content']) > 0:
             response_text = response['content'][0].get('text', '')
         else:
             raise ValueError("No content in Bedrock response")
         
-        if self.config['response_format'] == "json":
-            try:
-                parsed_json = json.loads(response_text)
-                if self.response_model_class:
-                    # Validate with Pydantic model
-                    validated_response = self.response_model_class(**parsed_json)
-                    return validated_response.model_dump()
-                return parsed_json
-            except json.JSONDecodeError:
-                return {"raw_response": response_text, "parse_error": "Invalid JSON"}
-                
-        elif self.config['response_format'] == "structured" and self.response_model_class:
-            # Try to extract structured data from text
-            return self._extract_structured_response(response_text)
-            
-        else:
-            return {"response": response_text}
-    
-    def _extract_structured_response(self, response_text: str) -> Dict[str, Any]:
-        """Extract structured response from text using response model."""
-        # Implementation depends on specific response model requirements
-        # This is a placeholder for custom extraction logic
         try:
-            # Try JSON extraction first
-            import re
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                json_str = json_match.group()
-                parsed_json = json.loads(json_str)
-                validated_response = self.response_model_class(**parsed_json)
-                return validated_response.model_dump()
-        except Exception as e:
-            logger.warning(f"Failed to extract structured response: {e}")
-        
-        return {"raw_response": response_text, "extraction_error": "Failed to extract structured data"}
+            if self.response_model_class:
+                # Use Pydantic model for structured parsing (like nlp-pipeline)
+                validated_response = self.response_model_class.model_validate_json(response_text)
+                
+                # Flatten Pydantic model to dictionary (following nlp-pipeline pattern)
+                result = self._flatten_pydantic_response(validated_response)
+                
+                # Add formatted output if available
+                if hasattr(validated_response, 'to_formatted_output'):
+                    result['formatted_output'] = validated_response.to_formatted_output()
+                
+                return result
+            else:
+                # Fallback to JSON parsing
+                return json.loads(response_text)
+                
+        except ValidationError as e:
+            logger.error(f"Pydantic validation failed: {e}")
+            return {
+                'raw_response': response_text,
+                'validation_error': str(e),
+                'parse_status': 'validation_failed'
+            }
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing failed: {e}")
+            return {
+                'raw_response': response_text,
+                'json_error': str(e),
+                'parse_status': 'json_failed'
+            }
     
-    def process_batch(self, input_df: pd.DataFrame) -> pd.DataFrame:
-        """Process a batch of data through Bedrock."""
-        strategy = self._determine_model_strategy()
+    def _flatten_pydantic_response(self, validated_response: BaseModel) -> Dict[str, Any]:
+        """Flatten Pydantic model response following nlp-pipeline patterns."""
+        result = {}
+        
+        # Get model dump
+        model_data = validated_response.model_dump()
+        
+        # Flatten nested structures (following nlp-pipeline pattern)
+        for key, value in model_data.items():
+            if isinstance(value, dict):
+                # Flatten nested dictionaries with underscore separation
+                for nested_key, nested_value in value.items():
+                    result[f"{key}_{nested_key}"] = nested_value
+            else:
+                result[key] = value
+        
+        return result
+    
+    def process_single_case(
+        self,
+        input_data: str,
+        additional_data: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Process a single case through Bedrock (following nlp-pipeline pattern).
+        
+        Args:
+            input_data: Main input text to process
+            additional_data: Additional data for prompt template variables
+            
+        Returns:
+            Dictionary with analysis results and metadata
+        """
+        try:
+            # Format prompt
+            prompt = self._format_prompt(input_data, additional_data)
+            
+            # Invoke Bedrock
+            response = self._invoke_bedrock(prompt)
+            
+            # Parse response with Pydantic validation
+            parsed_result = self._parse_response_with_pydantic(response)
+            
+            # Add processing metadata (following nlp-pipeline pattern)
+            result = {
+                **parsed_result,
+                'processing_status': 'success',
+                'error_message': None,
+                'model_info': {
+                    'effective_model_id': self.effective_model_id,
+                    'inference_profile_info': self.inference_profile_info
+                }
+            }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error processing case: {str(e)}")
+            
+            # Return structured error response (following nlp-pipeline pattern)
+            error_result = {
+                'processing_status': 'error',
+                'error_message': str(e),
+                'raw_response': None,
+                'model_info': {
+                    'effective_model_id': self.effective_model_id,
+                    'inference_profile_info': self.inference_profile_info
+                }
+            }
+            
+            # Add default values for expected fields if Pydantic model is available
+            if self.response_model_class:
+                try:
+                    # Create default instance to get field names
+                    default_fields = self.response_model_class.model_fields.keys()
+                    for field in default_fields:
+                        if field not in error_result:
+                            error_result[field] = None
+                except Exception:
+                    pass
+            
+            return error_result
+    
+    def process_batch(
+        self,
+        df: pd.DataFrame,
+        batch_size: Optional[int] = None,
+        save_intermediate: bool = True
+    ) -> pd.DataFrame:
+        """
+        Process a batch of data through Bedrock (following nlp-pipeline pattern).
+        
+        Args:
+            df: Input DataFrame
+            batch_size: Number of cases to process in each batch
+            save_intermediate: Whether to save intermediate results
+            
+        Returns:
+            DataFrame with analysis results
+        """
+        batch_size = batch_size or self.config.get('batch_size', 10)
         results = []
+        total_batches = (len(df) + batch_size - 1) // batch_size
         
         input_column = self.config['input_data_column']
         additional_columns = json.loads(self.config.get('additional_input_columns', '[]'))
         output_prefix = self.config['output_column_prefix']
         
-        for idx, row in input_df.iterrows():
-            try:
+        for i in range(0, len(df), batch_size):
+            batch_df = df.iloc[i:i + batch_size].copy()
+            batch_num = i // batch_size + 1
+            
+            logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch_df)} records)")
+            
+            batch_results = []
+            for idx, row in batch_df.iterrows():
                 # Prepare input data
                 input_data = row[input_column]
                 additional_data = {col: row[col] for col in additional_columns if col in row}
                 
-                # Format prompt
-                prompt = self._format_prompt(input_data, additional_data)
+                # Process single case
+                result = self.process_single_case(input_data, additional_data)
                 
-                # Invoke Bedrock
-                response = self._invoke_bedrock(prompt, strategy)
-                
-                # Parse response
-                parsed_result = self._parse_response(response)
-                
-                # Add to results
+                # Add original row data
                 result_row = row.to_dict()
-                for key, value in parsed_result.items():
-                    result_row[f"{output_prefix}{key}"] = value
-                    
-                result_row[f"{output_prefix}status"] = "success"
-                results.append(result_row)
                 
-            except Exception as e:
-                logger.error(f"Error processing row {idx}: {str(e)}")
-                result_row = row.to_dict()
-                result_row[f"{output_prefix}status"] = "error"
-                result_row[f"{output_prefix}error"] = str(e)
-                results.append(result_row)
+                # Add Bedrock results with prefix (following nlp-pipeline pattern)
+                for key, value in result.items():
+                    if key not in ['processing_status', 'error_message', 'model_info']:
+                        result_row[f"{output_prefix}{key}"] = value
+                
+                # Add processing metadata
+                result_row[f"{output_prefix}status"] = result['processing_status']
+                if result.get('error_message'):
+                    result_row[f"{output_prefix}error"] = result['error_message']
+                
+                batch_results.append(result_row)
+            
+            results.extend(batch_results)
+            
+            # Save intermediate results (following nlp-pipeline pattern)
+            if save_intermediate:
+                intermediate_df = pd.DataFrame(batch_results)
+                output_dir = Path("/opt/ml/processing/output/data")
+                output_dir.mkdir(parents=True, exist_ok=True)
+                intermediate_file = output_dir / f"batch_{batch_num:04d}_results.parquet"
+                intermediate_df.to_parquet(intermediate_file, index=False)
+                logger.info(f"Saved intermediate results to {intermediate_file}")
         
-        return pd.DataFrame(results)
+        results_df = pd.DataFrame(results)
+        logger.info(f"Completed processing {len(results_df)} records")
+        
+        return results_df
 
 
-def main():
-    """Main processing function."""
-    parser = argparse.ArgumentParser(description="Bedrock processing script")
-    parser.add_argument("--primary-model-id", required=True, help="Primary Bedrock model ID")
-    parser.add_argument("--batch-size", type=int, default=10, help="Batch size for processing")
-    parser.add_argument("--max-retries", type=int, default=3, help="Maximum retries")
-    parser.add_argument("--input-column", default="input_text", help="Input data column name")
-    parser.add_argument("--output-prefix", default="bedrock_", help="Output column prefix")
-    parser.add_argument("--response-format", default="json", help="Response format")
-    parser.add_argument("--system-prompt", help="System prompt")
-    parser.add_argument("--response-model-class", help="Response model class")
-    parser.add_argument("--inference-profile-arn", help="Inference profile ARN")
+def load_prompt_config(prompt_config_path: str, log: Callable[[str], None]) -> Dict[str, str]:
+    """
+    Load prompt configuration from prompts.json file.
     
-    args = parser.parse_args()
+    Expected file in prompt_config directory (same folder structure as script):
+    - prompts.json: JSON file containing system_prompt and/or user_prompt_template
     
-    # Build configuration from environment variables and arguments
+    JSON format example:
+    {
+        "system_prompt": "You are an expert data analyst...",
+        "user_prompt_template": "Analyze the following data: {input_data}"
+    }
+    
+    Args:
+        prompt_config_path: Path to prompt configuration directory
+        log: Logger function
+        
+    Returns:
+        Dictionary with 'system_prompt' and 'user_prompt_template' keys
+    """
+    prompt_config = {}
+    config_path = Path(prompt_config_path)
+    
+    if not config_path.exists():
+        log(f"Prompt config directory not found: {prompt_config_path}")
+        return prompt_config
+    
+    # Load from JSON file
+    json_prompt_file = config_path / "prompts.json"
+    if json_prompt_file.exists():
+        try:
+            with open(json_prompt_file, 'r', encoding='utf-8') as f:
+                json_config = json.load(f)
+            
+            if 'system_prompt' in json_config:
+                prompt_config['system_prompt'] = json_config['system_prompt']
+                log(f"Loaded system prompt from {json_prompt_file}")
+            
+            if 'user_prompt_template' in json_config:
+                prompt_config['user_prompt_template'] = json_config['user_prompt_template']
+                log(f"Loaded user prompt template from {json_prompt_file}")
+                
+        except Exception as e:
+            log(f"Failed to load prompts from JSON file {json_prompt_file}: {e}")
+    else:
+        log(f"Prompt config file not found: {json_prompt_file}")
+    
+    return prompt_config
+
+
+def main(
+    input_paths: Dict[str, str],
+    output_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    job_args: argparse.Namespace,
+    logger: Optional[Callable[[str], None]] = None,
+) -> Dict[str, Any]:
+    """
+    Main logic for Bedrock processing, refactored for testability.
+    Following nlp-pipeline patterns with Pydantic model integration.
+
+    Args:
+        input_paths: Dictionary of input paths with logical names
+        output_paths: Dictionary of output paths with logical names
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments
+        logger: Optional logger object (defaults to print if None)
+
+    Returns:
+        Dictionary containing processing results and statistics
+    """
+    # Use print function if no logger is provided
+    log = logger or print
+    
+    # Load prompt configuration from input files if available
+    prompt_config = {}
+    if 'prompt_config' in input_paths:
+        prompt_config = load_prompt_config(input_paths['prompt_config'], log)
+    
+    # Build configuration primarily from environment variables (following cursus pattern)
+    # Input files override environment variables, which override defaults
     config = {
-        'primary_model_id': args.primary_model_id,
-        'fallback_model_id': os.environ.get('BEDROCK_FALLBACK_MODEL_ID', ''),
-        'inference_profile_arn': args.inference_profile_arn or os.environ.get('BEDROCK_INFERENCE_PROFILE_ARN'),
-        'inference_profile_required_models': os.environ.get('BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS', '[]'),
-        'on_demand_compatible_models': os.environ.get('BEDROCK_ON_DEMAND_COMPATIBLE_MODELS', '[]'),
-        'system_prompt': args.system_prompt or os.environ.get('BEDROCK_SYSTEM_PROMPT'),
-        'user_prompt_template': os.environ.get('BEDROCK_USER_PROMPT_TEMPLATE', 'Analyze: {input_data}'),
-        'response_format': args.response_format,
-        'response_model_class': args.response_model_class or os.environ.get('BEDROCK_RESPONSE_MODEL_CLASS'),
-        'max_tokens': int(os.environ.get('BEDROCK_MAX_TOKENS', '4000')),
-        'temperature': float(os.environ.get('BEDROCK_TEMPERATURE', '0.1')),
-        'top_p': float(os.environ.get('BEDROCK_TOP_P', '0.9')),
-        'batch_size': args.batch_size,
-        'max_retries': args.max_retries,
-        'input_data_column': args.input_column,
-        'output_column_prefix': args.output_prefix,
-        'additional_input_columns': os.environ.get('BEDROCK_ADDITIONAL_INPUT_COLUMNS', '[]')
+        'primary_model_id': environ_vars.get('BEDROCK_PRIMARY_MODEL_ID'),
+        'fallback_model_id': environ_vars.get('BEDROCK_FALLBACK_MODEL_ID', ''),
+        'inference_profile_arn': environ_vars.get('BEDROCK_INFERENCE_PROFILE_ARN'),
+        'inference_profile_required_models': environ_vars.get('BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS', '[]'),
+        'on_demand_compatible_models': environ_vars.get('BEDROCK_ON_DEMAND_COMPATIBLE_MODELS', '[]'),
+        'region_name': environ_vars.get('AWS_DEFAULT_REGION', 'us-east-1'),
+        'system_prompt': (
+            prompt_config.get('system_prompt') or 
+            environ_vars.get('BEDROCK_SYSTEM_PROMPT')
+        ),
+        'user_prompt_template': (
+            prompt_config.get('user_prompt_template') or 
+            environ_vars.get('BEDROCK_USER_PROMPT_TEMPLATE', 'Analyze: {input_data}')
+        ),
+        'response_format': environ_vars.get('BEDROCK_RESPONSE_FORMAT', 'structured'),
+        'response_model_class': environ_vars.get('BEDROCK_RESPONSE_MODEL_CLASS'),
+        'max_tokens': int(environ_vars.get('BEDROCK_MAX_TOKENS', '4000')),
+        'temperature': float(environ_vars.get('BEDROCK_TEMPERATURE', '0.1')),
+        'top_p': float(environ_vars.get('BEDROCK_TOP_P', '0.9')),
+        'batch_size': int(environ_vars.get('BEDROCK_BATCH_SIZE', '10')),
+        'max_retries': int(environ_vars.get('BEDROCK_MAX_RETRIES', '3')),
+        'input_data_column': environ_vars.get('BEDROCK_INPUT_DATA_COLUMN', 'input_text'),
+        'output_column_prefix': environ_vars.get('BEDROCK_OUTPUT_COLUMN_PREFIX', 'bedrock_'),
+        'additional_input_columns': environ_vars.get('BEDROCK_ADDITIONAL_INPUT_COLUMNS', '[]')
     }
     
     try:
-        # Initialize processor
+        # Initialize processor (following nlp-pipeline pattern)
         processor = BedrockProcessor(config)
         
         # Load input data
@@ -1039,11 +1236,13 @@ def main():
             'total_records': 0,
             'successful_records': 0,
             'failed_records': 0,
-            'files_processed': []
+            'files_processed': [],
+            'model_info': processor.inference_profile_info,
+            'effective_model_id': processor.effective_model_id
         }
         
         for input_file in input_files:
-            logger.info(f"Processing file: {input_file}")
+            log(f"Processing file: {input_file}")
             
             # Load data
             if input_file.suffix == '.csv':
@@ -1051,57 +1250,153 @@ def main():
             else:
                 df = pd.read_parquet(input_file)
             
-            # Process batch
-            result_df = processor.process_batch(df)
+            # Process batch (following nlp-pipeline pattern)
+            result_df = processor.process_batch(df, save_intermediate=True)
             
             # Update statistics
             processing_stats['total_records'] += len(df)
-            processing_stats['successful_records'] += len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"])
-            processing_stats['failed_records'] += len(result_df[result_df[f"{config['output_column_prefix']}status"] == "error"])
+            success_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"])
+            failed_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "error"])
+            
+            processing_stats['successful_records'] += success_count
+            processing_stats['failed_records'] += failed_count
             processing_stats['files_processed'].append({
                 'filename': input_file.name,
                 'records': len(df),
-                'success_rate': len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"]) / len(df)
+                'successful': success_count,
+                'failed': failed_count,
+                'success_rate': success_count / len(df) if len(df) > 0 else 0
             })
             
-            # Save results
-            output_file = output_path / f"processed_{input_file.name}"
-            if input_file.suffix == '.csv':
-                result_df.to_csv(output_file, index=False)
-            else:
-                result_df.to_parquet(output_file, index=False)
+            # Save results in multiple formats (following nlp-pipeline pattern)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            base_filename = f"processed_{input_file.stem}_{timestamp}"
+            
+            # Save as Parquet (efficient for large datasets)
+            parquet_file = output_path / f"{base_filename}.parquet"
+            result_df.to_parquet(parquet_file, index=False)
+            
+            # Save as CSV (human-readable)
+            csv_file = output_path / f"{base_filename}.csv"
+            result_df.to_csv(csv_file, index=False)
             
             all_results.append(result_df)
-            logger.info(f"Saved results to: {output_file}")
+            log(f"Saved results to: {parquet_file} and {csv_file}")
         
-        # Combine all results if multiple files
+        # Combine all results if multiple files (following nlp-pipeline pattern)
         if len(all_results) > 1:
             combined_df = pd.concat(all_results, ignore_index=True)
-            combined_output = output_path / "combined_results.parquet"
-            combined_df.to_parquet(combined_output, index=False)
-            logger.info(f"Saved combined results to: {combined_output}")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            combined_parquet = output_path / f"combined_results_{timestamp}.parquet"
+            combined_csv = output_path / f"combined_results_{timestamp}.csv"
+            
+            combined_df.to_parquet(combined_parquet, index=False)
+            combined_df.to_csv(combined_csv, index=False)
+            log(f"Saved combined results to: {combined_parquet} and {combined_csv}")
         
-        # Save processing summary
+        # Save processing summary (following nlp-pipeline pattern)
         processing_stats['overall_success_rate'] = (
             processing_stats['successful_records'] / processing_stats['total_records']
             if processing_stats['total_records'] > 0 else 0
         )
+        processing_stats['processing_timestamp'] = datetime.now().isoformat()
         
-        summary_file = summary_path / "processing_summary.json"
+        summary_file = summary_path / f"processing_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(summary_file, 'w') as f:
-            json.dump(processing_stats, f, indent=2)
+            json.dump(processing_stats, f, indent=2, default=str)
         
-        logger.info("Processing completed successfully")
-        logger.info(f"Total records: {processing_stats['total_records']}")
-        logger.info(f"Success rate: {processing_stats['overall_success_rate']:.2%}")
+        log(f"Processing completed successfully")
+        log(f"Total records: {processing_stats['total_records']}")
+        log(f"Success rate: {processing_stats['overall_success_rate']:.2%}")
+        log(f"Model used: {processing_stats['effective_model_id']}")
+        
+        return processing_stats
         
     except Exception as e:
-        logger.error(f"Processing failed: {str(e)}")
+        log(f"Processing failed: {str(e)}")
         raise
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Minimal argument parser - most configuration comes from environment variables
+        parser = argparse.ArgumentParser(description="Bedrock processing script")
+        args = parser.parse_args()
+
+        # Define standard SageMaker paths as constants
+        INPUT_DATA_DIR = "/opt/ml/processing/input/data"
+        INPUT_CONFIG_DIR = "/opt/ml/code/prompts"  # Same folder structure as script
+        OUTPUT_DATA_DIR = "/opt/ml/processing/output/data"
+        OUTPUT_SUMMARY_DIR = "/opt/ml/processing/output/summary"
+
+        # Set up logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        logger = logging.getLogger(__name__)
+
+        # Log key parameters from environment variables
+        logger.info(f"Starting Bedrock processing with parameters:")
+        logger.info(f"  Primary Model ID: {os.environ.get('BEDROCK_PRIMARY_MODEL_ID')}")
+        logger.info(f"  Response Format: {os.environ.get('BEDROCK_RESPONSE_FORMAT', 'structured')}")
+        logger.info(f"  Response Model Class: {os.environ.get('BEDROCK_RESPONSE_MODEL_CLASS')}")
+        logger.info(f"  Batch Size: {os.environ.get('BEDROCK_BATCH_SIZE', '10')}")
+        logger.info(f"  Input Column: {os.environ.get('BEDROCK_INPUT_DATA_COLUMN', 'input_text')}")
+        logger.info(f"  Output Prefix: {os.environ.get('BEDROCK_OUTPUT_COLUMN_PREFIX', 'bedrock_')}")
+        logger.info(f"  Input Data Directory: {INPUT_DATA_DIR}")
+        logger.info(f"  Output Data Directory: {OUTPUT_DATA_DIR}")
+
+        # Set up path dictionaries
+        input_paths = {
+            "input_data": INPUT_DATA_DIR,
+            "prompt_config": INPUT_CONFIG_DIR  # Following cursus pattern like hyperparameters_s3_uri
+        }
+
+        output_paths = {
+            "processed_data": OUTPUT_DATA_DIR,
+            "analysis_summary": OUTPUT_SUMMARY_DIR
+        }
+
+        # Environment variables dictionary - all configuration from environment
+        environ_vars = {
+            "BEDROCK_PRIMARY_MODEL_ID": os.environ.get("BEDROCK_PRIMARY_MODEL_ID"),
+            "BEDROCK_FALLBACK_MODEL_ID": os.environ.get("BEDROCK_FALLBACK_MODEL_ID", ""),
+            "BEDROCK_INFERENCE_PROFILE_ARN": os.environ.get("BEDROCK_INFERENCE_PROFILE_ARN"),
+            "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": os.environ.get("BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS", "[]"),
+            "BEDROCK_ON_DEMAND_COMPATIBLE_MODELS": os.environ.get("BEDROCK_ON_DEMAND_COMPATIBLE_MODELS", "[]"),
+            "AWS_DEFAULT_REGION": os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+            "BEDROCK_SYSTEM_PROMPT": os.environ.get("BEDROCK_SYSTEM_PROMPT"),
+            "BEDROCK_USER_PROMPT_TEMPLATE": os.environ.get("BEDROCK_USER_PROMPT_TEMPLATE", "Analyze: {input_data}"),
+            "BEDROCK_RESPONSE_FORMAT": os.environ.get("BEDROCK_RESPONSE_FORMAT", "structured"),
+            "BEDROCK_RESPONSE_MODEL_CLASS": os.environ.get("BEDROCK_RESPONSE_MODEL_CLASS"),
+            "BEDROCK_MAX_TOKENS": os.environ.get("BEDROCK_MAX_TOKENS", "4000"),
+            "BEDROCK_TEMPERATURE": os.environ.get("BEDROCK_TEMPERATURE", "0.1"),
+            "BEDROCK_TOP_P": os.environ.get("BEDROCK_TOP_P", "0.9"),
+            "BEDROCK_BATCH_SIZE": os.environ.get("BEDROCK_BATCH_SIZE", "10"),
+            "BEDROCK_MAX_RETRIES": os.environ.get("BEDROCK_MAX_RETRIES", "3"),
+            "BEDROCK_INPUT_DATA_COLUMN": os.environ.get("BEDROCK_INPUT_DATA_COLUMN", "input_text"),
+            "BEDROCK_OUTPUT_COLUMN_PREFIX": os.environ.get("BEDROCK_OUTPUT_COLUMN_PREFIX", "bedrock_"),
+            "BEDROCK_ADDITIONAL_INPUT_COLUMNS": os.environ.get("BEDROCK_ADDITIONAL_INPUT_COLUMNS", "[]")
+        }
+
+        # Execute the main processing logic
+        result = main(
+            input_paths=input_paths,
+            output_paths=output_paths,
+            environ_vars=environ_vars,
+            job_args=args,
+            logger=logger.info,
+        )
+
+        # Log completion summary
+        logger.info(f"Bedrock processing completed successfully. Results: {result}")
+        sys.exit(0)
+    except Exception as e:
+        logging.error(f"Error in Bedrock processing script: {str(e)}")
+        logging.error(traceback.format_exc())
+        sys.exit(1)
 ```
 
 ## Key Differences Between Bedrock Step Types
@@ -1421,5 +1716,79 @@ Following the cursus framework registry pattern, Bedrock steps must be registere
 - **spec_type**: Use case-specific specification type (e.g., "BedrockProcessing")
 - **config_class**: Use case-specific configuration class name
 - **builder_step_name**: Use case-specific builder class name
+
+## What is in `prompt_config`?
+
+The `prompt_config` input is an **optional S3 directory** that contains prompt configuration files following the cursus framework pattern (same folder structure as the script at `/opt/ml/code/prompts`):
+
+### **File Contents and Structure:**
+
+#### **Primary Format: `prompts.json`**
+```json
+{
+    "system_prompt": "You are an expert data analyst with deep knowledge of business metrics and customer behavior. Analyze the provided data carefully and provide structured, actionable insights. Be precise and factual in your analysis.",
+    "user_prompt_template": "Please analyze the following data:\n\nData: {input_data}\nContext: {context}\nAdditional Info: {metadata}\n\nProvide your analysis in JSON format with the following structure:\n- category: The main category of the data\n- confidence: Your confidence level (0-1)\n- insights: List of key insights\n- recommendations: List of actionable recommendations"
+}
+```
+
+### **Content Examples:**
+
+#### **System Prompt:**
+```
+You are an expert data analyst with deep knowledge of business metrics and customer behavior. 
+
+Your responsibilities:
+- Analyze data with precision and accuracy
+- Identify patterns and anomalies
+- Provide actionable business insights
+- Maintain objectivity in your analysis
+- Use clear, professional language
+
+Always base your conclusions on the data provided and clearly distinguish between facts and inferences.
+```
+
+#### **User Prompt Template:**
+```
+Please analyze the following data:
+
+Data: {input_data}
+Context: {context}
+Customer Segment: {segment}
+Time Period: {time_period}
+
+Provide your analysis in JSON format with:
+1. Summary of key findings
+2. Identified trends or patterns
+3. Risk factors or concerns
+4. Recommended actions
+5. Confidence level (0-1)
+
+Focus on actionable insights that can drive business decisions.
+```
+
+### **Template Variables:**
+The user prompt template supports variable substitution using Python's `str.format()` syntax:
+- **`{input_data}`**: The main data to be analyzed (from the specified input column)
+- **`{context}`**: Additional context information
+- **`{metadata}`**: Metadata about the data
+- **Custom Variables**: Any additional columns specified in `additional_input_columns`
+
+### **Loading Priority:**
+1. **JSON File** (highest priority): Load from `prompts.json`
+2. **Environment Variables** (fallback): Use `BEDROCK_SYSTEM_PROMPT` and `BEDROCK_USER_PROMPT_TEMPLATE`
+3. **Defaults** (lowest priority): Built-in default templates
+
+### **Integration with Cursus Framework:**
+- **Input Path**: `"prompt_config": "/opt/ml/code/prompts"` (following cursus pattern like `hyperparameters_s3_uri`)
+- **Optional Input**: Not required - system falls back to environment variables or defaults
+- **Specification-Driven**: Fully integrated with cursus step specifications and contracts
+- **Version Control**: Prompts can be versioned and managed separately from code
+
+### **Use Cases:**
+- **Dynamic Prompts**: Change prompts without modifying code or environment variables
+- **A/B Testing**: Test different prompt strategies easily
+- **Domain-Specific Analysis**: Customize prompts for different business domains
+- **Multi-Language Support**: Provide prompts in different languages
+- **Complex Templates**: Support sophisticated prompt engineering with multiple variables
 
 This comprehensive pattern analysis provides the foundation for creating robust, production-ready Bedrock processing steps in the cursus framework, with intelligent model management, configurable response processing, and seamless integration with the existing cursus architecture.
