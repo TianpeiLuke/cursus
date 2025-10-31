@@ -13,11 +13,11 @@ from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
 # Import the model inference specification
 try:
-    from ..specs.xgboost_model_inference_spec import MODEL_INFERENCE_SPEC
+    from ..specs.xgboost_model_inference_spec import XGBOOST_MODEL_INFERENCE_SPEC
 
     SPEC_AVAILABLE = True
 except ImportError:
-    MODEL_INFERENCE_SPEC = None
+    XGBOOST_MODEL_INFERENCE_SPEC = None
     SPEC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class XGBoostModelInferenceStepBuilder(StepBuilderBase):
             )
 
         # Use the model inference specification if available
-        spec = MODEL_INFERENCE_SPEC if SPEC_AVAILABLE else None
+        spec = XGBOOST_MODEL_INFERENCE_SPEC if SPEC_AVAILABLE else None
 
         super().__init__(
             config=config,
