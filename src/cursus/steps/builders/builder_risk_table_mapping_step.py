@@ -10,8 +10,9 @@ import boto3
 from botocore.exceptions import ClientError
 
 from sagemaker.workflow.steps import ProcessingStep, Step
-from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
 from sagemaker.sklearn import SKLearnProcessor
+from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.s3 import S3Uploader
 
 from ..configs.config_risk_table_mapping_step import RiskTableMappingConfig
@@ -163,12 +164,15 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
                 "cat_field_list is empty. Risk table mapping will validate fields at runtime."
             )
 
-    def _create_processor(self) -> SKLearnProcessor:
+    def _create_processor(self) -> FrameworkProcessor:
         """
-        Create the SKLearn processor for the processing job.
+        Create the processor for the processing job using FrameworkProcessor with SKLearn.
+
+        This uses FrameworkProcessor with SKLearn estimator class to support source_dir parameter
+        while maintaining the SKLearn processing environment.
 
         Returns:
-            SKLearnProcessor: Configured processor for the step
+            FrameworkProcessor: The configured processor for the step using SKLearn
         """
         instance_type = (
             self.config.processing_instance_type_large
@@ -176,7 +180,8 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             else self.config.processing_instance_type_small
         )
 
-        return SKLearnProcessor(
+        return FrameworkProcessor(
+            estimator_cls=SKLearn,
             framework_version=self.config.processing_framework_version,
             role=self.role,
             instance_type=instance_type,
@@ -393,19 +398,18 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             # Get step name using standardized method with auto-detection
             step_name = self._get_step_name()
 
-            # CRITICAL: Follow XGBoostModelEvalStepBuilder pattern for source directory
-            # Use processor.run() with both code and source_dir parameters
-            # For processor.run(), code parameter should be just the entry point filename
+            # Use FrameworkProcessor with get_run_args for pipeline compatibility
+            # This supports source_dir parameter which SKLearnProcessor.run() doesn't support
             entry_point = self.config.processing_entry_point  # Just the filename
             # Use modernized effective_source_dir with comprehensive hybrid resolution
             source_dir = self.config.effective_source_dir
             self.log_info("Using entry point: %s", entry_point)
             self.log_info("Using resolved source directory: %s", source_dir)
 
-            # Create step arguments using processor.run()
-            step_args = processor.run(
+            # Use get_run_args instead of run for pipeline compatibility with source_dir support
+            step_args = processor.get_run_args(
                 code=entry_point,
-                source_dir=source_dir,  # This ensures source directory is available in container
+                source_dir=source_dir,  # FrameworkProcessor supports this parameter
                 inputs=proc_inputs,
                 outputs=proc_outputs,
                 arguments=job_args,

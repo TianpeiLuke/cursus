@@ -9,8 +9,9 @@ and script contract.
 import logging
 from typing import Dict, List, Any
 
-from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
 from sagemaker.sklearn import SKLearnProcessor
+from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.steps import ProcessingStep
 
 from ...core.base.builder_base import StepBuilderBase
@@ -280,11 +281,14 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
 
         return processing_outputs
 
-    def _get_processor(self) -> SKLearnProcessor:
-        """Create and configure the processor for this step.
+    def _get_processor(self) -> FrameworkProcessor:
+        """Create and configure the processor for this step using FrameworkProcessor with SKLearn.
+
+        This uses FrameworkProcessor with SKLearn estimator class to support source_dir parameter
+        while maintaining the SKLearn processing environment.
 
         Returns:
-            SKLearnProcessor: The configured processor for the step
+            FrameworkProcessor: The configured processor for the step using SKLearn
         """
         # Get appropriate instance type based on configuration
         instance_type = (
@@ -294,9 +298,10 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
         )
 
         # Get framework version with fallback
-        framework_version = getattr(self.config, "processing_framework_version", "1.0-1")
+        framework_version = getattr(self.config, "processing_framework_version", "1.2-1")
 
-        return SKLearnProcessor(
+        return FrameworkProcessor(
+            estimator_cls=SKLearn,
             framework_version=framework_version,
             role=self.role,
             instance_type=instance_type,
@@ -372,19 +377,18 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
 
-        # CRITICAL: Follow RiskTableMappingStepBuilder pattern for source directory
-        # Use processor.run() with both code and source_dir parameters
-        # For processor.run(), code parameter should be just the entry point filename
+        # Use FrameworkProcessor with get_run_args for pipeline compatibility
+        # This supports source_dir parameter which SKLearnProcessor.run() doesn't support
         entry_point = self.config.processing_entry_point  # Just the filename
         # Use modernized effective_source_dir with comprehensive hybrid resolution
         source_dir = self.config.effective_source_dir
         self.log_info("Using entry point: %s", entry_point)
         self.log_info("Using resolved source directory: %s", source_dir)
 
-        # Create step arguments using processor.run()
-        step_args = processor.run(
+        # Use get_run_args instead of run for pipeline compatibility with source_dir support
+        step_args = processor.get_run_args(
             code=entry_point,
-            source_dir=source_dir,  # This ensures source directory is available in container
+            source_dir=source_dir,  # FrameworkProcessor supports this parameter
             inputs=proc_inputs,
             outputs=proc_outputs,
             arguments=job_args,
