@@ -139,9 +139,9 @@ class ScriptContract(BaseModel):
                     raise ValueError(
                         f"Input path for {logical_name} must start with /opt/ml/processing/, got: {path}"
                     )
-            elif not path.startswith("/opt/ml/processing/input"):
+            elif not (path.startswith("/opt/ml/processing/input") or path.startswith("/opt/ml/code")):                
                 raise ValueError(
-                    f"Input path for {logical_name} must start with /opt/ml/processing/input, got: {path}"
+                    f"Input path for {logical_name} must start with /opt/ml/processing/input or /opt/ml/code, got: {path}"
                 )
         return v
 
