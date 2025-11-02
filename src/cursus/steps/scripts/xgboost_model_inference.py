@@ -259,26 +259,70 @@ CONTAINER_PATHS = {
 def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
     Load the trained XGBoost model and all preprocessing artifacts from the specified directory.
+    Handles both extracted artifacts and model.tar.gz archives.
     Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
     """
+    import tarfile
+    
     logger.info(f"Loading model artifacts from {model_dir}")
+    
+    # Check if we need to extract model.tar.gz
+    model_tar_path = os.path.join(model_dir, "model.tar.gz")
+    model_bst_path = os.path.join(model_dir, "xgboost_model.bst")
+    
+    if os.path.exists(model_tar_path) and not os.path.exists(model_bst_path):
+        logger.info("Found model.tar.gz - extracting model artifacts...")
+        try:
+            with tarfile.open(model_tar_path, 'r:gz') as tar:
+                tar.extractall(path=model_dir)
+            logger.info("✓ Model artifacts extracted successfully from model.tar.gz")
+        except Exception as e:
+            logger.error(f"Failed to extract model.tar.gz: {e}")
+            raise RuntimeError(f"Could not extract model artifacts from {model_tar_path}: {e}")
+    elif os.path.exists(model_bst_path):
+        logger.info("Found extracted model artifacts - using directly")
+    else:
+        # List available files for debugging
+        available_files = os.listdir(model_dir) if os.path.exists(model_dir) else []
+        logger.error(f"Neither model.tar.gz nor xgboost_model.bst found in {model_dir}")
+        logger.error(f"Available files: {available_files}")
+        raise FileNotFoundError(
+            f"Model artifacts not found in {model_dir}. "
+            f"Expected either 'model.tar.gz' or 'xgboost_model.bst'. "
+            f"Available files: {available_files}"
+        )
+    
+    # Now load the extracted files
+    logger.info("Loading individual model artifacts...")
+    
+    # Load XGBoost model
     model = xgb.Booster()
     model.load_model(os.path.join(model_dir, "xgboost_model.bst"))
-    logger.info("Loaded xgboost_model.bst")
+    logger.info("✓ Loaded xgboost_model.bst")
+    
+    # Load risk tables
     with open(os.path.join(model_dir, "risk_table_map.pkl"), "rb") as f:
         risk_tables = pkl.load(f)
-    logger.info("Loaded risk_table_map.pkl")
+    logger.info("✓ Loaded risk_table_map.pkl")
+    
+    # Load imputation dictionary
     with open(os.path.join(model_dir, "impute_dict.pkl"), "rb") as f:
         impute_dict = pkl.load(f)
-    logger.info("Loaded impute_dict.pkl")
+    logger.info("✓ Loaded impute_dict.pkl")
+    
+    # Load feature columns
     with open(os.path.join(model_dir, "feature_columns.txt"), "r") as f:
         feature_columns = [
             line.strip().split(",")[1] for line in f if not line.startswith("#")
         ]
-    logger.info(f"Loaded feature_columns.txt: {feature_columns}")
+    logger.info(f"✓ Loaded feature_columns.txt: {len(feature_columns)} features")
+    
+    # Load hyperparameters
     with open(os.path.join(model_dir, "hyperparameters.json"), "r") as f:
         hyperparams = json.load(f)
-    logger.info("Loaded hyperparameters.json")
+    logger.info("✓ Loaded hyperparameters.json")
+    
+    logger.info("All model artifacts loaded successfully")
     return model, risk_tables, impute_dict, feature_columns, hyperparams
 
 
