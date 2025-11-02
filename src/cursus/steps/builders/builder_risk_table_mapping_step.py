@@ -406,10 +406,10 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             self.log_info("Using entry point: %s", entry_point)
             self.log_info("Using resolved source directory: %s", source_dir)
 
-            # Use get_run_args instead of run for pipeline compatibility with source_dir support
-            step_args = processor.get_run_args(
+            # Use FrameworkProcessor.run() which supports source_dir parameter and works with ProcessingStep
+            step_args = processor.run(
                 code=entry_point,
-                source_dir=source_dir,  # FrameworkProcessor supports this parameter
+                source_dir=source_dir,  # FrameworkProcessor.run() supports this parameter
                 inputs=proc_inputs,
                 outputs=proc_outputs,
                 arguments=job_args,
