@@ -94,6 +94,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Currency conversion processing step",
     },
+    "BedrockPromptTemplateGeneration": {
+        "config_class": "BedrockPromptTemplateGenerationConfig",
+        "builder_step_name": "BedrockPromptTemplateGenerationStepBuilder",
+        "spec_type": "BedrockPromptTemplateGeneration",
+        "sagemaker_step_type": "Processing",
+        "description": "Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",
