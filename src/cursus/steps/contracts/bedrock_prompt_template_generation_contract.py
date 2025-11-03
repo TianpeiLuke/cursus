@@ -11,7 +11,6 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
     entry_point="bedrock_prompt_template_generation.py",
     expected_input_paths={
         "category_definitions": "/opt/ml/processing/input/categories",
-        "output_schema_template": "/opt/ml/processing/input/schema",
     },
     expected_output_paths={
         "prompt_templates": "/opt/ml/processing/output/templates",
@@ -62,9 +61,6 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
       - CSV: Comma-separated with semicolon-separated array fields
       - Required fields: name, description, conditions, key_indicators
       - Optional fields: exceptions, examples, priority, validation_rules, aliases
-    - /opt/ml/processing/input/schema: Output schema template (optional)
-      - JSON Schema format for customizing output validation
-      - Used for advanced output format customization
     
     Output Structure:
     - /opt/ml/processing/output/templates: Generated prompt templates
@@ -83,16 +79,17 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
         * Evidence validation rules and requirements
     
     Contract aligned with script implementation:
-    - Inputs: category_definitions (required), output_schema_template (optional)
+    - Inputs: category_definitions (required only)
     - Outputs: prompt_templates (primary), template_metadata, validation_schema
     - Arguments: include-examples, generate-validation-schema, template-version
+    - Schema Configuration: OUTPUT_FORMAT_CONFIG environment variable (JSON schema format)
     
     Environment Variables (all optional with defaults):
     - TEMPLATE_TASK_TYPE: Type of classification task (default: "classification")
     - TEMPLATE_STYLE: Template style format (default: "structured")
     - VALIDATION_LEVEL: Validation strictness level (default: "standard")
     - SYSTEM_PROMPT_CONFIG: JSON config for system prompt customization
-    - OUTPUT_FORMAT_CONFIG: JSON config for output format customization
+    - OUTPUT_FORMAT_CONFIG: JSON schema for output format customization (supports full JSON Schema format)
     - INSTRUCTION_CONFIG: JSON config for instruction customization
     - INPUT_PLACEHOLDERS: JSON array of input field names (default: ["input_data"])
     - OUTPUT_FORMAT_TYPE: Output format type (default: "structured_json")

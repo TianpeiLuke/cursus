@@ -27,7 +27,20 @@ date of note: 2025-10-26
 
 ## Overview
 
-This document defines the design patterns for Bedrock processing step builder implementations in the cursus framework. Bedrock processing steps create **ProcessingStep** instances that invoke AWS Bedrock models for Large Language Model (LLM) processing tasks. These steps provide configurable model management, programmable response models, and intelligent fallback strategies for production LLM workflows.
+This document defines the design patterns for Bedrock processing step builder implementations in the cursus framework. Bedrock processing steps create **ProcessingStep** instances that invoke AWS Bedrock models for Large Language Model (LLM) processing tasks. These steps integrate seamlessly with **Bedrock Prompt Template Generation** steps to provide automated categorization workflows with configurable model management, programmable response models, and intelligent fallback strategies for production LLM workflows.
+
+## Integration with Bedrock Prompt Template Generation
+
+Bedrock processing steps are designed to work in tandem with Bedrock Prompt Template Generation steps:
+
+1. **Template Generation Step**: Generates structured prompt templates from category definitions
+2. **Processing Step**: Consumes generated templates to categorize input data
+3. **Seamless Integration**: Templates override configuration for dynamic prompt management
+
+**Integration Flow:**
+```
+Category Definitions → Prompt Template Generation → Prompt Templates → Bedrock Processing → Categorized Results
+```
 
 ## SageMaker Step Type Classification
 
@@ -131,21 +144,22 @@ config.response_model_class = "myproject.models.CustomAnalysisResponse"
 config.response_format = "structured"
 ```
 
-### 4. Prompt Template System Pattern
+### 4. Prompt Template Integration Pattern
 ```python
 # Standard Processing: Fixed script logic
 job_arguments = ["--job_type", config.job_type]
 
-# Bedrock Processing: Configurable prompt templates
+# Bedrock Processing: Dynamic prompt template loading from Template Generation step
 class BedrockProcessingStepConfig(ProcessingStepConfigBase):
+    # Default prompts (overridden by template generation input)
     system_prompt: Optional[str] = Field(
         default=None,
-        description="System prompt for the model"
+        description="Default system prompt (overridden by prompt_templates input)"
     )
     
     user_prompt_template: str = Field(
         default="Analyze the following data: {input_data}",
-        description="User prompt template with placeholders"
+        description="Default user prompt template (overridden by prompt_templates input)"
     )
     
     additional_input_columns: List[str] = Field(
@@ -153,11 +167,29 @@ class BedrockProcessingStepConfig(ProcessingStepConfigBase):
         description="Additional columns to include in prompt template"
     )
 
-# Template usage in processing script
-def format_prompt(input_data: str, additional_data: Dict[str, Any]) -> str:
-    template_vars = {'input_data': input_data}
-    template_vars.update(additional_data)
-    return config.user_prompt_template.format(**template_vars)
+# Template loading and configuration override in processing script
+def load_prompt_templates(prompt_templates_path: str) -> Dict[str, str]:
+    """Load prompt templates from Bedrock Prompt Template Generation output."""
+    templates_dir = Path(prompt_templates_path)
+    prompts_file = templates_dir / "prompts.json"
+    
+    if prompts_file.exists():
+        with open(prompts_file, 'r', encoding='utf-8') as f:
+            templates = json.load(f)
+        return {
+            'system_prompt': templates.get('system_prompt'),
+            'user_prompt_template': templates.get('user_prompt_template')
+        }
+    
+    raise ValueError(f"No prompts.json found in {prompt_templates_path}")
+
+# Configuration priority: Templates > Environment Variables > Defaults
+def configure_from_templates(templates: Dict[str, str]) -> None:
+    """Override configuration with template-provided values."""
+    if templates.get('system_prompt'):
+        os.environ['BEDROCK_SYSTEM_PROMPT'] = templates['system_prompt']
+    if templates.get('user_prompt_template'):
+        os.environ['BEDROCK_USER_PROMPT_TEMPLATE'] = templates['user_prompt_template']
 ```
 
 ## Common Implementation Patterns
@@ -256,10 +288,9 @@ def _get_environment_variables(self) -> Dict[str, str]:
         self.config.on_demand_compatible_models
     )
     
-    # Prompt configuration
-    if self.config.system_prompt:
-        env_vars["BEDROCK_SYSTEM_PROMPT"] = self.config.system_prompt
-    env_vars["BEDROCK_USER_PROMPT_TEMPLATE"] = self.config.user_prompt_template
+    # Note: Prompt configuration now comes from prompt_templates input
+    # BEDROCK_SYSTEM_PROMPT and BEDROCK_USER_PROMPT_TEMPLATE are set dynamically
+    # by the processing script after loading templates from the input
     
     # Response configuration
     env_vars["BEDROCK_RESPONSE_FORMAT"] = self.config.response_format
@@ -489,7 +520,7 @@ def _validate_response_model_class(self, class_path: str) -> None:
 
 ## Design Components Integration
 
-### 1. Step Specification Pattern
+### 1. Step Specification Pattern (Updated for Template Integration)
 
 ```python
 # specs/bedrock_processing_spec.py
@@ -508,13 +539,13 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
             description="Input data for Bedrock LLM processing"
         ),
         DependencySpec(
-            logical_name="prompt_config",
+            logical_name="prompt_templates",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=False,
-            compatible_sources=["ProcessingStep", "PromptPrep", "DataLoad"],
-            semantic_keywords=["config", "prompt", "template", "system", "instructions", "prompts"],
+            required=True,  # Now REQUIRED for template integration
+            compatible_sources=["BedrockPromptTemplateGeneration"],
+            semantic_keywords=["templates", "prompts", "prompt_config", "generated_templates"],
             data_type="S3Uri",
-            description="Optional prompt configuration files: prompts.json (preferred) or system_prompt.txt/user_prompt_template.txt (fallback)"
+            description="Generated prompt templates from Bedrock Prompt Template Generation step (prompts.json)"
         )
     ],
     outputs=[
@@ -538,7 +569,7 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
 )
 ```
 
-### 2. Script Contract Pattern
+### 2. Script Contract Pattern (Updated for Template Integration)
 
 ```python
 # contracts/bedrock_processing_contract.py
@@ -546,7 +577,7 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
     entry_point="bedrock_processing.py",
     expected_input_paths={
         "input_data": "/opt/ml/processing/input/data",
-        "prompt_config": "/opt/ml/processing/input/config"
+        "prompt_templates": "/opt/ml/processing/input/templates"  # Updated for template integration
     },
     expected_output_paths={
         "processed_data": "/opt/ml/processing/output/data",
@@ -558,7 +589,6 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
     required_env_vars=[
         "BEDROCK_PRIMARY_MODEL_ID",
         "BEDROCK_FALLBACK_MODEL_ID",
-        "BEDROCK_USER_PROMPT_TEMPLATE",
         "BEDROCK_RESPONSE_FORMAT",
         "BEDROCK_BATCH_SIZE",
         "BEDROCK_MAX_RETRIES",
@@ -567,7 +597,6 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
     ],
     optional_env_vars={
         "BEDROCK_INFERENCE_PROFILE_ARN": "Inference profile ARN for provisioned throughput",
-        "BEDROCK_SYSTEM_PROMPT": "System prompt for the model",
         "BEDROCK_RESPONSE_MODEL_CLASS": "Pydantic model class for response validation",
         "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "JSON list of models requiring inference profiles",
         "BEDROCK_ON_DEMAND_COMPATIBLE_MODELS": "JSON list of on-demand compatible models",
@@ -584,13 +613,20 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
         "numpy": ">=1.19.0"
     },
     description="""
-    Bedrock processing script that:
+    Bedrock processing script that integrates with Bedrock Prompt Template Generation:
     1. Loads input data from CSV/Parquet files
-    2. Configures AWS Bedrock client with model strategy (inference profile vs on-demand)
-    3. Processes data in batches through Bedrock LLM models
-    4. Handles intelligent fallback between inference profiles and on-demand models
-    5. Parses and validates responses using configurable Pydantic models
-    6. Saves processed results and analysis summary
+    2. Loads generated prompt templates from Template Generation step
+    3. Configures AWS Bedrock client with model strategy (inference profile vs on-demand)
+    4. Processes data in batches through Bedrock LLM models using generated templates
+    5. Handles intelligent fallback between inference profiles and on-demand models
+    6. Parses and validates responses using configurable Pydantic models
+    7. Saves processed results and analysis summary
+    
+    Template Integration Features:
+    - Loads structured prompt templates from Bedrock Prompt Template Generation step
+    - Dynamic configuration override based on generated templates
+    - Seamless integration with 5-component template architecture
+    - Support for category-driven classification workflows
     
     Model Management Features:
     - Automatic detection of models requiring inference profiles
@@ -599,9 +635,10 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
     - Support for both ARN-based and global profile ID-based inference profiles
     
     Prompt System Features:
-    - Configurable system and user prompts with template variables
+    - Generated prompt templates override default configuration
     - Support for additional input columns in prompt templates
     - Dynamic prompt formatting based on input data structure
+    - Category-specific prompt generation for classification tasks
     
     Response Processing Features:
     - Configurable response formats (JSON, text, structured)
@@ -611,7 +648,7 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
     
     Input Structure:
     - /opt/ml/processing/input/data: CSV/Parquet files with text data
-    - /opt/ml/processing/input/config: Optional prompt configuration files
+    - /opt/ml/processing/input/templates: Generated prompt templates (prompts.json)
     
     Output Structure:
     - /opt/ml/processing/output/data: Processed data with LLM results
@@ -1103,54 +1140,53 @@ class BedrockProcessor:
         return results_df
 
 
-def load_prompt_config(prompt_config_path: str, log: Callable[[str], None]) -> Dict[str, str]:
+def load_prompt_templates(prompt_templates_path: str, log: Callable[[str], None]) -> Dict[str, str]:
     """
-    Load prompt configuration from prompts.json file.
+    Load prompt templates from Bedrock Prompt Template Generation step output.
     
-    Expected file in prompt_config directory (same folder structure as script):
-    - prompts.json: JSON file containing system_prompt and/or user_prompt_template
+    Expected file structure from Template Generation step:
+    - prompts.json: JSON file containing system_prompt and user_prompt_template
     
-    JSON format example:
+    JSON format (generated by Template Generation step):
     {
-        "system_prompt": "You are an expert data analyst...",
-        "user_prompt_template": "Analyze the following data: {input_data}"
+        "system_prompt": "You are an expert analyst with extensive knowledge in data analysis, classification...",
+        "user_prompt_template": "Categories and their criteria:\n\n1. Category1\n    - Description...\n\n## Required Output Format\n..."
     }
     
     Args:
-        prompt_config_path: Path to prompt configuration directory
+        prompt_templates_path: Path to prompt templates directory from Template Generation step
         log: Logger function
         
     Returns:
         Dictionary with 'system_prompt' and 'user_prompt_template' keys
     """
-    prompt_config = {}
-    config_path = Path(prompt_config_path)
+    templates = {}
+    templates_path = Path(prompt_templates_path)
     
-    if not config_path.exists():
-        log(f"Prompt config directory not found: {prompt_config_path}")
-        return prompt_config
+    if not templates_path.exists():
+        raise ValueError(f"Prompt templates directory not found: {prompt_templates_path}")
     
-    # Load from JSON file
-    json_prompt_file = config_path / "prompts.json"
-    if json_prompt_file.exists():
+    # Load prompts.json (standard output from Template Generation step)
+    prompts_file = templates_path / "prompts.json"
+    if prompts_file.exists():
         try:
-            with open(json_prompt_file, 'r', encoding='utf-8') as f:
-                json_config = json.load(f)
+            with open(prompts_file, 'r', encoding='utf-8') as f:
+                json_templates = json.load(f)
             
-            if 'system_prompt' in json_config:
-                prompt_config['system_prompt'] = json_config['system_prompt']
-                log(f"Loaded system prompt from {json_prompt_file}")
+            if 'system_prompt' in json_templates:
+                templates['system_prompt'] = json_templates['system_prompt']
+                log(f"Loaded system prompt from {prompts_file}")
             
-            if 'user_prompt_template' in json_config:
-                prompt_config['user_prompt_template'] = json_config['user_prompt_template']
-                log(f"Loaded user prompt template from {json_prompt_file}")
+            if 'user_prompt_template' in json_templates:
+                templates['user_prompt_template'] = json_templates['user_prompt_template']
+                log(f"Loaded user prompt template from {prompts_file}")
                 
         except Exception as e:
-            log(f"Failed to load prompts from JSON file {json_prompt_file}: {e}")
+            raise ValueError(f"Failed to load templates from {prompts_file}: {e}")
     else:
-        log(f"Prompt config file not found: {json_prompt_file}")
+        raise ValueError(f"Required prompts.json not found in {prompt_templates_path}")
     
-    return prompt_config
+    return templates
 
 
 def main(
@@ -1177,13 +1213,15 @@ def main(
     # Use print function if no logger is provided
     log = logger or print
     
-    # Load prompt configuration from input files if available
-    prompt_config = {}
-    if 'prompt_config' in input_paths:
-        prompt_config = load_prompt_config(input_paths['prompt_config'], log)
+    # Load prompt templates from Template Generation step (REQUIRED)
+    if 'prompt_templates' not in input_paths:
+        raise ValueError("prompt_templates input is required for Bedrock Processing")
     
-    # Build configuration primarily from environment variables (following cursus pattern)
-    # Input files override environment variables, which override defaults
+    templates = load_prompt_templates(input_paths['prompt_templates'], log)
+    log(f"Loaded templates: system_prompt={bool(templates.get('system_prompt'))}, user_prompt_template={bool(templates.get('user_prompt_template'))}")
+    
+    # Build configuration with template integration
+    # Priority: Templates (highest) > Environment Variables > Defaults (lowest)
     config = {
         'primary_model_id': environ_vars.get('BEDROCK_PRIMARY_MODEL_ID'),
         'fallback_model_id': environ_vars.get('BEDROCK_FALLBACK_MODEL_ID', ''),
@@ -1191,12 +1229,13 @@ def main(
         'inference_profile_required_models': environ_vars.get('BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS', '[]'),
         'on_demand_compatible_models': environ_vars.get('BEDROCK_ON_DEMAND_COMPATIBLE_MODELS', '[]'),
         'region_name': environ_vars.get('AWS_DEFAULT_REGION', 'us-east-1'),
+        # Templates override environment variables and defaults
         'system_prompt': (
-            prompt_config.get('system_prompt') or 
+            templates.get('system_prompt') or 
             environ_vars.get('BEDROCK_SYSTEM_PROMPT')
         ),
         'user_prompt_template': (
-            prompt_config.get('user_prompt_template') or 
+            templates.get('user_prompt_template') or 
             environ_vars.get('BEDROCK_USER_PROMPT_TEMPLATE', 'Analyze: {input_data}')
         ),
         'response_format': environ_vars.get('BEDROCK_RESPONSE_FORMAT', 'structured'),
@@ -1351,7 +1390,7 @@ if __name__ == "__main__":
         # Set up path dictionaries
         input_paths = {
             "input_data": INPUT_DATA_DIR,
-            "prompt_config": INPUT_CONFIG_DIR  # Following cursus pattern like hyperparameters_s3_uri
+            "prompt_templates": "/opt/ml/processing/input/templates"  # From Template Generation step
         }
 
         output_paths = {
@@ -1717,78 +1756,76 @@ Following the cursus framework registry pattern, Bedrock steps must be registere
 - **config_class**: Use case-specific configuration class name
 - **builder_step_name**: Use case-specific builder class name
 
-## What is in `prompt_config`?
+## Integration with Bedrock Prompt Template Generation
 
-The `prompt_config` input is an **optional S3 directory** that contains prompt configuration files following the cursus framework pattern (same folder structure as the script at `/opt/ml/code/prompts`):
+The `prompt_templates` input is a **required S3 directory** that contains generated prompt templates from the Bedrock Prompt Template Generation step:
 
 ### **File Contents and Structure:**
 
-#### **Primary Format: `prompts.json`**
+#### **Generated Format: `prompts.json`**
 ```json
 {
-    "system_prompt": "You are an expert data analyst with deep knowledge of business metrics and customer behavior. Analyze the provided data carefully and provide structured, actionable insights. Be precise and factual in your analysis.",
-    "user_prompt_template": "Please analyze the following data:\n\nData: {input_data}\nContext: {context}\nAdditional Info: {metadata}\n\nProvide your analysis in JSON format with the following structure:\n- category: The main category of the data\n- confidence: Your confidence level (0-1)\n- insights: List of key insights\n- recommendations: List of actionable recommendations"
+    "system_prompt": "You are an expert analyst with extensive knowledge in data analysis, classification, pattern recognition. Your task is to analyze data accurately, classify content systematically, provide clear reasoning. Always be precise, be objective, be thorough, be consistent in your analysis.",
+    "user_prompt_template": "Categories and their criteria:\n\n1. TrueDNR\n    - Delivered Not Received - Package marked as delivered but buyer claims non-receipt\n    - Key elements:\n        * delivered but not received\n        * tracking shows delivered\n        * missing package investigation\n    - Conditions:\n        * Package marked as delivered (EVENT_301)\n        * Buyer claims non-receipt\n        * Tracking shows delivery\n    - Must NOT include:\n        * Buyer received wrong item\n        * Package damaged on delivery\n\n2. FalsePositive\n    - Cases incorrectly flagged as DNR\n    - Key elements:\n        * incorrect classification\n        * false alarm\n        * misidentified case\n\nAnalysis Instructions:\n\nPlease analyze:\nInput_data: {input_data}\n\nProvide your analysis in the following structured format:\n\n1. Carefully review all provided data\n2. Identify key patterns and indicators\n3. Match against category criteria\n4. Select the most appropriate category\n5. Validate evidence against conditions and exceptions\n6. Provide confidence assessment and reasoning\n\n## Required Output Format\n\n**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**\n\n```json\n{\n    \"category\": \"The classified category name (must be exactly one of the defined categories)\",\n    \"confidence\": \"Confidence score between 0.0 and 1.0 indicating certainty of classification\",\n    \"key_evidence\": \"Specific evidence from input data that aligns with the selected category conditions and does NOT match any category exceptions\",\n    \"reasoning\": \"Clear explanation of the decision-making process, showing how the evidence supports the selected category while considering why other categories were rejected\"\n}\n```\n\nDo not include any text before or after the JSON object. Only return valid JSON."
 }
 ```
 
-### **Content Examples:**
+### **Template Generation Integration:**
 
-#### **System Prompt:**
-```
-You are an expert data analyst with deep knowledge of business metrics and customer behavior. 
+#### **5-Component Architecture:**
+The generated templates follow a structured 5-component architecture:
+1. **System Prompt**: Role definition and expertise areas
+2. **Category Definitions**: Structured category descriptions with conditions/exceptions
+3. **Input Placeholders**: Variable placeholders for data injection
+4. **Instructions**: Processing rules and analysis steps
+5. **Output Format**: Structured JSON schema with field definitions
 
-Your responsibilities:
-- Analyze data with precision and accuracy
-- Identify patterns and anomalies
-- Provide actionable business insights
-- Maintain objectivity in your analysis
-- Use clear, professional language
+#### **Category-Driven Generation:**
+Templates are automatically generated based on category definitions:
+```python
+# Input to Template Generation step
+categories = [
+    {
+        "name": "TrueDNR",
+        "description": "Delivered Not Received - Package marked as delivered but buyer claims non-receipt",
+        "conditions": ["Package marked as delivered (EVENT_301)", "Buyer claims non-receipt"],
+        "exceptions": ["Buyer received wrong item", "Package damaged on delivery"],
+        "key_indicators": ["delivered but not received", "tracking shows delivered"]
+    }
+]
 
-Always base your conclusions on the data provided and clearly distinguish between facts and inferences.
-```
-
-#### **User Prompt Template:**
-```
-Please analyze the following data:
-
-Data: {input_data}
-Context: {context}
-Customer Segment: {segment}
-Time Period: {time_period}
-
-Provide your analysis in JSON format with:
-1. Summary of key findings
-2. Identified trends or patterns
-3. Risk factors or concerns
-4. Recommended actions
-5. Confidence level (0-1)
-
-Focus on actionable insights that can drive business decisions.
+# Output: Structured prompt template optimized for classification
 ```
 
-### **Template Variables:**
-The user prompt template supports variable substitution using Python's `str.format()` syntax:
-- **`{input_data}`**: The main data to be analyzed (from the specified input column)
-- **`{context}`**: Additional context information
-- **`{metadata}`**: Metadata about the data
-- **Custom Variables**: Any additional columns specified in `additional_input_columns`
-
-### **Loading Priority:**
-1. **JSON File** (highest priority): Load from `prompts.json`
+### **Configuration Priority:**
+1. **Generated Templates** (highest priority): From Bedrock Prompt Template Generation step
 2. **Environment Variables** (fallback): Use `BEDROCK_SYSTEM_PROMPT` and `BEDROCK_USER_PROMPT_TEMPLATE`
 3. **Defaults** (lowest priority): Built-in default templates
 
-### **Integration with Cursus Framework:**
-- **Input Path**: `"prompt_config": "/opt/ml/code/prompts"` (following cursus pattern like `hyperparameters_s3_uri`)
-- **Optional Input**: Not required - system falls back to environment variables or defaults
-- **Specification-Driven**: Fully integrated with cursus step specifications and contracts
-- **Version Control**: Prompts can be versioned and managed separately from code
+### **Integration Benefits:**
+- **Automated Prompt Engineering**: No manual prompt creation needed
+- **Category-Specific Optimization**: Templates tailored to specific classification tasks
+- **Quality Validation**: Templates validated for completeness and structure
+- **Version Control**: Templates versioned with category definitions
+- **Consistency**: Standardized prompt structure across all classification tasks
 
-### **Use Cases:**
-- **Dynamic Prompts**: Change prompts without modifying code or environment variables
-- **A/B Testing**: Test different prompt strategies easily
-- **Domain-Specific Analysis**: Customize prompts for different business domains
-- **Multi-Language Support**: Provide prompts in different languages
-- **Complex Templates**: Support sophisticated prompt engineering with multiple variables
+### **Pipeline Integration Example:**
+```python
+# Step 1: Generate templates from categories
+template_step = BedrockPromptTemplateGenerationStepBuilder(config).create_step(
+    inputs={'category_definitions': 's3://bucket/categories.json'},
+    outputs={'prompt_templates': 's3://bucket/templates/'}
+)
 
-This comprehensive pattern analysis provides the foundation for creating robust, production-ready Bedrock processing steps in the cursus framework, with intelligent model management, configurable response processing, and seamless integration with the existing cursus architecture.
+# Step 2: Process data using generated templates
+processing_step = BedrockProcessingStepBuilder(config).create_step(
+    inputs={
+        'input_data': 's3://bucket/data/',
+        'prompt_templates': template_step.properties.ProcessingOutputConfig.Outputs['prompt_templates'].S3Output.S3Uri
+    },
+    outputs={'processed_data': 's3://bucket/results/'},
+    dependencies=[template_step]
+)
+```
+
+This integration provides a complete automated categorization workflow from category definitions to categorized results, with optimal prompt engineering handled automatically by the Template Generation step.

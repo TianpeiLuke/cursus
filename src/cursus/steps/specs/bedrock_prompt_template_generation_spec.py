@@ -51,28 +51,6 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Category definition files (JSON/CSV) containing classification categories with conditions, exceptions, and key indicators",
-        ),
-        DependencySpec(
-            logical_name="output_schema_template",
-            dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=False,
-            compatible_sources=[
-                "ProcessingStep",
-                "TabularPreprocessing",
-                "SchemaGeneration"
-            ],
-            semantic_keywords=[
-                "schema",
-                "output_schema",
-                "validation_schema",
-                "json_schema",
-                "template_schema",
-                "format_schema",
-                "output_format",
-                "validation_template"
-            ],
-            data_type="S3Uri",
-            description="Optional JSON schema template for customizing output validation format",
         )
     ],
     outputs=[

@@ -108,10 +108,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         description="Path to category definitions directory/file, relative to processing source directory"
     )
 
-    output_schema_template_path: Optional[str] = Field(
-        default=None,
-        description="Path to output schema template file, relative to processing source directory (optional)"
-    )
 
     # Processing step overrides
     processing_entry_point: str = Field(
@@ -128,7 +124,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
     _template_metadata: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     _environment_variables: Optional[Dict[str, str]] = PrivateAttr(default=None)
     _resolved_category_definitions_path: Optional[str] = PrivateAttr(default=None)
-    _resolved_output_schema_template_path: Optional[str] = PrivateAttr(default=None)
 
     # Public properties for derived fields
 
@@ -313,35 +308,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         
         return self._resolved_category_definitions_path
 
-    @property
-    def resolved_output_schema_template_path(self) -> Optional[str]:
-        """
-        Get resolved absolute path for output schema template with hybrid resolution.
-        
-        Returns:
-            Absolute path to output schema template file, or None if not configured
-            
-        Raises:
-            ValueError: If output_schema_template_path is set but source directory cannot be resolved
-        """
-        if self.output_schema_template_path is None:
-            return None
-        
-        if self._resolved_output_schema_template_path is None:
-            effective_source = self.effective_source_dir
-            if effective_source is None:
-                raise ValueError(
-                    "Cannot resolve output_schema_template_path: no processing source directory configured. "
-                    "Set either processing_source_dir or source_dir in configuration."
-                )
-            
-            # Construct full path following same pattern as script_path
-            if effective_source.startswith("s3://"):
-                self._resolved_output_schema_template_path = f"{effective_source.rstrip('/')}/{self.output_schema_template_path}"
-            else:
-                self._resolved_output_schema_template_path = str(Path(effective_source) / self.output_schema_template_path)
-        
-        return self._resolved_output_schema_template_path
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:
@@ -358,8 +324,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         # Add resolved path properties if they're configured
         if self.category_definitions_path is not None:
             data["resolved_category_definitions_path"] = self.resolved_category_definitions_path
-        if self.output_schema_template_path is not None:
-            data["resolved_output_schema_template_path"] = self.resolved_output_schema_template_path
         
         return data
 

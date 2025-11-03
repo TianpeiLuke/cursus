@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 # Container path constants
 CONTAINER_PATHS = {
     "INPUT_CATEGORIES_DIR": "/opt/ml/processing/input/categories",
-    "INPUT_SCHEMA_DIR": "/opt/ml/processing/input/schema",
     "OUTPUT_TEMPLATES_DIR": "/opt/ml/processing/output/templates",
     "OUTPUT_METADATA_DIR": "/opt/ml/processing/output/metadata",
     "OUTPUT_SCHEMA_DIR": "/opt/ml/processing/output/schema"
@@ -85,15 +84,17 @@ DEFAULT_INSTRUCTION_CONFIG = {
 }
 
 
+
 class PromptTemplateGenerator:
     """
     Generates structured prompt templates for classification tasks using
     the 5-component architecture pattern.
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], schema_template: Optional[Dict[str, Any]] = None):
         self.config = config
         self.categories = self._load_categories()
+        self.schema_template = schema_template
         self.template_env = Environment(loader=BaseLoader())
         
     def _load_categories(self) -> List[Dict[str, Any]]:
@@ -268,67 +269,93 @@ class PromptTemplateGenerator:
         return '\n'.join(instructions)
     
     def _generate_output_format_section(self) -> str:
-        """Generate output format schema section."""
-        # Load user config and merge with comprehensive defaults
-        user_config = json.loads(self.config.get('OUTPUT_FORMAT_CONFIG', '{}'))
-        output_config = {**DEFAULT_OUTPUT_FORMAT_CONFIG, **user_config}
+        """Generate output format schema section using schema template (default or custom)."""
+        # Always use schema-based generation (either default or custom schema)
+        return self._generate_custom_output_format_from_schema()
+    
+    def _generate_custom_output_format_from_schema(self) -> str:
+        """Generate output format section from custom JSON schema template."""
+        schema = self.schema_template
         
-        format_type = output_config.get('format_type')
-        required_fields = output_config.get('required_fields')
-        field_descriptions = output_config.get('field_descriptions')
-        evidence_validation_rules = output_config.get('evidence_validation_rules', [])
+        format_parts = [
+            "## Required Output Format",
+            "",
+            "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
+            "",
+            "```json",
+            "{"
+        ]
         
-        if format_type == 'structured_json':
-            format_parts = [
-                "## Required Output Format",
-                "",
-                "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
-                "",
-                "```json",
-                "{"
-            ]
+        # Extract properties from schema
+        properties = schema.get('properties', {})
+        required_fields = schema.get('required', list(properties.keys()))
+        
+        # Generate JSON structure from schema
+        for i, field in enumerate(required_fields):
+            field_schema = properties.get(field, {})
+            field_type = field_schema.get('type', 'string')
+            description = field_schema.get('description', f"The {field} value")
             
-            for i, field in enumerate(required_fields):
-                description = field_descriptions.get(field, f"The {field} value")
-                comma = "," if i < len(required_fields) - 1 else ""
-                format_parts.append(f'    "{field}": "{description}"{comma}')
+            # Generate example value based on type
+            if field_type == 'string':
+                if 'enum' in field_schema:
+                    example_value = f"One of: {', '.join(field_schema['enum'])}"
+                else:
+                    example_value = description
+            elif field_type == 'number':
+                min_val = field_schema.get('minimum', 0)
+                max_val = field_schema.get('maximum', 1)
+                example_value = f"Number between {min_val} and {max_val}"
+            elif field_type == 'array':
+                example_value = "Array of values"
+            elif field_type == 'boolean':
+                example_value = "true or false"
+            else:
+                example_value = description
             
+            comma = "," if i < len(required_fields) - 1 else ""
+            format_parts.append(f'    "{field}": "{example_value}"{comma}')
+        
+        format_parts.extend([
+            "}",
+            "```",
+            "",
+            "Field Descriptions:"
+        ])
+        
+        # Add detailed field descriptions
+        for field in required_fields:
+            field_schema = properties.get(field, {})
+            description = field_schema.get('description', f"The {field} value")
+            field_type = field_schema.get('type', 'string')
+            
+            # Add type and constraint information
+            constraints = []
+            if field_type == 'number':
+                if 'minimum' in field_schema:
+                    constraints.append(f"minimum: {field_schema['minimum']}")
+                if 'maximum' in field_schema:
+                    constraints.append(f"maximum: {field_schema['maximum']}")
+            elif field_type == 'string' and 'enum' in field_schema:
+                constraints.append(f"must be one of: {', '.join(field_schema['enum'])}")
+            
+            constraint_text = f" ({', '.join(constraints)})" if constraints else ""
+            format_parts.append(f"- **{field}** ({field_type}): {description}{constraint_text}")
+        
+        # Add category-specific validation if category field exists
+        if 'category' in required_fields and properties.get('category', {}).get('enum'):
+            category_names = properties['category']['enum']
             format_parts.extend([
-                "}",
-                "```",
                 "",
-                "Field Descriptions:"
+                "**Category Validation:**",
+                f"- The category field must exactly match one of: {', '.join(category_names)}",
+                "- Category names are case-sensitive and must match exactly"
             ])
-            
-            for field in required_fields:
-                description = field_descriptions.get(field, f"The {field} value")
-                format_parts.append(f"- **{field}**: {description}")
-            
-            # Add evidence validation rules if key_evidence is in required fields
-            if 'key_evidence' in required_fields and evidence_validation_rules:
-                format_parts.extend([
-                    "",
-                    "**Key Evidence Requirements:**"
-                ])
-                for rule in evidence_validation_rules:
-                    format_parts.append(f"- {rule}")
-            
-            format_parts.extend([
-                "",
-                "Do not include any text before or after the JSON object. Only return valid JSON."
-            ])
-            
-        else:
-            # Formatted text or hybrid format
-            format_parts = [
-                "## Required Output Format",
-                "",
-                "Provide your response in the following structured format:"
-            ]
-            
-            for field in required_fields:
-                description = field_descriptions.get(field, f"The {field} value")
-                format_parts.append(f"**{field.title()}**: {description}")
+        
+        format_parts.extend([
+            "",
+            "Do not include any text before or after the JSON object. Only return valid JSON."
+        ])
         
         return '\n'.join(format_parts)
     
@@ -596,6 +623,60 @@ def main(
         if not categories:
             raise ValueError("No category definitions found in input files")
         
+        # Load output schema template from OUTPUT_FORMAT_CONFIG or generate default
+        schema_template = None
+        
+        # Try to load JSON schema from OUTPUT_FORMAT_CONFIG
+        output_format_config = json.loads(environ_vars.get('OUTPUT_FORMAT_CONFIG', '{}'))
+        if output_format_config and 'type' in output_format_config:
+            # OUTPUT_FORMAT_CONFIG contains a JSON schema
+            schema_template = output_format_config
+            log("Using JSON schema from OUTPUT_FORMAT_CONFIG for format generation")
+        
+        # Generate default schema template if no custom schema is provided
+        if not schema_template:
+            # Generate default schema from DEFAULT_OUTPUT_FORMAT_CONFIG
+            default_config = DEFAULT_OUTPUT_FORMAT_CONFIG
+            required_fields = default_config['required_fields']
+            field_descriptions = default_config['field_descriptions']
+            
+            schema_template = {
+                "type": "object",
+                "properties": {},
+                "required": required_fields,
+                "additionalProperties": False
+            }
+            
+            # Generate properties from default config
+            for field in required_fields:
+                if field == 'confidence':
+                    schema_template['properties'][field] = {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0,
+                        "description": field_descriptions.get(field, "Confidence score between 0.0 and 1.0")
+                    }
+                elif field == 'category':
+                    schema_template['properties'][field] = {
+                        "type": "string",
+                        "enum": [cat['name'] for cat in categories],
+                        "description": field_descriptions.get(field, "The classified category name")
+                    }
+                else:
+                    schema_template['properties'][field] = {
+                        "type": "string",
+                        "description": field_descriptions.get(field, f"The {field} value")
+                    }
+            
+            log("Generated default output schema template from DEFAULT_OUTPUT_FORMAT_CONFIG")
+        else:
+            # Update category enum in custom schema if it has a category field
+            if ('properties' in schema_template and 
+                'category' in schema_template['properties'] and
+                schema_template['properties']['category'].get('type') == 'string'):
+                schema_template['properties']['category']['enum'] = [cat['name'] for cat in categories]
+            log("Using custom output schema template for format generation")
+        
         # Build configuration from environment variables and loaded data
         config = {
             'TEMPLATE_TASK_TYPE': environ_vars.get('TEMPLATE_TASK_TYPE', 'classification'),
@@ -613,8 +694,8 @@ def main(
             'TEMPLATE_VERSION': environ_vars.get('TEMPLATE_VERSION', '1.0')
         }
         
-        # Initialize template generator
-        generator = PromptTemplateGenerator(config)
+        # Initialize template generator with schema template (default or custom)
+        generator = PromptTemplateGenerator(config, schema_template)
         
         # Generate template
         log("Generating prompt template...")
@@ -672,36 +753,51 @@ def main(
         if config['GENERATE_VALIDATION_SCHEMA'].lower() == 'true':
             schema_file = schema_path / f"validation_schema_{timestamp}.json"
             
-            # Generate JSON schema for output validation
-            required_fields = json.loads(config['REQUIRED_OUTPUT_FIELDS'])
-            validation_schema = {
-                "type": "object",
-                "properties": {},
-                "required": required_fields,
-                "additionalProperties": False
-            }
-            
-            # Add field definitions
-            field_descriptions = json.loads(config.get('OUTPUT_FORMAT_CONFIG', '{}')).get('field_descriptions', {})
-            for field in required_fields:
-                if field == 'confidence':
-                    validation_schema['properties'][field] = {
-                        "type": "number",
-                        "minimum": 0.0,
-                        "maximum": 1.0,
-                        "description": field_descriptions.get(field, "Confidence score between 0.0 and 1.0")
-                    }
-                elif field == 'category':
-                    validation_schema['properties'][field] = {
-                        "type": "string",
-                        "enum": [cat['name'] for cat in categories],
-                        "description": field_descriptions.get(field, "The classified category name")
-                    }
-                else:
-                    validation_schema['properties'][field] = {
-                        "type": "string",
-                        "description": field_descriptions.get(field, f"The {field} value")
-                    }
+            # Use custom schema template if available, otherwise generate default schema
+            if schema_template:
+                # Use the custom schema template directly
+                validation_schema = schema_template.copy()
+                
+                # Update category enum if it exists in the schema
+                if ('properties' in validation_schema and 
+                    'category' in validation_schema['properties'] and
+                    validation_schema['properties']['category'].get('type') == 'string'):
+                    validation_schema['properties']['category']['enum'] = [cat['name'] for cat in categories]
+                
+                log("Using custom schema template for validation schema generation")
+            else:
+                # Generate default JSON schema for output validation
+                required_fields = json.loads(config['REQUIRED_OUTPUT_FIELDS'])
+                validation_schema = {
+                    "type": "object",
+                    "properties": {},
+                    "required": required_fields,
+                    "additionalProperties": False
+                }
+                
+                # Add field definitions
+                field_descriptions = json.loads(config.get('OUTPUT_FORMAT_CONFIG', '{}')).get('field_descriptions', {})
+                for field in required_fields:
+                    if field == 'confidence':
+                        validation_schema['properties'][field] = {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "description": field_descriptions.get(field, "Confidence score between 0.0 and 1.0")
+                        }
+                    elif field == 'category':
+                        validation_schema['properties'][field] = {
+                            "type": "string",
+                            "enum": [cat['name'] for cat in categories],
+                            "description": field_descriptions.get(field, "The classified category name")
+                        }
+                    else:
+                        validation_schema['properties'][field] = {
+                            "type": "string",
+                            "description": field_descriptions.get(field, f"The {field} value")
+                        }
+                
+                log("Generated default validation schema")
             
             with open(schema_file, 'w', encoding='utf-8') as f:
                 json.dump(validation_schema, f, indent=2, ensure_ascii=False)
@@ -748,8 +844,7 @@ if __name__ == "__main__":
 
         # Set up path dictionaries
         input_paths = {
-            "category_definitions": CONTAINER_PATHS["INPUT_CATEGORIES_DIR"],
-            "output_schema_template": CONTAINER_PATHS["INPUT_SCHEMA_DIR"]
+            "category_definitions": CONTAINER_PATHS["INPUT_CATEGORIES_DIR"]
         }
 
         output_paths = {

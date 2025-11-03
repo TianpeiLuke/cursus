@@ -258,54 +258,6 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                         # Required input, no user path, no dependency - this is an error
                         raise ValueError(f"Required input '{logical_name}' not provided: either specify category_definitions_path in config or provide via dependencies")
             
-            # Handle output_schema_template input
-            elif logical_name == "output_schema_template":
-                # Check if user provided a custom path
-                if self.config.output_schema_template_path is not None:
-                    # User specified a custom path - use resolved path from config
-                    try:
-                        source_path = self.config.resolved_output_schema_template_path
-                        container_path = self.contract.expected_input_paths[logical_name]
-                        
-                        processing_inputs.append(
-                            ProcessingInput(
-                                input_name=logical_name,
-                                source=source_path,
-                                destination=container_path,
-                            )
-                        )
-                        
-                        self.log_info(
-                            "Added local input '%s' (user-specified path): %s -> %s",
-                            logical_name,
-                            source_path,
-                            container_path,
-                        )
-                        continue
-                    except ValueError as e:
-                        raise ValueError(f"Failed to resolve output_schema_template_path: {e}")
-                else:
-                    # User didn't specify path - allow dependency override or skip if optional
-                    if logical_name in inputs:
-                        container_path = self.contract.expected_input_paths[logical_name]
-                        processing_inputs.append(
-                            ProcessingInput(
-                                input_name=logical_name,
-                                source=inputs[logical_name],
-                                destination=container_path,
-                            )
-                        )
-                        self.log_info(
-                            "Added dependency input '%s' (no user path, dependency override): %s -> %s",
-                            logical_name,
-                            inputs[logical_name],
-                            container_path,
-                        )
-                        continue
-                    else:
-                        # Optional input, no user path, no dependency - skip
-                        self.log_info("Optional input '%s' not configured and no dependency provided, skipping", logical_name)
-                        continue
 
             # Handle other dependency-provided inputs
             # Skip if optional and not provided
