@@ -185,6 +185,11 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
         for _, dependency_spec in self.spec.dependencies.items():
             logical_name = dependency_spec.logical_name
 
+            # Skip calibration_config as it's loaded from the script folder
+            if logical_name == "calibration_config":
+                self.log_info("Skipping calibration_config channel (calibration config loaded from script folder)")
+                continue
+
             # Skip if optional and not provided
             if not dependency_spec.required and logical_name not in inputs:
                 continue
