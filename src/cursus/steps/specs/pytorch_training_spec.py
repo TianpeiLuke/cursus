@@ -34,6 +34,7 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
+                "BedrockProcessing",
                 "StratifiedSampling",
                 "RiskTableMapping",
                 "MissingValueImputation",

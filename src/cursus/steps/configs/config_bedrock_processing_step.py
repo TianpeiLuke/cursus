@@ -40,6 +40,11 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
     # ===== Tier 2: System Inputs with Defaults (Optional) =====
     # These fields have sensible defaults but can be overridden
 
+    job_type: str = Field(
+        default="training",
+        description="One of ['training','validation','testing','calibration'] - determines processing behavior and output naming"
+    )
+
     # Model configuration
     bedrock_primary_model_id: str = Field(
         default="anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -234,6 +239,15 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
 
     # Validators
 
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: str) -> str:
+        """Validate job_type is one of the allowed values."""
+        allowed = {"training", "validation", "testing", "calibration"}
+        if v not in allowed:
+            raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
+        return v
+
     @field_validator("bedrock_primary_model_id")
     @classmethod
     def validate_primary_model_id(cls, v: str) -> str:
@@ -373,6 +387,7 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         # Add Bedrock-specific fields (Tier 1 + Tier 2)
         bedrock_fields = {
             # Tier 1: Essential fields
+            "job_type": self.job_type,
             "bedrock_inference_profile_arn": self.bedrock_inference_profile_arn,
             
             # Tier 2: System fields with defaults

@@ -708,6 +708,120 @@ def load_validation_schema(schema_path: str, log: Callable[[str], None]) -> Dict
         raise ValueError(f"Failed to load validation schema from {schema_file}: {e}")
 
 
+def process_split_directory(
+    split_name: str,
+    split_input_path: Path,
+    split_output_path: Path,
+    processor: BedrockProcessor,
+    config: Dict[str, Any],
+    log: Callable[[str], None]
+) -> Dict[str, Any]:
+    """
+    Process a single split directory (train, val, or test).
+    
+    Args:
+        split_name: Name of the split (train, val, test)
+        split_input_path: Path to input split directory
+        split_output_path: Path to output split directory
+        processor: BedrockProcessor instance
+        config: Processing configuration
+        log: Logger function
+        
+    Returns:
+        Dictionary with processing statistics for this split
+    """
+    # Create output directory for this split
+    split_output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Find input files in this split directory
+    input_files = list(split_input_path.glob("*.csv")) + list(split_input_path.glob("*.parquet"))
+    
+    if not input_files:
+        log(f"No input files found in {split_input_path}")
+        return {
+            'split_name': split_name,
+            'total_files': 0,
+            'total_records': 0,
+            'successful_records': 0,
+            'failed_records': 0,
+            'validation_passed_records': 0,
+            'files_processed': []
+        }
+    
+    log(f"Processing {split_name} split with {len(input_files)} files")
+    
+    split_results = []
+    split_stats = {
+        'split_name': split_name,
+        'total_files': len(input_files),
+        'total_records': 0,
+        'successful_records': 0,
+        'failed_records': 0,
+        'validation_passed_records': 0,
+        'files_processed': []
+    }
+    
+    for input_file in input_files:
+        log(f"Processing {split_name} file: {input_file}")
+        
+        # Load data
+        if input_file.suffix == '.csv':
+            df = pd.read_csv(input_file)
+        else:
+            df = pd.read_parquet(input_file)
+        
+        # Process batch
+        result_df = processor.process_batch(df, save_intermediate=False)  # No intermediate saves for splits
+        
+        # Update statistics
+        split_stats['total_records'] += len(df)
+        success_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"])
+        failed_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "error"])
+        validation_passed_count = len(result_df[result_df.get(f"{config['output_column_prefix']}validation_passed", False) == True])
+        
+        split_stats['successful_records'] += success_count
+        split_stats['failed_records'] += failed_count
+        split_stats['validation_passed_records'] += validation_passed_count
+        split_stats['files_processed'].append({
+            'filename': input_file.name,
+            'records': len(df),
+            'successful': success_count,
+            'failed': failed_count,
+            'validation_passed': validation_passed_count,
+            'success_rate': success_count / len(df) if len(df) > 0 else 0,
+            'validation_rate': validation_passed_count / len(df) if len(df) > 0 else 0
+        })
+        
+        # Save results maintaining original filename structure
+        base_filename = input_file.stem
+        
+        # Save as Parquet (efficient for large datasets)
+        parquet_file = split_output_path / f"{base_filename}_processed_data.parquet"
+        result_df.to_parquet(parquet_file, index=False)
+        
+        # Save as CSV (human-readable)
+        csv_file = split_output_path / f"{base_filename}_processed_data.csv"
+        result_df.to_csv(csv_file, index=False)
+        
+        split_results.append(result_df)
+        log(f"Saved {split_name} results to: {parquet_file} and {csv_file}")
+    
+    # Calculate split-level statistics
+    split_stats['success_rate'] = (
+        split_stats['successful_records'] / split_stats['total_records']
+        if split_stats['total_records'] > 0 else 0
+    )
+    split_stats['validation_rate'] = (
+        split_stats['validation_passed_records'] / split_stats['total_records']
+        if split_stats['total_records'] > 0 else 0
+    )
+    
+    log(f"Completed {split_name} split: {split_stats['total_records']} records, "
+        f"{split_stats['success_rate']:.2%} success rate")
+    
+    return split_stats
+
+
 def main(
     input_paths: Dict[str, str],
     output_paths: Dict[str, str],
@@ -716,7 +830,7 @@ def main(
     logger: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     """
-    Main logic for Bedrock processing with template integration.
+    Main logic for Bedrock processing with template integration and job_type handling.
 
     Args:
         input_paths: Dictionary of input paths with logical names
@@ -732,6 +846,10 @@ def main(
     log = logger or print
     
     try:
+        # Get job_type from arguments
+        job_type = job_args.job_type
+        log(f"Processing with job_type: {job_type}")
+        
         # Load prompt templates from Template Generation step (REQUIRED)
         if 'prompt_templates' not in input_paths:
             raise ValueError("prompt_templates input is required for Bedrock Processing")
@@ -791,20 +909,16 @@ def main(
         output_path.mkdir(parents=True, exist_ok=True)
         summary_path.mkdir(parents=True, exist_ok=True)
         
-        # Process all CSV/Parquet files in input directory
-        input_files = list(input_path.glob("*.csv")) + list(input_path.glob("*.parquet"))
-        
-        if not input_files:
-            raise ValueError(f"No input files found in {input_path}")
-        
-        all_results = []
+        # Initialize processing statistics
         processing_stats = {
-            'total_files': len(input_files),
+            'job_type': job_type,
+            'total_files': 0,
             'total_records': 0,
             'successful_records': 0,
             'failed_records': 0,
             'validation_passed_records': 0,
             'files_processed': [],
+            'splits_processed': [],
             'model_info': processor.inference_profile_info,
             'effective_model_id': processor.effective_model_id,
             'template_integration': {
@@ -815,62 +929,150 @@ def main(
             }
         }
         
-        for input_file in input_files:
-            log(f"Processing file: {input_file}")
+        # Handle different job types based on TabularPreprocessing output structure
+        if job_type == "training":
+            # Training job type: expect train/val/test subdirectories
+            log("Training job type detected - looking for train/val/test subdirectories")
             
-            # Load data
-            if input_file.suffix == '.csv':
-                df = pd.read_csv(input_file)
+            expected_splits = ['train', 'val', 'test']
+            splits_found = []
+            
+            for split_name in expected_splits:
+                split_input_path = input_path / split_name
+                if split_input_path.exists() and split_input_path.is_dir():
+                    splits_found.append(split_name)
+                    log(f"Found {split_name} split directory")
+            
+            if not splits_found:
+                # Fallback: treat as single dataset if no splits found
+                log("No train/val/test subdirectories found, treating as single dataset")
+                input_files = list(input_path.glob("*.csv")) + list(input_path.glob("*.parquet"))
+                
+                if not input_files:
+                    raise ValueError(f"No input files found in {input_path}")
+                
+                # Process as single dataset (fallback behavior)
+                for input_file in input_files:
+                    log(f"Processing file: {input_file}")
+                    
+                    # Load data
+                    if input_file.suffix == '.csv':
+                        df = pd.read_csv(input_file)
+                    else:
+                        df = pd.read_parquet(input_file)
+                    
+                    # Process batch
+                    result_df = processor.process_batch(df, save_intermediate=True)
+                    
+                    # Update statistics
+                    processing_stats['total_records'] += len(df)
+                    success_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"])
+                    failed_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "error"])
+                    validation_passed_count = len(result_df[result_df.get(f"{config['output_column_prefix']}validation_passed", False) == True])
+                    
+                    processing_stats['successful_records'] += success_count
+                    processing_stats['failed_records'] += failed_count
+                    processing_stats['validation_passed_records'] += validation_passed_count
+                    processing_stats['files_processed'].append({
+                        'filename': input_file.name,
+                        'records': len(df),
+                        'successful': success_count,
+                        'failed': failed_count,
+                        'validation_passed': validation_passed_count,
+                        'success_rate': success_count / len(df) if len(df) > 0 else 0,
+                        'validation_rate': validation_passed_count / len(df) if len(df) > 0 else 0
+                    })
+                    
+                    # Save results
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    base_filename = f"processed_{input_file.stem}_{timestamp}"
+                    
+                    parquet_file = output_path / f"{base_filename}.parquet"
+                    result_df.to_parquet(parquet_file, index=False)
+                    
+                    csv_file = output_path / f"{base_filename}.csv"
+                    result_df.to_csv(csv_file, index=False)
+                    
+                    log(f"Saved results to: {parquet_file} and {csv_file}")
+                
+                processing_stats['total_files'] = len(input_files)
             else:
-                df = pd.read_parquet(input_file)
-            
-            # Process batch
-            result_df = processor.process_batch(df, save_intermediate=True)
-            
-            # Update statistics
-            processing_stats['total_records'] += len(df)
-            success_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"])
-            failed_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "error"])
-            validation_passed_count = len(result_df[result_df.get(f"{config['output_column_prefix']}validation_passed", False) == True])
-            
-            processing_stats['successful_records'] += success_count
-            processing_stats['failed_records'] += failed_count
-            processing_stats['validation_passed_records'] += validation_passed_count
-            processing_stats['files_processed'].append({
-                'filename': input_file.name,
-                'records': len(df),
-                'successful': success_count,
-                'failed': failed_count,
-                'validation_passed': validation_passed_count,
-                'success_rate': success_count / len(df) if len(df) > 0 else 0,
-                'validation_rate': validation_passed_count / len(df) if len(df) > 0 else 0
-            })
-            
-            # Save results in multiple formats
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            base_filename = f"processed_{input_file.stem}_{timestamp}"
-            
-            # Save as Parquet (efficient for large datasets)
-            parquet_file = output_path / f"{base_filename}.parquet"
-            result_df.to_parquet(parquet_file, index=False)
-            
-            # Save as CSV (human-readable)
-            csv_file = output_path / f"{base_filename}.csv"
-            result_df.to_csv(csv_file, index=False)
-            
-            all_results.append(result_df)
-            log(f"Saved results to: {parquet_file} and {csv_file}")
+                # Process each split separately while preserving structure
+                log(f"Processing {len(splits_found)} splits: {splits_found}")
+                
+                for split_name in splits_found:
+                    split_input_path = input_path / split_name
+                    split_output_path = output_path / split_name
+                    
+                    split_stats = process_split_directory(
+                        split_name, split_input_path, split_output_path, 
+                        processor, config, log
+                    )
+                    
+                    # Aggregate statistics
+                    processing_stats['total_files'] += split_stats['total_files']
+                    processing_stats['total_records'] += split_stats['total_records']
+                    processing_stats['successful_records'] += split_stats['successful_records']
+                    processing_stats['failed_records'] += split_stats['failed_records']
+                    processing_stats['validation_passed_records'] += split_stats['validation_passed_records']
+                    processing_stats['files_processed'].extend(split_stats['files_processed'])
+                    processing_stats['splits_processed'].append(split_stats)
         
-        # Combine all results if multiple files
-        if len(all_results) > 1:
-            combined_df = pd.concat(all_results, ignore_index=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            combined_parquet = output_path / f"combined_results_{timestamp}.parquet"
-            combined_csv = output_path / f"combined_results_{timestamp}.csv"
+        else:
+            # Non-training job types: expect single dataset
+            log(f"Non-training job type ({job_type}) detected - processing single dataset")
             
-            combined_df.to_parquet(combined_parquet, index=False)
-            combined_df.to_csv(combined_csv, index=False)
-            log(f"Saved combined results to: {combined_parquet} and {combined_csv}")
+            input_files = list(input_path.glob("*.csv")) + list(input_path.glob("*.parquet"))
+            
+            if not input_files:
+                raise ValueError(f"No input files found in {input_path}")
+            
+            processing_stats['total_files'] = len(input_files)
+            
+            for input_file in input_files:
+                log(f"Processing file: {input_file}")
+                
+                # Load data
+                if input_file.suffix == '.csv':
+                    df = pd.read_csv(input_file)
+                else:
+                    df = pd.read_parquet(input_file)
+                
+                # Process batch
+                result_df = processor.process_batch(df, save_intermediate=True)
+                
+                # Update statistics
+                processing_stats['total_records'] += len(df)
+                success_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "success"])
+                failed_count = len(result_df[result_df[f"{config['output_column_prefix']}status"] == "error"])
+                validation_passed_count = len(result_df[result_df.get(f"{config['output_column_prefix']}validation_passed", False) == True])
+                
+                processing_stats['successful_records'] += success_count
+                processing_stats['failed_records'] += failed_count
+                processing_stats['validation_passed_records'] += validation_passed_count
+                processing_stats['files_processed'].append({
+                    'filename': input_file.name,
+                    'records': len(df),
+                    'successful': success_count,
+                    'failed': failed_count,
+                    'validation_passed': validation_passed_count,
+                    'success_rate': success_count / len(df) if len(df) > 0 else 0,
+                    'validation_rate': validation_passed_count / len(df) if len(df) > 0 else 0
+                })
+                
+                # Save results with job_type in filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base_filename = f"processed_{job_type}_{input_file.stem}_{timestamp}"
+                
+                # Save as Parquet (efficient for large datasets)
+                parquet_file = output_path / f"{base_filename}.parquet"
+                result_df.to_parquet(parquet_file, index=False)
+                
+                # Save as CSV (human-readable)
+                csv_file = output_path / f"{base_filename}.csv"
+                result_df.to_csv(csv_file, index=False)
+                
+                log(f"Saved results to: {parquet_file} and {csv_file}")
         
         # Calculate overall statistics
         processing_stats['overall_success_rate'] = (
@@ -884,15 +1086,21 @@ def main(
         processing_stats['processing_timestamp'] = datetime.now().isoformat()
         
         # Save processing summary
-        summary_file = summary_path / f"processing_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        summary_file = summary_path / f"processing_summary_{job_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(summary_file, 'w') as f:
             json.dump(processing_stats, f, indent=2, default=str)
         
-        log(f"Processing completed successfully")
+        log(f"Processing completed successfully for job_type: {job_type}")
         log(f"Total records: {processing_stats['total_records']}")
         log(f"Success rate: {processing_stats['overall_success_rate']:.2%}")
         log(f"Validation rate: {processing_stats['overall_validation_rate']:.2%}")
         log(f"Model used: {processing_stats['effective_model_id']}")
+        
+        if job_type == "training" and processing_stats['splits_processed']:
+            log("Split-level statistics:")
+            for split_stats in processing_stats['splits_processed']:
+                log(f"  {split_stats['split_name']}: {split_stats['total_records']} records, "
+                    f"{split_stats['success_rate']:.2%} success rate")
         
         return processing_stats
         
@@ -905,6 +1113,13 @@ if __name__ == "__main__":
     try:
         # Argument parser
         parser = argparse.ArgumentParser(description="Bedrock processing script with template integration")
+        parser.add_argument(
+            "--job_type",
+            type=str,
+            required=True,
+            choices=["training", "validation", "testing", "calibration"],
+            help="One of ['training','validation','testing','calibration'] - determines processing behavior and output naming"
+        )
         parser.add_argument("--batch-size", type=int, default=10, help="Batch size for processing")
         parser.add_argument("--max-retries", type=int, default=3, help="Maximum retries for Bedrock calls")
         

@@ -8,6 +8,7 @@ following the specification-driven approach and standardization rules.
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
+import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -21,7 +22,6 @@ from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 # Import the bedrock processing specification
 try:
     from ..specs.bedrock_processing_spec import BEDROCK_PROCESSING_SPEC
-
     SPEC_AVAILABLE = True
 except ImportError:
     BEDROCK_PROCESSING_SPEC = None
@@ -79,23 +79,31 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
         """
-        Initializes the builder with a specific configuration for the bedrock processing step.
+        Initialize the Bedrock Processing step builder.
 
         Args:
-            config: A BedrockProcessingConfig instance containing all necessary settings.
-            sagemaker_session: The SageMaker session object to manage interactions with AWS.
-            role: The IAM role ARN to be used by the SageMaker Processing Job.
+            config: Configuration for the step
+            sagemaker_session: SageMaker session
+            role: IAM role
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
 
         Raises:
-            ValueError: If config is not a BedrockProcessingConfig instance
+            ValueError: If config is not a BedrockProcessingConfig instance or job_type is missing
         """
         if not isinstance(config, BedrockProcessingConfig):
             raise ValueError("BedrockProcessingStepBuilder requires a BedrockProcessingConfig instance.")
 
-        # Use the bedrock processing specification if available
+        # job_type now has a default value, so no need to validate presence
+
+        # Use the generic bedrock processing specification for all job types
+        # since job type variants don't change inputs/outputs, only processing behavior
         spec = BEDROCK_PROCESSING_SPEC if SPEC_AVAILABLE else None
+        
+        if not spec:
+            raise ValueError("Bedrock processing specification not available")
+
+        self.log_info("Using bedrock processing specification for job type: %s", config.job_type)
 
         super().__init__(
             config=config,
@@ -133,6 +141,7 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
 
         # Validate Bedrock-specific configuration
         required_attrs = [
+            "job_type",
             "bedrock_inference_profile_arn",
             "bedrock_primary_model_id",
             "bedrock_max_tokens",
@@ -149,6 +158,15 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         for attr in required_attrs:
             if not hasattr(self.config, attr):
                 raise ValueError(f"BedrockProcessingConfig missing required attribute: {attr}")
+
+        # Validate job type
+        if self.config.job_type not in [
+            "training",
+            "validation",
+            "testing",
+            "calibration",
+        ]:
+            raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
         # Validate required fields are not empty
         if not self.config.bedrock_inference_profile_arn:
@@ -396,6 +414,7 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         Get job arguments for the bedrock processing script.
 
         The Bedrock processing script accepts the following command-line arguments:
+        - --job_type: Job type for processing (training, validation, testing, calibration)
         - --batch-size: Batch size for processing (overrides environment variable)
         - --max-retries: Maximum retries for Bedrock calls (overrides environment variable)
 
@@ -403,6 +422,10 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             List of command-line arguments for the script, or None if no arguments needed
         """
         job_args = []
+
+        # Add job_type argument (from config) - similar to tabular preprocessing
+        job_args.extend(["--job_type", self.config.job_type])
+        self.log_info("Setting job_type argument to: %s", self.config.job_type)
 
         # Add batch size argument (from config)
         job_args.extend(["--batch-size", str(self.config.bedrock_batch_size)])

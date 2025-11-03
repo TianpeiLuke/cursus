@@ -75,6 +75,12 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
     outputs=[
         OutputSpec(
             logical_name="processed_data",
+            aliases=[
+                "input_path",
+                "training_data",
+                "model_input_data",
+                "input_data",
+            ],  # Added aliases matching TabularPreprocessing for better compatibility
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",

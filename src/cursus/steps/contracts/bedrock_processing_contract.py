@@ -59,12 +59,28 @@ BEDROCK_PROCESSING_CONTRACT = ScriptContract(
     3. Intelligent inference profile management with fallback support
     4. Configurable concurrent processing with rate limiting
     5. Comprehensive error handling and retry logic
+    6. Job type-aware processing with train/val/test split preservation
+    
+    Job Type Handling:
+    The script adapts its behavior based on the job_type argument (passed by the step builder):
+    
+    Training Job Type (job_type="training"):
+    - Expects train/val/test subdirectory structure from TabularPreprocessing
+    - Processes each split separately while preserving directory structure
+    - Output maintains train/val/test organization for PyTorch training compatibility
+    - Fallback: If no subdirectories found, processes as single dataset
+    
+    Non-Training Job Types (job_type="validation", "testing", "calibration"):
+    - Expects single dataset from TabularPreprocessing
+    - Processes all files in input directory
+    - Output includes job_type in filename for identification
     
     Input Structure:
     - /opt/ml/processing/input/data: Input data files (required)
+      - Training job type: Expects train/, val/, test/ subdirectories with data files
+      - Non-training job types: Expects data files directly in input directory
       - Supports CSV (.csv) and Parquet (.parquet) formats
       - Data columns must match template input placeholders
-      - Multiple files processed sequentially
     - /opt/ml/processing/input/templates: Prompt templates from Template Generation step (required)
       - /opt/ml/processing/input/templates/prompts.json: Main template file
         * system_prompt: System prompt for Bedrock API
