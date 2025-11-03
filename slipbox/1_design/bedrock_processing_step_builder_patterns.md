@@ -546,6 +546,15 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
             semantic_keywords=["templates", "prompts", "prompt_config", "generated_templates"],
             data_type="S3Uri",
             description="Generated prompt templates from Bedrock Prompt Template Generation step (prompts.json)"
+        ),
+        DependencySpec(
+            logical_name="validation_schema",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=True,  # REQUIRED for response format configuration
+            compatible_sources=["BedrockPromptTemplateGeneration"],
+            semantic_keywords=["schema", "validation", "response_format", "output_schema"],
+            data_type="S3Uri",
+            description="Validation schema from Bedrock Prompt Template Generation step (validation_schema_*.json) - contains response format configuration and processing metadata"
         )
     ],
     outputs=[
@@ -577,7 +586,8 @@ BEDROCK_PROCESSING_CONTRACT = ProcessingScriptContract(
     entry_point="bedrock_processing.py",
     expected_input_paths={
         "input_data": "/opt/ml/processing/input/data",
-        "prompt_templates": "/opt/ml/processing/input/templates"  # Updated for template integration
+        "prompt_templates": "/opt/ml/processing/input/templates",  # Updated for template integration
+        "validation_schema": "/opt/ml/processing/input/schema"  # NEW: Validation schema from Template Generation step
     },
     expected_output_paths={
         "processed_data": "/opt/ml/processing/output/data",
@@ -1390,7 +1400,8 @@ if __name__ == "__main__":
         # Set up path dictionaries
         input_paths = {
             "input_data": INPUT_DATA_DIR,
-            "prompt_templates": "/opt/ml/processing/input/templates"  # From Template Generation step
+            "prompt_templates": "/opt/ml/processing/input/templates",  # From Template Generation step
+            "validation_schema": "/opt/ml/processing/input/schema"  # NEW: Validation schema from Template Generation step
         }
 
         output_paths = {

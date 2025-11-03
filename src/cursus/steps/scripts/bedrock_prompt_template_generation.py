@@ -543,6 +543,15 @@ class TemplateValidator:
         return recommendations
 
 
+def _generate_processing_config(config: Dict[str, str]) -> Dict[str, Any]:
+    """Generate processing configuration metadata (non-redundant)."""
+    return {
+        "format_type": config.get('OUTPUT_FORMAT_TYPE', 'structured_json'),
+        "response_model_name": f"{config.get('TEMPLATE_TASK_TYPE', 'classification').title()}Response",
+        "validation_level": config.get('VALIDATION_LEVEL', 'standard')
+    }
+
+
 def load_category_definitions(categories_path: str, log: Callable[[str], None]) -> List[Dict[str, Any]]:
     """Load category definitions from input files (JSON/CSV)."""
     categories_dir = Path(categories_path)
@@ -723,7 +732,8 @@ def main(
         prompts_file = templates_path / "prompts.json"
         template_output = {
             'system_prompt': template['system_prompt'],
-            'user_prompt_template': template['user_prompt_template']
+            'user_prompt_template': template['user_prompt_template'],
+            'input_placeholders': json.loads(config.get('INPUT_PLACEHOLDERS', '["input_data"]'))
         }
         
         with open(prompts_file, 'w', encoding='utf-8') as f:
@@ -799,10 +809,31 @@ def main(
                 
                 log("Generated default validation schema")
             
-            with open(schema_file, 'w', encoding='utf-8') as f:
-                json.dump(validation_schema, f, indent=2, ensure_ascii=False)
+            # Enhance validation schema with processing metadata for Bedrock Processing step integration
+            enhanced_validation_schema = {
+                "title": "Bedrock Response Validation Schema",
+                "description": "Schema for validating Bedrock LLM responses with processing metadata",
+                **validation_schema,
+                
+                # Processing metadata for Bedrock Processing step
+                "processing_config": _generate_processing_config(config),
+                
+                # Template integration metadata
+                "template_metadata": {
+                    "template_version": config.get('TEMPLATE_VERSION', '1.0'),
+                    "generation_timestamp": timestamp,
+                    "category_count": len(categories),
+                    "category_names": [cat['name'] for cat in categories],
+                    "output_format_source": "OUTPUT_FORMAT_CONFIG" if json.loads(environ_vars.get('OUTPUT_FORMAT_CONFIG', '{}')) else "DEFAULT_CONFIG",
+                    "task_type": config.get('TEMPLATE_TASK_TYPE', 'classification'),
+                    "template_style": config.get('TEMPLATE_STYLE', 'structured')
+                }
+            }
             
-            log(f"Saved validation schema to: {schema_file}")
+            with open(schema_file, 'w', encoding='utf-8') as f:
+                json.dump(enhanced_validation_schema, f, indent=2, ensure_ascii=False)
+            
+            log(f"Saved enhanced validation schema with processing metadata to: {schema_file}")
         
         # Prepare results summary
         results = {

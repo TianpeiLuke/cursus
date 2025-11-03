@@ -101,6 +101,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern",
     },
+    "BedrockProcessing": {
+        "config_class": "BedrockProcessingConfig",
+        "builder_step_name": "BedrockProcessingStepBuilder",
+        "spec_type": "BedrockProcessing",
+        "sagemaker_step_type": "Processing",
+        "description": "Bedrock processing step that processes input data through AWS Bedrock models using generated prompt templates and validation schemas",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",

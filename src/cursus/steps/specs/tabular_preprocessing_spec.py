@@ -71,7 +71,8 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
                 "input_path",
                 "training_data",
                 "model_input_data",
-            ],  # Added aliases for better matching
+                "input_data",
+            ],  # Added aliases for better matching including BedrockProcessing compatibility
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",

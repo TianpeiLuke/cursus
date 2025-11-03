@@ -58,15 +58,18 @@ The step generates outputs in three primary directories:
 ```json
 {
   "system_prompt": "You are an expert analyst with extensive knowledge in data analysis, classification, pattern recognition. Your task is to analyze data accurately, classify content systematically, provide clear reasoning. Always be precise, be objective, be thorough, be consistent in your analysis.",
-  "user_prompt_template": "Categories and their criteria:\n\n1. Positive\n    - Positive sentiment or favorable opinion\n    - Key elements:\n        * good\n        * excellent\n        * satisfied\n        * happy\n    - Conditions:\n        * Contains positive language or expressions\n        * Expresses satisfaction or approval\n    - Must NOT include:\n        * Sarcastic statements with positive words\n\nAnalysis Instructions:\n\nPlease analyze:\nInput_data: {input_data}\n\nProvide your analysis in the following structured format:\n\n1. Carefully review all provided data\n2. Identify key patterns and indicators\n3. Match against category criteria\n4. Select the most appropriate category\n5. Validate evidence against conditions and exceptions\n6. Provide confidence assessment and reasoning\n\nDecision Criteria:\n- Base decisions on explicit evidence in the data\n- Consider all category conditions and exceptions\n- Choose the category with the strongest evidence match\n- Provide clear reasoning for your classification\n\nKey Evidence Validation:\n- Evidence MUST align with at least one condition for the selected category\n- Evidence MUST NOT match any exceptions listed for the selected category\n- Evidence should reference specific content from the input data\n- Multiple pieces of supporting evidence strengthen the classification\n\n## Required Output Format\n\n**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**\n\n```json\n{\n    \"category\": \"The classified category name (must be exactly one of the defined categories)\",\n    \"confidence\": \"Confidence score between 0.0 and 1.0 indicating certainty of classification\",\n    \"key_evidence\": \"Specific evidence from input data that aligns with the selected category conditions and does NOT match any category exceptions. Reference exact content that supports the classification decision.\",\n    \"reasoning\": \"Clear explanation of the decision-making process, showing how the evidence supports the selected category while considering why other categories were rejected\"\n}\n```\n\nField Descriptions:\n- **category**: The classified category name (must be exactly one of the defined categories)\n- **confidence**: Confidence score between 0.0 and 1.0 indicating certainty of classification\n- **key_evidence**: Specific evidence from input data that aligns with the selected category conditions and does NOT match any category exceptions. Reference exact content that supports the classification decision.\n- **reasoning**: Clear explanation of the decision-making process, showing how the evidence supports the selected category while considering why other categories were rejected\n\n**Key Evidence Requirements:**\n- Evidence MUST align with at least one condition for the selected category\n- Evidence MUST NOT match any exceptions listed for the selected category\n- Evidence should reference specific content from the input data\n- Multiple pieces of supporting evidence strengthen the classification\n\nDo not include any text before or after the JSON object. Only return valid JSON."
+  "user_prompt_template": "Categories and their criteria:\n\n1. Positive\n    - Positive sentiment or favorable opinion\n    - Key elements:\n        * good\n        * excellent\n        * satisfied\n        * happy\n    - Conditions:\n        * Contains positive language or expressions\n        * Expresses satisfaction or approval\n    - Must NOT include:\n        * Sarcastic statements with positive words\n\nAnalysis Instructions:\n\nPlease analyze:\nInput_data: {input_data}\nCustomer_id: {customer_id}\nTransaction_amount: {transaction_amount}\n\nProvide your analysis in the following structured format:\n\n1. Carefully review all provided data\n2. Identify key patterns and indicators\n3. Match against category criteria\n4. Select the most appropriate category\n5. Validate evidence against conditions and exceptions\n6. Provide confidence assessment and reasoning\n\nDecision Criteria:\n- Base decisions on explicit evidence in the data\n- Consider all category conditions and exceptions\n- Choose the category with the strongest evidence match\n- Provide clear reasoning for your classification\n\nKey Evidence Validation:\n- Evidence MUST align with at least one condition for the selected category\n- Evidence MUST NOT match any exceptions listed for the selected category\n- Evidence should reference specific content from the input data\n- Multiple pieces of supporting evidence strengthen the classification\n\n## Required Output Format\n\n**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**\n\n```json\n{\n    \"category\": \"One of: Positive, Negative, Neutral\",\n    \"confidence\": \"Number between 0.0 and 1.0\",\n    \"key_evidence\": \"Specific evidence from input data that aligns with the selected category conditions and does NOT match any category exceptions. Reference exact content that supports the classification decision.\",\n    \"reasoning\": \"Clear explanation of the decision-making process, showing how the evidence supports the selected category while considering why other categories were rejected\"\n}\n```\n\nField Descriptions:\n- **category** (string): The classified category name (must be exactly one of the defined categories) (must be one of: Positive, Negative, Neutral)\n- **confidence** (number): Confidence score between 0.0 and 1.0 indicating certainty of classification (minimum: 0.0, maximum: 1.0)\n- **key_evidence** (string): Specific evidence from input data that aligns with the selected category conditions and does NOT match any category exceptions. Reference exact content that supports the classification decision.\n- **reasoning** (string): Clear explanation of the decision-making process, showing how the evidence supports the selected category while considering why other categories were rejected\n\n**Category Validation:**\n- The category field must exactly match one of: Positive, Negative, Neutral\n- Category names are case-sensitive and must match exactly\n\nDo not include any text before or after the JSON object. Only return valid JSON.",
+  "input_placeholders": ["input_data", "customer_id", "transaction_amount"]
 }
 ```
 
 **Key Features**:
 - **system_prompt**: Role definition and behavioral guidelines
-- **user_prompt_template**: Complete 5-component template with placeholders
+- **user_prompt_template**: Complete 5-component template with embedded placeholders
+- **input_placeholders**: Array of placeholder names for direct access by Processing steps
 - **Integration Ready**: Direct compatibility with Bedrock processing steps
-- **Placeholder Support**: Dynamic content injection via `{variable_name}` syntax
+- **Zero Configuration Processing**: Placeholders automatically mapped without regex extraction
+- **Dynamic Content Injection**: Supports `{variable_name}` syntax within the template text
 
 #### Template Components Breakdown
 
@@ -83,9 +86,11 @@ The step generates outputs in three primary directories:
 - Priority-based ordering
 
 **Component 3: Input Placeholders**
-- Dynamic variable placeholders
-- Context field support
-- Flexible data injection points
+- Dynamic variable placeholders from `INPUT_PLACEHOLDERS` environment variable
+- Default: `["input_data"]` but configurable for multiple fields
+- Context field support for additional data columns
+- Flexible data injection points via `{placeholder_name}` syntax
+- Example: `Input_data: {input_data}`, `Customer_id: {customer_id}`, `Amount: {transaction_amount}`
 
 **Component 4: Instructions and Rules**
 - Step-by-step analysis process
@@ -193,11 +198,13 @@ The step generates outputs in three primary directories:
 
 #### Schema File: `validation_schema_{timestamp}.json`
 
-**Purpose**: JSON schema for validating outputs generated BY Bedrock when using the prompt template. This schema is NOT used during template generation but is provided as an output for downstream validation of Bedrock responses.
+**Purpose**: Enhanced JSON schema for validating outputs generated BY Bedrock when using the prompt template, with additional processing metadata for Bedrock Processing step integration. This schema is NOT used during template generation but is provided as an output for downstream validation and processing configuration.
 
 **Structure**:
 ```json
 {
+  "title": "Bedrock Response Validation Schema",
+  "description": "Schema for validating Bedrock LLM responses with processing metadata",
   "type": "object",
   "properties": {
     "category": {
@@ -221,16 +228,43 @@ The step generates outputs in three primary directories:
     }
   },
   "required": ["category", "confidence", "key_evidence", "reasoning"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  
+  "processing_config": {
+    "format_type": "structured_json",
+    "response_model_name": "ClassificationResponse",
+    "validation_level": "standard"
+  },
+  
+  "template_metadata": {
+    "template_version": "1.0",
+    "generation_timestamp": "20251102_162000",
+    "output_format_source": "OUTPUT_FORMAT_CONFIG",
+    "task_type": "classification",
+    "template_style": "structured"
+  }
 }
 ```
 
-**Validation Features**:
+**Enhanced Validation Features**:
+- **Standard JSON Schema**: Core validation for Bedrock responses
 - **Category Constraints**: Enum validation against defined categories
 - **Confidence Bounds**: Numeric range validation (0.0-1.0)
 - **Field Requirements**: All 4 fields mandatory
 - **Type Safety**: Strict type checking
 - **Additional Properties**: Blocked to ensure clean output
+
+**Processing Configuration** (New):
+- **Format Type**: Response format specification for processing steps
+- **Response Model Name**: Dynamic Pydantic model name generation
+- **Validation Level**: Processing validation strictness
+
+**Template Integration Metadata** (New):
+- **Template Version**: Version tracking for template evolution
+- **Generation Timestamp**: Creation time for audit trails
+- **Category Statistics**: Count and names of defined categories
+- **Output Format Source**: Configuration source tracking
+- **Task and Style**: Template type and style classification
 
 ## Output Format Specifications
 
@@ -328,9 +362,184 @@ response = bedrock_client.invoke_model(
 )
 ```
 
-#### Output Validation (Downstream Use)
+#### INPUT_PLACEHOLDERS Integration Pattern
 
-**Note**: The validation schema is used to validate Bedrock's responses AFTER using the generated prompt template, not during template generation.
+**Template Generation Configuration:**
+```python
+# Environment variable configuration for Template Generation step
+environ_vars = {
+    "INPUT_PLACEHOLDERS": '["input_data", "customer_id", "transaction_amount"]',
+    # ... other config
+}
+```
+
+**Generated Template Output:**
+```json
+{
+  "system_prompt": "You are an expert analyst...",
+  "user_prompt_template": "Categories and their criteria:\n\n...\n\nAnalysis Instructions:\n\nPlease analyze:\nInput_data: {input_data}\nCustomer_id: {customer_id}\nTransaction_amount: {transaction_amount}\n\n..."
+}
+```
+
+**Bedrock Processing Integration:**
+```python
+# Bedrock Processing step automatically extracts placeholders from template
+import re
+
+def extract_placeholders_from_template(user_prompt_template: str) -> List[str]:
+    """Extract all placeholders from user prompt template."""
+    return re.findall(r'\{(\w+)\}', user_prompt_template)
+
+# Load template and extract placeholders
+template = load_prompt_template('/opt/ml/processing/input/templates/')
+placeholders = extract_placeholders_from_template(template['user_prompt_template'])
+# Result: ['input_data', 'customer_id', 'transaction_amount']
+
+# Process DataFrame with automatic column mapping
+def process_dataframe_row(row_data: Dict[str, Any]) -> str:
+    """Map DataFrame columns to template placeholders automatically."""
+    template_vars = {}
+    
+    for placeholder in placeholders:
+        if placeholder in row_data:
+            template_vars[placeholder] = row_data[placeholder]
+        else:
+            logger.warning(f"Missing placeholder '{placeholder}' in row data")
+            template_vars[placeholder] = f"[Missing: {placeholder}]"
+    
+    return template['user_prompt_template'].format(**template_vars)
+
+# Example DataFrame processing
+df = pd.DataFrame({
+    'input_data': ['Customer complaint about service'],
+    'customer_id': ['CUST_12345'],
+    'transaction_amount': [99.99]
+})
+
+for _, row in df.iterrows():
+    formatted_prompt = process_dataframe_row(row.to_dict())
+    # Automatically maps DataFrame columns to template placeholders
+```
+
+**Key Benefits of INPUT_PLACEHOLDERS Integration:**
+- ✅ **Zero Configuration**: No need to specify column names in Processing step
+- ✅ **Automatic Mapping**: DataFrame columns automatically mapped to placeholders
+- ✅ **Flexible Data Structure**: Works with any DataFrame that has matching column names
+- ✅ **Template-Driven**: All placeholder configuration comes from Template Generation
+- ✅ **Validation**: Automatic detection and warning for missing placeholders
+
+#### Enhanced Processing Integration (Template-Driven Response Processing)
+
+**Note**: The enhanced validation schema enables template-driven response processing in Bedrock Processing steps, eliminating the need for redundant `BEDROCK_RESPONSE_FORMAT` configuration.
+
+```python
+# Load enhanced validation schema with processing metadata
+def load_response_configuration(prompt_templates_path: str) -> Dict[str, Any]:
+    """Load response configuration from Template Generation outputs."""
+    templates_path = Path(prompt_templates_path)
+    
+    # Load prompts
+    prompts_file = templates_path / "prompts.json"
+    with open(prompts_file, 'r') as f:
+        prompts = json.load(f)
+    
+    # Load validation schema with processing metadata
+    schema_files = list(templates_path.glob("validation_schema_*.json"))
+    if not schema_files:
+        raise ValueError("No validation schema found in template output")
+    
+    schema_file = schema_files[0]  # Use most recent
+    with open(schema_file, 'r') as f:
+        validation_schema = json.load(f)
+    
+    return {
+        'prompts': prompts,
+        'validation_schema': validation_schema,
+        'processing_config': validation_schema.get('processing_config', {}),
+        'template_metadata': validation_schema.get('template_metadata', {})
+    }
+
+# Create dynamic Pydantic model from validation schema
+def create_pydantic_model_from_schema(schema: Dict[str, Any]) -> BaseModel:
+    """Create Pydantic model from clean validation schema (no redundant fields)."""
+    from pydantic import create_model, Field
+    from typing import Optional, Literal
+    
+    fields = {}
+    properties = schema.get('properties', {})
+    required_fields = schema.get('required', [])
+    processing_config = schema.get('processing_config', {})
+    
+    for field_name, field_schema in properties.items():
+        # Convert JSON schema type to Python type
+        field_type = convert_json_schema_type_to_python(field_schema)
+        
+        # Create field with validation
+        if field_name in required_fields:
+            fields[field_name] = (field_type, Field(..., description=field_schema.get('description', '')))
+        else:
+            fields[field_name] = (Optional[field_type], Field(None, description=field_schema.get('description', '')))
+    
+    model_name = processing_config.get('response_model_name', 'DynamicResponseModel')
+    return create_model(model_name, **fields)
+
+def convert_json_schema_type_to_python(field_schema: Dict[str, Any]) -> type:
+    """Convert JSON schema field definition to Python type."""
+    field_type = field_schema.get('type', 'string')
+    
+    if field_type == 'string':
+        if 'enum' in field_schema:
+            # Create Literal type for enum fields
+            from typing import Literal
+            return Literal[tuple(field_schema['enum'])]
+        return str
+    elif field_type == 'number':
+        return float
+    elif field_type == 'integer':
+        return int
+    elif field_type == 'boolean':
+        return bool
+    elif field_type == 'array':
+        return list
+    else:
+        return str  # Default fallback
+
+# Template-driven Bedrock Processing
+class BedrockProcessor:
+    def __init__(self, config: Dict[str, Any], response_config: Dict[str, Any]):
+        self.config = config
+        self.response_config = response_config
+        
+        # Extract processing configuration from validation schema
+        processing_config = response_config.get('processing_config', {})
+        
+        # Create Pydantic model from JSON schema properties (single source of truth)
+        validation_schema = response_config['validation_schema']
+        self.response_model_class = create_pydantic_model_from_schema(validation_schema)
+        
+        # Get format type from processing config
+        self.response_format = processing_config.get('format_type', 'structured_json')
+        
+        # Get validation level
+        self.validation_level = processing_config.get('validation_level', 'standard')
+        
+        # Extract field information directly from schema (no redundant fields)
+        self.required_fields = validation_schema.get('required', [])
+        self.field_properties = validation_schema.get('properties', {})
+        
+        # Extract category information dynamically (no redundant storage)
+        category_property = self.field_properties.get('category', {})
+        if 'enum' in category_property:
+            self.category_names = category_property['enum']
+            self.category_count = len(self.category_names)
+        else:
+            self.category_names = []
+            self.category_count = 0
+```
+
+#### Traditional Output Validation (Backward Compatibility)
+
+**Note**: The validation schema can still be used for traditional JSON schema validation of Bedrock responses.
 
 ```python
 # Load validation schema (generated by template generation step)
