@@ -49,24 +49,24 @@ class TrimodalBert(pl.LightningModule):
         self.id_name = config.get("id_name", None)
         self.label_name = config["label_name"]
         
-        # Chat text configuration (existing)
-        self.chat_text_input_ids_key = config.get("chat_text_input_ids_key", "input_ids")
-        self.chat_text_attention_mask_key = config.get(
-            "chat_text_attention_mask_key", "attention_mask"
+        # Primary text configuration (e.g., chat/dialogue)
+        self.primary_text_input_ids_key = config.get("primary_text_input_ids_key", "input_ids")
+        self.primary_text_attention_mask_key = config.get(
+            "primary_text_attention_mask_key", "attention_mask"
         )
-        self.chat_text_name = config["chat_text_name"] + "_processed_" + self.chat_text_input_ids_key
-        self.chat_text_attention_mask = (
-            config["chat_text_name"] + "_processed_" + self.chat_text_attention_mask_key
+        self.primary_text_name = config["primary_text_name"] + "_processed_" + self.primary_text_input_ids_key
+        self.primary_text_attention_mask = (
+            config["primary_text_name"] + "_processed_" + self.primary_text_attention_mask_key
         )
         
-        # NEW: Shiptrack text configuration
-        self.shiptrack_text_input_ids_key = config.get("shiptrack_text_input_ids_key", "input_ids")
-        self.shiptrack_text_attention_mask_key = config.get(
-            "shiptrack_text_attention_mask_key", "attention_mask"
+        # Secondary text configuration (e.g., shiptrack)
+        self.secondary_text_input_ids_key = config.get("secondary_text_input_ids_key", "input_ids")
+        self.secondary_text_attention_mask_key = config.get(
+            "secondary_text_attention_mask_key", "attention_mask"
         )
-        self.shiptrack_text_name = config["shiptrack_text_name"] + "_processed_" + self.shiptrack_text_input_ids_key
-        self.shiptrack_text_attention_mask = (
-            config["shiptrack_text_name"] + "_processed_" + self.shiptrack_text_attention_mask_key
+        self.secondary_text_name = config["secondary_text_name"] + "_processed_" + self.secondary_text_input_ids_key
+        self.secondary_text_attention_mask = (
+            config["secondary_text_name"] + "_processed_" + self.secondary_text_attention_mask_key
         )
         
         # Tabular configuration
@@ -102,18 +102,18 @@ class TrimodalBert(pl.LightningModule):
         )
         tab_dim = self.tab_subnetwork.output_tab_dim if self.tab_subnetwork else 0
 
-        # Chat text subnetwork (existing text modality)
-        chat_config = self._create_text_config(config, "chat")
-        self.chat_text_subnetwork = TextBertBase(chat_config)
-        chat_text_dim = self.chat_text_subnetwork.output_text_dim
+        # Primary text subnetwork (e.g., chat/dialogue)
+        primary_config = self._create_text_config(config, "primary")
+        self.primary_text_subnetwork = TextBertBase(primary_config)
+        primary_text_dim = self.primary_text_subnetwork.output_text_dim
 
-        # NEW: Shiptrack text subnetwork
-        shiptrack_config = self._create_text_config(config, "shiptrack")
-        self.shiptrack_text_subnetwork = TextBertBase(shiptrack_config)
-        shiptrack_text_dim = self.shiptrack_text_subnetwork.output_text_dim
+        # Secondary text subnetwork (e.g., shiptrack)
+        secondary_config = self._create_text_config(config, "secondary")
+        self.secondary_text_subnetwork = TextBertBase(secondary_config)
+        secondary_text_dim = self.secondary_text_subnetwork.output_text_dim
 
         # === Final classifier with tri-modal fusion ===
-        total_dim = chat_text_dim + shiptrack_text_dim + tab_dim
+        total_dim = primary_text_dim + secondary_text_dim + tab_dim
         fusion_hidden_dim = config.get("fusion_hidden_dim", max(128, total_dim // 2))
         
         self.final_merge_network = nn.Sequential(
@@ -141,19 +141,19 @@ class TrimodalBert(pl.LightningModule):
         self.save_hyperparameters()
 
     def _create_text_config(self, config: Dict, text_type: str) -> Dict:
-        """Create configuration for text subnetworks (chat or shiptrack)"""
-        if text_type == "chat":
-            text_name = config["chat_text_name"]
-            tokenizer = config.get("chat_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("chat_hidden_common_dim", config["hidden_common_dim"])
-            input_ids_key = self.chat_text_input_ids_key
-            attention_mask_key = self.chat_text_attention_mask_key
-        elif text_type == "shiptrack":
-            text_name = config["shiptrack_text_name"]
-            tokenizer = config.get("shiptrack_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("shiptrack_hidden_common_dim", config["hidden_common_dim"])
-            input_ids_key = self.shiptrack_text_input_ids_key
-            attention_mask_key = self.shiptrack_text_attention_mask_key
+        """Create configuration for text subnetworks (primary or secondary)"""
+        if text_type == "primary":
+            text_name = config["primary_text_name"]
+            tokenizer = config.get("primary_tokenizer", config.get("tokenizer", "bert-base-cased"))
+            hidden_dim = config.get("primary_hidden_common_dim", config["hidden_common_dim"])
+            input_ids_key = self.primary_text_input_ids_key
+            attention_mask_key = self.primary_text_attention_mask_key
+        elif text_type == "secondary":
+            text_name = config["secondary_text_name"]
+            tokenizer = config.get("secondary_tokenizer", config.get("tokenizer", "bert-base-cased"))
+            hidden_dim = config.get("secondary_hidden_common_dim", config["hidden_common_dim"])
+            input_ids_key = self.secondary_text_input_ids_key
+            attention_mask_key = self.secondary_text_attention_mask_key
         else:
             raise ValueError(f"Unknown text_type: {text_type}")
 
@@ -190,33 +190,33 @@ class TrimodalBert(pl.LightningModule):
     def _forward_impl(self, batch, tab_data) -> torch.Tensor:
         device = next(self.parameters()).device
         
-        # Process chat text
-        chat_batch = self._create_text_batch(batch, "chat")
-        chat_text_out = self.chat_text_subnetwork(chat_batch)
+        # Process primary text
+        primary_batch = self._create_text_batch(batch, "primary")
+        primary_text_out = self.primary_text_subnetwork(primary_batch)
 
-        # Process shiptrack text
-        shiptrack_batch = self._create_text_batch(batch, "shiptrack")
-        shiptrack_text_out = self.shiptrack_text_subnetwork(shiptrack_batch)
+        # Process secondary text
+        secondary_batch = self._create_text_batch(batch, "secondary")
+        secondary_text_out = self.secondary_text_subnetwork(secondary_batch)
 
         # Process tabular data
         if tab_data is not None:
             tab_data = tab_data.float()
             tab_out = self.tab_subnetwork(tab_data)  # [B, D]
         else:
-            tab_out = torch.zeros((chat_text_out.size(0), 0), device=device)
+            tab_out = torch.zeros((primary_text_out.size(0), 0), device=device)
 
         # Tri-modal fusion: concatenate all modalities
-        combined = torch.cat([chat_text_out, shiptrack_text_out, tab_out], dim=1)
+        combined = torch.cat([primary_text_out, secondary_text_out, tab_out], dim=1)
         return self.final_merge_network(combined)
 
     def _create_text_batch(self, batch: Dict, text_type: str) -> Dict:
         """Create a batch dictionary for specific text subnetwork"""
-        if text_type == "chat":
-            text_name = self.chat_text_name
-            attention_mask_name = self.chat_text_attention_mask
-        elif text_type == "shiptrack":
-            text_name = self.shiptrack_text_name
-            attention_mask_name = self.shiptrack_text_attention_mask
+        if text_type == "primary":
+            text_name = self.primary_text_name
+            attention_mask_name = self.primary_text_attention_mask
+        elif text_type == "secondary":
+            text_name = self.secondary_text_name
+            attention_mask_name = self.secondary_text_attention_mask
         else:
             raise ValueError(f"Unknown text_type: {text_type}")
 
@@ -383,25 +383,25 @@ class TrimodalBert(pl.LightningModule):
             def __init__(self, model: TrimodalBert):
                 super().__init__()
                 self.model = model
-                self.chat_text_key = model.chat_text_name
-                self.chat_mask_key = model.chat_text_attention_mask
-                self.shiptrack_text_key = model.shiptrack_text_name
-                self.shiptrack_mask_key = model.shiptrack_text_attention_mask
+                self.primary_text_key = model.primary_text_name
+                self.primary_mask_key = model.primary_text_attention_mask
+                self.secondary_text_key = model.secondary_text_name
+                self.secondary_mask_key = model.secondary_text_attention_mask
                 self.tab_keys = model.tab_field_list or []
 
             def forward(
                 self,
-                chat_input_ids: torch.Tensor,
-                chat_attention_mask: torch.Tensor,
-                shiptrack_input_ids: torch.Tensor,
-                shiptrack_attention_mask: torch.Tensor,
+                primary_input_ids: torch.Tensor,
+                primary_attention_mask: torch.Tensor,
+                secondary_input_ids: torch.Tensor,
+                secondary_attention_mask: torch.Tensor,
                 *tab_tensors: torch.Tensor,
             ):
                 batch = {
-                    self.chat_text_key: chat_input_ids,
-                    self.chat_mask_key: chat_attention_mask,
-                    self.shiptrack_text_key: shiptrack_input_ids,
-                    self.shiptrack_mask_key: shiptrack_attention_mask,
+                    self.primary_text_key: primary_input_ids,
+                    self.primary_mask_key: primary_attention_mask,
+                    self.secondary_text_key: secondary_input_ids,
+                    self.secondary_mask_key: secondary_attention_mask,
                 }
                 for name, tensor in zip(self.tab_keys, tab_tensors):
                     batch[name] = tensor
@@ -418,43 +418,43 @@ class TrimodalBert(pl.LightningModule):
 
         # === Prepare input tensor list ===
         input_names = [
-            self.chat_text_name, 
-            self.chat_text_attention_mask,
-            self.shiptrack_text_name,
-            self.shiptrack_text_attention_mask
+            self.primary_text_name, 
+            self.primary_text_attention_mask,
+            self.secondary_text_name,
+            self.secondary_text_attention_mask
         ]
         input_tensors = []
 
-        # Handle chat text inputs
-        chat_input_ids_tensor = sample_batch.get(self.chat_text_name)
-        chat_attention_mask_tensor = sample_batch.get(self.chat_text_attention_mask)
+        # Handle primary text inputs
+        primary_input_ids_tensor = sample_batch.get(self.primary_text_name)
+        primary_attention_mask_tensor = sample_batch.get(self.primary_text_attention_mask)
         
-        # Handle shiptrack text inputs
-        shiptrack_input_ids_tensor = sample_batch.get(self.shiptrack_text_name)
-        shiptrack_attention_mask_tensor = sample_batch.get(self.shiptrack_text_attention_mask)
+        # Handle secondary text inputs
+        secondary_input_ids_tensor = sample_batch.get(self.secondary_text_name)
+        secondary_attention_mask_tensor = sample_batch.get(self.secondary_text_attention_mask)
 
         if not all(isinstance(t, torch.Tensor) for t in [
-            chat_input_ids_tensor, chat_attention_mask_tensor,
-            shiptrack_input_ids_tensor, shiptrack_attention_mask_tensor
+            primary_input_ids_tensor, primary_attention_mask_tensor,
+            secondary_input_ids_tensor, secondary_attention_mask_tensor
         ]):
             raise ValueError(
-                "All text input tensors (chat and shiptrack input_ids and attention_mask) must be torch.Tensor in sample_batch."
+                "All text input tensors (primary and secondary input_ids and attention_mask) must be torch.Tensor in sample_batch."
             )
 
         # Convert to CPU
-        chat_input_ids_tensor = chat_input_ids_tensor.to("cpu")
-        chat_attention_mask_tensor = chat_attention_mask_tensor.to("cpu")
-        shiptrack_input_ids_tensor = shiptrack_input_ids_tensor.to("cpu")
-        shiptrack_attention_mask_tensor = shiptrack_attention_mask_tensor.to("cpu")
+        primary_input_ids_tensor = primary_input_ids_tensor.to("cpu")
+        primary_attention_mask_tensor = primary_attention_mask_tensor.to("cpu")
+        secondary_input_ids_tensor = secondary_input_ids_tensor.to("cpu")
+        secondary_attention_mask_tensor = secondary_attention_mask_tensor.to("cpu")
 
         input_tensors.extend([
-            chat_input_ids_tensor,
-            chat_attention_mask_tensor,
-            shiptrack_input_ids_tensor,
-            shiptrack_attention_mask_tensor
+            primary_input_ids_tensor,
+            primary_attention_mask_tensor,
+            secondary_input_ids_tensor,
+            secondary_attention_mask_tensor
         ])
 
-        batch_size = chat_input_ids_tensor.shape[0]
+        batch_size = primary_input_ids_tensor.shape[0]
 
         # Handle tabular inputs
         if self.tab_field_list:
