@@ -108,6 +108,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Bedrock processing step that processes input data through AWS Bedrock models using generated prompt templates and validation schemas",
     },
+    "BedrockBatchProcessing": {
+        "config_class": "BedrockBatchProcessingConfig",
+        "builder_step_name": "BedrockBatchProcessingStepBuilder",
+        "spec_type": "BedrockBatchProcessing",
+        "sagemaker_step_type": "Processing",
+        "description": "Bedrock batch processing step that provides AWS Bedrock batch inference capabilities with automatic fallback to real-time processing for cost-efficient large dataset processing",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",
