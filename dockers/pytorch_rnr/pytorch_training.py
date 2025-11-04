@@ -497,14 +497,16 @@ def load_and_preprocess_data(
     # === Build tokenizer and preprocessing pipelines ===
     tokenizers, pipelines = data_preprocess_pipeline(config)
     
-    # Apply pipelines to datasets based on configuration
-    is_trimodal = (hasattr(config, 'primary_text_name') and 
-                   hasattr(config, 'secondary_text_name') and 
-                   config.primary_text_name and 
-                   config.secondary_text_name)
+    # Apply pipelines to datasets based on model type
+    is_trimodal_model = config.model_class == "trimodal_bert"
+    has_dual_text_config = (hasattr(config, 'primary_text_name') and 
+                           hasattr(config, 'secondary_text_name') and 
+                           config.primary_text_name and 
+                           config.secondary_text_name)
     
-    if is_trimodal:
-        # Apply both primary and secondary text pipelines
+    if is_trimodal_model and has_dual_text_config:
+        # Apply both primary and secondary text pipelines for trimodal model
+        log_once(logger, "Applying dual text processing for trimodal model")
         train_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
         train_bsm_dataset.add_pipeline(config.secondary_text_name, pipelines[config.secondary_text_name])
         
@@ -513,8 +515,18 @@ def load_and_preprocess_data(
         
         test_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
         test_bsm_dataset.add_pipeline(config.secondary_text_name, pipelines[config.secondary_text_name])
+    elif has_dual_text_config:
+        # For non-trimodal models with dual text config, use only primary text
+        log_once(logger, f"Using only primary text for {config.model_class} model")
+        train_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
+        val_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
+        test_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
+        
+        # Update config to use primary text as the main text field for bi-modal models
+        config.text_name = config.primary_text_name
     else:
         # Traditional single text pipeline
+        log_once(logger, f"Using traditional single text processing for {config.model_class} model")
         train_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
         val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
         test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
@@ -559,21 +571,27 @@ def load_and_preprocess_data(
 def build_model_and_optimizer(
     config: Config, tokenizers: Dict[str, AutoTokenizer], datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    # Determine collate function based on configuration
-    is_trimodal = (hasattr(config, 'primary_text_name') and 
-                   hasattr(config, 'secondary_text_name') and 
-                   config.primary_text_name and 
-                   config.secondary_text_name)
+    # Determine collate function based on model type and configuration
+    is_trimodal_model = config.model_class == "trimodal_bert"
+    has_dual_text_config = (hasattr(config, 'primary_text_name') and 
+                           hasattr(config, 'secondary_text_name') and 
+                           config.primary_text_name and 
+                           config.secondary_text_name)
     
-    if is_trimodal:
-        # For tri-modal, use the enhanced collate function that handles multiple text fields
+    if is_trimodal_model and has_dual_text_config:
+        # For tri-modal model, use the enhanced collate function that handles multiple text fields
         log_once(logger, "Using tri-modal collate function for multiple text fields")
         bsm_collate_batch = build_trimodal_collate_batch()
     else:
-        # Traditional bi-modal setup
+        # For bi-modal models (including those with dual text config but non-trimodal model)
+        log_once(logger, f"Using bi-modal collate function for {config.model_class} model")
+        # Use primary text keys if available, otherwise fall back to traditional text keys
+        input_ids_key = getattr(config, 'primary_text_input_ids_key', None) or getattr(config, 'text_input_ids_key', 'input_ids')
+        attention_mask_key = getattr(config, 'primary_text_attention_mask_key', None) or getattr(config, 'text_attention_mask_key', 'attention_mask')
+        
         bsm_collate_batch = build_collate_batch(
-            input_ids_key=getattr(config, 'text_input_ids_key', 'input_ids'),
-            attention_mask_key=getattr(config, 'text_attention_mask_key', 'attention_mask'),
+            input_ids_key=input_ids_key,
+            attention_mask_key=attention_mask_key,
         )
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
