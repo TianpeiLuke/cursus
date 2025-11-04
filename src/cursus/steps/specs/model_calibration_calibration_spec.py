@@ -37,6 +37,7 @@ MODEL_CALIBRATION_CALIBRATION_SPEC = StepSpecification(
                 "PytorchTraining",
                 "XGBoostTraining",
                 "XGBoostModelEval",
+                "PyTorchModelEval",
                 "ModelEvaluation",
                 "TrainingEvaluation",
                 "CrossValidation",
