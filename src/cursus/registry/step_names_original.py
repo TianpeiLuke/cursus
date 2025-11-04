@@ -152,6 +152,20 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "XGBoost model inference step for prediction generation without metrics",
     },
+    "PyTorchModelEval": {
+        "config_class": "PyTorchModelEvalConfig",
+        "builder_step_name": "PyTorchModelEvalStepBuilder",
+        "spec_type": "PyTorchModelEval",
+        "sagemaker_step_type": "Processing",
+        "description": "PyTorch model evaluation step",
+    },
+    "PyTorchModelInference": {
+        "config_class": "PyTorchModelInferenceConfig",
+        "builder_step_name": "PyTorchModelInferenceStepBuilder",
+        "spec_type": "PyTorchModelInference",
+        "sagemaker_step_type": "Processing",
+        "description": "PyTorch model inference step for prediction generation without metrics",
+    },
     "ModelMetricsComputation": {
         "config_class": "ModelMetricsComputationConfig",
         "builder_step_name": "ModelMetricsComputationStepBuilder",
