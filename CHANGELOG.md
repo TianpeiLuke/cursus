@@ -5,6 +5,100 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2025-11-03
+
+### Added
+- **AWS Bedrock Integration** - Comprehensive support for AWS Bedrock services in ML pipelines
+  - **Bedrock Processing Step** - New processing step for Bedrock-based operations with job type support
+  - **Bedrock Prompt Template Generation** - Advanced prompt template generation capabilities for Bedrock models
+  - **Bedrock Prompt Generator** - Dedicated prompt generator for Bedrock workflows
+  - **Bedrock Pipeline Templates** - Complete pipeline templates integrating Bedrock processing with PyTorch models
+  - **Bedrock Script Processing** - Enhanced script processing utilities for Bedrock operations
+
+- **Trimodal Model Support** - Advanced multimodal machine learning capabilities
+  - **Trimodal BERT Integration** - Complete trimodal BERT implementation in PyTorch RNR framework
+  - **Trimodal Data Handling** - Enhanced data loaders to handle trimodal input with proper field name and dimension matching
+  - **Trimodal Model Training** - Updated model training infrastructure to support trimodal model requirements
+  - **Trimodal Model Inference** - Enhanced model inference capabilities for trimodal architectures
+
+- **Feature Selection Framework** - New feature selection capabilities for improved model performance
+  - **Feature Selection Step** - Dedicated step builder for feature selection operations
+  - **XGBoost Feature Selection Integration** - Enhanced XGBoost training to handle feature selection workflows
+  - **Training Artifact Optimization** - Optimized training artifacts by removing unnecessary feature selection saves
+
+- **Enhanced Model Evaluation** - Expanded model evaluation and inference capabilities
+  - **PyTorch Model Evaluation Step** - New step builder for PyTorch model evaluation workflows
+  - **PyTorch Model Inference Step** - Enhanced inference step for PyTorch models with improved performance
+  - **Score Percentile Calculation** - New score percentile calculation utilities for model evaluation
+  - **Model Performance Analytics** - Enhanced analytics for model performance assessment
+
+- **Advanced Processing Infrastructure** - Improved processing capabilities and framework support
+  - **Framework Processor Integration** - Enhanced Framework Processor support for risk table and percentile calibration
+  - **XGBoost Model Loading** - Improved XGBoost model.tar.gz loading capabilities
+  - **Calibration System Updates** - Enhanced calibration system with improved processing workflows
+  - **Processing Pipeline Optimization** - Optimized processing pipelines for better performance and reliability
+
+### Enhanced
+- **Dependency Resolution System** - Major improvements to dependency matching and resolution
+  - **Bedrock Dependency Matching** - Enhanced dependency resolution to properly match Bedrock processing steps with PyTorch models
+  - **Job Type Integration** - Improved job type handling for Bedrock processing with better pipeline integration
+  - **Cross-Framework Dependencies** - Better dependency resolution across different ML frameworks and processing types
+
+- **Pipeline Template System** - Significant improvements to pipeline template architecture
+  - **Bedrock Pipeline Integration** - New pipeline templates showcasing Bedrock and PyTorch integration patterns
+  - **Multimodal Pipeline Support** - Enhanced pipeline templates supporting trimodal and multimodal workflows
+  - **Feature Selection Pipelines** - New pipeline examples demonstrating feature selection integration
+
+- **Configuration Management** - Enhanced configuration handling and validation
+  - **Bedrock Configuration** - New configuration classes for Bedrock prompt template generation and processing
+  - **Trimodal Configuration** - Enhanced configuration support for trimodal model requirements
+  - **Template Configuration Updates** - Improved template configuration with redundant input removal
+
+- **Model Training Infrastructure** - Major improvements to training capabilities
+  - **PyTorch Training Enhancements** - Fixed and enhanced PyTorch training with better error handling and performance
+  - **XGBoost Training Updates** - Updated XGBoost training with feature selection support and improved model inference
+  - **Training Pipeline Optimization** - Optimized training pipelines for better resource utilization and performance
+
+### Fixed
+- **Contract and Configuration Issues** - Critical fixes to contracts and configurations
+  - **Contract Base Fixes** - Fixed contract base implementation for better reliability and consistency
+  - **Configuration Alignment** - Resolved configuration alignment issues across different step types
+  - **Template Configuration** - Fixed template configuration issues and removed redundant inputs
+
+- **Model Training and Inference Fixes** - Comprehensive fixes to model training and inference
+  - **PyTorch Training Fixes** - Fixed critical issues in PyTorch training workflows and data handling
+  - **Model Inference Updates** - Enhanced model inference reliability and performance
+  - **Training Artifact Management** - Improved training artifact management and storage optimization
+
+- **Processing Pipeline Stability** - Enhanced processing pipeline reliability
+  - **Bedrock Processing Fixes** - Fixed issues in Bedrock processing workflows and script execution
+  - **Data Loading Improvements** - Enhanced data loading reliability for trimodal and multimodal inputs
+  - **Processing Error Handling** - Improved error handling and recovery in processing pipelines
+
+- **Code Quality and Organization** - Systematic code cleanup and quality improvements
+  - **Bug Fixes** - Multiple bug fixes across different components for improved stability
+  - **Code Organization** - Better code organization and structure for maintainability
+  - **Documentation Updates** - Enhanced documentation and planning documents
+
+### Technical Details
+- **Bedrock Integration Architecture** - Complete AWS Bedrock integration with processing steps, prompt generation, and pipeline templates
+- **Trimodal Model Framework** - Comprehensive trimodal model support with BERT integration and enhanced data handling
+- **Feature Selection System** - Advanced feature selection framework with XGBoost integration and training optimization
+- **Model Evaluation Pipeline** - Enhanced model evaluation and inference capabilities with PyTorch support and score analytics
+- **Processing Infrastructure** - Improved processing infrastructure with Framework Processor integration and enhanced calibration
+
+### Quality Assurance
+- **Enhanced Testing** - Comprehensive testing improvements with better coverage and reliability
+- **Configuration Validation** - Improved configuration validation and alignment across all components
+- **Pipeline Integration Testing** - Enhanced integration testing for Bedrock, trimodal, and feature selection workflows
+- **Code Quality Standards** - Systematic code quality improvements with cleanup and standardization
+
+### Performance Improvements
+- **Training Performance** - Optimized training performance with better resource management and artifact handling
+- **Inference Speed** - Enhanced inference performance with optimized model loading and processing
+- **Processing Efficiency** - Improved processing efficiency with Framework Processor integration and pipeline optimization
+- **Memory Management** - Better memory management in trimodal data handling and model operations
+
 ## [1.4.1] - 2025-10-24
 
 ### Added
