@@ -31,7 +31,7 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
         DependencySpec(
             logical_name="category_definitions",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=True,
+            required=False,
             compatible_sources=[ 
                 "CategoryDefinition",
                 "ProcessingStep",
