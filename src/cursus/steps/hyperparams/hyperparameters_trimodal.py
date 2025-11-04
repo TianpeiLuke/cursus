@@ -1,7 +1,7 @@
 from pydantic import Field, model_validator, PrivateAttr, ConfigDict
 from typing import List, Dict, Any, Optional, Union
 
-from ...core.base.hyperparameters_base import ModelHyperparameters
+from .hyperparameters_base import ModelHyperparameters
 
 
 class TriModalHyperparameters(ModelHyperparameters):
@@ -31,6 +31,12 @@ class TriModalHyperparameters(ModelHyperparameters):
     
     secondary_text_name: str = Field(
         description="Name of the secondary text field (e.g., shiptrack events)"
+    )
+    
+    # Backward compatibility field for bi-modal models
+    text_name: Optional[str] = Field(
+        default=None,
+        description="Legacy text field name for backward compatibility with bi-modal models"
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -76,6 +82,17 @@ class TriModalHyperparameters(ModelHyperparameters):
     max_total_chunks: int = Field(
         default=3, 
         description="Maximum total chunks for processing long texts"
+    )
+    
+    # Processing pipeline configuration
+    primary_text_processing_steps: List[str] = Field(
+        default=["dialogue_splitter", "html_normalizer", "emoji_remover", "text_normalizer", "dialogue_chunker", "tokenizer"],
+        description="Processing steps for primary text (e.g., chat with HTML/emoji)"
+    )
+    
+    secondary_text_processing_steps: List[str] = Field(
+        default=["dialogue_splitter", "text_normalizer", "dialogue_chunker", "tokenizer"],
+        description="Processing steps for secondary text (e.g., structured shiptrack events)"
     )
 
     # Optional separate tokenizers (fallback to main tokenizer)

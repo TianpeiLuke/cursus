@@ -48,6 +48,8 @@ from lightning_models.pl_text_cnn import TextCNN
 from lightning_models.pl_multimodal_cnn import MultimodalCNN
 from lightning_models.pl_multimodal_bert import MultimodalBert
 from lightning_models.pl_trimodal_bert import TrimodalBert
+from lightning_models.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
+from lightning_models.pl_trimodal_gate_fusion import TrimodalGateFusionBert
 from lightning_models.pl_multimodal_moe import MultimodalBertMoE
 from lightning_models.pl_multimodal_gate_fusion import MultimodalBertGateFusion
 from lightning_models.pl_multimodal_cross_attn import MultimodalBertCrossAttn
@@ -446,6 +448,10 @@ def model_select(
         return MultimodalBert(config.model_dump())
     elif model_class == "trimodal_bert":
         return TrimodalBert(config.model_dump())
+    elif model_class == "trimodal_cross_attn_bert":
+        return TrimodalCrossAttentionBert(config.model_dump())
+    elif model_class == "trimodal_gate_fusion_bert":
+        return TrimodalGateFusionBert(config.model_dump())
     elif model_class == "multimodal_moe":
         return MultimodalBertMoE(config.model_dump())
     elif model_class == "multimodal_gate_fusion":
@@ -498,7 +504,7 @@ def load_and_preprocess_data(
     tokenizers, pipelines = data_preprocess_pipeline(config)
     
     # Apply pipelines to datasets based on model type
-    is_trimodal_model = config.model_class == "trimodal_bert"
+    is_trimodal_model = config.model_class in ["trimodal_bert", "trimodal_cross_attn_bert", "trimodal_gate_fusion_bert"]
     has_dual_text_config = (hasattr(config, 'primary_text_name') and 
                            hasattr(config, 'secondary_text_name') and 
                            config.primary_text_name and 
@@ -506,7 +512,7 @@ def load_and_preprocess_data(
     
     if is_trimodal_model and has_dual_text_config:
         # Apply both primary and secondary text pipelines for trimodal model
-        log_once(logger, "Applying dual text processing for trimodal model")
+        log_once(logger, f"Applying dual text processing for {config.model_class} model")
         train_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
         train_bsm_dataset.add_pipeline(config.secondary_text_name, pipelines[config.secondary_text_name])
         
@@ -572,15 +578,15 @@ def build_model_and_optimizer(
     config: Config, tokenizers: Dict[str, AutoTokenizer], datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Determine collate function based on model type and configuration
-    is_trimodal_model = config.model_class == "trimodal_bert"
+    is_trimodal_model = config.model_class in ["trimodal_bert", "trimodal_cross_attn_bert", "trimodal_gate_fusion_bert"]
     has_dual_text_config = (hasattr(config, 'primary_text_name') and 
                            hasattr(config, 'secondary_text_name') and 
                            config.primary_text_name and 
                            config.secondary_text_name)
     
     if is_trimodal_model and has_dual_text_config:
-        # For tri-modal model, use the enhanced collate function that handles multiple text fields
-        log_once(logger, "Using tri-modal collate function for multiple text fields")
+        # For tri-modal models, use the enhanced collate function that handles multiple text fields
+        log_once(logger, f"Using tri-modal collate function for {config.model_class} model")
         bsm_collate_batch = build_trimodal_collate_batch()
     else:
         # For bi-modal models (including those with dual text config but non-trimodal model)
@@ -840,6 +846,12 @@ def main(
             main_tokenizer.vocab,
             model_class=config.model_class,
         )
+
+        # ------------------ Save Hyperparameters ------------------
+        hyperparams_filename = os.path.join(model_path, "hyperparameters.json")
+        logger.info(f"Saving hyperparameters to {hyperparams_filename}")
+        with open(hyperparams_filename, 'w') as f:
+            json.dump(config.model_dump(), f, indent=2, default=str)
 
         # ------------------ ONNX Export ------------------
         onnx_path = os.path.join(model_path, "model.onnx")

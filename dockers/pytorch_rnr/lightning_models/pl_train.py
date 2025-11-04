@@ -40,6 +40,9 @@ from .pl_multimodal_bert import MultimodalBert
 from .pl_multimodal_gate_fusion import MultimodalBertGateFusion
 from .pl_multimodal_moe import MultimodalBertMoE
 from .pl_multimodal_cross_attn import MultimodalBertCrossAttn
+from .pl_trimodal_bert import TrimodalBert
+from .pl_trimodal_cross_attn import TrimodalCrossAttentionBert
+from .pl_trimodal_gate_fusion import TrimodalGateFusionBert
 
 
 def setup_logger():
@@ -417,6 +420,9 @@ def load_model(
         "multimodal_gate_fusion": lambda: MultimodalBertGateFusion(config),
         "multimodal_moe": lambda: MultimodalBertMoE(config),
         "multimodal_cross_attn": lambda: MultimodalBertCrossAttn(config),
+        "trimodal_bert": lambda: TrimodalBert(config),
+        "trimodal_cross_attn_bert": lambda: TrimodalCrossAttentionBert(config),
+        "trimodal_gate_fusion_bert": lambda: TrimodalGateFusionBert(config),
     }.get(model_class, lambda: MultimodalBert(config))()
 
     try:

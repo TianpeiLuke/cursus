@@ -32,6 +32,12 @@ class TriModalHyperparameters(ModelHyperparameters):
     secondary_text_name: str = Field(
         description="Name of the secondary text field (e.g., shiptrack events)"
     )
+    
+    # Backward compatibility field for bi-modal models
+    text_name: Optional[str] = Field(
+        default=None,
+        description="Legacy text field name for backward compatibility with bi-modal models"
+    )
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
