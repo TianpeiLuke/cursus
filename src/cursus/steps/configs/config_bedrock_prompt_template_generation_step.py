@@ -596,6 +596,7 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
     _effective_system_prompt_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     _effective_output_format_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     _effective_instruction_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
+    _effective_categories: Optional[CategoryDefinitionList] = PrivateAttr(default=None)
     _template_metadata: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     _environment_variables: Optional[Dict[str, str]] = PrivateAttr(default=None)
     _resolved_prompt_configs_path: Optional[str] = PrivateAttr(default=None)
@@ -650,6 +651,23 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
                 logger.debug("Using default instruction_settings")
         
         return self._effective_instruction_config
+
+    @property
+    def effective_categories(self) -> Optional[CategoryDefinitionList]:
+        """Get effective category definitions from either direct definitions or file path."""
+        if self._effective_categories is None:
+            if self.category_definitions:
+                # Use directly provided category definitions
+                self._effective_categories = CategoryDefinitionList(categories=self.category_definitions)
+                logger.debug("Using provided category_definitions")
+            elif self.prompt_configs_path:
+                # TODO: Load from file path when implementing file-based approach
+                logger.warning("File-based category loading not yet implemented")
+                self._effective_categories = None
+            else:
+                self._effective_categories = None
+        
+        return self._effective_categories
 
     @property
     def template_metadata(self) -> Dict[str, Any]:
@@ -718,32 +736,18 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         
         return self._resolved_prompt_configs_path
 
-    def get_effective_categories(self) -> Optional[CategoryDefinitionList]:
-        """
-        Get effective category definitions from either direct definitions or file path.
-        
-        Returns:
-            CategoryDefinitionList if categories are available, None otherwise
-        """
-        if self.category_definitions:
-            # Use directly provided category definitions
-            return CategoryDefinitionList(categories=self.category_definitions)
-        elif self.prompt_configs_path:
-            # TODO: Load from file path when implementing file-based approach
-            logger.warning("File-based category loading not yet implemented")
-            return None
-        else:
-            return None
 
     def generate_prompt_config_bundle(self) -> None:
         """
         Generate complete prompt configuration bundle for the refactored file-based approach.
         
-        Creates all JSON files needed by the script in the configured prompt_configs_path:
-        - system_prompt.json
-        - output_format.json  
-        - instruction.json
-        - category_definitions.json
+        Creates JSON files needed by the script in the configured prompt_configs_path:
+        - system_prompt.json (only if system_prompt_settings is provided)
+        - output_format.json (only if output_format_settings is provided)
+        - instruction.json (only if instruction_settings is provided)
+        - category_definitions.json (only if category_definitions is provided)
+        
+        All configuration files are optional - the script will use defaults when files are missing.
         
         Raises:
             ValueError: If prompt_configs_path is not configured
@@ -753,36 +757,51 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         output_dir = Path(self.resolved_prompt_configs_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Generate system_prompt.json
-        system_prompt_file = output_dir / "system_prompt.json"
-        with open(system_prompt_file, 'w', encoding='utf-8') as f:
-            json.dump(self.effective_system_prompt_config, f, indent=2, ensure_ascii=False)
-        logger.info(f"Generated system prompt config: {system_prompt_file}")
+        generated_files = []
         
-        # Generate output_format.json
-        output_format_file = output_dir / "output_format.json"
-        with open(output_format_file, 'w', encoding='utf-8') as f:
-            json.dump(self.effective_output_format_config, f, indent=2, ensure_ascii=False)
-        logger.info(f"Generated output format config: {output_format_file}")
+        # Generate system_prompt.json only if system_prompt_settings is provided
+        if self.system_prompt_settings is not None:
+            system_prompt_file = output_dir / "system_prompt.json"
+            with open(system_prompt_file, 'w', encoding='utf-8') as f:
+                json.dump(self.effective_system_prompt_config, f, indent=2, ensure_ascii=False)
+            logger.info(f"Generated system prompt config: {system_prompt_file}")
+            generated_files.append("system_prompt.json")
+        else:
+            logger.info("Skipping system_prompt.json generation (system_prompt_settings is None - will use defaults)")
         
-        # Generate instruction.json
-        instruction_file = output_dir / "instruction.json"
-        with open(instruction_file, 'w', encoding='utf-8') as f:
-            json.dump(self.effective_instruction_config, f, indent=2, ensure_ascii=False)
-        logger.info(f"Generated instruction config: {instruction_file}")
+        # Generate output_format.json only if output_format_settings is provided
+        if self.output_format_settings is not None:
+            output_format_file = output_dir / "output_format.json"
+            with open(output_format_file, 'w', encoding='utf-8') as f:
+                json.dump(self.effective_output_format_config, f, indent=2, ensure_ascii=False)
+            logger.info(f"Generated output format config: {output_format_file}")
+            generated_files.append("output_format.json")
+        else:
+            logger.info("Skipping output_format.json generation (output_format_settings is None - will use defaults)")
         
-        # Generate category_definitions.json
-        categories = self.get_effective_categories()
-        if not categories:
-            raise ValueError("No category definitions available to generate JSON file")
+        # Generate instruction.json only if instruction_settings is provided
+        if self.instruction_settings is not None:
+            instruction_file = output_dir / "instruction.json"
+            with open(instruction_file, 'w', encoding='utf-8') as f:
+                json.dump(self.effective_instruction_config, f, indent=2, ensure_ascii=False)
+            logger.info(f"Generated instruction config: {instruction_file}")
+            generated_files.append("instruction.json")
+        else:
+            logger.info("Skipping instruction.json generation (instruction_settings is None - will use defaults)")
         
-        category_definitions_file = output_dir / "category_definitions.json"
-        with open(category_definitions_file, 'w', encoding='utf-8') as f:
-            json.dump(categories.to_script_format(), f, indent=2, ensure_ascii=False)
-        logger.info(f"Generated category definitions: {category_definitions_file}")
+        # Generate category_definitions.json only if category definitions are available
+        categories = self.effective_categories
+        if categories:
+            category_definitions_file = output_dir / "category_definitions.json"
+            with open(category_definitions_file, 'w', encoding='utf-8') as f:
+                json.dump(categories.to_script_format(), f, indent=2, ensure_ascii=False)
+            logger.info(f"Generated category definitions: {category_definitions_file}")
+            generated_files.append("category_definitions.json")
+        else:
+            logger.info("Skipping category_definitions.json generation (no category definitions available)")
         
-        logger.info(f"Generated complete prompt configuration bundle in: {output_dir}")
-        logger.info(f"Bundle contains {len(list(output_dir.glob('*.json')))} JSON configuration files")
+        logger.info(f"Generated prompt configuration bundle in: {output_dir}")
+        logger.info(f"Bundle contains {len(generated_files)} JSON configuration files: {', '.join(generated_files)}")
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:
@@ -793,6 +812,7 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         data["effective_system_prompt_config"] = self.effective_system_prompt_config
         data["effective_output_format_config"] = self.effective_output_format_config
         data["effective_instruction_config"] = self.effective_instruction_config
+        data["effective_categories"] = self.effective_categories
         data["template_metadata"] = self.template_metadata
         data["environment_variables"] = self.environment_variables
         
@@ -813,6 +833,7 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         _ = self.effective_system_prompt_config
         _ = self.effective_output_format_config
         _ = self.effective_instruction_config
+        _ = self.effective_categories
         _ = self.template_metadata
         _ = self.environment_variables
         
@@ -830,7 +851,7 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         """
         try:
             # Only generate if we have category definitions (either direct or via file path)
-            categories = self.get_effective_categories()
+            categories = self.effective_categories
             if categories:
                 self.generate_prompt_config_bundle()
                 logger.info(f"Auto-generated prompt configuration bundle at: {self.resolved_prompt_configs_path}")
