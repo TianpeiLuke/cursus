@@ -45,17 +45,17 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
     dag = PipelineDAG()
 
     # Add minimal data processing nodes with Bedrock batch enhancement
-    dag.add_node("DummyDataLoading")  # Dummy data load
-    dag.add_node("TabularPreprocessing")  # Tabular preprocessing
+    dag.add_node("DummyDataLoading_training")  # Dummy data load
+    dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing
     dag.add_node("BedrockPromptTemplateGeneration")  # Bedrock prompt template generation
-    dag.add_node("BedrockBatchProcessing")  # Bedrock batch processing step
+    dag.add_node("BedrockBatchProcessing_training")  # Bedrock batch processing step
 
     # Simple data processing flow with Bedrock batch enhancement
-    dag.add_edge("DummyDataLoading", "TabularPreprocessing")
+    dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
     
     # Bedrock batch processing flow - two inputs to BedrockBatchProcessing
-    dag.add_edge("TabularPreprocessing", "BedrockBatchProcessing")  # Data input
-    dag.add_edge("BedrockPromptTemplateGeneration", "BedrockBatchProcessing")  # Template input
+    dag.add_edge("TabularPreprocessing_training", "BedrockBatchProcessing_training")  # Data input
+    dag.add_edge("BedrockPromptTemplateGeneration", "BedrockBatchProcessing_training")  # Template input
 
     logger.info(
         f"Created Bedrock Batch data processing DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
