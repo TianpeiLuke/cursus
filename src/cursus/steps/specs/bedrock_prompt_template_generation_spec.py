@@ -29,28 +29,28 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
     script_contract=_get_bedrock_prompt_template_generation_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="category_definitions",
+            logical_name="prompt_configs",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
             compatible_sources=[ 
-                "CategoryDefinition",
+                "PromptConfiguration",
                 "ProcessingStep",
             ],
             semantic_keywords=[
-                "categories",
+                "prompt_configs",
+                "prompt_configuration",
+                "bedrock_configs",
+                "template_configs",
+                "system_prompt_config",
+                "output_format_config",
+                "instruction_config",
                 "category_definitions",
-                "classification_categories",
-                "labels",
-                "class_definitions",
-                "taxonomy",
-                "ontology",
-                "category_config",
                 "classification_config",
-                "prompt_categories",
-                "bedrock_categories"
+                "llm_configs",
+                "bedrock_prompt_configs"
             ],
             data_type="S3Uri",
-            description="Category definition files (JSON/CSV) containing classification categories with conditions, exceptions, and key indicators",
+            description="Prompt configuration directory containing JSON files: system_prompt.json, output_format.json, instruction.json, and category_definitions.json for template generation",
         )
     ],
     outputs=[

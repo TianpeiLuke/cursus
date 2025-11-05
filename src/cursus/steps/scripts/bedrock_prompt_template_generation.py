@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Container path constants
 CONTAINER_PATHS = {
-    "INPUT_CATEGORIES_DIR": "/opt/ml/processing/input/categories",
+    "INPUT_PROMPT_CONFIGS_DIR": "/opt/ml/processing/input/prompt_configs",
     "OUTPUT_TEMPLATES_DIR": "/opt/ml/processing/output/templates",
     "OUTPUT_METADATA_DIR": "/opt/ml/processing/output/metadata",
     "OUTPUT_SCHEMA_DIR": "/opt/ml/processing/output/schema",
@@ -135,9 +135,8 @@ class PromptTemplateGenerator:
 
     def _generate_system_prompt(self) -> str:
         """Generate system prompt with role assignment and expertise definition."""
-        # Load user config and merge with comprehensive defaults
-        user_config = json.loads(self.config.get("SYSTEM_PROMPT_CONFIG", "{}"))
-        system_config = {**DEFAULT_SYSTEM_PROMPT_CONFIG, **user_config}
+        # Use system prompt config loaded from JSON file
+        system_config = self.config.get("system_prompt_config", DEFAULT_SYSTEM_PROMPT_CONFIG)
 
         role_definition = system_config.get("role_definition")
         expertise_areas = system_config.get("expertise_areas")
@@ -242,9 +241,8 @@ class PromptTemplateGenerator:
 
     def _generate_instructions_section(self) -> str:
         """Generate instructions and rules section."""
-        # Load user config and merge with comprehensive defaults
-        user_config = json.loads(self.config.get("INSTRUCTION_CONFIG", "{}"))
-        instruction_config = {**DEFAULT_INSTRUCTION_CONFIG, **user_config}
+        # Use instruction config loaded from JSON file
+        instruction_config = self.config.get("instruction_config", DEFAULT_INSTRUCTION_CONFIG)
 
         instructions = ["Provide your analysis in the following structured format:", ""]
 
@@ -388,17 +386,14 @@ class PromptTemplateGenerator:
             "template_style": self.config.get("TEMPLATE_STYLE", "structured"),
             "category_count": len(self.categories),
             "category_names": [cat["name"] for cat in self.categories],
-            "output_format": self.config.get("OUTPUT_FORMAT_TYPE", "structured_json"),
+            "output_format": self.config.get("output_format_config", {}).get("format_type", "structured_json"),
             "validation_level": self.config.get("VALIDATION_LEVEL", "standard"),
             "includes_examples": self.config.get("INCLUDE_EXAMPLES", "true").lower()
             == "true",
             "generator_config": {
-                "system_prompt_config": json.loads(
-                    self.config.get("SYSTEM_PROMPT_CONFIG", "{}")
-                ),
-                "output_format_config": json.loads(
-                    self.config.get("OUTPUT_FORMAT_CONFIG", "{}")
-                ),
+                "system_prompt_config": self.config.get("system_prompt_config", {}),
+                "output_format_config": self.config.get("output_format_config", {}),
+                "instruction_config": self.config.get("instruction_config", {}),
             },
         }
 
@@ -605,66 +600,56 @@ class TemplateValidator:
 def _generate_processing_config(config: Dict[str, str]) -> Dict[str, Any]:
     """Generate processing configuration metadata (non-redundant)."""
     return {
-        "format_type": config.get("OUTPUT_FORMAT_TYPE", "structured_json"),
+        "format_type": config.get("output_format_config", {}).get("format_type", "structured_json"),
         "response_model_name": f"{config.get('TEMPLATE_TASK_TYPE', 'classification').title()}Response",
         "validation_level": config.get("VALIDATION_LEVEL", "standard"),
     }
 
 
-def load_category_definitions(
-    categories_path: str, log: Callable[[str], None]
-) -> List[Dict[str, Any]]:
-    """Load category definitions from input files (JSON/CSV)."""
-    categories_dir = Path(categories_path)
+def load_config_from_json_file(
+    config_path: str, config_name: str, default_config: Dict[str, Any], log: Callable[[str], None]
+) -> Dict[str, Any]:
+    """Load configuration from JSON file with fallback to defaults."""
+    config_file = Path(config_path) / f"{config_name}.json"
+    
+    if config_file.exists():
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                log(f"Loaded {config_name} config from {config_file}")
+                return {**default_config, **config}  # Merge with defaults
+        except Exception as e:
+            log(f"Failed to load {config_name} config from {config_file}: {e}. Using defaults.")
+            return default_config
+    else:
+        log(f"{config_name} config file not found at {config_file}. Using defaults.")
+        return default_config
 
-    if not categories_dir.exists():
-        log(f"Categories directory not found: {categories_path}")
+
+def load_category_definitions(
+    prompt_configs_path: str, log: Callable[[str], None]
+) -> List[Dict[str, Any]]:
+    """Load category definitions from prompt configs directory."""
+    config_dir = Path(prompt_configs_path)
+
+    if not config_dir.exists():
+        log(f"Prompt configs directory not found: {prompt_configs_path}")
         return []
 
-    categories = []
-
-    # Look for JSON files first
-    json_files = list(categories_dir.glob("*.json"))
-    if json_files:
-        for json_file in json_files:
-            try:
-                with open(json_file, "r", encoding="utf-8") as f:
-                    file_categories = json.load(f)
-                    if isinstance(file_categories, list):
-                        categories.extend(file_categories)
-                    else:
-                        categories.append(file_categories)
-                log(f"Loaded categories from {json_file}")
-            except Exception as e:
-                log(f"Failed to load categories from {json_file}: {e}")
-
-    # Look for CSV files if no JSON found
-    if not categories and list(categories_dir.glob("*.csv")):
-        csv_files = list(categories_dir.glob("*.csv"))
-        for csv_file in csv_files:
-            try:
-                df = pd.read_csv(csv_file)
-                for _, row in df.iterrows():
-                    category = {
-                        "name": row.get("name", ""),
-                        "description": row.get("description", ""),
-                        "conditions": row.get("conditions", "").split(";")
-                        if row.get("conditions")
-                        else [],
-                        "exceptions": row.get("exceptions", "").split(";")
-                        if row.get("exceptions")
-                        else [],
-                        "key_indicators": row.get("key_indicators", "").split(";")
-                        if row.get("key_indicators")
-                        else [],
-                        "priority": int(row.get("priority", 1)),
-                    }
-                    categories.append(category)
-                log(f"Loaded categories from {csv_file}")
-            except Exception as e:
-                log(f"Failed to load categories from {csv_file}: {e}")
-
-    return categories
+    # Load category_definitions.json
+    categories_file = config_dir / "category_definitions.json"
+    if categories_file.exists():
+        try:
+            with open(categories_file, "r", encoding="utf-8") as f:
+                categories = json.load(f)
+                log(f"Loaded category definitions from {categories_file}")
+                return categories if isinstance(categories, list) else [categories]
+        except Exception as e:
+            log(f"Failed to load category definitions from {categories_file}: {e}")
+            return []
+    else:
+        log(f"Category definitions file not found: {categories_file}")
+        return []
 
 
 def main(
@@ -691,34 +676,39 @@ def main(
     log = logger or print
 
     try:
-        # Load category definitions from input files
-        categories = []
-        if "category_definitions" in input_paths:
-            categories = load_category_definitions(
-                input_paths["category_definitions"], log
-            )
+        # Load configurations from JSON files in prompt_configs directory
+        prompt_configs_path = input_paths.get("prompt_configs")
+        if not prompt_configs_path:
+            raise ValueError("No prompt_configs input path provided")
 
+        # Load category definitions
+        categories = load_category_definitions(prompt_configs_path, log)
         if not categories:
-            raise ValueError("No category definitions found in input files")
+            raise ValueError("No category definitions found in prompt configs")
 
-        # Load output schema template from OUTPUT_FORMAT_CONFIG or generate default
-        schema_template = None
-
-        # Try to load JSON schema from OUTPUT_FORMAT_CONFIG
-        output_format_config = json.loads(
-            environ_vars.get("OUTPUT_FORMAT_CONFIG", "{}")
+        # Load configuration files from prompt_configs directory
+        system_prompt_config = load_config_from_json_file(
+            prompt_configs_path, "system_prompt", DEFAULT_SYSTEM_PROMPT_CONFIG, log
         )
-        if output_format_config and "type" in output_format_config:
-            # OUTPUT_FORMAT_CONFIG contains a JSON schema
-            schema_template = output_format_config
-            log("Using JSON schema from OUTPUT_FORMAT_CONFIG for format generation")
+        
+        output_format_config = load_config_from_json_file(
+            prompt_configs_path, "output_format", DEFAULT_OUTPUT_FORMAT_CONFIG, log
+        )
+        
+        instruction_config = load_config_from_json_file(
+            prompt_configs_path, "instruction", DEFAULT_INSTRUCTION_CONFIG, log
+        )
 
-        # Generate default schema template if no custom schema is provided
-        if not schema_template:
-            # Generate default schema from DEFAULT_OUTPUT_FORMAT_CONFIG
-            default_config = DEFAULT_OUTPUT_FORMAT_CONFIG
-            required_fields = default_config["required_fields"]
-            field_descriptions = default_config["field_descriptions"]
+        # Generate schema template from output format config
+        schema_template = None
+        if output_format_config and "type" in output_format_config:
+            # Output format config contains a JSON schema
+            schema_template = output_format_config
+            log("Using JSON schema from output_format.json for format generation")
+        else:
+            # Generate default schema template
+            required_fields = output_format_config.get("required_fields", ["category", "confidence", "key_evidence", "reasoning"])
+            field_descriptions = output_format_config.get("field_descriptions", {})
 
             schema_template = {
                 "type": "object",
@@ -727,7 +717,7 @@ def main(
                 "additionalProperties": False,
             }
 
-            # Generate properties from default config
+            # Generate properties from config
             for field in required_fields:
                 if field == "confidence":
                     schema_template["properties"][field] = {
@@ -754,46 +744,32 @@ def main(
                         ),
                     }
 
-            log(
-                "Generated default output schema template from DEFAULT_OUTPUT_FORMAT_CONFIG"
-            )
-        else:
-            # Update category enum in custom schema if it has a category field
-            if (
-                "properties" in schema_template
-                and "category" in schema_template["properties"]
-                and schema_template["properties"]["category"].get("type") == "string"
-            ):
-                schema_template["properties"]["category"]["enum"] = [
-                    cat["name"] for cat in categories
-                ]
-            log("Using custom output schema template for format generation")
+            log("Generated default output schema template from output_format.json")
 
-        # Build configuration from environment variables and loaded data
+        # Update category enum in schema if it has a category field
+        if (
+            "properties" in schema_template
+            and "category" in schema_template["properties"]
+            and schema_template["properties"]["category"].get("type") == "string"
+        ):
+            schema_template["properties"]["category"]["enum"] = [
+                cat["name"] for cat in categories
+            ]
+
+        # Build configuration from environment variables and loaded JSON configs
+        # Use JSON config values where available, fall back to environment variables
         config = {
-            "TEMPLATE_TASK_TYPE": environ_vars.get(
-                "TEMPLATE_TASK_TYPE", "classification"
-            ),
+            "TEMPLATE_TASK_TYPE": environ_vars.get("TEMPLATE_TASK_TYPE", "classification"),
             "TEMPLATE_STYLE": environ_vars.get("TEMPLATE_STYLE", "structured"),
             "VALIDATION_LEVEL": environ_vars.get("VALIDATION_LEVEL", "standard"),
             "category_definitions": json.dumps(categories),
-            "SYSTEM_PROMPT_CONFIG": environ_vars.get("SYSTEM_PROMPT_CONFIG", "{}"),
-            "OUTPUT_FORMAT_CONFIG": environ_vars.get("OUTPUT_FORMAT_CONFIG", "{}"),
-            "INSTRUCTION_CONFIG": environ_vars.get("INSTRUCTION_CONFIG", "{}"),
-            "INPUT_PLACEHOLDERS": environ_vars.get(
-                "INPUT_PLACEHOLDERS", '["input_data"]'
-            ),
-            "OUTPUT_FORMAT_TYPE": environ_vars.get(
-                "OUTPUT_FORMAT_TYPE", "structured_json"
-            ),
-            "REQUIRED_OUTPUT_FIELDS": environ_vars.get(
-                "REQUIRED_OUTPUT_FIELDS",
-                '["category", "confidence", "key_evidence", "reasoning"]',
-            ),
+            "system_prompt_config": system_prompt_config,
+            "output_format_config": output_format_config,
+            "instruction_config": instruction_config,
+            "INPUT_PLACEHOLDERS": environ_vars.get("INPUT_PLACEHOLDERS", '["input_data"]'),
+            # Values now come from JSON config files, no longer needed as separate config keys
             "INCLUDE_EXAMPLES": environ_vars.get("INCLUDE_EXAMPLES", "true"),
-            "GENERATE_VALIDATION_SCHEMA": environ_vars.get(
-                "GENERATE_VALIDATION_SCHEMA", "true"
-            ),
+            "GENERATE_VALIDATION_SCHEMA": environ_vars.get("GENERATE_VALIDATION_SCHEMA", "true"),
             "TEMPLATE_VERSION": environ_vars.get("TEMPLATE_VERSION", "1.0"),
         }
 
@@ -880,7 +856,7 @@ def main(
                 log("Using custom schema template for validation schema generation")
             else:
                 # Generate default JSON schema for output validation
-                required_fields = json.loads(config["REQUIRED_OUTPUT_FIELDS"])
+                required_fields = output_format_config.get("required_fields", ["category", "confidence", "key_evidence", "reasoning"])
                 validation_schema = {
                     "type": "object",
                     "properties": {},
@@ -889,9 +865,7 @@ def main(
                 }
 
                 # Add field definitions
-                field_descriptions = json.loads(
-                    config.get("OUTPUT_FORMAT_CONFIG", "{}")
-                ).get("field_descriptions", {})
+                field_descriptions = config.get("output_format_config", {}).get("field_descriptions", {})
                 for field in required_fields:
                     if field == "confidence":
                         validation_schema["properties"][field] = {
@@ -933,9 +907,7 @@ def main(
                     "generation_timestamp": timestamp,
                     "category_count": len(categories),
                     "category_names": [cat["name"] for cat in categories],
-                    "output_format_source": "OUTPUT_FORMAT_CONFIG"
-                    if json.loads(environ_vars.get("OUTPUT_FORMAT_CONFIG", "{}"))
-                    else "DEFAULT_CONFIG",
+                    "output_format_source": "output_format.json",
                     "task_type": config.get("TEMPLATE_TASK_TYPE", "classification"),
                     "template_style": config.get("TEMPLATE_STYLE", "structured"),
                 },
@@ -1001,7 +973,7 @@ if __name__ == "__main__":
         args = parser.parse_args()
 
         # Set up path dictionaries
-        input_paths = {"category_definitions": CONTAINER_PATHS["INPUT_CATEGORIES_DIR"]}
+        input_paths = {"prompt_configs": CONTAINER_PATHS["INPUT_PROMPT_CONFIGS_DIR"]}
 
         output_paths = {
             "prompt_templates": CONTAINER_PATHS["OUTPUT_TEMPLATES_DIR"],
@@ -1009,26 +981,12 @@ if __name__ == "__main__":
             "validation_schema": CONTAINER_PATHS["OUTPUT_SCHEMA_DIR"],
         }
 
-        # Environment variables dictionary
+        # Environment variables dictionary (streamlined - no large JSON configs)
         environ_vars = {
-            "TEMPLATE_TASK_TYPE": os.environ.get(
-                "TEMPLATE_TASK_TYPE", "classification"
-            ),
+            "TEMPLATE_TASK_TYPE": os.environ.get("TEMPLATE_TASK_TYPE", "classification"),
             "TEMPLATE_STYLE": os.environ.get("TEMPLATE_STYLE", "structured"),
             "VALIDATION_LEVEL": os.environ.get("VALIDATION_LEVEL", "standard"),
-            "SYSTEM_PROMPT_CONFIG": os.environ.get("SYSTEM_PROMPT_CONFIG", "{}"),
-            "OUTPUT_FORMAT_CONFIG": os.environ.get("OUTPUT_FORMAT_CONFIG", "{}"),
-            "INSTRUCTION_CONFIG": os.environ.get("INSTRUCTION_CONFIG", "{}"),
-            "INPUT_PLACEHOLDERS": os.environ.get(
-                "INPUT_PLACEHOLDERS", '["input_data"]'
-            ),
-            "OUTPUT_FORMAT_TYPE": os.environ.get(
-                "OUTPUT_FORMAT_TYPE", "structured_json"
-            ),
-            "REQUIRED_OUTPUT_FIELDS": os.environ.get(
-                "REQUIRED_OUTPUT_FIELDS",
-                '["category", "confidence", "key_evidence", "reasoning"]',
-            ),
+            "INPUT_PLACEHOLDERS": os.environ.get("INPUT_PLACEHOLDERS", '["input_data"]'),
             "INCLUDE_EXAMPLES": os.environ.get(
                 "INCLUDE_EXAMPLES", str(args.include_examples).lower()
             ),
@@ -1036,9 +994,7 @@ if __name__ == "__main__":
                 "GENERATE_VALIDATION_SCHEMA",
                 str(args.generate_validation_schema).lower(),
             ),
-            "TEMPLATE_VERSION": os.environ.get(
-                "TEMPLATE_VERSION", args.template_version
-            ),
+            "TEMPLATE_VERSION": os.environ.get("TEMPLATE_VERSION", args.template_version),
         }
 
         # Set up logging
@@ -1054,7 +1010,6 @@ if __name__ == "__main__":
         logger.info(f"  Task Type: {environ_vars['TEMPLATE_TASK_TYPE']}")
         logger.info(f"  Template Style: {environ_vars['TEMPLATE_STYLE']}")
         logger.info(f"  Validation Level: {environ_vars['VALIDATION_LEVEL']}")
-        logger.info(f"  Output Format: {environ_vars['OUTPUT_FORMAT_TYPE']}")
         logger.info(f"  Include Examples: {environ_vars['INCLUDE_EXAMPLES']}")
         logger.info(f"  Generate Schema: {environ_vars['GENERATE_VALIDATION_SCHEMA']}")
         logger.info(f"  Template Version: {environ_vars['TEMPLATE_VERSION']}")

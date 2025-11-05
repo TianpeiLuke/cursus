@@ -210,13 +210,13 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
         for _, dependency_spec in self.spec.dependencies.items():
             logical_name = dependency_spec.logical_name
 
-            # Handle category_definitions input
-            if logical_name == "category_definitions":
+            # Handle prompt_configs input
+            if logical_name == "prompt_configs":
                 # Check if user provided a custom path
-                if self.config.category_definitions_path is not None:
+                if self.config.prompt_configs_path is not None:
                     # User specified a custom path - use resolved path from config
                     try:
-                        source_path = self.config.resolved_category_definitions_path
+                        source_path = self.config.resolved_prompt_configs_path
                         container_path = self.contract.expected_input_paths[logical_name]
                         
                         processing_inputs.append(
@@ -235,7 +235,7 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                         )
                         continue
                     except ValueError as e:
-                        raise ValueError(f"Failed to resolve category_definitions_path: {e}")
+                        raise ValueError(f"Failed to resolve prompt_configs_path: {e}")
                 else:
                     # User didn't specify path - allow dependency override or require dependency
                     if logical_name in inputs:
@@ -256,7 +256,7 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                         continue
                     else:
                         # Required input, no user path, no dependency - this is an error
-                        raise ValueError(f"Required input '{logical_name}' not provided: either specify category_definitions_path in config or provide via dependencies")
+                        raise ValueError(f"Required input '{logical_name}' not provided: either specify prompt_configs_path in config or provide via dependencies")
             
 
             # Handle other dependency-provided inputs

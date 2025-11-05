@@ -10,7 +10,7 @@ from ...core.base.contract_base import ScriptContract
 BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
     entry_point="bedrock_prompt_template_generation.py",
     expected_input_paths={
-        "category_definitions": "/opt/ml/processing/input/categories",
+        "prompt_configs": "/opt/ml/processing/input/prompt_configs",
     },
     expected_output_paths={
         "prompt_templates": "/opt/ml/processing/output/templates",
@@ -27,12 +27,7 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
         "TEMPLATE_TASK_TYPE": "classification",
         "TEMPLATE_STYLE": "structured",
         "VALIDATION_LEVEL": "standard",
-        "SYSTEM_PROMPT_CONFIG": "{}",
-        "OUTPUT_FORMAT_CONFIG": "{}",
-        "INSTRUCTION_CONFIG": "{}",
         "INPUT_PLACEHOLDERS": '["input_data"]',
-        "OUTPUT_FORMAT_TYPE": "structured_json",
-        "REQUIRED_OUTPUT_FIELDS": '["category", "confidence", "key_evidence", "reasoning"]',
         "INCLUDE_EXAMPLES": "true",
         "GENERATE_VALIDATION_SCHEMA": "true",
         "TEMPLATE_VERSION": "1.0",
@@ -55,12 +50,13 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
     5. Structured output format specification with validation rules
     
     Input Structure:
-    - /opt/ml/processing/input/categories: Category definition files (required)
-      - Supports JSON (.json) and CSV (.csv) formats
-      - JSON: Single category object or array of category objects
-      - CSV: Comma-separated with semicolon-separated array fields
-      - Required fields: name, description, conditions, key_indicators
-      - Optional fields: exceptions, examples, priority, validation_rules, aliases
+    - /opt/ml/processing/input/prompt_configs: Prompt configuration directory (required)
+      - system_prompt.json: System prompt configuration (optional, uses defaults if missing)
+      - output_format.json: Output format configuration (optional, uses defaults if missing)
+      - instruction.json: Instruction configuration (optional, uses defaults if missing)
+      - category_definitions.json: Category definitions (required)
+        * Array of category objects with required fields: name, description, conditions, key_indicators
+        * Optional fields: exceptions, examples, priority, validation_rules, aliases
     
     Output Structure:
     - /opt/ml/processing/output/templates: Generated prompt templates
@@ -79,49 +75,75 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ScriptContract(
         * Evidence validation rules and requirements
     
     Contract aligned with script implementation:
-    - Inputs: category_definitions (required only)
+    - Inputs: prompt_configs (required directory with JSON config files)
     - Outputs: prompt_templates (primary), template_metadata, validation_schema
     - Arguments: include-examples, generate-validation-schema, template-version
-    - Schema Configuration: OUTPUT_FORMAT_CONFIG environment variable (JSON schema format)
+    - Configuration: File-based approach using JSON files instead of environment variables
     
-    Environment Variables (all optional with defaults):
+    Environment Variables (streamlined - all optional with defaults):
     - TEMPLATE_TASK_TYPE: Type of classification task (default: "classification")
     - TEMPLATE_STYLE: Template style format (default: "structured")
     - VALIDATION_LEVEL: Validation strictness level (default: "standard")
-    - SYSTEM_PROMPT_CONFIG: JSON config for system prompt customization
-    - OUTPUT_FORMAT_CONFIG: JSON schema for output format customization (supports full JSON Schema format)
-    - INSTRUCTION_CONFIG: JSON config for instruction customization
     - INPUT_PLACEHOLDERS: JSON array of input field names (default: ["input_data"])
-    - OUTPUT_FORMAT_TYPE: Output format type (default: "structured_json")
-    - REQUIRED_OUTPUT_FIELDS: JSON array of required output fields
     - INCLUDE_EXAMPLES: Include examples in template (default: "true")
     - GENERATE_VALIDATION_SCHEMA: Generate validation schema (default: "true")
     - TEMPLATE_VERSION: Template version identifier (default: "1.0")
     
-    Category Definition Format:
-    JSON Single Category:
-    {
-      "name": "Positive",
-      "description": "Positive sentiment or favorable opinion",
-      "conditions": ["Contains positive language", "Expresses satisfaction"],
-      "exceptions": ["Sarcastic statements", "Backhanded compliments"],
-      "key_indicators": ["good", "excellent", "satisfied", "happy"],
-      "examples": ["This is great!", "Love this product"],
-      "priority": 1,
-      "validation_rules": ["Must contain positive indicator"],
-      "aliases": ["positive_sentiment", "favorable"]
-    }
+    Configuration Files (in prompt_configs directory):
+    - system_prompt.json: System prompt configuration (role, expertise, behavioral guidelines)
+    - output_format.json: Output format configuration (field descriptions, validation rules)
+    - instruction.json: Instruction configuration (analysis steps, decision criteria)
+    - category_definitions.json: Category definitions (required - name, description, conditions, key_indicators)
     
-    JSON Multiple Categories:
+    Configuration File Formats:
+    
+    category_definitions.json (required):
     [
-      {"name": "Positive", "description": "...", "conditions": [...], ...},
-      {"name": "Negative", "description": "...", "conditions": [...], ...},
-      {"name": "Neutral", "description": "...", "conditions": [...], ...}
+      {
+        "name": "Positive",
+        "description": "Positive sentiment or favorable opinion",
+        "conditions": ["Contains positive language", "Expresses satisfaction"],
+        "exceptions": ["Sarcastic statements", "Backhanded compliments"],
+        "key_indicators": ["good", "excellent", "satisfied", "happy"],
+        "examples": ["This is great!", "Love this product"],
+        "priority": 1,
+        "validation_rules": ["Must contain positive indicator"],
+        "aliases": ["positive_sentiment", "favorable"]
+      }
     ]
     
-    CSV Format:
-    name,description,conditions,exceptions,key_indicators,priority,examples,validation_rules,aliases
-    Positive,"Positive sentiment","Contains positive;Expresses satisfaction","Sarcastic;Backhanded","good;excellent",1,"Great!;Love it","Must contain positive","positive_sentiment"
+    system_prompt.json (optional):
+    {
+      "role_definition": "expert analyst",
+      "expertise_areas": ["data analysis", "classification", "pattern recognition"],
+      "responsibilities": ["analyze data accurately", "classify content systematically"],
+      "behavioral_guidelines": ["be precise", "be objective", "be thorough"],
+      "tone": "professional",
+      "include_expertise_statement": true,
+      "include_task_context": true
+    }
+    
+    output_format.json (optional):
+    {
+      "format_type": "structured_json",
+      "required_fields": ["category", "confidence", "key_evidence", "reasoning"],
+      "field_descriptions": {
+        "category": "The classified category name",
+        "confidence": "Confidence score between 0.0 and 1.0",
+        "key_evidence": "Specific evidence from input data",
+        "reasoning": "Clear explanation of the decision-making process"
+      },
+      "validation_requirements": ["category must match predefined names exactly"],
+      "evidence_validation_rules": ["Evidence must align with category conditions"]
+    }
+    
+    instruction.json (optional):
+    {
+      "include_analysis_steps": true,
+      "include_decision_criteria": true,
+      "include_evidence_validation": true,
+      "step_by_step_format": true
+    }
     
     Template Generation Features:
     - 5-Component Architecture: System prompt, category definitions, input placeholders, instructions, output format
