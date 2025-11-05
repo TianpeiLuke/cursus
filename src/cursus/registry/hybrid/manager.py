@@ -51,7 +51,7 @@ class UnifiedRegistryManager:
             # Find package root and use relative path
             package_root = self._find_package_root()
             self.core_registry_path = str(package_root / "registry" / "step_names.py")
-        
+
         # PORTABLE: Only set workspaces_root if explicitly provided by user
         if workspaces_root:
             self.workspaces_root = Path(workspaces_root)
@@ -64,23 +64,23 @@ class UnifiedRegistryManager:
         self._core_loaded = False
 
         # Workspace registry data
-        self._workspace_steps: Dict[str, Dict[str, StepDefinition]] = (
-            {}
-        )  # workspace_id -> steps
-        self._workspace_overrides: Dict[str, Dict[str, StepDefinition]] = (
-            {}
-        )  # workspace_id -> overrides
-        self._workspace_metadata: Dict[str, Dict[str, Any]] = (
-            {}
-        )  # workspace_id -> metadata
+        self._workspace_steps: Dict[
+            str, Dict[str, StepDefinition]
+        ] = {}  # workspace_id -> steps
+        self._workspace_overrides: Dict[
+            str, Dict[str, StepDefinition]
+        ] = {}  # workspace_id -> overrides
+        self._workspace_metadata: Dict[
+            str, Dict[str, Any]
+        ] = {}  # workspace_id -> metadata
 
         # Performance optimization: Caching infrastructure
-        self._legacy_cache: Dict[str, Dict[str, Dict[str, Any]]] = (
-            {}
-        )  # workspace_id -> legacy_dict
-        self._definition_cache: Dict[str, Dict[str, StepDefinition]] = (
-            {}
-        )  # workspace_id -> definitions
+        self._legacy_cache: Dict[
+            str, Dict[str, Dict[str, Any]]
+        ] = {}  # workspace_id -> legacy_dict
+        self._definition_cache: Dict[
+            str, Dict[str, StepDefinition]
+        ] = {}  # workspace_id -> definitions
         self._step_list_cache: Dict[str, List[str]] = {}  # workspace_id -> step_names
 
         # Thread safety
@@ -93,7 +93,7 @@ class UnifiedRegistryManager:
     def _find_package_root(self) -> Path:
         """
         Find cursus package root using relative path navigation.
-        
+
         Works in all deployment scenarios:
         - PyPI: site-packages/cursus/
         - Source: src/cursus/
@@ -101,13 +101,13 @@ class UnifiedRegistryManager:
         """
         # From cursus/registry/hybrid/manager.py, navigate to cursus package root
         current_file = Path(__file__)
-        
+
         # Navigate up to find cursus package root
         current_dir = current_file.parent
-        while current_dir.name != 'cursus' and current_dir.parent != current_dir:
+        while current_dir.name != "cursus" and current_dir.parent != current_dir:
             current_dir = current_dir.parent
-        
-        if current_dir.name == 'cursus':
+
+        if current_dir.name == "cursus":
             return current_dir
         else:
             # Fallback: assume we're in cursus package structure
@@ -142,40 +142,58 @@ class UnifiedRegistryManager:
         """Auto-discover and load workspace registries using step catalog."""
         # Avoid circular imports by checking if we're already in a step catalog context
         import sys
-        
+
         # Check if step catalog is already being imported to avoid recursion
-        if 'cursus.step_catalog' in sys.modules or 'src.cursus.step_catalog' in sys.modules:
-            logger.debug("Step catalog already in import chain, skipping workspace discovery")
+        if (
+            "cursus.step_catalog" in sys.modules
+            or "src.cursus.step_catalog" in sys.modules
+        ):
+            logger.debug(
+                "Step catalog already in import chain, skipping workspace discovery"
+            )
             return
-            
+
         # Try using step catalog for workspace discovery (only if workspaces_root is provided)
         if self.workspaces_root:
             try:
                 # Use lazy import to avoid circular dependency with relative import
                 import importlib
-                step_catalog_module = importlib.import_module('...step_catalog.step_catalog', package=__package__)
+
+                step_catalog_module = importlib.import_module(
+                    "...step_catalog.step_catalog", package=__package__
+                )
                 StepCatalog = step_catalog_module.StepCatalog
-                
+
                 # PORTABLE: Use workspace-aware discovery with user-provided workspace root
                 catalog = StepCatalog(workspace_dirs=[self.workspaces_root])
-                
+
                 # Use catalog's cross-workspace discovery
-                cross_workspace_components = catalog.discover_cross_workspace_components()
-                
+                cross_workspace_components = (
+                    catalog.discover_cross_workspace_components()
+                )
+
                 # Load workspaces discovered by catalog
                 for workspace_id, components in cross_workspace_components.items():
-                    if workspace_id != "core" and components:  # Skip core, focus on workspaces
+                    if (
+                        workspace_id != "core" and components
+                    ):  # Skip core, focus on workspaces
                         workspace_path = self.workspaces_root / workspace_id
                         if workspace_path.exists():
                             self._load_workspace_registry(workspace_id, workspace_path)
-                            logger.debug(f"Loaded workspace '{workspace_id}' via step catalog with {len(components)} components")
-                            
+                            logger.debug(
+                                f"Loaded workspace '{workspace_id}' via step catalog with {len(components)} components"
+                            )
+
             except ImportError:
-                logger.debug("Step catalog not available - workspace discovery disabled")
+                logger.debug(
+                    "Step catalog not available - workspace discovery disabled"
+                )
             except Exception as e:
                 logger.debug(f"Step catalog workspace discovery failed: {e}")
         else:
-            logger.debug("No workspaces_root provided - skipping workspace discovery (package-only mode)")
+            logger.debug(
+                "No workspaces_root provided - skipping workspace discovery (package-only mode)"
+            )
 
     def _load_workspace_registry(self, workspace_id: str, workspace_path: Path):
         """Load workspace registry from the workspace path."""

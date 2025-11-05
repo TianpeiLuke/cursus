@@ -74,11 +74,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Import TriModalHyperparameters for inference config
 try:
     from hyperparams.hyperparameters_trimodal import TriModalHyperparameters
+
     # Use TriModalHyperparameters as the Config class for full alignment
     Config = TriModalHyperparameters
 except ImportError:
-    logger.warning("Could not import TriModalHyperparameters, falling back to basic Config")
-    
+    logger.warning(
+        "Could not import TriModalHyperparameters, falling back to basic Config"
+    )
+
     # Fallback Config class if import fails
     class Config(BaseModel):
         id_name: str = "order_id"
@@ -100,7 +103,9 @@ except ImportError:
         input_tab_dim: int = 11
         num_classes: int = 2
         is_binary: bool = True
-        multiclass_categories: List[Union[int, str]] = Field(default_factory=lambda: [0, 1])
+        multiclass_categories: List[Union[int, str]] = Field(
+            default_factory=lambda: [0, 1]
+        )
         max_epochs: int = 10
         lr: float = 0.02
         lr_decay: float = 0.05
@@ -135,7 +140,7 @@ except ImportError:
         categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = None
         label_to_id: Optional[Dict[str, int]] = None
         id_to_label: Optional[List[str]] = None
-        
+
         # === Trimodal Configuration Fields ===
         primary_text_name: Optional[str] = None
         secondary_text_name: Optional[str] = None
@@ -153,7 +158,7 @@ except ImportError:
         fusion_dropout: float = 0.1
         cross_attention_heads: int = 8
         cross_attention_dropout: float = 0.1
-        
+
         # Additional fields that might be saved during training
         primary_reinit_pooler: Optional[bool] = None
         primary_reinit_layers: Optional[int] = None
@@ -181,8 +186,12 @@ except ImportError:
                         f"num_classes={self.num_classes} does not match "
                         f"len(multiclass_categories)={len(self.multiclass_categories)}"
                     )
-                if len(set(self.multiclass_categories)) != len(self.multiclass_categories):
-                    raise ValueError("multiclass_categories must contain unique values.")
+                if len(set(self.multiclass_categories)) != len(
+                    self.multiclass_categories
+                ):
+                    raise ValueError(
+                        "multiclass_categories must contain unique values."
+                    )
             else:
                 # Optional: Warn if multiclass_categories is defined when binary
                 if self.multiclass_categories and len(self.multiclass_categories) != 2:
@@ -198,13 +207,15 @@ except ImportError:
                 )
 
 
-def load_pytorch_model_artifacts(model_dir: str) -> Tuple[torch.nn.Module, Dict[str, Any], AutoTokenizer, Dict[str, Processor]]:
+def load_pytorch_model_artifacts(
+    model_dir: str,
+) -> Tuple[torch.nn.Module, Dict[str, Any], AutoTokenizer, Dict[str, Processor]]:
     """
     Load the trained PyTorch model and all preprocessing artifacts from the specified directory.
     Returns model, config, tokenizer, and preprocessing pipelines.
     """
     logger.info(f"Loading PyTorch model artifacts from {model_dir}")
-    
+
     model_filename = "model.pth"
     model_artifact_name = "model_artifacts.pth"
     hyperparams_filename = "hyperparameters.json"
@@ -214,16 +225,18 @@ def load_pytorch_model_artifacts(model_dir: str) -> Tuple[torch.nn.Module, Dict[
     hyperparams_path = os.path.join(model_dir, hyperparams_filename)
     if os.path.exists(hyperparams_path):
         logger.info(f"Loading hyperparameters from {hyperparams_path}")
-        with open(hyperparams_path, 'r') as f:
+        with open(hyperparams_path, "r") as f:
             load_config = json.load(f)
-        
+
         # Still need to load artifacts for embedding_mat, vocab, and model_class
         _, embedding_mat, vocab, model_class = load_artifacts(
             os.path.join(model_dir, model_artifact_name), device_l=device
         )
     else:
         # Fallback to loading config from artifacts (backward compatibility)
-        logger.info("Hyperparameters.json not found, loading config from model artifacts")
+        logger.info(
+            "Hyperparameters.json not found, loading config from model artifacts"
+        )
         load_config, embedding_mat, vocab, model_class = load_artifacts(
             os.path.join(model_dir, model_artifact_name), device_l=device
         )
@@ -264,18 +277,18 @@ def build_processing_pipeline(
     tokenizer: AutoTokenizer,
     config: Dict[str, Any],
     input_ids_key: str = "input_ids",
-    attention_mask_key: str = "attention_mask"
+    attention_mask_key: str = "attention_mask",
 ) -> Processor:
     """
     Build a processing pipeline based on the specified steps.
-    
+
     Args:
         processing_steps: List of processing step names
         tokenizer: Tokenizer to use for tokenization step
         config: Configuration dictionary
         input_ids_key: Key name for input_ids in tokenized output
         attention_mask_key: Key name for attention_mask in tokenized output
-    
+
     Returns:
         Composed processor pipeline
     """
@@ -297,27 +310,29 @@ def build_processing_pipeline(
             max_length=config.get("max_sen_len", 512),
             input_ids_key=input_ids_key,
             attention_mask_key=attention_mask_key,
-        )
+        ),
     }
-    
+
     # Build pipeline by chaining processors
     pipeline = None
     for step_name in processing_steps:
         if step_name not in step_map:
             logger.warning(f"Unknown processing step '{step_name}', skipping")
             continue
-            
+
         processor_class = step_map[step_name]
-        processor = processor_class() if not callable(processor_class) else processor_class()
-        
+        processor = (
+            processor_class() if not callable(processor_class) else processor_class()
+        )
+
         if pipeline is None:
             pipeline = processor
         else:
             pipeline = pipeline >> processor
-    
+
     if pipeline is None:
         raise ValueError(f"No valid processing steps found in: {processing_steps}")
-    
+
     return pipeline
 
 
@@ -331,106 +346,115 @@ def data_preprocess_pipeline(
     """
     if not config.tokenizer:
         config.tokenizer = "bert-base-multilingual-cased"
-    
+
     tokenizers = {}
     pipelines = {}
-    
+
     # Check if this is tri-modal configuration
-    is_trimodal = (config.primary_text_name and 
-                   config.secondary_text_name)
-    
+    is_trimodal = config.primary_text_name and config.secondary_text_name
+
     if is_trimodal:
         logger.info("Setting up tri-modal text processing pipelines")
-        
+
         # Primary text pipeline (e.g., chat)
         primary_tokenizer_name = config.primary_tokenizer or config.tokenizer
         logger.info(f"Constructing primary tokenizer: {primary_tokenizer_name}")
         primary_tokenizer = AutoTokenizer.from_pretrained(primary_tokenizer_name)
-        
+
         # Get processing steps from config
         primary_steps = config.primary_text_processing_steps or [
-            "dialogue_splitter", "html_normalizer", "emoji_remover", 
-            "text_normalizer", "dialogue_chunker", "tokenizer"
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
         ]
         logger.info(f"Primary text processing steps: {primary_steps}")
-        
+
         primary_pipeline = build_processing_pipeline(
             primary_steps,
             primary_tokenizer,
             config.model_dump(),
             input_ids_key=config.primary_text_input_ids_key,
-            attention_mask_key=config.primary_text_attention_mask_key
+            attention_mask_key=config.primary_text_attention_mask_key,
         )
-        
+
         # Secondary text pipeline (e.g., shiptrack)
         secondary_tokenizer_name = config.secondary_tokenizer or config.tokenizer
         logger.info(f"Constructing secondary tokenizer: {secondary_tokenizer_name}")
         secondary_tokenizer = AutoTokenizer.from_pretrained(secondary_tokenizer_name)
-        
+
         # Get processing steps from config
         secondary_steps = config.secondary_text_processing_steps or [
-            "dialogue_splitter", "text_normalizer", "dialogue_chunker", "tokenizer"
+            "dialogue_splitter",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
         ]
         logger.info(f"Secondary text processing steps: {secondary_steps}")
-        
+
         secondary_pipeline = build_processing_pipeline(
             secondary_steps,
             secondary_tokenizer,
             config.model_dump(),
             input_ids_key=config.secondary_text_input_ids_key,
-            attention_mask_key=config.secondary_text_attention_mask_key
+            attention_mask_key=config.secondary_text_attention_mask_key,
         )
-        
-        tokenizers = {
-            'primary': primary_tokenizer,
-            'secondary': secondary_tokenizer
-        }
-        
+
+        tokenizers = {"primary": primary_tokenizer, "secondary": secondary_tokenizer}
+
         pipelines = {
             config.primary_text_name: primary_pipeline,
-            config.secondary_text_name: secondary_pipeline
+            config.secondary_text_name: secondary_pipeline,
         }
-        
+
         logger.info(f"Primary text field: {config.primary_text_name}")
         logger.info(f"Secondary text field: {config.secondary_text_name}")
-        
+
     else:
         # Traditional bi-modal setup
         logger.info("Setting up bi-modal text processing pipeline")
         logger.info(f"Constructing tokenizer: {config.tokenizer}")
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-        
+
         # Use default processing steps for bi-modal
         default_steps = [
-            "dialogue_splitter", "html_normalizer", "emoji_remover", 
-            "text_normalizer", "dialogue_chunker", "tokenizer"
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
         ]
-        
+
         dialogue_pipeline = build_processing_pipeline(
             default_steps,
             tokenizer,
             config.model_dump(),
             input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key
+            attention_mask_key=config.text_attention_mask_key,
         )
-        
-        tokenizers = {'main': tokenizer}
+
+        tokenizers = {"main": tokenizer}
         pipelines = {config.text_name: dialogue_pipeline}
         logger.info(f"Text field: {config.text_name}")
-    
+
     return tokenizers, pipelines
 
 
-def preprocess_pytorch_eval_data(df: pd.DataFrame, config: Dict[str, Any], pipelines: Dict[str, Processor]) -> pd.DataFrame:
+def preprocess_pytorch_eval_data(
+    df: pd.DataFrame, config: Dict[str, Any], pipelines: Dict[str, Processor]
+) -> pd.DataFrame:
     """
     Apply PyTorch preprocessing pipelines to the evaluation DataFrame.
     Preserves any non-feature columns like id and label.
     """
     logger.info(f"Preprocessing evaluation data with shape: {df.shape}")
-    
+
     # Create BSMDataset for processing
     dataset = BSMDataset(config, dataframe=df)
-    
+
     # Apply all preprocessing pipelines
     for feature_name, pipeline in pipelines.items():
         if feature_name in df.columns:
@@ -438,7 +462,7 @@ def preprocess_pytorch_eval_data(df: pd.DataFrame, config: Dict[str, Any], pipel
             dataset.add_pipeline(feature_name, pipeline)
         else:
             logger.warning(f"Feature {feature_name} not found in evaluation data")
-    
+
     logger.info(f"Preprocessing complete")
     return dataset
 
@@ -469,7 +493,9 @@ def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
     return df
 
 
-def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> Tuple[str, str]:
+def get_id_label_columns(
+    df: pd.DataFrame, id_field: str, label_field: str
+) -> Tuple[str, str]:
     """
     Determine the ID and label columns in the DataFrame.
     Falls back to the first and second columns if not found.
@@ -480,7 +506,14 @@ def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> T
     return id_col, label_col
 
 
-def save_predictions(ids: np.ndarray, y_true: np.ndarray, y_prob: np.ndarray, id_col: str, label_col: str, output_eval_dir: str) -> None:
+def save_predictions(
+    ids: np.ndarray,
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    id_col: str,
+    label_col: str,
+    output_eval_dir: str,
+) -> None:
     """
     Save predictions to a CSV file, including id, true label, and class probabilities.
     """
@@ -494,7 +527,9 @@ def save_predictions(ids: np.ndarray, y_true: np.ndarray, y_prob: np.ndarray, id
     logger.info(f"Saved predictions to {out_path}")
 
 
-def save_metrics(metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str) -> None:
+def save_metrics(
+    metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str
+) -> None:
     """
     Save computed metrics as a JSON file.
     """
@@ -535,7 +570,9 @@ def save_metrics(metrics: Dict[str, Union[int, float, str]], output_metrics_dir:
     logger.info(f"Saved metrics summary to {summary_path}")
 
 
-def plot_and_save_roc_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
+def plot_and_save_roc_curve(
+    y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = ""
+) -> None:
     """
     Plot ROC curve and save as JPG.
     """
@@ -554,7 +591,9 @@ def plot_and_save_roc_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir:
     logger.info(f"Saved ROC curve to {out_path}")
 
 
-def plot_and_save_pr_curve(y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = "") -> None:
+def plot_and_save_pr_curve(
+    y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = ""
+) -> None:
     """
     Plot Precision-Recall curve and save as JPG.
     """
@@ -586,28 +625,40 @@ def evaluate_pytorch_model(
     Also generate and save ROC and PR curves as JPG.
     """
     logger.info("Evaluating PyTorch model")
-    
+
     # Determine collate function based on model type and configuration
-    is_trimodal_model = config.get("model_class", "") in ["trimodal_bert", "trimodal_cross_attn_bert", "trimodal_gate_fusion_bert"]
-    has_dual_text_config = (config.get("primary_text_name") and config.get("secondary_text_name"))
-    
+    is_trimodal_model = config.get("model_class", "") in [
+        "trimodal_bert",
+        "trimodal_cross_attn_bert",
+        "trimodal_gate_fusion_bert",
+    ]
+    has_dual_text_config = config.get("primary_text_name") and config.get(
+        "secondary_text_name"
+    )
+
     if is_trimodal_model and has_dual_text_config:
         # For tri-modal models, use the enhanced collate function that handles multiple text fields
-        logger.info(f"Using tri-modal collate function for {config.get('model_class')} model")
+        logger.info(
+            f"Using tri-modal collate function for {config.get('model_class')} model"
+        )
         bsm_collate_batch = build_trimodal_collate_batch()
     else:
         # For bi-modal models (including those with dual text config but non-trimodal model)
-        logger.info(f"Using bi-modal collate function for {config.get('model_class')} model")
+        logger.info(
+            f"Using bi-modal collate function for {config.get('model_class')} model"
+        )
         # Use primary text keys if available, otherwise fall back to traditional text keys
         if has_dual_text_config:
             # Use primary text for bi-modal models with dual text config
             input_ids_key = config.get("primary_text_input_ids_key", "input_ids")
-            attention_mask_key = config.get("primary_text_attention_mask_key", "attention_mask")
+            attention_mask_key = config.get(
+                "primary_text_attention_mask_key", "attention_mask"
+            )
         else:
             # Traditional single text configuration
             input_ids_key = config.get("text_input_ids_key", "input_ids")
             attention_mask_key = config.get("text_attention_mask_key", "attention_mask")
-        
+
         bsm_collate_batch = build_collate_batch(
             input_ids_key=input_ids_key,
             attention_mask_key=attention_mask_key,
@@ -615,13 +666,15 @@ def evaluate_pytorch_model(
 
     # Create DataLoader
     batch_size = config.get("batch_size", 32)
-    dataloader = DataLoader(dataset, collate_fn=bsm_collate_batch, batch_size=batch_size)
+    dataloader = DataLoader(
+        dataset, collate_fn=bsm_collate_batch, batch_size=batch_size
+    )
 
     # Run inference using existing PyTorch inference function
     logger.info("Running model inference...")
     y_prob = model_online_inference(model, dataloader)
     logger.info(f"Model prediction shape: {y_prob.shape}")
-    
+
     # Convert to proper probability format
     if len(y_prob.shape) == 1:
         y_prob = np.column_stack([1 - y_prob, y_prob])
@@ -636,19 +689,21 @@ def evaluate_pytorch_model(
     is_binary_model = config.get("is_binary", True)
 
     if is_binary_model:
-        logger.info("Detected binary classification task based on model hyperparameters.")
+        logger.info(
+            "Detected binary classification task based on model hyperparameters."
+        )
         # Ensure y_true is also binary (0 or 1) for consistent metric calculation
         y_true = (y_true > 0).astype(int)
-        
+
         # Compute metrics using existing PyTorch function
         task = "binary"
         num_classes = 2
         output_metrics = ["auroc", "average_precision", "f1_score"]
-        
+
         # Convert to tensors for compute_metrics function
         y_prob_tensor = torch.tensor(y_prob)
         y_true_tensor = torch.tensor(y_true)
-        
+
         metrics = compute_metrics(
             y_prob_tensor[:, 1],  # Use positive class probabilities for binary
             y_true_tensor,
@@ -657,25 +712,27 @@ def evaluate_pytorch_model(
             num_classes=num_classes,
             stage="test",
         )
-        
+
         # Convert tensor values to float for JSON serialization
         metrics = {k: float(v) if torch.is_tensor(v) else v for k, v in metrics.items()}
-        
+
         plot_and_save_roc_curve(y_true, y_prob[:, 1], output_metrics_dir)
         plot_and_save_pr_curve(y_true, y_prob[:, 1], output_metrics_dir)
     else:
         n_classes = y_prob.shape[1]
-        logger.info(f"Detected multiclass classification task with {n_classes} classes.")
-        
+        logger.info(
+            f"Detected multiclass classification task with {n_classes} classes."
+        )
+
         # Compute metrics using existing PyTorch function
         task = "multiclass"
         num_classes = n_classes
         output_metrics = ["auroc", "average_precision", "f1_score"]
-        
+
         # Convert to tensors for compute_metrics function
         y_prob_tensor = torch.tensor(y_prob)
         y_true_tensor = torch.tensor(y_true)
-        
+
         metrics = compute_metrics(
             y_prob_tensor,
             y_true_tensor,
@@ -684,10 +741,10 @@ def evaluate_pytorch_model(
             num_classes=num_classes,
             stage="test",
         )
-        
+
         # Convert tensor values to float for JSON serialization
         metrics = {k: float(v) if torch.is_tensor(v) else v for k, v in metrics.items()}
-        
+
         for i in range(n_classes):
             y_true_bin = (y_true == i).astype(int)
             if len(np.unique(y_true_bin)) > 1:
@@ -756,13 +813,13 @@ def main(
 
     # Load and preprocess data
     df = load_eval_data(eval_data_dir)
-    
+
     # Get ID and label columns before preprocessing
     id_col, label_col = get_id_label_columns(df, id_field, label_field)
-    
+
     # Process the data using PyTorch preprocessing pipelines
     dataset = preprocess_pytorch_eval_data(df, config, pipelines)
-    
+
     logger.info(f"Final evaluation dataset ready for inference")
 
     # Evaluate model using the processed dataset

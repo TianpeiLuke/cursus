@@ -7,7 +7,7 @@ This DAG can be used by both regular and MODS pipeline variants to ensure consis
 
 The DAG includes:
 1) Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) Stratified Sampling
 4) XGBoost Model Training
 5) Data Loading (evaluation)
@@ -29,7 +29,7 @@ def create_xgboost_training_with_stratified_dag() -> PipelineDAG:
     Create a DAG for training and evaluating an XGBoost model with stratified sampling.
 
     This DAG represents a workflow that includes training an XGBoost model
-    with stratified sampling for better data distribution and then evaluating 
+    with stratified sampling for better data distribution and then evaluating
     it with a separate evaluation dataset.
 
     Returns:
@@ -74,7 +74,13 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="XGBoost training pipeline with stratified sampling and model evaluation",
         complexity="standard",
-        features=["training", "evaluation", "data_loading", "preprocessing", "stratified_sampling"],
+        features=[
+            "training",
+            "evaluation",
+            "data_loading",
+            "preprocessing",
+            "stratified_sampling",
+        ],
         framework="xgboost",
         node_count=7,
         edge_count=6,

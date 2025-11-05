@@ -1,8 +1,8 @@
 """
 Feature Selection Script Contract
 
-Defines the contract for the feature selection script that applies multiple statistical and 
-machine learning-based feature selection methods for dimensionality reduction and model 
+Defines the contract for the feature selection script that applies multiple statistical and
+machine learning-based feature selection methods for dimensionality reduction and model
 performance optimization.
 """
 
@@ -16,7 +16,7 @@ FEATURE_SELECTION_CONTRACT = ScriptContract(
     },
     expected_output_paths={
         "processed_data": "/opt/ml/processing/output",
-        "selected_features": "/opt/ml/processing/output/selected_features"
+        "selected_features": "/opt/ml/processing/output/selected_features",
     },
     expected_arguments={
         # No expected arguments - job_type comes from config

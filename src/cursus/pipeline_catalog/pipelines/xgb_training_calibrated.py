@@ -6,11 +6,11 @@ This pipeline implements a workflow for training an XGBoost model with calibrati
 2) Preprocessing (training)
 3) XGBoost Model Training
 4) Model Calibration
-5) Data Loading (calibration) 
+5) Data Loading (calibration)
 6) Preprocessing (calibration)
 
-This pipeline is useful when you need to calibrate your XGBoost model's 
-probability outputs to improve reliability of predictions, especially for 
+This pipeline is useful when you need to calibrate your XGBoost model's
+probability outputs to improve reliability of predictions, especially for
 classification tasks where accurate probability estimates are important.
 
 Example:
@@ -18,22 +18,22 @@ Example:
     from cursus.pipeline_catalog.pipelines.xgb_training_calibrated import XGBoostTrainingCalibratedPipeline
     from sagemaker import Session
     from sagemaker.workflow.pipeline_context import PipelineSession
-    
+
     # Initialize session
     sagemaker_session = Session()
     role = sagemaker_session.get_caller_identity_arn()
     pipeline_session = PipelineSession()
-    
+
     # Create pipeline instance
     pipeline_instance = XGBoostTrainingCalibratedPipeline(
         config_path="path/to/config.json",
         sagemaker_session=pipeline_session,
         execution_role=role
     )
-    
+
     # Generate pipeline
     pipeline = pipeline_instance.generate_pipeline()
-    
+
     # Execute the pipeline
     pipeline.upsert()
     execution = pipeline.start()
@@ -60,13 +60,13 @@ logger = logging.getLogger(__name__)
 class XGBoostTrainingCalibratedPipeline(BasePipeline):
     """
     XGBoost Training with Calibration Pipeline using the new BasePipeline structure.
-    
+
     This pipeline implements a workflow for training an XGBoost model with calibration:
     1) Data Loading (training)
     2) Preprocessing (training)
     3) XGBoost Model Training
     4) Model Calibration
-    5) Data Loading (calibration) 
+    5) Data Loading (calibration)
     6) Preprocessing (calibration)
     """
 
@@ -77,7 +77,7 @@ class XGBoostTrainingCalibratedPipeline(BasePipeline):
         execution_role: Optional[str] = None,
         enable_mods: bool = False,  # Regular pipeline, not MODS-enhanced
         validate: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the XGBoost Training Calibrated Pipeline.
@@ -96,7 +96,7 @@ class XGBoostTrainingCalibratedPipeline(BasePipeline):
             execution_role=execution_role,
             enable_mods=enable_mods,
             validate=validate,
-            **kwargs
+            **kwargs,
         )
         logger.info("Initialized XGBoost Training Calibrated Pipeline")
 
@@ -228,12 +228,13 @@ if __name__ == "__main__":
         config_path = args.config_path
         if not config_path:
             from pathlib import Path
+
             config_dir = Path.cwd().parent / "pipeline_config"
             config_path = str(config_dir / "config.json")
 
         # Create the pipeline using new class-based approach
         logger.info(f"Creating XGBoost calibrated pipeline with config: {config_path}")
-        
+
         pipeline_instance = XGBoostTrainingCalibratedPipeline(
             config_path=config_path,
             sagemaker_session=pipeline_session,
@@ -256,14 +257,18 @@ if __name__ == "__main__":
 
         logger.info("XGBoost calibrated pipeline created successfully!")
         logger.info(f"Pipeline name: {pipeline.name}")
-        logger.info(f"Template available: {pipeline_instance.get_last_template() is not None}")
+        logger.info(
+            f"Template available: {pipeline_instance.get_last_template() is not None}"
+        )
 
         # Process execution documents if requested
         if args.output_doc:
-            execution_doc = pipeline_instance.fill_execution_document({
-                "training_dataset": "my-dataset",
-                "calibration_dataset": "my-calibration-dataset",
-            })
+            execution_doc = pipeline_instance.fill_execution_document(
+                {
+                    "training_dataset": "my-dataset",
+                    "calibration_dataset": "my-calibration-dataset",
+                }
+            )
             pipeline_instance.save_execution_document(execution_doc, args.output_doc)
 
         # Upsert if requested

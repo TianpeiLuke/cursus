@@ -64,10 +64,10 @@ class XGBoostTrainingConfig(BasePipelineConfig):
 
     # Hyperparameters handling configuration
     skip_hyperparameters_s3_uri: bool = Field(
-        default=True, 
+        default=True,
         description="Whether to skip hyperparameters_s3_uri channel during _get_inputs. "
-                   "If True (default), hyperparameters are loaded from script folder. "
-                   "If False, hyperparameters_s3_uri channel is created as TrainingInput."
+        "If True (default), hyperparameters are loaded from script folder. "
+        "If False, hyperparameters_s3_uri channel is created as TrainingInput.",
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -108,7 +108,6 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         )
 
         return self
-
 
     @field_validator("training_instance_type")
     @classmethod

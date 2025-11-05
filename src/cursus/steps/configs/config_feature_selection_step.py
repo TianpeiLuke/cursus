@@ -136,7 +136,9 @@ class FeatureSelectionConfig(ProcessingStepConfigBase):
             List of method names
         """
         if self._method_list is None:
-            methods = [method.strip() for method in self.feature_selection_methods.split(",")]
+            methods = [
+                method.strip() for method in self.feature_selection_methods.split(",")
+            ]
             # Filter out empty strings
             self._method_list = [method for method in methods if method]
 
@@ -187,26 +189,35 @@ class FeatureSelectionConfig(ProcessingStepConfigBase):
         """
         if not v or not v.strip():
             raise ValueError("feature_selection_methods must be a non-empty string")
-        
+
         # Parse methods and validate each one
         methods = [method.strip() for method in v.split(",")]
         valid_methods = {
-            "variance", "correlation", "mutual_info", "chi2", "f_test",
-            "rfe", "importance", "lasso", "permutation"
+            "variance",
+            "correlation",
+            "mutual_info",
+            "chi2",
+            "f_test",
+            "rfe",
+            "importance",
+            "lasso",
+            "permutation",
         }
-        
+
         for method in methods:
             if method and method not in valid_methods:
                 raise ValueError(
                     f"Invalid feature selection method '{method}'. "
                     f"Valid methods are: {', '.join(sorted(valid_methods))}"
                 )
-        
+
         # Filter out empty methods and rejoin
         valid_methods_list = [method for method in methods if method]
         if not valid_methods_list:
-            raise ValueError("At least one valid feature selection method must be specified")
-        
+            raise ValueError(
+                "At least one valid feature selection method must be specified"
+            )
+
         return ",".join(valid_methods_list)
 
     @field_validator("combination_strategy")
@@ -217,7 +228,9 @@ class FeatureSelectionConfig(ProcessingStepConfigBase):
         """
         allowed = {"voting", "ranking", "scoring"}
         if v not in allowed:
-            raise ValueError(f"combination_strategy must be one of {allowed}, got '{v}'")
+            raise ValueError(
+                f"combination_strategy must be one of {allowed}, got '{v}'"
+            )
         return v
 
     # Initialize derived fields at creation time

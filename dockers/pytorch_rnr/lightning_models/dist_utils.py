@@ -57,9 +57,9 @@ def create_local_process_group(num_workers_per_machine: int) -> None:
     global _LOCAL_PROCESS_GROUP
     assert _LOCAL_PROCESS_GROUP is None, "Local process group already created!"
     world_size = get_world_size()
-    assert (
-        world_size % num_workers_per_machine == 0
-    ), "World size must be divisible by num_workers_per_machine"
+    assert world_size % num_workers_per_machine == 0, (
+        "World size must be divisible by num_workers_per_machine"
+    )
     num_machines = world_size // num_workers_per_machine
     machine_rank = get_rank() // num_workers_per_machine
 

@@ -17,7 +17,9 @@ import logging
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import contract
-from ..contracts.missing_value_imputation_contract import MISSING_VALUE_IMPUTATION_CONTRACT
+from ..contracts.missing_value_imputation_contract import (
+    MISSING_VALUE_IMPUTATION_CONTRACT,
+)
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -151,9 +153,13 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
                 "NUMERICAL_CONSTANT_VALUE": str(self.numerical_constant_value),
                 "CATEGORICAL_CONSTANT_VALUE": self.categorical_constant_value,
                 "TEXT_CONSTANT_VALUE": self.text_constant_value,
-                "CATEGORICAL_PRESERVE_DTYPE": str(self.categorical_preserve_dtype).lower(),
+                "CATEGORICAL_PRESERVE_DTYPE": str(
+                    self.categorical_preserve_dtype
+                ).lower(),
                 "AUTO_DETECT_CATEGORICAL": str(self.auto_detect_categorical).lower(),
-                "CATEGORICAL_UNIQUE_RATIO_THRESHOLD": str(self.categorical_unique_ratio_threshold),
+                "CATEGORICAL_UNIQUE_RATIO_THRESHOLD": str(
+                    self.categorical_unique_ratio_threshold
+                ),
                 "VALIDATE_FILL_VALUES": str(self.validate_fill_values).lower(),
             }
 
@@ -184,15 +190,15 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         """
         if self._effective_exclude_columns is None:
             exclude_list = []
-            
+
             # Always exclude label field
             if self.label_field:
                 exclude_list.append(self.label_field)
-            
+
             # Add user-specified exclude columns
             if self.exclude_columns:
                 exclude_list.extend(self.exclude_columns)
-            
+
             # Remove duplicates while preserving order
             seen = set()
             self._effective_exclude_columns = []
@@ -248,7 +254,9 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         """
         allowed = {"mean", "median", "constant"}
         if v not in allowed:
-            raise ValueError(f"default_numerical_strategy must be one of {allowed}, got '{v}'")
+            raise ValueError(
+                f"default_numerical_strategy must be one of {allowed}, got '{v}'"
+            )
         return v
 
     @field_validator("default_categorical_strategy")
@@ -259,7 +267,9 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         """
         allowed = {"mode", "constant"}
         if v not in allowed:
-            raise ValueError(f"default_categorical_strategy must be one of {allowed}, got '{v}'")
+            raise ValueError(
+                f"default_categorical_strategy must be one of {allowed}, got '{v}'"
+            )
         return v
 
     @field_validator("default_text_strategy")
@@ -270,7 +280,9 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         """
         allowed = {"mode", "constant", "empty"}
         if v not in allowed:
-            raise ValueError(f"default_text_strategy must be one of {allowed}, got '{v}'")
+            raise ValueError(
+                f"default_text_strategy must be one of {allowed}, got '{v}'"
+            )
         return v
 
     @field_validator("categorical_constant_value", "text_constant_value")
@@ -281,18 +293,35 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         """
         # Common pandas NA values to avoid
         pandas_na_values = {
-            "N/A", "NA", "NULL", "NaN", "nan", "NAN",
-            "#N/A", "#N/A N/A", "#NA", "-1.#IND", "-1.#QNAN", 
-            "-NaN", "-nan", "1.#IND", "1.#QNAN", "<NA>",
-            "null", "Null", "none", "None", "NONE"
+            "N/A",
+            "NA",
+            "NULL",
+            "NaN",
+            "nan",
+            "NAN",
+            "#N/A",
+            "#N/A N/A",
+            "#NA",
+            "-1.#IND",
+            "-1.#QNAN",
+            "-NaN",
+            "-nan",
+            "1.#IND",
+            "1.#QNAN",
+            "<NA>",
+            "null",
+            "Null",
+            "none",
+            "None",
+            "NONE",
         }
-        
+
         if v in pandas_na_values:
             logger.warning(
                 f"Fill value '{v}' may be interpreted as NA by pandas. "
                 f"Consider using 'Unknown', 'Missing', or 'MISSING_VALUE' instead."
             )
-        
+
         return v
 
     @field_validator("exclude_columns")
@@ -304,43 +333,47 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         if v is not None:
             if not isinstance(v, list):
                 raise ValueError("exclude_columns must be a list of strings")
-            
+
             validated_columns = []
             for col in v:
                 if not isinstance(col, str) or not col.strip():
                     raise ValueError("All exclude_columns must be non-empty strings")
                 validated_columns.append(col.strip())
-            
+
             return validated_columns
-        
+
         return v
 
     @field_validator("column_strategies")
     @classmethod
-    def validate_column_strategies(cls, v: Optional[Dict[str, str]]) -> Optional[Dict[str, str]]:
+    def validate_column_strategies(
+        cls, v: Optional[Dict[str, str]]
+    ) -> Optional[Dict[str, str]]:
         """
         Validate column-specific strategies.
         """
         if v is not None:
             if not isinstance(v, dict):
                 raise ValueError("column_strategies must be a dictionary")
-            
+
             valid_strategies = {"mean", "median", "constant", "mode", "empty"}
             validated_strategies = {}
-            
+
             for column, strategy in v.items():
                 if not isinstance(column, str) or not column.strip():
-                    raise ValueError("All column names in column_strategies must be non-empty strings")
-                
+                    raise ValueError(
+                        "All column names in column_strategies must be non-empty strings"
+                    )
+
                 if not isinstance(strategy, str) or strategy not in valid_strategies:
                     raise ValueError(
                         f"Strategy '{strategy}' for column '{column}' must be one of {valid_strategies}"
                     )
-                
+
                 validated_strategies[column.strip()] = strategy
-            
+
             return validated_strategies
-        
+
         return v
 
     # Initialize derived fields at creation time

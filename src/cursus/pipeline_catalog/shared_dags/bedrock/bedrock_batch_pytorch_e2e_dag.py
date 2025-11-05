@@ -9,7 +9,7 @@ The DAG includes separate Bedrock batch processing paths for training and calibr
 
 Training Flow:
 1) Dummy Data Loading (training)
-2) Tabular Preprocessing (training) 
+2) Tabular Preprocessing (training)
 3) Bedrock Prompt Template Generation (shared)
 4) Bedrock Batch Processing (training) - receives data + templates
 5) PyTorch Model Training
@@ -23,7 +23,7 @@ Calibration Flow:
 Final Steps:
 10) Model Calibration
 11) Package Model
-12) Payload Generation  
+12) Payload Generation
 13) Model Registration
 
 Key Features:
@@ -63,8 +63,12 @@ def create_bedrock_batch_pytorch_e2e_dag() -> PipelineDAG:
     # Add all nodes - incorporating Bedrock batch processing steps with job type variants
     dag.add_node("DummyDataLoading_training")  # Dummy data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node("BedrockPromptTemplateGeneration")  # Bedrock prompt template generation
-    dag.add_node("BedrockBatchProcessing_training")  # Bedrock batch processing step for training
+    dag.add_node(
+        "BedrockPromptTemplateGeneration"
+    )  # Bedrock prompt template generation
+    dag.add_node(
+        "BedrockBatchProcessing_training"
+    )  # Bedrock batch processing step for training
     dag.add_node("PyTorchTraining")  # PyTorch training step
     dag.add_node(
         "ModelCalibration_calibration"
@@ -76,29 +80,41 @@ def create_bedrock_batch_pytorch_e2e_dag() -> PipelineDAG:
     dag.add_node(
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
-    dag.add_node("BedrockBatchProcessing_calibration")  # Bedrock batch processing step for calibration
+    dag.add_node(
+        "BedrockBatchProcessing_calibration"
+    )  # Bedrock batch processing step for calibration
     dag.add_node("PyTorchModelEval_calibration")  # Model evaluation step
 
     # Training flow with Bedrock batch processing integration
     dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
-    
+
     # Bedrock batch processing flow for training - two inputs to BedrockBatchProcessing_training
-    dag.add_edge("TabularPreprocessing_training", "BedrockBatchProcessing_training")  # Data input
-    dag.add_edge("BedrockPromptTemplateGeneration", "BedrockBatchProcessing_training")  # Template input
-    
+    dag.add_edge(
+        "TabularPreprocessing_training", "BedrockBatchProcessing_training"
+    )  # Data input
+    dag.add_edge(
+        "BedrockPromptTemplateGeneration", "BedrockBatchProcessing_training"
+    )  # Template input
+
     # Enhanced data flows to PyTorch training
     dag.add_edge("BedrockBatchProcessing_training", "PyTorchTraining")
 
     # Calibration flow with Bedrock batch processing integration
     dag.add_edge("DummyDataLoading_calibration", "TabularPreprocessing_calibration")
-    
+
     # Bedrock batch processing flow for calibration - two inputs to BedrockBatchProcessing_calibration
-    dag.add_edge("TabularPreprocessing_calibration", "BedrockBatchProcessing_calibration")  # Data input
-    dag.add_edge("BedrockPromptTemplateGeneration", "BedrockBatchProcessing_calibration")  # Template input
+    dag.add_edge(
+        "TabularPreprocessing_calibration", "BedrockBatchProcessing_calibration"
+    )  # Data input
+    dag.add_edge(
+        "BedrockPromptTemplateGeneration", "BedrockBatchProcessing_calibration"
+    )  # Template input
 
     # Evaluation flow
     dag.add_edge("PyTorchTraining", "PyTorchModelEval_calibration")
-    dag.add_edge("BedrockBatchProcessing_calibration", "PyTorchModelEval_calibration")  # Use Bedrock batch-processed calibration data
+    dag.add_edge(
+        "BedrockBatchProcessing_calibration", "PyTorchModelEval_calibration"
+    )  # Use Bedrock batch-processed calibration data
 
     # Model calibration flow - depends on model evaluation
     dag.add_edge("PyTorchModelEval_calibration", "ModelCalibration_calibration")
@@ -127,15 +143,15 @@ def get_dag_metadata() -> DAGMetadata:
         description="Bedrock Batch-enhanced PyTorch end-to-end pipeline with cost-efficient LLM-based data processing, training, calibration, packaging, registration, and evaluation",
         complexity="comprehensive",
         features=[
-            "dummy_data_loading", 
-            "bedrock_prompt_generation", 
-            "bedrock_batch_processing", 
+            "dummy_data_loading",
+            "bedrock_prompt_generation",
+            "bedrock_batch_processing",
             "cost_optimization",
-            "training", 
-            "calibration", 
-            "packaging", 
-            "registration", 
-            "evaluation"
+            "training",
+            "calibration",
+            "packaging",
+            "registration",
+            "evaluation",
         ],
         framework="pytorch",
         node_count=13,
@@ -169,20 +185,26 @@ def get_dag_metadata() -> DAGMetadata:
                 "training_processing": "BedrockBatchProcessing_training",
                 "calibration_processing": "BedrockBatchProcessing_calibration",
                 "training_flow": {
-                    "input_sources": ["TabularPreprocessing_training", "BedrockPromptTemplateGeneration"],
-                    "output_target": "PyTorchTraining"
+                    "input_sources": [
+                        "TabularPreprocessing_training",
+                        "BedrockPromptTemplateGeneration",
+                    ],
+                    "output_target": "PyTorchTraining",
                 },
                 "calibration_flow": {
-                    "input_sources": ["TabularPreprocessing_calibration", "BedrockPromptTemplateGeneration"],
-                    "output_target": "PyTorchModelEval_calibration"
+                    "input_sources": [
+                        "TabularPreprocessing_calibration",
+                        "BedrockPromptTemplateGeneration",
+                    ],
+                    "output_target": "PyTorchModelEval_calibration",
                 },
                 "cost_optimization": {
                     "batch_processing_enabled": True,
                     "automatic_mode_selection": True,
                     "expected_cost_savings": "Up to 50% for large datasets",
-                    "fallback_to_realtime": True
-                }
-            }
+                    "fallback_to_realtime": True,
+                },
+            },
         },
     )
 
@@ -242,7 +264,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 
     # Validate Bedrock batch integration structure
     bedrock_integration = metadata.extra_metadata.get("bedrock_batch_integration", {})
-    
+
     # Check that BedrockBatchProcessing_training has the correct inputs
     bedrock_training_node = "BedrockBatchProcessing_training"
     if bedrock_training_node in dag.nodes:
@@ -251,13 +273,15 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         for edge in dag.edges:
             if edge[1] == bedrock_training_node:
                 bedrock_predecessors.add(edge[0])
-        
-        expected_inputs = set(bedrock_integration.get("training_flow", {}).get("input_sources", []))
+
+        expected_inputs = set(
+            bedrock_integration.get("training_flow", {}).get("input_sources", [])
+        )
         if bedrock_predecessors != expected_inputs:
             validation_result["warnings"].append(
                 f"BedrockBatchProcessing_training inputs mismatch. Expected: {expected_inputs}, Found: {bedrock_predecessors}"
             )
-    
+
     # Check that BedrockBatchProcessing_calibration has the correct inputs
     bedrock_calibration_node = "BedrockBatchProcessing_calibration"
     if bedrock_calibration_node in dag.nodes:
@@ -266,15 +290,19 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         for edge in dag.edges:
             if edge[1] == bedrock_calibration_node:
                 bedrock_predecessors.add(edge[0])
-        
-        expected_inputs = set(bedrock_integration.get("calibration_flow", {}).get("input_sources", []))
+
+        expected_inputs = set(
+            bedrock_integration.get("calibration_flow", {}).get("input_sources", [])
+        )
         if bedrock_predecessors != expected_inputs:
             validation_result["warnings"].append(
                 f"BedrockBatchProcessing_calibration inputs mismatch. Expected: {expected_inputs}, Found: {bedrock_predecessors}"
             )
-    
+
     # Check that BedrockBatchProcessing outputs to PyTorchTraining
-    pytorch_training_node = bedrock_integration.get("training_flow", {}).get("output_target")
+    pytorch_training_node = bedrock_integration.get("training_flow", {}).get(
+        "output_target"
+    )
     if pytorch_training_node and pytorch_training_node in dag.nodes:
         bedrock_to_pytorch_edge = (bedrock_training_node, pytorch_training_node)
         if bedrock_to_pytorch_edge not in dag.edges:
@@ -289,7 +317,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 def get_bedrock_batch_step_dependencies() -> Dict[str, Dict[str, Any]]:
     """
     Get the dependency specifications for Bedrock batch processing steps in this DAG.
-    
+
     Returns:
         Dict mapping step names to their dependency specifications
     """
@@ -299,62 +327,62 @@ def get_bedrock_batch_step_dependencies() -> Dict[str, Dict[str, Any]]:
             "outputs": {
                 "prompt_templates": "Templates for Bedrock batch processing",
                 "template_metadata": "Metadata about generated templates",
-                "validation_schema": "Schema for validating Bedrock responses"
-            }
+                "validation_schema": "Schema for validating Bedrock responses",
+            },
         },
         "BedrockBatchProcessing_training": {
             "dependencies": {
                 "prompt_templates": {
                     "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "prompt_templates",
-                    "required": True
+                    "required": True,
                 },
                 "validation_schema": {
-                    "source_step": "BedrockPromptTemplateGeneration", 
+                    "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "validation_schema",
-                    "required": True
+                    "required": True,
                 },
                 "input_data": {
                     "source_step": "TabularPreprocessing_training",
                     "output_name": "processed_data",
-                    "required": True
-                }
+                    "required": True,
+                },
             },
             "outputs": {
                 "processed_data": "LLM-enhanced processed data for training (batch processed)",
-                "processing_metadata": "Metadata about Bedrock batch processing results"
-            }
+                "processing_metadata": "Metadata about Bedrock batch processing results",
+            },
         },
         "BedrockBatchProcessing_calibration": {
             "dependencies": {
                 "prompt_templates": {
                     "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "prompt_templates",
-                    "required": True
+                    "required": True,
                 },
                 "validation_schema": {
-                    "source_step": "BedrockPromptTemplateGeneration", 
+                    "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "validation_schema",
-                    "required": True
+                    "required": True,
                 },
                 "input_data": {
                     "source_step": "TabularPreprocessing_calibration",
                     "output_name": "processed_data",
-                    "required": True
-                }
+                    "required": True,
+                },
             },
             "outputs": {
                 "processed_data": "LLM-enhanced processed data for calibration (batch processed)",
-                "processing_metadata": "Metadata about Bedrock batch processing results"
-            }
-        }
+                "processing_metadata": "Metadata about Bedrock batch processing results",
+            },
+        },
     }
 
 
 def get_integration_notes() -> Dict[str, str]:
     """
     Get integration notes for implementing this DAG.
-    
+
     Returns:
         Dict containing implementation notes and considerations
     """
@@ -370,14 +398,14 @@ def get_integration_notes() -> Dict[str, str]:
         "batch_job_management": "Batch processing includes automatic job monitoring, result retrieval, and error handling",
         "processing_modes": "Supports three modes: 'auto' (intelligent selection), 'batch' (forced batch), 'realtime' (forced real-time)",
         "monitoring": "Add monitoring for Bedrock batch job status, processing latency, and cost savings achieved",
-        "production_readiness": "Ensure fallback model is configured for production reliability and consider inference profile usage for Claude 4+ models"
+        "production_readiness": "Ensure fallback model is configured for production reliability and consider inference profile usage for Claude 4+ models",
     }
 
 
 def get_cost_optimization_benefits() -> Dict[str, Any]:
     """
     Get detailed information about cost optimization benefits of this DAG.
-    
+
     Returns:
         Dict containing cost optimization details
     """
@@ -386,25 +414,25 @@ def get_cost_optimization_benefits() -> Dict[str, Any]:
             "cost_savings": "Up to 50% reduction in Bedrock API costs for large datasets",
             "scalability": "No memory limits - can process millions of records",
             "efficiency": "AWS-managed batch infrastructure with optimal resource allocation",
-            "fault_tolerance": "Built-in retry and error recovery mechanisms"
+            "fault_tolerance": "Built-in retry and error recovery mechanisms",
         },
         "automatic_optimization": {
             "intelligent_selection": "Automatically chooses batch vs real-time based on data size",
             "threshold_based": "Default threshold of 1000 records (configurable)",
             "fallback_strategy": "Seamless fallback to real-time processing if batch fails",
-            "zero_configuration": "Works with existing pipeline configurations"
+            "zero_configuration": "Works with existing pipeline configurations",
         },
         "operational_benefits": {
             "monitoring": "Enhanced batch job status tracking and cost reporting",
             "reliability": "Automatic fallback ensures pipeline never fails due to batch issues",
             "compatibility": "Drop-in replacement for existing BedrockProcessing steps",
-            "framework_integration": "Uses cursus S3 path patterns for seamless integration"
+            "framework_integration": "Uses cursus S3 path patterns for seamless integration",
         },
         "recommended_use_cases": [
             "Large training datasets (>= 1000 records)",
             "Batch inference workloads",
             "Cost-sensitive production pipelines",
             "High-volume data processing scenarios",
-            "Scenarios where processing latency is not critical"
-        ]
+            "Scenarios where processing latency is not critical",
+        ],
     }

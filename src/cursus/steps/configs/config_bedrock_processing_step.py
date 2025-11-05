@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 class BedrockProcessingConfig(ProcessingStepConfigBase):
     """
     Configuration for Bedrock Processing step using three-tier design.
-    
+
     This step processes input data through AWS Bedrock models using generated prompt
     templates and validation schemas from the Bedrock Prompt Template Generation step.
     Supports template-driven response processing with dynamic Pydantic model creation
     and both sequential and concurrent processing modes.
-    
+
     Tier 1: Essential user inputs (required)
     Tier 2: System inputs with defaults (optional)
     Tier 3: Derived fields (private with property access)
@@ -42,27 +42,27 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
 
     job_type: str = Field(
         default="training",
-        description="One of ['training','validation','testing','calibration'] - determines processing behavior and output naming"
+        description="One of ['training','validation','testing','calibration'] - determines processing behavior and output naming",
     )
 
     # Model configuration
     bedrock_primary_model_id: str = Field(
         default="anthropic.claude-sonnet-4-5-20250929-v1:0",
-        description="Primary Bedrock model ID for processing (Claude Sonnet 4.5 default, latest stable model)"
+        description="Primary Bedrock model ID for processing (Claude Sonnet 4.5 default, latest stable model)",
     )
 
     bedrock_fallback_model_id: Optional[str] = Field(
         default="anthropic.claude-sonnet-4-20250514-v1:0",
-        description="Fallback model ID for inference profile failures (Claude Sonnet 4.0 for production reliability)"
+        description="Fallback model ID for inference profile failures (Claude Sonnet 4.0 for production reliability)",
     )
 
     bedrock_inference_profile_required_models: List[str] = Field(
         default_factory=lambda: [
             "anthropic.claude-sonnet-4-5-20250929-v1:0",  # Claude Sonnet 4.5
-            "anthropic.claude-sonnet-4-20250514-v1:0",    # Claude Sonnet 4.0
-            "anthropic.claude-opus-4-1-20250805-v1:0"     # Claude Opus 4.1
+            "anthropic.claude-sonnet-4-20250514-v1:0",  # Claude Sonnet 4.0
+            "anthropic.claude-opus-4-1-20250805-v1:0",  # Claude Opus 4.1
         ],
-        description="List of models requiring inference profiles (Claude 4.5, 4.0, and Opus 4.1 included by default)"
+        description="List of models requiring inference profiles (Claude 4.5, 4.0, and Opus 4.1 included by default)",
     )
 
     # API parameters (optimized for Claude 4.0)
@@ -70,73 +70,71 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         default=32000,
         ge=1,
         le=64000,
-        description="Maximum tokens for Bedrock responses (32K optimal default, 64K max for Claude 4.0)"
+        description="Maximum tokens for Bedrock responses (32K optimal default, 64K max for Claude 4.0)",
     )
 
     bedrock_temperature: float = Field(
         default=1.0,
         ge=0.0,
         le=2.0,
-        description="Temperature for response generation (1.0 optimized for Claude 4.0)"
+        description="Temperature for response generation (1.0 optimized for Claude 4.0)",
     )
 
     bedrock_top_p: float = Field(
         default=0.999,
         ge=0.0,
         le=1.0,
-        description="Top-p sampling parameter (0.999 optimized for Claude 4.0)"
+        description="Top-p sampling parameter (0.999 optimized for Claude 4.0)",
     )
 
     # Processing configuration
     bedrock_batch_size: int = Field(
-        default=10,
-        ge=1,
-        le=100,
-        description="Number of records per processing batch"
+        default=10, ge=1, le=100, description="Number of records per processing batch"
     )
 
     bedrock_max_retries: int = Field(
         default=3,
         ge=0,
         le=10,
-        description="Maximum retries for failed Bedrock requests"
+        description="Maximum retries for failed Bedrock requests",
     )
 
     bedrock_output_column_prefix: str = Field(
-        default="llm_",
-        description="Prefix for output columns in processed data"
+        default="llm_", description="Prefix for output columns in processed data"
     )
 
     # Concurrency configuration
     bedrock_concurrency_mode: str = Field(
         default="sequential",
-        description="Processing mode: 'sequential' (safer, easier debugging) or 'concurrent' (faster, 3-10x speedup)"
+        description="Processing mode: 'sequential' (safer, easier debugging) or 'concurrent' (faster, 3-10x speedup)",
     )
 
     bedrock_max_concurrent_workers: int = Field(
         default=5,
         ge=1,
         le=20,
-        description="Number of concurrent threads for concurrent processing (recommended: 3-10)"
+        description="Number of concurrent threads for concurrent processing (recommended: 3-10)",
     )
 
     bedrock_rate_limit_per_second: int = Field(
         default=10,
         ge=1,
         le=100,
-        description="API requests per second limit for concurrent processing"
+        description="API requests per second limit for concurrent processing",
     )
 
     # Processing step overrides
     processing_entry_point: str = Field(
         default="bedrock_processing.py",
-        description="Entry point script for Bedrock processing"
+        description="Entry point script for Bedrock processing",
     )
 
     # ===== Tier 3: Derived Fields (Private with Property Access) =====
     # These fields are calculated from other fields
 
-    _effective_inference_profile_required_models: Optional[List[str]] = PrivateAttr(default=None)
+    _effective_inference_profile_required_models: Optional[List[str]] = PrivateAttr(
+        default=None
+    )
     _bedrock_environment_variables: Optional[Dict[str, str]] = PrivateAttr(default=None)
     _processing_metadata: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     _concurrency_configuration: Optional[Dict[str, Any]] = PrivateAttr(default=None)
@@ -149,23 +147,25 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         if self._effective_inference_profile_required_models is None:
             # Start with user-provided list
             models = list(self.bedrock_inference_profile_required_models)
-            
+
             # Auto-detect known models that require inference profiles
             known_profile_models = [
                 "anthropic.claude-sonnet-4-5-20250929-v1:0",  # Claude Sonnet 4.5
-                "anthropic.claude-haiku-4-5-20251001-v1:0",   # Claude Haiku 4.5
-                "anthropic.claude-sonnet-4-20250514-v1:0",    # Claude Sonnet 4.0
-                "anthropic.claude-opus-4-1-20250805-v1:0",    # Claude Opus 4.1
+                "anthropic.claude-haiku-4-5-20251001-v1:0",  # Claude Haiku 4.5
+                "anthropic.claude-sonnet-4-20250514-v1:0",  # Claude Sonnet 4.0
+                "anthropic.claude-opus-4-1-20250805-v1:0",  # Claude Opus 4.1
                 # Add other known models that require inference profiles
             ]
-            
+
             # Add primary model if it's known to require profiles and not already in list
-            if (self.bedrock_primary_model_id in known_profile_models and 
-                self.bedrock_primary_model_id not in models):
+            if (
+                self.bedrock_primary_model_id in known_profile_models
+                and self.bedrock_primary_model_id not in models
+            ):
                 models.append(self.bedrock_primary_model_id)
-            
+
             self._effective_inference_profile_required_models = models
-        
+
         return self._effective_inference_profile_required_models
 
     @property
@@ -174,32 +174,33 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         if self._bedrock_environment_variables is None:
             self._bedrock_environment_variables = {
                 # Model configuration (required)
-                'BEDROCK_PRIMARY_MODEL_ID': self.bedrock_primary_model_id,
-                
+                "BEDROCK_PRIMARY_MODEL_ID": self.bedrock_primary_model_id,
                 # Model configuration (optional)
-                'BEDROCK_FALLBACK_MODEL_ID': self.bedrock_fallback_model_id or '',
-                'BEDROCK_INFERENCE_PROFILE_ARN': self.bedrock_inference_profile_arn,
-                'BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS': json.dumps(self.effective_inference_profile_required_models),
-                
+                "BEDROCK_FALLBACK_MODEL_ID": self.bedrock_fallback_model_id or "",
+                "BEDROCK_INFERENCE_PROFILE_ARN": self.bedrock_inference_profile_arn,
+                "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": json.dumps(
+                    self.effective_inference_profile_required_models
+                ),
                 # AWS configuration
-                'AWS_DEFAULT_REGION': self.aws_region,
-                
+                "AWS_DEFAULT_REGION": self.aws_region,
                 # API parameters
-                'BEDROCK_MAX_TOKENS': str(self.bedrock_max_tokens),
-                'BEDROCK_TEMPERATURE': str(self.bedrock_temperature),
-                'BEDROCK_TOP_P': str(self.bedrock_top_p),
-                
+                "BEDROCK_MAX_TOKENS": str(self.bedrock_max_tokens),
+                "BEDROCK_TEMPERATURE": str(self.bedrock_temperature),
+                "BEDROCK_TOP_P": str(self.bedrock_top_p),
                 # Processing configuration
-                'BEDROCK_BATCH_SIZE': str(self.bedrock_batch_size),
-                'BEDROCK_MAX_RETRIES': str(self.bedrock_max_retries),
-                'BEDROCK_OUTPUT_COLUMN_PREFIX': self.bedrock_output_column_prefix,
-                
+                "BEDROCK_BATCH_SIZE": str(self.bedrock_batch_size),
+                "BEDROCK_MAX_RETRIES": str(self.bedrock_max_retries),
+                "BEDROCK_OUTPUT_COLUMN_PREFIX": self.bedrock_output_column_prefix,
                 # Concurrency configuration
-                'BEDROCK_CONCURRENCY_MODE': self.bedrock_concurrency_mode,
-                'BEDROCK_MAX_CONCURRENT_WORKERS': str(self.bedrock_max_concurrent_workers),
-                'BEDROCK_RATE_LIMIT_PER_SECOND': str(self.bedrock_rate_limit_per_second),
+                "BEDROCK_CONCURRENCY_MODE": self.bedrock_concurrency_mode,
+                "BEDROCK_MAX_CONCURRENT_WORKERS": str(
+                    self.bedrock_max_concurrent_workers
+                ),
+                "BEDROCK_RATE_LIMIT_PER_SECOND": str(
+                    self.bedrock_rate_limit_per_second
+                ),
             }
-        
+
         return self._bedrock_environment_variables
 
     @property
@@ -207,19 +208,19 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Get processing step metadata."""
         if self._processing_metadata is None:
             self._processing_metadata = {
-                'step_type': 'bedrock_processing',
-                'primary_model': self.bedrock_primary_model_id,
-                'fallback_model': self.bedrock_fallback_model_id,
-                'concurrency_mode': self.bedrock_concurrency_mode,
-                'batch_size': self.bedrock_batch_size,
-                'max_tokens': self.bedrock_max_tokens,
-                'temperature': self.bedrock_temperature,
-                'top_p': self.bedrock_top_p,
-                'uses_inference_profile': bool(self.bedrock_inference_profile_arn),
-                'inference_profile_required_models': self.effective_inference_profile_required_models,
-                'output_column_prefix': self.bedrock_output_column_prefix
+                "step_type": "bedrock_processing",
+                "primary_model": self.bedrock_primary_model_id,
+                "fallback_model": self.bedrock_fallback_model_id,
+                "concurrency_mode": self.bedrock_concurrency_mode,
+                "batch_size": self.bedrock_batch_size,
+                "max_tokens": self.bedrock_max_tokens,
+                "temperature": self.bedrock_temperature,
+                "top_p": self.bedrock_top_p,
+                "uses_inference_profile": bool(self.bedrock_inference_profile_arn),
+                "inference_profile_required_models": self.effective_inference_profile_required_models,
+                "output_column_prefix": self.bedrock_output_column_prefix,
             }
-        
+
         return self._processing_metadata
 
     @property
@@ -227,14 +228,18 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Get concurrency configuration details."""
         if self._concurrency_configuration is None:
             self._concurrency_configuration = {
-                'mode': self.bedrock_concurrency_mode,
-                'max_workers': self.bedrock_max_concurrent_workers,
-                'rate_limit_per_second': self.bedrock_rate_limit_per_second,
-                'is_concurrent': self.bedrock_concurrency_mode == 'concurrent',
-                'expected_speedup': f"{self.bedrock_max_concurrent_workers}x" if self.bedrock_concurrency_mode == 'concurrent' else "1x",
-                'recommended_for_production': self.bedrock_concurrency_mode == 'concurrent' and self.bedrock_fallback_model_id is not None
+                "mode": self.bedrock_concurrency_mode,
+                "max_workers": self.bedrock_max_concurrent_workers,
+                "rate_limit_per_second": self.bedrock_rate_limit_per_second,
+                "is_concurrent": self.bedrock_concurrency_mode == "concurrent",
+                "expected_speedup": f"{self.bedrock_max_concurrent_workers}x"
+                if self.bedrock_concurrency_mode == "concurrent"
+                else "1x",
+                "recommended_for_production": self.bedrock_concurrency_mode
+                == "concurrent"
+                and self.bedrock_fallback_model_id is not None,
             }
-        
+
         return self._concurrency_configuration
 
     # Validators
@@ -254,7 +259,7 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Validate primary model ID format."""
         if not v or not v.strip():
             raise ValueError("bedrock_primary_model_id cannot be empty")
-        
+
         # Basic format validation for common Bedrock model patterns
         valid_prefixes = [
             "anthropic.",
@@ -264,12 +269,14 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
             "meta.",
             "mistral.",
             "stability.",
-            "global."  # For inference profile IDs
+            "global.",  # For inference profile IDs
         ]
-        
+
         if not any(v.startswith(prefix) for prefix in valid_prefixes):
-            logger.warning(f"Model ID '{v}' doesn't match common Bedrock patterns. Ensure it's a valid Bedrock model ID.")
-        
+            logger.warning(
+                f"Model ID '{v}' doesn't match common Bedrock patterns. Ensure it's a valid Bedrock model ID."
+            )
+
         return v.strip()
 
     @field_validator("bedrock_concurrency_mode")
@@ -278,7 +285,9 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Validate concurrency mode."""
         valid_modes = ["sequential", "concurrent"]
         if v not in valid_modes:
-            raise ValueError(f"bedrock_concurrency_mode must be one of {valid_modes}, got: {v}")
+            raise ValueError(
+                f"bedrock_concurrency_mode must be one of {valid_modes}, got: {v}"
+            )
         return v
 
     @field_validator("bedrock_inference_profile_required_models")
@@ -287,7 +296,7 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Validate inference profile required models list."""
         if v is None:
             return []
-        
+
         # Remove empty strings and duplicates
         cleaned = list(set(model.strip() for model in v if model and model.strip()))
         return cleaned
@@ -296,13 +305,15 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
     def model_dump(self, **kwargs) -> Dict[str, Any]:
         """Override model_dump to include derived properties."""
         data = super().model_dump(**kwargs)
-        
+
         # Add derived properties to output
-        data["effective_inference_profile_required_models"] = self.effective_inference_profile_required_models
+        data["effective_inference_profile_required_models"] = (
+            self.effective_inference_profile_required_models
+        )
         data["bedrock_environment_variables"] = self.bedrock_environment_variables
         data["processing_metadata"] = self.processing_metadata
         data["concurrency_configuration"] = self.concurrency_configuration
-        
+
         return data
 
     # Initialize derived fields at creation time
@@ -311,34 +322,35 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Initialize all derived fields once after validation."""
         # Call parent validator first
         super().initialize_derived_fields()
-        
+
         # Initialize Bedrock-specific derived fields
         _ = self.effective_inference_profile_required_models
         _ = self.bedrock_environment_variables
         _ = self.processing_metadata
         _ = self.concurrency_configuration
-        
+
         return self
 
     @model_validator(mode="after")
     def validate_production_readiness(self) -> "BedrockProcessingConfig":
         """Validate configuration for production readiness."""
         # Warn if using concurrent mode without fallback model
-        if (self.bedrock_concurrency_mode == "concurrent" and 
-            not self.bedrock_fallback_model_id):
+        if (
+            self.bedrock_concurrency_mode == "concurrent"
+            and not self.bedrock_fallback_model_id
+        ):
             logger.warning(
                 "Using concurrent processing without fallback model. "
                 "Consider setting bedrock_fallback_model_id for production reliability."
             )
-        
+
         # Warn if using inference profile without fallback
-        if (self.bedrock_inference_profile_arn and 
-            not self.bedrock_fallback_model_id):
+        if self.bedrock_inference_profile_arn and not self.bedrock_fallback_model_id:
             logger.warning(
                 "Using inference profile without fallback model. "
                 "Consider setting bedrock_fallback_model_id for production reliability."
             )
-        
+
         # Validate concurrent processing parameters
         if self.bedrock_concurrency_mode == "concurrent":
             if self.bedrock_max_concurrent_workers > 10:
@@ -346,27 +358,28 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                     f"High concurrent worker count ({self.bedrock_max_concurrent_workers}). "
                     "Consider reducing to 3-10 workers to avoid rate limiting."
                 )
-            
+
             if self.bedrock_rate_limit_per_second > 50:
                 logger.warning(
                     f"High rate limit ({self.bedrock_rate_limit_per_second} req/sec). "
                     "Ensure this doesn't exceed your Bedrock API limits."
                 )
-        
+
         return self
 
     def get_script_contract(self):
         """Return the script contract for this step."""
         from ..contracts.bedrock_processing_contract import BEDROCK_PROCESSING_CONTRACT
+
         return BEDROCK_PROCESSING_CONTRACT
 
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
         Get script path for the Bedrock processing step.
-        
+
         Args:
             default_path: Default script path to use if not found via other methods
-            
+
         Returns:
             Script path resolved from processing_entry_point and source directories
         """
@@ -377,19 +390,18 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """
         Override get_public_init_fields to include Bedrock-specific fields.
         Gets a dictionary of public fields suitable for initializing a child config.
-        
+
         Returns:
             Dict[str, Any]: Dictionary of field names to values for child initialization
         """
         # Get fields from parent class (ProcessingStepConfigBase)
         base_fields = super().get_public_init_fields()
-        
+
         # Add Bedrock-specific fields (Tier 1 + Tier 2)
         bedrock_fields = {
             # Tier 1: Essential fields
             "job_type": self.job_type,
             "bedrock_inference_profile_arn": self.bedrock_inference_profile_arn,
-            
             # Tier 2: System fields with defaults
             "bedrock_primary_model_id": self.bedrock_primary_model_id,
             "bedrock_max_tokens": self.bedrock_max_tokens,
@@ -403,20 +415,20 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
             "bedrock_rate_limit_per_second": self.bedrock_rate_limit_per_second,
             "bedrock_inference_profile_required_models": self.bedrock_inference_profile_required_models,
         }
-        
+
         # Only include optional fields if they're set
         if self.bedrock_fallback_model_id is not None:
             bedrock_fields["bedrock_fallback_model_id"] = self.bedrock_fallback_model_id
-        
+
         # Combine base fields and Bedrock fields (Bedrock fields take precedence if overlap)
         init_fields = {**base_fields, **bedrock_fields}
-        
+
         return init_fields
 
     def get_environment_variables(self) -> Dict[str, str]:
         """
         Get all environment variables for the step builder.
-        
+
         Returns:
             Dict[str, str]: Complete environment variables dictionary
         """
@@ -425,23 +437,28 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
     def is_production_ready(self) -> bool:
         """
         Check if configuration is production-ready.
-        
+
         Returns:
             bool: True if configuration has production-ready settings
         """
         return (
             # Has fallback model for reliability
-            self.bedrock_fallback_model_id is not None and
+            self.bedrock_fallback_model_id is not None
+            and
             # Uses reasonable concurrency settings
-            (self.bedrock_concurrency_mode == "sequential" or 
-             (self.bedrock_max_concurrent_workers <= 10 and 
-              self.bedrock_rate_limit_per_second <= 50))
+            (
+                self.bedrock_concurrency_mode == "sequential"
+                or (
+                    self.bedrock_max_concurrent_workers <= 10
+                    and self.bedrock_rate_limit_per_second <= 50
+                )
+            )
         )
 
     def get_performance_estimate(self) -> Dict[str, Any]:
         """
         Get estimated performance characteristics.
-        
+
         Returns:
             Dict[str, Any]: Performance estimates and recommendations
         """
@@ -449,15 +466,22 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
             speedup = 1.0
             throughput_estimate = f"~{60 // self.bedrock_batch_size} batches/min"
         else:
-            speedup = min(self.bedrock_max_concurrent_workers, self.bedrock_rate_limit_per_second / 2)
-            throughput_estimate = f"~{int(speedup * 60 // self.bedrock_batch_size)} batches/min"
-        
+            speedup = min(
+                self.bedrock_max_concurrent_workers,
+                self.bedrock_rate_limit_per_second / 2,
+            )
+            throughput_estimate = (
+                f"~{int(speedup * 60 // self.bedrock_batch_size)} batches/min"
+            )
+
         return {
             "processing_mode": self.bedrock_concurrency_mode,
             "expected_speedup": f"{speedup:.1f}x",
             "throughput_estimate": throughput_estimate,
             "batch_size": self.bedrock_batch_size,
-            "max_workers": self.bedrock_max_concurrent_workers if self.bedrock_concurrency_mode == "concurrent" else 1,
+            "max_workers": self.bedrock_max_concurrent_workers
+            if self.bedrock_concurrency_mode == "concurrent"
+            else 1,
             "rate_limit": self.bedrock_rate_limit_per_second,
-            "production_ready": self.is_production_ready()
+            "production_ready": self.is_production_ready(),
         }

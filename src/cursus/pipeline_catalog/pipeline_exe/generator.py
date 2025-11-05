@@ -23,31 +23,31 @@ def generate_execution_document_for_pipeline(
     pipeline_name: str,
     config_path: Optional[str] = None,
     execution_doc_template: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict[str, Any]:
     """
     Generate execution document for a specific pipeline.
-    
+
     This is the main entry point for pipeline execution document generation.
     It provides a simple interface that:
     1. Loads the appropriate configuration for the pipeline
     2. Loads the shared DAG for the pipeline
     3. Creates or uses provided execution document template
     4. Uses the standalone execution document generator to fill the document
-    
+
     Args:
         pipeline_name: Name of the pipeline (e.g., "xgb_e2e_comprehensive")
         config_path: Optional path to configuration file (overrides default)
         execution_doc_template: Optional execution document template (creates default if not provided)
         **kwargs: Additional arguments passed to ExecutionDocumentGenerator
-        
+
     Returns:
         Dict[str, Any]: Filled execution document ready for pipeline execution
-        
+
     Raises:
         ValueError: If pipeline name is not recognized or configuration not found
         FileNotFoundError: If configuration file or DAG not found
-        
+
     Example:
         >>> execution_doc = generate_execution_document_for_pipeline(
         ...     pipeline_name="xgb_e2e_comprehensive",
@@ -57,37 +57,45 @@ def generate_execution_document_for_pipeline(
     """
     try:
         logger.info(f"Generating execution document for pipeline: {pipeline_name}")
-        
+
         # Get configuration path for pipeline
         if config_path is None:
             config_path = get_config_path_for_pipeline(pipeline_name)
             logger.info(f"Using default config path: {config_path}")
-        
+
         # Validate configuration file exists
         if not Path(config_path).exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        
+
         # Load shared DAG for pipeline
         dag = load_shared_dag_for_pipeline(pipeline_name)
-        logger.info(f"Loaded DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges")
-        
+        logger.info(
+            f"Loaded DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
+        )
+
         # Create execution document template if not provided
         if execution_doc_template is None:
-            execution_doc_template = create_execution_doc_template_for_pipeline(pipeline_name)
+            execution_doc_template = create_execution_doc_template_for_pipeline(
+                pipeline_name
+            )
             logger.info("Created default execution document template")
-        
+
         # Create standalone execution document generator
         generator = ExecutionDocumentGenerator(config_path=config_path, **kwargs)
         logger.info("Created execution document generator")
-        
+
         # Generate execution document
-        filled_execution_doc = generator.fill_execution_document(dag, execution_doc_template)
+        filled_execution_doc = generator.fill_execution_document(
+            dag, execution_doc_template
+        )
         logger.info("Successfully generated execution document")
-        
+
         return filled_execution_doc
-        
+
     except Exception as e:
-        logger.error(f"Failed to generate execution document for pipeline {pipeline_name}: {e}")
+        logger.error(
+            f"Failed to generate execution document for pipeline {pipeline_name}: {e}"
+        )
         raise
 
 

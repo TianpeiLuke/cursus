@@ -3,7 +3,7 @@ Shared DAG definition for PyTorch Complete End-to-End Pipeline with Dummy Data L
 
 This module provides the shared DAG definition for a complete PyTorch workflow
 that uses dummy data loading instead of Cradle data loading and PyTorch training
-instead of XGBoost training. This includes training, calibration, packaging, 
+instead of XGBoost training. This includes training, calibration, packaging,
 registration, and evaluation.
 
 The DAG includes:
@@ -94,7 +94,14 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="Complete PyTorch end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
         complexity="comprehensive",
-        features=["dummy_data_loading", "training", "calibration", "packaging", "registration", "evaluation"],
+        features=[
+            "dummy_data_loading",
+            "training",
+            "calibration",
+            "packaging",
+            "registration",
+            "evaluation",
+        ],
         framework="pytorch",
         node_count=10,
         edge_count=11,

@@ -192,7 +192,6 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
 
         return MODEL_CALIBRATION_CONTRACT
 
-
     @classmethod
     def from_hyperparameters(
         cls,

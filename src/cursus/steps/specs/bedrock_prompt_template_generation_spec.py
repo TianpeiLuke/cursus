@@ -17,7 +17,9 @@ from ...registry.step_names import get_spec_step_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_bedrock_prompt_template_generation_contract():
-    from ..contracts.bedrock_prompt_template_generation_contract import BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT
+    from ..contracts.bedrock_prompt_template_generation_contract import (
+        BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT,
+    )
 
     return BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT
 
@@ -32,7 +34,7 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
             logical_name="prompt_configs",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
-            compatible_sources=[ 
+            compatible_sources=[
                 "PromptConfiguration",
                 "ProcessingStep",
             ],
@@ -47,7 +49,7 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
                 "category_definitions",
                 "classification_config",
                 "llm_configs",
-                "bedrock_prompt_configs"
+                "bedrock_prompt_configs",
             ],
             data_type="S3Uri",
             description="Prompt configuration directory containing JSON files: system_prompt.json, output_format.json, instruction.json, and category_definitions.json for template generation",
@@ -62,7 +64,7 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
                 "prompt_template",
                 "generated_templates",
                 "classification_templates",
-                "llm_templates"
+                "llm_templates",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['prompt_templates'].S3Output.S3Uri",
@@ -77,7 +79,7 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
                 "template_info",
                 "validation_results",
                 "quality_metrics",
-                "generation_results"
+                "generation_results",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['template_metadata'].S3Output.S3Uri",
@@ -92,12 +94,12 @@ BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
                 "bedrock_validation_schema",
                 "response_schema",
                 "classification_schema",
-                "downstream_schema"
+                "downstream_schema",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['validation_schema'].S3Output.S3Uri",
             data_type="S3Uri",
             description="JSON validation schemas for validating Bedrock responses in downstream processing steps",
-        )
+        ),
     ],
 )

@@ -47,19 +47,19 @@ class PyTorchTrainingConfig(BasePipelineConfig):
 
     # Hyperparameters handling configuration
     skip_hyperparameters_s3_uri: bool = Field(
-        default=True, 
+        default=True,
         description="Whether to skip hyperparameters_s3_uri channel during _get_inputs. "
-                   "If True (default), hyperparameters are loaded from script folder. "
-                   "If False, hyperparameters_s3_uri channel is created as TrainingInput."
+        "If True (default), hyperparameters are loaded from script folder. "
+        "If False, hyperparameters_s3_uri channel is created as TrainingInput.",
     )
 
     # Hyperparameters object (optional for backward compatibility)
     hyperparameters: Optional[ModelHyperparameters] = Field(
-        None, description="Model hyperparameters (optional when using external JSON files)"
+        None,
+        description="Model hyperparameters (optional when using external JSON files)",
     )
 
     model_config = BasePipelineConfig.model_config
-
 
     @field_validator("training_instance_type")
     @classmethod

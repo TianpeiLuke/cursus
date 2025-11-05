@@ -70,23 +70,25 @@ class DummyTrainingStepBuilder(StepBuilderBase):
     def validate_configuration(self):
         """
         Validate the provided configuration.
-        
+
         For SOURCE nodes, we rely on the base class validation which already
         handles source directory validation and other required attributes.
         """
         self.log_info("Validating DummyTraining SOURCE configuration...")
-        
+
         # The base class (ProcessingStepConfigBase) already validates:
         # - processing_framework_version
-        # - processing_instance_count  
+        # - processing_instance_count
         # - processing_volume_size
         # - processing_entry_point (if provided)
         # - effective_source_dir existence
-        
+
         # For SOURCE nodes, we just need to ensure we have an entry point
         if not self.config.processing_entry_point:
-            raise ValueError("DummyTraining SOURCE node requires processing_entry_point")
-        
+            raise ValueError(
+                "DummyTraining SOURCE node requires processing_entry_point"
+            )
+
         self.log_info("DummyTraining SOURCE configuration validation succeeded.")
 
     # Removed _upload_model_to_s3 and _prepare_hyperparameters_file methods
@@ -128,9 +130,9 @@ class DummyTrainingStepBuilder(StepBuilderBase):
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """
         Get inputs for the processor.
-        
+
         For SOURCE nodes, return empty list since all data comes from source directory.
-        
+
         Returns:
             Empty list - SOURCE node has no external inputs
         """
@@ -158,8 +160,11 @@ class DummyTrainingStepBuilder(StepBuilderBase):
 
         # Use the pipeline S3 location to construct output path using base output path and Join for parameter compatibility
         from sagemaker.workflow.functions import Join
+
         base_output_path = self._get_base_output_path()
-        default_output_path = Join(on="/", values=[base_output_path, "dummy_training", "output"])
+        default_output_path = Join(
+            on="/", values=[base_output_path, "dummy_training", "output"]
+        )
         output_path = outputs.get("model_input", default_output_path)
 
         # Handle PipelineVariable objects in output_path
@@ -197,10 +202,10 @@ class DummyTrainingStepBuilder(StepBuilderBase):
     def create_step(self, **kwargs) -> ProcessingStep:
         """
         Create the processing step following the pattern from XGBoostModelEvalStepBuilder.
-        
+
         This implementation uses processor.run() with both code and source_dir parameters,
         which is the correct pattern for ProcessingSteps that need source directory access.
-        
+
         Args:
             **kwargs: Additional keyword arguments for step creation including:
                      - inputs: Dictionary of input sources keyed by logical name (will be empty for SOURCE node)
@@ -224,7 +229,9 @@ class DummyTrainingStepBuilder(StepBuilderBase):
 
             # Create processor and get inputs/outputs
             processor = self._get_processor()
-            processing_inputs = self._get_inputs(inputs)  # Returns empty list for SOURCE node
+            processing_inputs = self._get_inputs(
+                inputs
+            )  # Returns empty list for SOURCE node
             processing_outputs = self._get_outputs(outputs)
 
             # Get step name using standardized method with auto-detection
@@ -267,5 +274,6 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         except Exception as e:
             self.log_error(f"Error creating DummyTraining step: {e}")
             import traceback
+
             self.log_error(traceback.format_exc())
             raise ValueError(f"Failed to create DummyTraining step: {str(e)}") from e

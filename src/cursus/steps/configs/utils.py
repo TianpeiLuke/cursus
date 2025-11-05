@@ -210,24 +210,24 @@ def merge_and_save_configs(
 
 
 def load_configs(
-    input_file: str, 
+    input_file: str,
     config_classes: Optional[Dict[str, Type[BaseModel]]] = None,
-    project_id: Optional[str] = None
+    project_id: Optional[str] = None,
 ) -> Dict[str, BaseModel]:
     """
     Load multiple Pydantic configs from JSON, reconstructing each instantiation uniquely.
-    
+
     ENHANCED: Step catalog integration for deployment-agnostic loading.
-    
+
     Portability: Works across all deployment environments
     Discovery: Automatic config class resolution
     Workspace: Project-specific loading support
-    
+
     Args:
         input_file: Path to the input JSON file
         config_classes: Optional dictionary mapping class names to class types
         project_id: Optional project ID for workspace-specific discovery
-        
+
     Returns:
         Dictionary mapping step names to config instances
     """
@@ -235,7 +235,7 @@ def load_configs(
     if not os.path.exists(input_file):
         logger.error(f"Input file not found: {input_file}")
         raise FileNotFoundError(f"Input file not found: {input_file}")
-    
+
     try:
         # Get config classes using step catalog if not provided
         if config_classes is None:
@@ -243,19 +243,21 @@ def load_configs(
                 # Extract project_id from file metadata if not provided
                 if project_id is None:
                     project_id = _extract_project_id_from_file(input_file)
-                
+
                 # Use enhanced discovery
                 config_classes = build_complete_config_classes(project_id)
-                logger.info(f"Discovered {len(config_classes)} config classes using step catalog")
-                
+                logger.info(
+                    f"Discovered {len(config_classes)} config classes using step catalog"
+                )
+
             except Exception as e:
                 logger.warning(f"Failed to use step catalog discovery: {e}")
                 # Fallback to ConfigClassStore
                 config_classes = ConfigClassStore.get_all_classes()
-        
+
         if not config_classes:
             logger.warning("No config classes available for loading")
-        
+
         # Use ConfigClassStore to ensure we have all classes registered
         for _, cls in config_classes.items():
             ConfigClassStore.register(cls)
@@ -308,7 +310,7 @@ def load_configs(
 
                         # Create the config instance directly without hardcoded module paths
                         config_class = config_classes[class_name]
-                        
+
                         # Process the combined data through the TypeAwareConfigSerializer
                         # to handle special formats like the '__type_info__': 'list' structure
                         serializer = TypeAwareConfigSerializer()
@@ -336,14 +338,16 @@ def load_configs(
                             # Create the instance
                             result_configs[step_name] = config_class(**clean_data)
                     except Exception as e:
-                        logger.warning(f"Failed to create config for {step_name}: {str(e)}")
+                        logger.warning(
+                            f"Failed to create config for {step_name}: {str(e)}"
+                        )
         else:
             # Just use the loaded configs as is
             result_configs = loaded_configs_dict
 
         logger.info(f"Successfully loaded configs from {input_file}")
         return result_configs
-        
+
     except Exception as e:
         logger.error(f"Error loading configs: {str(e)}")
         raise
@@ -352,34 +356,34 @@ def load_configs(
 def _extract_project_id_from_file(input_file: str) -> Optional[str]:
     """
     Extract project_id from file metadata if available.
-    
+
     Args:
         input_file: Path to the config file
-        
+
     Returns:
         Project ID if found in metadata, None otherwise
     """
     try:
         with open(input_file, "r") as f:
             file_data = json.load(f)
-        
+
         # Check for project_id in metadata
         if "metadata" in file_data:
             metadata = file_data["metadata"]
-            
+
             # Check various possible locations for project_id
             project_id = (
-                metadata.get("project_id") or
-                metadata.get("workspace_id") or
-                metadata.get("step_catalog_info", {}).get("project_id")
+                metadata.get("project_id")
+                or metadata.get("workspace_id")
+                or metadata.get("step_catalog_info", {}).get("project_id")
             )
-            
+
             if project_id:
                 logger.debug(f"Extracted project_id from file metadata: {project_id}")
                 return project_id
-        
+
         return None
-        
+
     except Exception as e:
         logger.debug(f"Could not extract project_id from file: {e}")
         return None
@@ -458,7 +462,7 @@ def get_field_sources(config_list: List[BaseModel]) -> Dict[str, Dict[str, List[
         # 3. It's unique to specific config types (not in the base ProcessingStepConfigBase)
         special_fields = {
             "hyperparameters",  # XGBoost/PyTorch training configs
-            "job_type",         # Processing step configs for variant handling
+            "job_type",  # Processing step configs for variant handling
         }
 
         if non_processing_occurrences or field_name in special_fields:
@@ -487,73 +491,85 @@ def get_field_sources(config_list: List[BaseModel]) -> Dict[str, Dict[str, List[
     return field_sources
 
 
-def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str, Type[BaseModel]]:
+def build_complete_config_classes(
+    project_id: Optional[str] = None,
+) -> Dict[str, Type[BaseModel]]:
     """
     Build a complete dictionary of all relevant config classes using
     the unified step catalog system's ConfigAutoDiscovery.
-    
+
     REFACTORED: Now uses step catalog integration with multiple fallback strategies.
     PORTABLE: Works across all deployment scenarios (PyPI, source, submodule).
-    
+
     Success Rate: 83% failure → 100% success
     Deployment: Works in all environments (dev, Lambda, Docker, PyPI)
     Workspace: Optional project-specific discovery
-    
+
     Args:
         project_id: Optional project ID for workspace-specific discovery
-        
+
     Returns:
         Dictionary mapping class names to class types
     """
     try:
         # Primary approach: Use step catalog's unified discovery
         from ...step_catalog import StepCatalog
-        
+
         # ✅ PORTABLE: Package-only discovery for config classes
         # Works in PyPI, source, and submodule scenarios
         # StepCatalog autonomously finds package root regardless of deployment
         catalog = StepCatalog(workspace_dirs=None)  # None for package-only discovery
-        
+
         # Use step catalog's enhanced discovery with workspace awareness
         discovered_classes = catalog.build_complete_config_classes(project_id)
-        
-        logger.info(f"Successfully discovered {len(discovered_classes)} config classes using step catalog")
-        
+
+        logger.info(
+            f"Successfully discovered {len(discovered_classes)} config classes using step catalog"
+        )
+
         # Register all classes with the ConfigClassStore for backward compatibility
         for class_name, cls in discovered_classes.items():
             ConfigClassStore.register(cls)
             logger.debug(f"Registered with ConfigClassStore: {class_name}")
-        
+
         return discovered_classes
-        
+
     except ImportError as e:
-        logger.warning(f"Step catalog unavailable, falling back to ConfigAutoDiscovery: {e}")
-        
+        logger.warning(
+            f"Step catalog unavailable, falling back to ConfigAutoDiscovery: {e}"
+        )
+
         # Fallback 1: Use ConfigAutoDiscovery directly
         try:
             from ...step_catalog.config_discovery import ConfigAutoDiscovery
-            
+
             # ✅ PORTABLE: Let ConfigAutoDiscovery handle package root detection
             # No hardcoded paths - works in all deployment scenarios
-            config_discovery = ConfigAutoDiscovery()  # Uses autonomous package root detection
-            discovered_classes = config_discovery.build_complete_config_classes(project_id)
-            
-            logger.info(f"Successfully discovered {len(discovered_classes)} config classes using ConfigAutoDiscovery")
-            
+            config_discovery = (
+                ConfigAutoDiscovery()
+            )  # Uses autonomous package root detection
+            discovered_classes = config_discovery.build_complete_config_classes(
+                project_id
+            )
+
+            logger.info(
+                f"Successfully discovered {len(discovered_classes)} config classes using ConfigAutoDiscovery"
+            )
+
             # Register all classes with the ConfigClassStore for backward compatibility
             for class_name, cls in discovered_classes.items():
                 ConfigClassStore.register(cls)
                 logger.debug(f"Registered with ConfigClassStore: {class_name}")
-            
+
             return discovered_classes
-            
+
         except ImportError as e2:
             logger.error(f"ConfigAutoDiscovery also unavailable: {e2}")
             logger.warning("Falling back to legacy implementation")
-            
+
             # Fallback 2: Legacy implementation for absolute safety
             return _legacy_build_complete_config_classes()
-            
+
     except Exception as e:
         logger.error(f"Error in step catalog discovery: {e}")
         logger.warning("Falling back to legacy implementation")
@@ -563,12 +579,12 @@ def build_complete_config_classes(project_id: Optional[str] = None) -> Dict[str,
 def _legacy_build_complete_config_classes() -> Dict[str, Type[BaseModel]]:
     """
     Legacy implementation preserved as final fallback.
-    
+
     DEPRECATED: This implementation has known issues with 83% failure rate.
     Only used as emergency fallback when step catalog is unavailable.
     """
     logger.warning("Using legacy implementation with known 83% failure rate")
-    
+
     from ..registry import STEP_NAMES, HYPERPARAMETER_REGISTRY
 
     # Initialize an empty dictionary to store the classes

@@ -3,7 +3,7 @@ Dummy Data Loading Calibration Step Specification.
 
 This module defines the declarative specification for Dummy data loading steps
 specifically for calibration data, including their dependencies and outputs.
-This step serves as a drop-in replacement for CradleDataLoadingStep but processes 
+This step serves as a drop-in replacement for CradleDataLoadingStep but processes
 user-provided data instead of calling internal Cradle services.
 """
 

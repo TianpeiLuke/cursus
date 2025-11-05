@@ -1,0 +1,319 @@
+[
+  {
+    "name": "TrueDNR",
+    "description": "Delivered Not Received - Package marked as delivered (EVENT_301) BUT buyer claims non-receipt",
+    "priority": 1,
+    "conditions": [
+      "Package marked as delivered (EVENT_301)",
+      "Buyer claims non-receipt",
+      "Refund request occurs AFTER delivery confirmation"
+    ],
+    "key_indicators": [
+      "Tracking shows delivery",
+      "Buyer disputes receiving",
+      "Delivery location discussion",
+      "Missing package investigation",
+      "Possible theft/misdelivery",
+      "Timeline: Delivery timestamp BEFORE refund request/non-receipt claim"
+    ],
+    "exceptions": [
+      "Refund given BEFORE delivery confirmation (use PDA_Early_Refund)"
+    ],
+    "validation_rules": [
+      "Verify delivery timestamp precedes refund/non-receipt claim timestamp"
+    ]
+  },
+  {
+    "name": "Confirmed_Delay",
+    "description": "Shipment delayed due to uncontrollable external factors - Delay confirmed by seller or shiptrack status",
+    "priority": 2,
+    "conditions": [
+      "Shipment delayed due to uncontrollable external factors",
+      "Delay confirmed by seller or shiptrack status"
+    ],
+    "key_indicators": [
+      "Seller acknowledges delay",
+      "Shiptrack shows delay status codes",
+      "External factor confirmation",
+      "Refund given due to confirmed delay",
+      "Common delay reasons: Customs processing delays, COVID-related restrictions, Traffic control/accidents, Natural disasters/weather, War/political situations, Labor strikes, Carrier facility issues"
+    ],
+    "exceptions": [
+      "Unconfirmed delays",
+      "Buyer-only claims of delay",
+      "Normal transit time variations",
+      "Shipment not delivered before refund request without confirmed external delay reason (use PDA_Undeliverable)",
+      "Seller unable to ship before any shipping events (use Seller_Unable_To_Ship)",
+      "Delivery attempt failed with package returned to seller (use Delivery_Attempt_Failed)"
+    ],
+    "validation_rules": [
+      "Must verify external delay factor is explicitly confirmed by seller or shiptrack",
+      "Must verify specific delay reason is provided (customs, weather, strikes, etc.)",
+      "Cannot rely solely on buyer claims of delay without confirmation"
+    ]
+  },
+  {
+    "name": "Delivery_Attempt_Failed",
+    "description": "Delivery attempt unsuccessful - Package returned to seller - Confirmed by seller or shiptrack status",
+    "priority": 3,
+    "conditions": [
+      "Delivery attempt unsuccessful",
+      "Package returned to seller",
+      "Confirmed by seller or shiptrack status"
+    ],
+    "key_indicators": [
+      "Failed delivery attempt events",
+      "Return to sender confirmation",
+      "Seller confirms delivery failure",
+      "No successful delivery scan",
+      "Package back in seller possession",
+      "Common reasons: Address issues (undeliverable address), Recipient unavailable, Access restrictions, Carrier unable to deliver"
+    ],
+    "exceptions": [],
+    "validation_rules": [
+      "Must include seller/shiptrack confirmation"
+    ]
+  },
+  {
+    "name": "Seller_Unable_To_Ship",
+    "description": "Seller offers refund directly due to shipping issues - Order not shipped due to seller-side problems - Seller-initiated refund (not buyer cancellation request)",
+    "priority": 4,
+    "conditions": [
+      "Seller offers refund directly due to shipping issues",
+      "Order not shipped due to seller-side problems",
+      "Seller-initiated refund (not buyer cancellation request)"
+    ],
+    "key_indicators": [
+      "Seller proactively contacts buyer about inability to ship",
+      "Seller offers refund without buyer request",
+      "Must occur before any shipping events",
+      "No shipment tracking initiated",
+      "Common seller issues: Stock unavailable/out of stock, Shipping restrictions to buyer location, Processing problems/system issues, Warehouse issues/fulfillment problems, Carrier pickup failure, Inventory management errors"
+    ],
+    "exceptions": [
+      "Buyer-requested cancellations (use BuyerCancellation)",
+      "Cases where buyer initiates cancellation",
+      "Shipped items with delays (use other categories)"
+    ],
+    "validation_rules": [
+      "Must verify seller initiates the refund proactively, not in response to buyer cancellation request",
+      "Must verify no shipping events have occurred (no tracking initiated)",
+      "Must verify refund is due to seller-side inability to ship, not buyer preference change"
+    ]
+  },
+  {
+    "name": "PDA_Undeliverable",
+    "description": "Item stuck in transit without status updates or seller confirmation of reason",
+    "priority": 5,
+    "conditions": [
+      "Item stuck in transit without status updates or seller confirmation of reason",
+      "Buyer claims non-receipt while package shows shipped/in-transit",
+      "Seller does not admit fault or provide specific delay reason"
+    ],
+    "key_indicators": [
+      "Package shows shipped/in-transit status",
+      "No delivery confirmation",
+      "No confirmed external delay factors",
+      "No confirmed delivery attempt failure",
+      "No return to sender",
+      "Seller cannot provide specific delay/loss reason",
+      "Buyer reports non-receipt",
+      "Covers both scenarios: Package currently moving through logistics network OR Package shipped but tracking shows no delivery or return",
+      "Potential abuse pattern: Buyer may manipulate seller for early refund, Package may still be delivered after refund"
+    ],
+    "exceptions": [
+      "Confirmed delays (use Confirmed_Delay)",
+      "Failed delivery attempts (use Delivery_Attempt_Failed)",
+      "Seller unable to ship (use Seller_Unable_To_Ship)",
+      "Delivered packages (use other categories)",
+      "Packages returned to seller"
+    ],
+    "validation_rules": [
+      "Must verify package shows shipped or in-transit status in shiptrack",
+      "Must verify no delivery confirmation (EVENT_301) exists",
+      "Must verify seller does not provide specific confirmed delay reason",
+      "Must verify no delivery attempt failure or return to sender events"
+    ]
+  },
+  {
+    "name": "PDA_Early_Refund",
+    "description": "Refund given BEFORE delivery date where product tracking later shows successful delivery and no product return recorded",
+    "priority": 6,
+    "conditions": [
+      "Refund given BEFORE delivery date",
+      "Product tracking later shows successful delivery",
+      "No product return recorded"
+    ],
+    "key_indicators": [
+      "Timeline verification required: Refund timestamp must precede delivery timestamp, Delivery must be confirmed after refund",
+      "Key verification: Clear timestamp comparison between refund and delivery, No return record exists"
+    ],
+    "exceptions": [
+      "Refund request occurs AFTER delivery confirmation (use TrueDNR)",
+      "Seller explicitly offers refund without return requirement and allows buyer to keep item (use Returnless_Refund)",
+      "Return process initiated with return tracking events (use Buyer_Received_WrongORDefective_Item or Return_NoLongerNeeded)",
+      "Buyer acknowledges product defects/damage and return is expected (use Buyer_Received_WrongORDefective_Item)"
+    ],
+    "validation_rules": [
+      "Verify refund timestamp precedes delivery timestamp",
+      "Verify no return tracking events exist",
+      "Verify buyer did not explicitly acknowledge receiving item before refund"
+    ]
+  },
+  {
+    "name": "Buyer_Received_WrongORDefective_Item",
+    "description": "Product quality/condition issues with actual return expected",
+    "priority": 7,
+    "conditions": [
+      "Product quality/condition issues: Damaged/defective on arrival, Missing parts/accessories, Different from description, Wrong size/color/model, Functionality problems, Quality below expectations, Authenticity concerns",
+      "Must include buyer confirmation of receiving item",
+      "Usually occurs post-delivery",
+      "Key requirement: Eventually becomes actual return (Seller requests buyer to return the item, Buyer agrees to return before refund is given, Return shipping process initiated)"
+    ],
+    "key_indicators": [
+      "Damaged",
+      "Defective",
+      "Missing parts",
+      "Wrong item received",
+      "Quality issues"
+    ],
+    "exceptions": [
+      "Returnless refund scenarios (use Returnless_Refund)",
+      "Liquids, gels, hazardous materials",
+      "Fresh items (broken eggs, bad vegetables)",
+      "Cases where no return is expected",
+      "Buyer cancels before receiving item (use BuyerCancellation)",
+      "Good quality item that buyer no longer needs without claiming defects or damage (use Return_NoLongerNeeded)"
+    ],
+    "validation_rules": [
+      "Must verify buyer explicitly claims product defects, damage, or quality issues",
+      "Must verify buyer received the item (post-delivery scenario)",
+      "Must verify return process is expected or initiated"
+    ]
+  },
+  {
+    "name": "Returnless_Refund",
+    "description": "Refund given without requiring customer to return the product",
+    "priority": 8,
+    "conditions": [
+      "Refund given without requiring customer to return the product",
+      "Clear delivery confirmation or buyer does not claim non-receipt",
+      "Buyer may claim received wrong or defective item but no return expected"
+    ],
+    "key_indicators": [
+      "Common product types: Liquids and gels, Hazardous materials (broken glass, spilled acid), Fresh items (broken eggs, bad vegetables), Perishable goods, Items unsafe to return, Cheap items too expensive to return",
+      "Key dialogue indicators: Seller/CS agent explicitly offers refund without return, 'This is your refund. You can keep the item.', 'No need to return the product', 'Keep the item and here's your refund', Explicit permission to retain the product",
+      "Initial return request from buyer",
+      "Seller or Customer Service offers refund without return requirement",
+      "No return shipping label provided",
+      "No return tracking events",
+      "Product retention explicitly allowed",
+      "Cost of return exceeds item value",
+      "Potential abuse pattern: Customers exploit returnless refund policy for free products"
+    ],
+    "exceptions": [
+      "Buyer claims non-receipt without delivery confirmation (use TrueDNR if delivered, or PDA_Undeliverable if stuck in transit)",
+      "Package stuck in transit without delivery (use PDA_Undeliverable)",
+      "Order never shipped by seller (use Seller_Unable_To_Ship)",
+      "Shipment delayed with confirmed external factors (use Confirmed_Delay)",
+      "Delivery attempt failed with return to sender (use Delivery_Attempt_Failed)",
+      "Return process initiated with return shipping label and tracking events (use Return_NoLongerNeeded or Buyer_Received_WrongORDefective_Item)",
+      "Seller requires return before refund despite product issues (use Buyer_Received_WrongORDefective_Item)"
+    ],
+    "validation_rules": [
+      "Delivery confirmation exists",
+      "Return discussion occurs after delivery",
+      "Refund occurs after return request",
+      "No return shipping events follow",
+      "Seller explicitly allows buyer to keep the item"
+    ]
+  },
+  {
+    "name": "BuyerCancellation",
+    "description": "Buyer cancels order for their own reasons before delivery",
+    "priority": 9,
+    "conditions": [
+      "Buyer cancels order for their own reasons before delivery",
+      "Cancellation timestamp occurs BEFORE delivery timestamp",
+      "Buyer does not receive the item yet (no returns involved)"
+    ],
+    "key_indicators": [
+      "Common reasons: Change of plan/mind, Late delivery concerns, Found better alternative, Payment issues, Personal circumstances change",
+      "Key timing requirements: Must occur before delivery, Must occur before seller shipment OR Must occur when shiptrack shows no delay signs",
+      "Shiptrack status considerations: If cancellation before seller shipment: BuyerCancellation, If cancellation while shipped/in-transit with no delay signs: use PDA_Undeliverable, If cancellation with confirmed delays: use Confirmed_Delay, If cancellation with delivery attempt failure: use Delivery_Attempt_Failed"
+    ],
+    "exceptions": [
+      "Post-delivery scenarios (use Return_NoLongerNeeded)",
+      "Cases with confirmed shipping delays",
+      "Cases with delivery attempt failures",
+      "Seller-initiated refunds (use Seller_Unable_To_Ship)"
+    ]
+  },
+  {
+    "name": "Return_NoLongerNeeded",
+    "description": "Post-delivery return initiation for good quality items",
+    "priority": 10,
+    "conditions": [
+      "Post-delivery return initiation for good quality items",
+      "Return request timestamp occurs AFTER delivery timestamp",
+      "Buyer received the item but no longer needs it",
+      "Buyer requests return without claiming product defects or damage",
+      "Product received is of good quality but no longer needed by buyer"
+    ],
+    "key_indicators": [
+      "Common reasons: Changed mind about purchase (after receiving), Found better alternative (after delivery), Size/fit issues (not defective), Duplicate purchase realization, Gift not wanted, Personal preference change after seeing item",
+      "Key timing requirement: Must occur AFTER delivery confirmation, Buyer acknowledges receiving the item",
+      "Key requirement: Eventually becomes actual return (Seller requests buyer to return the item, Buyer agrees to return before refund is given, Return shipping process initiated)"
+    ],
+    "exceptions": [
+      "Pre-delivery cancellations (use BuyerCancellation)",
+      "Claims of defective/damaged items (use Buyer_Received_WrongORDefective_Item)",
+      "Returnless refund scenarios (use Returnless_Refund)"
+    ]
+  },
+  {
+    "name": "Product_Information_Support",
+    "description": "General product information and support requests - Not related to refund or return events",
+    "priority": 11,
+    "conditions": [
+      "General product information and support requests",
+      "Not related to refund or return events"
+    ],
+    "key_indicators": [
+      "Documentation and information requests: Invoice copies and receipts, Tax documents and payment records, Order summaries and confirmations, Product specifications and details, Warranty information",
+      "Pricing and promotional inquiries: Coupon applications and promotional codes, Price matching requests, Volume discounts and special rates, Billing questions and clarifications",
+      "Product support and guidance: Instructions on how to use the product, Troubleshooting assistance, Product customization guidance, Setup and installation help, Maintenance and care instructions, Compatibility questions",
+      "Focus on information provision, not shipping or quality issues",
+      "No refund or return discussion involved"
+    ],
+    "exceptions": [
+      "Any refund requests or discussions (use appropriate refund categories)",
+      "Any return requests or discussions (use Buyer_Received_WrongORDefective_Item, Return_NoLongerNeeded, or Returnless_Refund)",
+      "Delivery issues or disputes (use TrueDNR, PDA_Undeliverable, Confirmed_Delay, Delivery_Attempt_Failed)",
+      "Product quality or defect complaints (use Buyer_Received_WrongORDefective_Item or Returnless_Refund)",
+      "Order cancellation requests (use BuyerCancellation or Seller_Unable_To_Ship)",
+      "Non-receipt claims (use TrueDNR, PDA_Undeliverable, or PDA_Early_Refund)",
+      "Any scenario involving financial compensation or product replacement"
+    ],
+    "validation_rules": [
+      "Must verify NO refund or return discussions are present",
+      "Must verify focus is purely on information, documentation, or product usage guidance",
+      "Must verify NO complaints about product quality, delivery, or non-receipt"
+    ]
+  },
+  {
+    "name": "Insufficient_Information",
+    "description": "Ultimate 'I don't know' category when context is missing",
+    "priority": 12,
+    "conditions": [
+      "Information from dialogue and/or ship track events insufficient to understand what happens"
+    ],
+    "key_indicators": [
+      "Common scenarios: Lack of one or both input data sources, Message cut off or incomplete dialogue, Ship track events too short or missing, Buyer request visible but no seller reply (no engagement), Corrupted or unreadable messages, Non-language content or formatting issues, General inquiries without clear resolution, Non-specific customer service interactions, Available data insufficient for other categories",
+      "Use when no additional decision can be made based on available information",
+      "Default category when no clear classification fits",
+      "Indicates need for more complete data to make proper classification"
+    ],
+    "exceptions": []
+  }
+]

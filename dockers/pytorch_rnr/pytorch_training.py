@@ -255,18 +255,18 @@ def build_processing_pipeline(
     tokenizer: AutoTokenizer,
     config: Config,
     input_ids_key: str = "input_ids",
-    attention_mask_key: str = "attention_mask"
+    attention_mask_key: str = "attention_mask",
 ) -> Processor:
     """
     Build a processing pipeline based on the specified steps.
-    
+
     Args:
         processing_steps: List of processing step names
         tokenizer: Tokenizer to use for tokenization step
         config: Configuration object
         input_ids_key: Key name for input_ids in tokenized output
         attention_mask_key: Key name for attention_mask in tokenized output
-    
+
     Returns:
         Composed processor pipeline
     """
@@ -288,27 +288,31 @@ def build_processing_pipeline(
             max_length=config.max_sen_len,
             input_ids_key=input_ids_key,
             attention_mask_key=attention_mask_key,
-        )
+        ),
     }
-    
+
     # Build pipeline by chaining processors
     pipeline = None
     for step_name in processing_steps:
         if step_name not in step_map:
-            log_once(logger, f"Warning: Unknown processing step '{step_name}', skipping")
+            log_once(
+                logger, f"Warning: Unknown processing step '{step_name}', skipping"
+            )
             continue
-            
+
         processor_class = step_map[step_name]
-        processor = processor_class() if not callable(processor_class) else processor_class()
-        
+        processor = (
+            processor_class() if not callable(processor_class) else processor_class()
+        )
+
         if pipeline is None:
             pipeline = processor
         else:
             pipeline = pipeline >> processor
-    
+
     if pipeline is None:
         raise ValueError(f"No valid processing steps found in: {processing_steps}")
-    
+
     return pipeline
 
 
@@ -322,95 +326,120 @@ def data_preprocess_pipeline(
     """
     if not config.tokenizer:
         config.tokenizer = "bert-base-cased"
-    
+
     tokenizers = {}
     pipelines = {}
-    
+
     # Check if this is tri-modal configuration
-    is_trimodal = (hasattr(config, 'primary_text_name') and 
-                   hasattr(config, 'secondary_text_name') and 
-                   config.primary_text_name and 
-                   config.secondary_text_name)
-    
+    is_trimodal = (
+        hasattr(config, "primary_text_name")
+        and hasattr(config, "secondary_text_name")
+        and config.primary_text_name
+        and config.secondary_text_name
+    )
+
     if is_trimodal:
         log_once(logger, "Setting up tri-modal text processing pipelines")
-        
+
         # Primary text pipeline (e.g., chat)
-        primary_tokenizer_name = getattr(config, 'primary_tokenizer', None) or config.tokenizer
+        primary_tokenizer_name = (
+            getattr(config, "primary_tokenizer", None) or config.tokenizer
+        )
         log_once(logger, f"Constructing primary tokenizer: {primary_tokenizer_name}")
         primary_tokenizer = AutoTokenizer.from_pretrained(primary_tokenizer_name)
-        
+
         # Get processing steps from config
-        primary_steps = getattr(config, 'primary_text_processing_steps', [
-            "dialogue_splitter", "html_normalizer", "emoji_remover", 
-            "text_normalizer", "dialogue_chunker", "tokenizer"
-        ])
+        primary_steps = getattr(
+            config,
+            "primary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
         log_once(logger, f"Primary text processing steps: {primary_steps}")
-        
+
         primary_pipeline = build_processing_pipeline(
             primary_steps,
             primary_tokenizer,
             config,
-            input_ids_key=getattr(config, 'primary_text_input_ids_key', 'input_ids'),
-            attention_mask_key=getattr(config, 'primary_text_attention_mask_key', 'attention_mask')
+            input_ids_key=getattr(config, "primary_text_input_ids_key", "input_ids"),
+            attention_mask_key=getattr(
+                config, "primary_text_attention_mask_key", "attention_mask"
+            ),
         )
-        
+
         # Secondary text pipeline (e.g., shiptrack)
-        secondary_tokenizer_name = getattr(config, 'secondary_tokenizer', None) or config.tokenizer
-        log_once(logger, f"Constructing secondary tokenizer: {secondary_tokenizer_name}")
+        secondary_tokenizer_name = (
+            getattr(config, "secondary_tokenizer", None) or config.tokenizer
+        )
+        log_once(
+            logger, f"Constructing secondary tokenizer: {secondary_tokenizer_name}"
+        )
         secondary_tokenizer = AutoTokenizer.from_pretrained(secondary_tokenizer_name)
-        
+
         # Get processing steps from config
-        secondary_steps = getattr(config, 'secondary_text_processing_steps', [
-            "dialogue_splitter", "text_normalizer", "dialogue_chunker", "tokenizer"
-        ])
+        secondary_steps = getattr(
+            config,
+            "secondary_text_processing_steps",
+            ["dialogue_splitter", "text_normalizer", "dialogue_chunker", "tokenizer"],
+        )
         log_once(logger, f"Secondary text processing steps: {secondary_steps}")
-        
+
         secondary_pipeline = build_processing_pipeline(
             secondary_steps,
             secondary_tokenizer,
             config,
-            input_ids_key=getattr(config, 'secondary_text_input_ids_key', 'input_ids'),
-            attention_mask_key=getattr(config, 'secondary_text_attention_mask_key', 'attention_mask')
+            input_ids_key=getattr(config, "secondary_text_input_ids_key", "input_ids"),
+            attention_mask_key=getattr(
+                config, "secondary_text_attention_mask_key", "attention_mask"
+            ),
         )
-        
-        tokenizers = {
-            'primary': primary_tokenizer,
-            'secondary': secondary_tokenizer
-        }
-        
+
+        tokenizers = {"primary": primary_tokenizer, "secondary": secondary_tokenizer}
+
         pipelines = {
             config.primary_text_name: primary_pipeline,
-            config.secondary_text_name: secondary_pipeline
+            config.secondary_text_name: secondary_pipeline,
         }
-        
+
         log_once(logger, f"Primary text field: {config.primary_text_name}")
         log_once(logger, f"Secondary text field: {config.secondary_text_name}")
-        
+
     else:
         # Traditional bi-modal setup
         log_once(logger, "Setting up bi-modal text processing pipeline")
         log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-        
+
         # Use default processing steps for bi-modal
         default_steps = [
-            "dialogue_splitter", "html_normalizer", "emoji_remover", 
-            "text_normalizer", "dialogue_chunker", "tokenizer"
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
         ]
-        
+
         dialogue_pipeline = build_processing_pipeline(
             default_steps,
             tokenizer,
             config,
-            input_ids_key=getattr(config, 'text_input_ids_key', 'input_ids'),
-            attention_mask_key=getattr(config, 'text_attention_mask_key', 'attention_mask')
+            input_ids_key=getattr(config, "text_input_ids_key", "input_ids"),
+            attention_mask_key=getattr(
+                config, "text_attention_mask_key", "attention_mask"
+            ),
         )
-        
-        tokenizers = {'main': tokenizer}
+
+        tokenizers = {"main": tokenizer}
         pipelines = {config.text_name: dialogue_pipeline}
         log_once(logger, f"Text field: {config.text_name}")
-    
+
     return tokenizers, pipelines
 
 
@@ -502,37 +531,66 @@ def load_and_preprocess_data(
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizers, pipelines = data_preprocess_pipeline(config)
-    
+
     # Apply pipelines to datasets based on model type
-    is_trimodal_model = config.model_class in ["trimodal_bert", "trimodal_cross_attn_bert", "trimodal_gate_fusion_bert"]
-    has_dual_text_config = (hasattr(config, 'primary_text_name') and 
-                           hasattr(config, 'secondary_text_name') and 
-                           config.primary_text_name and 
-                           config.secondary_text_name)
-    
+    is_trimodal_model = config.model_class in [
+        "trimodal_bert",
+        "trimodal_cross_attn_bert",
+        "trimodal_gate_fusion_bert",
+    ]
+    has_dual_text_config = (
+        hasattr(config, "primary_text_name")
+        and hasattr(config, "secondary_text_name")
+        and config.primary_text_name
+        and config.secondary_text_name
+    )
+
     if is_trimodal_model and has_dual_text_config:
         # Apply both primary and secondary text pipelines for trimodal model
-        log_once(logger, f"Applying dual text processing for {config.model_class} model")
-        train_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
-        train_bsm_dataset.add_pipeline(config.secondary_text_name, pipelines[config.secondary_text_name])
-        
-        val_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
-        val_bsm_dataset.add_pipeline(config.secondary_text_name, pipelines[config.secondary_text_name])
-        
-        test_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
-        test_bsm_dataset.add_pipeline(config.secondary_text_name, pipelines[config.secondary_text_name])
+        log_once(
+            logger, f"Applying dual text processing for {config.model_class} model"
+        )
+        train_bsm_dataset.add_pipeline(
+            config.primary_text_name, pipelines[config.primary_text_name]
+        )
+        train_bsm_dataset.add_pipeline(
+            config.secondary_text_name, pipelines[config.secondary_text_name]
+        )
+
+        val_bsm_dataset.add_pipeline(
+            config.primary_text_name, pipelines[config.primary_text_name]
+        )
+        val_bsm_dataset.add_pipeline(
+            config.secondary_text_name, pipelines[config.secondary_text_name]
+        )
+
+        test_bsm_dataset.add_pipeline(
+            config.primary_text_name, pipelines[config.primary_text_name]
+        )
+        test_bsm_dataset.add_pipeline(
+            config.secondary_text_name, pipelines[config.secondary_text_name]
+        )
     elif has_dual_text_config:
         # For non-trimodal models with dual text config, use only primary text
         log_once(logger, f"Using only primary text for {config.model_class} model")
-        train_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
-        val_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
-        test_bsm_dataset.add_pipeline(config.primary_text_name, pipelines[config.primary_text_name])
-        
+        train_bsm_dataset.add_pipeline(
+            config.primary_text_name, pipelines[config.primary_text_name]
+        )
+        val_bsm_dataset.add_pipeline(
+            config.primary_text_name, pipelines[config.primary_text_name]
+        )
+        test_bsm_dataset.add_pipeline(
+            config.primary_text_name, pipelines[config.primary_text_name]
+        )
+
         # Update config to use primary text as the main text field for bi-modal models
         config.text_name = config.primary_text_name
     else:
         # Traditional single text pipeline
-        log_once(logger, f"Using traditional single text processing for {config.model_class} model")
+        log_once(
+            logger,
+            f"Using traditional single text processing for {config.model_class} model",
+        )
         train_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
         val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
         test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
@@ -578,23 +636,37 @@ def build_model_and_optimizer(
     config: Config, tokenizers: Dict[str, AutoTokenizer], datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Determine collate function based on model type and configuration
-    is_trimodal_model = config.model_class in ["trimodal_bert", "trimodal_cross_attn_bert", "trimodal_gate_fusion_bert"]
-    has_dual_text_config = (hasattr(config, 'primary_text_name') and 
-                           hasattr(config, 'secondary_text_name') and 
-                           config.primary_text_name and 
-                           config.secondary_text_name)
-    
+    is_trimodal_model = config.model_class in [
+        "trimodal_bert",
+        "trimodal_cross_attn_bert",
+        "trimodal_gate_fusion_bert",
+    ]
+    has_dual_text_config = (
+        hasattr(config, "primary_text_name")
+        and hasattr(config, "secondary_text_name")
+        and config.primary_text_name
+        and config.secondary_text_name
+    )
+
     if is_trimodal_model and has_dual_text_config:
         # For tri-modal models, use the enhanced collate function that handles multiple text fields
-        log_once(logger, f"Using tri-modal collate function for {config.model_class} model")
+        log_once(
+            logger, f"Using tri-modal collate function for {config.model_class} model"
+        )
         bsm_collate_batch = build_trimodal_collate_batch()
     else:
         # For bi-modal models (including those with dual text config but non-trimodal model)
-        log_once(logger, f"Using bi-modal collate function for {config.model_class} model")
+        log_once(
+            logger, f"Using bi-modal collate function for {config.model_class} model"
+        )
         # Use primary text keys if available, otherwise fall back to traditional text keys
-        input_ids_key = getattr(config, 'primary_text_input_ids_key', None) or getattr(config, 'text_input_ids_key', 'input_ids')
-        attention_mask_key = getattr(config, 'primary_text_attention_mask_key', None) or getattr(config, 'text_attention_mask_key', 'attention_mask')
-        
+        input_ids_key = getattr(config, "primary_text_input_ids_key", None) or getattr(
+            config, "text_input_ids_key", "input_ids"
+        )
+        attention_mask_key = getattr(
+            config, "primary_text_attention_mask_key", None
+        ) or getattr(config, "text_attention_mask_key", "attention_mask")
+
         bsm_collate_batch = build_collate_batch(
             input_ids_key=input_ids_key,
             attention_mask_key=attention_mask_key,
@@ -616,8 +688,12 @@ def build_model_and_optimizer(
     )
 
     # Get the main tokenizer for embedding extraction
-    main_tokenizer = tokenizers.get('primary') or tokenizers.get('main') or list(tokenizers.values())[0]
-    
+    main_tokenizer = (
+        tokenizers.get("primary")
+        or tokenizers.get("main")
+        or list(tokenizers.values())[0]
+    )
+
     log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
     embedding_model = AutoModel.from_pretrained(config.tokenizer)
     embedding_mat = embedding_model.embeddings.word_embeddings.weight
@@ -783,16 +859,16 @@ def main(
     hparam_file = input_paths.get("hyperparameters_s3_uri", hparam_path)
     if not hparam_file.endswith("hyperparameters.json"):
         hparam_file = os.path.join(hparam_file, "hyperparameters.json")
-    
+
     hyperparameters = load_parse_hyperparameters(hparam_file)
     hyperparameters = sanitize_config(hyperparameters)
-    
+
     try:
         config = Config(**hyperparameters)  # Validate config
     except ValidationError as e:
         logger.error(f"Configuration Error: {e}")
         raise
-    
+
     # Update paths from input parameters
     global model_path, output_path
     if "model_output" in output_paths:
@@ -800,12 +876,12 @@ def main(
         config.model_path = model_path
     if "evaluation_output" in output_paths:
         output_path = output_paths["evaluation_output"]
-    
+
     log_once(logger, "Final Hyperparameters:")
     log_once(logger, json.dumps(config.model_dump(), indent=4))
     log_once(logger, "================================================")
     log_once(logger, "Starting the training process.")
-    
+
     device = setup_training_environment(config)
     datasets, tokenizers, config = load_and_preprocess_data(config)
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
@@ -838,7 +914,11 @@ def main(
         artifact_filename = os.path.join(model_path, "model_artifacts.pth")
         logger.info(f"Saving model artifacts to {artifact_filename}")
         # Get the main tokenizer for vocab extraction
-        main_tokenizer = tokenizers.get('primary') or tokenizers.get('main') or list(tokenizers.values())[0]
+        main_tokenizer = (
+            tokenizers.get("primary")
+            or tokenizers.get("main")
+            or list(tokenizers.values())[0]
+        )
         save_artifacts(
             artifact_filename,
             config.model_dump(),
@@ -850,7 +930,7 @@ def main(
         # ------------------ Save Hyperparameters ------------------
         hyperparams_filename = os.path.join(model_path, "hyperparameters.json")
         logger.info(f"Saving hyperparameters to {hyperparams_filename}")
-        with open(hyperparams_filename, 'w') as f:
+        with open(hyperparams_filename, "w") as f:
             json.dump(config.model_dump(), f, indent=2, default=str)
 
         # ------------------ ONNX Export ------------------
@@ -909,13 +989,18 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Exception during training: {str(e)}")
         logger.error(traceback.format_exc())
-        
+
         # Write failure file for compatibility
         failure_file = os.path.join(output_paths["evaluation_output"], "failure")
         try:
             with open(failure_file, "w") as f:
-                f.write("Exception during training: " + str(e) + "\n" + traceback.format_exc())
+                f.write(
+                    "Exception during training: "
+                    + str(e)
+                    + "\n"
+                    + traceback.format_exc()
+                )
         except Exception:
             pass  # Don't fail if we can't write the failure file
-        
+
         sys.exit(1)

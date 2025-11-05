@@ -95,7 +95,8 @@ class XGBoostModelStepBuilder(StepBuilderBase):
         region = getattr(self.config, "aws_region", "us-east-1")
         if region != "us-east-1":
             self.log_info(
-                "Region '%s' specified, but forcing to 'us-east-1' due to environment limitations", region
+                "Region '%s' specified, but forcing to 'us-east-1' due to environment limitations",
+                region,
             )
         region = "us-east-1"
 
@@ -128,11 +129,9 @@ class XGBoostModelStepBuilder(StepBuilderBase):
         image_uri = self._get_image_uri()
 
         # Use source directory with hybrid resolution fallback
-        source_dir = (
-            self.config.effective_source_dir
-        )
+        source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
-        
+
         return XGBoostModel(
             model_data=model_data,
             role=self.role,

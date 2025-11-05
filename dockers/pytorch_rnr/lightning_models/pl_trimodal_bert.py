@@ -48,27 +48,43 @@ class TrimodalBert(pl.LightningModule):
         # === Core configuration ===
         self.id_name = config.get("id_name", None)
         self.label_name = config["label_name"]
-        
+
         # Primary text configuration (e.g., chat/dialogue)
-        self.primary_text_input_ids_key = config.get("primary_text_input_ids_key", "input_ids")
+        self.primary_text_input_ids_key = config.get(
+            "primary_text_input_ids_key", "input_ids"
+        )
         self.primary_text_attention_mask_key = config.get(
             "primary_text_attention_mask_key", "attention_mask"
         )
-        self.primary_text_name = config["primary_text_name"] + "_processed_" + self.primary_text_input_ids_key
-        self.primary_text_attention_mask = (
-            config["primary_text_name"] + "_processed_" + self.primary_text_attention_mask_key
+        self.primary_text_name = (
+            config["primary_text_name"]
+            + "_processed_"
+            + self.primary_text_input_ids_key
         )
-        
+        self.primary_text_attention_mask = (
+            config["primary_text_name"]
+            + "_processed_"
+            + self.primary_text_attention_mask_key
+        )
+
         # Secondary text configuration (e.g., shiptrack)
-        self.secondary_text_input_ids_key = config.get("secondary_text_input_ids_key", "input_ids")
+        self.secondary_text_input_ids_key = config.get(
+            "secondary_text_input_ids_key", "input_ids"
+        )
         self.secondary_text_attention_mask_key = config.get(
             "secondary_text_attention_mask_key", "attention_mask"
         )
-        self.secondary_text_name = config["secondary_text_name"] + "_processed_" + self.secondary_text_input_ids_key
-        self.secondary_text_attention_mask = (
-            config["secondary_text_name"] + "_processed_" + self.secondary_text_attention_mask_key
+        self.secondary_text_name = (
+            config["secondary_text_name"]
+            + "_processed_"
+            + self.secondary_text_input_ids_key
         )
-        
+        self.secondary_text_attention_mask = (
+            config["secondary_text_name"]
+            + "_processed_"
+            + self.secondary_text_attention_mask_key
+        )
+
         # Tabular configuration
         self.tab_field_list = config.get("tab_field_list", None)
 
@@ -97,9 +113,7 @@ class TrimodalBert(pl.LightningModule):
 
         # === Sub-networks ===
         # Tabular subnetwork
-        self.tab_subnetwork = (
-            TabAE(config) if self.tab_field_list else None
-        )
+        self.tab_subnetwork = TabAE(config) if self.tab_field_list else None
         tab_dim = self.tab_subnetwork.output_tab_dim if self.tab_subnetwork else 0
 
         # Primary text subnetwork (e.g., chat/dialogue)
@@ -115,7 +129,7 @@ class TrimodalBert(pl.LightningModule):
         # === Final classifier with tri-modal fusion ===
         total_dim = primary_text_dim + secondary_text_dim + tab_dim
         fusion_hidden_dim = config.get("fusion_hidden_dim", max(128, total_dim // 2))
-        
+
         self.final_merge_network = nn.Sequential(
             nn.ReLU(),
             nn.Dropout(config.get("fusion_dropout", 0.1)),
@@ -144,14 +158,22 @@ class TrimodalBert(pl.LightningModule):
         """Create configuration for text subnetworks (primary or secondary)"""
         if text_type == "primary":
             text_name = config["primary_text_name"]
-            tokenizer = config.get("primary_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("primary_hidden_common_dim", config["hidden_common_dim"])
+            tokenizer = config.get(
+                "primary_tokenizer", config.get("tokenizer", "bert-base-cased")
+            )
+            hidden_dim = config.get(
+                "primary_hidden_common_dim", config["hidden_common_dim"]
+            )
             input_ids_key = self.primary_text_input_ids_key
             attention_mask_key = self.primary_text_attention_mask_key
         elif text_type == "secondary":
             text_name = config["secondary_text_name"]
-            tokenizer = config.get("secondary_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("secondary_hidden_common_dim", config["hidden_common_dim"])
+            tokenizer = config.get(
+                "secondary_tokenizer", config.get("tokenizer", "bert-base-cased")
+            )
+            hidden_dim = config.get(
+                "secondary_hidden_common_dim", config["hidden_common_dim"]
+            )
             input_ids_key = self.secondary_text_input_ids_key
             attention_mask_key = self.secondary_text_attention_mask_key
         else:
@@ -169,8 +191,12 @@ class TrimodalBert(pl.LightningModule):
             "adam_epsilon": config.get("adam_epsilon", 1e-8),
             "lr": config.get("lr", 2e-5),
             "run_scheduler": config.get("run_scheduler", True),
-            "reinit_pooler": config.get(f"{text_type}_reinit_pooler", config.get("reinit_pooler", False)),
-            "reinit_layers": config.get(f"{text_type}_reinit_layers", config.get("reinit_layers", 0)),
+            "reinit_pooler": config.get(
+                f"{text_type}_reinit_pooler", config.get("reinit_pooler", False)
+            ),
+            "reinit_layers": config.get(
+                f"{text_type}_reinit_layers", config.get("reinit_layers", 0)
+            ),
             "model_path": config.get("model_path"),
             "hidden_common_dim": hidden_dim,
             "text_input_ids_key": input_ids_key,
@@ -189,7 +215,7 @@ class TrimodalBert(pl.LightningModule):
 
     def _forward_impl(self, batch, tab_data) -> torch.Tensor:
         device = next(self.parameters()).device
-        
+
         # Process primary text
         primary_batch = self._create_text_batch(batch, "primary")
         primary_text_out = self.primary_text_subnetwork(primary_batch)
@@ -418,25 +444,34 @@ class TrimodalBert(pl.LightningModule):
 
         # === Prepare input tensor list ===
         input_names = [
-            self.primary_text_name, 
+            self.primary_text_name,
             self.primary_text_attention_mask,
             self.secondary_text_name,
-            self.secondary_text_attention_mask
+            self.secondary_text_attention_mask,
         ]
         input_tensors = []
 
         # Handle primary text inputs
         primary_input_ids_tensor = sample_batch.get(self.primary_text_name)
-        primary_attention_mask_tensor = sample_batch.get(self.primary_text_attention_mask)
-        
+        primary_attention_mask_tensor = sample_batch.get(
+            self.primary_text_attention_mask
+        )
+
         # Handle secondary text inputs
         secondary_input_ids_tensor = sample_batch.get(self.secondary_text_name)
-        secondary_attention_mask_tensor = sample_batch.get(self.secondary_text_attention_mask)
+        secondary_attention_mask_tensor = sample_batch.get(
+            self.secondary_text_attention_mask
+        )
 
-        if not all(isinstance(t, torch.Tensor) for t in [
-            primary_input_ids_tensor, primary_attention_mask_tensor,
-            secondary_input_ids_tensor, secondary_attention_mask_tensor
-        ]):
+        if not all(
+            isinstance(t, torch.Tensor)
+            for t in [
+                primary_input_ids_tensor,
+                primary_attention_mask_tensor,
+                secondary_input_ids_tensor,
+                secondary_attention_mask_tensor,
+            ]
+        ):
             raise ValueError(
                 "All text input tensors (primary and secondary input_ids and attention_mask) must be torch.Tensor in sample_batch."
             )
@@ -447,12 +482,14 @@ class TrimodalBert(pl.LightningModule):
         secondary_input_ids_tensor = secondary_input_ids_tensor.to("cpu")
         secondary_attention_mask_tensor = secondary_attention_mask_tensor.to("cpu")
 
-        input_tensors.extend([
-            primary_input_ids_tensor,
-            primary_attention_mask_tensor,
-            secondary_input_ids_tensor,
-            secondary_attention_mask_tensor
-        ])
+        input_tensors.extend(
+            [
+                primary_input_ids_tensor,
+                primary_attention_mask_tensor,
+                secondary_input_ids_tensor,
+                secondary_attention_mask_tensor,
+            ]
+        )
 
         batch_size = primary_input_ids_tensor.shape[0]
 
@@ -487,9 +524,9 @@ class TrimodalBert(pl.LightningModule):
 
         # Final check
         for name, tensor in zip(input_names, input_tensors):
-            assert (
-                tensor.shape[0] == batch_size
-            ), f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            assert tensor.shape[0] == batch_size, (
+                f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            )
 
         dynamic_axes = {}
         for name, tensor in zip(input_names, input_tensors):

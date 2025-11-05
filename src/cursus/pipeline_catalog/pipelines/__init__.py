@@ -49,9 +49,7 @@ def discover_pipelines() -> List[str]:
 def load_pipeline(pipeline_id: str) -> Any:
     """Dynamically load a pipeline module."""
     try:
-        module = importlib.import_module(
-            f".{pipeline_id}", package=__name__
-        )
+        module = importlib.import_module(f".{pipeline_id}", package=__name__)
         register_pipeline(pipeline_id, module)
         return module
     except ImportError as e:

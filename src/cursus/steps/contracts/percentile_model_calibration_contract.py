@@ -11,7 +11,7 @@ PERCENTILE_MODEL_CALIBRATION_CONTRACT = ScriptContract(
     entry_point="percentile_model_calibration.py",
     expected_input_paths={
         "evaluation_data": "/opt/ml/processing/input/eval_data",
-        "calibration_config": "/opt/ml/code/calibration"
+        "calibration_config": "/opt/ml/code/calibration",
     },
     expected_output_paths={
         "calibration_output": "/opt/ml/processing/output/calibration",

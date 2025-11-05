@@ -7,7 +7,7 @@ pipeline variants to ensure consistency.
 
 The DAG includes:
 1) Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) Feature Selection (training)
 4) XGBoost Model Training
 5) Model Calibration
@@ -43,11 +43,15 @@ def create_xgboost_training_with_calibration_fs_dag() -> PipelineDAG:
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
     dag.add_node("FeatureSelection_training")  # Feature selection for training
     dag.add_node("XGBoostTraining")  # XGBoost training step
-    dag.add_node("ModelCalibration_training")  # Model calibration step with training variant
-    
+    dag.add_node(
+        "ModelCalibration_training"
+    )  # Model calibration step with training variant
+
     # Add nodes for calibration path
     dag.add_node("CradleDataLoading_calibration")  # Data load for calibration
-    dag.add_node("TabularPreprocessing_calibration")  # Tabular preprocessing for calibration
+    dag.add_node(
+        "TabularPreprocessing_calibration"
+    )  # Tabular preprocessing for calibration
     dag.add_node("FeatureSelection_calibration")  # Feature selection for calibration
 
     # Training flow
@@ -82,7 +86,13 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="XGBoost training pipeline with feature selection and model calibration",
         complexity="advanced",
-        features=["training", "calibration", "data_loading", "preprocessing", "feature_selection"],
+        features=[
+            "training",
+            "calibration",
+            "data_loading",
+            "preprocessing",
+            "feature_selection",
+        ],
         framework="xgboost",
         node_count=8,
         edge_count=8,
@@ -169,7 +179,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         ("FeatureSelection_training", "XGBoostTraining"),
         ("FeatureSelection_calibration", "ModelCalibration_training"),
     ]
-    
+
     for source, target in feature_selection_dependencies:
         if (source, target) not in dag.edges:
             validation_result["warnings"].append(

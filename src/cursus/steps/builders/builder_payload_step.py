@@ -273,8 +273,11 @@ class PayloadStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "payload", logical_name])
+                destination = Join(
+                    on="/", values=[base_output_path, "payload", logical_name]
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

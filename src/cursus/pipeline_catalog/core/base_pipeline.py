@@ -2,7 +2,7 @@
 Base Pipeline Class
 
 This module provides a base class for all pipelines that incorporates PipelineDAGCompiler,
-calls pipeline DAG generator, and maintains a unified interface while keeping pipeline 
+calls pipeline DAG generator, and maintains a unified interface while keeping pipeline
 metadata and registry integration.
 
 The base class provides:
@@ -44,6 +44,7 @@ except ImportError:
     # Define pipeline parameters locally if import fails
     from sagemaker.workflow.parameters import ParameterString
     from sagemaker.network import NetworkConfig
+
     PIPELINE_EXECUTION_TEMP_DIR = ParameterString(name="EXECUTION_S3_PREFIX")
     KMS_ENCRYPTION_KEY_PARAM = ParameterString(name="KMS_ENCRYPTION_KEY_PARAM")
     SECURITY_GROUP_ID = ParameterString(name="SECURITY_GROUP_ID")
@@ -64,14 +65,14 @@ logger = logging.getLogger(__name__)
 class BasePipeline(ABC):
     """
     Base class for all pipelines that incorporates PipelineDAGCompiler functionality.
-    
+
     This class provides a unified interface for all pipelines, incorporating:
     - PipelineDAGCompiler integration
     - Pipeline DAG generation
     - Pipeline metadata and registry management
     - Execution document handling
     - Pipeline parameters support for runtime configuration
-    
+
     Subclasses must implement:
     - create_dag(): Create the pipeline DAG
     - get_enhanced_dag_metadata(): Provide pipeline metadata
@@ -85,7 +86,7 @@ class BasePipeline(ABC):
         enable_mods: bool = True,
         validate: bool = True,
         pipeline_parameters: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the pipeline with configuration and session details.
@@ -133,7 +134,9 @@ class BasePipeline(ABC):
                 self.config = json.load(f)
             logger.info(f"Loaded configuration from {config_path}")
         elif config_path:
-            logger.warning(f"Configuration file {config_path} not found, using defaults")
+            logger.warning(
+                f"Configuration file {config_path} not found, using defaults"
+            )
 
         # Initialize StepCatalog for enhanced pipeline functionality
         self.step_catalog = self._initialize_step_catalog()
@@ -156,10 +159,10 @@ class BasePipeline(ABC):
     def create_dag(self) -> PipelineDAG:
         """
         Create the pipeline DAG structure.
-        
+
         This method must be implemented by subclasses to define the specific
         DAG structure for their pipeline.
-        
+
         Returns:
             PipelineDAG: The directed acyclic graph for the pipeline
         """
@@ -169,10 +172,10 @@ class BasePipeline(ABC):
     def get_enhanced_dag_metadata(self) -> EnhancedDAGMetadata:
         """
         Get enhanced DAG metadata for this pipeline.
-        
+
         This method must be implemented by subclasses to provide pipeline-specific
         metadata for registry integration and documentation.
-        
+
         Returns:
             EnhancedDAGMetadata: Enhanced metadata with Zettelkasten properties
         """
@@ -181,42 +184,48 @@ class BasePipeline(ABC):
     def _initialize_step_catalog(self) -> Optional[StepCatalog]:
         """
         Initialize the StepCatalog for enhanced pipeline functionality.
-        
+
         Returns:
             StepCatalog: The step catalog instance, or None if initialization fails
         """
         try:
             # Use package-only discovery for pipeline catalog integration
             step_catalog = StepCatalog(workspace_dirs=None)
-            logger.info("StepCatalog initialized successfully for pipeline catalog integration")
+            logger.info(
+                "StepCatalog initialized successfully for pipeline catalog integration"
+            )
             return step_catalog
         except Exception as e:
-            logger.warning(f"Failed to initialize StepCatalog: {e}, pipeline will work without enhanced step discovery")
+            logger.warning(
+                f"Failed to initialize StepCatalog: {e}, pipeline will work without enhanced step discovery"
+            )
             return None
 
     def _initialize_compiler(self) -> PipelineDAGCompiler:
         """
         Initialize the DAG compiler with pipeline parameters.
-        
+
         Returns:
             PipelineDAGCompiler: The compiler instance
         """
         # Create compiler with pipeline parameters and pass StepCatalog if available
         compiler_kwargs = {
-            'config_path': self.config_path,
-            'sagemaker_session': self.sagemaker_session,
-            'role': self.execution_role,
-            'pipeline_parameters': self.pipeline_parameters,
-            **self.template_kwargs
+            "config_path": self.config_path,
+            "sagemaker_session": self.sagemaker_session,
+            "role": self.execution_role,
+            "pipeline_parameters": self.pipeline_parameters,
+            **self.template_kwargs,
         }
-        
+
         # Pass StepCatalog to compiler if available
         if self.step_catalog is not None:
-            compiler_kwargs['step_catalog'] = self.step_catalog
+            compiler_kwargs["step_catalog"] = self.step_catalog
 
         dag_compiler = PipelineDAGCompiler(**compiler_kwargs)
 
-        logger.info(f"Initialized DAG compiler with {len(self.pipeline_parameters)} pipeline parameters")
+        logger.info(
+            f"Initialized DAG compiler with {len(self.pipeline_parameters)} pipeline parameters"
+        )
         return dag_compiler
 
     def generate_pipeline(self) -> Pipeline:
@@ -350,7 +359,7 @@ class BasePipeline(ABC):
     ) -> Tuple[Pipeline, Dict[str, Any], PipelineDAGCompiler, Any]:
         """
         Create a SageMaker Pipeline with detailed reporting (compatibility method).
-        
+
         This method provides compatibility with the functional interface used in
         existing pipeline implementations.
 
@@ -398,7 +407,9 @@ class BasePipeline(ABC):
 
         return pipeline, report, self.dag_compiler, template_instance
 
-    def save_execution_document(self, document: Dict[str, Any], output_path: str) -> None:
+    def save_execution_document(
+        self, document: Dict[str, Any], output_path: str
+    ) -> None:
         """
         Save the execution document to a file.
 
@@ -419,7 +430,7 @@ class BasePipeline(ABC):
     def get_pipeline_config(self) -> Dict[str, Any]:
         """
         Get the current pipeline configuration.
-        
+
         Returns:
             Dict: Current configuration dictionary
         """
@@ -428,17 +439,19 @@ class BasePipeline(ABC):
     def update_pipeline_config(self, config_updates: Dict[str, Any]) -> None:
         """
         Update the pipeline configuration.
-        
+
         Args:
             config_updates: Dictionary of configuration updates to apply
         """
         self.config.update(config_updates)
-        logger.info(f"Updated pipeline configuration with {len(config_updates)} changes")
+        logger.info(
+            f"Updated pipeline configuration with {len(config_updates)} changes"
+        )
 
     def get_dag_info(self) -> Dict[str, Any]:
         """
         Get information about the current DAG.
-        
+
         Returns:
             Dict: DAG information including nodes, edges, and metadata
         """
@@ -453,7 +466,7 @@ class BasePipeline(ABC):
     def get_pipeline_parameters(self) -> list:
         """
         Get the current pipeline parameters.
-        
+
         Returns:
             list: Current pipeline parameters
         """
@@ -462,33 +475,35 @@ class BasePipeline(ABC):
     def set_pipeline_parameters(self, pipeline_parameters: list) -> None:
         """
         Set custom pipeline parameters and reinitialize the compiler.
-        
+
         Args:
             pipeline_parameters: List of pipeline parameters to use
         """
         self.pipeline_parameters = pipeline_parameters
         # Reinitialize compiler with new parameters
         self.dag_compiler = self._initialize_compiler()
-        logger.info(f"Updated pipeline parameters and reinitialized compiler with {len(pipeline_parameters)} parameters")
+        logger.info(
+            f"Updated pipeline parameters and reinitialized compiler with {len(pipeline_parameters)} parameters"
+        )
 
     @staticmethod
     def create_pipeline_parameters(execution_s3_prefix: Optional[str] = None) -> list:
         """
         Create a list of pipeline parameters with optional custom execution prefix.
-        
+
         This is a helper method for external systems to easily create pipeline parameters
         with a custom PIPELINE_EXECUTION_TEMP_DIR value.
-        
+
         Args:
             execution_s3_prefix: Custom S3 prefix for pipeline execution (optional)
-            
+
         Returns:
             list: List of pipeline parameters
-            
+
         Example:
             # Create parameters with custom execution prefix
             params = BasePipeline.create_pipeline_parameters("s3://my-bucket/custom-path")
-            
+
             # Use in pipeline initialization
             pipeline = XGBoostE2EComprehensivePipeline(
                 config_path="config.json",
@@ -496,12 +511,11 @@ class BasePipeline(ABC):
             )
         """
         from sagemaker.workflow.parameters import ParameterString
-        
+
         # Create custom execution parameter if provided
         if execution_s3_prefix:
             custom_execution_param = ParameterString(
-                name="EXECUTION_S3_PREFIX", 
-                default_value=execution_s3_prefix
+                name="EXECUTION_S3_PREFIX", default_value=execution_s3_prefix
             )
             pipeline_parameters = [
                 custom_execution_param,
@@ -517,42 +531,39 @@ class BasePipeline(ABC):
                 SECURITY_GROUP_ID,
                 VPC_SUBNET,
             ]
-        
+
         return pipeline_parameters
 
     # StepCatalog Integration Methods
-    
+
     def get_step_catalog_info(self) -> Dict[str, Any]:
         """
         Get information about the StepCatalog integration.
-        
+
         Returns:
             Dict: StepCatalog information and statistics
         """
         if self.step_catalog is None:
-            return {
-                "available": False,
-                "reason": "StepCatalog initialization failed"
-            }
-        
+            return {"available": False, "reason": "StepCatalog initialization failed"}
+
         try:
             return {
                 "available": True,
-                "supported_step_types": len(self.step_catalog.list_supported_step_types()),
+                "supported_step_types": len(
+                    self.step_catalog.list_supported_step_types()
+                ),
                 "indexed_steps": len(self.step_catalog.list_available_steps()),
                 "legacy_aliases_supported": len(self.step_catalog.LEGACY_ALIASES),
-                "workspace_aware": hasattr(self.step_catalog, 'workspace_dirs') and self.step_catalog.workspace_dirs is not None
+                "workspace_aware": hasattr(self.step_catalog, "workspace_dirs")
+                and self.step_catalog.workspace_dirs is not None,
             }
         except Exception as e:
-            return {
-                "available": False,
-                "reason": f"Error accessing StepCatalog: {e}"
-            }
+            return {"available": False, "reason": f"Error accessing StepCatalog: {e}"}
 
     def validate_dag_steps_with_catalog(self) -> Dict[str, Any]:
         """
         Validate DAG steps using StepCatalog for enhanced validation.
-        
+
         Returns:
             Dict: Validation results with StepCatalog insights
         """
@@ -560,29 +571,31 @@ class BasePipeline(ABC):
             return {
                 "catalog_available": False,
                 "validation_performed": False,
-                "message": "StepCatalog not available for enhanced validation"
+                "message": "StepCatalog not available for enhanced validation",
             }
-        
+
         try:
             dag_steps = list(self.dag.nodes)
             supported_steps = self.step_catalog.list_supported_step_types()
-            
+
             # Check which steps are supported
             supported = []
             unsupported = []
             legacy_aliases = []
-            
+
             for step in dag_steps:
                 if step in supported_steps:
                     supported.append(step)
                 elif step in self.step_catalog.LEGACY_ALIASES:
-                    legacy_aliases.append({
-                        "step": step,
-                        "canonical": self.step_catalog.LEGACY_ALIASES[step]
-                    })
+                    legacy_aliases.append(
+                        {
+                            "step": step,
+                            "canonical": self.step_catalog.LEGACY_ALIASES[step],
+                        }
+                    )
                 else:
                     unsupported.append(step)
-            
+
             return {
                 "catalog_available": True,
                 "validation_performed": True,
@@ -593,96 +606,105 @@ class BasePipeline(ABC):
                 "validation_summary": {
                     "all_supported": len(unsupported) == 0,
                     "has_legacy_aliases": len(legacy_aliases) > 0,
-                    "support_percentage": (len(supported) + len(legacy_aliases)) / len(dag_steps) * 100 if dag_steps else 100
-                }
+                    "support_percentage": (len(supported) + len(legacy_aliases))
+                    / len(dag_steps)
+                    * 100
+                    if dag_steps
+                    else 100,
+                },
             }
         except Exception as e:
             return {
                 "catalog_available": True,
                 "validation_performed": False,
-                "error": str(e)
+                "error": str(e),
             }
 
     def get_step_recommendations(self, step_name: str) -> Dict[str, Any]:
         """
         Get recommendations for a specific step using StepCatalog.
-        
+
         Args:
             step_name: Name of the step to get recommendations for
-            
+
         Returns:
             Dict: Recommendations and alternatives for the step
         """
         if self.step_catalog is None:
-            return {
-                "catalog_available": False,
-                "recommendations": []
-            }
-        
+            return {"catalog_available": False, "recommendations": []}
+
         try:
             # Check if step is supported
             supported_steps = self.step_catalog.list_supported_step_types()
-            
+
             recommendations = {
                 "catalog_available": True,
                 "step_name": step_name,
                 "is_supported": step_name in supported_steps,
-                "recommendations": []
+                "recommendations": [],
             }
-            
+
             # Check for legacy alias
             if step_name in self.step_catalog.LEGACY_ALIASES:
                 recommendations["is_legacy_alias"] = True
-                recommendations["canonical_name"] = self.step_catalog.LEGACY_ALIASES[step_name]
-                recommendations["recommendations"].append({
-                    "type": "legacy_alias",
-                    "message": f"'{step_name}' is a legacy alias. Consider using '{self.step_catalog.LEGACY_ALIASES[step_name]}' instead."
-                })
-            
+                recommendations["canonical_name"] = self.step_catalog.LEGACY_ALIASES[
+                    step_name
+                ]
+                recommendations["recommendations"].append(
+                    {
+                        "type": "legacy_alias",
+                        "message": f"'{step_name}' is a legacy alias. Consider using '{self.step_catalog.LEGACY_ALIASES[step_name]}' instead.",
+                    }
+                )
+
             # If step is not supported, try to find similar steps
             if not recommendations["is_supported"]:
                 # Simple similarity check based on name matching
                 similar_steps = [
-                    s for s in supported_steps 
+                    s
+                    for s in supported_steps
                     if step_name.lower() in s.lower() or s.lower() in step_name.lower()
                 ]
-                
+
                 if similar_steps:
-                    recommendations["recommendations"].append({
-                        "type": "similar_steps",
-                        "message": f"Step '{step_name}' not found. Similar steps available:",
-                        "alternatives": similar_steps[:5]  # Limit to top 5
-                    })
-            
+                    recommendations["recommendations"].append(
+                        {
+                            "type": "similar_steps",
+                            "message": f"Step '{step_name}' not found. Similar steps available:",
+                            "alternatives": similar_steps[:5],  # Limit to top 5
+                        }
+                    )
+
             return recommendations
-            
+
         except Exception as e:
-            return {
-                "catalog_available": True,
-                "error": str(e)
-            }
+            return {"catalog_available": True, "error": str(e)}
 
     def get_enhanced_pipeline_metadata(self) -> Dict[str, Any]:
         """
         Get enhanced pipeline metadata combining DAG info with StepCatalog insights.
-        
+
         Returns:
             Dict: Enhanced metadata about the pipeline
         """
         base_metadata = self.get_dag_info()
         catalog_info = self.get_step_catalog_info()
-        
+
         if catalog_info["available"]:
             step_validation = self.validate_dag_steps_with_catalog()
-            base_metadata.update({
-                "step_catalog_integration": catalog_info,
-                "step_validation": step_validation,
-                "enhanced_features_available": True
-            })
+            base_metadata.update(
+                {
+                    "step_catalog_integration": catalog_info,
+                    "step_validation": step_validation,
+                    "enhanced_features_available": True,
+                }
+            )
         else:
-            base_metadata.update({
-                "step_catalog_integration": catalog_info,
-                "enhanced_features_available": False
-            })
-        
+            base_metadata.update(
+                {
+                    "step_catalog_integration": catalog_info,
+                    "enhanced_features_available": False,
+                }
+            )
+
         return base_metadata

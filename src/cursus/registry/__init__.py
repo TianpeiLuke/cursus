@@ -2,7 +2,7 @@
 Enhanced Pipeline Registry Module with Hybrid Registry Support.
 
 This module contains registry components for tracking step types, specifications,
-hyperparameters, and other metadata used in the pipeline system. It helps ensure 
+hyperparameters, and other metadata used in the pipeline system. It helps ensure
 consistency in step naming and configuration.
 
 Enhanced Features:
@@ -111,7 +111,7 @@ __all__ = [
     "RegistryError",
     # Builder registry - REMOVED: Use StepCatalog instead
     # "StepBuilderRegistry",
-    # "get_global_registry", 
+    # "get_global_registry",
     # "register_global_builder",
     # "list_global_step_types",
     # Core step names and registry (backward compatible)

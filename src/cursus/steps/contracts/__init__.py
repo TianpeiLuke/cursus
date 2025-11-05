@@ -24,7 +24,9 @@ from .mims_registration_contract import MIMS_REGISTRATION_CONTRACT
 from .risk_table_mapping_contract import RISK_TABLE_MAPPING_CONTRACT
 from .stratified_sampling_contract import STRATIFIED_SAMPLING_CONTRACT
 from .tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
-from .temporal_sequence_normalization_contract import TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT
+from .temporal_sequence_normalization_contract import (
+    TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT,
+)
 from .temporal_feature_engineering_contract import TEMPORAL_FEATURE_ENGINEERING_CONTRACT
 from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 from .xgboost_model_inference_contract import XGBOOST_MODEL_INFERENCE_CONTRACT

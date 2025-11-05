@@ -7,7 +7,7 @@ pipeline variants to ensure consistency.
 
 The DAG includes:
 1) Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) XGBoost Model Training
 4) Model Calibration
 5) Data Loading (calibration)

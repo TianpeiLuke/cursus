@@ -273,8 +273,8 @@ class BatchTransformStepBuilder(StepBuilderBase):
     def _get_outputs(self, outputs: Dict[str, Any]) -> str:
         """
         Get the S3 output path for the transform job using specification.
-        
-        This path will be used by the Transformer and will be accessible via 
+
+        This path will be used by the Transformer and will be accessible via
         properties.TransformOutput.S3OutputPath at runtime.
 
         Args:
@@ -291,19 +291,26 @@ class BatchTransformStepBuilder(StepBuilderBase):
             logical_name = output_spec.logical_name
             if logical_name in outputs:
                 self.log_info(
-                    "Using provided output path from '%s': %s", 
-                    logical_name, 
-                    outputs[logical_name]
+                    "Using provided output path from '%s': %s",
+                    logical_name,
+                    outputs[logical_name],
                 )
                 return outputs[logical_name]
 
         # Generate default output path using specification
         base_output_path = self._get_base_output_path()
-        step_type = self.spec.step_type.lower() if hasattr(self.spec, 'step_type') else 'batch_transform'
-        
+        step_type = (
+            self.spec.step_type.lower()
+            if hasattr(self.spec, "step_type")
+            else "batch_transform"
+        )
+
         from sagemaker.workflow.functions import Join
-        output_path = Join(on="/", values=[base_output_path, step_type, self.config.job_type])
-        
+
+        output_path = Join(
+            on="/", values=[base_output_path, step_type, self.config.job_type]
+        )
+
         self.log_info("Generated default output path: %s", output_path)
         return output_path
 

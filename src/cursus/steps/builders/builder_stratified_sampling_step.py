@@ -80,8 +80,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         ):
             spec = STRATIFIED_SAMPLING_CALIBRATION_SPEC
         elif (
-            job_type == "validation"
-            and STRATIFIED_SAMPLING_VALIDATION_SPEC is not None
+            job_type == "validation" and STRATIFIED_SAMPLING_VALIDATION_SPEC is not None
         ):
             spec = STRATIFIED_SAMPLING_VALIDATION_SPEC
         elif job_type == "testing" and STRATIFIED_SAMPLING_TESTING_SPEC is not None:
@@ -160,7 +159,9 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
             "proportional_min",
             "optimal",
         ]:
-            raise ValueError(f"Invalid sampling_strategy: {self.config.sampling_strategy}")
+            raise ValueError(
+                f"Invalid sampling_strategy: {self.config.sampling_strategy}"
+            )
 
         # Validate target_sample_size
         if self.config.target_sample_size <= 0:
@@ -325,8 +326,17 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "stratified_sampling", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "stratified_sampling",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

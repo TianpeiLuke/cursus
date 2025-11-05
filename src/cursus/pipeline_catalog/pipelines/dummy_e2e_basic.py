@@ -17,22 +17,22 @@ Example:
     from cursus.pipeline_catalog.pipelines.dummy_e2e_basic_refactored import DummyE2EBasicPipeline
     from sagemaker import Session
     from sagemaker.workflow.pipeline_context import PipelineSession
-    
+
     # Initialize session
     sagemaker_session = Session()
     role = sagemaker_session.get_caller_identity_arn()
     pipeline_session = PipelineSession()
-    
+
     # Create pipeline instance
     pipeline_instance = DummyE2EBasicPipeline(
         config_path="path/to/config.json",
         sagemaker_session=pipeline_session,
         execution_role=role
     )
-    
+
     # Generate pipeline
     pipeline = pipeline_instance.generate_pipeline()
-    
+
     # Execute the pipeline
     pipeline.upsert()
     execution = pipeline.start()
@@ -57,13 +57,13 @@ logger = logging.getLogger(__name__)
 class DummyE2EBasicPipeline(BasePipeline):
     """
     Dummy End-to-End Basic Pipeline using the new BasePipeline structure.
-    
+
     This pipeline implements a basic dummy workflow for testing and demonstration:
     1) DummyTraining - Training step using a pretrained model
     2) Package - Model packaging step
     3) Payload - Payload testing step
     4) Registration - Model registration step
-    
+
     This refactored version provides enhanced functionality including:
     - Class-based pipeline definition
     - Integration with PipelineDAGCompiler
@@ -79,7 +79,7 @@ class DummyE2EBasicPipeline(BasePipeline):
         execution_role: Optional[str] = None,
         enable_mods: bool = False,  # Regular pipeline, not MODS-enhanced
         validate: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the Dummy E2E Basic Pipeline.
@@ -98,7 +98,7 @@ class DummyE2EBasicPipeline(BasePipeline):
             execution_role=execution_role,
             enable_mods=enable_mods,
             validate=validate,
-            **kwargs
+            **kwargs,
         )
         logger.info("Initialized Dummy E2E Basic Pipeline")
 
@@ -232,12 +232,13 @@ if __name__ == "__main__":
         config_path = args.config_path
         if not config_path:
             from pathlib import Path
+
             config_dir = Path.cwd().parent / "pipeline_config"
             config_path = str(config_dir / "config.json")
 
         # Create the pipeline using new class-based approach
         logger.info(f"Creating refactored dummy pipeline with config: {config_path}")
-        
+
         pipeline_instance = DummyE2EBasicPipeline(
             config_path=config_path,
             sagemaker_session=pipeline_session,
@@ -260,14 +261,18 @@ if __name__ == "__main__":
 
         logger.info("Refactored dummy pipeline created successfully!")
         logger.info(f"Pipeline name: {pipeline.name}")
-        logger.info(f"Template available: {pipeline_instance.get_last_template() is not None}")
+        logger.info(
+            f"Template available: {pipeline_instance.get_last_template() is not None}"
+        )
 
         # Process execution documents if requested
         if args.output_doc:
-            execution_doc = pipeline_instance.fill_execution_document({
-                "dummy_model_config": "basic-config",
-                "packaging_params": "standard-packaging",
-            })
+            execution_doc = pipeline_instance.fill_execution_document(
+                {
+                    "dummy_model_config": "basic-config",
+                    "packaging_params": "standard-packaging",
+                }
+            )
             pipeline_instance.save_execution_document(execution_doc, args.output_doc)
 
         # Upsert if requested

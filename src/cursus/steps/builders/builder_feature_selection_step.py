@@ -78,16 +78,12 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         # Get specification based on job type
         if job_type == "training" and FEATURE_SELECTION_TRAINING_SPEC is not None:
             spec = FEATURE_SELECTION_TRAINING_SPEC
-        elif (
-            job_type == "validation"
-            and FEATURE_SELECTION_VALIDATION_SPEC is not None
-        ):
+        elif job_type == "validation" and FEATURE_SELECTION_VALIDATION_SPEC is not None:
             spec = FEATURE_SELECTION_VALIDATION_SPEC
         elif job_type == "testing" and FEATURE_SELECTION_TESTING_SPEC is not None:
             spec = FEATURE_SELECTION_TESTING_SPEC
         elif (
-            job_type == "calibration"
-            and FEATURE_SELECTION_CALIBRATION_SPEC is not None
+            job_type == "calibration" and FEATURE_SELECTION_CALIBRATION_SPEC is not None
         ):
             spec = FEATURE_SELECTION_CALIBRATION_SPEC
         else:
@@ -162,15 +158,25 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             raise ValueError("label_field must be provided and non-empty")
 
         # Validate feature selection methods
-        if not self.config.feature_selection_methods or not self.config.feature_selection_methods.strip():
+        if (
+            not self.config.feature_selection_methods
+            or not self.config.feature_selection_methods.strip()
+        ):
             raise ValueError("feature_selection_methods must be provided and non-empty")
 
         # Validate method list
         valid_methods = {
-            "variance", "correlation", "mutual_info", "chi2", "f_test",
-            "rfe", "importance", "lasso", "permutation"
+            "variance",
+            "correlation",
+            "mutual_info",
+            "chi2",
+            "f_test",
+            "rfe",
+            "importance",
+            "lasso",
+            "permutation",
         }
-        
+
         for method in self.config.method_list:
             if method not in valid_methods:
                 raise ValueError(
@@ -347,8 +353,17 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "feature_selection", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "feature_selection",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -409,10 +424,14 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             # If dependencies are provided, extract inputs from them
             if dependencies:
                 try:
-                    extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                    extracted_inputs = self.extract_inputs_from_dependencies(
+                        dependencies
+                    )
                     inputs.update(extracted_inputs)
                 except Exception as e:
-                    self.log_warning("Failed to extract inputs from dependencies: %s", e)
+                    self.log_warning(
+                        "Failed to extract inputs from dependencies: %s", e
+                    )
 
             # Add explicitly provided inputs (overriding any extracted ones)
             inputs.update(inputs_raw)
@@ -455,5 +474,6 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         except Exception as e:
             self.log_error(f"Error creating FeatureSelection step: {e}")
             import traceback
+
             self.log_error(traceback.format_exc())
             raise ValueError(f"Failed to create FeatureSelection step: {str(e)}") from e

@@ -39,17 +39,23 @@ def create_bedrock_simple_training_dag() -> PipelineDAG:
     # Add core training nodes with Bedrock enhancement
     dag.add_node("DummyDataLoading_training")  # Dummy data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node("BedrockPromptTemplateGeneration")  # Bedrock prompt template generation
+    dag.add_node(
+        "BedrockPromptTemplateGeneration"
+    )  # Bedrock prompt template generation
     dag.add_node("BedrockProcessing_training")  # Bedrock processing step for training
     dag.add_node("PyTorchTraining")  # PyTorch training step
 
     # Training flow with Bedrock enhancement
     dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
-    
+
     # Bedrock processing flow for training - two inputs to BedrockProcessing_training
-    dag.add_edge("TabularPreprocessing_training", "BedrockProcessing_training")  # Data input
-    dag.add_edge("BedrockPromptTemplateGeneration", "BedrockProcessing_training")  # Template input
-    
+    dag.add_edge(
+        "TabularPreprocessing_training", "BedrockProcessing_training"
+    )  # Data input
+    dag.add_edge(
+        "BedrockPromptTemplateGeneration", "BedrockProcessing_training"
+    )  # Template input
+
     # Enhanced data flows to PyTorch training
     dag.add_edge("BedrockProcessing_training", "PyTorchTraining")
 
@@ -69,7 +75,12 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="Bedrock-enhanced simple training pipeline with dummy data loading, LLM processing, and PyTorch training",
         complexity="moderate",
-        features=["dummy_data_loading", "bedrock_prompt_generation", "bedrock_processing", "training"],
+        features=[
+            "dummy_data_loading",
+            "bedrock_prompt_generation",
+            "bedrock_processing",
+            "training",
+        ],
         framework="pytorch",
         node_count=5,
         edge_count=4,
@@ -92,10 +103,13 @@ def get_dag_metadata() -> DAGMetadata:
                 "template_generation": "BedrockPromptTemplateGeneration",
                 "training_processing": "BedrockProcessing_training",
                 "training_flow": {
-                    "input_sources": ["TabularPreprocessing_training", "BedrockPromptTemplateGeneration"],
-                    "output_target": "PyTorchTraining"
-                }
-            }
+                    "input_sources": [
+                        "TabularPreprocessing_training",
+                        "BedrockPromptTemplateGeneration",
+                    ],
+                    "output_target": "PyTorchTraining",
+                },
+            },
         },
     )
 
@@ -155,7 +169,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 
     # Validate Bedrock integration structure
     bedrock_integration = metadata.extra_metadata.get("bedrock_integration", {})
-    
+
     # Check that BedrockProcessing_training has the correct inputs
     bedrock_processing_node = "BedrockProcessing_training"
     if bedrock_processing_node in dag.nodes:
@@ -164,15 +178,19 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         for edge in dag.edges:
             if edge[1] == bedrock_processing_node:
                 bedrock_predecessors.add(edge[0])
-        
-        expected_inputs = set(bedrock_integration.get("training_flow", {}).get("input_sources", []))
+
+        expected_inputs = set(
+            bedrock_integration.get("training_flow", {}).get("input_sources", [])
+        )
         if bedrock_predecessors != expected_inputs:
             validation_result["warnings"].append(
                 f"BedrockProcessing_training inputs mismatch. Expected: {expected_inputs}, Found: {bedrock_predecessors}"
             )
-    
+
     # Check that BedrockProcessing_training outputs to PyTorchTraining
-    pytorch_training_node = bedrock_integration.get("training_flow", {}).get("output_target")
+    pytorch_training_node = bedrock_integration.get("training_flow", {}).get(
+        "output_target"
+    )
     if pytorch_training_node and pytorch_training_node in dag.nodes:
         bedrock_to_pytorch_edge = (bedrock_processing_node, pytorch_training_node)
         if bedrock_to_pytorch_edge not in dag.edges:
@@ -188,7 +206,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         ("BedrockPromptTemplateGeneration", "BedrockProcessing_training"),
         ("BedrockProcessing_training", "PyTorchTraining"),
     ]
-    
+
     for edge in expected_edges:
         if edge not in dag.edges:
             validation_result["errors"].append(f"Missing expected edge: {edge}")
@@ -200,7 +218,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 def get_training_flow_info() -> Dict[str, Any]:
     """
     Get information about the Bedrock-enhanced training flow in this DAG.
-    
+
     Returns:
         Dict containing training flow details
     """
@@ -210,28 +228,28 @@ def get_training_flow_info() -> Dict[str, Any]:
             {
                 "step": "DummyDataLoading_training",
                 "purpose": "Load dummy training data",
-                "output": "Raw training dataset"
+                "output": "Raw training dataset",
             },
             {
-                "step": "TabularPreprocessing_training", 
+                "step": "TabularPreprocessing_training",
                 "purpose": "Preprocess training data with train/val/test splits",
-                "output": "Processed training data with splits"
+                "output": "Processed training data with splits",
             },
             {
                 "step": "BedrockPromptTemplateGeneration",
                 "purpose": "Generate LLM prompt templates and validation schemas",
-                "output": "Prompt templates and validation schemas"
+                "output": "Prompt templates and validation schemas",
             },
             {
                 "step": "BedrockProcessing_training",
                 "purpose": "Enhance training data with LLM-generated insights",
-                "output": "LLM-enhanced training data with preserved splits"
+                "output": "LLM-enhanced training data with preserved splits",
             },
             {
                 "step": "PyTorchTraining",
                 "purpose": "Train PyTorch model using LLM-enhanced data",
-                "output": "Trained PyTorch model artifacts"
-            }
+                "output": "Trained PyTorch model artifacts",
+            },
         ],
         "data_flow": "DummyDataLoading_training → TabularPreprocessing_training → BedrockProcessing_training → PyTorchTraining",
         "template_flow": "BedrockPromptTemplateGeneration → BedrockProcessing_training",
@@ -244,22 +262,22 @@ def get_training_flow_info() -> Dict[str, Any]:
             "no_calibration": True,
             "no_packaging": True,
             "no_registration": True,
-            "no_evaluation": True
+            "no_evaluation": True,
         },
         "bedrock_features": {
             "prompt_template_generation": True,
             "llm_data_enhancement": True,
             "train_val_test_preservation": True,
             "field_preservation": True,
-            "validation_schema_support": True
-        }
+            "validation_schema_support": True,
+        },
     }
 
 
 def get_bedrock_step_dependencies() -> Dict[str, Dict[str, Any]]:
     """
     Get the dependency specifications for Bedrock steps in this DAG.
-    
+
     Returns:
         Dict mapping step names to their dependency specifications
     """
@@ -269,39 +287,39 @@ def get_bedrock_step_dependencies() -> Dict[str, Dict[str, Any]]:
             "outputs": {
                 "prompt_templates": "Templates for Bedrock processing",
                 "template_metadata": "Metadata about generated templates",
-                "validation_schema": "Schema for validating Bedrock responses"
-            }
+                "validation_schema": "Schema for validating Bedrock responses",
+            },
         },
         "BedrockProcessing_training": {
             "dependencies": {
                 "prompt_templates": {
                     "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "prompt_templates",
-                    "required": True
+                    "required": True,
                 },
                 "validation_schema": {
-                    "source_step": "BedrockPromptTemplateGeneration", 
+                    "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "validation_schema",
-                    "required": True
+                    "required": True,
                 },
                 "input_data": {
                     "source_step": "TabularPreprocessing_training",
                     "output_name": "processed_data",
-                    "required": True
-                }
+                    "required": True,
+                },
             },
             "outputs": {
                 "processed_data": "LLM-enhanced processed data for training",
-                "processing_metadata": "Metadata about Bedrock processing results"
-            }
-        }
+                "processing_metadata": "Metadata about Bedrock processing results",
+            },
+        },
     }
 
 
 def get_integration_notes() -> Dict[str, str]:
     """
     Get integration notes for implementing this DAG.
-    
+
     Returns:
         Dict containing implementation notes and considerations
     """
@@ -314,5 +332,5 @@ def get_integration_notes() -> Dict[str, str]:
         "error_handling": "Consider implementing fallback mechanisms if Bedrock processing fails - potentially bypass to direct PyTorch training",
         "monitoring": "Add monitoring for Bedrock API usage, response quality, and processing latency",
         "cost_optimization": "Monitor Bedrock usage costs and consider batching strategies for large datasets",
-        "simplicity": "This DAG focuses on training-only workflow - no calibration, packaging, or registration complexity"
+        "simplicity": "This DAG focuses on training-only workflow - no calibration, packaging, or registration complexity",
     }

@@ -3,7 +3,7 @@ Shared DAG definition for Simple Training Pipeline
 
 This module provides the shared DAG definition for a simple training workflow
 that uses dummy data loading and includes only the training path up to PyTorch training.
-This is a simplified version of the complete E2E pipeline focusing only on the 
+This is a simplified version of the complete E2E pipeline focusing only on the
 core training components.
 
 The DAG includes:
@@ -135,7 +135,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         ("DummyDataLoading_training", "TabularPreprocessing_training"),
         ("TabularPreprocessing_training", "PyTorchTraining"),
     ]
-    
+
     for edge in expected_edges:
         if edge not in dag.edges:
             validation_result["errors"].append(f"Missing expected edge: {edge}")
@@ -147,7 +147,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 def get_training_flow_info() -> Dict[str, Any]:
     """
     Get information about the training flow in this DAG.
-    
+
     Returns:
         Dict containing training flow details
     """
@@ -157,18 +157,18 @@ def get_training_flow_info() -> Dict[str, Any]:
             {
                 "step": "DummyDataLoading_training",
                 "purpose": "Load dummy training data",
-                "output": "Raw training dataset"
+                "output": "Raw training dataset",
             },
             {
-                "step": "TabularPreprocessing_training", 
+                "step": "TabularPreprocessing_training",
                 "purpose": "Preprocess training data with train/val/test splits",
-                "output": "Processed training data with splits"
+                "output": "Processed training data with splits",
             },
             {
                 "step": "PyTorchTraining",
                 "purpose": "Train PyTorch model using processed data",
-                "output": "Trained PyTorch model artifacts"
-            }
+                "output": "Trained PyTorch model artifacts",
+            },
         ],
         "data_flow": "DummyDataLoading_training → TabularPreprocessing_training → PyTorchTraining",
         "characteristics": {
@@ -179,6 +179,6 @@ def get_training_flow_info() -> Dict[str, Any]:
             "no_calibration": True,
             "no_packaging": True,
             "no_registration": True,
-            "no_evaluation": True
-        }
+            "no_evaluation": True,
+        },
     }

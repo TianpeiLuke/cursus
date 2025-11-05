@@ -96,9 +96,7 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
         else:
             # Try dynamic import
             try:
-                module_path = (
-                    f"..specs.risk_table_mapping_{job_type}_spec"
-                )
+                module_path = f"..specs.risk_table_mapping_{job_type}_spec"
                 module = importlib.import_module(module_path, package=__package__)
                 spec_var_name = f"RISK_TABLE_MAPPING_{job_type.upper()}_SPEC"
                 if hasattr(module, spec_var_name):
@@ -213,7 +211,6 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
         self.log_info("Processing environment variables: %s", env_vars)
         return env_vars
 
-
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """
         Get inputs for the step using specification and contract.
@@ -312,8 +309,17 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "risk_table_mapping", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "risk_table_mapping",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -349,7 +355,7 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
     def create_step(self, **kwargs) -> ProcessingStep:
         """
         Create the ProcessingStep following the pattern from XGBoostModelEvalStepBuilder.
-        
+
         This implementation uses processor.run() with both code and source_dir parameters,
         which is the correct pattern for ProcessingSteps that need source directory access.
 
@@ -376,10 +382,14 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             # If dependencies are provided, extract inputs from them
             if dependencies:
                 try:
-                    extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                    extracted_inputs = self.extract_inputs_from_dependencies(
+                        dependencies
+                    )
                     inputs.update(extracted_inputs)
                 except Exception as e:
-                    self.log_warning("Failed to extract inputs from dependencies: %s", e)
+                    self.log_warning(
+                        "Failed to extract inputs from dependencies: %s", e
+                    )
 
             # Add explicitly provided inputs (overriding any extracted ones)
             inputs.update(inputs_raw)
@@ -431,5 +441,6 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
         except Exception as e:
             self.log_error(f"Error creating RiskTableMapping step: {e}")
             import traceback
+
             self.log_error(traceback.format_exc())
             raise ValueError(f"Failed to create RiskTableMapping step: {str(e)}") from e

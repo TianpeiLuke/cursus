@@ -43,14 +43,16 @@ class TrimodalGateFusion(nn.Module):
     Uses learnable gates to control the contribution of each modality.
     """
 
-    def __init__(self, primary_dim: int, secondary_dim: int, tab_dim: int, fusion_dim: int):
+    def __init__(
+        self, primary_dim: int, secondary_dim: int, tab_dim: int, fusion_dim: int
+    ):
         super().__init__()
-        
+
         # Project each modality to common fusion dimension
         self.primary_proj = nn.Linear(primary_dim, fusion_dim)
         self.secondary_proj = nn.Linear(secondary_dim, fusion_dim)
         self.tab_proj = nn.Linear(tab_dim, fusion_dim) if tab_dim > 0 else None
-        
+
         # Gate networks for each modality pair
         # Primary-Secondary gate
         self.gate_primary_secondary = nn.Sequential(
@@ -58,7 +60,7 @@ class TrimodalGateFusion(nn.Module):
             nn.LayerNorm(fusion_dim),
             nn.Sigmoid(),
         )
-        
+
         # Text-Tabular gate (for fused text vs tabular)
         if tab_dim > 0:
             self.gate_text_tab = nn.Sequential(
@@ -68,7 +70,7 @@ class TrimodalGateFusion(nn.Module):
             )
         else:
             self.gate_text_tab = None
-            
+
         # Optional: Three-way gate for direct trimodal fusion
         self.use_trimodal_gate = tab_dim > 0
         if self.use_trimodal_gate:
@@ -78,74 +80,94 @@ class TrimodalGateFusion(nn.Module):
                 nn.Sigmoid(),
             )
 
-    def forward(self, primary_features: torch.Tensor, secondary_features: torch.Tensor, 
-                tab_features: torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self,
+        primary_features: torch.Tensor,
+        secondary_features: torch.Tensor,
+        tab_features: torch.Tensor = None,
+    ) -> torch.Tensor:
         """
         Forward pass with hierarchical gated fusion.
-        
+
         Args:
             primary_features: Primary text features [B, primary_dim]
             secondary_features: Secondary text features [B, secondary_dim]
             tab_features: Tabular features [B, tab_dim] (optional)
-            
+
         Returns:
             Fused features [B, fusion_dim]
         """
         # Project to common dimension
-        primary_proj = self.primary_proj(primary_features)      # [B, fusion_dim]
-        secondary_proj = self.secondary_proj(secondary_features) # [B, fusion_dim]
-        
+        primary_proj = self.primary_proj(primary_features)  # [B, fusion_dim]
+        secondary_proj = self.secondary_proj(secondary_features)  # [B, fusion_dim]
+
         # Step 1: Fuse primary and secondary text with gating
-        text_combined = torch.cat([primary_proj, secondary_proj], dim=1)  # [B, fusion_dim * 2]
-        text_gate = self.gate_primary_secondary(text_combined)             # [B, fusion_dim]
-        
+        text_combined = torch.cat(
+            [primary_proj, secondary_proj], dim=1
+        )  # [B, fusion_dim * 2]
+        text_gate = self.gate_primary_secondary(text_combined)  # [B, fusion_dim]
+
         # Gated fusion of text modalities
-        text_fused = text_gate * primary_proj + (1 - text_gate) * secondary_proj  # [B, fusion_dim]
-        
+        text_fused = (
+            text_gate * primary_proj + (1 - text_gate) * secondary_proj
+        )  # [B, fusion_dim]
+
         # Step 2: Fuse text with tabular (if available)
         if tab_features is not None and self.tab_proj is not None:
             tab_proj = self.tab_proj(tab_features)  # [B, fusion_dim]
-            
+
             if self.use_trimodal_gate:
                 # Option A: Direct trimodal gating
-                trimodal_combined = torch.cat([primary_proj, secondary_proj, tab_proj], dim=1)  # [B, fusion_dim * 3]
-                trimodal_gates = self.trimodal_gate(trimodal_combined)  # [B, fusion_dim * 3]
-                
+                trimodal_combined = torch.cat(
+                    [primary_proj, secondary_proj, tab_proj], dim=1
+                )  # [B, fusion_dim * 3]
+                trimodal_gates = self.trimodal_gate(
+                    trimodal_combined
+                )  # [B, fusion_dim * 3]
+
                 # Split gates for each modality
-                gate_p, gate_s, gate_t = torch.chunk(trimodal_gates, 3, dim=1)  # Each [B, fusion_dim]
-                
+                gate_p, gate_s, gate_t = torch.chunk(
+                    trimodal_gates, 3, dim=1
+                )  # Each [B, fusion_dim]
+
                 # Normalize gates to sum to 1
                 gate_sum = gate_p + gate_s + gate_t + 1e-8  # Add epsilon for stability
                 gate_p = gate_p / gate_sum
                 gate_s = gate_s / gate_sum
                 gate_t = gate_t / gate_sum
-                
-                final_fused = gate_p * primary_proj + gate_s * secondary_proj + gate_t * tab_proj
+
+                final_fused = (
+                    gate_p * primary_proj + gate_s * secondary_proj + gate_t * tab_proj
+                )
             else:
                 # Option B: Hierarchical gating (text first, then with tabular)
-                text_tab_combined = torch.cat([text_fused, tab_proj], dim=1)  # [B, fusion_dim * 2]
-                text_tab_gate = self.gate_text_tab(text_tab_combined)          # [B, fusion_dim]
-                
-                final_fused = text_tab_gate * text_fused + (1 - text_tab_gate) * tab_proj
+                text_tab_combined = torch.cat(
+                    [text_fused, tab_proj], dim=1
+                )  # [B, fusion_dim * 2]
+                text_tab_gate = self.gate_text_tab(text_tab_combined)  # [B, fusion_dim]
+
+                final_fused = (
+                    text_tab_gate * text_fused + (1 - text_tab_gate) * tab_proj
+                )
         else:
             # No tabular data, return text fusion
             final_fused = text_fused
-            
+
         return final_fused
 
 
 class TrimodalGateFusionBert(pl.LightningModule):
     """
     Trimodal BERT with gated fusion between text modalities and tabular features.
-    
+
     This model processes three modalities:
     1. Primary text (e.g., customer dialogue)
-    2. Secondary text (e.g., shipping events)  
+    2. Secondary text (e.g., shipping events)
     3. Tabular features (e.g., numerical risk factors)
-    
+
     Uses learnable gates to control the contribution of each modality in the final fusion.
     """
-    
+
     def __init__(
         self,
         config: Dict[str, Union[int, float, str, bool, List[str], torch.FloatTensor]],
@@ -157,27 +179,43 @@ class TrimodalGateFusionBert(pl.LightningModule):
         # === Core configuration ===
         self.id_name = config.get("id_name", None)
         self.label_name = config["label_name"]
-        
+
         # Primary text configuration (e.g., chat/dialogue)
-        self.primary_text_input_ids_key = config.get("primary_text_input_ids_key", "input_ids")
+        self.primary_text_input_ids_key = config.get(
+            "primary_text_input_ids_key", "input_ids"
+        )
         self.primary_text_attention_mask_key = config.get(
             "primary_text_attention_mask_key", "attention_mask"
         )
-        self.primary_text_name = config["primary_text_name"] + "_processed_" + self.primary_text_input_ids_key
-        self.primary_text_attention_mask = (
-            config["primary_text_name"] + "_processed_" + self.primary_text_attention_mask_key
+        self.primary_text_name = (
+            config["primary_text_name"]
+            + "_processed_"
+            + self.primary_text_input_ids_key
         )
-        
+        self.primary_text_attention_mask = (
+            config["primary_text_name"]
+            + "_processed_"
+            + self.primary_text_attention_mask_key
+        )
+
         # Secondary text configuration (e.g., shiptrack)
-        self.secondary_text_input_ids_key = config.get("secondary_text_input_ids_key", "input_ids")
+        self.secondary_text_input_ids_key = config.get(
+            "secondary_text_input_ids_key", "input_ids"
+        )
         self.secondary_text_attention_mask_key = config.get(
             "secondary_text_attention_mask_key", "attention_mask"
         )
-        self.secondary_text_name = config["secondary_text_name"] + "_processed_" + self.secondary_text_input_ids_key
-        self.secondary_text_attention_mask = (
-            config["secondary_text_name"] + "_processed_" + self.secondary_text_attention_mask_key
+        self.secondary_text_name = (
+            config["secondary_text_name"]
+            + "_processed_"
+            + self.secondary_text_input_ids_key
         )
-        
+        self.secondary_text_attention_mask = (
+            config["secondary_text_name"]
+            + "_processed_"
+            + self.secondary_text_attention_mask_key
+        )
+
         # Tabular configuration
         self.tab_field_list = config.get("tab_field_list", None)
 
@@ -206,9 +244,7 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
         # === Sub-networks ===
         # Tabular subnetwork
-        self.tab_subnetwork = (
-            TabAE(config) if self.tab_field_list else None
-        )
+        self.tab_subnetwork = TabAE(config) if self.tab_field_list else None
         tab_dim = self.tab_subnetwork.output_tab_dim if self.tab_subnetwork else 0
 
         # Primary text subnetwork (e.g., chat/dialogue)
@@ -223,12 +259,12 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
         # === Gated Fusion Layer ===
         fusion_dim = config.get("fusion_dim", max(primary_text_dim, secondary_text_dim))
-        
+
         self.gate_fusion = TrimodalGateFusion(
             primary_dim=primary_text_dim,
             secondary_dim=secondary_text_dim,
             tab_dim=tab_dim,
-            fusion_dim=fusion_dim
+            fusion_dim=fusion_dim,
         )
 
         # === Final classifier ===
@@ -257,14 +293,22 @@ class TrimodalGateFusionBert(pl.LightningModule):
         """Create configuration for text subnetworks (primary or secondary)"""
         if text_type == "primary":
             text_name = config["primary_text_name"]
-            tokenizer = config.get("primary_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("primary_hidden_common_dim", config["hidden_common_dim"])
+            tokenizer = config.get(
+                "primary_tokenizer", config.get("tokenizer", "bert-base-cased")
+            )
+            hidden_dim = config.get(
+                "primary_hidden_common_dim", config["hidden_common_dim"]
+            )
             input_ids_key = self.primary_text_input_ids_key
             attention_mask_key = self.primary_text_attention_mask_key
         elif text_type == "secondary":
             text_name = config["secondary_text_name"]
-            tokenizer = config.get("secondary_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("secondary_hidden_common_dim", config["hidden_common_dim"])
+            tokenizer = config.get(
+                "secondary_tokenizer", config.get("tokenizer", "bert-base-cased")
+            )
+            hidden_dim = config.get(
+                "secondary_hidden_common_dim", config["hidden_common_dim"]
+            )
             input_ids_key = self.secondary_text_input_ids_key
             attention_mask_key = self.secondary_text_attention_mask_key
         else:
@@ -282,8 +326,12 @@ class TrimodalGateFusionBert(pl.LightningModule):
             "adam_epsilon": config.get("adam_epsilon", 1e-8),
             "lr": config.get("lr", 2e-5),
             "run_scheduler": config.get("run_scheduler", True),
-            "reinit_pooler": config.get(f"{text_type}_reinit_pooler", config.get("reinit_pooler", False)),
-            "reinit_layers": config.get(f"{text_type}_reinit_layers", config.get("reinit_layers", 0)),
+            "reinit_pooler": config.get(
+                f"{text_type}_reinit_pooler", config.get("reinit_pooler", False)
+            ),
+            "reinit_layers": config.get(
+                f"{text_type}_reinit_layers", config.get("reinit_layers", 0)
+            ),
             "model_path": config.get("model_path"),
             "hidden_common_dim": hidden_dim,
             "text_input_ids_key": input_ids_key,
@@ -302,14 +350,18 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
     def _forward_impl(self, batch, tab_data) -> torch.Tensor:
         device = next(self.parameters()).device
-        
+
         # Process primary text
         primary_batch = self._create_text_batch(batch, "primary")
-        primary_text_out = self.primary_text_subnetwork(primary_batch)  # [B, primary_dim]
+        primary_text_out = self.primary_text_subnetwork(
+            primary_batch
+        )  # [B, primary_dim]
 
         # Process secondary text
         secondary_batch = self._create_text_batch(batch, "secondary")
-        secondary_text_out = self.secondary_text_subnetwork(secondary_batch)  # [B, secondary_dim]
+        secondary_text_out = self.secondary_text_subnetwork(
+            secondary_batch
+        )  # [B, secondary_dim]
 
         # Process tabular data
         if tab_data is not None:
@@ -320,7 +372,7 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
         # Apply trimodal gated fusion
         fused_features = self.gate_fusion(primary_text_out, secondary_text_out, tab_out)
-        
+
         return self.final_merge_network(fused_features)
 
     def _create_text_batch(self, batch: Dict, text_type: str) -> Dict:
@@ -532,25 +584,34 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
         # === Prepare input tensor list ===
         input_names = [
-            self.primary_text_name, 
+            self.primary_text_name,
             self.primary_text_attention_mask,
             self.secondary_text_name,
-            self.secondary_text_attention_mask
+            self.secondary_text_attention_mask,
         ]
         input_tensors = []
 
         # Handle primary text inputs
         primary_input_ids_tensor = sample_batch.get(self.primary_text_name)
-        primary_attention_mask_tensor = sample_batch.get(self.primary_text_attention_mask)
-        
+        primary_attention_mask_tensor = sample_batch.get(
+            self.primary_text_attention_mask
+        )
+
         # Handle secondary text inputs
         secondary_input_ids_tensor = sample_batch.get(self.secondary_text_name)
-        secondary_attention_mask_tensor = sample_batch.get(self.secondary_text_attention_mask)
+        secondary_attention_mask_tensor = sample_batch.get(
+            self.secondary_text_attention_mask
+        )
 
-        if not all(isinstance(t, torch.Tensor) for t in [
-            primary_input_ids_tensor, primary_attention_mask_tensor,
-            secondary_input_ids_tensor, secondary_attention_mask_tensor
-        ]):
+        if not all(
+            isinstance(t, torch.Tensor)
+            for t in [
+                primary_input_ids_tensor,
+                primary_attention_mask_tensor,
+                secondary_input_ids_tensor,
+                secondary_attention_mask_tensor,
+            ]
+        ):
             raise ValueError(
                 "All text input tensors (primary and secondary input_ids and attention_mask) must be torch.Tensor in sample_batch."
             )
@@ -561,12 +622,14 @@ class TrimodalGateFusionBert(pl.LightningModule):
         secondary_input_ids_tensor = secondary_input_ids_tensor.to("cpu")
         secondary_attention_mask_tensor = secondary_attention_mask_tensor.to("cpu")
 
-        input_tensors.extend([
-            primary_input_ids_tensor,
-            primary_attention_mask_tensor,
-            secondary_input_ids_tensor,
-            secondary_attention_mask_tensor
-        ])
+        input_tensors.extend(
+            [
+                primary_input_ids_tensor,
+                primary_attention_mask_tensor,
+                secondary_input_ids_tensor,
+                secondary_attention_mask_tensor,
+            ]
+        )
 
         batch_size = primary_input_ids_tensor.shape[0]
 
@@ -601,9 +664,9 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
         # Final check
         for name, tensor in zip(input_names, input_tensors):
-            assert (
-                tensor.shape[0] == batch_size
-            ), f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            assert tensor.shape[0] == batch_size, (
+                f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            )
 
         dynamic_axes = {}
         for name, tensor in zip(input_names, input_tensors):

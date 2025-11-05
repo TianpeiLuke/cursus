@@ -192,9 +192,9 @@ class PackageStepBuilder(StepBuilderBase):
         inference_scripts_key = "inference_scripts_input"
         # Use source directory with hybrid resolution fallback
         inference_scripts_path = (
-            self.config.resolved_source_dir or  # Hybrid resolution
-            self.config.source_dir or           # Fallback to existing behavior
-            "inference"                         # Final fallback
+            self.config.resolved_source_dir  # Hybrid resolution
+            or self.config.source_dir  # Fallback to existing behavior
+            or "inference"  # Final fallback
         )
         self.log_info("Using source dir: %s", inference_scripts_path)
 
@@ -326,8 +326,11 @@ class PackageStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from base path using Join instead of f-string
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "packaging", logical_name])
+                destination = Join(
+                    on="/", values=[base_output_path, "packaging", logical_name]
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

@@ -98,28 +98,32 @@ def detect_feature_selection_artifacts(input_paths: Dict[str, str]) -> Optional[
     """
     Conservatively detect if feature selection was applied.
     Returns path to selected_features.json if found, None otherwise.
-    
+
     Args:
         input_paths: Dictionary of input paths
-        
+
     Returns:
         Path to selected_features.json if found, None otherwise
     """
     # Only look in expected locations, never assume
     possible_locations = [
         # From feature selection step output (most common location)
-        os.path.join(input_paths.get("input_path", ""), "selected_features", "selected_features.json"),
+        os.path.join(
+            input_paths.get("input_path", ""),
+            "selected_features",
+            "selected_features.json",
+        ),
         # Alternative location in processing input
         "/opt/ml/processing/input/selected_features/selected_features.json",
         # Direct in input path (fallback)
         os.path.join(input_paths.get("input_path", ""), "selected_features.json"),
     ]
-    
+
     for location in possible_locations:
         if os.path.exists(location):
             logger.info(f"Feature selection artifacts detected at: {location}")
             return location
-    
+
     logger.info("No feature selection artifacts detected - using original behavior")
     return None
 
@@ -127,86 +131,97 @@ def detect_feature_selection_artifacts(input_paths: Dict[str, str]) -> Optional[
 def load_selected_features(fs_artifacts_path: str) -> Optional[List[str]]:
     """
     Load selected features from feature selection artifacts.
-    
+
     Args:
         fs_artifacts_path: Path to selected_features.json
-        
+
     Returns:
         List of selected feature names, or None if loading fails
     """
     try:
-        with open(fs_artifacts_path, 'r') as f:
+        with open(fs_artifacts_path, "r") as f:
             fs_data = json.load(f)
-        
+
         selected_features = fs_data.get("selected_features", [])
         if not selected_features:
             logger.warning("Empty selected_features list found")
             return None
-        
+
         logger.info(f"Loaded {len(selected_features)} selected features from artifacts")
         logger.info(f"Selected features: {selected_features}")
         return selected_features
-        
+
     except Exception as e:
         logger.warning(f"Error loading feature selection artifacts: {e}")
         return None
 
 
-def get_effective_feature_columns(config: dict, input_paths: Dict[str, str], 
-                                 train_df: pd.DataFrame) -> Tuple[List[str], bool]:
+def get_effective_feature_columns(
+    config: dict, input_paths: Dict[str, str], train_df: pd.DataFrame
+) -> Tuple[List[str], bool]:
     """
     Get feature columns with fallback-first approach.
-    
+
     Args:
         config: Configuration dictionary
         input_paths: Dictionary of input paths
         train_df: Training dataframe for validation
-        
+
     Returns:
         Tuple of (feature_columns, feature_selection_applied)
     """
     # STEP 1: Always start with original behavior
     original_features = config["tab_field_list"] + config["cat_field_list"]
-    
+
     logger.info("=== FEATURE SELECTION DETECTION ===")
     logger.info(f"Original configuration features: {len(original_features)}")
-    
+
     # STEP 2: Check if feature selection artifacts exist
     fs_artifacts_path = detect_feature_selection_artifacts(input_paths)
     if fs_artifacts_path is None:
         # NO FEATURE SELECTION - Original behavior exactly
-        logger.info("Using original feature configuration (no feature selection detected)")
+        logger.info(
+            "Using original feature configuration (no feature selection detected)"
+        )
         logger.info("=====================================")
         return original_features, False
-    
+
     # STEP 3: Feature selection detected - try to load
     selected_features = load_selected_features(fs_artifacts_path)
     if selected_features is None:
-        logger.warning("Failed to load selected features - falling back to original behavior")
+        logger.warning(
+            "Failed to load selected features - falling back to original behavior"
+        )
         logger.info("=====================================")
         return original_features, False
-    
+
     # STEP 4: Validate selected features exist in data
     available_columns = set(train_df.columns)
     missing_features = [f for f in selected_features if f not in available_columns]
-    
+
     if missing_features:
         logger.warning(f"Selected features missing from data: {missing_features}")
         logger.warning("Falling back to original behavior")
         logger.info("=====================================")
         return original_features, False
-    
+
     # STEP 5: Additional validation - ensure reasonable subset
     if len(selected_features) > len(original_features):
-        logger.warning(f"Selected features ({len(selected_features)}) more than original ({len(original_features)}) - suspicious")
+        logger.warning(
+            f"Selected features ({len(selected_features)}) more than original ({len(original_features)}) - suspicious"
+        )
         logger.warning("Falling back to original behavior")
         logger.info("=====================================")
         return original_features, False
-    
+
     # STEP 6: Success - use selected features
     logger.info(f"Feature selection successfully applied!")
-    logger.info(f"Features reduced from {len(original_features)} to {len(selected_features)}")
-    logger.info(f"Reduction ratio: {len(selected_features)/len(original_features):.2%}")
+    logger.info(
+        f"Features reduced from {len(original_features)} to {len(selected_features)}"
+    )
+    logger.info(
+        f"Reduction ratio: {len(selected_features) / len(original_features):.2%}"
+    )
     logger.info("=====================================")
     return selected_features, True
 
@@ -231,10 +246,10 @@ def load_and_validate_config(hparam_path: str) -> dict:
                 raise ValueError(f"Missing required key in config: {key}")
 
         if "num_classes" not in config:
-            config['num_classes'] = len(config['multiclass_categories'])
+            config["num_classes"] = len(config["multiclass_categories"])
 
-        if 'is_binary' not in config:
-            config['is_binary'] = (config['num_classes'] == 2)
+        if "is_binary" not in config:
+            config["is_binary"] = config["num_classes"] == 2
 
         # Validate class_weights if present
         if "class_weights" in config:
@@ -349,7 +364,10 @@ def fit_and_apply_risk_tables(
 
 
 def prepare_dmatrices(
-    config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame, input_paths: Dict[str, str]
+    config: dict,
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    input_paths: Dict[str, str],
 ) -> Tuple[xgb.DMatrix, xgb.DMatrix, List[str]]:
     """
     Prepares XGBoost DMatrix objects from dataframes.
@@ -368,8 +386,10 @@ def prepare_dmatrices(
         - List of feature columns in the exact order used for the model
     """
     # Get effective feature columns (with fallback to original behavior)
-    feature_columns, fs_applied = get_effective_feature_columns(config, input_paths, train_df)
-    
+    feature_columns, fs_applied = get_effective_feature_columns(
+        config, input_paths, train_df
+    )
+
     # Log the decision for transparency
     if fs_applied:
         logger.info("Feature selection detected and applied successfully")
@@ -541,7 +561,9 @@ def save_artifacts(
         logger.info("✓ Feature selection was applied during training")
         logger.info(f"  - Selected features: {len(feature_columns)}")
         logger.info(f"  - Original features: {len(original_features)}")
-        logger.info(f"  - Reduction ratio: {len(feature_columns)/len(original_features):.2%}")
+        logger.info(
+            f"  - Reduction ratio: {len(feature_columns) / len(original_features):.2%}"
+        )
         logger.info("  - Selected features are saved in feature_columns.txt")
     else:
         logger.info("No feature selection applied - using all configured features")
@@ -550,7 +572,9 @@ def save_artifacts(
 # -------------------------------------------------------------------------
 # New: inference + evaluation helpers
 # -------------------------------------------------------------------------
-def save_preds_and_metrics(ids, y_true, y_prob, id_col, label_col, out_dir, is_binary) -> None:
+def save_preds_and_metrics(
+    ids, y_true, y_prob, id_col, label_col, out_dir, is_binary
+) -> None:
     os.makedirs(out_dir, exist_ok=True)
     # metrics
     metrics = {}
@@ -752,7 +776,9 @@ def main(
         logger.info("Risk table mapping completed")
 
         logger.info("Preparing DMatrices for XGBoost...")
-        dtrain, dval, feature_columns = prepare_dmatrices(config, train_df, val_df, input_paths)
+        dtrain, dval, feature_columns = prepare_dmatrices(
+            config, train_df, val_df, input_paths
+        )
         logger.info("DMatrices prepared successfully")
         logger.info(
             f"Using {len(feature_columns)} features in order: {feature_columns}"
@@ -760,20 +786,26 @@ def main(
 
         # Collect feature selection information for model artifacts
         original_features = config["tab_field_list"] + config["cat_field_list"]
-        feature_selection_applied = len(feature_columns) != len(original_features) or set(feature_columns) != set(original_features)
+        feature_selection_applied = len(feature_columns) != len(
+            original_features
+        ) or set(feature_columns) != set(original_features)
         feature_selection_metadata = None
-        
+
         if feature_selection_applied:
             # Try to load original feature selection metadata
             fs_artifacts_path = detect_feature_selection_artifacts(input_paths)
             if fs_artifacts_path:
                 try:
-                    with open(fs_artifacts_path, 'r') as f:
+                    with open(fs_artifacts_path, "r") as f:
                         fs_data = json.load(f)
                     feature_selection_metadata = fs_data.get("selection_metadata", {})
                     if "method_contributions" in fs_data:
-                        feature_selection_metadata["method_contributions"] = fs_data["method_contributions"]
-                    logger.info("Loaded original feature selection metadata for model artifacts")
+                        feature_selection_metadata["method_contributions"] = fs_data[
+                            "method_contributions"
+                        ]
+                    logger.info(
+                        "Loaded original feature selection metadata for model artifacts"
+                    )
                 except Exception as e:
                     logger.warning(f"Could not load feature selection metadata: {e}")
 

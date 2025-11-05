@@ -2,7 +2,7 @@
 Shared DAG definition for XGBoost Complete End-to-End Pipeline with Both Calibration and Testing Paths
 
 This module provides the shared DAG definition for a complete XGBoost workflow
-that includes training, calibration, testing (without calibration), packaging, registration, 
+that includes training, calibration, testing (without calibration), packaging, registration,
 evaluation with inference, metrics computation, and wiki generation.
 
 The DAG includes:
@@ -22,7 +22,7 @@ The DAG includes:
 14) Model Metrics Computation (testing)
 15) Model Wiki Generation
 
-Key features: 
+Key features:
 - Calibration path: Same as complete_e2e_with_wiki_dag (includes ModelCalibration)
 - Testing path: Skips ModelCalibration entirely for faster evaluation
 """
@@ -53,21 +53,29 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     dag.add_node("CradleDataLoading_training")  # Data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
     dag.add_node("XGBoostTraining")  # XGBoost training step
-    
+
     # Add all nodes - Calibration path (simplified with XGBoostModelEval)
-    dag.add_node("ModelCalibration_calibration")  # Model calibration step with calibration variant
+    dag.add_node(
+        "ModelCalibration_calibration"
+    )  # Model calibration step with calibration variant
     dag.add_node("Package")  # Package step
     dag.add_node("Registration")  # MIMS registration step
     dag.add_node("Payload")  # Payload step
     dag.add_node("CradleDataLoading_calibration")  # Data load for calibration
-    dag.add_node("TabularPreprocessing_calibration")  # Tabular preprocessing for calibration
-    dag.add_node("XGBoostModelEval_calibration")  # Model evaluation step (calibration) - combines inference, metrics, and wiki
-    
+    dag.add_node(
+        "TabularPreprocessing_calibration"
+    )  # Tabular preprocessing for calibration
+    dag.add_node(
+        "XGBoostModelEval_calibration"
+    )  # Model evaluation step (calibration) - combines inference, metrics, and wiki
+
     # Add all nodes - Testing path (no calibration)
     dag.add_node("CradleDataLoading_testing")  # Data load for testing
     dag.add_node("TabularPreprocessing_testing")  # Tabular preprocessing for testing
     dag.add_node("XGBoostModelInference_testing")  # Model inference step (testing)
-    dag.add_node("ModelMetricsComputation_testing")  # Model metrics computation step (testing)
+    dag.add_node(
+        "ModelMetricsComputation_testing"
+    )  # Model metrics computation step (testing)
     dag.add_node("ModelWikiGenerator")  # Model wiki generator step (testing)
 
     # Training flow
@@ -135,7 +143,11 @@ def get_dag_metadata() -> DAGMetadata:
                 "CradleDataLoading_calibration",
                 "CradleDataLoading_testing",
             ],
-            "exit_points": ["Registration", "XGBoostModelEval_calibration", "ModelWikiGenerator_testing"],
+            "exit_points": [
+                "Registration",
+                "XGBoostModelEval_calibration",
+                "ModelWikiGenerator_testing",
+            ],
             "required_configs": [
                 "CradleDataLoading_training",
                 "CradleDataLoading_calibration",
@@ -196,14 +208,18 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
     entry_points = metadata.extra_metadata.get("entry_points", [])
     missing_entry_points = set(entry_points) - set(dag.nodes)
     if missing_entry_points:
-        validation_result["errors"].append(f"Missing entry points: {missing_entry_points}")
+        validation_result["errors"].append(
+            f"Missing entry points: {missing_entry_points}"
+        )
         validation_result["is_valid"] = False
 
     # Check exit points exist
     exit_points = metadata.extra_metadata.get("exit_points", [])
     missing_exit_points = set(exit_points) - set(dag.nodes)
     if missing_exit_points:
-        validation_result["errors"].append(f"Missing exit points: {missing_exit_points}")
+        validation_result["errors"].append(
+            f"Missing exit points: {missing_exit_points}"
+        )
         validation_result["is_valid"] = False
 
     return validation_result

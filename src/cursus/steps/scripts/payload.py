@@ -6,6 +6,7 @@ This script reads field information from hyperparameters extracted from model.ta
 extracts configuration from environment variables,
 and creates payload files for model inference.
 """
+
 import json
 import logging
 import os
@@ -480,7 +481,7 @@ def create_payload_archive(payload_files: List[str], output_dir: Path = None) ->
             compressed_size = archive_path.stat().st_size / (1024 * 1024)
             logger.info(f"Successfully created payload archive: {archive_path}")
             logger.info(f"  Compressed tar size: {compressed_size:.2f}MB")
-            logger.info(f"  Compression ratio: {compressed_size/total_size:.2%}")
+            logger.info(f"  Compression ratio: {compressed_size / total_size:.2%}")
         else:
             logger.error(
                 f"Archive creation failed - file does not exist: {archive_path}"

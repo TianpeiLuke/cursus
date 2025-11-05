@@ -311,16 +311,6 @@ class SystemPromptConfig(BaseModel):
         description="Communication tone (e.g., 'professional', 'casual', 'technical', 'formal')",
     )
 
-    include_expertise_statement: bool = Field(
-        default=True,
-        description="Whether to include expertise areas in the system prompt",
-    )
-
-    include_task_context: bool = Field(
-        default=True,
-        description="Whether to include task context and responsibilities in the system prompt",
-    )
-
     model_config = {
         "extra": "allow"
     }  # Allow additional fields for future extensibility
@@ -332,11 +322,13 @@ class OutputFormatConfig(BaseModel):
 
     This model defines the structure and validation requirements for the
     expected output format in the generated prompt template.
+
+    Supports both structured_json and structured_text formats with full customization.
     """
 
     format_type: str = Field(
         default="structured_json",
-        description="Type of output format ('structured_json', 'formatted_text', 'hybrid')",
+        description="Type of output format ('structured_json', 'structured_text', 'hybrid')",
     )
 
     required_fields: List[str] = Field(
@@ -365,16 +357,6 @@ class OutputFormatConfig(BaseModel):
         description="List of validation requirements for the output format",
     )
 
-    include_field_constraints: bool = Field(
-        default=True,
-        description="Whether to include field constraints in the output format specification",
-    )
-
-    include_formatting_rules: bool = Field(
-        default=True,
-        description="Whether to include formatting rules in the output format specification",
-    )
-
     evidence_validation_rules: List[str] = Field(
         default_factory=lambda: [
             "Evidence MUST align with at least one condition for the selected category",
@@ -383,6 +365,36 @@ class OutputFormatConfig(BaseModel):
             "Multiple pieces of supporting evidence strengthen the classification",
         ],
         description="List of specific rules for validating evidence fields",
+    )
+
+    # ===== NEW: Structured Text Format Configuration =====
+
+    header_text: Optional[str] = Field(
+        default=None,
+        description="Custom header text for output format section (used in structured_text format)",
+    )
+
+    structured_text_sections: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="""Configuration for structured text output format sections. Each section defines:
+        - number: Section number (e.g., 1, 2, 3)
+        - header: Section header text (e.g., 'Category', 'Confidence Score')
+        - format: 'single_value' or 'subsections'
+        - placeholder: Placeholder text for the value
+        - subsections: List of subsection configurations (for format='subsections')
+        - item_prefix: Prefix for list items (e.g., '[sep] ')
+        - indent: Indentation for subsections (e.g., '   ')
+        """,
+    )
+
+    formatting_rules: Optional[List[str]] = Field(
+        default=None,
+        description="List of formatting rules to include in output format specification",
+    )
+
+    example_output: Optional[Any] = Field(
+        default=None,
+        description="Example output to show in the template (string or list of lines)",
     )
 
     model_config = {
@@ -396,6 +408,8 @@ class InstructionConfig(BaseModel):
 
     This model defines which instruction components should be included
     in the generated prompt template to guide the AI's analysis process.
+
+    Supports both basic boolean flags and detailed classification guidelines.
     """
 
     include_analysis_steps: bool = Field(
@@ -406,24 +420,41 @@ class InstructionConfig(BaseModel):
         default=True, description="Include decision-making criteria section"
     )
 
-    include_edge_case_handling: bool = Field(
-        default=True, description="Include edge case handling guidance"
-    )
-
-    include_confidence_guidance: bool = Field(
-        default=True, description="Include confidence scoring guidance"
-    )
-
     include_reasoning_requirements: bool = Field(
         default=True, description="Include reasoning requirements and expectations"
     )
 
     step_by_step_format: bool = Field(
-        default=True, description="Use numbered step format for analysis instructions"
+        default=True,
+        description="Use numbered step format for analysis instructions (False = bullet points)",
     )
 
     include_evidence_validation: bool = Field(
         default=True, description="Include evidence validation rules and requirements"
+    )
+
+    # ===== NEW: Detailed Classification Guidelines =====
+
+    classification_guidelines: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="""Detailed classification guidelines with hierarchical structure. Expected format:
+        {
+          "sections": [
+            {
+              "title": "## Main Section Title",
+              "subsections": [
+                {
+                  "title": "### Subsection Title",
+                  "content": ["Line 1", "Line 2", "..."]
+                }
+              ]
+            }
+          ]
+        }
+        
+        This allows for comprehensive, structured classification guidance that can be
+        customized for specific task requirements without modifying code.
+        """,
     )
 
     model_config = {

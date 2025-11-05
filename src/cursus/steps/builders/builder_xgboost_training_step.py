@@ -133,7 +133,7 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         # Use modernized effective_source_dir with comprehensive hybrid resolution
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
-        
+
         return XGBoost(
             entry_point=self.config.training_entry_point,
             source_dir=source_dir,
@@ -219,8 +219,13 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
             logical_name = dependency_spec.logical_name
 
             # Skip hyperparameters_s3_uri if configured to do so
-            if logical_name == "hyperparameters_s3_uri" and self.config.skip_hyperparameters_s3_uri:
-                self.log_info("Skipping hyperparameters_s3_uri channel as configured (hyperparameters loaded from script folder)")
+            if (
+                logical_name == "hyperparameters_s3_uri"
+                and self.config.skip_hyperparameters_s3_uri
+            ):
+                self.log_info(
+                    "Skipping hyperparameters_s3_uri channel as configured (hyperparameters loaded from script folder)"
+                )
                 continue
 
             # Skip if optional and not provided
@@ -319,17 +324,22 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         for logical_name in output_logical_names:
             if logical_name in outputs:
                 primary_output_path = outputs[logical_name]
-                self.log_info("Using provided output path from '%s': %s", 
-                              logical_name, primary_output_path
-                              )
+                self.log_info(
+                    "Using provided output path from '%s': %s",
+                    logical_name,
+                    primary_output_path,
+                )
                 break
 
         # If no output path was provided, generate a default one
         if primary_output_path is None:
             # Generate a clean path using base output path and Join for parameter compatibility
             from sagemaker.workflow.functions import Join
+
             base_output_path = self._get_base_output_path()
-            primary_output_path = Join(on="/", values=[base_output_path, "xgboost_training"])
+            primary_output_path = Join(
+                on="/", values=[base_output_path, "xgboost_training"]
+            )
             self.log_info("Using generated base output path: %s", primary_output_path)
 
         # Get base job name for logging purposes
@@ -341,17 +351,22 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         )
         self.log_info("Full job name will be: %s-[timestamp]", base_job_name)
         self.log_info(
-            "Output path structure will be: %s/%s-[timestamp]/", primary_output_path, base_job_name
+            "Output path structure will be: %s/%s-[timestamp]/",
+            primary_output_path,
+            base_job_name,
         )
         self.log_info(
-            "  - Model artifacts will be in: %s/%s-[timestamp]/output/model.tar.gz", primary_output_path, base_job_name
+            "  - Model artifacts will be in: %s/%s-[timestamp]/output/model.tar.gz",
+            primary_output_path,
+            base_job_name,
         )
         self.log_info(
-            "  - Evaluation results will be in: %s/%s-[timestamp]/output/output.tar.gz", primary_output_path, base_job_name
+            "  - Evaluation results will be in: %s/%s-[timestamp]/output/output.tar.gz",
+            primary_output_path,
+            base_job_name,
         )
 
         return primary_output_path
-
 
     def create_step(self, **kwargs) -> TrainingStep:
         """

@@ -39,8 +39,12 @@ from ...processing.nlp.bsm_processor import (
     DialogueChunkerProcessor,
 )
 from ...processing.nlp.bert_tokenize_processor import TokenizationProcessor
-from ...processing.categorical.categorical_label_processor import CategoricalLabelProcessor
-from ...processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from ...processing.categorical.categorical_label_processor import (
+    CategoricalLabelProcessor,
+)
+from ...processing.categorical.multiclass_label_processor import (
+    MultiClassLabelProcessor,
+)
 from ...processing.datasets.bsm_datasets import BSMDataset
 from ...processing.dataloaders.bsm_dataloader import build_collate_batch
 from lightning_models.pl_tab_ae import TabAE
@@ -674,16 +678,16 @@ def main(
     hparam_file = input_paths.get("hyperparameters_s3_uri", hparam_path)
     if not hparam_file.endswith("hyperparameters.json"):
         hparam_file = os.path.join(hparam_file, "hyperparameters.json")
-    
+
     hyperparameters = load_parse_hyperparameters(hparam_file)
     hyperparameters = sanitize_config(hyperparameters)
-    
+
     try:
         config = Config(**hyperparameters)  # Validate config
     except ValidationError as e:
         logger.error(f"Configuration Error: {e}")
         raise
-    
+
     # Update paths from input parameters
     global model_path, output_path
     if "model_output" in output_paths:
@@ -691,12 +695,12 @@ def main(
         config.model_path = model_path
     if "evaluation_output" in output_paths:
         output_path = output_paths["evaluation_output"]
-    
+
     log_once(logger, "Final Hyperparameters:")
     log_once(logger, json.dumps(config.model_dump(), indent=4))
     log_once(logger, "================================================")
     log_once(logger, "Starting the training process.")
-    
+
     device = setup_training_environment(config)
     datasets, tokenizer, config = load_and_preprocess_data(config)
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
@@ -792,13 +796,18 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Exception during training: {str(e)}")
         logger.error(traceback.format_exc())
-        
+
         # Write failure file for compatibility
         failure_file = os.path.join(output_paths["evaluation_output"], "failure")
         try:
             with open(failure_file, "w") as f:
-                f.write("Exception during training: " + str(e) + "\n" + traceback.format_exc())
+                f.write(
+                    "Exception during training: "
+                    + str(e)
+                    + "\n"
+                    + traceback.format_exc()
+                )
         except Exception:
             pass  # Don't fail if we can't write the failure file
-        
+
         sys.exit(1)

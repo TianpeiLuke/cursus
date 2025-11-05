@@ -13,7 +13,7 @@ The DAG includes:
 5) Payload Generation
 6) Model Registration
 7) Data Loading (validation)
-8) Preprocessing (validation) 
+8) Preprocessing (validation)
 9) Model Evaluation
 """
 

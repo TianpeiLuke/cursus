@@ -22,6 +22,7 @@ from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 # Import the bedrock processing specification
 try:
     from ..specs.bedrock_processing_spec import BEDROCK_PROCESSING_SPEC
+
     SPEC_AVAILABLE = True
 except ImportError:
     BEDROCK_PROCESSING_SPEC = None
@@ -92,18 +93,22 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             ValueError: If config is not a BedrockProcessingConfig instance or job_type is missing
         """
         if not isinstance(config, BedrockProcessingConfig):
-            raise ValueError("BedrockProcessingStepBuilder requires a BedrockProcessingConfig instance.")
+            raise ValueError(
+                "BedrockProcessingStepBuilder requires a BedrockProcessingConfig instance."
+            )
 
         # job_type now has a default value, so no need to validate presence
 
         # Use the generic bedrock processing specification for all job types
         # since job type variants don't change inputs/outputs, only processing behavior
         spec = BEDROCK_PROCESSING_SPEC if SPEC_AVAILABLE else None
-        
+
         if not spec:
             raise ValueError("Bedrock processing specification not available")
 
-        self.log_info("Using bedrock processing specification for job type: %s", config.job_type)
+        self.log_info(
+            "Using bedrock processing specification for job type: %s", config.job_type
+        )
 
         super().__init__(
             config=config,
@@ -137,7 +142,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             not hasattr(self.config, "processing_entry_point")
             or not self.config.processing_entry_point
         ):
-            raise ValueError("bedrock processing step requires a processing_entry_point")
+            raise ValueError(
+                "bedrock processing step requires a processing_entry_point"
+            )
 
         # Validate Bedrock-specific configuration
         required_attrs = [
@@ -157,7 +164,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
 
         for attr in required_attrs:
             if not hasattr(self.config, attr):
-                raise ValueError(f"BedrockProcessingConfig missing required attribute: {attr}")
+                raise ValueError(
+                    f"BedrockProcessingConfig missing required attribute: {attr}"
+                )
 
         # Validate job type
         if self.config.job_type not in [
@@ -181,7 +190,10 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             raise ValueError(f"bedrock_concurrency_mode must be one of {valid_modes}")
 
         # Validate numeric ranges
-        if self.config.bedrock_max_tokens <= 0 or self.config.bedrock_max_tokens > 64000:
+        if (
+            self.config.bedrock_max_tokens <= 0
+            or self.config.bedrock_max_tokens > 64000
+        ):
             raise ValueError("bedrock_max_tokens must be between 1 and 64000")
 
         if not (0.0 <= self.config.bedrock_temperature <= 2.0):
@@ -193,10 +205,16 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         if self.config.bedrock_batch_size <= 0 or self.config.bedrock_batch_size > 100:
             raise ValueError("bedrock_batch_size must be between 1 and 100")
 
-        if self.config.bedrock_max_concurrent_workers <= 0 or self.config.bedrock_max_concurrent_workers > 20:
+        if (
+            self.config.bedrock_max_concurrent_workers <= 0
+            or self.config.bedrock_max_concurrent_workers > 20
+        ):
             raise ValueError("bedrock_max_concurrent_workers must be between 1 and 20")
 
-        if self.config.bedrock_rate_limit_per_second <= 0 or self.config.bedrock_rate_limit_per_second > 100:
+        if (
+            self.config.bedrock_rate_limit_per_second <= 0
+            or self.config.bedrock_rate_limit_per_second > 100
+        ):
             raise ValueError("bedrock_rate_limit_per_second must be between 1 and 100")
 
         # Validate inference profile required models
@@ -204,13 +222,30 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             raise ValueError("bedrock_inference_profile_required_models must be a list")
 
         # Validate model ID format
-        valid_prefixes = ["anthropic.", "amazon.", "ai21.", "cohere.", "meta.", "mistral.", "stability.", "global."]
-        if not any(self.config.bedrock_primary_model_id.startswith(prefix) for prefix in valid_prefixes):
-            self.log_warning("Primary model ID '%s' doesn't match common Bedrock patterns", self.config.bedrock_primary_model_id)
+        valid_prefixes = [
+            "anthropic.",
+            "amazon.",
+            "ai21.",
+            "cohere.",
+            "meta.",
+            "mistral.",
+            "stability.",
+            "global.",
+        ]
+        if not any(
+            self.config.bedrock_primary_model_id.startswith(prefix)
+            for prefix in valid_prefixes
+        ):
+            self.log_warning(
+                "Primary model ID '%s' doesn't match common Bedrock patterns",
+                self.config.bedrock_primary_model_id,
+            )
 
         # Check production readiness and log warnings
         if not self.config.is_production_ready():
-            self.log_warning("Configuration may not be production-ready. Consider adding a fallback model and reviewing concurrency settings.")
+            self.log_warning(
+                "Configuration may not be production-ready. Consider adding a fallback model and reviewing concurrency settings."
+            )
 
         # Validate derived properties can be accessed
         try:
@@ -258,7 +293,7 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """
         Constructs a dictionary of environment variables to be passed to the processing job.
-        
+
         This method combines:
         1. Base environment variables from the contract
         2. Configuration-specific environment variables from config.bedrock_environment_variables
@@ -308,7 +343,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
 
             # Skip if optional and not provided
             if not dependency_spec.required and logical_name not in inputs:
-                self.log_info("Optional input '%s' not provided, skipping", logical_name)
+                self.log_info(
+                    "Optional input '%s' not provided, skipping", logical_name
+                )
                 continue
 
             # Make sure required inputs are present
@@ -384,8 +421,12 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from base path using Join instead of f-string
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "bedrock_processing", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[base_output_path, "bedrock_processing", logical_name],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -520,7 +561,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         performance = self.config.get_performance_estimate()
         self.log_info("Created ProcessingStep with name: %s", step.name)
         self.log_info("Primary model: %s", self.config.bedrock_primary_model_id)
-        self.log_info("Fallback model: %s", self.config.bedrock_fallback_model_id or "None")
+        self.log_info(
+            "Fallback model: %s", self.config.bedrock_fallback_model_id or "None"
+        )
         self.log_info("Processing mode: %s", self.config.bedrock_concurrency_mode)
         self.log_info("Expected performance: %s", performance)
         self.log_info("Production ready: %s", self.config.is_production_ready())

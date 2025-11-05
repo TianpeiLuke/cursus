@@ -5,7 +5,7 @@ This module contains shared DAG definitions for PyTorch-based pipelines.
 """
 
 __all__ = [
-    "create_pytorch_training_dag", 
+    "create_pytorch_training_dag",
     "create_pytorch_standard_e2e_dag",
     "create_pytorch_complete_e2e_dag",
     "create_pytorch_complete_e2e_dummy_dag",

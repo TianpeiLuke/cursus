@@ -104,8 +104,8 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
 
     # For wiki generation, we typically use smaller instances as it's mostly text processing
     use_large_processing_instance: bool = Field(
-        default=False, 
-        description="Whether to use large instance type for processing (wiki generation typically needs minimal resources)"
+        default=False,
+        description="Whether to use large instance type for processing (wiki generation typically needs minimal resources)",
     )
 
     model_config = ProcessingStepConfigBase.model_config
@@ -158,17 +158,17 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
         """Validate output formats are supported."""
         valid_formats = {"wiki", "html", "markdown"}
         formats = [fmt.strip().lower() for fmt in v.split(",")]
-        
+
         invalid_formats = [fmt for fmt in formats if fmt not in valid_formats]
         if invalid_formats:
             raise ValueError(
                 f"Invalid output formats: {invalid_formats}. "
                 f"Valid formats are: {valid_formats}"
             )
-        
+
         if not formats:
             raise ValueError("At least one output format must be specified")
-        
+
         return ",".join(formats)
 
     @field_validator("cti_classification")
@@ -176,8 +176,14 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
     def validate_cti_classification(cls, v: str) -> str:
         """Validate CTI classification values."""
         valid_classifications = {
-            "public", "internal", "confidential", "restricted", 
-            "Public", "Internal", "Confidential", "Restricted"
+            "public",
+            "internal",
+            "confidential",
+            "restricted",
+            "Public",
+            "Internal",
+            "Confidential",
+            "Restricted",
         }
         if v not in valid_classifications:
             logger.warning(
@@ -191,14 +197,15 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
         """Validate model name is not empty and contains valid characters."""
         if not v or not v.strip():
             raise ValueError("model_name cannot be empty")
-        
+
         # Check for potentially problematic characters for file naming
         import re
+
         if re.search(r'[<>:"/\\|?*]', v):
             logger.warning(
                 f"Model name '{v}' contains characters that may cause issues in file names"
             )
-        
+
         return v.strip()
 
     # Initialize derived fields at creation time to avoid potential validation loops
@@ -236,7 +243,9 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
 
         # Validate email format if provided
         if self.contact_email and "@" not in self.contact_email:
-            logger.warning(f"contact_email '{self.contact_email}' may not be a valid email address")
+            logger.warning(
+                f"contact_email '{self.contact_email}' may not be a valid email address"
+            )
 
         logger.debug(
             f"Model '{self.model_name}' will generate documentation in formats: {self.output_formats_list}"
@@ -271,7 +280,9 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
                 "CTI_CLASSIFICATION": self.cti_classification,
                 "REGION": self.region,  # From base config
                 "OUTPUT_FORMATS": self.output_formats,
-                "INCLUDE_TECHNICAL_DETAILS": str(self.include_technical_details).lower(),
+                "INCLUDE_TECHNICAL_DETAILS": str(
+                    self.include_technical_details
+                ).lower(),
                 "MODEL_PURPOSE": self.model_purpose,
             }
         )
@@ -295,13 +306,13 @@ class ModelWikiGeneratorConfig(ProcessingStepConfigBase):
     def model_dump(self, **kwargs) -> Dict[str, Any]:
         """Override model_dump to include derived properties."""
         data = super().model_dump(**kwargs)
-        
+
         # Add derived properties to output
         data["pipeline_name"] = self.pipeline_name
         data["model_display_name"] = self.model_display_name
         data["output_formats_list"] = self.output_formats_list
         data["effective_model_description"] = self.effective_model_description
-        
+
         return data
 
     def get_public_init_fields(self) -> Dict[str, Any]:

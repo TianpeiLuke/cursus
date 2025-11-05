@@ -63,7 +63,7 @@ def combine_currency_codes(
 
 
 def currency_conversion_single_variable(
-    args: Tuple[pd.DataFrame, str, pd.Series]
+    args: Tuple[pd.DataFrame, str, pd.Series],
 ) -> pd.Series:
     """Convert single variable's currency values."""
     df, variable, exchange_rate_series = args

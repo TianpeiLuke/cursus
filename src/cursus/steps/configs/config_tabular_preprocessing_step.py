@@ -100,9 +100,13 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
             # Combine with entry point
             if source_dir.startswith("s3://"):
-                self._full_script_path = f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
+                self._full_script_path = (
+                    f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
+                )
             else:
-                self._full_script_path = str(Path(source_dir) / self.processing_entry_point)
+                self._full_script_path = str(
+                    Path(source_dir) / self.processing_entry_point
+                )
 
         return self._full_script_path
 
@@ -154,9 +158,13 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         source_dir = self.effective_source_dir
         if source_dir is not None:
             if source_dir.startswith("s3://"):
-                self._full_script_path = f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
+                self._full_script_path = (
+                    f"{source_dir.rstrip('/')}/{self.processing_entry_point}"
+                )
             else:
-                self._full_script_path = str(Path(source_dir) / self.processing_entry_point)
+                self._full_script_path = str(
+                    Path(source_dir) / self.processing_entry_point
+                )
 
         return self
 

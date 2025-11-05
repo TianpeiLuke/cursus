@@ -34,10 +34,10 @@ FEATURE_SELECTION_TESTING_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
-                "StratifiedSampling", 
+                "StratifiedSampling",
                 "RiskTableMapping",
                 "MissingValueImputation",
-                "ProcessingStep"
+                "ProcessingStep",
             ],
             semantic_keywords=[
                 "testing",

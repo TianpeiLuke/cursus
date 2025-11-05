@@ -114,7 +114,6 @@ def model_train(
     model_log_path: str = "./model_logs",
     early_stop_metric: str = "val/f1_score",
 ) -> pl.Trainer:
-
     max_epochs = config.get("max_epochs", 10)
     early_stop_patience = config.get("early_stop_patience", 10)
     model_class = config.get("model_class", "multimodal_cnn")
@@ -325,7 +324,7 @@ def model_online_inference(
 
 
 def predict_stack_transform(
-    outputs: List[Union[torch.Tensor, Tuple[torch.Tensor]]]
+    outputs: List[Union[torch.Tensor, Tuple[torch.Tensor]]],
 ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
     if isinstance(outputs[0], Tuple):
         pred_list, label_list = zip(*outputs)

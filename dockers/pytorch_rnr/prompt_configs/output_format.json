@@ -1,0 +1,103 @@
+{
+  "format_type": "structured_text",
+  "required_fields": [
+    "category",
+    "confidence",
+    "key_evidence",
+    "reasoning"
+  ],
+  "field_descriptions": {
+    "Category": "Exactly one category from the predefined list (case-sensitive match required)",
+    "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+    "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
+    "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+  },
+  "validation_requirements": [
+    "Category must match exactly from predefined list",
+    "Confidence score must be decimal format (e.g., 0.85, not 85%)",
+    "Each evidence item must start with '[sep] ' token"
+  ],
+  "evidence_validation_rules": [
+    "Message Evidence must include direct quotes with speaker identification",
+    "Shipping Evidence must include tracking events with timestamps",
+    "Timeline Evidence must show chronological sequence of events",
+    "All evidence must reference specific content from input data"
+  ],
+  "header_text": "**CRITICAL: Follow this exact format for automated parsing**",
+  "structured_text_sections": [
+    {
+      "number": 1,
+      "header": "Category",
+      "format": "single_value",
+      "placeholder": "${category_enum}",
+      "placeholder_source": "schema_enum"
+    },
+    {
+      "number": 2,
+      "header": "Confidence Score",
+      "format": "single_value",
+      "placeholder": "${numeric_range}",
+      "placeholder_source": "schema_range"
+    },
+    {
+      "number": 3,
+      "header": "Key Evidence",
+      "format": "subsections",
+      "item_prefix": "- ",
+      "indent": "   ",
+      "subsections": [
+        {
+          "name": "Message Evidence",
+          "example_items": [
+            "- [BUYER]: Example message",
+            "- [SELLER]: Example response"
+          ]
+        },
+        {
+          "name": "Shipping Evidence",
+          "example_items": [
+            "- [Event]: Delivered"
+          ]
+        },
+        {
+          "name": "Timeline Evidence",
+          "example_items": [
+            "- Delivery on 2025-02-21"
+          ]
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "header": "Reasoning",
+      "format": "subsections",
+      "item_prefix": "- ",
+      "indent": "   ",
+      "subsections": [
+        {
+          "name": "Primary Factors",
+          "example_items": [
+            "- Main reason"
+          ]
+        },
+        {
+          "name": "Supporting Evidence",
+          "example_items": [
+            "- Supporting detail"
+          ]
+        },
+        {
+          "name": "Contradicting Evidence",
+          "example_items": [
+            "- None"
+          ]
+        }
+      ]
+    }
+  ],
+  "formatting_rules": [
+    "Use exact section headers with numbers and colons",
+    "No semicolons (;) anywhere in response"
+  ],
+  "example_output": "1. Category: TrueDNR\n\n2. Confidence Score: 0.92\n\n3. Key Evidence:\n   * Message Evidence:\n     - [BUYER]: Hello, I have not received my package\n     - [BUYER]: But I did not find any package, please refund me\n   * Shipping Evidence:\n     - [Event Time]: 2025-02-21T17:40:49.323Z [Event]: Delivered\n     - No further shipping events after delivery confirmation\n   * Timeline Evidence:\n     - Delivery confirmation on 2025-02-21 17:40\n     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n4. Reasoning:\n   * Primary Factors:\n     - Tracking shows package was delivered successfully\n     - Buyer explicitly states they did not receive the package\n   * Supporting Evidence:\n     - Buyer requests refund due to missing package\n     - No evidence of buyer receiving wrong/defective item\n   * Contradicting Evidence:\n     - None"
+}

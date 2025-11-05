@@ -2,7 +2,7 @@
 """Builder for PercentileModelCalibration processing step.
 
 This module defines the PercentileModelCalibrationStepBuilder class that builds a SageMaker
-ProcessingStep for percentile model calibration, connecting the configuration, specification, 
+ProcessingStep for percentile model calibration, connecting the configuration, specification,
 and script contract.
 """
 
@@ -15,7 +15,9 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.steps import ProcessingStep
 
 from ...core.base.builder_base import StepBuilderBase
-from ..configs.config_percentile_model_calibration_step import PercentileModelCalibrationConfig
+from ..configs.config_percentile_model_calibration_step import (
+    PercentileModelCalibrationConfig,
+)
 from ..specs.percentile_model_calibration_spec import PERCENTILE_MODEL_CALIBRATION_SPEC
 
 logger = logging.getLogger(__name__)
@@ -124,7 +126,9 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
                 None,
                 "",
             ]:
-                raise ValueError(f"PercentileModelCalibrationConfig missing required attribute: {attr}")
+                raise ValueError(
+                    f"PercentileModelCalibrationConfig missing required attribute: {attr}"
+                )
 
         # Validate job_type
         valid_job_types = {"training", "calibration", "validation", "testing"}
@@ -141,7 +145,6 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
             )
 
         self.log_info("PercentileModelCalibrationConfig validation succeeded.")
-
 
     def _get_environment_variables(self) -> Dict[str, str]:
         """Create environment variables for the processing job.
@@ -187,7 +190,9 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
 
             # Skip calibration_config as it's loaded from the script folder
             if logical_name == "calibration_config":
-                self.log_info("Skipping calibration_config channel (calibration config loaded from script folder)")
+                self.log_info(
+                    "Skipping calibration_config channel (calibration config loaded from script folder)"
+                )
                 continue
 
             # Skip if optional and not provided
@@ -303,7 +308,9 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
         )
 
         # Get framework version with fallback
-        framework_version = getattr(self.config, "processing_framework_version", "1.2-1")
+        framework_version = getattr(
+            self.config, "processing_framework_version", "1.2-1"
+        )
 
         return FrameworkProcessor(
             estimator_cls=SKLearn,

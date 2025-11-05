@@ -63,7 +63,8 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
 
     # Processing parameters - set defaults specific to percentile calibration
     processing_entry_point: str = Field(
-        default="percentile_model_calibration.py", description="Script entry point filename"
+        default="percentile_model_calibration.py",
+        description="Script entry point filename",
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -107,25 +108,33 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
         required_input_paths = ["evaluation_data"]
         for path_name in required_input_paths:
             if path_name not in contract.expected_input_paths:
-                raise ValueError(f"Script contract missing required input path: {path_name}")
+                raise ValueError(
+                    f"Script contract missing required input path: {path_name}"
+                )
 
         required_output_paths = [
             "calibration_output",
-            "metrics_output", 
+            "metrics_output",
             "calibrated_data",
         ]
         for path_name in required_output_paths:
             if path_name not in contract.expected_output_paths:
-                raise ValueError(f"Script contract missing required output path: {path_name}")
+                raise ValueError(
+                    f"Script contract missing required output path: {path_name}"
+                )
 
         # Validate job_type
         valid_job_types = {"training", "calibration", "validation", "testing"}
         if self.job_type not in valid_job_types:
-            raise ValueError(f"job_type must be one of {valid_job_types}, got '{self.job_type}'")
+            raise ValueError(
+                f"job_type must be one of {valid_job_types}, got '{self.job_type}'"
+            )
 
         # Validate n_bins range
         if self.n_bins > 10000:
-            raise ValueError(f"n_bins ({self.n_bins}) should not exceed 10000 for performance reasons")
+            raise ValueError(
+                f"n_bins ({self.n_bins}) should not exceed 10000 for performance reasons"
+            )
 
         # Validate accuracy range
         if self.accuracy >= 1.0:
@@ -139,10 +148,11 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
         Returns:
             ScriptContract: The contract for this step's script.
         """
-        from ..contracts.percentile_model_calibration_contract import PERCENTILE_MODEL_CALIBRATION_CONTRACT
+        from ..contracts.percentile_model_calibration_contract import (
+            PERCENTILE_MODEL_CALIBRATION_CONTRACT,
+        )
 
         return PERCENTILE_MODEL_CALIBRATION_CONTRACT
-
 
     def get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables for the processing script.

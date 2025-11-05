@@ -17,7 +17,9 @@ from ...registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_missing_value_imputation_contract():
-    from ..contracts.missing_value_imputation_contract import MISSING_VALUE_IMPUTATION_CONTRACT
+    from ..contracts.missing_value_imputation_contract import (
+        MISSING_VALUE_IMPUTATION_CONTRACT,
+    )
 
     return MISSING_VALUE_IMPUTATION_CONTRACT
 
@@ -34,9 +36,9 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
-                "StratifiedSampling", 
+                "StratifiedSampling",
                 "RiskTableMapping",
-                "ProcessingStep"
+                "ProcessingStep",
             ],
             semantic_keywords=[
                 "validation",
@@ -60,10 +62,7 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
             logical_name="imputation_params",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=[
-                "MissingValueImputation_Training",
-                "ProcessingStep"
-            ],
+            compatible_sources=["MissingValueImputation_Training", "ProcessingStep"],
             semantic_keywords=[
                 "imputation_parameters",
                 "fitted_imputers",

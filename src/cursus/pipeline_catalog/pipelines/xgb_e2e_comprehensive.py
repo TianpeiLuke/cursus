@@ -8,22 +8,22 @@ Example:
     from cursus.pipeline_catalog.pipelines.xgb_e2e_comprehensive_refactored import XGBoostE2EComprehensivePipeline
     from sagemaker import Session
     from sagemaker.workflow.pipeline_context import PipelineSession
-    
+
     # Initialize session
     sagemaker_session = Session()
     role = sagemaker_session.get_caller_identity_arn()
     pipeline_session = PipelineSession()
-    
+
     # Create pipeline instance
     pipeline_instance = XGBoostE2EComprehensivePipeline(
         config_path="path/to/config.json",
         sagemaker_session=pipeline_session,
         execution_role=role
     )
-    
+
     # Generate pipeline
     pipeline = pipeline_instance.generate_pipeline()
-    
+
     # Execute the pipeline
     pipeline.upsert()
     execution = pipeline.start()
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 class XGBoostE2EComprehensivePipeline(BasePipeline):
     """
     XGBoost Complete End-to-End Pipeline using the new BasePipeline structure.
-    
+
     This pipeline implements a complete XGBoost workflow from demo/demo_pipeline.ipynb:
     1) Data Loading (training)
     2) Preprocessing (training)
@@ -69,7 +69,7 @@ class XGBoostE2EComprehensivePipeline(BasePipeline):
         execution_role: Optional[str] = None,
         enable_mods: bool = False,  # Regular pipeline, not MODS-enhanced
         validate: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the XGBoost E2E Comprehensive Pipeline.
@@ -88,7 +88,7 @@ class XGBoostE2EComprehensivePipeline(BasePipeline):
             execution_role=execution_role,
             enable_mods=enable_mods,
             validate=validate,
-            **kwargs
+            **kwargs,
         )
         logger.info("Initialized XGBoost E2E Comprehensive Pipeline")
 
@@ -239,12 +239,13 @@ if __name__ == "__main__":
         config_path = args.config_path
         if not config_path:
             from pathlib import Path
+
             config_dir = Path.cwd().parent / "pipeline_config"
             config_path = str(config_dir / "config.json")
 
         # Create the pipeline using new class-based approach
         logger.info(f"Creating refactored XGBoost pipeline with config: {config_path}")
-        
+
         pipeline_instance = XGBoostE2EComprehensivePipeline(
             config_path=config_path,
             sagemaker_session=pipeline_session,
@@ -267,14 +268,18 @@ if __name__ == "__main__":
 
         logger.info("Refactored XGBoost pipeline created successfully!")
         logger.info(f"Pipeline name: {pipeline.name}")
-        logger.info(f"Template available: {pipeline_instance.get_last_template() is not None}")
+        logger.info(
+            f"Template available: {pipeline_instance.get_last_template() is not None}"
+        )
 
         # Process execution documents if requested
         if args.output_doc:
-            execution_doc = pipeline_instance.fill_execution_document({
-                "training_dataset": "dataset-training",
-                "calibration_dataset": "dataset-calibration",
-            })
+            execution_doc = pipeline_instance.fill_execution_document(
+                {
+                    "training_dataset": "dataset-training",
+                    "calibration_dataset": "dataset-calibration",
+                }
+            )
             pipeline_instance.save_execution_document(execution_doc, args.output_doc)
 
         # Upsert if requested

@@ -2,8 +2,8 @@
 """
 DummyTraining Processing Script
 
-This script validates, unpacks a pretrained model.tar.gz file, adds a hyperparameters.json file 
-inside it, then repacks it and outputs to the destination. It serves as a dummy training step 
+This script validates, unpacks a pretrained model.tar.gz file, adds a hyperparameters.json file
+inside it, then repacks it and outputs to the destination. It serves as a dummy training step
 that skips actual training and integrates with downstream MIMS packaging and payload steps.
 """
 
@@ -139,7 +139,7 @@ def create_tarfile(output_tar_path: Path, source_dir: Path) -> None:
         if output_tar_path.exists():
             compressed_size = output_tar_path.stat().st_size / 1024 / 1024
             logger.info(f"  Compressed tar size: {compressed_size:.2f}MB")
-            logger.info(f"  Compression ratio: {compressed_size/total_size:.2%}")
+            logger.info(f"  Compression ratio: {compressed_size / total_size:.2%}")
 
     except Exception as e:
         logger.error(f"Error creating tar file: {str(e)}", exc_info=True)
@@ -219,10 +219,10 @@ def process_model_with_hyperparameters(
 def find_model_file(base_paths: list[str]) -> Optional[Path]:
     """
     Find model.tar.gz file in multiple possible locations.
-    
+
     Args:
         base_paths: List of base paths to search
-        
+
     Returns:
         Path to model file if found, None otherwise
     """
@@ -237,10 +237,10 @@ def find_model_file(base_paths: list[str]) -> Optional[Path]:
 def find_hyperparams_file(base_paths: list[str]) -> Optional[Path]:
     """
     Find hyperparameters.json file in multiple possible locations.
-    
+
     Args:
         base_paths: List of base paths to search
-        
+
     Returns:
         Path to hyperparameters file if found, None otherwise
     """
@@ -260,7 +260,7 @@ def main(
 ) -> Path:
     """
     Main entry point for the DummyTraining script.
-    
+
     Reads model and hyperparameters from source directory with fallback mechanisms.
 
     Args:
@@ -275,45 +275,45 @@ def main(
     try:
         # Define fallback search paths for model file
         model_search_paths = [
-            "/opt/ml/code/models",           # Primary: source directory models folder
-            "/opt/ml/code",                  # Fallback: source directory root
-            "/opt/ml/processing/input/model", # Legacy: processing input (if somehow provided)
+            "/opt/ml/code/models",  # Primary: source directory models folder
+            "/opt/ml/code",  # Fallback: source directory root
+            "/opt/ml/processing/input/model",  # Legacy: processing input (if somehow provided)
         ]
-        
+
         # Define fallback search paths for hyperparameters file
         hyperparams_search_paths = [
-            "/opt/ml/code/hyperparams",      # Primary: source directory hyperparams folder
-            "/opt/ml/code",                  # Fallback: source directory root
-            "/opt/ml/processing/input/config", # Legacy: processing input (if somehow provided)
+            "/opt/ml/code/hyperparams",  # Primary: source directory hyperparams folder
+            "/opt/ml/code",  # Fallback: source directory root
+            "/opt/ml/processing/input/config",  # Legacy: processing input (if somehow provided)
         ]
-        
+
         # Find model file with fallback
         model_path = find_model_file(model_search_paths)
         if not model_path:
             raise FileNotFoundError(
                 f"Model file (model.tar.gz) not found in any of these locations: {model_search_paths}"
             )
-        
+
         # Find hyperparameters file with fallback
         hyperparams_path = find_hyperparams_file(hyperparams_search_paths)
         if not hyperparams_path:
             raise FileNotFoundError(
                 f"Hyperparameters file (hyperparameters.json) not found in any of these locations: {hyperparams_search_paths}"
             )
-        
+
         # Get output directory
         output_dir = Path(output_paths["model_output"])
-        
+
         logger.info(f"Using paths:")
         logger.info(f"  Model: {model_path}")
         logger.info(f"  Hyperparameters: {hyperparams_path}")
         logger.info(f"  Output: {output_dir}")
-        
+
         # Process model with hyperparameters from source directory
         output_path = process_model_with_hyperparameters(
             model_path, hyperparams_path, output_dir
         )
-        
+
         return output_path
     except FileNotFoundError as e:
         logger.error(f"Required file not found: {e}")
@@ -327,18 +327,18 @@ if __name__ == "__main__":
     try:
         # Empty input paths - consistent with SOURCE node contract
         input_paths = {}
-        
+
         output_paths = {"model_output": MODEL_OUTPUT_DIR}
-        
+
         # Environment variables dictionary
         environ_vars = {}
-        
+
         # No command line arguments needed for this script
         args = None
-        
+
         # Execute the main function
         result = main(input_paths, output_paths, environ_vars, args)
-        
+
         logger.info(f"Dummy training completed successfully. Output model at: {result}")
         sys.exit(0)
     except Exception as e:

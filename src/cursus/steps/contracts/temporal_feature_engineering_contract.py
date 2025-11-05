@@ -17,17 +17,13 @@ TEMPORAL_FEATURE_ENGINEERING_CONTRACT = ScriptContract(
     expected_arguments={
         # No expected arguments - job_type comes from config
     },
-    required_env_vars=[
-        "SEQUENCE_GROUPING_FIELD",
-        "TIMESTAMP_FIELD",
-        "VALUE_FIELDS"
-    ],
+    required_env_vars=["SEQUENCE_GROUPING_FIELD", "TIMESTAMP_FIELD", "VALUE_FIELDS"],
     optional_env_vars={
         "FEATURE_TYPES": '["statistical", "temporal", "behavioral"]',
         "CATEGORICAL_FIELDS": '["merchantCategory", "paymentMethod"]',
-        "WINDOW_SIZES": '[7, 14, 30, 90]',
+        "WINDOW_SIZES": "[7, 14, 30, 90]",
         "AGGREGATION_FUNCTIONS": '["mean", "sum", "std", "min", "max", "count"]',
-        "LAG_FEATURES": '[1, 7, 14, 30]',
+        "LAG_FEATURES": "[1, 7, 14, 30]",
         "EXPONENTIAL_SMOOTHING_ALPHA": "0.3",
         "TIME_UNIT": "days",
         "INPUT_FORMAT": "numpy",

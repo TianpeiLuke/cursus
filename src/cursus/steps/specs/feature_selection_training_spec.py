@@ -34,10 +34,10 @@ FEATURE_SELECTION_TRAINING_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
-                "StratifiedSampling", 
+                "StratifiedSampling",
                 "RiskTableMapping",
                 "MissingValueImputation",
-                "ProcessingStep"
+                "ProcessingStep",
             ],
             semantic_keywords=[
                 "training",

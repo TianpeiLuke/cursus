@@ -34,10 +34,10 @@ FEATURE_SELECTION_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
-                "StratifiedSampling", 
+                "StratifiedSampling",
                 "RiskTableMapping",
                 "MissingValueImputation",
-                "ProcessingStep"
+                "ProcessingStep",
             ],
             semantic_keywords=[
                 "processed_data",
@@ -62,7 +62,11 @@ FEATURE_SELECTION_SPEC = StepSpecification(
             logical_name="selected_features",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
-            compatible_sources=["FeatureSelection_Training", "FeatureSelection", "ProcessingStep"],
+            compatible_sources=[
+                "FeatureSelection_Training",
+                "FeatureSelection",
+                "ProcessingStep",
+            ],
             semantic_keywords=[
                 "selected_features",
                 "feature_selection",

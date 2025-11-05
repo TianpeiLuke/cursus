@@ -2,7 +2,7 @@
 """Builder for ModelCalibration processing step.
 
 This module defines the ModelCalibrationStepBuilder class that builds a SageMaker
-ProcessingStep for model calibration, connecting the configuration, specification, 
+ProcessingStep for model calibration, connecting the configuration, specification,
 and script contract.
 """
 
@@ -190,7 +190,6 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             hasattr(value, "expr") and callable(getattr(value, "expr", None))
         )
 
-
     def _detect_circular_references(
         self, var: Any, visited: Optional[Set] = None
     ) -> bool:
@@ -370,8 +369,17 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
                 # Generate destination from config including job_type
                 # Generate destination from base path using Join instead of f-string
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "model_calibration", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "model_calibration",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

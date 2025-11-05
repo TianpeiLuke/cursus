@@ -69,8 +69,11 @@ class PipelineCatalogManager:
         except Exception as e:
             # Step catalog discovery failed, log and fall back
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.warning(f"Step catalog discovery failed: {e}, falling back to legacy")
+            logger.warning(
+                f"Step catalog discovery failed: {e}, falling back to legacy"
+            )
 
         # FALLBACK METHOD: Legacy pipeline discovery
         return self._discover_pipelines_legacy(**kwargs)
@@ -78,14 +81,14 @@ class PipelineCatalogManager:
     def _discover_pipelines_with_catalog(self, **kwargs) -> List[str]:
         """Discover pipelines using step catalog."""
         from ..step_catalog import StepCatalog
-        
+
         # PORTABLE: Use package-only discovery for pipeline discovery
         try:
             catalog = StepCatalog(workspace_dirs=None)
         except Exception:
             # If step catalog initialization fails, fall back to legacy
             return self._discover_pipelines_legacy(**kwargs)
-        
+
         # Use step catalog to discover relevant steps/pipelines
         if "framework" in kwargs:
             # Use catalog's framework detection
@@ -119,7 +122,9 @@ class PipelineCatalogManager:
         elif "use_case" in kwargs:
             # Use text search for use case since find_by_use_case doesn't exist
             search_results = self.discovery.search_by_text(kwargs["use_case"])
-            return [result[0] for result in search_results]  # Extract pipeline IDs from (id, score) tuples
+            return [
+                result[0] for result in search_results
+            ]  # Extract pipeline IDs from (id, score) tuples
         else:
             return self.registry.get_all_pipelines()
 

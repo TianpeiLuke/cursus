@@ -53,7 +53,7 @@ class PayloadConfig(ProcessingStepConfigBase):
     max_latency_in_millisecond: int = Field(
         ge=100, le=10000, description="Maximum acceptable latency in milliseconds"
     )
-    
+
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 

@@ -18,7 +18,9 @@ import logging
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import contract
-from ..contracts.temporal_feature_engineering_contract import TEMPORAL_FEATURE_ENGINEERING_CONTRACT
+from ..contracts.temporal_feature_engineering_contract import (
+    TEMPORAL_FEATURE_ENGINEERING_CONTRACT,
+)
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -58,7 +60,7 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
 
     feature_types: List[str] = Field(
         default=["statistical", "temporal", "behavioral"],
-        description="List of feature types to extract: ['statistical', 'temporal', 'behavioral']."
+        description="List of feature types to extract: ['statistical', 'temporal', 'behavioral'].",
     )
 
     processing_entry_point: str = Field(
@@ -199,7 +201,6 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
                 "SEQUENCE_GROUPING_FIELD": self.sequence_grouping_field,
                 "TIMESTAMP_FIELD": self.timestamp_field,
                 "VALUE_FIELDS": json.dumps(self.value_fields),
-                
                 # Optional environment variables with defaults
                 "FEATURE_TYPES": json.dumps(self.feature_types),
                 "CATEGORICAL_FIELDS": json.dumps(self.categorical_fields),
@@ -210,7 +211,9 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
                 "TIME_UNIT": self.time_unit,
                 "INPUT_FORMAT": self.input_format,
                 "OUTPUT_FORMAT": self.output_format,
-                "ENABLE_DISTRIBUTED_PROCESSING": str(self.enable_distributed_processing).lower(),
+                "ENABLE_DISTRIBUTED_PROCESSING": str(
+                    self.enable_distributed_processing
+                ).lower(),
                 "CHUNK_SIZE": str(self.chunk_size),
                 "MAX_WORKERS": self.max_workers,
                 "FEATURE_PARALLELISM": str(self.feature_parallelism).lower(),
@@ -251,11 +254,13 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
         """Ensure feature_types contains valid feature types."""
         if not v:
             raise ValueError("feature_types must be a non-empty list")
-        
+
         allowed_types = {"statistical", "temporal", "behavioral"}
         for feature_type in v:
             if feature_type not in allowed_types:
-                raise ValueError(f"feature_type must be one of {allowed_types}, got '{feature_type}'")
+                raise ValueError(
+                    f"feature_type must be one of {allowed_types}, got '{feature_type}'"
+                )
         return v
 
     @field_validator("categorical_fields")
@@ -284,11 +289,13 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
         """Ensure aggregation_functions contains valid function names."""
         if not v:
             raise ValueError("aggregation_functions must be a non-empty list")
-        
+
         allowed_functions = {"mean", "sum", "std", "min", "max", "count", "median"}
         for func in v:
             if func not in allowed_functions:
-                raise ValueError(f"aggregation_function must be one of {allowed_functions}, got '{func}'")
+                raise ValueError(
+                    f"aggregation_function must be one of {allowed_functions}, got '{func}'"
+                )
         return v
 
     @field_validator("lag_features")
@@ -351,7 +358,9 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
                 if workers <= 0:
                     raise ValueError("max_workers must be 'auto' or a positive integer")
             except ValueError:
-                raise ValueError("max_workers must be 'auto' or a positive integer string")
+                raise ValueError(
+                    "max_workers must be 'auto' or a positive integer string"
+                )
         return v
 
     @field_validator("exponential_smoothing_alpha")

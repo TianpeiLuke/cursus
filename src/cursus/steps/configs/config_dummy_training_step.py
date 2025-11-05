@@ -26,7 +26,7 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
     This step is a SOURCE node that reads model.tar.gz and hyperparameters.json
     from the source directory, packages them together, and makes them available
     for downstream packaging and registration steps.
-    
+
     Expected source directory structure:
     source_dir/
     ├── dummy_training.py          # Main training script
@@ -57,7 +57,9 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
         """
         # Basic validation - entry point is required for SOURCE nodes
         if not self.processing_entry_point:
-            raise ValueError("DummyTraining SOURCE step requires a processing_entry_point")
+            raise ValueError(
+                "DummyTraining SOURCE step requires a processing_entry_point"
+            )
 
         # Validate script contract - ensure it matches SOURCE node expectations
         contract = self.get_script_contract()

@@ -17,7 +17,9 @@ from ...registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_tabular_preprocess_contract():
-    from ..contracts.tabular_preprocessing_contract import TABULAR_PREPROCESSING_CONTRACT
+    from ..contracts.tabular_preprocessing_contract import (
+        TABULAR_PREPROCESSING_CONTRACT,
+    )
 
     return TABULAR_PREPROCESSING_CONTRACT
 
@@ -32,7 +34,12 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
             logical_name="DATA",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=["CradleDataLoading", "DummyDataLoading", "DataLoad", "ProcessingStep"],
+            compatible_sources=[
+                "CradleDataLoading",
+                "DummyDataLoading",
+                "DataLoad",
+                "ProcessingStep",
+            ],
             semantic_keywords=[
                 "data",
                 "input",
@@ -62,7 +69,7 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Column signature file for CSV/TSV data preprocessing",
-        )
+        ),
     ],
     outputs=[
         OutputSpec(

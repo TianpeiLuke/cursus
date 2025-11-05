@@ -21,7 +21,9 @@ def _get_percentile_model_calibration_contract():
     Returns:
         ScriptContract: The contract defining input/output paths and environment variables.
     """
-    from ..contracts.percentile_model_calibration_contract import PERCENTILE_MODEL_CALIBRATION_CONTRACT
+    from ..contracts.percentile_model_calibration_contract import (
+        PERCENTILE_MODEL_CALIBRATION_CONTRACT,
+    )
 
     return PERCENTILE_MODEL_CALIBRATION_CONTRACT
 
@@ -83,7 +85,7 @@ PERCENTILE_MODEL_CALIBRATION_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Optional calibration configuration directory containing standard_calibration_dictionary.json",
-        )
+        ),
     },
     outputs={
         "calibration_output": OutputSpec(

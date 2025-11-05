@@ -35,15 +35,15 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
     data_source: Union[str, Path] = Field(
         ...,
         description="Local directory path or S3 URI where the input data is stored. "
-                   "Examples: '/path/to/local/data' or 's3://bucket/path/to/data'"
+        "Examples: '/path/to/local/data' or 's3://bucket/path/to/data'",
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
     processing_entry_point: str = Field(
-        default="dummy_data_loading.py", 
-        description="Entry point script for dummy data loading."
+        default="dummy_data_loading.py",
+        description="Entry point script for dummy data loading.",
     )
 
     job_type: str = Field(
@@ -56,30 +56,29 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         default=1000,
         ge=1,
         le=10000,
-        description="Maximum file size in MB to process (safety limit)"
+        description="Maximum file size in MB to process (safety limit)",
     )
 
     supported_formats: list[str] = Field(
         default=["csv", "parquet", "json", "jsonl"],
-        description="List of supported data formats for processing"
+        description="List of supported data formats for processing",
     )
 
     # Enhanced data sharding options (Tier 2)
     write_data_shards: bool = Field(
         default=False,
-        description="Enable enhanced data sharding mode for compatibility with tabular preprocessing"
+        description="Enable enhanced data sharding mode for compatibility with tabular preprocessing",
     )
 
     shard_size: int = Field(
         default=10000,
         ge=1,
         le=1000000,
-        description="Number of rows per shard file when data sharding is enabled"
+        description="Number of rows per shard file when data sharding is enabled",
     )
 
     output_format: str = Field(
-        default="CSV",
-        description="Output format for data shards (CSV, JSON, PARQUET)"
+        default="CSV", description="Output format for data shards (CSV, JSON, PARQUET)"
     )
 
     # Update to Pydantic V2 style model_config
@@ -144,15 +143,18 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
 
         # Basic validation
         if not self.processing_entry_point:
-            raise ValueError("dummy data loading step requires a processing_entry_point")
-
+            raise ValueError(
+                "dummy data loading step requires a processing_entry_point"
+            )
 
         # Validate supported formats
         valid_formats = {"csv", "parquet", "json", "jsonl", "pq"}
         invalid_formats = set(self.supported_formats) - valid_formats
         if invalid_formats:
-            raise ValueError(f"Unsupported data formats: {invalid_formats}. "
-                           f"Valid formats: {valid_formats}")
+            raise ValueError(
+                f"Unsupported data formats: {invalid_formats}. "
+                f"Valid formats: {valid_formats}"
+            )
 
         return self
 
@@ -194,13 +196,13 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
             "csv": {".csv"},
             "parquet": {".parquet", ".pq"},
             "json": {".json"},
-            "jsonl": {".jsonl"}
+            "jsonl": {".jsonl"},
         }
-        
+
         extensions = set()
         for format_name in self.supported_formats:
             extensions.update(extension_map.get(format_name, set()))
-        
+
         return extensions
 
     def get_environment_variables(self) -> Dict[str, str]:
@@ -230,10 +232,10 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
     def model_dump(self, **kwargs) -> Dict[str, Any]:
         """Override model_dump to include derived properties."""
         data = super().model_dump(**kwargs)
-        
+
         # Add derived properties to output
         data["is_s3_source"] = self.is_s3_source()
         data["data_source_uri"] = self.get_data_source_uri()
         data["supported_extensions"] = list(self.get_supported_extensions())
-        
+
         return data

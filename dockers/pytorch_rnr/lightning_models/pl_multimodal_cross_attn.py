@@ -112,9 +112,9 @@ class MultimodalBertCrossAttn(pl.LightningModule):
         hidden_dim = config["hidden_common_dim"]
         num_heads = config.get("num_heads", 4)
         # ensure both branches embed to same hidden_dim:
-        assert (
-            text_dim == hidden_dim and tab_dim == hidden_dim
-        ), f"text_dim ({text_dim}) and tab_dim ({tab_dim}) must both = hidden_common_dim ({hidden_dim})"
+        assert text_dim == hidden_dim and tab_dim == hidden_dim, (
+            f"text_dim ({text_dim}) and tab_dim ({tab_dim}) must both = hidden_common_dim ({hidden_dim})"
+        )
         self.cross_att = CrossAttentionFusion(hidden_dim, num_heads)
 
         # — Final classifier on concat([text,tab]) after fusion —

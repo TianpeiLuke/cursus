@@ -19,7 +19,7 @@ class LightGBMModelHyperparameters(ModelHyperparameters):
 
     # Most essential LightGBM hyperparameters
     num_leaves: int = Field(description="Maximum number of leaves in one tree.")
-    
+
     learning_rate: float = Field(description="Learning rate for boosting.")
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -112,8 +112,7 @@ class LightGBMModelHyperparameters(ModelHyperparameters):
     )
 
     seed: Optional[int] = Field(
-        default=None, 
-        description="Random seed for reproducibility."
+        default=None, description="Random seed for reproducibility."
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -139,7 +138,9 @@ class LightGBMModelHyperparameters(ModelHyperparameters):
         """Get evaluation metrics derived from is_binary."""
         if self._metric is None:
             self._metric = (
-                ["binary_logloss", "auc"] if self.is_binary else ["multi_logloss", "multi_error"]
+                ["binary_logloss", "auc"]
+                if self.is_binary
+                else ["multi_logloss", "multi_error"]
             )
         return self._metric
 
@@ -152,7 +153,9 @@ class LightGBMModelHyperparameters(ModelHyperparameters):
         # Initialize derived fields
         self._objective = "binary" if self.is_binary else "multiclass"
         self._metric = (
-            ["binary_logloss", "auc"] if self.is_binary else ["multi_logloss", "multi_error"]
+            ["binary_logloss", "auc"]
+            if self.is_binary
+            else ["multi_logloss", "multi_error"]
         )
 
         # Validate multiclass parameters
@@ -164,9 +167,7 @@ class LightGBMModelHyperparameters(ModelHyperparameters):
 
         # Validate early stopping configuration
         if self.early_stopping_rounds is not None and not self._metric:
-            raise ValueError(
-                "'early_stopping_rounds' requires 'metric' to be set."
-            )
+            raise ValueError("'early_stopping_rounds' requires 'metric' to be set.")
 
         # Validate boosting type
         valid_boosting_types = ["gbdt", "rf", "dart", "goss"]

@@ -17,7 +17,9 @@ import logging
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import the script contract
-from ..contracts.model_metrics_computation_contract import MODEL_METRICS_COMPUTATION_CONTRACT
+from ..contracts.model_metrics_computation_contract import (
+    MODEL_METRICS_COMPUTATION_CONTRACT,
+)
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -116,8 +118,8 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
 
     # For metrics computation, we typically use smaller instances
     use_large_processing_instance: bool = Field(
-        default=False, 
-        description="Whether to use large instance type for processing (metrics computation typically needs less resources)"
+        default=False,
+        description="Whether to use large instance type for processing (metrics computation typically needs less resources)",
     )
 
     # Model comparison configuration (Tier 2 - Optional with defaults)
@@ -163,11 +165,8 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         """Validate input format is supported."""
         valid_formats = {"auto", "csv", "parquet", "json"}
         if v.lower() not in valid_formats:
-            raise ValueError(
-                f"input_format must be one of {valid_formats}, got '{v}'"
-            )
+            raise ValueError(f"input_format must be one of {valid_formats}, got '{v}'")
         return v.lower()
-
 
     @field_validator("dollar_recall_fpr", "count_recall_cutoff")
     @classmethod
@@ -193,7 +192,9 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         """Additional validation specific to metrics computation configuration"""
         # Basic validation
         if not self.processing_entry_point:
-            raise ValueError("metrics computation step requires a processing_entry_point")
+            raise ValueError(
+                "metrics computation step requires a processing_entry_point"
+            )
 
         # Validate required fields from script contract
         if not self.id_name:
@@ -237,17 +238,21 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
                 raise ValueError(
                     "previous_score_field must be provided when comparison_mode is True"
                 )
-            
+
             # Validate comparison_metrics value
             valid_comparison_metrics = {"all", "basic"}
             if self.comparison_metrics not in valid_comparison_metrics:
                 raise ValueError(
                     f"comparison_metrics must be one of {valid_comparison_metrics}, got '{self.comparison_metrics}'"
                 )
-            
-            logger.info(f"Comparison mode enabled with previous score field: '{self.previous_score_field}'")
+
+            logger.info(
+                f"Comparison mode enabled with previous score field: '{self.previous_score_field}'"
+            )
         else:
-            logger.debug("Comparison mode disabled - standard metrics computation will be performed")
+            logger.debug(
+                "Comparison mode disabled - standard metrics computation will be performed"
+            )
 
         logger.debug(
             f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for metrics computation"

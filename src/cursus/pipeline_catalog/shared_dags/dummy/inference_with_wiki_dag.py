@@ -38,7 +38,9 @@ def create_dummy_inference_with_wiki_dag() -> PipelineDAG:
 
     # Add nodes
     dag.add_node("DummyDataLoading_calibration")  # Dummy data load for calibration
-    dag.add_node("TabularPreprocessing_calibration")  # Tabular preprocessing for calibration
+    dag.add_node(
+        "TabularPreprocessing_calibration"
+    )  # Tabular preprocessing for calibration
     dag.add_node("DummyTraining")  # Dummy training step (uses pretrained model)
     dag.add_node("XGBoostModelInference")  # Model inference step
     dag.add_node("ModelMetricsComputation")  # Model metrics computation step
@@ -73,7 +75,14 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="Dummy training pipeline with inference, metrics computation, and wiki generation",
         complexity="standard",
-        features=["dummy_training", "dummy_data_loading", "inference", "metrics", "wiki_generation", "calibration"],
+        features=[
+            "dummy_training",
+            "dummy_data_loading",
+            "inference",
+            "metrics",
+            "wiki_generation",
+            "calibration",
+        ],
         framework="dummy",
         node_count=7,
         edge_count=6,

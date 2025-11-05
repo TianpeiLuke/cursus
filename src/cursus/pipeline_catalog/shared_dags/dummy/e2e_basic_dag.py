@@ -8,7 +8,7 @@ This DAG can be used by both regular and MODS pipeline variants to ensure consis
 The DAG includes:
 1) DummyTraining - Training step using a pretrained model
 2) Package - Model packaging step
-3) Payload - Payload testing step  
+3) Payload - Payload testing step
 4) Registration - Model registration step
 
 DAG Structure:

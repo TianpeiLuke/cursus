@@ -157,19 +157,25 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
                 raise ValueError(
                     "previous_score_field must be provided when comparison_mode is True"
                 )
-            
+
             # Validate comparison_metrics value
             valid_comparison_metrics = {"all", "basic"}
             if self.comparison_metrics not in valid_comparison_metrics:
                 raise ValueError(
                     f"comparison_metrics must be one of {valid_comparison_metrics}, got '{self.comparison_metrics}'"
                 )
-            
-            logger.info(f"Comparison mode enabled with previous score field: '{self.previous_score_field}'")
-        else:
-            logger.debug("Comparison mode disabled - standard evaluation will be performed")
 
-        logger.debug(f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for evaluation")
+            logger.info(
+                f"Comparison mode enabled with previous score field: '{self.previous_score_field}'"
+            )
+        else:
+            logger.debug(
+                "Comparison mode disabled - standard evaluation will be performed"
+            )
+
+        logger.debug(
+            f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for evaluation"
+        )
 
         return self
 

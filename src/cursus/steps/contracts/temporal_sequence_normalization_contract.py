@@ -12,7 +12,7 @@ TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT = ScriptContract(
     entry_point="temporal_sequence_normalization.py",
     expected_input_paths={
         "DATA": "/opt/ml/processing/input/data",
-        "SIGNATURE": "/opt/ml/processing/input/signature"
+        "SIGNATURE": "/opt/ml/processing/input/signature",
     },
     expected_output_paths={"normalized_sequences": "/opt/ml/processing/output"},
     expected_arguments={
@@ -20,10 +20,10 @@ TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT = ScriptContract(
     },
     required_env_vars=[
         "SEQUENCE_LENGTH",
-        "SEQUENCE_SEPARATOR", 
+        "SEQUENCE_SEPARATOR",
         "TEMPORAL_FIELD",
         "SEQUENCE_GROUPING_FIELD",
-        "RECORD_ID_FIELD"
+        "RECORD_ID_FIELD",
     ],
     optional_env_vars={
         "MISSING_INDICATORS": '["", "My Text String", null]',

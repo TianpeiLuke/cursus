@@ -13,14 +13,18 @@ from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
 
-from ..configs.config_bedrock_prompt_template_generation_step import BedrockPromptTemplateGenerationConfig
+from ..configs.config_bedrock_prompt_template_generation_step import (
+    BedrockPromptTemplateGenerationConfig,
+)
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
 # Import the bedrock prompt template generation specification
 try:
-    from ..specs.bedrock_prompt_template_generation_spec import BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC
+    from ..specs.bedrock_prompt_template_generation_spec import (
+        BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC,
+    )
 
     SPEC_AVAILABLE = True
 except ImportError:
@@ -59,7 +63,9 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
             dependency_resolver: Optional dependency resolver for dependency injection
         """
         if not isinstance(config, BedrockPromptTemplateGenerationConfig):
-            raise ValueError("BedrockPromptTemplateGenerationStepBuilder requires a BedrockPromptTemplateGenerationConfig instance.")
+            raise ValueError(
+                "BedrockPromptTemplateGenerationStepBuilder requires a BedrockPromptTemplateGenerationConfig instance."
+            )
 
         # Use the bedrock prompt template generation specification if available
         spec = BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC if SPEC_AVAILABLE else None
@@ -89,7 +95,9 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
             not hasattr(self.config, "processing_entry_point")
             or not self.config.processing_entry_point
         ):
-            raise ValueError("bedrock prompt template generation step requires a processing_entry_point")
+            raise ValueError(
+                "bedrock prompt template generation step requires a processing_entry_point"
+            )
 
         # Validate template-specific configuration
         required_attrs = [
@@ -108,7 +116,9 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                 "",
                 [],
             ]:
-                raise ValueError(f"BedrockPromptTemplateGenerationConfig missing required attribute: {attr}")
+                raise ValueError(
+                    f"BedrockPromptTemplateGenerationConfig missing required attribute: {attr}"
+                )
 
         # Validate input placeholders is not empty
         if not self.config.input_placeholders:
@@ -163,7 +173,7 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """
         Constructs a dictionary of environment variables to be passed to the processing job.
-        
+
         This method combines:
         1. Base environment variables from the contract
         2. Configuration-specific environment variables from config.environment_variables
@@ -178,7 +188,9 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
         config_env_vars = self.config.environment_variables
         env_vars.update(config_env_vars)
 
-        self.log_info("Bedrock prompt template generation environment variables: %s", env_vars)
+        self.log_info(
+            "Bedrock prompt template generation environment variables: %s", env_vars
+        )
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
@@ -217,8 +229,10 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                     # User specified a custom path - use resolved path from config
                     try:
                         source_path = self.config.resolved_prompt_configs_path
-                        container_path = self.contract.expected_input_paths[logical_name]
-                        
+                        container_path = self.contract.expected_input_paths[
+                            logical_name
+                        ]
+
                         processing_inputs.append(
                             ProcessingInput(
                                 input_name=logical_name,
@@ -226,7 +240,7 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                                 destination=container_path,
                             )
                         )
-                        
+
                         self.log_info(
                             "Added local input '%s' (user-specified path): %s -> %s",
                             logical_name,
@@ -239,7 +253,9 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                 else:
                     # User didn't specify path - allow dependency override or require dependency
                     if logical_name in inputs:
-                        container_path = self.contract.expected_input_paths[logical_name]
+                        container_path = self.contract.expected_input_paths[
+                            logical_name
+                        ]
                         processing_inputs.append(
                             ProcessingInput(
                                 input_name=logical_name,
@@ -256,13 +272,16 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
                         continue
                     else:
                         # Required input, no user path, no dependency - this is an error
-                        raise ValueError(f"Required input '{logical_name}' not provided: either specify prompt_configs_path in config or provide via dependencies")
-            
+                        raise ValueError(
+                            f"Required input '{logical_name}' not provided: either specify prompt_configs_path in config or provide via dependencies"
+                        )
 
             # Handle other dependency-provided inputs
             # Skip if optional and not provided
             if not dependency_spec.required and logical_name not in inputs:
-                self.log_info("Optional input '%s' not provided, skipping", logical_name)
+                self.log_info(
+                    "Optional input '%s' not provided, skipping", logical_name
+                )
                 continue
 
             # Make sure required inputs are present
@@ -293,7 +312,6 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
             )
 
         return processing_inputs
-
 
     def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
         """
@@ -338,8 +356,16 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from base path using Join instead of f-string
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "bedrock_prompt_template_generation", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "bedrock_prompt_template_generation",
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -387,7 +413,9 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
         # Add template version (always include since it has a meaningful default)
         job_args.extend(["--template-version", self.config.template_version])
 
-        self.log_info("Job arguments for bedrock prompt template generation script: %s", job_args)
+        self.log_info(
+            "Job arguments for bedrock prompt template generation script: %s", job_args
+        )
         return job_args if job_args else None
 
     def create_step(self, **kwargs) -> ProcessingStep:

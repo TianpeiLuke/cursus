@@ -34,10 +34,10 @@ FEATURE_SELECTION_CALIBRATION_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
-                "StratifiedSampling", 
+                "StratifiedSampling",
                 "RiskTableMapping",
                 "MissingValueImputation",
-                "ProcessingStep"
+                "ProcessingStep",
             ],
             semantic_keywords=[
                 "calibration",

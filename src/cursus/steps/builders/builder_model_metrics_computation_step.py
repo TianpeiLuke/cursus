@@ -2,7 +2,7 @@
 """Builder for ModelMetricsComputation processing step.
 
 This module defines the ModelMetricsComputationStepBuilder class that builds a SageMaker
-ProcessingStep for model metrics computation, connecting the configuration, specification, 
+ProcessingStep for model metrics computation, connecting the configuration, specification,
 and script contract.
 """
 
@@ -16,7 +16,9 @@ from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.workflow.entities import PipelineVariable
 
 from ...core.base.builder_base import StepBuilderBase
-from ..configs.config_model_metrics_computation_step import ModelMetricsComputationConfig
+from ..configs.config_model_metrics_computation_step import (
+    ModelMetricsComputationConfig,
+)
 from ..specs.model_metrics_computation_spec import MODEL_METRICS_COMPUTATION_SPEC
 
 logger = logging.getLogger(__name__)
@@ -98,7 +100,6 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
                 raise ValueError(
                     f"ModelMetricsComputationConfig missing required attribute: {attr}"
                 )
-
 
         # Validate input format
         valid_formats = {"auto", "csv", "parquet", "json"}
@@ -308,8 +309,16 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from config
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "model_metrics_computation", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "model_metrics_computation",
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -364,7 +373,7 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
         """
         job_type = self.config.job_type
         self.log_info("Setting job_type argument to: %s", job_type)
-        
+
         # Return job_type argument
         return ["--job_type", job_type]
 

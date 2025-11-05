@@ -17,7 +17,9 @@ import logging
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import the script contract
-from ..contracts.pytorch_model_inference_contract import PYTORCH_MODEL_INFERENCE_CONTRACT
+from ..contracts.pytorch_model_inference_contract import (
+    PYTORCH_MODEL_INFERENCE_CONTRACT,
+)
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -84,7 +86,8 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
 
     # For inference jobs, we typically use smaller instances than evaluation
     use_large_processing_instance: bool = Field(
-        default=False, description="Whether to use large instance type for processing (inference typically needs less resources)"
+        default=False,
+        description="Whether to use large instance type for processing (inference typically needs less resources)",
     )
 
     model_config = ProcessingStepConfigBase.model_config
@@ -104,9 +107,7 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
         """Validate output format is supported."""
         valid_formats = {"csv", "parquet", "json"}
         if v.lower() not in valid_formats:
-            raise ValueError(
-                f"output_format must be one of {valid_formats}, got '{v}'"
-            )
+            raise ValueError(f"output_format must be one of {valid_formats}, got '{v}'")
         return v.lower()
 
     @field_validator("json_orient")
@@ -115,9 +116,7 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
         """Validate JSON orientation is supported."""
         valid_orients = {"records", "index", "values", "split", "table"}
         if v.lower() not in valid_orients:
-            raise ValueError(
-                f"json_orient must be one of {valid_orients}, got '{v}'"
-            )
+            raise ValueError(f"json_orient must be one of {valid_orients}, got '{v}'")
         return v.lower()
 
     # Initialize derived fields at creation time to avoid potential validation loops
@@ -155,7 +154,9 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
                 "label_name must be provided (required by PyTorch model inference contract)"
             )
 
-        logger.debug(f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for inference")
+        logger.debug(
+            f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for inference"
+        )
 
         return self
 

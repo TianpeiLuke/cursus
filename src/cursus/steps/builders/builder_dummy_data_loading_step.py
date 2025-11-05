@@ -51,7 +51,9 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
             dependency_resolver: Optional dependency resolver for dependency injection
         """
         if not isinstance(config, DummyDataLoadingConfig):
-            raise ValueError("DummyDataLoadingStepBuilder requires a DummyDataLoadingConfig instance.")
+            raise ValueError(
+                "DummyDataLoadingStepBuilder requires a DummyDataLoadingConfig instance."
+            )
 
         # Select specification based on job type
         spec = None
@@ -70,7 +72,9 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
                 )
 
                 spec = DUMMY_DATA_LOADING_VALIDATION_SPEC
-                logger.info("Using validation-specific DUMMY_DATA_LOADING_VALIDATION_SPEC")
+                logger.info(
+                    "Using validation-specific DUMMY_DATA_LOADING_VALIDATION_SPEC"
+                )
             elif job_type == "testing":
                 from ..specs.dummy_data_loading_testing_spec import (
                     DUMMY_DATA_LOADING_TESTING_SPEC,
@@ -93,12 +97,11 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
                 spec = DUMMY_DATA_LOADING_SPEC if SPEC_AVAILABLE else None
                 if spec:
                     logger.info(
-                        "Using generic DUMMY_DATA_LOADING_SPEC for job type: %s", job_type
+                        "Using generic DUMMY_DATA_LOADING_SPEC for job type: %s",
+                        job_type,
                     )
                 else:
-                    logger.warning(
-                        "No specification found for job type: %s", job_type
-                    )
+                    logger.warning("No specification found for job type: %s", job_type)
 
         super().__init__(
             config=config,
@@ -162,7 +165,7 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """
         Constructs a dictionary of environment variables to be passed to the processing job.
-        
+
         This method combines:
         1. Base environment variables from the contract
         2. Configuration-specific environment variables from config.get_environment_variables()
@@ -174,11 +177,19 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
         env_vars = super()._get_environment_variables()
 
         # Add configuration-specific environment variables
-        if hasattr(self.config, 'get_environment_variables'):
+        if hasattr(self.config, "get_environment_variables"):
             config_env_vars = self.config.get_environment_variables()
             env_vars.update(config_env_vars)
-            self.log_info("Added configuration environment variables: %s", 
-                         {k: v for k, v in config_env_vars.items() if k.startswith(('WRITE_DATA_SHARDS', 'SHARD_SIZE', 'OUTPUT_FORMAT'))})
+            self.log_info(
+                "Added configuration environment variables: %s",
+                {
+                    k: v
+                    for k, v in config_env_vars.items()
+                    if k.startswith(
+                        ("WRITE_DATA_SHARDS", "SHARD_SIZE", "OUTPUT_FORMAT")
+                    )
+                },
+            )
 
         self.log_info("Final dummy data loading environment variables: %s", env_vars)
         return env_vars
@@ -208,7 +219,7 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
         # Dummy data loading has only one input: INPUT_DATA from user config
         data_source_path = self.config.get_data_source_uri()
         container_path = self.contract.expected_input_paths["INPUT_DATA"]
-        
+
         self.log_info(
             "Using user-provided data source from configuration: %s -> %s",
             data_source_path,
@@ -266,8 +277,12 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from base path using Join instead of f-string
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "dummy_data_loading", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[base_output_path, "dummy_data_loading", logical_name],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

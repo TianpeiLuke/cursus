@@ -1,0 +1,85 @@
+{
+  "include_analysis_steps": true,
+  "include_decision_criteria": true,
+  "include_reasoning_requirements": true,
+  "step_by_step_format": true,
+  "include_evidence_validation": true,
+  "classification_guidelines": {
+    "sections": [
+      {
+        "title": "## Classification Guidelines",
+        "subsections": [
+          {
+            "title": "### 1. Output Format Requirements",
+            "content": [
+              "**Category Selection:**",
+              "- Choose exactly ONE category from the provided list",
+              "- Category name must match exactly (case-sensitive)",
+              "",
+              "**Confidence Score:**",
+              "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+              "- Base confidence for complete data: 0.7-1.0",
+              "- Missing one field: reduce by 0.1-0.2",
+              "- Missing two fields: reduce by 0.2-0.3",
+              "- Minimum confidence threshold: 0.5"
+            ]
+          },
+          {
+            "title": "### 2. Shiptrack Parsing Rules",
+            "content": [
+              "**Multiple Shipment Structure:**",
+              "- Multiple shipment sequences separated by shipment IDs",
+              "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+              "",
+              "**Analysis Approach:**",
+              "- Process each shipment sequence separately",
+              "- Compare delivery events (EVENT_301) across all sequences",
+              "",
+              "**Key Event Codes:**",
+              "- EVENT_301: Delivery confirmation",
+              "- EVENT_302: Out for delivery",
+              "- EVENT_201: Arrival at facility"
+            ]
+          },
+          {
+            "title": "### 3. Missing Data Handling",
+            "content": [
+              "**When Dialogue is Empty but Shiptrack Exists:**",
+              "- Focus on shipping events and timeline",
+              "- Reduce confidence score by 0.1-0.2",
+              "",
+              "**When Shiptrack is Empty but Dialogue Exists:**",
+              "- Focus on message content and reported issues",
+              "- Reduce confidence score by 0.1-0.2"
+            ]
+          },
+          {
+            "title": "### 4. Category Priority Hierarchy",
+            "content": [
+              "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+              "- PDA_Undeliverable: Verify no delivery + refund given",
+              "- PDA_Early_Refund: Verify refund before delivery",
+              "",
+              "**Tier 2: Delivery Status Categories**",
+              "- TrueDNR: Delivered but disputed",
+              "- Confirmed_Delay: External factors confirmed"
+            ]
+          },
+          {
+            "title": "### 5. Evidence Requirements",
+            "content": [
+              "**Message Evidence Must Include:**",
+              "- Direct quotes from dialogue with speaker identification",
+              "",
+              "**Shipping Evidence Must Include:**",
+              "- All tracking events listed chronologically",
+              "",
+              "**Timeline Evidence Must Show:**",
+              "- Clear chronological sequence of events"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

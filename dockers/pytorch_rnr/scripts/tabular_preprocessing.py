@@ -99,7 +99,9 @@ def _read_json_file(file_path: Path) -> pd.DataFrame:
         return pd.json_normalize(data if isinstance(data, list) else [data])
 
 
-def _read_file_to_df(file_path: Path, column_names: Optional[list] = None) -> pd.DataFrame:
+def _read_file_to_df(
+    file_path: Path, column_names: Optional[list] = None
+) -> pd.DataFrame:
     """Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame."""
     suffix = file_path.suffix.lower()
     if suffix == ".gz":
@@ -110,7 +112,11 @@ def _read_file_to_df(file_path: Path, column_names: Optional[list] = None) -> pd
             # Use column names from signature if provided for CSV/TSV files
             if column_names:
                 return pd.read_csv(
-                    str(file_path), sep=sep, compression="gzip", names=column_names, header=0
+                    str(file_path),
+                    sep=sep,
+                    compression="gzip",
+                    names=column_names,
+                    header=0,
                 )
             else:
                 return pd.read_csv(str(file_path), sep=sep, compression="gzip")
@@ -118,7 +124,10 @@ def _read_file_to_df(file_path: Path, column_names: Optional[list] = None) -> pd
             return _read_json_file(file_path)
         elif inner_ext.endswith(".parquet"):
             with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-                with gzip.open(str(file_path), "rb") as f_in, open(tmp.name, "wb") as f_out:
+                with (
+                    gzip.open(str(file_path), "rb") as f_in,
+                    open(tmp.name, "wb") as f_out,
+                ):
                     shutil.copyfileobj(f_in, f_out)
                 df = pd.read_parquet(tmp.name)
             os.unlink(tmp.name)
@@ -141,7 +150,9 @@ def _read_file_to_df(file_path: Path, column_names: Optional[list] = None) -> pd
         raise ValueError(f"Unsupported file type: {file_path}")
 
 
-def combine_shards(input_dir: str, signature_columns: Optional[list] = None) -> pd.DataFrame:
+def combine_shards(
+    input_dir: str, signature_columns: Optional[list] = None
+) -> pd.DataFrame:
     """Detect and combine all supported data shards in a directory."""
     input_path = Path(input_dir)
     if not input_path.is_dir():
@@ -219,7 +230,7 @@ def main(
 
     # 4. Process columns and labels (conditional based on label_field availability)
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
-    
+
     # Only process labels if label_field is provided and exists
     if label_field:
         if label_field not in df.columns:
@@ -232,7 +243,9 @@ def main(
             label_map = {val: idx for idx, val in enumerate(unique_labels)}
             df[label_field] = df[label_field].map(label_map)
 
-        df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype("Int64")
+        df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype(
+            "Int64"
+        )
         df.dropna(subset=[label_field], inplace=True)
         df[label_field] = df[label_field].astype(int)
         log(f"[INFO] Data shape after cleaning labels: {df.shape}")
@@ -342,7 +355,9 @@ if __name__ == "__main__":
         )
 
         # Log completion summary
-        splits_summary = ", ".join([f"{name}: {df.shape}" for name, df in result.items()])
+        splits_summary = ", ".join(
+            [f"{name}: {df.shape}" for name, df in result.items()]
+        )
         logger.info(f"Preprocessing completed successfully. Splits: {splits_summary}")
         sys.exit(0)
     except Exception as e:

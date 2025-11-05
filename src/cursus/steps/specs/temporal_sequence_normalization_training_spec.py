@@ -17,14 +17,18 @@ from ...registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_temporal_sequence_normalization_contract():
-    from ..contracts.temporal_sequence_normalization_contract import TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT
+    from ..contracts.temporal_sequence_normalization_contract import (
+        TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT,
+    )
 
     return TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT
 
 
 # Temporal Sequence Normalization Training Step Specification
 TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC = StepSpecification(
-    step_type=get_spec_step_type_with_job_type("TemporalSequenceNormalization", "training"),
+    step_type=get_spec_step_type_with_job_type(
+        "TemporalSequenceNormalization", "training"
+    ),
     node_type=NodeType.INTERNAL,
     script_contract=_get_temporal_sequence_normalization_contract(),
     dependencies=[
@@ -32,7 +36,13 @@ TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC = StepSpecification(
             logical_name="DATA",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
-            compatible_sources=["CradleDataLoading", "DummyDataLoading", "DataLoad", "ProcessingStep", "TabularPreprocessing"],
+            compatible_sources=[
+                "CradleDataLoading",
+                "DummyDataLoading",
+                "DataLoad",
+                "ProcessingStep",
+                "TabularPreprocessing",
+            ],
             semantic_keywords=[
                 "training",
                 "train",
@@ -65,7 +75,7 @@ TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Column signature file for CSV/TSV data preprocessing",
-        )
+        ),
     ],
     outputs=[
         OutputSpec(

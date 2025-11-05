@@ -32,7 +32,9 @@ try:
 except ImportError:
     MISSING_VALUE_IMPUTATION_SPEC = MISSING_VALUE_IMPUTATION_TRAINING_SPEC = (
         MISSING_VALUE_IMPUTATION_VALIDATION_SPEC
-    ) = MISSING_VALUE_IMPUTATION_TESTING_SPEC = MISSING_VALUE_IMPUTATION_CALIBRATION_SPEC = None
+    ) = MISSING_VALUE_IMPUTATION_TESTING_SPEC = (
+        MISSING_VALUE_IMPUTATION_CALIBRATION_SPEC
+    ) = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -76,14 +78,19 @@ class MissingValueImputationStepBuilder(StepBuilderBase):
         job_type = config.job_type.lower()
 
         # Get specification based on job type
-        if job_type == "training" and MISSING_VALUE_IMPUTATION_TRAINING_SPEC is not None:
+        if (
+            job_type == "training"
+            and MISSING_VALUE_IMPUTATION_TRAINING_SPEC is not None
+        ):
             spec = MISSING_VALUE_IMPUTATION_TRAINING_SPEC
         elif (
             job_type == "validation"
             and MISSING_VALUE_IMPUTATION_VALIDATION_SPEC is not None
         ):
             spec = MISSING_VALUE_IMPUTATION_VALIDATION_SPEC
-        elif job_type == "testing" and MISSING_VALUE_IMPUTATION_TESTING_SPEC is not None:
+        elif (
+            job_type == "testing" and MISSING_VALUE_IMPUTATION_TESTING_SPEC is not None
+        ):
             spec = MISSING_VALUE_IMPUTATION_TESTING_SPEC
         elif (
             job_type == "calibration"
@@ -350,8 +357,17 @@ class MissingValueImputationStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "missing_value_imputation", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "missing_value_imputation",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -412,10 +428,14 @@ class MissingValueImputationStepBuilder(StepBuilderBase):
             # If dependencies are provided, extract inputs from them
             if dependencies:
                 try:
-                    extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
+                    extracted_inputs = self.extract_inputs_from_dependencies(
+                        dependencies
+                    )
                     inputs.update(extracted_inputs)
                 except Exception as e:
-                    self.log_warning("Failed to extract inputs from dependencies: %s", e)
+                    self.log_warning(
+                        "Failed to extract inputs from dependencies: %s", e
+                    )
 
             # Add explicitly provided inputs (overriding any extracted ones)
             inputs.update(inputs_raw)
@@ -458,5 +478,8 @@ class MissingValueImputationStepBuilder(StepBuilderBase):
         except Exception as e:
             self.log_error(f"Error creating MissingValueImputation step: {e}")
             import traceback
+
             self.log_error(traceback.format_exc())
-            raise ValueError(f"Failed to create MissingValueImputation step: {str(e)}") from e
+            raise ValueError(
+                f"Failed to create MissingValueImputation step: {str(e)}"
+            ) from e

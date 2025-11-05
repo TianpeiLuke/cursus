@@ -2,7 +2,7 @@
 Shared DAG definition for XGBoost Complete End-to-End Pipeline with Dummy Data Loading
 
 This module provides the shared DAG definition for a complete XGBoost workflow
-that uses dummy data loading instead of Cradle data loading. This includes training, 
+that uses dummy data loading instead of Cradle data loading. This includes training,
 calibration, packaging, registration, and evaluation.
 
 The DAG includes:
@@ -93,7 +93,14 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="Complete XGBoost end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
         complexity="comprehensive",
-        features=["dummy_data_loading", "training", "calibration", "packaging", "registration", "evaluation"],
+        features=[
+            "dummy_data_loading",
+            "training",
+            "calibration",
+            "packaging",
+            "registration",
+            "evaluation",
+        ],
         framework="xgboost",
         node_count=10,
         edge_count=11,

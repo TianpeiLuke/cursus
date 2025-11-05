@@ -1,7 +1,7 @@
 """
 PyTorch End-to-End Pipeline
 
-This pipeline implements a complete workflow for training, evaluating, packaging, 
+This pipeline implements a complete workflow for training, evaluating, packaging,
 and registering a PyTorch model:
 1) Data Loading (training)
 2) Preprocessing (training)
@@ -10,7 +10,7 @@ and registering a PyTorch model:
 5) Payload Generation
 6) Model Registration
 7) Data Loading (validation)
-8) Preprocessing (validation) 
+8) Preprocessing (validation)
 9) Model Evaluation
 
 This comprehensive pipeline covers the entire ML lifecycle from data loading to
@@ -22,22 +22,22 @@ Example:
     from cursus.pipeline_catalog.pipelines.pytorch_e2e_standard import PyTorchE2EStandardPipeline
     from sagemaker import Session
     from sagemaker.workflow.pipeline_context import PipelineSession
-    
+
     # Initialize session
     sagemaker_session = Session()
     role = sagemaker_session.get_caller_identity_arn()
     pipeline_session = PipelineSession()
-    
+
     # Create pipeline instance
     pipeline_instance = PyTorchE2EStandardPipeline(
         config_path="path/to/config_pytorch.json",
         sagemaker_session=pipeline_session,
         execution_role=role
     )
-    
+
     # Generate pipeline
     pipeline = pipeline_instance.generate_pipeline()
-    
+
     # Execute the pipeline
     pipeline.upsert()
     execution = pipeline.start()
@@ -62,8 +62,8 @@ logger = logging.getLogger(__name__)
 class PyTorchE2EStandardPipeline(BasePipeline):
     """
     PyTorch End-to-End Standard Pipeline using the new BasePipeline structure.
-    
-    This pipeline implements a complete workflow for training, evaluating, packaging, 
+
+    This pipeline implements a complete workflow for training, evaluating, packaging,
     and registering a PyTorch model:
     1) Data Loading (training)
     2) Preprocessing (training)
@@ -72,7 +72,7 @@ class PyTorchE2EStandardPipeline(BasePipeline):
     5) Payload Generation
     6) Model Registration
     7) Data Loading (validation)
-    8) Preprocessing (validation) 
+    8) Preprocessing (validation)
     9) Model Evaluation
     """
 
@@ -83,7 +83,7 @@ class PyTorchE2EStandardPipeline(BasePipeline):
         execution_role: Optional[str] = None,
         enable_mods: bool = False,  # Regular pipeline, not MODS-enhanced
         validate: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the PyTorch E2E Standard Pipeline.
@@ -102,7 +102,7 @@ class PyTorchE2EStandardPipeline(BasePipeline):
             execution_role=execution_role,
             enable_mods=enable_mods,
             validate=validate,
-            **kwargs
+            **kwargs,
         )
         logger.info("Initialized PyTorch E2E Standard Pipeline")
 
@@ -167,7 +167,13 @@ class PyTorchE2EStandardPipeline(BasePipeline):
             created_date="2025-08-21",
             priority="high",
             framework_tags=["pytorch"],
-            task_tags=["end_to_end", "training", "evaluation", "registration", "packaging"],
+            task_tags=[
+                "end_to_end",
+                "training",
+                "evaluation",
+                "registration",
+                "packaging",
+            ],
             complexity_tags=["standard"],
             domain_tags=["deep_learning", "production_ml"],
             pattern_tags=[
@@ -250,12 +256,13 @@ if __name__ == "__main__":
         config_path = args.config_path
         if not config_path:
             from pathlib import Path
+
             config_dir = Path.cwd().parent / "pipeline_config"
             config_path = str(config_dir / "config_pytorch.json")
 
         # Create the pipeline using new class-based approach
         logger.info(f"Creating PyTorch pipeline with config: {config_path}")
-        
+
         pipeline_instance = PyTorchE2EStandardPipeline(
             config_path=config_path,
             sagemaker_session=pipeline_session,
@@ -278,14 +285,18 @@ if __name__ == "__main__":
 
         logger.info("PyTorch pipeline created successfully!")
         logger.info(f"Pipeline name: {pipeline.name}")
-        logger.info(f"Template available: {pipeline_instance.get_last_template() is not None}")
+        logger.info(
+            f"Template available: {pipeline_instance.get_last_template() is not None}"
+        )
 
         # Process execution documents if requested
         if args.output_doc:
-            execution_doc = pipeline_instance.fill_execution_document({
-                "training_dataset": "dataset-training",
-                "validation_dataset": "dataset-validation",
-            })
+            execution_doc = pipeline_instance.fill_execution_document(
+                {
+                    "training_dataset": "dataset-training",
+                    "validation_dataset": "dataset-validation",
+                }
+            )
             pipeline_instance.save_execution_document(execution_doc, args.output_doc)
 
         # Upsert if requested

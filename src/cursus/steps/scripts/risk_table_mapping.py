@@ -2,7 +2,7 @@
 """
 Risk Table Mapping Processing Script
 
-This script creates and applies risk tables for categorical features based on 
+This script creates and applies risk tables for categorical features based on
 target variable correlation, and handles missing value imputation for numeric features.
 It supports both training mode (fit and transform) and inference mode (transform only).
 """

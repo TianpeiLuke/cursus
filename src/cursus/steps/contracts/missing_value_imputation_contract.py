@@ -26,7 +26,7 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     ],
     optional_env_vars={
         "DEFAULT_NUMERICAL_STRATEGY": "mean",
-        "DEFAULT_CATEGORICAL_STRATEGY": "mode", 
+        "DEFAULT_CATEGORICAL_STRATEGY": "mode",
         "DEFAULT_TEXT_STRATEGY": "mode",
         "NUMERICAL_CONSTANT_VALUE": "0",
         "CATEGORICAL_CONSTANT_VALUE": "Unknown",

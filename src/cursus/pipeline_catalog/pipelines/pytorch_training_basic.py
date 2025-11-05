@@ -3,7 +3,7 @@ PyTorch Basic Training Pipeline
 
 This pipeline implements a workflow for training a PyTorch model:
 1) Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) PyTorch Model Training
 4) Data Loading (validation)
 5) Preprocessing (validation)
@@ -18,22 +18,22 @@ Example:
     from cursus.pipeline_catalog.pipelines.pytorch_training_basic import PyTorchTrainingBasicPipeline
     from sagemaker import Session
     from sagemaker.workflow.pipeline_context import PipelineSession
-    
+
     # Initialize session
     sagemaker_session = Session()
     role = sagemaker_session.get_caller_identity_arn()
     pipeline_session = PipelineSession()
-    
+
     # Create pipeline instance
     pipeline_instance = PyTorchTrainingBasicPipeline(
         config_path="path/to/config_pytorch.json",
         sagemaker_session=pipeline_session,
         execution_role=role
     )
-    
+
     # Generate pipeline
     pipeline = pipeline_instance.generate_pipeline()
-    
+
     # Execute the pipeline
     pipeline.upsert()
     execution = pipeline.start()
@@ -58,10 +58,10 @@ logger = logging.getLogger(__name__)
 class PyTorchTrainingBasicPipeline(BasePipeline):
     """
     PyTorch Basic Training Pipeline using the new BasePipeline structure.
-    
+
     This pipeline implements a workflow for training a PyTorch model:
     1) Data Loading (training)
-    2) Preprocessing (training) 
+    2) Preprocessing (training)
     3) PyTorch Model Training
     4) Data Loading (validation)
     5) Preprocessing (validation)
@@ -75,7 +75,7 @@ class PyTorchTrainingBasicPipeline(BasePipeline):
         execution_role: Optional[str] = None,
         enable_mods: bool = False,  # Regular pipeline, not MODS-enhanced
         validate: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the PyTorch Training Basic Pipeline.
@@ -94,7 +94,7 @@ class PyTorchTrainingBasicPipeline(BasePipeline):
             execution_role=execution_role,
             enable_mods=enable_mods,
             validate=validate,
-            **kwargs
+            **kwargs,
         )
         logger.info("Initialized PyTorch Training Basic Pipeline")
 
@@ -215,12 +215,13 @@ if __name__ == "__main__":
         config_path = args.config_path
         if not config_path:
             from pathlib import Path
+
             config_dir = Path.cwd().parent / "pipeline_config"
             config_path = str(config_dir / "config_pytorch.json")
 
         # Create the pipeline using new class-based approach
         logger.info(f"Creating PyTorch training pipeline with config: {config_path}")
-        
+
         pipeline_instance = PyTorchTrainingBasicPipeline(
             config_path=config_path,
             sagemaker_session=pipeline_session,
@@ -243,14 +244,18 @@ if __name__ == "__main__":
 
         logger.info("PyTorch training pipeline created successfully!")
         logger.info(f"Pipeline name: {pipeline.name}")
-        logger.info(f"Template available: {pipeline_instance.get_last_template() is not None}")
+        logger.info(
+            f"Template available: {pipeline_instance.get_last_template() is not None}"
+        )
 
         # Process execution documents if requested
         if args.output_doc:
-            execution_doc = pipeline_instance.fill_execution_document({
-                "training_dataset": "my-training-dataset",
-                "validation_dataset": "my-validation-dataset",
-            })
+            execution_doc = pipeline_instance.fill_execution_document(
+                {
+                    "training_dataset": "my-training-dataset",
+                    "validation_dataset": "my-validation-dataset",
+                }
+            )
             pipeline_instance.save_execution_document(execution_doc, args.output_doc)
 
         # Upsert if requested

@@ -27,9 +27,9 @@ try:
 
     SPECS_AVAILABLE = True
 except ImportError:
-    TABULAR_PREPROCESSING_TRAINING_SPEC = (
-        TABULAR_PREPROCESSING_CALIBRATION_SPEC
-    ) = TABULAR_PREPROCESSING_VALIDATION_SPEC = TABULAR_PREPROCESSING_TESTING_SPEC = None
+    TABULAR_PREPROCESSING_TRAINING_SPEC = TABULAR_PREPROCESSING_CALIBRATION_SPEC = (
+        TABULAR_PREPROCESSING_VALIDATION_SPEC
+    ) = TABULAR_PREPROCESSING_TESTING_SPEC = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -74,9 +74,15 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         # Get specification based on job type
         if job_type == "training" and TABULAR_PREPROCESSING_TRAINING_SPEC is not None:
             spec = TABULAR_PREPROCESSING_TRAINING_SPEC
-        elif job_type == "calibration" and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None:
+        elif (
+            job_type == "calibration"
+            and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None
+        ):
             spec = TABULAR_PREPROCESSING_CALIBRATION_SPEC
-        elif job_type == "validation" and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None:
+        elif (
+            job_type == "validation"
+            and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None
+        ):
             spec = TABULAR_PREPROCESSING_VALIDATION_SPEC
         elif job_type == "testing" and TABULAR_PREPROCESSING_TESTING_SPEC is not None:
             spec = TABULAR_PREPROCESSING_TESTING_SPEC
@@ -89,7 +95,9 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
                 if hasattr(module, spec_var_name):
                     spec = getattr(module, spec_var_name)
             except (ImportError, AttributeError):
-                self.log_warning("Could not import specification for job type: %s", job_type)
+                self.log_warning(
+                    "Could not import specification for job type: %s", job_type
+                )
 
         if not spec:
             raise ValueError(f"No specification found for job type: {job_type}")

@@ -8,7 +8,7 @@ pipeline variants to ensure consistency.
 
 The DAG includes:
 1) Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) Missing Value Imputation (training)
 4) Risk Table Mapping (training)
 5) XGBoost Model Training
@@ -45,12 +45,18 @@ def create_xgboost_training_with_preprocessing_dag() -> PipelineDAG:
     # Add nodes
     dag.add_node("CradleDataLoading_training")  # Data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node("MissingValueImputation_training")  # Missing value imputation for training
+    dag.add_node(
+        "MissingValueImputation_training"
+    )  # Missing value imputation for training
     dag.add_node("RiskTableMapping_training")  # Risk table mapping for training
     dag.add_node("XGBoostTraining")  # XGBoost training step
     dag.add_node("CradleDataLoading_evaluation")  # Data load for evaluation
-    dag.add_node("TabularPreprocessing_evaluation")  # Tabular preprocessing for evaluation
-    dag.add_node("MissingValueImputation_evaluation")  # Missing value imputation for evaluation
+    dag.add_node(
+        "TabularPreprocessing_evaluation"
+    )  # Tabular preprocessing for evaluation
+    dag.add_node(
+        "MissingValueImputation_evaluation"
+    )  # Missing value imputation for evaluation
     dag.add_node("RiskTableMapping_evaluation")  # Risk table mapping for evaluation
     dag.add_node("XGBoostModelEval")  # Model evaluation step
 
@@ -89,7 +95,14 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="XGBoost training pipeline with advanced preprocessing (missing value imputation and risk table mapping) and model evaluation",
         complexity="advanced",
-        features=["training", "evaluation", "data_loading", "preprocessing", "missing_value_imputation", "risk_table_mapping"],
+        features=[
+            "training",
+            "evaluation",
+            "data_loading",
+            "preprocessing",
+            "missing_value_imputation",
+            "risk_table_mapping",
+        ],
         framework="xgboost",
         node_count=10,
         edge_count=11,

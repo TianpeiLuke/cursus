@@ -8,7 +8,7 @@ pipeline variants to ensure consistency.
 
 The DAG includes:
 1) Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) Missing Value Imputation (training)
 4) Risk Table Mapping (training)
 5) Feature Selection (training)
@@ -47,15 +47,21 @@ def create_xgboost_training_with_feature_selection_dag() -> PipelineDAG:
     # Add nodes for training path
     dag.add_node("CradleDataLoading_training")  # Data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node("MissingValueImputation_training")  # Missing value imputation for training
+    dag.add_node(
+        "MissingValueImputation_training"
+    )  # Missing value imputation for training
     dag.add_node("RiskTableMapping_training")  # Risk table mapping for training
     dag.add_node("FeatureSelection_training")  # Feature selection for training
     dag.add_node("XGBoostTraining")  # XGBoost training step
-    
+
     # Add nodes for evaluation path
     dag.add_node("CradleDataLoading_evaluation")  # Data load for evaluation
-    dag.add_node("TabularPreprocessing_evaluation")  # Tabular preprocessing for evaluation
-    dag.add_node("MissingValueImputation_evaluation")  # Missing value imputation for evaluation
+    dag.add_node(
+        "TabularPreprocessing_evaluation"
+    )  # Tabular preprocessing for evaluation
+    dag.add_node(
+        "MissingValueImputation_evaluation"
+    )  # Missing value imputation for evaluation
     dag.add_node("RiskTableMapping_evaluation")  # Risk table mapping for evaluation
     dag.add_node("FeatureSelection_evaluation")  # Feature selection for evaluation
     dag.add_node("XGBoostModelEval")  # Model evaluation step
@@ -77,7 +83,9 @@ def create_xgboost_training_with_feature_selection_dag() -> PipelineDAG:
     # Cross-connections between training and evaluation preprocessing
     dag.add_edge("MissingValueImputation_training", "MissingValueImputation_evaluation")
     dag.add_edge("RiskTableMapping_training", "RiskTableMapping_evaluation")
-    dag.add_edge("FeatureSelection_training", "FeatureSelection_evaluation")  # Feature selection artifacts
+    dag.add_edge(
+        "FeatureSelection_training", "FeatureSelection_evaluation"
+    )  # Feature selection artifacts
 
     # Model connection
     dag.add_edge("XGBoostTraining", "XGBoostModelEval")  # Model is input to evaluation
@@ -98,7 +106,15 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="XGBoost training pipeline with feature selection and model evaluation",
         complexity="advanced",
-        features=["training", "evaluation", "data_loading", "preprocessing", "missing_value_imputation", "risk_table_mapping", "feature_selection"],
+        features=[
+            "training",
+            "evaluation",
+            "data_loading",
+            "preprocessing",
+            "missing_value_imputation",
+            "risk_table_mapping",
+            "feature_selection",
+        ],
         framework="xgboost",
         node_count=12,
         edge_count=14,
@@ -189,7 +205,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         ("FeatureSelection_training", "XGBoostTraining"),
         ("FeatureSelection_evaluation", "XGBoostModelEval"),
     ]
-    
+
     for source, target in feature_selection_dependencies:
         if (source, target) not in dag.edges:
             validation_result["warnings"].append(

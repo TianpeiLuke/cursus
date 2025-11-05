@@ -88,7 +88,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     def effective_source_dir(self) -> Optional[str]:
         """
         Get effective source directory with hybrid resolution.
-        
+
         Resolution Priority:
         1. Hybrid resolution of processing_source_dir
         2. Hybrid resolution of source_dir
@@ -101,20 +101,20 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                 if resolved and Path(resolved).exists():
                     self._effective_source_dir = resolved
                     return self._effective_source_dir
-            
+
             # Strategy 2: Hybrid resolution of source_dir
             if self.source_dir:
                 resolved = self.resolve_hybrid_path(self.source_dir)
                 if resolved and Path(resolved).exists():
                     self._effective_source_dir = resolved
                     return self._effective_source_dir
-            
+
             # Strategy 3: Legacy fallback (current behavior)
             if self.processing_source_dir is not None:
                 self._effective_source_dir = self.processing_source_dir
             else:
                 self._effective_source_dir = self.source_dir
-        
+
         return self._effective_source_dir
 
     @property
@@ -132,7 +132,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     def script_path(self) -> Optional[str]:
         """
         Get script path with hybrid resolution.
-        
+
         Uses modernized effective_source_dir which already includes hybrid resolution.
         """
         if self.processing_entry_point is None:
@@ -169,12 +169,12 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         """Get resolved script path for step builders using hybrid resolution."""
         if not self.processing_entry_point:
             return None
-        
+
         # Try hybrid resolution first
         resolved_source_dir = self.resolved_processing_source_dir
         if resolved_source_dir:
             return str(Path(resolved_source_dir) / self.processing_entry_point)
-        
+
         # Fallback to legacy script_path property
         return self.script_path
 
@@ -187,7 +187,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         data["effective_instance_type"] = self.effective_instance_type
         if self.script_path:
             data["script_path"] = self.script_path
-        
+
         return data
 
     # Validators
@@ -376,39 +376,41 @@ class ProcessingStepConfigBase(BasePipelineConfig):
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
         Get script path with hybrid resolution and comprehensive fallbacks.
-        
+
         Resolution Priority:
         1. Modernized script_path property (includes hybrid resolution)
         2. Direct hybrid resolution of entry_point
         3. Legacy get_resolved_script_path() method
         4. Default path fallback
-        
+
         Args:
             default_path: Default path to use if all resolution methods fail
-            
+
         Returns:
             Optional[str]: Resolved script path or default_path if not found
         """
-        
+
         # Strategy 1: Use modernized script_path property (includes hybrid resolution)
         path = self.script_path
         if path and Path(path).exists():
             return path
-        
+
         # Strategy 2: Direct hybrid resolution of entry_point
         if self.processing_entry_point:
             # Try with processing_source_dir first
             if self.processing_source_dir:
-                relative_path = f"{self.processing_source_dir}/{self.processing_entry_point}"
+                relative_path = (
+                    f"{self.processing_source_dir}/{self.processing_entry_point}"
+                )
             elif self.source_dir:
                 relative_path = f"{self.source_dir}/{self.processing_entry_point}"
             else:
                 relative_path = self.processing_entry_point
-            
+
             resolved = self.resolve_hybrid_path(relative_path)
             if resolved and Path(resolved).exists():
                 return resolved
-        
+
         # Strategy 3: Legacy get_resolved_script_path() method
         try:
             resolved_path = self.get_resolved_script_path()
@@ -416,7 +418,7 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                 return resolved_path
         except Exception:
             pass
-        
+
         # Strategy 4: Default fallback
         return default_path
 

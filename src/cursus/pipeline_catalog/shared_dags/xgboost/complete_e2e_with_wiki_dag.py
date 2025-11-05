@@ -57,7 +57,9 @@ def create_xgboost_complete_e2e_with_wiki_dag() -> PipelineDAG:
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
     dag.add_node("XGBoostModelInference_calibration")  # Model inference step
-    dag.add_node("ModelMetricsComputation_calibration")  # Model metrics computation step
+    dag.add_node(
+        "ModelMetricsComputation_calibration"
+    )  # Model metrics computation step
     dag.add_node("ModelWikiGenerator")  # Model wiki generator step
 
     # Training flow
@@ -70,7 +72,9 @@ def create_xgboost_complete_e2e_with_wiki_dag() -> PipelineDAG:
     # Inference and evaluation flow
     dag.add_edge("XGBoostTraining", "XGBoostModelInference")
     dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelInference")
-    dag.add_edge("XGBoostModelInference_calibration", "ModelMetricsComputation_calibration")
+    dag.add_edge(
+        "XGBoostModelInference_calibration", "ModelMetricsComputation_calibration"
+    )
     dag.add_edge("ModelMetricsComputation_calibration", "ModelWikiGenerator")
 
     # Model calibration flow - depends on inference
@@ -99,7 +103,15 @@ def get_dag_metadata() -> DAGMetadata:
     return DAGMetadata(
         description="Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, inference, metrics computation, and wiki generation",
         complexity="comprehensive",
-        features=["training", "calibration", "packaging", "registration", "inference", "metrics", "wiki_generation"],
+        features=[
+            "training",
+            "calibration",
+            "packaging",
+            "registration",
+            "inference",
+            "metrics",
+            "wiki_generation",
+        ],
         framework="xgboost",
         node_count=12,
         edge_count=13,

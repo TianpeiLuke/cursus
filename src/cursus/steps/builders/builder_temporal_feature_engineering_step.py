@@ -7,7 +7,9 @@ from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
 
-from ..configs.config_temporal_feature_engineering_step import TemporalFeatureEngineeringConfig
+from ..configs.config_temporal_feature_engineering_step import (
+    TemporalFeatureEngineeringConfig,
+)
 from ...core.base.builder_base import StepBuilderBase
 
 # Import specifications based on job type
@@ -27,9 +29,11 @@ try:
 
     SPECS_AVAILABLE = True
 except ImportError:
-    TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC = TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC = (
-        TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC
-    ) = TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC = None
+    TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC = (
+        TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC
+    ) = TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC = (
+        TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC
+    ) = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -72,7 +76,10 @@ class TemporalFeatureEngineeringStepBuilder(StepBuilderBase):
         job_type = config.job_type.lower()
 
         # Get specification based on job type
-        if job_type == "training" and TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC is not None:
+        if (
+            job_type == "training"
+            and TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC is not None
+        ):
             spec = TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC
         elif (
             job_type == "calibration"
@@ -84,7 +91,10 @@ class TemporalFeatureEngineeringStepBuilder(StepBuilderBase):
             and TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC is not None
         ):
             spec = TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC
-        elif job_type == "testing" and TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC is not None:
+        elif (
+            job_type == "testing"
+            and TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC is not None
+        ):
             spec = TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC
         else:
             # Try dynamic import
@@ -163,7 +173,9 @@ class TemporalFeatureEngineeringStepBuilder(StepBuilderBase):
             allowed_types = {"statistical", "temporal", "behavioral"}
             for feature_type in self.config.feature_types:
                 if feature_type not in allowed_types:
-                    raise ValueError(f"Invalid feature_type: {feature_type}. Must be one of {allowed_types}")
+                    raise ValueError(
+                        f"Invalid feature_type: {feature_type}. Must be one of {allowed_types}"
+                    )
 
         # Validate window_sizes
         if self.config.window_sizes:
@@ -213,7 +225,7 @@ class TemporalFeatureEngineeringStepBuilder(StepBuilderBase):
 
         # The base method should handle all the environment variables from the contract
         # including SEQUENCE_GROUPING_FIELD, TIMESTAMP_FIELD, VALUE_FIELDS, FEATURE_TYPES, etc.
-        
+
         # Add any additional environment variables specific to this step if needed
         # (Most variables should be handled by the base method using the contract)
 
@@ -315,8 +327,17 @@ class TemporalFeatureEngineeringStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "temporal_feature_engineering", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "temporal_feature_engineering",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

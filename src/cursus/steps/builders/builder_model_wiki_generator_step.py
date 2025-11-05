@@ -2,7 +2,7 @@
 """Builder for ModelWikiGenerator processing step.
 
 This module defines the ModelWikiGeneratorStepBuilder class that builds a SageMaker
-ProcessingStep for model wiki generation, connecting the configuration, specification, 
+ProcessingStep for model wiki generation, connecting the configuration, specification,
 and script contract.
 """
 
@@ -109,12 +109,20 @@ class ModelWikiGeneratorStepBuilder(StepBuilderBase):
 
         # Validate email format if provided
         if self.config.contact_email and "@" not in self.config.contact_email:
-            self.log_warning(f"contact_email '{self.config.contact_email}' may not be a valid email address")
+            self.log_warning(
+                f"contact_email '{self.config.contact_email}' may not be a valid email address"
+            )
 
         # Validate CTI classification
         valid_classifications = {
-            "public", "internal", "confidential", "restricted", 
-            "Public", "Internal", "Confidential", "Restricted"
+            "public",
+            "internal",
+            "confidential",
+            "restricted",
+            "Public",
+            "Internal",
+            "Confidential",
+            "Restricted",
         }
         if self.config.cti_classification not in valid_classifications:
             self.log_warning(
@@ -198,7 +206,9 @@ class ModelWikiGeneratorStepBuilder(StepBuilderBase):
                 "CTI_CLASSIFICATION": self.config.cti_classification,
                 "REGION": self.config.region,  # From base config
                 "OUTPUT_FORMATS": self.config.output_formats,
-                "INCLUDE_TECHNICAL_DETAILS": str(self.config.include_technical_details).lower(),
+                "INCLUDE_TECHNICAL_DETAILS": str(
+                    self.config.include_technical_details
+                ).lower(),
                 "MODEL_PURPOSE": self.config.model_purpose,
             }
         )
@@ -311,8 +321,12 @@ class ModelWikiGeneratorStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from config
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "model_wiki_generator", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[base_output_path, "model_wiki_generator", logical_name],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -365,7 +379,9 @@ class ModelWikiGeneratorStepBuilder(StepBuilderBase):
         Returns:
             None since no arguments are needed for model wiki generation
         """
-        self.log_info("No command-line arguments needed for model wiki generator script")
+        self.log_info(
+            "No command-line arguments needed for model wiki generator script"
+        )
         return None
 
     def create_step(self, **kwargs) -> ProcessingStep:

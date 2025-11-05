@@ -27,7 +27,7 @@ DUMMY_DATA_LOADING_CONTRACT = ScriptContract(
     optional_env_vars={
         "WRITE_DATA_SHARDS": "false",
         "SHARD_SIZE": "10000",
-        "OUTPUT_FORMAT": "CSV"
+        "OUTPUT_FORMAT": "CSV",
     },
     framework_requirements={"python": ">=3.7", "boto3": ">=1.26.0"},
     description="""

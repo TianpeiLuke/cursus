@@ -18,7 +18,9 @@ import logging
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import contract
-from ..contracts.temporal_sequence_normalization_contract import TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT
+from ..contracts.temporal_sequence_normalization_contract import (
+    TEMPORAL_SEQUENCE_NORMALIZATION_CONTRACT,
+)
 
 # Import for type hints only
 if TYPE_CHECKING:
@@ -176,7 +178,6 @@ class TemporalSequenceNormalizationConfig(ProcessingStepConfigBase):
                 "TEMPORAL_FIELD": self.temporal_field,
                 "SEQUENCE_GROUPING_FIELD": self.sequence_grouping_field,
                 "RECORD_ID_FIELD": self.record_id_field,
-                
                 # Optional environment variables with defaults
                 "MISSING_INDICATORS": json.dumps(self.missing_indicators),
                 "TIME_DELTA_MAX_SECONDS": str(self.time_delta_max_seconds),
@@ -185,7 +186,9 @@ class TemporalSequenceNormalizationConfig(ProcessingStepConfigBase):
                 "ENABLE_MULTI_SEQUENCE": str(self.enable_multi_sequence).lower(),
                 "SECONDARY_ENTITY_FIELD": self.secondary_entity_field,
                 "SEQUENCE_NAMING_PATTERN": self.sequence_naming_pattern,
-                "ENABLE_DISTRIBUTED_PROCESSING": str(self.enable_distributed_processing).lower(),
+                "ENABLE_DISTRIBUTED_PROCESSING": str(
+                    self.enable_distributed_processing
+                ).lower(),
                 "CHUNK_SIZE": str(self.chunk_size),
                 "MAX_WORKERS": self.max_workers,
                 "VALIDATION_STRATEGY": self.validation_strategy,
@@ -279,7 +282,9 @@ class TemporalSequenceNormalizationConfig(ProcessingStepConfigBase):
                 if workers <= 0:
                     raise ValueError("max_workers must be 'auto' or a positive integer")
             except ValueError:
-                raise ValueError("max_workers must be 'auto' or a positive integer string")
+                raise ValueError(
+                    "max_workers must be 'auto' or a positive integer string"
+                )
         return v
 
     @field_validator("missing_indicators")

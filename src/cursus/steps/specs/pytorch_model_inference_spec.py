@@ -16,12 +16,16 @@ from ...registry.step_names import get_spec_step_type
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..contracts.pytorch_model_inference_contract import PYTORCH_MODEL_INFERENCE_CONTRACT
+    from ..contracts.pytorch_model_inference_contract import (
+        PYTORCH_MODEL_INFERENCE_CONTRACT,
+    )
 
 
 # Import the contract at runtime to avoid circular imports
 def _get_pytorch_model_inference_contract():
-    from ..contracts.pytorch_model_inference_contract import PYTORCH_MODEL_INFERENCE_CONTRACT
+    from ..contracts.pytorch_model_inference_contract import (
+        PYTORCH_MODEL_INFERENCE_CONTRACT,
+    )
 
     return PYTORCH_MODEL_INFERENCE_CONTRACT
 

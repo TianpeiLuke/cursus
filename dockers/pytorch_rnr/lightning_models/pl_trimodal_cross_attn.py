@@ -42,117 +42,118 @@ class BidirectionalCrossAttention(nn.Module):
     Bidirectional cross-attention module that allows two modalities to attend to each other.
     This creates enhanced representations by incorporating information from the other modality.
     """
+
     def __init__(self, d_model: int = 100, num_heads: int = 8, dropout: float = 0.1):
         super().__init__()
         self.d_model = d_model
         self.num_heads = num_heads
-        
+
         # Cross-attention layers: primary attends to secondary
         self.attn_p2s = nn.MultiheadAttention(
-            embed_dim=d_model, 
-            num_heads=num_heads, 
-            dropout=dropout,
-            batch_first=True
+            embed_dim=d_model, num_heads=num_heads, dropout=dropout, batch_first=True
         )
-        
+
         # Cross-attention layers: secondary attends to primary
         self.attn_s2p = nn.MultiheadAttention(
-            embed_dim=d_model, 
-            num_heads=num_heads, 
-            dropout=dropout,
-            batch_first=True
+            embed_dim=d_model, num_heads=num_heads, dropout=dropout, batch_first=True
         )
-        
+
         # Layer normalization and residual connections
         self.norm_primary = nn.LayerNorm(d_model)
         self.norm_secondary = nn.LayerNorm(d_model)
-        
+
         # Optional feed-forward networks for additional processing
         self.ffn_primary = nn.Sequential(
             nn.Linear(d_model, d_model * 4),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(d_model * 4, d_model),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
-        
+
         self.ffn_secondary = nn.Sequential(
             nn.Linear(d_model, d_model * 4),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(d_model * 4, d_model),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
-        
+
         self.norm_ffn_primary = nn.LayerNorm(d_model)
         self.norm_ffn_secondary = nn.LayerNorm(d_model)
-        
-    def forward(self, primary: torch.Tensor, secondary: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, Dict]:
+
+    def forward(
+        self, primary: torch.Tensor, secondary: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, Dict]:
         """
         Forward pass with bidirectional cross-attention.
-        
+
         Args:
             primary: Primary text features [B, d_model]
             secondary: Secondary text features [B, d_model]
-            
+
         Returns:
             Tuple of (enhanced_primary, enhanced_secondary, attention_weights)
         """
         batch_size = primary.size(0)
-        
+
         # Add sequence dimension for attention (treating each sample as a single token)
-        primary_seq = primary.unsqueeze(1)    # [B, 1, d_model]
+        primary_seq = primary.unsqueeze(1)  # [B, 1, d_model]
         secondary_seq = secondary.unsqueeze(1)  # [B, 1, d_model]
-        
+
         # Primary attends to Secondary
         p_attended, p_attn_weights = self.attn_p2s(
-            query=primary_seq,      # What primary wants to know
-            key=secondary_seq,      # What secondary can provide
-            value=secondary_seq     # The actual secondary information
+            query=primary_seq,  # What primary wants to know
+            key=secondary_seq,  # What secondary can provide
+            value=secondary_seq,  # The actual secondary information
         )
-        
+
         # Residual connection and layer norm
         primary_enhanced = self.norm_primary(primary + p_attended.squeeze(1))
-        
+
         # Secondary attends to Primary
         s_attended, s_attn_weights = self.attn_s2p(
-            query=secondary_seq,    # What secondary wants to know
-            key=primary_seq,        # What primary can provide
-            value=primary_seq       # The actual primary information
+            query=secondary_seq,  # What secondary wants to know
+            key=primary_seq,  # What primary can provide
+            value=primary_seq,  # The actual primary information
         )
-        
+
         # Residual connection and layer norm
         secondary_enhanced = self.norm_secondary(secondary + s_attended.squeeze(1))
-        
+
         # Optional feed-forward processing
         primary_ffn = self.ffn_primary(primary_enhanced)
         primary_final = self.norm_ffn_primary(primary_enhanced + primary_ffn)
-        
+
         secondary_ffn = self.ffn_secondary(secondary_enhanced)
         secondary_final = self.norm_ffn_secondary(secondary_enhanced + secondary_ffn)
-        
+
         # Store attention weights for analysis/visualization
         attention_weights = {
-            'primary_to_secondary': p_attn_weights.squeeze(1),  # [B, num_heads, 1, 1] -> [B, num_heads]
-            'secondary_to_primary': s_attn_weights.squeeze(1)   # [B, num_heads, 1, 1] -> [B, num_heads]
+            "primary_to_secondary": p_attn_weights.squeeze(
+                1
+            ),  # [B, num_heads, 1, 1] -> [B, num_heads]
+            "secondary_to_primary": s_attn_weights.squeeze(
+                1
+            ),  # [B, num_heads, 1, 1] -> [B, num_heads]
         }
-        
+
         return primary_final, secondary_final, attention_weights
 
 
 class TrimodalCrossAttentionBert(pl.LightningModule):
     """
     Trimodal BERT with bidirectional cross-attention between text modalities.
-    
+
     This model processes three modalities:
     1. Primary text (e.g., customer dialogue)
-    2. Secondary text (e.g., shipping events)  
+    2. Secondary text (e.g., shipping events)
     3. Tabular features (e.g., numerical risk factors)
-    
+
     The key enhancement is bidirectional cross-attention between the two text modalities,
     allowing them to exchange information and create more informed representations.
     """
-    
+
     def __init__(
         self,
         config: Dict[str, Union[int, float, str, bool, List[str], torch.FloatTensor]],
@@ -164,27 +165,43 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         # === Core configuration ===
         self.id_name = config.get("id_name", None)
         self.label_name = config["label_name"]
-        
+
         # Primary text configuration (e.g., chat/dialogue)
-        self.primary_text_input_ids_key = config.get("primary_text_input_ids_key", "input_ids")
+        self.primary_text_input_ids_key = config.get(
+            "primary_text_input_ids_key", "input_ids"
+        )
         self.primary_text_attention_mask_key = config.get(
             "primary_text_attention_mask_key", "attention_mask"
         )
-        self.primary_text_name = config["primary_text_name"] + "_processed_" + self.primary_text_input_ids_key
-        self.primary_text_attention_mask = (
-            config["primary_text_name"] + "_processed_" + self.primary_text_attention_mask_key
+        self.primary_text_name = (
+            config["primary_text_name"]
+            + "_processed_"
+            + self.primary_text_input_ids_key
         )
-        
+        self.primary_text_attention_mask = (
+            config["primary_text_name"]
+            + "_processed_"
+            + self.primary_text_attention_mask_key
+        )
+
         # Secondary text configuration (e.g., shiptrack)
-        self.secondary_text_input_ids_key = config.get("secondary_text_input_ids_key", "input_ids")
+        self.secondary_text_input_ids_key = config.get(
+            "secondary_text_input_ids_key", "input_ids"
+        )
         self.secondary_text_attention_mask_key = config.get(
             "secondary_text_attention_mask_key", "attention_mask"
         )
-        self.secondary_text_name = config["secondary_text_name"] + "_processed_" + self.secondary_text_input_ids_key
-        self.secondary_text_attention_mask = (
-            config["secondary_text_name"] + "_processed_" + self.secondary_text_attention_mask_key
+        self.secondary_text_name = (
+            config["secondary_text_name"]
+            + "_processed_"
+            + self.secondary_text_input_ids_key
         )
-        
+        self.secondary_text_attention_mask = (
+            config["secondary_text_name"]
+            + "_processed_"
+            + self.secondary_text_attention_mask_key
+        )
+
         # Tabular configuration
         self.tab_field_list = config.get("tab_field_list", None)
 
@@ -213,9 +230,7 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
 
         # === Sub-networks ===
         # Tabular subnetwork
-        self.tab_subnetwork = (
-            TabAE(config) if self.tab_field_list else None
-        )
+        self.tab_subnetwork = TabAE(config) if self.tab_field_list else None
         tab_dim = self.tab_subnetwork.output_tab_dim if self.tab_subnetwork else 0
 
         # Primary text subnetwork (e.g., chat/dialogue)
@@ -231,15 +246,25 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         # === Cross-Attention Layer ===
         # Ensure both text modalities have the same dimension for cross-attention
         if primary_text_dim != secondary_text_dim:
-            logger.warning(f"Primary text dim ({primary_text_dim}) != Secondary text dim ({secondary_text_dim}). "
-                          f"Using projection layers to align dimensions.")
-            
+            logger.warning(
+                f"Primary text dim ({primary_text_dim}) != Secondary text dim ({secondary_text_dim}). "
+                f"Using projection layers to align dimensions."
+            )
+
             # Use the larger dimension as target
             target_dim = max(primary_text_dim, secondary_text_dim)
-            
-            self.primary_projection = nn.Linear(primary_text_dim, target_dim) if primary_text_dim != target_dim else nn.Identity()
-            self.secondary_projection = nn.Linear(secondary_text_dim, target_dim) if secondary_text_dim != target_dim else nn.Identity()
-            
+
+            self.primary_projection = (
+                nn.Linear(primary_text_dim, target_dim)
+                if primary_text_dim != target_dim
+                else nn.Identity()
+            )
+            self.secondary_projection = (
+                nn.Linear(secondary_text_dim, target_dim)
+                if secondary_text_dim != target_dim
+                else nn.Identity()
+            )
+
             cross_attn_dim = target_dim
         else:
             self.primary_projection = nn.Identity()
@@ -250,14 +275,16 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         self.cross_attention = BidirectionalCrossAttention(
             d_model=cross_attn_dim,
             num_heads=config.get("cross_attention_heads", 8),
-            dropout=config.get("cross_attention_dropout", 0.1)
+            dropout=config.get("cross_attention_dropout", 0.1),
         )
 
         # === Final classifier with tri-modal fusion ===
         # After cross-attention, we have enhanced representations of the same dimension
-        total_dim = cross_attn_dim * 2 + tab_dim  # Two enhanced text modalities + tabular
+        total_dim = (
+            cross_attn_dim * 2 + tab_dim
+        )  # Two enhanced text modalities + tabular
         fusion_hidden_dim = config.get("fusion_hidden_dim", max(128, total_dim // 2))
-        
+
         self.final_merge_network = nn.Sequential(
             nn.ReLU(),
             nn.Dropout(config.get("fusion_dropout", 0.1)),
@@ -289,14 +316,22 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         """Create configuration for text subnetworks (primary or secondary)"""
         if text_type == "primary":
             text_name = config["primary_text_name"]
-            tokenizer = config.get("primary_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("primary_hidden_common_dim", config["hidden_common_dim"])
+            tokenizer = config.get(
+                "primary_tokenizer", config.get("tokenizer", "bert-base-cased")
+            )
+            hidden_dim = config.get(
+                "primary_hidden_common_dim", config["hidden_common_dim"]
+            )
             input_ids_key = self.primary_text_input_ids_key
             attention_mask_key = self.primary_text_attention_mask_key
         elif text_type == "secondary":
             text_name = config["secondary_text_name"]
-            tokenizer = config.get("secondary_tokenizer", config.get("tokenizer", "bert-base-cased"))
-            hidden_dim = config.get("secondary_hidden_common_dim", config["hidden_common_dim"])
+            tokenizer = config.get(
+                "secondary_tokenizer", config.get("tokenizer", "bert-base-cased")
+            )
+            hidden_dim = config.get(
+                "secondary_hidden_common_dim", config["hidden_common_dim"]
+            )
             input_ids_key = self.secondary_text_input_ids_key
             attention_mask_key = self.secondary_text_attention_mask_key
         else:
@@ -314,8 +349,12 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
             "adam_epsilon": config.get("adam_epsilon", 1e-8),
             "lr": config.get("lr", 2e-5),
             "run_scheduler": config.get("run_scheduler", True),
-            "reinit_pooler": config.get(f"{text_type}_reinit_pooler", config.get("reinit_pooler", False)),
-            "reinit_layers": config.get(f"{text_type}_reinit_layers", config.get("reinit_layers", 0)),
+            "reinit_pooler": config.get(
+                f"{text_type}_reinit_pooler", config.get("reinit_pooler", False)
+            ),
+            "reinit_layers": config.get(
+                f"{text_type}_reinit_layers", config.get("reinit_layers", 0)
+            ),
             "model_path": config.get("model_path"),
             "hidden_common_dim": hidden_dim,
             "text_input_ids_key": input_ids_key,
@@ -335,15 +374,15 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         loss, _, _ = self.run_epoch(batch, "train")
         self.log("train_loss", loss, sync_dist=True, prog_bar=True)
-        
+
         # Log attention statistics if available
         if self.last_attention_weights is not None:
             # Log average attention weights for monitoring
-            p2s_attn = self.last_attention_weights['primary_to_secondary'].mean()
-            s2p_attn = self.last_attention_weights['secondary_to_primary'].mean()
+            p2s_attn = self.last_attention_weights["primary_to_secondary"].mean()
+            s2p_attn = self.last_attention_weights["secondary_to_primary"].mean()
             self.log("attn_primary_to_secondary", p2s_attn, sync_dist=True)
             self.log("attn_secondary_to_primary", s2p_attn, sync_dist=True)
-        
+
         return {"loss": loss}
 
     def on_validation_epoch_start(self):
@@ -423,7 +462,7 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
     def get_attention_weights(self) -> Dict:
         """
         Get the last computed attention weights for analysis/visualization.
-        
+
         Returns:
             Dictionary containing attention weights from the last forward pass
         """
@@ -470,29 +509,40 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         # Unwrap from FSDP if needed
         model_to_export = self.module if isinstance(self, FSDP) else self
         model_to_export = model_to_export.to("cpu")
-        wrapper = TrimodalCrossAttentionBertONNXWrapper(model_to_export).to("cpu").eval()
+        wrapper = (
+            TrimodalCrossAttentionBertONNXWrapper(model_to_export).to("cpu").eval()
+        )
 
         # === Prepare input tensor list ===
         input_names = [
-            self.primary_text_name, 
+            self.primary_text_name,
             self.primary_text_attention_mask,
             self.secondary_text_name,
-            self.secondary_text_attention_mask
+            self.secondary_text_attention_mask,
         ]
         input_tensors = []
 
         # Handle primary text inputs
         primary_input_ids_tensor = sample_batch.get(self.primary_text_name)
-        primary_attention_mask_tensor = sample_batch.get(self.primary_text_attention_mask)
-        
+        primary_attention_mask_tensor = sample_batch.get(
+            self.primary_text_attention_mask
+        )
+
         # Handle secondary text inputs
         secondary_input_ids_tensor = sample_batch.get(self.secondary_text_name)
-        secondary_attention_mask_tensor = sample_batch.get(self.secondary_text_attention_mask)
+        secondary_attention_mask_tensor = sample_batch.get(
+            self.secondary_text_attention_mask
+        )
 
-        if not all(isinstance(t, torch.Tensor) for t in [
-            primary_input_ids_tensor, primary_attention_mask_tensor,
-            secondary_input_ids_tensor, secondary_attention_mask_tensor
-        ]):
+        if not all(
+            isinstance(t, torch.Tensor)
+            for t in [
+                primary_input_ids_tensor,
+                primary_attention_mask_tensor,
+                secondary_input_ids_tensor,
+                secondary_attention_mask_tensor,
+            ]
+        ):
             raise ValueError(
                 "All text input tensors (primary and secondary input_ids and attention_mask) must be torch.Tensor in sample_batch."
             )
@@ -503,12 +553,14 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         secondary_input_ids_tensor = secondary_input_ids_tensor.to("cpu")
         secondary_attention_mask_tensor = secondary_attention_mask_tensor.to("cpu")
 
-        input_tensors.extend([
-            primary_input_ids_tensor,
-            primary_attention_mask_tensor,
-            secondary_input_ids_tensor,
-            secondary_attention_mask_tensor
-        ])
+        input_tensors.extend(
+            [
+                primary_input_ids_tensor,
+                primary_attention_mask_tensor,
+                secondary_input_ids_tensor,
+                secondary_attention_mask_tensor,
+            ]
+        )
 
         batch_size = primary_input_ids_tensor.shape[0]
 
@@ -543,9 +595,9 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
 
         # Final check
         for name, tensor in zip(input_names, input_tensors):
-            assert (
-                tensor.shape[0] == batch_size
-            ), f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            assert tensor.shape[0] == batch_size, (
+                f"Inconsistent batch size for input '{name}': {tensor.shape}"
+            )
 
         dynamic_axes = {}
         for name, tensor in zip(input_names, input_tensors):
@@ -610,24 +662,32 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
 
     def _forward_impl(self, batch, tab_data) -> torch.Tensor:
         device = next(self.parameters()).device
-        
+
         # Process primary text
         primary_batch = self._create_text_batch(batch, "primary")
-        primary_text_out = self.primary_text_subnetwork(primary_batch)  # [B, primary_dim]
+        primary_text_out = self.primary_text_subnetwork(
+            primary_batch
+        )  # [B, primary_dim]
 
         # Process secondary text
         secondary_batch = self._create_text_batch(batch, "secondary")
-        secondary_text_out = self.secondary_text_subnetwork(secondary_batch)  # [B, secondary_dim]
+        secondary_text_out = self.secondary_text_subnetwork(
+            secondary_batch
+        )  # [B, secondary_dim]
 
         # Project to common dimension if needed
-        primary_projected = self.primary_projection(primary_text_out)      # [B, cross_attn_dim]
-        secondary_projected = self.secondary_projection(secondary_text_out)  # [B, cross_attn_dim]
+        primary_projected = self.primary_projection(
+            primary_text_out
+        )  # [B, cross_attn_dim]
+        secondary_projected = self.secondary_projection(
+            secondary_text_out
+        )  # [B, cross_attn_dim]
 
         # Apply bidirectional cross-attention
         primary_enhanced, secondary_enhanced, attention_weights = self.cross_attention(
             primary_projected, secondary_projected
         )
-        
+
         # Store attention weights for potential logging/analysis
         self.last_attention_weights = attention_weights
 

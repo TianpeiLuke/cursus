@@ -1,4 +1,12 @@
-from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr, ConfigDict, field_serializer
+from pydantic import (
+    BaseModel,
+    Field,
+    model_validator,
+    field_validator,
+    PrivateAttr,
+    ConfigDict,
+    field_serializer,
+)
 from typing import Union, Optional, Dict, List, Any, ClassVar, Tuple
 from enum import Enum
 from datetime import datetime
@@ -172,16 +180,25 @@ class RegistrationConfig(BasePipelineConfig):
     )
 
     # Custom serializer for VariableType fields (Pydantic V2 approach)
-    @field_serializer('source_model_inference_output_variable_list')
-    def serialize_output_variable_list(self, value: Dict[str, VariableType]) -> Dict[str, str]:
+    @field_serializer("source_model_inference_output_variable_list")
+    def serialize_output_variable_list(
+        self, value: Dict[str, VariableType]
+    ) -> Dict[str, str]:
         """Serialize VariableType enum values to strings"""
-        return {k: v.value if isinstance(v, VariableType) else v for k, v in value.items()}
+        return {
+            k: v.value if isinstance(v, VariableType) else v for k, v in value.items()
+        }
 
-    @field_serializer('source_model_inference_input_variable_list')
-    def serialize_input_variable_list(self, value: Union[Dict[str, Union[VariableType, str]], List[List[str]]]) -> Union[Dict[str, str], List[List[str]]]:
+    @field_serializer("source_model_inference_input_variable_list")
+    def serialize_input_variable_list(
+        self, value: Union[Dict[str, Union[VariableType, str]], List[List[str]]]
+    ) -> Union[Dict[str, str], List[List[str]]]:
         """Serialize VariableType enum values to strings in input variable list"""
         if isinstance(value, dict):
-            return {k: v.value if isinstance(v, VariableType) else v for k, v in value.items()}
+            return {
+                k: v.value if isinstance(v, VariableType) else v
+                for k, v in value.items()
+            }
         return value  # List format already uses string values
 
     # ===== Property Accessors for Derived Fields =====
@@ -222,9 +239,11 @@ class RegistrationConfig(BasePipelineConfig):
         """Validate registration-specific configurations (without file existence checks)"""
         # Removed file existence validation to improve configuration portability
         # File validation should happen at execution time in builders, not at config creation time
-        
+
         # Only validate that source_dir is provided if inference_entry_point is a relative path
-        if self.inference_entry_point and not self.inference_entry_point.startswith("s3://"):
+        if self.inference_entry_point and not self.inference_entry_point.startswith(
+            "s3://"
+        ):
             if not self.source_dir:
                 raise ValueError(
                     "source_dir must be provided when inference_entry_point is a relative path"

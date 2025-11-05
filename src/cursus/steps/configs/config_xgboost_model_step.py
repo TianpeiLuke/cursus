@@ -102,7 +102,7 @@ class XGBoostModelStepConfig(BasePipelineConfig):
         """Validate entry point configuration (without file existence checks)"""
         # Removed file existence validation to improve configuration portability
         # File validation should happen at execution time in builders, not at config creation time
-        
+
         # Only validate that source_dir is provided if entry_point is a relative path
         if self.entry_point and not self.entry_point.startswith("s3://"):
             if not self.source_dir:

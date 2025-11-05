@@ -143,7 +143,9 @@ class XGBoostModelHyperparameters(ModelHyperparameters):
     _eval_metric: Optional[Union[str, List[str]]] = PrivateAttr(default=None)
 
     model_config = ModelHyperparameters.model_config.copy()
-    model_config.update({"extra": "allow"})  # Changed from "forbid" to "allow" to fix circular reference handling
+    model_config.update(
+        {"extra": "allow"}
+    )  # Changed from "forbid" to "allow" to fix circular reference handling
 
     # Public read-only properties for derived fields
 

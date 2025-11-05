@@ -28,7 +28,7 @@ class LightGBMTrainingConfig(BasePipelineConfig):
     1. Tier 1: Essential User Inputs - fields that users must explicitly provide
     2. Tier 2: System Inputs with Defaults - fields with reasonable defaults that can be overridden
     3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
-    
+
     Note: Hyperparameters are managed by the user - they must create a LightGBMModelHyperparameters
     instance and save it as hyperparameters.json in the source_dir. The training script
     will load this JSON file from the container's source directory.
@@ -59,16 +59,15 @@ class LightGBMTrainingConfig(BasePipelineConfig):
 
     # Override model_class to match hyperparameters
     model_class: str = Field(
-        default="lightgbm", 
-        description="Model class identifier, set to LightGBM."
+        default="lightgbm", description="Model class identifier, set to LightGBM."
     )
 
     # Hyperparameters handling configuration
     skip_hyperparameters_s3_uri: bool = Field(
-        default=True, 
+        default=True,
         description="Whether to skip hyperparameters_s3_uri channel during _get_inputs. "
-                   "If True (default), hyperparameters are loaded from script folder. "
-                   "If False, hyperparameters_s3_uri channel is created as TrainingInput."
+        "If True (default), hyperparameters are loaded from script folder. "
+        "If False, hyperparameters_s3_uri channel is created as TrainingInput.",
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -128,7 +127,7 @@ class LightGBMTrainingConfig(BasePipelineConfig):
             "ml.c5.4xlarge",
             "ml.c5.9xlarge",
             "ml.c5.18xlarge",
-            "ml.r5.large",    # Memory-optimized for large datasets
+            "ml.r5.large",  # Memory-optimized for large datasets
             "ml.r5.xlarge",
             "ml.r5.2xlarge",
             "ml.r5.4xlarge",

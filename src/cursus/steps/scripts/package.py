@@ -58,7 +58,7 @@ def check_file_exists(path: Path, description: str) -> bool:
 
 def list_directory_contents(path: Path, description: str) -> None:
     """List and log the contents of a directory."""
-    logger.info(f"\n{'='*20} Contents of {description} {'='*20}")
+    logger.info(f"\n{'=' * 20} Contents of {description} {'=' * 20}")
     logger.info(f"Path: {path}")
 
     if not path.exists():
@@ -126,7 +126,7 @@ def copy_file_robust(src: Path, dst: Path) -> bool:
 
 def copy_scripts(src_dir: Path, dst_dir: Path) -> None:
     """Recursively copy scripts from source to destination."""
-    logger.info(f"\n{'='*20} Copying Scripts {'='*20}")
+    logger.info(f"\n{'=' * 20} Copying Scripts {'=' * 20}")
     logger.info(f"From: {src_dir}")
     logger.info(f"To: {dst_dir}")
 
@@ -160,7 +160,7 @@ def copy_scripts(src_dir: Path, dst_dir: Path) -> None:
 
 def extract_tarfile(tar_path: Path, extract_path: Path) -> None:
     """Extract a tar file to the specified path."""
-    logger.info(f"\n{'='*20} Extracting Tar File {'='*20}")
+    logger.info(f"\n{'=' * 20} Extracting Tar File {'=' * 20}")
 
     if not check_file_exists(tar_path, "Tar file to extract"):
         logger.error("Cannot extract. Tar file does not exist.")
@@ -190,7 +190,7 @@ def extract_tarfile(tar_path: Path, extract_path: Path) -> None:
 
 def create_tarfile(output_tar_path: Path, source_dir: Path) -> None:
     """Create a tar file from the contents of a directory."""
-    logger.info(f"\n{'='*20} Creating Tar File {'='*20}")
+    logger.info(f"\n{'=' * 20} Creating Tar File {'=' * 20}")
     logger.info(f"Output tar: {output_tar_path}")
     logger.info(f"Source directory: {source_dir}")
 
@@ -217,7 +217,7 @@ def create_tarfile(output_tar_path: Path, source_dir: Path) -> None:
         if check_file_exists(output_tar_path, "Created tar file"):
             compressed_size = output_tar_path.stat().st_size / 1024 / 1024
             logger.info(f"  Compressed tar size: {compressed_size:.2f}MB")
-            logger.info(f"  Compression ratio: {compressed_size/total_size:.2%}")
+            logger.info(f"  Compression ratio: {compressed_size / total_size:.2%}")
 
     except Exception as e:
         logger.error(f"Error creating tar file: {str(e)}", exc_info=True)
@@ -252,7 +252,7 @@ def main(
     model_path = Path(input_paths["model_input"])
     script_path = Path(input_paths["inference_scripts_input"])
     output_path = Path(output_paths["packaged_model"])
-    
+
     # Optional calibration model input
     calibration_path = None
     if "calibration_model" in input_paths:
@@ -266,7 +266,7 @@ def main(
     logger.info(f"Python version: {sys.version}")
     logger.info(f"Working directory: {os.getcwd()}")
     logger.info(
-        f"Available disk space: {shutil.disk_usage('/').free / (1024*1024*1024):.2f}GB"
+        f"Available disk space: {shutil.disk_usage('/').free / (1024 * 1024 * 1024):.2f}GB"
     )
 
     logger.info(f"\nUsing paths:")
@@ -307,11 +307,11 @@ def main(
         # Handle optional calibration model
         if calibration_path and calibration_path.exists():
             logger.info("\n=== Processing Calibration Model ===")
-            
+
             # Create calibration subdirectory to match inference script expectations
             calibration_directory = working_directory / "calibration"
             ensure_directory(calibration_directory)
-            
+
             # The calibration_path should contain the calibration artifacts from model_calibration script
             # This includes: calibration_model.pkl (binary) or calibration_models/ (multi-class)
             # and calibration_summary.json
@@ -321,12 +321,16 @@ def main(
             total_size = 0
             for item in calibration_path.rglob("*"):
                 if item.is_file():
-                    dest_path = calibration_directory / item.relative_to(calibration_path)
+                    dest_path = calibration_directory / item.relative_to(
+                        calibration_path
+                    )
                     if copy_file_robust(item, dest_path):
                         files_copied += 1
                         total_size += item.stat().st_size / 1024 / 1024
-            
-            logger.info(f"Copied {files_copied} calibration files, total size: {total_size:.2f}MB")
+
+            logger.info(
+                f"Copied {files_copied} calibration files, total size: {total_size:.2f}MB"
+            )
             list_directory_contents(calibration_directory, "Calibration directory")
         else:
             logger.info("\n=== No Calibration Model Provided ===")

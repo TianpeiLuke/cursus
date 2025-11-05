@@ -3,7 +3,7 @@ Dummy Data Loading Testing Step Specification.
 
 This module defines the declarative specification for Dummy data loading steps
 specifically for testing data, including their dependencies and outputs.
-This step serves as a drop-in replacement for CradleDataLoadingStep but processes 
+This step serves as a drop-in replacement for CradleDataLoadingStep but processes
 user-provided data instead of calling internal Cradle services.
 """
 
@@ -39,7 +39,14 @@ DUMMY_DATA_LOADING_TESTING_SPEC = StepSpecification(
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["DataUploadStep", "S3DataStep", "LocalDataStep"],
-            semantic_keywords=["data", "dataset", "input", "raw_data", "testing", "test"],
+            semantic_keywords=[
+                "data",
+                "dataset",
+                "input",
+                "raw_data",
+                "testing",
+                "test",
+            ],
             data_type="S3Uri",
             description="Testing input data to be processed (from local or S3 source)",
         )

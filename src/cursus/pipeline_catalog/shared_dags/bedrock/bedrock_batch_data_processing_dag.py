@@ -45,17 +45,21 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
     dag = PipelineDAG()
 
     # Add minimal data processing nodes with Bedrock batch enhancement
-    dag.add_node("DummyDataLoading_training")  # Dummy data load
-    dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing
-    dag.add_node("BedrockPromptTemplateGeneration")  # Bedrock prompt template generation
-    dag.add_node("BedrockBatchProcessing_training")  # Bedrock batch processing step
+    dag.add_node("DummyDataLoading")  # Dummy data load
+    dag.add_node("TabularPreprocessing")  # Tabular preprocessing
+    dag.add_node(
+        "BedrockPromptTemplateGeneration"
+    )  # Bedrock prompt template generation
+    dag.add_node("BedrockBatchProcessing")  # Bedrock batch processing step
 
     # Simple data processing flow with Bedrock batch enhancement
-    dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
-    
+    dag.add_edge("DummyDataLoading", "TabularPreprocessing")
+
     # Bedrock batch processing flow - two inputs to BedrockBatchProcessing
-    dag.add_edge("TabularPreprocessing_training", "BedrockBatchProcessing_training")  # Data input
-    dag.add_edge("BedrockPromptTemplateGeneration", "BedrockBatchProcessing_training")  # Template input
+    dag.add_edge("TabularPreprocessing", "BedrockBatchProcessing")  # Data input
+    dag.add_edge(
+        "BedrockPromptTemplateGeneration", "BedrockBatchProcessing"
+    )  # Template input
 
     logger.info(
         f"Created Bedrock Batch data processing DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
@@ -74,11 +78,11 @@ def get_dag_metadata() -> DAGMetadata:
         description="Bedrock Batch data processing pipeline for cost-efficient LLM-based data enhancement and annotation",
         complexity="simple",
         features=[
-            "dummy_data_loading", 
-            "bedrock_prompt_generation", 
-            "bedrock_batch_processing", 
+            "dummy_data_loading",
+            "bedrock_prompt_generation",
+            "bedrock_batch_processing",
             "cost_optimization",
-            "data_processing"
+            "data_processing",
         ],
         framework="data_processing",
         node_count=4,
@@ -101,16 +105,19 @@ def get_dag_metadata() -> DAGMetadata:
                 "template_generation": "BedrockPromptTemplateGeneration",
                 "data_processing": "BedrockBatchProcessing",
                 "data_flow": {
-                    "input_sources": ["TabularPreprocessing", "BedrockPromptTemplateGeneration"],
-                    "output_target": None  # No downstream processing - pure data enhancement
+                    "input_sources": [
+                        "TabularPreprocessing",
+                        "BedrockPromptTemplateGeneration",
+                    ],
+                    "output_target": None,  # No downstream processing - pure data enhancement
                 },
                 "cost_optimization": {
                     "batch_processing_enabled": True,
                     "automatic_mode_selection": True,
                     "expected_cost_savings": "Up to 50% for large datasets",
-                    "fallback_to_realtime": True
-                }
-            }
+                    "fallback_to_realtime": True,
+                },
+            },
         },
     )
 
@@ -170,7 +177,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 
     # Validate Bedrock batch integration structure
     bedrock_integration = metadata.extra_metadata.get("bedrock_batch_integration", {})
-    
+
     # Check that BedrockBatchProcessing has the correct inputs
     bedrock_processing_node = "BedrockBatchProcessing"
     if bedrock_processing_node in dag.nodes:
@@ -179,8 +186,10 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         for edge in dag.edges:
             if edge[1] == bedrock_processing_node:
                 bedrock_predecessors.add(edge[0])
-        
-        expected_inputs = set(bedrock_integration.get("data_flow", {}).get("input_sources", []))
+
+        expected_inputs = set(
+            bedrock_integration.get("data_flow", {}).get("input_sources", [])
+        )
         if bedrock_predecessors != expected_inputs:
             validation_result["warnings"].append(
                 f"BedrockBatchProcessing inputs mismatch. Expected: {expected_inputs}, Found: {bedrock_predecessors}"
@@ -192,7 +201,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
         ("TabularPreprocessing", "BedrockBatchProcessing"),
         ("BedrockPromptTemplateGeneration", "BedrockBatchProcessing"),
     ]
-    
+
     for edge in expected_edges:
         if edge not in dag.edges:
             validation_result["errors"].append(f"Missing expected edge: {edge}")
@@ -204,7 +213,7 @@ def validate_dag_structure(dag: PipelineDAG) -> Dict[str, Any]:
 def get_data_processing_flow_info() -> Dict[str, Any]:
     """
     Get information about the Bedrock Batch data processing flow in this DAG.
-    
+
     Returns:
         Dict containing data processing flow details
     """
@@ -214,23 +223,23 @@ def get_data_processing_flow_info() -> Dict[str, Any]:
             {
                 "step": "DummyDataLoading",
                 "purpose": "Load dummy data for processing",
-                "output": "Raw dataset"
+                "output": "Raw dataset",
             },
             {
-                "step": "TabularPreprocessing", 
+                "step": "TabularPreprocessing",
                 "purpose": "Preprocess data with standardization and formatting",
-                "output": "Processed data ready for LLM enhancement"
+                "output": "Processed data ready for LLM enhancement",
             },
             {
                 "step": "BedrockPromptTemplateGeneration",
                 "purpose": "Generate LLM prompt templates and validation schemas",
-                "output": "Prompt templates and validation schemas"
+                "output": "Prompt templates and validation schemas",
             },
             {
                 "step": "BedrockBatchProcessing",
                 "purpose": "Cost-efficiently enhance data with LLM-generated insights using batch processing",
-                "output": "LLM-enhanced data with annotations, classifications, or enrichments"
-            }
+                "output": "LLM-enhanced data with annotations, classifications, or enrichments",
+            },
         ],
         "data_flow": "DummyDataLoading → TabularPreprocessing → BedrockBatchProcessing",
         "template_flow": "BedrockPromptTemplateGeneration → BedrockBatchProcessing",
@@ -247,7 +256,7 @@ def get_data_processing_flow_info() -> Dict[str, Any]:
             "no_packaging": True,
             "no_registration": True,
             "no_evaluation": True,
-            "pure_data_enhancement": True
+            "pure_data_enhancement": True,
         },
         "bedrock_batch_features": {
             "prompt_template_generation": True,
@@ -260,15 +269,15 @@ def get_data_processing_flow_info() -> Dict[str, Any]:
             "s3_integration": True,
             "batch_job_management": True,
             "data_annotation": True,
-            "data_enrichment": True
-        }
+            "data_enrichment": True,
+        },
     }
 
 
 def get_bedrock_batch_step_dependencies() -> Dict[str, Dict[str, Any]]:
     """
     Get the dependency specifications for Bedrock batch processing steps in this DAG.
-    
+
     Returns:
         Dict mapping step names to their dependency specifications
     """
@@ -278,39 +287,39 @@ def get_bedrock_batch_step_dependencies() -> Dict[str, Dict[str, Any]]:
             "outputs": {
                 "prompt_templates": "Templates for Bedrock batch processing",
                 "template_metadata": "Metadata about generated templates",
-                "validation_schema": "Schema for validating Bedrock responses"
-            }
+                "validation_schema": "Schema for validating Bedrock responses",
+            },
         },
         "BedrockBatchProcessing": {
             "dependencies": {
                 "prompt_templates": {
                     "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "prompt_templates",
-                    "required": True
+                    "required": True,
                 },
                 "validation_schema": {
-                    "source_step": "BedrockPromptTemplateGeneration", 
+                    "source_step": "BedrockPromptTemplateGeneration",
                     "output_name": "validation_schema",
-                    "required": True
+                    "required": True,
                 },
                 "input_data": {
                     "source_step": "TabularPreprocessing",
                     "output_name": "processed_data",
-                    "required": True
-                }
+                    "required": True,
+                },
             },
             "outputs": {
                 "processed_data": "LLM-enhanced processed data (batch processed)",
-                "processing_metadata": "Metadata about Bedrock batch processing results"
-            }
-        }
+                "processing_metadata": "Metadata about Bedrock batch processing results",
+            },
+        },
     }
 
 
 def get_integration_notes() -> Dict[str, str]:
     """
     Get integration notes for implementing this DAG.
-    
+
     Returns:
         Dict containing implementation notes and considerations
     """
@@ -328,14 +337,14 @@ def get_integration_notes() -> Dict[str, str]:
         "monitoring": "Add monitoring for Bedrock batch job status, processing latency, and cost savings achieved",
         "production_readiness": "Ensure fallback model is configured for production reliability and consider inference profile usage for Claude 4+ models",
         "simplicity": "This DAG focuses purely on data processing - no training, modeling, or deployment complexity",
-        "data_export": "Enhanced data can be exported to various formats for downstream use in other systems or workflows"
+        "data_export": "Enhanced data can be exported to various formats for downstream use in other systems or workflows",
     }
 
 
 def get_cost_optimization_benefits() -> Dict[str, Any]:
     """
     Get detailed information about cost optimization benefits of this data processing DAG.
-    
+
     Returns:
         Dict containing cost optimization details
     """
@@ -344,20 +353,20 @@ def get_cost_optimization_benefits() -> Dict[str, Any]:
             "cost_savings": "Up to 50% reduction in Bedrock API costs for large datasets",
             "scalability": "No memory limits - can process millions of records",
             "efficiency": "AWS-managed batch infrastructure with optimal resource allocation",
-            "fault_tolerance": "Built-in retry and error recovery mechanisms"
+            "fault_tolerance": "Built-in retry and error recovery mechanisms",
         },
         "automatic_optimization": {
             "intelligent_selection": "Automatically chooses batch vs real-time based on data size",
             "threshold_based": "Default threshold of 1000 records (configurable)",
             "fallback_strategy": "Seamless fallback to real-time processing if batch fails",
-            "zero_configuration": "Works with existing data processing configurations"
+            "zero_configuration": "Works with existing data processing configurations",
         },
         "operational_benefits": {
             "monitoring": "Enhanced batch job status tracking and cost reporting",
             "reliability": "Automatic fallback ensures data processing never fails due to batch issues",
             "compatibility": "Drop-in replacement for existing BedrockProcessing steps",
             "framework_integration": "Uses cursus S3 path patterns for seamless integration",
-            "simplicity": "Minimal pipeline complexity while maximizing cost optimization"
+            "simplicity": "Minimal pipeline complexity while maximizing cost optimization",
         },
         "recommended_use_cases": [
             "Large datasets requiring LLM enhancement (>= 1000 records)",
@@ -365,7 +374,7 @@ def get_cost_optimization_benefits() -> Dict[str, Any]:
             "Data enrichment and augmentation projects",
             "Content analysis and classification tasks",
             "Cost-sensitive data processing scenarios",
-            "Batch data preparation for downstream ML workflows"
+            "Batch data preparation for downstream ML workflows",
         ],
         "data_processing_specific_benefits": {
             "enhanced_data_quality": "LLM-generated annotations and classifications improve data quality",
@@ -373,15 +382,15 @@ def get_cost_optimization_benefits() -> Dict[str, Any]:
             "validation_support": "Pydantic validation ensures data quality and consistency",
             "cost_efficient_enhancement": "Significant cost savings for large-scale data processing",
             "flexible_output": "Enhanced data ready for export to various downstream systems",
-            "no_training_overhead": "Pure data processing without model training complexity"
-        }
+            "no_training_overhead": "Pure data processing without model training complexity",
+        },
     }
 
 
 def get_use_case_examples() -> Dict[str, Any]:
     """
     Get examples of use cases for this data processing pipeline.
-    
+
     Returns:
         Dict containing use case examples and scenarios
     """
@@ -391,42 +400,42 @@ def get_use_case_examples() -> Dict[str, Any]:
             "Content categorization and tagging",
             "Entity extraction from text documents",
             "Quality assessment of user-generated content",
-            "Language detection and translation preparation"
+            "Language detection and translation preparation",
         ],
         "data_enrichment_scenarios": [
             "Product description enhancement",
             "Customer profile augmentation",
             "Document summarization and key point extraction",
             "Data standardization and normalization",
-            "Missing field completion using LLM inference"
+            "Missing field completion using LLM inference",
         ],
         "analysis_preparation_scenarios": [
             "Preparing data for downstream ML model training",
             "Creating labeled datasets for supervised learning",
             "Generating features for predictive modeling",
             "Data quality assessment and scoring",
-            "Compliance and content moderation preparation"
+            "Compliance and content moderation preparation",
         ],
         "workflow_integration": {
             "standalone_processing": "Use as independent data enhancement pipeline",
             "preprocessing_for_training": "Prepare enhanced data for subsequent training pipelines",
             "batch_analysis": "Process large datasets for business intelligence and reporting",
             "data_pipeline_component": "Integrate as part of larger ETL/ELT workflows",
-            "research_and_development": "Explore data characteristics and LLM capabilities"
+            "research_and_development": "Explore data characteristics and LLM capabilities",
         },
         "output_formats": [
             "Enhanced CSV files with LLM-generated columns",
             "Parquet files for efficient downstream processing",
             "JSON files with structured LLM responses",
-            "Metadata files with processing statistics and quality metrics"
-        ]
+            "Metadata files with processing statistics and quality metrics",
+        ],
     }
 
 
 def get_pipeline_comparison() -> Dict[str, Any]:
     """
     Compare this data processing DAG with other Bedrock batch pipelines.
-    
+
     Returns:
         Dict containing comparison details
     """
@@ -437,7 +446,7 @@ def get_pipeline_comparison() -> Dict[str, Any]:
             "complexity": "Simple vs Moderate (reduced complexity)",
             "purpose": "Pure data processing vs Training preparation",
             "output": "Enhanced data vs Trained model",
-            "use_case": "Data enhancement vs Model development"
+            "use_case": "Data enhancement vs Model development",
         },
         "vs_e2e_dag": {
             "nodes": "4 nodes vs 13 nodes (minimal vs comprehensive)",
@@ -445,7 +454,7 @@ def get_pipeline_comparison() -> Dict[str, Any]:
             "complexity": "Simple vs Comprehensive (maximum simplification)",
             "purpose": "Data processing only vs Full ML lifecycle",
             "output": "Enhanced data vs Deployed model",
-            "use_case": "Data enhancement vs Production ML system"
+            "use_case": "Data enhancement vs Production ML system",
         },
         "advantages_of_data_processing_dag": [
             "Minimal complexity - easiest to understand and maintain",
@@ -453,7 +462,7 @@ def get_pipeline_comparison() -> Dict[str, Any]:
             "Maximum cost efficiency - only pay for data processing",
             "Flexible output - enhanced data can be used anywhere",
             "No ML expertise required - pure data enhancement workflow",
-            "Ideal for data exploration and preparation"
+            "Ideal for data exploration and preparation",
         ],
         "when_to_use_data_processing_dag": [
             "Pure data enhancement and annotation needs",
@@ -461,6 +470,6 @@ def get_pipeline_comparison() -> Dict[str, Any]:
             "Data quality improvement projects",
             "Content analysis and classification tasks",
             "Research and data exploration scenarios",
-            "Cost-sensitive data processing requirements"
-        ]
+            "Cost-sensitive data processing requirements",
+        ],
     }

@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional, List, Tuple, Union
 
 # Embedded processor classes to remove external dependencies
 
+
 class RiskTableMappingProcessor:
     """
     A processor that performs risk-table-based mapping on a specified categorical variable.
@@ -240,6 +241,7 @@ class NumericalVariableImputationProcessor:
             "strategy": self.strategy,
         }
 
+
 import logging
 
 # Configure logging
@@ -256,29 +258,33 @@ CONTAINER_PATHS = {
 }
 
 
-def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
+def load_model_artifacts(
+    model_dir: str,
+) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
     Load the trained XGBoost model and all preprocessing artifacts from the specified directory.
     Handles both extracted artifacts and model.tar.gz archives.
     Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
     """
     import tarfile
-    
+
     logger.info(f"Loading model artifacts from {model_dir}")
-    
+
     # Check if we need to extract model.tar.gz
     model_tar_path = os.path.join(model_dir, "model.tar.gz")
     model_bst_path = os.path.join(model_dir, "xgboost_model.bst")
-    
+
     if os.path.exists(model_tar_path) and not os.path.exists(model_bst_path):
         logger.info("Found model.tar.gz - extracting model artifacts...")
         try:
-            with tarfile.open(model_tar_path, 'r:gz') as tar:
+            with tarfile.open(model_tar_path, "r:gz") as tar:
                 tar.extractall(path=model_dir)
             logger.info("✓ Model artifacts extracted successfully from model.tar.gz")
         except Exception as e:
             logger.error(f"Failed to extract model.tar.gz: {e}")
-            raise RuntimeError(f"Could not extract model artifacts from {model_tar_path}: {e}")
+            raise RuntimeError(
+                f"Could not extract model artifacts from {model_tar_path}: {e}"
+            )
     elif os.path.exists(model_bst_path):
         logger.info("Found extracted model artifacts - using directly")
     else:
@@ -291,46 +297,46 @@ def load_model_artifacts(model_dir: str) -> Tuple[xgb.Booster, Dict[str, Any], D
             f"Expected either 'model.tar.gz' or 'xgboost_model.bst'. "
             f"Available files: {available_files}"
         )
-    
+
     # Now load the extracted files
     logger.info("Loading individual model artifacts...")
-    
+
     # Load XGBoost model
     model = xgb.Booster()
     model.load_model(os.path.join(model_dir, "xgboost_model.bst"))
     logger.info("✓ Loaded xgboost_model.bst")
-    
+
     # Load risk tables
     with open(os.path.join(model_dir, "risk_table_map.pkl"), "rb") as f:
         risk_tables = pkl.load(f)
     logger.info("✓ Loaded risk_table_map.pkl")
-    
+
     # Load imputation dictionary
     with open(os.path.join(model_dir, "impute_dict.pkl"), "rb") as f:
         impute_dict = pkl.load(f)
     logger.info("✓ Loaded impute_dict.pkl")
-    
+
     # Load feature columns
     with open(os.path.join(model_dir, "feature_columns.txt"), "r") as f:
         feature_columns = [
             line.strip().split(",")[1] for line in f if not line.startswith("#")
         ]
     logger.info(f"✓ Loaded feature_columns.txt: {len(feature_columns)} features")
-    
+
     # Load hyperparameters
     with open(os.path.join(model_dir, "hyperparameters.json"), "r") as f:
         hyperparams = json.load(f)
     logger.info("✓ Loaded hyperparameters.json")
-    
+
     logger.info("All model artifacts loaded successfully")
     return model, risk_tables, impute_dict, feature_columns, hyperparams
 
 
 def preprocess_inference_data(
-    df: pd.DataFrame, 
-    feature_columns: List[str], 
-    risk_tables: Dict[str, Any], 
-    impute_dict: Dict[str, Any]
+    df: pd.DataFrame,
+    feature_columns: List[str],
+    risk_tables: Dict[str, Any],
+    impute_dict: Dict[str, Any],
 ) -> pd.DataFrame:
     """
     Apply risk table mapping and numerical imputation to inference data.
@@ -338,43 +344,45 @@ def preprocess_inference_data(
     """
     # Preserve original dataframe structure
     result_df = df.copy()
-    
+
     # Get available feature columns
     available_features = [col for col in feature_columns if col in df.columns]
-    logger.info(f"Found {len(available_features)} out of {len(feature_columns)} expected feature columns")
-    
+    logger.info(
+        f"Found {len(available_features)} out of {len(feature_columns)} expected feature columns"
+    )
+
     # Apply risk table mapping for categorical features
     logger.info("Starting risk table mapping for categorical features")
     for feature, risk_table in risk_tables.items():
         if feature in available_features:
             logger.info(f"Applying risk table mapping for feature: {feature}")
             processor = RiskTableMappingProcessor(
-                column_name=feature, 
-                label_name="label", 
-                risk_tables=risk_table
+                column_name=feature, label_name="label", risk_tables=risk_table
             )
             result_df[feature] = processor.transform(df[feature])
     logger.info("Risk table mapping complete")
-    
+
     # Apply numerical imputation
     logger.info("Starting numerical imputation")
     feature_df = result_df[available_features].copy()
     imputer = NumericalVariableImputationProcessor(imputation_dict=impute_dict)
     imputed_df = imputer.transform(feature_df)
-    
+
     # Update feature columns in result dataframe
     for col in available_features:
         if col in imputed_df:
             result_df[col] = imputed_df[col]
     logger.info("Numerical imputation complete")
-    
+
     # Ensure feature columns are numeric
     logger.info("Ensuring feature columns are numeric")
     result_df[available_features] = (
         result_df[available_features].apply(pd.to_numeric, errors="coerce").fillna(0)
     )
-    
-    logger.info(f"Preprocessed data shape: {result_df.shape} (preserving all original columns)")
+
+    logger.info(
+        f"Preprocessed data shape: {result_df.shape} (preserving all original columns)"
+    )
     return result_df
 
 
@@ -392,20 +400,20 @@ def generate_predictions(
     available_features = [col for col in feature_columns if col in df.columns]
     logger.info(f"Using {len(available_features)} features for prediction")
     X = df[available_features].values
-    
+
     # Create XGBoost DMatrix with feature names for consistency
     dmatrix = xgb.DMatrix(X, feature_names=available_features)
-    
+
     # Generate predictions
     y_prob = model.predict(dmatrix)
     logger.info(f"Model prediction shape: {y_prob.shape}")
-    
+
     # Handle binary vs multiclass output format
     if len(y_prob.shape) == 1:
         # Binary classification - convert to two-column probabilities
         y_prob = np.column_stack([1 - y_prob, y_prob])
         logger.info("Converted binary prediction to two-column probabilities")
-    
+
     return y_prob
 
 
@@ -435,7 +443,9 @@ def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
     return df
 
 
-def get_id_label_columns(df: pd.DataFrame, id_field: str, label_field: str) -> Tuple[str, str]:
+def get_id_label_columns(
+    df: pd.DataFrame, id_field: str, label_field: str
+) -> Tuple[str, str]:
     """
     Determine the ID and label columns in the DataFrame.
     Falls back to the first and second columns if not found.
@@ -453,25 +463,25 @@ def save_predictions(
     format: str = "csv",
     id_col: str = "id",
     label_col: str = "label",
-    json_orient: str = "records"
+    json_orient: str = "records",
 ) -> str:
     """
     Save predictions with original data in specified format.
     Supports CSV, Parquet, and JSON formats.
     """
     logger.info(f"Saving predictions to {output_dir} in {format} format")
-    
+
     # Create output dataframe with original data
     output_df = df.copy()
-    
+
     # Add prediction columns
     n_classes = predictions.shape[1]
     for i in range(n_classes):
         output_df[f"prob_class_{i}"] = predictions[:, i]
-    
+
     # Save in specified format
     os.makedirs(output_dir, exist_ok=True)
-    
+
     if format.lower() == "parquet":
         output_path = os.path.join(output_dir, "predictions.parquet")
         output_df.to_parquet(output_path, index=False)
@@ -480,19 +490,19 @@ def save_predictions(
         # Convert numpy types to native Python types for JSON serialization
         output_df_json = output_df.copy()
         for col in output_df_json.columns:
-            if output_df_json[col].dtype == 'object':
+            if output_df_json[col].dtype == "object":
                 continue
-            elif 'int' in str(output_df_json[col].dtype):
+            elif "int" in str(output_df_json[col].dtype):
                 output_df_json[col] = output_df_json[col].astype(int)
-            elif 'float' in str(output_df_json[col].dtype):
+            elif "float" in str(output_df_json[col].dtype):
                 output_df_json[col] = output_df_json[col].astype(float)
-        
+
         # Save as JSON with specified orientation
         output_df_json.to_json(output_path, orient=json_orient, indent=2)
     else:  # Default to CSV
         output_path = os.path.join(output_dir, "predictions.csv")
         output_df.to_csv(output_path, index=False)
-    
+
     logger.info(f"Saved predictions to {output_path}")
     return output_path
 
@@ -550,30 +560,30 @@ def main(
 
     # Load and preprocess data
     df = load_eval_data(eval_data_dir)
-    
+
     # Get ID and label columns before preprocessing
     id_col, label_col = get_id_label_columns(df, id_field, label_field)
-    
+
     # Process the data - preserves all columns including id and label
     df = preprocess_inference_data(df, feature_columns, risk_tables, impute_dict)
-    
+
     logger.info(f"Final inference DataFrame shape: {df.shape}")
 
     # Get the available features (those that exist in the DataFrame)
     available_features = [col for col in feature_columns if col in df.columns]
-    
+
     # Generate predictions
     predictions = generate_predictions(model, df, available_features, hyperparams)
-    
+
     # Save predictions with original data
     output_path = save_predictions(
-        df, 
-        predictions, 
-        output_eval_dir, 
+        df,
+        predictions,
+        output_eval_dir,
         format=output_format,
         id_col=id_col,
         label_col=label_col,
-        json_orient=json_orient
+        json_orient=json_orient,
     )
 
     logger.info("Model inference script complete")
@@ -598,7 +608,9 @@ if __name__ == "__main__":
     environ_vars = {
         "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
         "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
-        "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "csv"),  # csv, parquet, or json
+        "OUTPUT_FORMAT": os.environ.get(
+            "OUTPUT_FORMAT", "csv"
+        ),  # csv, parquet, or json
         "JSON_ORIENT": os.environ.get("JSON_ORIENT", "records"),  # JSON orientation
     }
 
@@ -620,9 +632,7 @@ if __name__ == "__main__":
     except Exception as e:
         # Log error and create failure marker
         logger.exception(f"Script failed with error: {e}")
-        failure_path = os.path.join(
-            output_paths.get("eval_output", "/tmp"), "_FAILURE"
-        )
+        failure_path = os.path.join(output_paths.get("eval_output", "/tmp"), "_FAILURE")
         os.makedirs(os.path.dirname(failure_path), exist_ok=True)
         with open(failure_path, "w") as f:
             f.write(f"Error: {str(e)}")

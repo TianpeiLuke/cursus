@@ -7,7 +7,9 @@ from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
 
-from ..configs.config_temporal_sequence_normalization_step import TemporalSequenceNormalizationConfig
+from ..configs.config_temporal_sequence_normalization_step import (
+    TemporalSequenceNormalizationConfig,
+)
 from ...core.base.builder_base import StepBuilderBase
 
 # Import specifications based on job type
@@ -27,9 +29,11 @@ try:
 
     SPECS_AVAILABLE = True
 except ImportError:
-    TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC = TEMPORAL_SEQUENCE_NORMALIZATION_CALIBRATION_SPEC = (
-        TEMPORAL_SEQUENCE_NORMALIZATION_VALIDATION_SPEC
-    ) = TEMPORAL_SEQUENCE_NORMALIZATION_TESTING_SPEC = None
+    TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC = (
+        TEMPORAL_SEQUENCE_NORMALIZATION_CALIBRATION_SPEC
+    ) = TEMPORAL_SEQUENCE_NORMALIZATION_VALIDATION_SPEC = (
+        TEMPORAL_SEQUENCE_NORMALIZATION_TESTING_SPEC
+    ) = None
     SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -72,7 +76,10 @@ class TemporalSequenceNormalizationStepBuilder(StepBuilderBase):
         job_type = config.job_type.lower()
 
         # Get specification based on job type
-        if job_type == "training" and TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC is not None:
+        if (
+            job_type == "training"
+            and TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC is not None
+        ):
             spec = TEMPORAL_SEQUENCE_NORMALIZATION_TRAINING_SPEC
         elif (
             job_type == "calibration"
@@ -84,14 +91,19 @@ class TemporalSequenceNormalizationStepBuilder(StepBuilderBase):
             and TEMPORAL_SEQUENCE_NORMALIZATION_VALIDATION_SPEC is not None
         ):
             spec = TEMPORAL_SEQUENCE_NORMALIZATION_VALIDATION_SPEC
-        elif job_type == "testing" and TEMPORAL_SEQUENCE_NORMALIZATION_TESTING_SPEC is not None:
+        elif (
+            job_type == "testing"
+            and TEMPORAL_SEQUENCE_NORMALIZATION_TESTING_SPEC is not None
+        ):
             spec = TEMPORAL_SEQUENCE_NORMALIZATION_TESTING_SPEC
         else:
             # Try dynamic import
             try:
                 module_path = f"..specs.temporal_sequence_normalization_{job_type}_spec"
                 module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"TEMPORAL_SEQUENCE_NORMALIZATION_{job_type.upper()}_SPEC"
+                spec_var_name = (
+                    f"TEMPORAL_SEQUENCE_NORMALIZATION_{job_type.upper()}_SPEC"
+                )
                 if hasattr(module, spec_var_name):
                     spec = getattr(module, spec_var_name)
             except (ImportError, AttributeError):
@@ -149,7 +161,11 @@ class TemporalSequenceNormalizationStepBuilder(StepBuilderBase):
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
         # Validate field names
-        for field_name in ["temporal_field", "sequence_grouping_field", "record_id_field"]:
+        for field_name in [
+            "temporal_field",
+            "sequence_grouping_field",
+            "record_id_field",
+        ]:
             field_value = getattr(self.config, field_name)
             if not field_value or not field_value.strip():
                 raise ValueError(f"{field_name} must be provided and non-empty")
@@ -197,9 +213,9 @@ class TemporalSequenceNormalizationStepBuilder(StepBuilderBase):
         env_vars = super()._get_environment_variables()
 
         # The base method should handle all the environment variables from the contract
-        # including SEQUENCE_LENGTH, SEQUENCE_SEPARATOR, TEMPORAL_FIELD, 
+        # including SEQUENCE_LENGTH, SEQUENCE_SEPARATOR, TEMPORAL_FIELD,
         # SEQUENCE_GROUPING_FIELD, RECORD_ID_FIELD, etc.
-        
+
         # Add any additional environment variables specific to this step if needed
         # (Most variables should be handled by the base method using the contract)
 
@@ -301,8 +317,17 @@ class TemporalSequenceNormalizationStepBuilder(StepBuilderBase):
             else:
                 # Generate destination using base output path and Join for parameter compatibility
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "temporal_sequence_normalization", self.config.job_type, logical_name])
+                destination = Join(
+                    on="/",
+                    values=[
+                        base_output_path,
+                        "temporal_sequence_normalization",
+                        self.config.job_type,
+                        logical_name,
+                    ],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,

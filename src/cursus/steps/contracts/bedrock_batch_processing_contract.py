@@ -29,7 +29,7 @@ BEDROCK_BATCH_PROCESSING_CONTRACT = ScriptContract(
         # Standard Bedrock configuration (inherited from bedrock_processing.py)
         "BEDROCK_FALLBACK_MODEL_ID": "",
         "BEDROCK_INFERENCE_PROFILE_ARN": "",
-        "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": '[]',
+        "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[]",
         "AWS_DEFAULT_REGION": "us-east-1",
         "BEDROCK_MAX_TOKENS": "32768",
         "BEDROCK_TEMPERATURE": "1.0",

@@ -23,6 +23,7 @@ from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 # Import the bedrock batch processing specification
 try:
     from ..specs.bedrock_batch_processing_spec import BEDROCK_BATCH_PROCESSING_SPEC
+
     SPEC_AVAILABLE = True
 except ImportError:
     BEDROCK_BATCH_PROCESSING_SPEC = None
@@ -95,15 +96,20 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
             ValueError: If config is not a BedrockBatchProcessingConfig instance
         """
         if not isinstance(config, BedrockBatchProcessingConfig):
-            raise ValueError("BedrockBatchProcessingStepBuilder requires a BedrockBatchProcessingConfig instance.")
+            raise ValueError(
+                "BedrockBatchProcessingStepBuilder requires a BedrockBatchProcessingConfig instance."
+            )
 
         # Use the bedrock batch processing specification
         spec = BEDROCK_BATCH_PROCESSING_SPEC if SPEC_AVAILABLE else None
-        
+
         if not spec:
             raise ValueError("Bedrock batch processing specification not available")
 
-        self.log_info("Using bedrock batch processing specification for job type: %s", config.job_type)
+        self.log_info(
+            "Using bedrock batch processing specification for job type: %s",
+            config.job_type,
+        )
 
         super().__init__(
             config=config,
@@ -137,7 +143,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
             not hasattr(self.config, "processing_entry_point")
             or not self.config.processing_entry_point
         ):
-            raise ValueError("bedrock batch processing step requires a processing_entry_point")
+            raise ValueError(
+                "bedrock batch processing step requires a processing_entry_point"
+            )
 
         # Validate Bedrock-specific configuration (inherited from BedrockProcessingConfig)
         required_attrs = [
@@ -165,7 +173,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
 
         for attr in required_attrs:
             if not hasattr(self.config, attr):
-                raise ValueError(f"BedrockBatchProcessingConfig missing required attribute: {attr}")
+                raise ValueError(
+                    f"BedrockBatchProcessingConfig missing required attribute: {attr}"
+                )
 
         # Validate job type
         if self.config.job_type not in [
@@ -194,7 +204,10 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
             raise ValueError(f"bedrock_concurrency_mode must be one of {valid_modes}")
 
         # Validate numeric ranges
-        if self.config.bedrock_max_tokens <= 0 or self.config.bedrock_max_tokens > 64000:
+        if (
+            self.config.bedrock_max_tokens <= 0
+            or self.config.bedrock_max_tokens > 64000
+        ):
             raise ValueError("bedrock_max_tokens must be between 1 and 64000")
 
         if not (0.0 <= self.config.bedrock_temperature <= 2.0):
@@ -206,16 +219,28 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
         if self.config.bedrock_batch_size <= 0 or self.config.bedrock_batch_size > 100:
             raise ValueError("bedrock_batch_size must be between 1 and 100")
 
-        if self.config.bedrock_batch_threshold <= 0 or self.config.bedrock_batch_threshold > 1000000:
+        if (
+            self.config.bedrock_batch_threshold <= 0
+            or self.config.bedrock_batch_threshold > 1000000
+        ):
             raise ValueError("bedrock_batch_threshold must be between 1 and 1000000")
 
-        if self.config.bedrock_batch_timeout_hours <= 0 or self.config.bedrock_batch_timeout_hours > 72:
+        if (
+            self.config.bedrock_batch_timeout_hours <= 0
+            or self.config.bedrock_batch_timeout_hours > 72
+        ):
             raise ValueError("bedrock_batch_timeout_hours must be between 1 and 72")
 
-        if self.config.bedrock_max_concurrent_workers <= 0 or self.config.bedrock_max_concurrent_workers > 20:
+        if (
+            self.config.bedrock_max_concurrent_workers <= 0
+            or self.config.bedrock_max_concurrent_workers > 20
+        ):
             raise ValueError("bedrock_max_concurrent_workers must be between 1 and 20")
 
-        if self.config.bedrock_rate_limit_per_second <= 0 or self.config.bedrock_rate_limit_per_second > 100:
+        if (
+            self.config.bedrock_rate_limit_per_second <= 0
+            or self.config.bedrock_rate_limit_per_second > 100
+        ):
             raise ValueError("bedrock_rate_limit_per_second must be between 1 and 100")
 
         # Validate inference profile required models
@@ -223,9 +248,24 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
             raise ValueError("bedrock_inference_profile_required_models must be a list")
 
         # Validate model ID format
-        valid_prefixes = ["anthropic.", "amazon.", "ai21.", "cohere.", "meta.", "mistral.", "stability.", "global."]
-        if not any(self.config.bedrock_primary_model_id.startswith(prefix) for prefix in valid_prefixes):
-            self.log_warning("Primary model ID '%s' doesn't match common Bedrock patterns", self.config.bedrock_primary_model_id)
+        valid_prefixes = [
+            "anthropic.",
+            "amazon.",
+            "ai21.",
+            "cohere.",
+            "meta.",
+            "mistral.",
+            "stability.",
+            "global.",
+        ]
+        if not any(
+            self.config.bedrock_primary_model_id.startswith(prefix)
+            for prefix in valid_prefixes
+        ):
+            self.log_warning(
+                "Primary model ID '%s' doesn't match common Bedrock patterns",
+                self.config.bedrock_primary_model_id,
+            )
 
         # Validate batch role ARN format
         if not self.config.bedrock_batch_role_arn.startswith("arn:aws:iam::"):
@@ -236,7 +276,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
 
         # Check production readiness and log warnings
         if not self.config.is_production_ready():
-            self.log_warning("Configuration may not be production-ready. Consider adding a fallback model and reviewing batch/concurrency settings.")
+            self.log_warning(
+                "Configuration may not be production-ready. Consider adding a fallback model and reviewing batch/concurrency settings."
+            )
 
         # Validate derived properties can be accessed
         try:
@@ -285,7 +327,7 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """
         Constructs a dictionary of environment variables to be passed to the processing job.
-        
+
         This method combines:
         1. Base environment variables from the contract
         2. Configuration-specific environment variables from config.bedrock_environment_variables
@@ -303,14 +345,18 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
         # Add batch-specific S3 paths using cursus framework patterns
         # This follows the same pattern as _get_outputs() for consistency
         base_output_path = self._get_base_output_path()
-        
+
         # Create batch-specific S3 paths using Join (same pattern as other step builders)
-        batch_input_path = Join(on="/", values=[base_output_path, "bedrock-batch", "input"])
-        batch_output_path = Join(on="/", values=[base_output_path, "bedrock-batch", "output"])
-        
+        batch_input_path = Join(
+            on="/", values=[base_output_path, "bedrock-batch", "input"]
+        )
+        batch_output_path = Join(
+            on="/", values=[base_output_path, "bedrock-batch", "output"]
+        )
+
         # Update the S3 paths in environment variables
-        bedrock_env_vars['BEDROCK_BATCH_INPUT_S3_PATH'] = batch_input_path
-        bedrock_env_vars['BEDROCK_BATCH_OUTPUT_S3_PATH'] = batch_output_path
+        bedrock_env_vars["BEDROCK_BATCH_INPUT_S3_PATH"] = batch_input_path
+        bedrock_env_vars["BEDROCK_BATCH_OUTPUT_S3_PATH"] = batch_output_path
 
         # Add all bedrock environment variables
         env_vars.update(bedrock_env_vars)
@@ -319,8 +365,10 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
         self.log_info("Batch input S3 path: %s", batch_input_path)
         self.log_info("Batch output S3 path: %s", batch_output_path)
         self.log_info("Batch processing mode: %s", self.config.bedrock_batch_mode)
-        self.log_info("Batch threshold: %s records", self.config.bedrock_batch_threshold)
-        
+        self.log_info(
+            "Batch threshold: %s records", self.config.bedrock_batch_threshold
+        )
+
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
@@ -356,7 +404,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
 
             # Skip if optional and not provided
             if not dependency_spec.required and logical_name not in inputs:
-                self.log_info("Optional input '%s' not provided, skipping", logical_name)
+                self.log_info(
+                    "Optional input '%s' not provided, skipping", logical_name
+                )
                 continue
 
             # Make sure required inputs are present
@@ -432,7 +482,10 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from base path using Join instead of f-string
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "bedrock_batch_processing", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[base_output_path, "bedrock_batch_processing", logical_name],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -484,7 +537,7 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
         batch_config = self.config.batch_configuration
         cost_info = self.config.cost_optimization_info
         performance = self.config.get_performance_estimate()
-        
+
         self.log_info("Batch processing configuration: %s", batch_config)
         self.log_info("Cost optimization: %s", cost_info)
         self.log_info("Expected processing performance: %s", performance)
@@ -573,15 +626,23 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
         batch_config = self.config.batch_configuration
         cost_info = self.config.cost_optimization_info
         performance = self.config.get_performance_estimate()
-        
+
         self.log_info("Created ProcessingStep with name: %s", step.name)
         self.log_info("Primary model: %s", self.config.bedrock_primary_model_id)
-        self.log_info("Fallback model: %s", self.config.bedrock_fallback_model_id or "None")
+        self.log_info(
+            "Fallback model: %s", self.config.bedrock_fallback_model_id or "None"
+        )
         self.log_info("Batch processing mode: %s", self.config.bedrock_batch_mode)
-        self.log_info("Batch threshold: %s records", self.config.bedrock_batch_threshold)
+        self.log_info(
+            "Batch threshold: %s records", self.config.bedrock_batch_threshold
+        )
         self.log_info("Batch role ARN: %s", self.config.bedrock_batch_role_arn)
-        self.log_info("Expected cost savings: %s", cost_info.get('estimated_savings', 'Unknown'))
-        self.log_info("Processing mode: %s", performance.get('processing_mode', 'Unknown'))
+        self.log_info(
+            "Expected cost savings: %s", cost_info.get("estimated_savings", "Unknown")
+        )
+        self.log_info(
+            "Processing mode: %s", performance.get("processing_mode", "Unknown")
+        )
         self.log_info("Production ready: %s", self.config.is_production_ready())
 
         return step

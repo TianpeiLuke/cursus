@@ -635,9 +635,7 @@ class DAGMetadataRegistrySync:
                         [(tag, len(pipelines)) for tag, pipelines in tag_dict.items()],
                         key=lambda x: x[1],
                         reverse=True,
-                    )[
-                        :5
-                    ],  # Top 5 most common tags
+                    )[:5],  # Top 5 most common tags
                 }
 
             return stats

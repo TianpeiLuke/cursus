@@ -19,12 +19,16 @@ from ...registry.step_names import get_spec_step_type
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..contracts.bedrock_batch_processing_contract import BEDROCK_BATCH_PROCESSING_CONTRACT
+    from ..contracts.bedrock_batch_processing_contract import (
+        BEDROCK_BATCH_PROCESSING_CONTRACT,
+    )
 
 
 # Import the contract at runtime to avoid circular imports
 def _get_bedrock_batch_processing_contract():
-    from ..contracts.bedrock_batch_processing_contract import BEDROCK_BATCH_PROCESSING_CONTRACT
+    from ..contracts.bedrock_batch_processing_contract import (
+        BEDROCK_BATCH_PROCESSING_CONTRACT,
+    )
 
     return BEDROCK_BATCH_PROCESSING_CONTRACT
 
@@ -40,17 +44,23 @@ BEDROCK_BATCH_PROCESSING_SPEC = StepSpecification(
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
-                "DummyDataLoading", 
-                "CradleDataLoading", 
+                "DummyDataLoading",
+                "CradleDataLoading",
                 "TabularPreprocessing",
                 "TemporalSequenceNormalization",
                 "TemporalFeatureEngineering",
                 "StratifiedSampling",
                 "MissingValueImputation",
                 "FeatureSelection",
-                "CurrencyConversion"
+                "CurrencyConversion",
             ],
-            semantic_keywords=["data", "dataset", "input", "processed_data", "features"],
+            semantic_keywords=[
+                "data",
+                "dataset",
+                "input",
+                "processed_data",
+                "features",
+            ],
             data_type="S3Uri",
             description="Input data to be processed through Bedrock models with batch inference (CSV or Parquet format)",
         ),
@@ -59,7 +69,12 @@ BEDROCK_BATCH_PROCESSING_SPEC = StepSpecification(
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["BedrockPromptTemplateGeneration"],
-            semantic_keywords=["templates", "prompts", "prompt_templates", "bedrock_templates"],
+            semantic_keywords=[
+                "templates",
+                "prompts",
+                "prompt_templates",
+                "bedrock_templates",
+            ],
             data_type="S3Uri",
             description="Prompt templates from Bedrock Prompt Template Generation step (prompts.json)",
         ),
@@ -68,7 +83,12 @@ BEDROCK_BATCH_PROCESSING_SPEC = StepSpecification(
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["BedrockPromptTemplateGeneration"],
-            semantic_keywords=["schema", "validation", "validation_schema", "response_schema"],
+            semantic_keywords=[
+                "schema",
+                "validation",
+                "validation_schema",
+                "response_schema",
+            ],
             data_type="S3Uri",
             description="Validation schemas from Bedrock Prompt Template Generation step (validation_schema_*.json)",
         ),

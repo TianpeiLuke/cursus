@@ -146,7 +146,7 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         # Use modernized effective_source_dir with comprehensive hybrid resolution
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
-        
+
         return Estimator(
             image_uri=image_uri,
             entry_point=self.config.training_entry_point,
@@ -156,7 +156,7 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
             instance_count=self.config.training_instance_count,
             volume_size=self.config.training_volume_size,
             max_run=86400,  # 24 hours default
-            input_mode='File',
+            input_mode="File",
             output_path=output_path,  # Use provided output_path directly
             base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
             sagemaker_session=self.session,
@@ -232,8 +232,13 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
             logical_name = dependency_spec.logical_name
 
             # Skip hyperparameters_s3_uri if configured to do so
-            if logical_name == "hyperparameters_s3_uri" and self.config.skip_hyperparameters_s3_uri:
-                self.log_info("Skipping hyperparameters_s3_uri channel as configured (hyperparameters loaded from script folder)")
+            if (
+                logical_name == "hyperparameters_s3_uri"
+                and self.config.skip_hyperparameters_s3_uri
+            ):
+                self.log_info(
+                    "Skipping hyperparameters_s3_uri channel as configured (hyperparameters loaded from script folder)"
+                )
                 continue
 
             # Skip if optional and not provided
@@ -332,17 +337,22 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         for logical_name in output_logical_names:
             if logical_name in outputs:
                 primary_output_path = outputs[logical_name]
-                self.log_info("Using provided output path from '%s': %s", 
-                              logical_name, primary_output_path
-                              )
+                self.log_info(
+                    "Using provided output path from '%s': %s",
+                    logical_name,
+                    primary_output_path,
+                )
                 break
 
         # If no output path was provided, generate a default one
         if primary_output_path is None:
             # Generate a clean path using base output path and Join for parameter compatibility
             from sagemaker.workflow.functions import Join
+
             base_output_path = self._get_base_output_path()
-            primary_output_path = Join(on="/", values=[base_output_path, "lightgbm_training"])
+            primary_output_path = Join(
+                on="/", values=[base_output_path, "lightgbm_training"]
+            )
             self.log_info("Using generated base output path: %s", primary_output_path)
 
         # Get base job name for logging purposes
@@ -354,13 +364,19 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         )
         self.log_info("Full job name will be: %s-[timestamp]", base_job_name)
         self.log_info(
-            "Output path structure will be: %s/%s-[timestamp]/", primary_output_path, base_job_name
+            "Output path structure will be: %s/%s-[timestamp]/",
+            primary_output_path,
+            base_job_name,
         )
         self.log_info(
-            "  - Model artifacts will be in: %s/%s-[timestamp]/output/model.tar.gz", primary_output_path, base_job_name
+            "  - Model artifacts will be in: %s/%s-[timestamp]/output/model.tar.gz",
+            primary_output_path,
+            base_job_name,
         )
         self.log_info(
-            "  - Evaluation results will be in: %s/%s-[timestamp]/output/output.tar.gz", primary_output_path, base_job_name
+            "  - Evaluation results will be in: %s/%s-[timestamp]/output/output.tar.gz",
+            primary_output_path,
+            base_job_name,
         )
 
         return primary_output_path
@@ -369,8 +385,8 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         """
         Creates a SageMaker TrainingStep for the pipeline.
 
-        This method creates the LightGBM estimator using built-in algorithm, sets up training inputs 
-        from the input data, and creates the SageMaker TrainingStep. Hyperparameters are embedded 
+        This method creates the LightGBM estimator using built-in algorithm, sets up training inputs
+        from the input data, and creates the SageMaker TrainingStep. Hyperparameters are embedded
         in the source directory.
 
         Args:

@@ -264,8 +264,12 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
             else:
                 # Generate destination from base path using Join instead of f-string
                 from sagemaker.workflow.functions import Join
+
                 base_output_path = self._get_base_output_path()
-                destination = Join(on="/", values=[base_output_path, "pytorch_model_inference", logical_name])
+                destination = Join(
+                    on="/",
+                    values=[base_output_path, "pytorch_model_inference", logical_name],
+                )
                 self.log_info(
                     "Using generated destination for '%s': %s",
                     logical_name,
@@ -351,7 +355,9 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
         # Use FrameworkProcessor with source_dir parameter for PyTorch model inference
         # This supports source_dir parameter which is needed for PyTorch scripts
         entry_point = self.config.processing_entry_point  # Just the filename
-        source_dir = self.config.effective_source_dir  # Use modernized effective_source_dir
+        source_dir = (
+            self.config.effective_source_dir
+        )  # Use modernized effective_source_dir
         self.log_info("Using entry point: %s", entry_point)
         self.log_info("Using resolved source directory: %s", source_dir)
 

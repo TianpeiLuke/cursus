@@ -7,7 +7,7 @@ This DAG can be used by both regular and MODS pipeline variants to ensure consis
 
 The DAG includes:
 1) Dummy Data Loading (training)
-2) Preprocessing (training) 
+2) Preprocessing (training)
 3) XGBoost Model Training
 4) Dummy Data Loading (evaluation)
 5) Preprocessing (evaluation)

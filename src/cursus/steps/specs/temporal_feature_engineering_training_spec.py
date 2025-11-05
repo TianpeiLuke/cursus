@@ -17,14 +17,18 @@ from ...registry.step_names import get_spec_step_type_with_job_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_temporal_feature_engineering_contract():
-    from ..contracts.temporal_feature_engineering_contract import TEMPORAL_FEATURE_ENGINEERING_CONTRACT
+    from ..contracts.temporal_feature_engineering_contract import (
+        TEMPORAL_FEATURE_ENGINEERING_CONTRACT,
+    )
 
     return TEMPORAL_FEATURE_ENGINEERING_CONTRACT
 
 
 # Temporal Feature Engineering Training Step Specification
 TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC = StepSpecification(
-    step_type=get_spec_step_type_with_job_type("TemporalFeatureEngineering", "training"),
+    step_type=get_spec_step_type_with_job_type(
+        "TemporalFeatureEngineering", "training"
+    ),
     node_type=NodeType.INTERNAL,
     script_contract=_get_temporal_feature_engineering_contract(),
     dependencies=[

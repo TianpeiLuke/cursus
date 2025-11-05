@@ -16,12 +16,16 @@ from ...registry.step_names import get_spec_step_type
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..contracts.model_metrics_computation_contract import MODEL_METRICS_COMPUTATION_CONTRACT
+    from ..contracts.model_metrics_computation_contract import (
+        MODEL_METRICS_COMPUTATION_CONTRACT,
+    )
 
 
 # Import the contract at runtime to avoid circular imports
 def _get_model_metrics_computation_contract():
-    from ..contracts.model_metrics_computation_contract import MODEL_METRICS_COMPUTATION_CONTRACT
+    from ..contracts.model_metrics_computation_contract import (
+        MODEL_METRICS_COMPUTATION_CONTRACT,
+    )
 
     return MODEL_METRICS_COMPUTATION_CONTRACT
 
@@ -38,7 +42,7 @@ MODEL_METRICS_COMPUTATION_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "XGBoostModelInference",
-                "XGBoostModelEval", 
+                "XGBoostModelEval",
                 "PyTorchModelInference",
                 "TabularPreprocessing",
                 "CradleDataLoading",

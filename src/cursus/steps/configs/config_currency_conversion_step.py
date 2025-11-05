@@ -84,10 +84,7 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
     )
 
     model_config = ProcessingStepConfigBase.model_config.copy()
-    model_config.update({
-        'arbitrary_types_allowed': True,
-        'validate_assignment': True
-    })
+    model_config.update({"arbitrary_types_allowed": True, "validate_assignment": True})
 
     @field_validator("job_type")
     @classmethod
