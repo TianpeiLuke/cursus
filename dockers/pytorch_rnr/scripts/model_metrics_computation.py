@@ -1,6 +1,76 @@
 #!/usr/bin/env python
 import os
 import json
+import sys
+
+from subprocess import check_call
+import boto3
+
+
+def _get_secure_pypi_access_tokens() -> str:
+    os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
+    sts = boto3.client("sts", region_name="us-east-1")
+    caller_identity = sts.get_caller_identity()
+    assumed_role_object = sts.assume_role(
+        RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_" + caller_identity["Account"],
+        RoleSessionName="SecurePypiReadRole",
+    )
+    credentials = assumed_role_object["Credentials"]
+    code_artifact_client = boto3.client(
+        "codeartifact",
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials["SessionToken"],
+        region_name="us-west-2",
+    )
+    token = code_artifact_client.get_authorization_token(
+        domain="amazon", domainOwner="149122183214"
+    )["authorizationToken"]
+
+    return token
+
+
+def install_requirements(path: str = "requirements.txt") -> None:
+    token = _get_secure_pypi_access_tokens()
+    check_call(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--index-url",
+            f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/",
+            "-r",
+            path,
+        ]
+    )
+
+
+def install_requirements_single(package: str = "numpy") -> None:
+    token = _get_secure_pypi_access_tokens()
+    check_call(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--index-url",
+            f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/",
+            package,
+        ]
+    )
+
+
+# Install required packages
+required_packages = [
+    "matplotlib==3.7.0",
+]
+
+for package in required_packages:
+    install_requirements_single(package)
+
+print("***********************Package Installed*********************")
+
 import argparse
 import pandas as pd
 import numpy as np
@@ -18,7 +88,6 @@ from scipy import stats
 from scipy.stats import pearsonr, spearmanr
 import matplotlib.pyplot as plt
 import time
-import sys
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 import logging
