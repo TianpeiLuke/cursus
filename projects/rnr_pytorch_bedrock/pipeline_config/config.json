@@ -1,0 +1,999 @@
+{
+  "configuration": {
+    "shared": {
+      "author": "lukexie",
+      "bucket": "buyer-seller-messaging-reversal",
+      "current_date": "2025-11-06",
+      "enable_caching": false,
+      "framework_version": "2.1.0",
+      "model_class": "pytorch",
+      "pipeline_version": "0.0.1",
+      "processing_framework_version": "1.2-1",
+      "processing_instance_count": 1,
+      "processing_instance_type_large": "ml.m5.12xlarge",
+      "processing_instance_type_small": "ml.m5.4xlarge",
+      "processing_source_dir": "dockers/scripts",
+      "processing_volume_size": 500,
+      "project_root_folder": "rnr_pytorch_bedrock",
+      "py_version": "py310",
+      "region": "NA",
+      "role": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+      "service_name": "BuyerAbuseRnR",
+      "source_dir": "dockers"
+    },
+    "specific": {
+      "BedrockBatchProcessing_training": {
+        "__model_type__": "BedrockBatchProcessingConfig",
+        "aws_region": "us-east-1",
+        "batch_configuration": {
+          "auto_selection_enabled": true,
+          "cost_optimization_enabled": true,
+          "fallback_to_realtime": true,
+          "forced_batch_mode": false,
+          "forced_realtime_mode": false,
+          "mode": "auto",
+          "role_arn": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+          "threshold": 1000,
+          "timeout_hours": 24
+        },
+        "bedrock_batch_mode": "auto",
+        "bedrock_batch_role_arn": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+        "bedrock_batch_size": 10,
+        "bedrock_batch_threshold": 1000,
+        "bedrock_batch_timeout_hours": 24,
+        "bedrock_concurrency_mode": "sequential",
+        "bedrock_environment_variables": {
+          "AWS_DEFAULT_REGION": "us-east-1",
+          "BEDROCK_BATCH_INPUT_S3_PATH": "",
+          "BEDROCK_BATCH_MODE": "auto",
+          "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
+          "BEDROCK_BATCH_ROLE_ARN": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+          "BEDROCK_BATCH_SIZE": "10",
+          "BEDROCK_BATCH_THRESHOLD": "1000",
+          "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+          "BEDROCK_CONCURRENCY_MODE": "sequential",
+          "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
+          "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
+          "BEDROCK_MAX_RETRIES": "3",
+          "BEDROCK_MAX_TOKENS": "32768",
+          "BEDROCK_OUTPUT_COLUMN_PREFIX": "llm_",
+          "BEDROCK_PRIMARY_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
+          "BEDROCK_TEMPERATURE": "1.0",
+          "BEDROCK_TOP_P": "0.999"
+        },
+        "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "bedrock_max_concurrent_workers": 5,
+        "bedrock_max_retries": 3,
+        "bedrock_max_tokens": 32768,
+        "bedrock_output_column_prefix": "llm_",
+        "bedrock_primary_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock_rate_limit_per_second": 10,
+        "bedrock_temperature": 1.0,
+        "bedrock_top_p": 0.999,
+        "cost_optimization_info": {
+          "automatic_fallback": true,
+          "batch_mode": "auto",
+          "cost_efficient_for_large_datasets": true,
+          "estimated_savings": "Up to 50% for datasets >= 1000 records",
+          "optimization_strategy": "Automatic selection based on data size",
+          "production_ready": true,
+          "threshold": 1000
+        },
+        "effective_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "dockers/scripts",
+        "job_type": "training",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "processing_entry_point": "bedrock_batch_processing.py",
+        "processing_metadata": {
+          "batch_mode": "auto",
+          "batch_role_arn": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+          "batch_size": 10,
+          "batch_threshold": 1000,
+          "batch_timeout_hours": 24,
+          "concurrency_mode": "sequential",
+          "fallback_model": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "inference_profile_required_models": [
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "anthropic.claude-sonnet-4-20250514-v1:0",
+            "anthropic.claude-opus-4-1-20250805-v1:0"
+          ],
+          "max_tokens": 32768,
+          "output_column_prefix": "llm_",
+          "primary_model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "step_type": "bedrock_batch_processing",
+          "temperature": 1.0,
+          "top_p": 0.999,
+          "uses_inference_profile": true
+        },
+        "script_path": "dockers/scripts/bedrock_batch_processing.py",
+        "use_large_processing_instance": false
+      },
+      "BedrockPromptTemplateGeneration": {
+        "__model_type__": "BedrockPromptTemplateGenerationConfig",
+        "aws_region": "us-east-1",
+        "effective_categories": null,
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_instruction_config": {
+          "classification_guidelines": {
+            "sections": [
+              {
+                "subsections": [
+                  {
+                    "content": [
+                      "**Category Selection:**",
+                      "- Choose exactly ONE category from the provided list",
+                      "- Category name must match exactly (case-sensitive)",
+                      "",
+                      "**Confidence Score:**",
+                      "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                      "- Base confidence for complete data: 0.7-1.0",
+                      "- Missing one field: reduce by 0.1-0.2",
+                      "- Missing two fields: reduce by 0.2-0.3",
+                      "- Minimum confidence threshold: 0.5"
+                    ],
+                    "title": "### 1. Output Format Requirements"
+                  },
+                  {
+                    "content": [
+                      "**Multiple Shipment Structure:**",
+                      "- Multiple shipment sequences separated by shipment IDs",
+                      "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                      "",
+                      "**Analysis Approach:**",
+                      "- Process each shipment sequence separately",
+                      "- Compare delivery events (EVENT_301) across all sequences",
+                      "",
+                      "**Key Event Codes:**",
+                      "- EVENT_301: Delivery confirmation",
+                      "- EVENT_302: Out for delivery",
+                      "- EVENT_201: Arrival at facility"
+                    ],
+                    "title": "### 2. Shiptrack Parsing Rules"
+                  },
+                  {
+                    "content": [
+                      "**When Dialogue is Empty but Shiptrack Exists:**",
+                      "- Focus on shipping events and timeline",
+                      "- Reduce confidence score by 0.1-0.2",
+                      "",
+                      "**When Shiptrack is Empty but Dialogue Exists:**",
+                      "- Focus on message content and reported issues",
+                      "- Reduce confidence score by 0.1-0.2"
+                    ],
+                    "title": "### 3. Missing Data Handling"
+                  },
+                  {
+                    "content": [
+                      "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                      "- PDA_Undeliverable: Verify no delivery + refund given",
+                      "- PDA_Early_Refund: Verify refund before delivery",
+                      "",
+                      "**Tier 2: Delivery Status Categories**",
+                      "- TrueDNR: Delivered but disputed",
+                      "- Confirmed_Delay: External factors confirmed"
+                    ],
+                    "title": "### 4. Category Priority Hierarchy"
+                  },
+                  {
+                    "content": [
+                      "**Message Evidence Must Include:**",
+                      "- Direct quotes from dialogue with speaker identification",
+                      "",
+                      "**Shipping Evidence Must Include:**",
+                      "- All tracking events listed chronologically",
+                      "",
+                      "**Timeline Evidence Must Show:**",
+                      "- Clear chronological sequence of events"
+                    ],
+                    "title": "### 5. Evidence Requirements"
+                  }
+                ],
+                "title": "## Classification Guidelines"
+              }
+            ]
+          },
+          "include_analysis_steps": true,
+          "include_decision_criteria": true,
+          "include_evidence_validation": true,
+          "include_reasoning_requirements": true,
+          "step_by_step_format": true
+        },
+        "effective_output_format_config": {
+          "evidence_validation_rules": [
+            "Message Evidence must include direct quotes with speaker identification",
+            "Shipping Evidence must include tracking events with timestamps",
+            "Timeline Evidence must show chronological sequence of events",
+            "All evidence must reference specific content from input data"
+          ],
+          "example_output": "1. Category: TrueDNR\n\n2. Confidence Score: 0.92\n\n3. Key Evidence:\n   * Message Evidence:\n     - [BUYER]: Hello, I have not received my package\n     - [BUYER]: But I did not find any package, please refund me\n   * Shipping Evidence:\n     - [Event Time]: 2025-02-21T17:40:49.323Z [Event]: Delivered\n     - No further shipping events after delivery confirmation\n   * Timeline Evidence:\n     - Delivery confirmation on 2025-02-21 17:40\n     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n4. Reasoning:\n   * Primary Factors:\n     - Tracking shows package was delivered successfully\n     - Buyer explicitly states they did not receive the package\n   * Supporting Evidence:\n     - Buyer requests refund due to missing package\n     - No evidence of buyer receiving wrong/defective item\n   * Contradicting Evidence:\n     - None",
+          "field_descriptions": {
+            "Category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
+            "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+          },
+          "format_type": "structured_text",
+          "formatting_rules": [
+            "Use exact section headers with numbers and colons",
+            "No semicolons (;) anywhere in response"
+          ],
+          "header_text": "**CRITICAL: Follow this exact format for automated parsing**",
+          "required_fields": [
+            "category",
+            "confidence",
+            "key_evidence",
+            "reasoning"
+          ],
+          "structured_text_sections": [
+            {
+              "format": "single_value",
+              "header": "Category",
+              "number": 1,
+              "placeholder": "${category_enum}",
+              "placeholder_source": "schema_enum"
+            },
+            {
+              "format": "single_value",
+              "header": "Confidence Score",
+              "number": 2,
+              "placeholder": "${numeric_range}",
+              "placeholder_source": "schema_range"
+            },
+            {
+              "format": "subsections",
+              "header": "Key Evidence",
+              "indent": "   ",
+              "item_prefix": "- ",
+              "number": 3,
+              "subsections": [
+                {
+                  "example_items": [
+                    "- [BUYER]: Example message",
+                    "- [SELLER]: Example response"
+                  ],
+                  "name": "Message Evidence"
+                },
+                {
+                  "example_items": [
+                    "- [Event]: Delivered"
+                  ],
+                  "name": "Shipping Evidence"
+                },
+                {
+                  "example_items": [
+                    "- Delivery on 2025-02-21"
+                  ],
+                  "name": "Timeline Evidence"
+                }
+              ]
+            },
+            {
+              "format": "subsections",
+              "header": "Reasoning",
+              "indent": "   ",
+              "item_prefix": "- ",
+              "number": 4,
+              "subsections": [
+                {
+                  "example_items": [
+                    "- Main reason"
+                  ],
+                  "name": "Primary Factors"
+                },
+                {
+                  "example_items": [
+                    "- Supporting detail"
+                  ],
+                  "name": "Supporting Evidence"
+                },
+                {
+                  "example_items": [
+                    "- None"
+                  ],
+                  "name": "Contradicting Evidence"
+                }
+              ]
+            }
+          ],
+          "validation_requirements": [
+            "Category must match exactly from predefined list",
+            "Confidence score must be decimal format (e.g., 0.85, not 85%)",
+            "Each evidence item must start with '[sep] ' token"
+          ]
+        },
+        "effective_source_dir": "dockers/scripts",
+        "effective_system_prompt_config": {
+          "behavioral_guidelines": [
+            "be precise in classification decisions",
+            "be objective in evidence evaluation",
+            "be thorough in timeline analysis",
+            "follow exact formatting requirements",
+            "consider all available evidence sources"
+          ],
+          "expertise_areas": [
+            "buyer-seller messaging analysis",
+            "shipping logistics",
+            "delivery timing analysis",
+            "e-commerce dispute resolution",
+            "classification and categorization"
+          ],
+          "responsibilities": [
+            "classify interactions based on message content",
+            "analyze shipping events and delivery timing",
+            "categorize into predefined dispute categories",
+            "provide evidence-based reasoning for classifications"
+          ],
+          "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+          "tone": "professional"
+        },
+        "environment_variables": {
+          "GENERATE_VALIDATION_SCHEMA": "true",
+          "INCLUDE_EXAMPLES": "true",
+          "INPUT_PLACEHOLDERS": "[\"dialogue\", \"shiptrack_event_history_by_order\", \"shiptrack_max_estimated_arrival_date_by_order\"]",
+          "TEMPLATE_STYLE": "structured",
+          "TEMPLATE_TASK_TYPE": "buyer_seller_classification",
+          "TEMPLATE_VERSION": "2.0",
+          "VALIDATION_LEVEL": "comprehensive"
+        },
+        "generate_validation_schema": true,
+        "include_examples": true,
+        "input_placeholders": [
+          "dialogue",
+          "shiptrack_event_history_by_order",
+          "shiptrack_max_estimated_arrival_date_by_order"
+        ],
+        "instruction_settings": {
+          "__model_type__": "InstructionConfig",
+          "classification_guidelines": {
+            "sections": [
+              {
+                "subsections": [
+                  {
+                    "content": [
+                      "**Category Selection:**",
+                      "- Choose exactly ONE category from the provided list",
+                      "- Category name must match exactly (case-sensitive)",
+                      "",
+                      "**Confidence Score:**",
+                      "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                      "- Base confidence for complete data: 0.7-1.0",
+                      "- Missing one field: reduce by 0.1-0.2",
+                      "- Missing two fields: reduce by 0.2-0.3",
+                      "- Minimum confidence threshold: 0.5"
+                    ],
+                    "title": "### 1. Output Format Requirements"
+                  },
+                  {
+                    "content": [
+                      "**Multiple Shipment Structure:**",
+                      "- Multiple shipment sequences separated by shipment IDs",
+                      "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                      "",
+                      "**Analysis Approach:**",
+                      "- Process each shipment sequence separately",
+                      "- Compare delivery events (EVENT_301) across all sequences",
+                      "",
+                      "**Key Event Codes:**",
+                      "- EVENT_301: Delivery confirmation",
+                      "- EVENT_302: Out for delivery",
+                      "- EVENT_201: Arrival at facility"
+                    ],
+                    "title": "### 2. Shiptrack Parsing Rules"
+                  },
+                  {
+                    "content": [
+                      "**When Dialogue is Empty but Shiptrack Exists:**",
+                      "- Focus on shipping events and timeline",
+                      "- Reduce confidence score by 0.1-0.2",
+                      "",
+                      "**When Shiptrack is Empty but Dialogue Exists:**",
+                      "- Focus on message content and reported issues",
+                      "- Reduce confidence score by 0.1-0.2"
+                    ],
+                    "title": "### 3. Missing Data Handling"
+                  },
+                  {
+                    "content": [
+                      "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                      "- PDA_Undeliverable: Verify no delivery + refund given",
+                      "- PDA_Early_Refund: Verify refund before delivery",
+                      "",
+                      "**Tier 2: Delivery Status Categories**",
+                      "- TrueDNR: Delivered but disputed",
+                      "- Confirmed_Delay: External factors confirmed"
+                    ],
+                    "title": "### 4. Category Priority Hierarchy"
+                  },
+                  {
+                    "content": [
+                      "**Message Evidence Must Include:**",
+                      "- Direct quotes from dialogue with speaker identification",
+                      "",
+                      "**Shipping Evidence Must Include:**",
+                      "- All tracking events listed chronologically",
+                      "",
+                      "**Timeline Evidence Must Show:**",
+                      "- Clear chronological sequence of events"
+                    ],
+                    "title": "### 5. Evidence Requirements"
+                  }
+                ],
+                "title": "## Classification Guidelines"
+              }
+            ]
+          },
+          "include_analysis_steps": true,
+          "include_decision_criteria": true,
+          "include_evidence_validation": true,
+          "include_reasoning_requirements": true,
+          "step_by_step_format": true
+        },
+        "output_format_settings": {
+          "__model_type__": "OutputFormatConfig",
+          "evidence_validation_rules": [
+            "Message Evidence must include direct quotes with speaker identification",
+            "Shipping Evidence must include tracking events with timestamps",
+            "Timeline Evidence must show chronological sequence of events",
+            "All evidence must reference specific content from input data"
+          ],
+          "example_output": "1. Category: TrueDNR\n\n2. Confidence Score: 0.92\n\n3. Key Evidence:\n   * Message Evidence:\n     - [BUYER]: Hello, I have not received my package\n     - [BUYER]: But I did not find any package, please refund me\n   * Shipping Evidence:\n     - [Event Time]: 2025-02-21T17:40:49.323Z [Event]: Delivered\n     - No further shipping events after delivery confirmation\n   * Timeline Evidence:\n     - Delivery confirmation on 2025-02-21 17:40\n     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n4. Reasoning:\n   * Primary Factors:\n     - Tracking shows package was delivered successfully\n     - Buyer explicitly states they did not receive the package\n   * Supporting Evidence:\n     - Buyer requests refund due to missing package\n     - No evidence of buyer receiving wrong/defective item\n   * Contradicting Evidence:\n     - None",
+          "field_descriptions": {
+            "Category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
+            "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+          },
+          "format_type": "structured_text",
+          "formatting_rules": [
+            "Use exact section headers with numbers and colons",
+            "No semicolons (;) anywhere in response"
+          ],
+          "header_text": "**CRITICAL: Follow this exact format for automated parsing**",
+          "required_fields": [
+            "category",
+            "confidence",
+            "key_evidence",
+            "reasoning"
+          ],
+          "structured_text_sections": [
+            {
+              "format": "single_value",
+              "header": "Category",
+              "number": 1,
+              "placeholder": "${category_enum}",
+              "placeholder_source": "schema_enum"
+            },
+            {
+              "format": "single_value",
+              "header": "Confidence Score",
+              "number": 2,
+              "placeholder": "${numeric_range}",
+              "placeholder_source": "schema_range"
+            },
+            {
+              "format": "subsections",
+              "header": "Key Evidence",
+              "indent": "   ",
+              "item_prefix": "- ",
+              "number": 3,
+              "subsections": [
+                {
+                  "example_items": [
+                    "- [BUYER]: Example message",
+                    "- [SELLER]: Example response"
+                  ],
+                  "name": "Message Evidence"
+                },
+                {
+                  "example_items": [
+                    "- [Event]: Delivered"
+                  ],
+                  "name": "Shipping Evidence"
+                },
+                {
+                  "example_items": [
+                    "- Delivery on 2025-02-21"
+                  ],
+                  "name": "Timeline Evidence"
+                }
+              ]
+            },
+            {
+              "format": "subsections",
+              "header": "Reasoning",
+              "indent": "   ",
+              "item_prefix": "- ",
+              "number": 4,
+              "subsections": [
+                {
+                  "example_items": [
+                    "- Main reason"
+                  ],
+                  "name": "Primary Factors"
+                },
+                {
+                  "example_items": [
+                    "- Supporting detail"
+                  ],
+                  "name": "Supporting Evidence"
+                },
+                {
+                  "example_items": [
+                    "- None"
+                  ],
+                  "name": "Contradicting Evidence"
+                }
+              ]
+            }
+          ],
+          "validation_requirements": [
+            "Category must match exactly from predefined list",
+            "Confidence score must be decimal format (e.g., 0.85, not 85%)",
+            "Each evidence item must start with '[sep] ' token"
+          ]
+        },
+        "output_format_type": "structured_text",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "processing_entry_point": "bedrock_prompt_template_generation.py",
+        "prompt_configs_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/dockers/prompt_configs",
+        "required_output_fields": [
+          "Category",
+          "Confidence Score",
+          "Key Evidence",
+          "Reasoning"
+        ],
+        "resolved_prompt_configs_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/dockers/prompt_configs",
+        "script_path": "dockers/scripts/bedrock_prompt_template_generation.py",
+        "system_prompt_settings": {
+          "__model_type__": "SystemPromptConfig",
+          "behavioral_guidelines": [
+            "be precise in classification decisions",
+            "be objective in evidence evaluation",
+            "be thorough in timeline analysis",
+            "follow exact formatting requirements",
+            "consider all available evidence sources"
+          ],
+          "expertise_areas": [
+            "buyer-seller messaging analysis",
+            "shipping logistics",
+            "delivery timing analysis",
+            "e-commerce dispute resolution",
+            "classification and categorization"
+          ],
+          "responsibilities": [
+            "classify interactions based on message content",
+            "analyze shipping events and delivery timing",
+            "categorize into predefined dispute categories",
+            "provide evidence-based reasoning for classifications"
+          ],
+          "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+          "tone": "professional"
+        },
+        "template_metadata": {
+          "generate_validation_schema": true,
+          "includes_examples": true,
+          "input_placeholders": [
+            "dialogue",
+            "shiptrack_event_history_by_order",
+            "shiptrack_max_estimated_arrival_date_by_order"
+          ],
+          "output_format": "structured_text",
+          "required_output_fields": [
+            "Category",
+            "Confidence Score",
+            "Key Evidence",
+            "Reasoning"
+          ],
+          "task_type": "buyer_seller_classification",
+          "template_style": "structured",
+          "template_version": "2.0",
+          "validation_level": "comprehensive"
+        },
+        "template_style": "structured",
+        "template_task_type": "buyer_seller_classification",
+        "template_version": "2.0",
+        "use_large_processing_instance": false,
+        "validation_level": "comprehensive"
+      },
+      "DummyDataLoading_training": {
+        "__model_type__": "DummyDataLoadingConfig",
+        "aws_region": "us-east-1",
+        "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "dockers/scripts",
+        "job_type": "training",
+        "max_file_size_mb": 1000,
+        "output_format": "PARQUET",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "processing_entry_point": "dummy_data_loading.py",
+        "script_path": "dockers/scripts/dummy_data_loading.py",
+        "shard_size": 10000,
+        "supported_formats": [
+          "csv",
+          "parquet",
+          "json",
+          "jsonl"
+        ],
+        "use_large_processing_instance": true,
+        "write_data_shards": true
+      },
+      "TabularPreprocessing_training": {
+        "__model_type__": "TabularPreprocessingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "dockers/scripts",
+        "full_script_path": "dockers/scripts/tabular_preprocessing.py",
+        "job_type": "training",
+        "label_name": "reversal_flag",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "processing_entry_point": "tabular_preprocessing.py",
+        "script_path": "dockers/scripts/tabular_preprocessing.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      }
+    }
+  },
+  "metadata": {
+    "config_types": {
+      "BedrockBatchProcessing_training": "BedrockBatchProcessingConfig",
+      "BedrockPromptTemplateGeneration": "BedrockPromptTemplateGenerationConfig",
+      "DummyDataLoading_training": "DummyDataLoadingConfig",
+      "TabularPreprocessing_training": "TabularPreprocessingConfig"
+    },
+    "created_at": "2025-11-06T05:58:47.026194",
+    "field_sources": {
+      "author": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "aws_region": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "batch_configuration": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_mode": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_role_arn": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_size": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_threshold": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_timeout_hours": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_concurrency_mode": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_environment_variables": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_fallback_model_id": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_inference_profile_arn": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_inference_profile_required_models": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_concurrent_workers": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_retries": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_tokens": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_output_column_prefix": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_primary_model_id": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_rate_limit_per_second": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_temperature": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_top_p": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bucket": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "cost_optimization_info": [
+        "BedrockBatchProcessing_training"
+      ],
+      "current_date": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "data_source": [
+        "DummyDataLoading_training"
+      ],
+      "effective_categories": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_inference_profile_required_models": [
+        "BedrockBatchProcessing_training"
+      ],
+      "effective_instance_type": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "effective_instruction_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_output_format_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "effective_system_prompt_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "enable_caching": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "environment_variables": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "framework_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "full_script_path": [
+        "TabularPreprocessing_training"
+      ],
+      "generate_validation_schema": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "include_examples": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "input_placeholders": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "instruction_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "job_type": [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "label_name": [
+        "TabularPreprocessing_training"
+      ],
+      "max_file_size_mb": [
+        "DummyDataLoading_training"
+      ],
+      "model_class": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "output_format": [
+        "DummyDataLoading_training"
+      ],
+      "output_format_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "output_format_type": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "pipeline_description": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "pipeline_name": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "pipeline_s3_loc": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "pipeline_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_entry_point": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_framework_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_instance_count": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_instance_type_large": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_instance_type_small": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_metadata": [
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "processing_volume_size": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "project_root_folder": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "prompt_configs_path": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "py_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "region": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "required_output_fields": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "resolved_prompt_configs_path": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "role": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "script_path": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "service_name": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "shard_size": [
+        "DummyDataLoading_training"
+      ],
+      "source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "supported_formats": [
+        "DummyDataLoading_training"
+      ],
+      "system_prompt_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_metadata": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_style": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_task_type": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_version": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "test_val_ratio": [
+        "TabularPreprocessing_training"
+      ],
+      "train_ratio": [
+        "TabularPreprocessing_training"
+      ],
+      "use_large_processing_instance": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      "validation_level": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "write_data_shards": [
+        "DummyDataLoading_training"
+      ]
+    }
+  }
+}
