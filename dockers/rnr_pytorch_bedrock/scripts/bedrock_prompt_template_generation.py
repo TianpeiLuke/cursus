@@ -16,7 +16,6 @@ from typing import Dict, Any, Optional, List, Callable
 import logging
 from datetime import datetime
 from dataclasses import asdict
-import jsonschema
 
 # Configure logging
 logging.basicConfig(
@@ -48,8 +47,6 @@ DEFAULT_SYSTEM_PROMPT_CONFIG = {
         "be consistent",
     ],
     "tone": "professional",
-    "include_expertise_statement": True,
-    "include_task_context": True,
 }
 
 # Default output format configuration
@@ -69,8 +66,6 @@ DEFAULT_OUTPUT_FORMAT_CONFIG = {
         "key_evidence must reference specific content from the input data",
         "reasoning must explain the logical connection between evidence and category selection",
     ],
-    "include_field_constraints": True,
-    "include_formatting_rules": True,
     "evidence_validation_rules": [
         "Evidence MUST align with at least one condition for the selected category",
         "Evidence MUST NOT match any exceptions listed for the selected category",
@@ -83,12 +78,211 @@ DEFAULT_OUTPUT_FORMAT_CONFIG = {
 DEFAULT_INSTRUCTION_CONFIG = {
     "include_analysis_steps": True,
     "include_decision_criteria": True,
-    "include_edge_case_handling": True,
-    "include_confidence_guidance": True,
     "include_reasoning_requirements": True,
     "step_by_step_format": True,
     "include_evidence_validation": True,
 }
+
+
+class PlaceholderResolver:
+    """
+    Resolves placeholders marked with ${} syntax from various data sources.
+    Tracks placeholder resolution and validates completion.
+
+    Connects category definitions to output format through schema enrichment.
+    """
+
+    def __init__(
+        self, categories: List[Dict[str, Any]], schema: Optional[Dict[str, Any]] = None
+    ):
+        self.categories = categories
+        self.schema = schema
+        self.placeholder_registry = {}  # Track all placeholders
+        self.resolution_status = {}  # Track resolution success/failure
+
+    def resolve_placeholder(
+        self, placeholder: str, field_name: str, source_hint: Optional[str] = None
+    ) -> str:
+        """
+        Resolve a placeholder marked with ${} syntax.
+
+        Args:
+            placeholder: Placeholder text (e.g., "${category_enum}")
+            field_name: Field this placeholder is for (e.g., "category")
+            source_hint: Optional hint about data source
+
+        Returns:
+            Resolved placeholder text
+        """
+        # Check if this is a dynamic placeholder
+        if not placeholder or not placeholder.startswith("${"):
+            return placeholder  # Literal text, no resolution needed
+
+        # Extract placeholder name
+        placeholder_name = placeholder.strip("${}")
+
+        # Register this placeholder
+        self.placeholder_registry[placeholder_name] = {
+            "field_name": field_name,
+            "source_hint": source_hint,
+            "original": placeholder,
+        }
+
+        # Try to resolve
+        try:
+            resolved = self._resolve_by_strategy(
+                placeholder_name, field_name, source_hint
+            )
+            self.resolution_status[placeholder_name] = {
+                "status": "success",
+                "result": resolved,
+            }
+            logger.info(
+                f"Resolved placeholder ${{{placeholder_name}}} → {resolved[:50]}..."
+            )
+            return resolved
+        except Exception as e:
+            self.resolution_status[placeholder_name] = {
+                "status": "failed",
+                "error": str(e),
+            }
+            logger.warning(f"Failed to resolve ${{{placeholder_name}}}: {e}")
+            # Fallback to descriptive placeholder
+            return f"[{field_name.upper()}_UNRESOLVED]"
+
+    def _resolve_by_strategy(
+        self, placeholder_name: str, field_name: str, source_hint: Optional[str]
+    ) -> str:
+        """Resolve placeholder using appropriate strategy."""
+
+        # Strategy 1: Explicit source hint
+        if source_hint == "schema_enum":
+            return self._resolve_from_schema_enum(field_name)
+        elif source_hint == "schema_range":
+            return self._resolve_from_schema_range(field_name)
+        elif source_hint == "categories":
+            return self._resolve_from_categories()
+
+        # Strategy 2: Infer from placeholder name
+        if "enum" in placeholder_name or "category" in placeholder_name:
+            return self._resolve_from_schema_enum(field_name)
+        elif "range" in placeholder_name or "numeric" in placeholder_name:
+            return self._resolve_from_schema_range(field_name)
+
+        # Strategy 3: Try schema lookup by field name
+        return self._resolve_from_schema_generic(field_name)
+
+    def _resolve_from_schema_enum(self, field_name: str) -> str:
+        """Resolve from schema enum values."""
+        if not self.schema:
+            raise ValueError(f"No schema available for {field_name}")
+
+        properties = self.schema.get("properties", {})
+        if field_name not in properties:
+            raise ValueError(f"Field {field_name} not in schema")
+
+        field_schema = properties[field_name]
+        if "enum" not in field_schema:
+            raise ValueError(f"Field {field_name} has no enum in schema")
+
+        enum_values = field_schema["enum"]
+        if len(enum_values) <= 5:
+            return f"One of: {', '.join(enum_values)}"
+        else:
+            first_few = enum_values[:3]
+            return f"One of: {', '.join(first_few)}, ... (see full list above)"
+
+    def _resolve_from_schema_range(self, field_name: str) -> str:
+        """Resolve from schema numeric range."""
+        if not self.schema:
+            raise ValueError(f"No schema available for {field_name}")
+
+        properties = self.schema.get("properties", {})
+        if field_name not in properties:
+            raise ValueError(f"Field {field_name} not in schema")
+
+        field_schema = properties[field_name]
+        field_type = field_schema.get("type")
+
+        if field_type not in ["number", "integer"]:
+            raise ValueError(f"Field {field_name} is not numeric")
+
+        min_val = field_schema.get("minimum")
+        max_val = field_schema.get("maximum")
+
+        if min_val is None or max_val is None:
+            raise ValueError(f"Field {field_name} missing min/max")
+
+        if field_type == "number":
+            return f"Number between {min_val} and {max_val} (e.g., 0.85)"
+        else:
+            return f"Integer between {min_val} and {max_val}"
+
+    def _resolve_from_categories(self) -> str:
+        """Resolve directly from category list."""
+        if not self.categories:
+            raise ValueError("No categories available")
+
+        category_names = [cat["name"] for cat in self.categories]
+        if len(category_names) <= 5:
+            return f"One of: {', '.join(category_names)}"
+        else:
+            first_few = category_names[:3]
+            return f"One of: {', '.join(first_few)}, ... (see full list above)"
+
+    def _resolve_from_schema_generic(self, field_name: str) -> str:
+        """Try generic schema-based resolution."""
+        if not self.schema:
+            raise ValueError(f"No schema available for {field_name}")
+
+        properties = self.schema.get("properties", {})
+        if field_name not in properties:
+            raise ValueError(f"Field {field_name} not in schema")
+
+        field_schema = properties[field_name]
+        field_type = field_schema.get("type", "string")
+
+        # Try enum first
+        if "enum" in field_schema:
+            return self._resolve_from_schema_enum(field_name)
+
+        # Try numeric range
+        if field_type in ["number", "integer"]:
+            return self._resolve_from_schema_range(field_name)
+
+        # Default description
+        description = field_schema.get("description", f"The {field_name} value")
+        return f"[{description}]"
+
+    def validate_all_resolved(self) -> Dict[str, Any]:
+        """
+        Validate that all registered placeholders were successfully resolved.
+
+        Returns:
+            Validation report with any failures
+        """
+        report = {
+            "total_placeholders": len(self.placeholder_registry),
+            "successful": 0,
+            "failed": 0,
+            "failures": [],
+        }
+
+        for name, status in self.resolution_status.items():
+            if status["status"] == "success":
+                report["successful"] += 1
+            else:
+                report["failed"] += 1
+                report["failures"].append(
+                    {
+                        "placeholder": name,
+                        "field": self.placeholder_registry[name]["field_name"],
+                        "error": status["error"],
+                    }
+                )
+
+        report["all_resolved"] = report["failed"] == 0
+        return report
 
 
 class PromptTemplateGenerator:
@@ -102,7 +296,14 @@ class PromptTemplateGenerator:
     ):
         self.config = config
         self.categories = self._load_categories()
-        self.schema_template = schema_template
+
+        # Enrich schema with category enum before creating placeholder resolver
+        self.schema_template = self._enrich_schema_with_categories(schema_template)
+
+        # Create placeholder resolver with enriched schema
+        self.placeholder_resolver = PlaceholderResolver(
+            self.categories, self.schema_template
+        )
 
     def _load_categories(self) -> List[Dict[str, Any]]:
         """Load and validate category definitions from config."""
@@ -123,6 +324,61 @@ class PromptTemplateGenerator:
 
         return categories
 
+    def _enrich_schema_with_categories(
+        self, schema: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Enrich schema with category enum values from category definitions.
+        This creates the connection between category definitions and output format.
+
+        Args:
+            schema: Original schema template
+
+        Returns:
+            Enriched schema with category enum populated
+        """
+        if not schema or not self.categories:
+            return schema
+
+        # Make a copy to avoid mutating the original
+        enriched_schema = schema.copy() if schema else {}
+
+        # Update category field enum if it exists
+        if (
+            "properties" in enriched_schema
+            and "category" in enriched_schema["properties"]
+        ):
+            category_names = [cat["name"] for cat in self.categories]
+            enriched_schema["properties"]["category"]["enum"] = category_names
+            logger.info(
+                f"Enriched schema with {len(category_names)} category enum values"
+            )
+
+        return enriched_schema
+
+    def _header_to_field_name(self, header: str) -> str:
+        """
+        Normalize section header to match validation schema field names.
+
+        Examples:
+            "Category" → "category"
+            "Confidence Score" → "confidence"
+            "Key Evidence" → "key_evidence"
+        """
+        # Common mappings
+        field_mappings = {
+            "confidence score": "confidence",
+            "key evidence": "key_evidence",
+            # Add more as patterns emerge
+        }
+
+        normalized = header.lower()
+        if normalized in field_mappings:
+            return field_mappings[normalized]
+
+        # Default: convert to snake_case
+        return normalized.replace(" ", "_")
+
     def generate_template(self) -> Dict[str, Any]:
         """Generate complete prompt template with 5-component structure."""
         template = {
@@ -130,6 +386,21 @@ class PromptTemplateGenerator:
             "user_prompt_template": self._generate_user_prompt_template(),
             "metadata": self._generate_template_metadata(),
         }
+
+        # Validate all placeholders were resolved
+        placeholder_validation = self.placeholder_resolver.validate_all_resolved()
+
+        if not placeholder_validation["all_resolved"]:
+            logger.warning(
+                f"Some placeholders failed to resolve: {placeholder_validation['failures']}"
+            )
+        else:
+            logger.info(
+                f"All {placeholder_validation['successful']} placeholders resolved successfully"
+            )
+
+        # Include placeholder validation in metadata
+        template["metadata"]["placeholder_validation"] = placeholder_validation
 
         return template
 
@@ -144,26 +415,67 @@ class PromptTemplateGenerator:
         expertise_areas = system_config.get("expertise_areas")
         responsibilities = system_config.get("responsibilities")
         behavioral_guidelines = system_config.get("behavioral_guidelines")
+        tone = system_config.get("tone", "professional")
 
         system_prompt_parts = []
 
-        # Role assignment
+        # Tone adjustments - modify language based on tone setting
+        tone_adjustments = self._get_tone_adjustments(tone)
+
+        # Role assignment with tone-appropriate language
         system_prompt_parts.append(
-            f"You are an {role_definition} with extensive knowledge in {', '.join(expertise_areas)}."
+            f"{tone_adjustments['opener']} {role_definition} with extensive knowledge in {', '.join(expertise_areas)}."
         )
 
-        # Responsibilities
+        # Responsibilities with tone-appropriate connector
         if responsibilities:
             system_prompt_parts.append(
-                f"Your task is to {', '.join(responsibilities)}."
+                f"{tone_adjustments['task_connector']} {', '.join(responsibilities)}."
             )
 
-        # Behavioral guidelines
+        # Behavioral guidelines with tone-appropriate adverb
         if behavioral_guidelines:
             guidelines_text = ", ".join(behavioral_guidelines)
-            system_prompt_parts.append(f"Always {guidelines_text} in your analysis.")
+            system_prompt_parts.append(
+                f"{tone_adjustments['guideline_adverb']} {guidelines_text} in your analysis."
+            )
 
         return " ".join(system_prompt_parts)
+
+    def _get_tone_adjustments(self, tone: str) -> Dict[str, str]:
+        """
+        Get tone-appropriate language adjustments.
+
+        Args:
+            tone: Desired tone (professional, casual, technical, formal)
+
+        Returns:
+            Dictionary of tone-adjusted phrases
+        """
+        tone_map = {
+            "professional": {
+                "opener": "You are an",
+                "task_connector": "Your task is to",
+                "guideline_adverb": "Always",
+            },
+            "casual": {
+                "opener": "Hey! You're a",
+                "task_connector": "Your job is to",
+                "guideline_adverb": "Make sure to",
+            },
+            "technical": {
+                "opener": "System role: You are a",
+                "task_connector": "Core functions include:",
+                "guideline_adverb": "Operational guidelines require:",
+            },
+            "formal": {
+                "opener": "You shall function as an",
+                "task_connector": "Your responsibilities encompass:",
+                "guideline_adverb": "You must consistently",
+            },
+        }
+
+        return tone_map.get(tone.lower(), tone_map["professional"])
 
     def _generate_user_prompt_template(self) -> str:
         """Generate user prompt template with all 5 components."""
@@ -242,7 +554,10 @@ class PromptTemplateGenerator:
         return "\n".join(section_parts)
 
     def _generate_instructions_section(self) -> str:
-        """Generate instructions and rules section."""
+        """
+        Generate instructions and rules section.
+        Supports both basic boolean flags and detailed classification guidelines.
+        """
         # Use instruction config loaded from JSON file
         instruction_config = self.config.get(
             "instruction_config", DEFAULT_INSTRUCTION_CONFIG
@@ -250,19 +565,29 @@ class PromptTemplateGenerator:
 
         instructions = ["Provide your analysis in the following structured format:", ""]
 
+        # Analysis steps with format control
         if instruction_config.get("include_analysis_steps", True):
-            instructions.extend(
-                [
-                    "1. Carefully review all provided data",
-                    "2. Identify key patterns and indicators",
-                    "3. Match against category criteria",
-                    "4. Select the most appropriate category",
-                    "5. Validate evidence against conditions and exceptions",
-                    "6. Provide confidence assessment and reasoning",
-                    "",
-                ]
-            )
+            use_step_by_step = instruction_config.get("step_by_step_format", True)
+            analysis_steps = [
+                "Carefully review all provided data",
+                "Identify key patterns and indicators",
+                "Match against category criteria",
+                "Select the most appropriate category",
+                "Validate evidence against conditions and exceptions",
+                "Provide confidence assessment and reasoning",
+            ]
 
+            if use_step_by_step:
+                # Numbered format
+                instructions.extend(
+                    [f"{i + 1}. {step}" for i, step in enumerate(analysis_steps)]
+                )
+            else:
+                # Bullet point format
+                instructions.extend([f"- {step}" for step in analysis_steps])
+            instructions.append("")
+
+        # Decision criteria section
         if instruction_config.get("include_decision_criteria", True):
             instructions.extend(
                 [
@@ -275,6 +600,20 @@ class PromptTemplateGenerator:
                 ]
             )
 
+        # Reasoning requirements section (NEW)
+        if instruction_config.get("include_reasoning_requirements", True):
+            instructions.extend(
+                [
+                    "Reasoning Requirements:",
+                    "- Explain WHY the evidence supports the selected category",
+                    "- Address HOW the evidence aligns with category conditions",
+                    "- Clarify WHAT makes this category the best match",
+                    "- Describe WHY other categories were ruled out (if applicable)",
+                    "",
+                ]
+            )
+
+        # Evidence validation section
         if instruction_config.get("include_evidence_validation", True):
             instructions.extend(
                 [
@@ -287,12 +626,201 @@ class PromptTemplateGenerator:
                 ]
             )
 
+        # Detailed classification guidelines (from config structure)
+        classification_guidelines = instruction_config.get("classification_guidelines")
+        if classification_guidelines:
+            guidelines_text = self._generate_classification_guidelines(
+                classification_guidelines
+            )
+            if guidelines_text:
+                instructions.extend([guidelines_text, ""])
+
         return "\n".join(instructions)
 
+    def _generate_classification_guidelines(self, guidelines: Dict[str, Any]) -> str:
+        """
+        Generate detailed classification guidelines from config structure.
+
+        Args:
+            guidelines: Dictionary containing sections with hierarchical structure
+
+        Returns:
+            Formatted guideline text
+        """
+        guideline_parts = []
+
+        sections = guidelines.get("sections", [])
+        for section in sections:
+            # Add main section title
+            section_title = section.get("title", "")
+            if section_title:
+                guideline_parts.append(section_title)
+                guideline_parts.append("")
+
+            # Add subsections
+            subsections = section.get("subsections", [])
+            for subsection in subsections:
+                # Add subsection title
+                subsection_title = subsection.get("title", "")
+                if subsection_title:
+                    guideline_parts.append(subsection_title)
+                    guideline_parts.append("")
+
+                # Add subsection content
+                content = subsection.get("content", [])
+                if content:
+                    guideline_parts.extend(content)
+                    guideline_parts.append("")
+
+        return "\n".join(guideline_parts)
+
     def _generate_output_format_section(self) -> str:
-        """Generate output format schema section using schema template (default or custom)."""
-        # Always use schema-based generation (either default or custom schema)
-        return self._generate_custom_output_format_from_schema()
+        """Generate output format schema section based on format_type."""
+        # Use output format config loaded from JSON file
+        output_config = self.config.get(
+            "output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG
+        )
+        format_type = output_config.get("format_type", "structured_json")
+
+        if format_type == "structured_text":
+            return self._generate_structured_text_output_format_from_config()
+        else:
+            # Default to JSON schema-based generation
+            return self._generate_custom_output_format_from_schema()
+
+    def _generate_structured_text_output_format_from_config(self) -> str:
+        """
+        Generate structured text output format from configuration.
+        Fully driven by output_format.json configuration - no hard-coding.
+        """
+        output_config = self.config.get(
+            "output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG
+        )
+
+        format_parts = ["## Required Output Format", ""]
+
+        # Add header text if provided in config
+        header_text = output_config.get(
+            "header_text",
+            "**CRITICAL: Follow this exact format for automated parsing**",
+        )
+        format_parts.append(header_text)
+        format_parts.append("")
+
+        # Generate example structure from config
+        structured_text_sections = output_config.get("structured_text_sections", [])
+
+        if structured_text_sections:
+            format_parts.append("```")
+            for section in structured_text_sections:
+                section_lines = self._generate_section_from_config(section)
+                format_parts.extend(section_lines)
+            format_parts.append("```")
+            format_parts.append("")
+
+        # Add field descriptions if provided
+        field_descriptions = output_config.get("field_descriptions", {})
+        if field_descriptions:
+            format_parts.append("**Field Descriptions:**")
+            for field, description in field_descriptions.items():
+                format_parts.append(f"- **{field}**: {description}")
+            format_parts.append("")
+
+        # Add formatting rules if provided
+        formatting_rules = output_config.get("formatting_rules", [])
+        if formatting_rules:
+            format_parts.append("**Formatting Rules:**")
+            for rule in formatting_rules:
+                format_parts.append(f"- {rule}")
+            format_parts.append("")
+
+        # Add validation requirements if provided
+        validation_requirements = output_config.get("validation_requirements", [])
+        if validation_requirements:
+            format_parts.append("**Validation Requirements:**")
+            for req in validation_requirements:
+                format_parts.append(f"- {req}")
+            format_parts.append("")
+
+        # Add evidence validation rules if provided
+        evidence_validation_rules = output_config.get("evidence_validation_rules", [])
+        if evidence_validation_rules:
+            format_parts.append("**Evidence Validation:**")
+            for rule in evidence_validation_rules:
+                format_parts.append(f"- {rule}")
+            format_parts.append("")
+
+        # Add example output if provided in config
+        example_output = output_config.get("example_output")
+        if example_output:
+            format_parts.append("**Example Output:**")
+            format_parts.append("")
+            format_parts.append("```")
+            if isinstance(example_output, str):
+                format_parts.append(example_output)
+            elif isinstance(example_output, list):
+                format_parts.extend(example_output)
+            format_parts.append("```")
+
+        return "\n".join(format_parts)
+
+    def _generate_section_from_config(self, section: Dict[str, Any]) -> List[str]:
+        """
+        Generate a section's text from its configuration.
+        Supports flexible section formats defined in config.
+        Uses PlaceholderResolver to dynamically fill placeholders from categories/schema.
+        """
+        lines = []
+
+        number = section.get("number", "")
+        header = section.get("header", "")
+        section_format = section.get("format", "single_value")
+        placeholder = section.get(
+            "placeholder", f"[{header.upper().replace(' ', '_')}]"
+        )
+        placeholder_source = section.get("placeholder_source")
+
+        # Normalize header to field name for schema lookup
+        field_name = self._header_to_field_name(header)
+
+        # Resolve placeholder using PlaceholderResolver
+        resolved_placeholder = self.placeholder_resolver.resolve_placeholder(
+            placeholder, field_name, placeholder_source
+        )
+
+        # Generate section header with resolved placeholder
+        if number:
+            lines.append(f"{number}. {header}: {resolved_placeholder}")
+        else:
+            lines.append(f"{header}: {resolved_placeholder}")
+        lines.append("")
+
+        # Handle subsections if present
+        if section_format == "subsections":
+            subsections = section.get("subsections", [])
+            item_prefix = section.get("item_prefix", "[sep] ")
+            indent = section.get("indent", "   ")
+
+            for subsection in subsections:
+                # Subsection can be a string or dict
+                if isinstance(subsection, str):
+                    subsection_header = subsection
+                    subsection_items = section.get(
+                        "subsection_example_items",
+                        [f"{item_prefix}[Item 1]", f"{item_prefix}[Item 2]"],
+                    )
+                else:
+                    subsection_header = subsection.get("name", "")
+                    subsection_items = subsection.get(
+                        "example_items", [f"{item_prefix}[Item 1]"]
+                    )
+
+                lines.append(f"{indent}* {subsection_header}:")
+                for item in subsection_items:
+                    lines.append(f"{indent}  {item}")
+            lines.append("")
+
+        return lines
 
     def _generate_custom_output_format_from_schema(self) -> str:
         """Generate output format section from custom JSON schema template."""
