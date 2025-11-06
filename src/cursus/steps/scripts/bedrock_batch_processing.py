@@ -11,10 +11,26 @@ template-driven response processing with dynamic Pydantic model creation.
 
 import os
 import json
+import sys
+
+from subprocess import check_call
+import boto3
+
+
+def install_packages_from_pypi(packages: list) -> None:
+    """Install packages from standard PyPI"""
+    check_call([sys.executable, "-m", "pip", "install", *packages])
+
+
+# Install required packages
+required_packages = ["pydantic==2.11.2", "tenacity==8.5.0"]
+
+install_packages_from_pypi(required_packages)
+print("***********************Package Installed*********************")
+
 import argparse
 import pandas as pd
 import boto3
-import sys
 import traceback
 import time
 from pathlib import Path
@@ -494,14 +510,19 @@ class BedrockProcessor:
             # Save intermediate results
             if save_intermediate:
                 intermediate_df = pd.DataFrame(batch_results)
-                output_dir_path = output_dir if output_dir is not None else Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
+                output_dir_path = (
+                    output_dir
+                    if output_dir is not None
+                    else Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
+                )
                 output_dir_path.mkdir(parents=True, exist_ok=True)
 
                 # Use filename-based naming to prevent collisions
                 if input_filename:
                     base_name = Path(input_filename).stem
                     intermediate_file = (
-                        output_dir_path / f"{base_name}_batch_{batch_num:04d}_results.parquet"
+                        output_dir_path
+                        / f"{base_name}_batch_{batch_num:04d}_results.parquet"
                     )
                 else:
                     # Fallback for backward compatibility
@@ -894,10 +915,14 @@ class BedrockBatchProcessor(BedrockProcessor):
         """
         if self.should_use_batch_processing(df):
             logger.info(f"Using batch processing for {len(df)} records")
-            return self.process_batch_inference(df, batch_size, save_intermediate, output_dir)
+            return self.process_batch_inference(
+                df, batch_size, save_intermediate, output_dir
+            )
         else:
             logger.info(f"Using real-time processing for {len(df)} records")
-            return super().process_batch(df, batch_size, save_intermediate, output_dir, input_filename)
+            return super().process_batch(
+                df, batch_size, save_intermediate, output_dir, input_filename
+            )
 
 
 def load_prompt_templates(
@@ -1378,7 +1403,12 @@ def main(
                     df = load_data_file(input_file, log)
 
                     # Process batch (automatically selects batch vs real-time based on size)
-                    result_df = processor.process_batch(df, save_intermediate=True, output_dir=output_path, input_filename=input_file.name)
+                    result_df = processor.process_batch(
+                        df,
+                        save_intermediate=True,
+                        output_dir=output_path,
+                        input_filename=input_file.name,
+                    )
 
                     # Track batch processing usage for statistics
                     batch_used = processor.should_use_batch_processing(df)
@@ -1520,7 +1550,12 @@ def main(
                 df = load_data_file(input_file, log)
 
                 # Process batch (automatically selects batch vs real-time based on size)
-                result_df = processor.process_batch(df, save_intermediate=True, output_dir=output_path, input_filename=input_file.name)
+                result_df = processor.process_batch(
+                    df,
+                    save_intermediate=True,
+                    output_dir=output_path,
+                    input_filename=input_file.name,
+                )
 
                 # Track batch processing usage
                 batch_used = processor.should_use_batch_processing(df)

@@ -7,11 +7,27 @@ Supports template-driven response processing with dynamic Pydantic model creatio
 """
 
 import os
+import sys
+
+from subprocess import check_call
+import boto3
+
+
+def install_packages_from_pypi(packages: list) -> None:
+    """Install packages from standard PyPI"""
+    check_call([sys.executable, "-m", "pip", "install", *packages])
+
+
+# Install required packages
+required_packages = ["pydantic==2.11.2", "tenacity==8.5.0"]
+
+install_packages_from_pypi(required_packages)
+print("***********************Package Installed*********************")
+
 import json
 import argparse
 import pandas as pd
 import boto3
-import sys
 import traceback
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Callable
