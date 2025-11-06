@@ -440,7 +440,13 @@ class BedrockProcessor:
             "max_tokens": int(self.config["max_tokens"]),
             "temperature": float(self.config["temperature"]),
             "top_p": float(self.config["top_p"]),
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "user", "content": prompt},
+                {
+                    "role": "assistant",
+                    "content": "{",
+                },  # Force JSON output via prefilling
+            ],
         }
 
         if self.config.get("system_prompt"):

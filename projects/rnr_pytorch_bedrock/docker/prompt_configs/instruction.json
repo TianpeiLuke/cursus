@@ -7,10 +7,8 @@
   "classification_guidelines": {
     "sections": [
       {
-        "title": "## Classification Guidelines",
         "subsections": [
           {
-            "title": "### 1. Output Format Requirements",
             "content": [
               "**Category Selection:**",
               "- Choose exactly ONE category from the provided list",
@@ -22,10 +20,10 @@
               "- Missing one field: reduce by 0.1-0.2",
               "- Missing two fields: reduce by 0.2-0.3",
               "- Minimum confidence threshold: 0.5"
-            ]
+            ],
+            "title": "### 1. Output Format Requirements"
           },
           {
-            "title": "### 2. Shiptrack Parsing Rules",
             "content": [
               "**Multiple Shipment Structure:**",
               "- Multiple shipment sequences separated by shipment IDs",
@@ -39,10 +37,10 @@
               "- EVENT_301: Delivery confirmation",
               "- EVENT_302: Out for delivery",
               "- EVENT_201: Arrival at facility"
-            ]
+            ],
+            "title": "### 2. Shiptrack Parsing Rules"
           },
           {
-            "title": "### 3. Missing Data Handling",
             "content": [
               "**When Dialogue is Empty but Shiptrack Exists:**",
               "- Focus on shipping events and timeline",
@@ -51,10 +49,10 @@
               "**When Shiptrack is Empty but Dialogue Exists:**",
               "- Focus on message content and reported issues",
               "- Reduce confidence score by 0.1-0.2"
-            ]
+            ],
+            "title": "### 3. Missing Data Handling"
           },
           {
-            "title": "### 4. Category Priority Hierarchy",
             "content": [
               "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
               "- PDA_Undeliverable: Verify no delivery + refund given",
@@ -63,10 +61,10 @@
               "**Tier 2: Delivery Status Categories**",
               "- TrueDNR: Delivered but disputed",
               "- Confirmed_Delay: External factors confirmed"
-            ]
+            ],
+            "title": "### 4. Category Priority Hierarchy"
           },
           {
-            "title": "### 5. Evidence Requirements",
             "content": [
               "**Message Evidence Must Include:**",
               "- Direct quotes from dialogue with speaker identification",
@@ -76,9 +74,11 @@
               "",
               "**Timeline Evidence Must Show:**",
               "- Clear chronological sequence of events"
-            ]
+            ],
+            "title": "### 5. Evidence Requirements"
           }
-        ]
+        ],
+        "title": "## Classification Guidelines"
       }
     ]
   }

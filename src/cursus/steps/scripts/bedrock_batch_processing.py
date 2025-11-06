@@ -443,7 +443,13 @@ class BedrockProcessor:
             "max_tokens": int(self.config["max_tokens"]),
             "temperature": float(self.config["temperature"]),
             "top_p": float(self.config["top_p"]),
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "user", "content": prompt},
+                {
+                    "role": "assistant",
+                    "content": "{",
+                },  # Force JSON output via prefilling
+            ],
         }
 
         if self.config.get("system_prompt"):
@@ -710,11 +716,15 @@ class BedrockBatchProcessor(BedrockProcessor):
         self.batch_threshold = config.get("batch_threshold", 1000)
         self.batch_role_arn = config.get("batch_role_arn")
         self.batch_timeout_hours = config.get("batch_timeout_hours", 24)
-        
+
         # AWS Bedrock batch inference limits (per model)
         # Reference: https://docs.aws.amazon.com/general/latest/gr/bedrock.html
-        self.max_records_per_job = config.get("max_records_per_job", 45000)  # Conservative limit (AWS max: 50,000)
-        self.max_concurrent_batch_jobs = config.get("max_concurrent_batch_jobs", 20)  # AWS limit
+        self.max_records_per_job = config.get(
+            "max_records_per_job", 45000
+        )  # Conservative limit (AWS max: 50,000)
+        self.max_concurrent_batch_jobs = config.get(
+            "max_concurrent_batch_jobs", 20
+        )  # AWS limit
 
         # Extract S3 paths from environment variables (set by step builder using framework patterns)
         self.batch_input_s3_path = os.environ.get("BEDROCK_BATCH_INPUT_S3_PATH")
@@ -826,15 +836,21 @@ class BedrockBatchProcessor(BedrockProcessor):
         content_bytes = jsonl_content.encode("utf-8")
         content_size_mb = len(content_bytes) / (1024 * 1024)
 
-        logger.info(f"Preparing to upload {len(jsonl_records)} records ({content_size_mb:.2f} MB)")
+        logger.info(
+            f"Preparing to upload {len(jsonl_records)} records ({content_size_mb:.2f} MB)"
+        )
 
         # Use multipart upload for files larger than 100MB
         if len(content_bytes) > 100 * 1024 * 1024:  # 100MB threshold
-            logger.info(f"Using multipart upload for large file ({content_size_mb:.2f} MB)")
+            logger.info(
+                f"Using multipart upload for large file ({content_size_mb:.2f} MB)"
+            )
             self._upload_large_file_multipart(content_bytes, self.input_bucket, s3_key)
         else:
             # Small files use regular put_object
-            logger.info(f"Using standard upload for small file ({content_size_mb:.2f} MB)")
+            logger.info(
+                f"Using standard upload for small file ({content_size_mb:.2f} MB)"
+            )
             self.s3_client.put_object(
                 Bucket=self.input_bucket,
                 Key=s3_key,
@@ -849,10 +865,10 @@ class BedrockBatchProcessor(BedrockProcessor):
     def _upload_large_file_multipart(self, content_bytes: bytes, bucket: str, key: str):
         """
         Upload large file using S3 multipart upload.
-        
+
         S3 multipart upload allows files larger than 5GB to be uploaded by splitting
         them into smaller parts (minimum 5MB per part, except last part).
-        
+
         Args:
             content_bytes: File content as bytes
             bucket: S3 bucket name
@@ -865,14 +881,14 @@ class BedrockBatchProcessor(BedrockProcessor):
         estimated_parts = (len(content_bytes) + part_size - 1) // part_size
 
         logger.info(f"Initiating multipart upload for {total_size_mb:.2f} MB file")
-        logger.info(f"Estimated parts: {estimated_parts} (part size: {part_size / (1024*1024):.0f} MB)")
+        logger.info(
+            f"Estimated parts: {estimated_parts} (part size: {part_size / (1024 * 1024):.0f} MB)"
+        )
 
         # Initiate multipart upload
         try:
             mpu = self.s3_client.create_multipart_upload(
-                Bucket=bucket,
-                Key=key,
-                ContentType="application/jsonl"
+                Bucket=bucket, Key=key, ContentType="application/jsonl"
             )
             mpu_id = mpu["UploadId"]
             logger.info(f"Multipart upload initiated with ID: {mpu_id}")
@@ -893,7 +909,9 @@ class BedrockBatchProcessor(BedrockProcessor):
                     break
 
                 chunk_size_mb = len(chunk) / (1024 * 1024)
-                logger.info(f"Uploading part {part_number}/{estimated_parts} ({chunk_size_mb:.2f} MB)...")
+                logger.info(
+                    f"Uploading part {part_number}/{estimated_parts} ({chunk_size_mb:.2f} MB)..."
+                )
 
                 try:
                     part_response = self.s3_client.upload_part(
@@ -901,15 +919,16 @@ class BedrockBatchProcessor(BedrockProcessor):
                         Key=key,
                         PartNumber=part_number,
                         UploadId=mpu_id,
-                        Body=chunk
+                        Body=chunk,
                     )
 
-                    parts.append({
-                        "PartNumber": part_number,
-                        "ETag": part_response["ETag"]
-                    })
+                    parts.append(
+                        {"PartNumber": part_number, "ETag": part_response["ETag"]}
+                    )
 
-                    logger.info(f"✓ Part {part_number} uploaded successfully (ETag: {part_response['ETag']})")
+                    logger.info(
+                        f"✓ Part {part_number} uploaded successfully (ETag: {part_response['ETag']})"
+                    )
                     part_number += 1
 
                 except Exception as e:
@@ -922,10 +941,12 @@ class BedrockBatchProcessor(BedrockProcessor):
                 Bucket=bucket,
                 Key=key,
                 UploadId=mpu_id,
-                MultipartUpload={"Parts": parts}
+                MultipartUpload={"Parts": parts},
             )
 
-            logger.info(f"✓ Multipart upload completed successfully ({len(parts)} parts)")
+            logger.info(
+                f"✓ Multipart upload completed successfully ({len(parts)} parts)"
+            )
 
         except Exception as e:
             # Abort multipart upload on error to avoid orphaned parts
@@ -934,9 +955,7 @@ class BedrockBatchProcessor(BedrockProcessor):
 
             try:
                 self.s3_client.abort_multipart_upload(
-                    Bucket=bucket,
-                    Key=key,
-                    UploadId=mpu_id
+                    Bucket=bucket, Key=key, UploadId=mpu_id
                 )
                 logger.info("Multipart upload aborted successfully")
             except Exception as abort_error:
@@ -950,7 +969,7 @@ class BedrockBatchProcessor(BedrockProcessor):
             raise RuntimeError("No output S3 bucket configured for batch processing")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        job_name = f"bedrock-batch-{timestamp}"
+        job_name = f"cursus-bedrock-batch-{timestamp}"
 
         # Use framework-provided output path
         if self.output_prefix:
@@ -1125,56 +1144,60 @@ class BedrockBatchProcessor(BedrockProcessor):
     def _split_dataframe_for_batch(self, df: pd.DataFrame) -> List[pd.DataFrame]:
         """
         Split DataFrame into chunks that comply with AWS Bedrock batch limits.
-        
+
         AWS Limit: 50,000 records per file (model-specific)
         Conservative limit: 45,000 records per chunk
-        
+
         Args:
             df: Input DataFrame
-            
+
         Returns:
             List of DataFrame chunks
         """
         total_records = len(df)
-        num_chunks = (total_records + self.max_records_per_job - 1) // self.max_records_per_job
-        
+        num_chunks = (
+            total_records + self.max_records_per_job - 1
+        ) // self.max_records_per_job
+
         logger.info(f"Splitting {total_records} records into {num_chunks} chunks")
         logger.info(f"Max records per job: {self.max_records_per_job}")
-        
+
         chunks = []
         for i in range(num_chunks):
             start_idx = i * self.max_records_per_job
             end_idx = min((i + 1) * self.max_records_per_job, total_records)
             chunk = df.iloc[start_idx:end_idx].copy()
             chunks.append(chunk)
-            logger.info(f"Chunk {i+1}/{num_chunks}: {len(chunk)} records (rows {start_idx}-{end_idx-1})")
-        
+            logger.info(
+                f"Chunk {i + 1}/{num_chunks}: {len(chunk)} records (rows {start_idx}-{end_idx - 1})"
+            )
+
         return chunks
 
     def _monitor_multiple_batch_jobs(self, job_arns: List[str]) -> List[Dict[str, Any]]:
         """
         Monitor multiple batch jobs in parallel until all complete.
-        
+
         Args:
             job_arns: List of job ARNs to monitor
-            
+
         Returns:
             List of job responses in the same order as job_arns
         """
         logger.info(f"Monitoring {len(job_arns)} batch jobs in parallel")
-        
+
         job_statuses = {arn: "Submitted" for arn in job_arns}
         job_responses = {arn: None for arn in job_arns}
         start_time = time.time()
         check_count = 0
-        
+
         while True:
             # Check all jobs
             all_completed = True
             for job_arn in job_arns:
                 if job_statuses[job_arn] in ["Completed", "Failed", "Stopped"]:
                     continue
-                    
+
                 try:
                     response = self.bedrock_client.get_model_invocation_job(
                         jobIdentifier=job_arn
@@ -1182,38 +1205,44 @@ class BedrockBatchProcessor(BedrockProcessor):
                     status = response["status"]
                     job_statuses[job_arn] = status
                     job_responses[job_arn] = response
-                    
+
                     if status not in ["Completed", "Failed", "Stopping", "Stopped"]:
                         all_completed = False
-                        
+
                 except Exception as e:
                     logger.error(f"Error checking job {job_arn}: {e}")
                     all_completed = False
-            
+
             # Log progress
             elapsed_time = time.time() - start_time
             completed_count = sum(1 for s in job_statuses.values() if s == "Completed")
-            failed_count = sum(1 for s in job_statuses.values() if s in ["Failed", "Stopped"])
+            failed_count = sum(
+                1 for s in job_statuses.values() if s in ["Failed", "Stopped"]
+            )
             in_progress_count = len(job_arns) - completed_count - failed_count
-            
+
             logger.info(
-                f"Job status (elapsed: {elapsed_time/60:.1f} min): "
+                f"Job status (elapsed: {elapsed_time / 60:.1f} min): "
                 f"Completed={completed_count}, InProgress={in_progress_count}, Failed={failed_count}"
             )
-            
+
             # Check if all completed or failed
             if all_completed:
                 # Check for failures
-                failed_jobs = [arn for arn, status in job_statuses.items() if status in ["Failed", "Stopped"]]
+                failed_jobs = [
+                    arn
+                    for arn, status in job_statuses.items()
+                    if status in ["Failed", "Stopped"]
+                ]
                 if failed_jobs:
                     error_msg = f"{len(failed_jobs)} batch jobs failed: {failed_jobs}"
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
-                
+
                 logger.info(f"All {len(job_arns)} batch jobs completed successfully")
                 # Return responses in same order as input
                 return [job_responses[arn] for arn in job_arns]
-            
+
             # Exponential backoff
             check_count += 1
             wait_time = min(60, 10 * (1.2**check_count))
@@ -1228,22 +1257,22 @@ class BedrockBatchProcessor(BedrockProcessor):
     ) -> pd.DataFrame:
         """
         Process DataFrame using Bedrock batch inference with multi-job support.
-        
+
         Automatically splits large datasets into multiple batch jobs to comply with
         AWS Bedrock limits (50,000 records per file). Jobs are processed in parallel
         for optimal performance.
-        
+
         Args:
             df: Input DataFrame
             batch_size: Unused (kept for interface compatibility)
             save_intermediate: Whether to save intermediate results
             output_dir: Output directory for intermediate results
-            
+
         Returns:
             DataFrame with batch inference results
         """
         logger.info(f"Starting batch inference processing for {len(df)} records")
-        
+
         try:
             # Check if we need multi-job processing
             if len(df) <= self.max_records_per_job:
@@ -1252,17 +1281,17 @@ class BedrockBatchProcessor(BedrockProcessor):
             else:
                 logger.info(f"Using multi-job batch processing for {len(df)} records")
                 return self._process_multi_batch_jobs(df)
-                
+
         except Exception as e:
             logger.error(f"Batch inference failed: {e}")
             logger.info("Falling back to real-time processing...")
             # Fallback to parent class real-time processing
             return super().process_batch(df, batch_size, save_intermediate, output_dir)
-    
+
     def _process_single_batch_job(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process a single batch job (original implementation)."""
         logger.info(f"Processing single batch job with {len(df)} records")
-        
+
         # 1. Convert DataFrame to JSONL format
         logger.info("Converting DataFrame to JSONL format...")
         jsonl_records = self.convert_df_to_jsonl(df)
@@ -1287,92 +1316,98 @@ class BedrockBatchProcessor(BedrockProcessor):
         logger.info("Converting results back to DataFrame...")
         result_df = self.convert_batch_results_to_df(batch_results, df)
 
-        logger.info(f"Single batch job completed successfully for {len(result_df)} records")
+        logger.info(
+            f"Single batch job completed successfully for {len(result_df)} records"
+        )
         return result_df
-    
+
     def _process_multi_batch_jobs(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Process multiple batch jobs in parallel for large datasets.
-        
+
         Workflow:
         1. Split DataFrame into chunks (≤45K records each)
         2. Convert each chunk to JSONL and upload to S3
         3. Create batch jobs for all chunks
         4. Monitor all jobs in parallel
         5. Download and merge results
-        
+
         Args:
             df: Input DataFrame
-            
+
         Returns:
             DataFrame with merged results from all batch jobs
         """
         logger.info(f"Starting multi-job batch processing for {len(df)} records")
-        
+
         # Step 1: Split DataFrame into chunks
         chunks = self._split_dataframe_for_batch(df)
         logger.info(f"Split data into {len(chunks)} chunks")
-        
+
         # Step 2 & 3: Upload chunks and create batch jobs
         job_arns = []
         chunk_info = []  # Track which chunk each job processes
-        
+
         for i, chunk in enumerate(chunks):
-            logger.info(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} records)")
-            
+            logger.info(
+                f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk)} records)"
+            )
+
             # Convert to JSONL
             jsonl_records = self.convert_df_to_jsonl(chunk)
-            
+
             # Upload to S3
             input_s3_uri = self.upload_jsonl_to_s3(jsonl_records)
-            
+
             # Create batch job
             job_arn = self.create_batch_job(input_s3_uri)
             job_arns.append(job_arn)
-            chunk_info.append({
-                "chunk_index": i,
-                "chunk_size": len(chunk),
-                "start_row": chunk.index[0],
-                "end_row": chunk.index[-1],
-                "job_arn": job_arn
-            })
-            
-            logger.info(f"Created job {i+1}/{len(chunks)}: {job_arn}")
-        
+            chunk_info.append(
+                {
+                    "chunk_index": i,
+                    "chunk_size": len(chunk),
+                    "start_row": chunk.index[0],
+                    "end_row": chunk.index[-1],
+                    "job_arn": job_arn,
+                }
+            )
+
+            logger.info(f"Created job {i + 1}/{len(chunks)}: {job_arn}")
+
         logger.info(f"Successfully created {len(job_arns)} batch jobs")
-        
+
         # Step 4: Monitor all jobs in parallel
         logger.info("Monitoring all batch jobs...")
         job_responses = self._monitor_multiple_batch_jobs(job_arns)
-        
+
         # Step 5: Download and merge results
         logger.info("Downloading and merging results from all jobs...")
         all_results = []
-        
+
         for i, (job_response, chunk) in enumerate(zip(job_responses, chunks)):
-            logger.info(f"Downloading results for job {i+1}/{len(job_responses)}")
-            
+            logger.info(f"Downloading results for job {i + 1}/{len(job_responses)}")
+
             # Download results
             batch_results = self.download_batch_results(job_response)
-            
+
             # Convert to DataFrame
             chunk_result_df = self.convert_batch_results_to_df(batch_results, chunk)
             all_results.append(chunk_result_df)
-            
-            logger.info(f"Processed {len(chunk_result_df)} results from job {i+1}")
-        
+
+            logger.info(f"Processed {len(chunk_result_df)} results from job {i + 1}")
+
         # Merge all results
         logger.info("Merging results from all batch jobs...")
         result_df = pd.concat(all_results, ignore_index=False)
-        
+
         # Sort by original index to maintain order
         result_df = result_df.sort_index()
-        
+
         logger.info(
             f"Multi-job batch inference completed successfully: "
             f"{len(result_df)} total records from {len(job_arns)} jobs"
         )
-        
+
         return result_df
 
     def process_batch(

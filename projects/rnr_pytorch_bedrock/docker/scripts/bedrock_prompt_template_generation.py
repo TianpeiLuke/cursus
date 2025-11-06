@@ -824,47 +824,76 @@ class PromptTemplateGenerator:
     def _generate_custom_output_format_from_schema(self) -> str:
         """Generate output format section from custom JSON schema template."""
         schema = self.schema_template
+        output_config = self.config.get(
+            "output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG
+        )
 
         format_parts = [
             "## Required Output Format",
             "",
             "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
             "",
-            "```json",
-            "{",
         ]
 
-        # Extract properties from schema
-        properties = schema.get("properties", {})
-        required_fields = schema.get("required", list(properties.keys()))
+        # Check if example_output is provided as dict
+        example_output = output_config.get("example_output")
+        use_real_example = isinstance(example_output, dict)
 
-        # Generate JSON structure from schema
-        for i, field in enumerate(required_fields):
-            field_schema = properties.get(field, {})
-            field_type = field_schema.get("type", "string")
-            description = field_schema.get("description", f"The {field} value")
+        if use_real_example:
+            # Use the provided example directly
+            format_parts.extend(
+                [
+                    "```json",
+                    json.dumps(example_output, indent=2, ensure_ascii=False),
+                    "```",
+                    "",
+                ]
+            )
+            logger.info("Using provided example_output dict for JSON format")
+        else:
+            # Generate placeholder structure from schema (existing logic)
+            format_parts.extend(["```json", "{"])
 
-            # Generate example value based on type
-            if field_type == "string":
-                if "enum" in field_schema:
-                    example_value = f"One of: {', '.join(field_schema['enum'])}"
+            # Extract properties from schema
+            properties = schema.get("properties", {})
+            required_fields = schema.get("required", list(properties.keys()))
+
+            # Generate JSON structure from schema
+            for i, field in enumerate(required_fields):
+                field_schema = properties.get(field, {})
+                field_type = field_schema.get("type", "string")
+                description = field_schema.get("description", f"The {field} value")
+
+                # Generate example value based on type
+                if field_type == "string":
+                    if "enum" in field_schema:
+                        example_value = f"One of: {', '.join(field_schema['enum'])}"
+                    else:
+                        example_value = description
+                elif field_type == "number":
+                    min_val = field_schema.get("minimum", 0)
+                    max_val = field_schema.get("maximum", 1)
+                    example_value = f"Number between {min_val} and {max_val}"
+                elif field_type == "array":
+                    example_value = "Array of values"
+                elif field_type == "boolean":
+                    example_value = "true or false"
                 else:
                     example_value = description
-            elif field_type == "number":
-                min_val = field_schema.get("minimum", 0)
-                max_val = field_schema.get("maximum", 1)
-                example_value = f"Number between {min_val} and {max_val}"
-            elif field_type == "array":
-                example_value = "Array of values"
-            elif field_type == "boolean":
-                example_value = "true or false"
-            else:
-                example_value = description
 
-            comma = "," if i < len(required_fields) - 1 else ""
-            format_parts.append(f'    "{field}": "{example_value}"{comma}')
+                comma = "," if i < len(required_fields) - 1 else ""
+                format_parts.append(f'    "{field}": "{example_value}"{comma}')
 
-        format_parts.extend(["}", "```", "", "Field Descriptions:"])
+            format_parts.extend(["}", "```", ""])
+            logger.info(
+                "Generated placeholder JSON structure from schema (no example_output provided)"
+            )
+
+        format_parts.append("Field Descriptions:")
+
+        # Extract properties from schema for field descriptions
+        properties = schema.get("properties", {})
+        required_fields = schema.get("required", list(properties.keys()))
 
         # Add detailed field descriptions
         for field in required_fields:

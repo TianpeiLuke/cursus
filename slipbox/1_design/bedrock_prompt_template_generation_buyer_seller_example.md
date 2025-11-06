@@ -22,15 +22,16 @@ date of note: 2025-11-02
 
 # Buyer-Seller Classification: Complete Enhanced Configuration Example
 
-This document provides a complete, working example showing how to use the **enhanced** Bedrock Prompt Template Generation system to create the sophisticated buyer-seller messaging classification prompt with structured text output and detailed classification guidelines.
+This document provides a complete, working example showing how to use the **enhanced** Bedrock Prompt Template Generation system to create the sophisticated buyer-seller messaging classification prompt with **structured JSON output** and detailed classification guidelines.
 
 ## Overview
 
 This example demonstrates generating a classification prompt with:
 - **13 detailed categories** with extensive conditions and exceptions  
-- **Structured text output** format with numbered sections and [sep] tokens
+- **Structured JSON output** format for correct LLM responses
 - **Comprehensive classification guidelines** (200+ lines) including shiptrack parsing, missing data handling, priority hierarchy, and evidence requirements
 - **Multiple input placeholders** (dialogue, shiptrack, max_estimated_arrival_date)
+- **Complete example output** showing the exact JSON structure the LLM should generate
 
 ## Part 1: Category Definitions
 
@@ -395,139 +396,90 @@ Create `system_prompt.json`:
 - `technical`: System-focused language - "System role: You are an expert..."
 - `formal`: Formal language - "You shall function as an expert..."
 
-## Part 3: Output Format Configuration (Structured Text)
+## Part 3: Output Format Configuration (Structured JSON)
 
-Create `output_format.json` with complete structured text configuration.
+Create `output_format.json` with JSON format configuration for correct LLM output.
 
-### Dynamic Placeholder Resolution
+### Why JSON Format?
 
-The system supports **dynamic placeholder resolution** using `${}` syntax. Placeholders marked with `${}` are automatically filled from category definitions or schema constraints:
-
-- `${category_enum}` → Resolves to: `"One of: TrueDNR, Confirmed_Delay, ..."`
-- `${numeric_range}` → Resolves to: `"Number between 0.0 and 1.0 (e.g., 0.85)"`
-- Literal text (no `${}`) → Used as-is in the output
+The LLM requires **structured JSON format** to output correct, parseable responses. Using `format_type: "structured_json"` instructs the LLM to respond with valid JSON objects that can be validated against a schema.
 
 ### Configuration Example
 
 ```json
 {
-  "format_type": "structured_text",
-  "header_text": "**CRITICAL: Follow this exact format for automated parsing**",
-  
-  "structured_text_sections": [
-    {
-      "number": 1,
-      "header": "Category",
-      "format": "single_value",
-      "placeholder": "${category_enum}",
-      "placeholder_source": "schema_enum"
-    },
-    {
-      "number": 2,
-      "header": "Confidence Score",
-      "format": "single_value",
-      "placeholder": "${numeric_range}",
-      "placeholder_source": "schema_range"
-    },
-    {
-      "number": 3,
-      "header": "Key Evidence",
-      "format": "subsections",
-      "item_prefix": "- ",
-      "indent": "   ",
-      "subsections": [
-        {
-          "name": "Message Evidence",
-          "example_items": [
-            "- [BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
-            "- [BUYER]: But I did not find any package, please refund me, thank you"
-          ]
-        },
-        {
-          "name": "Shipping Evidence",
-          "example_items": [
-            "- [Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
-            "- No further shipping events after delivery confirmation"
-          ]
-        },
-        {
-          "name": "Timeline Evidence",
-          "example_items": [
-            "- Delivery confirmation on 2025-02-21 17:40",
-            "- Buyer reports non-receipt starting 2025-02-25 07:14"
-          ]
-        }
-      ]
-    },
-    {
-      "number": 4,
-      "header": "Reasoning",
-      "format": "subsections",
-      "item_prefix": "- ",
-      "indent": "   ",
-      "subsections": [
-        {
-          "name": "Primary Factors",
-          "example_items": [
-            "- Tracking shows package was delivered successfully",
-            "- Buyer explicitly states they did not receive the package after delivery scan"
-          ]
-        },
-        {
-          "name": "Supporting Evidence",
-          "example_items": [
-            "- Buyer requests refund due to missing package",
-            "- No evidence of buyer receiving wrong/defective item"
-          ]
-        },
-        {
-          "name": "Contradicting Evidence",
-          "example_items": [
-            "- None"
-          ]
-        }
-      ]
-    }
-  ],
+  "format_type": "structured_json",
+  "required_fields": ["category", "confidence_score", "key_evidence", "reasoning"],
   
   "field_descriptions": {
-    "Category": "Exactly one category from the predefined list (case-sensitive match required)",
-    "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
-    "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
-    "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+    "category": "Exactly one category from the predefined list (case-sensitive match required)",
+    "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+    "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
+    "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
   },
   
   "formatting_rules": [
-    "Use exact section headers with numbers and colons",
-    "Category name must match exactly from provided list: TrueDNR, Confirmed_Delay, Delivery_Attempt_Failed, Seller_Unable_To_Ship, PDA_Undeliverable, PDA_Early_Refund, Buyer_Received_WrongORDefective_Item, Returnless_Refund, BuyerCancellation, Return_NoLongerNeeded, Product_Information_Support, Insufficient_Information",
-    "Category names are case-sensitive and must match exactly",
-    "Confidence score as decimal (e.g., 0.85, not 85% or 'high')",
-    "Each evidence/reasoning item starts with '[sep] ' (including space)",
-    "Use asterisk (*) for subsection headers with exact spacing",
-    "No semicolons (;) anywhere in response",
-    "No additional formatting or markdown"
+    "Output MUST be valid, parseable JSON",
+    "Use double quotes for all strings, not single quotes",
+    "Do not include any text before the opening { or after the closing }",
+    "Do not include markdown code fences (```) around the JSON",
+    "Ensure all arrays and objects are properly closed",
+    "Use empty arrays [] for missing values, not null or empty strings",
+    "Do not include trailing commas",
+    "Ensure proper escaping of special characters in strings"
   ],
   
   "validation_requirements": [
+    "Must be valid JSON format",
     "Category must match exactly from predefined list",
-    "Confidence score must be decimal format (e.g., 0.85, not 85%)",
-    "Each evidence item must start with '[sep] ' token",
-    "Use exact section headers with numbers and colons",
-    "No semicolons (;) anywhere in response",
-    "Follow structured text format, not JSON"
+    "Confidence score must be number between 0.0 and 1.0",
+    "All required fields must be present",
+    "All arrays must contain string elements"
   ],
   
   "evidence_validation_rules": [
     "Message Evidence must include direct quotes with speaker identification",
     "Shipping Evidence must include tracking events with timestamps",
     "Timeline Evidence must show chronological sequence of events",
-    "All evidence must reference specific content from input data",
-    "Multiple pieces of evidence strengthen classification accuracy"
+    "All evidence must reference specific content from input data"
   ],
   
-  "example_output": "1. Category: TrueDNR\n\n2. Confidence Score: 0.92\n\n3. Key Evidence:\n   * Message Evidence:\n     - [BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?\n     - [BUYER]: But I did not find any package, please refund me, thank you\n   * Shipping Evidence:\n     - [Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer\n     - No further shipping events after delivery confirmation\n   * Timeline Evidence:\n     - Delivery confirmation on 2025-02-21 17:40\n     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n4. Reasoning:\n   * Primary Factors:\n     - Tracking shows package was delivered successfully\n     - Buyer explicitly states they did not receive the package after delivery scan\n   * Supporting Evidence:\n     - Buyer requests refund due to missing package\n     - No evidence of buyer receiving wrong/defective item\n   * Contradicting Evidence:\n     - None"
+  "example_output": {
+    "category": "TrueDNR",
+    "confidence_score": 0.92,
+    "key_evidence": {
+      "message_evidence": [
+        "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+        "[BUYER]: But I did not find any package, please refund me, thank you"
+      ],
+      "shipping_evidence": [
+        "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+        "No further shipping events after delivery confirmation"
+      ],
+      "timeline_evidence": [
+        "Delivery confirmation on 2025-02-21 17:40",
+        "Buyer reports non-receipt starting 2025-02-25 07:14"
+      ]
+    },
+    "reasoning": {
+      "primary_factors": [
+        "Tracking shows package was delivered successfully",
+        "Buyer explicitly states they did not receive the package after delivery scan"
+      ],
+      "supporting_evidence": [
+        "Buyer requests refund due to missing package",
+        "No evidence of buyer receiving wrong/defective item"
+      ],
+      "contradicting_evidence": []
+    }
+  }
 }
 ```
+
+**Key Points:**
+- `format_type: "structured_json"` - Tells the system to generate JSON format prompts
+- `example_output` - A complete JSON object (dict) showing the exact structure expected
+- The LLM will see this example and understand to output valid JSON matching this structure
 
 ## Part 4: Instruction Configuration (with Classification Guidelines)
 
@@ -720,99 +672,35 @@ system_prompt_settings = SystemPromptConfig(
     tone="professional"  # Options: "professional", "casual", "technical", "formal"
 )
 
-# Output Format Configuration (Structured Text with Dynamic Placeholders)
+# Output Format Configuration (Structured JSON)
 output_format_settings = OutputFormatConfig(
-    format_type="structured_text",
-    header_text="**CRITICAL: Follow this exact format for automated parsing**",
-    
-    structured_text_sections=[
-        {
-            "number": 1,
-            "header": "Category",
-            "format": "single_value",
-            "placeholder": "${category_enum}",  # Auto-resolved from category definitions
-            "placeholder_source": "schema_enum"
-        },
-        {
-            "number": 2,
-            "header": "Confidence Score",
-            "format": "single_value",
-            "placeholder": "${numeric_range}",  # Auto-resolved from schema constraints
-            "placeholder_source": "schema_range"
-        },
-        {
-            "number": 3,
-            "header": "Key Evidence",
-            "format": "subsections",
-            "item_prefix": "- ",
-            "indent": "   ",
-            "subsections": [
-                {
-                    "name": "Message Evidence",
-                    "example_items": [
-                        "- [BUYER]: Example message",
-                        "- [SELLER]: Example response"
-                    ]
-                },
-                {
-                    "name": "Shipping Evidence",
-                    "example_items": [
-                        "- [Event]: Delivered"
-                    ]
-                },
-                {
-                    "name": "Timeline Evidence",
-                    "example_items": [
-                        "- Delivery on 2025-02-21"
-                    ]
-                }
-            ]
-        },
-        {
-            "number": 4,
-            "header": "Reasoning",
-            "format": "subsections",
-            "item_prefix": "- ",
-            "indent": "   ",
-            "subsections": [
-                {
-                    "name": "Primary Factors",
-                    "example_items": [
-                        "- Main reason"
-                    ]
-                },
-                {
-                    "name": "Supporting Evidence",
-                    "example_items": [
-                        "- Supporting detail"
-                    ]
-                },
-                {
-                    "name": "Contradicting Evidence",
-                    "example_items": [
-                        "- None"
-                    ]
-                }
-            ]
-        }
-    ],
+    format_type="structured_json",
+    required_fields=["category", "confidence_score", "key_evidence", "reasoning"],
     
     field_descriptions={
-        "Category": "Exactly one category from the predefined list (case-sensitive match required)",
-        "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
-        "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
-        "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+        "category": "Exactly one category from the predefined list (case-sensitive match required)",
+        "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+        "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
+        "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
     },
     
     formatting_rules=[
-        "Use exact section headers with numbers and colons",
-        "No semicolons (;) anywhere in response"
+        "Output MUST be valid, parseable JSON",
+        "Use double quotes for all strings, not single quotes",
+        "Do not include any text before the opening { or after the closing }",
+        "Do not include markdown code fences (```) around the JSON",
+        "Ensure all arrays and objects are properly closed",
+        "Use empty arrays [] for missing values, not null or empty strings",
+        "Do not include trailing commas",
+        "Ensure proper escaping of special characters in strings"
     ],
     
     validation_requirements=[
+        "Must be valid JSON format",
         "Category must match exactly from predefined list",
-        "Confidence score must be decimal format (e.g., 0.85, not 85%)",
-        "Each evidence item must start with '[sep] ' token"
+        "Confidence score must be number between 0.0 and 1.0",
+        "All required fields must be present",
+        "All arrays must contain string elements"
     ],
     
     evidence_validation_rules=[
@@ -822,29 +710,35 @@ output_format_settings = OutputFormatConfig(
         "All evidence must reference specific content from input data"
     ],
     
-    example_output=(
-        "1. Category: TrueDNR\n\n"
-        "2. Confidence Score: 0.92\n\n"
-        "3. Key Evidence:\n"
-        "   * Message Evidence:\n"
-        "     - [BUYER]: Hello, I have not received my package\n"
-        "     - [BUYER]: But I did not find any package, please refund me\n"
-        "   * Shipping Evidence:\n"
-        "     - [Event Time]: 2025-02-21T17:40:49.323Z [Event]: Delivered\n"
-        "     - No further shipping events after delivery confirmation\n"
-        "   * Timeline Evidence:\n"
-        "     - Delivery confirmation on 2025-02-21 17:40\n"
-        "     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n"
-        "4. Reasoning:\n"
-        "   * Primary Factors:\n"
-        "     - Tracking shows package was delivered successfully\n"
-        "     - Buyer explicitly states they did not receive the package\n"
-        "   * Supporting Evidence:\n"
-        "     - Buyer requests refund due to missing package\n"
-        "     - No evidence of buyer receiving wrong/defective item\n"
-        "   * Contradicting Evidence:\n"
-        "     - None"
-    )
+    example_output={
+        "category": "TrueDNR",
+        "confidence_score": 0.92,
+        "key_evidence": {
+            "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+            ],
+            "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+            ],
+            "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+            ]
+        },
+        "reasoning": {
+            "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+            ],
+            "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+            ],
+            "contradicting_evidence": []
+        }
+    }
 )
 
 # Instruction Configuration (with detailed classification guidelines)
@@ -1006,20 +900,23 @@ all available evidence sources in your analysis.
 - Each component (system_prompt, output_format, instruction, categories) in separate JSON files
 - Easy to update individual components without touching code
 
-### 2. Structured Text Output
-- Custom section numbering and headers
-- Subsections with configurable prefixes ([sep] tokens)
-- Example output embedded in config
+### 2. Structured JSON Output
+- Valid, parseable JSON format for LLM responses
+- Complete example showing exact expected structure
+- Nested objects and arrays for complex data
+- Schema-driven validation support
 
 ### 3. Detailed Guidelines
 - 200+ lines of classification guidance
 - Hierarchical structure (sections → subsections → content)
 - Fully data-driven from JSON config
+- JSON-specific formatting instructions
 
 ### 4. Evidence Validation
 - Three evidence types (Message, Shipping, Timeline)
 - Specific formatting requirements
 - Validation rules for each type
+- Example output showing correct JSON structure
 
 ## Benefits of Enhanced Approach
 

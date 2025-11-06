@@ -249,7 +249,9 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                 "BEDROCK_BATCH_TIMEOUT_HOURS": str(self.bedrock_batch_timeout_hours),
                 # AWS Bedrock batch limits (configurable)
                 "BEDROCK_MAX_RECORDS_PER_JOB": str(self.bedrock_max_records_per_job),
-                "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": str(self.bedrock_max_concurrent_batch_jobs),
+                "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": str(
+                    self.bedrock_max_concurrent_batch_jobs
+                ),
                 # S3 paths for batch processing (set by step builder using framework patterns)
                 # These will be populated by the step builder using _get_base_output_path() and Join()
                 "BEDROCK_BATCH_INPUT_S3_PATH": "",  # Will be set by step builder
