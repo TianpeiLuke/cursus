@@ -92,15 +92,17 @@ def install_packages_from_secure_pypi(packages: list) -> None:
         token = _get_secure_pypi_access_token()
         index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
 
-        check_call([
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--index-url",
-            index_url,
-            *packages
-        ])
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                index_url,
+                *packages,
+            ]
+        )
 
         logger.info("✓ Successfully installed packages from secure PyPI")
     except Exception as e:
@@ -135,7 +137,9 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
     logger.info("PACKAGE INSTALLATION")
     logger.info("=" * 70)
     logger.info(f"PyPI Source: {'SECURE (CodeArtifact)' if use_secure else 'PUBLIC'}")
-    logger.info(f"Environment Variable USE_SECURE_PYPI: {os.environ.get('USE_SECURE_PYPI', 'not set')}")
+    logger.info(
+        f"Environment Variable USE_SECURE_PYPI: {os.environ.get('USE_SECURE_PYPI', 'not set')}"
+    )
     logger.info(f"Number of packages: {len(packages)}")
     logger.info("=" * 70)
 

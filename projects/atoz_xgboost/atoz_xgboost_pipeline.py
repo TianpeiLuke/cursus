@@ -26,7 +26,6 @@ pipeline_parameters = [
     VPC_SUBNET,
 ]
 
-
 # Cursus imports - adjusted for root repository location
 from cursus.api.dag.base_dag import PipelineDAG
 from cursus.core.compiler.dag_compiler import (
