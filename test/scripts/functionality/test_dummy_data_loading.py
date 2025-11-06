@@ -23,10 +23,9 @@ from cursus.steps.scripts.dummy_data_loading import (
     process_data_files,
     write_signature_file,
     write_metadata_file,
-    write_data_placeholder,
+    write_data_output,
     write_single_shard,
-    write_data_shards,
-    write_data_output
+    write_data_shards
 )
 
 
@@ -664,17 +663,34 @@ class TestWriteOutputFiles:
         assert content == metadata
 
     def test_write_data_placeholder(self, temp_dir):
-        """Test writing data placeholder file."""
-        result_path = write_data_placeholder(temp_dir)
+        """Test writing data in legacy mode (single file)."""
+        # Test with empty DataFrame
+        result_path = write_data_output(pd.DataFrame(), temp_dir, write_shards=False)
         
         assert result_path.exists()
-        assert result_path.name == "data_processed"
+        assert result_path.name == "part-00000.csv"
+        
+        # Verify it's a valid CSV file (may be empty)
+        try:
+            df_read = pd.read_csv(result_path)
+            assert len(df_read) == 0
+            assert len(df_read.columns) == 0
+        except pd.errors.EmptyDataError:
+            # Empty CSV file is also valid
+            with open(result_path, 'r') as f:
+                content = f.read()
+            assert content.strip() == ""  # Empty file or just whitespace
+
+        # Test with actual data
+        test_df = pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})
+        result_path2 = write_data_output(test_df, temp_dir, write_shards=False)
+        
+        assert result_path2.exists()
+        assert result_path2.name == "part-00000.csv"
         
         # Verify content
-        with open(result_path, 'r') as f:
-            content = f.read()
-        
-        assert "Data processing completed successfully" in content
+        df_read2 = pd.read_csv(result_path2)
+        pd.testing.assert_frame_equal(df_read2, test_df)
 
     def test_write_files_create_directory(self, temp_dir):
         """Test that output functions create directories if they don't exist."""
@@ -1236,17 +1252,16 @@ class TestEnhancedDataSharding:
         assert set(combined_df.columns) == set(sample_data.columns)
 
     def test_write_data_output_legacy_mode(self, temp_dir, sample_data):
-        """Test write_data_output in legacy mode (placeholder)."""
+        """Test write_data_output in legacy mode (single file)."""
         result = write_data_output(sample_data, temp_dir, write_shards=False)
         
         assert isinstance(result, Path)
-        assert result.name == "data_processed"
+        assert result.name == "part-00000.csv"
         assert result.exists()
         
-        # Verify placeholder content
-        with open(result, 'r') as f:
-            content = f.read()
-        assert "Data processing completed successfully" in content
+        # Verify it's a valid CSV file with correct content
+        df_read = pd.read_csv(result)
+        pd.testing.assert_frame_equal(df_read, sample_data)
 
     def test_write_data_output_enhanced_mode(self, temp_dir, sample_data):
         """Test write_data_output in enhanced mode (shards)."""
@@ -1339,9 +1354,9 @@ class TestEnhancedMainFunction:
         assert "metadata" in result
         assert "data" in result
         
-        # Verify data output is placeholder (single Path)
+        # Verify data output is a single file (Path)
         assert isinstance(result["data"], Path)
-        assert result["data"].name == "data_processed"
+        assert result["data"].name == "part-00000.csv"
 
     def test_main_function_enhanced_mode_csv(self, temp_dir):
         """Test main function in enhanced mode with CSV shards."""
@@ -1474,9 +1489,9 @@ class TestEnhancedMainFunction:
         
         result = main(input_paths, output_paths, environ_vars)
         
-        # Should default to legacy mode (placeholder)
+        # Should default to legacy mode (single file)
         assert isinstance(result["data"], Path)
-        assert result["data"].name == "data_processed"
+        assert result["data"].name == "part-00000.csv"
 
 
 class TestTabularPreprocessingCompatibility:
