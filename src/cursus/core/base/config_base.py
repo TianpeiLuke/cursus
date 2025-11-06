@@ -102,7 +102,7 @@ class BasePipelineConfig(BaseModel, ABC):
 
     use_secure_pypi: bool = Field(
         default=False,
-        description="Use secure CodeArtifact PyPI instead of public PyPI for package installation in processing scripts."
+        description="Use secure CodeArtifact PyPI instead of public PyPI for package installation in processing scripts.",
     )
 
     # ===== Tier 1 Hybrid Resolution Fields =====
@@ -171,10 +171,10 @@ class BasePipelineConfig(BaseModel, ABC):
     def effective_source_dir(self) -> Optional[str]:
         """
         Get effective source directory with hybrid resolution.
-        
+
         This base implementation works with just source_dir (which can be None).
         Processing configs override this to handle both processing_source_dir and source_dir.
-        
+
         Resolution Priority:
         1. Hybrid resolution of source_dir
         2. Legacy value (source_dir)
@@ -188,15 +188,14 @@ class BasePipelineConfig(BaseModel, ABC):
                 if resolved and Path(resolved).exists():
                     self._effective_source_dir = resolved
                     return self._effective_source_dir
-                
+
                 # Strategy 2: Legacy fallback (current behavior)
                 self._effective_source_dir = self.source_dir
             else:
                 # source_dir is None - this is valid for base config
                 self._effective_source_dir = None
-        
-        return self._effective_source_dir
 
+        return self._effective_source_dir
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
@@ -209,7 +208,7 @@ class BasePipelineConfig(BaseModel, ABC):
         data["pipeline_s3_loc"] = self.pipeline_s3_loc
         if self.effective_source_dir is not None:
             data["effective_source_dir"] = self.effective_source_dir
-        
+
         return data
 
     def __str__(self) -> str:
@@ -301,7 +300,7 @@ class BasePipelineConfig(BaseModel, ABC):
     def step_catalog(self) -> Optional[Any]:
         """
         Lazy-loaded step catalog instance for optimized component discovery.
-        
+
         Returns:
             StepCatalog instance or None if initialization fails
         """
@@ -309,33 +308,35 @@ class BasePipelineConfig(BaseModel, ABC):
             try:
                 # Import StepCatalog with proper error handling
                 from ...step_catalog.step_catalog import StepCatalog
-                
+
                 # Initialize with workspace awareness if possible
                 workspace_dirs = self._detect_workspace_dirs()
                 self._step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
-                
-                logger.debug(f"Initialized StepCatalog with workspace_dirs: {workspace_dirs}")
-                
+
+                logger.debug(
+                    f"Initialized StepCatalog with workspace_dirs: {workspace_dirs}"
+                )
+
             except ImportError as e:
                 logger.warning(f"StepCatalog not available: {e}")
                 self._step_catalog = None
             except Exception as e:
                 logger.error(f"Error initializing StepCatalog: {e}")
                 self._step_catalog = None
-        
+
         return self._step_catalog
 
     def _detect_workspace_dirs(self) -> Optional[List[Path]]:
         """
         Detect workspace directories based on current configuration context.
-        
+
         Returns:
             List of workspace directories or None if not detected
         """
         try:
             # Try to detect workspace from config file location
             config_file = Path(inspect.getfile(self.__class__))
-            
+
             # Check if we're in a workspace structure
             current_dir = config_file.parent
             while current_dir.parent != current_dir:
@@ -344,10 +345,10 @@ class BasePipelineConfig(BaseModel, ABC):
                     logger.debug(f"Detected workspace directory: {current_dir}")
                     return [current_dir]
                 current_dir = current_dir.parent
-            
+
             # No workspace detected
             return None
-            
+
         except Exception as e:
             logger.debug(f"Error detecting workspace directories: {e}")
             return None
@@ -355,52 +356,53 @@ class BasePipelineConfig(BaseModel, ABC):
     def _derive_step_name(self) -> str:
         """
         Get step name from configuration class using registry mapping.
-        
+
         This method uses the step registry as the primary source of truth for step names,
         falling back to derivation logic only when the class is not found in the registry.
         This ensures compatibility with the step catalog system and avoids naming issues
         like "XGBoostModelEval" being incorrectly converted to "x_g_boost_model_eval".
-        
+
         Returns:
             Step name from registry or derived name as fallback
         """
         class_name = self.__class__.__name__
-        
+
         # Strategy 1: Use registry mapping first (most reliable)
         try:
             step_name = self.get_step_name(class_name)
             if step_name != class_name:  # Found in registry
                 logger.debug(f"Found step name in registry: {class_name} → {step_name}")
-                
+
                 # Handle job_type variants if available
-                if hasattr(self, 'job_type') and self.job_type:
+                if hasattr(self, "job_type") and self.job_type:
                     step_name = f"{step_name}_{self.job_type.lower()}"
-                
+
                 return step_name
         except Exception as e:
             logger.debug(f"Registry lookup failed for {class_name}: {e}")
-        
+
         # Strategy 2: Fallback to derivation (for classes not in registry)
         logger.debug(f"Using derivation fallback for {class_name}")
-        
+
         # Remove 'Config' suffix if present
-        if class_name.endswith('Config'):
+        if class_name.endswith("Config"):
             step_name = class_name[:-6]  # Remove 'Config'
         else:
             step_name = class_name
-        
+
         # Improved PascalCase to snake_case conversion that handles acronyms better
         import re
+
         # Handle consecutive uppercase letters (acronyms) first
-        step_name = re.sub('([A-Z]+)([A-Z][a-z])', r'\1_\2', step_name)
+        step_name = re.sub("([A-Z]+)([A-Z][a-z])", r"\1_\2", step_name)
         # Then handle normal PascalCase
-        step_name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', step_name)
+        step_name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", step_name)
         step_name = step_name.lower()
-        
+
         # Handle job_type variants if available
-        if hasattr(self, 'job_type') and self.job_type:
+        if hasattr(self, "job_type") and self.job_type:
             step_name = f"{step_name}_{self.job_type.lower()}"
-        
+
         logger.debug(f"Derived step name: {class_name} → {step_name}")
         return step_name
 
@@ -431,20 +433,24 @@ class BasePipelineConfig(BaseModel, ABC):
             step_catalog = self.step_catalog
             if step_catalog:
                 step_name = self._derive_step_name()
-                
+
                 logger.debug(f"Attempting to load contract for step: {step_name}")
-                
+
                 # Use step catalog's optimized contract loading
                 contract = step_catalog.load_contract_class(step_name)
                 if contract:
-                    logger.debug(f"Successfully loaded contract via step catalog for {step_name}")
+                    logger.debug(
+                        f"Successfully loaded contract via step catalog for {step_name}"
+                    )
                     self._cache[cache_key] = contract
                     return cast(Optional["ScriptContract"], contract)
                 else:
                     logger.debug(f"No contract found via step catalog for {step_name}")
             else:
-                logger.debug("Step catalog not available, falling back to legacy method")
-        
+                logger.debug(
+                    "Step catalog not available, falling back to legacy method"
+                )
+
         except Exception as e:
             logger.debug(f"Error using step catalog for contract discovery: {e}")
 
@@ -460,8 +466,13 @@ class BasePipelineConfig(BaseModel, ABC):
                 try:
                     contract_module = __import__(module_name, fromlist=[""])
                     if hasattr(contract_module, contract_name):
-                        contract = cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
-                        logger.debug(f"Successfully loaded contract via legacy method with job_type: {contract_name}")
+                        contract = cast(
+                            Optional["ScriptContract"],
+                            getattr(contract_module, contract_name),
+                        )
+                        logger.debug(
+                            f"Successfully loaded contract via legacy method with job_type: {contract_name}"
+                        )
                         self._cache[cache_key] = contract
                         return contract
                 except (ImportError, AttributeError):
@@ -474,8 +485,13 @@ class BasePipelineConfig(BaseModel, ABC):
             try:
                 contract_module = __import__(module_name, fromlist=[""])
                 if hasattr(contract_module, contract_name):
-                    contract = cast(Optional["ScriptContract"], getattr(contract_module, contract_name))
-                    logger.debug(f"Successfully loaded contract via legacy method: {contract_name}")
+                    contract = cast(
+                        Optional["ScriptContract"],
+                        getattr(contract_module, contract_name),
+                    )
+                    logger.debug(
+                        f"Successfully loaded contract via legacy method: {contract_name}"
+                    )
                     self._cache[cache_key] = contract
                     return contract
             except (ImportError, AttributeError):
@@ -502,19 +518,19 @@ class BasePipelineConfig(BaseModel, ABC):
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
         Get script path for this configuration.
-        
+
         This method provides a default implementation that returns None, since not all
         step types require scripts (e.g., Model creation steps don't need scripts).
-        
+
         Derived classes that need script paths should override this method with their
         specific requirements:
         - Processing steps: Combine entry_point with source_dir
         - Training steps: Use contract entry_point or combine with source_dir
         - Model steps: May not need scripts at all
-        
+
         Args:
             default_path: Default script path to use if not found via other methods
-            
+
         Returns:
             Script path, default_path, or None if not applicable for this step type
         """
@@ -524,23 +540,26 @@ class BasePipelineConfig(BaseModel, ABC):
     def resolve_hybrid_path(self, relative_path: str) -> Optional[str]:
         """
         Resolve a path using the hybrid path resolution system.
-        
+
         This method uses the hybrid path resolution system to find files across
         different deployment scenarios (Lambda/MODS bundled, development monorepo,
         pip-installed separated).
-        
+
         Args:
             relative_path: Relative path from project root to target
-            
+
         Returns:
             Resolved absolute path if found, None otherwise
         """
         if not self.project_root_folder or not relative_path:
-            logger.debug("Missing project_root_folder or relative_path for hybrid resolution")
+            logger.debug(
+                "Missing project_root_folder or relative_path for hybrid resolution"
+            )
             return None
-        
+
         try:
             from ..utils.hybrid_path_resolution import resolve_hybrid_path
+
             return resolve_hybrid_path(self.project_root_folder, relative_path)
         except ImportError:
             logger.debug("Hybrid path resolution not available")
@@ -553,7 +572,7 @@ class BasePipelineConfig(BaseModel, ABC):
     def resolved_source_dir(self) -> Optional[str]:
         """
         Get resolved source directory using hybrid resolution.
-        
+
         Returns None if source_dir is not provided, since it's optional in base class.
         Processing, training, and model step configs should ensure source_dir is provided.
         """
@@ -561,13 +580,13 @@ class BasePipelineConfig(BaseModel, ABC):
             return self.resolve_hybrid_path(self.source_dir)
         return None
 
-
     @classmethod
     def get_step_name(cls, config_class_name: str) -> str:
         """Get the step name for a configuration class using existing registry functions."""
         try:
             # Use the existing registry function with workspace awareness
             from ...registry.step_names import get_config_step_registry
+
             config_registry = get_config_step_registry()
             return config_registry.get(config_class_name, config_class_name)
         except ImportError:
@@ -580,6 +599,7 @@ class BasePipelineConfig(BaseModel, ABC):
         try:
             # Use the existing registry function with workspace awareness
             from ...registry.step_names import get_config_class_name
+
             return get_config_class_name(step_name)
         except ImportError:
             logger.debug("Registry not available, returning step name")
