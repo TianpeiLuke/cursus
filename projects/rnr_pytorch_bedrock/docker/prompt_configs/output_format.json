@@ -1,5 +1,5 @@
 {
-  "format_type": "structured_text",
+  "format_type": "structured_json",
   "required_fields": [
     "category",
     "confidence",

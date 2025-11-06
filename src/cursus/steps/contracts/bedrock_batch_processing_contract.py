@@ -47,6 +47,9 @@ BEDROCK_BATCH_PROCESSING_CONTRACT = ScriptContract(
         "BEDROCK_BATCH_INPUT_S3_PATH": "",
         "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
         "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+        # AWS Bedrock batch limits (configurable)
+        "BEDROCK_MAX_RECORDS_PER_JOB": "45000",
+        "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
         "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
