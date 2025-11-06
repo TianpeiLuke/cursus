@@ -13,9 +13,16 @@ from .hybrid_path_resolution import (
     HybridResolutionConfig,
 )
 
+from .generic_path_discovery import (
+    find_project_folder_generic,
+    get_generic_discovery_metrics,
+)
+
 __all__ = [
     "HybridPathResolver",
-    "resolve_hybrid_path", 
+    "resolve_hybrid_path",
     "get_hybrid_resolution_metrics",
     "HybridResolutionConfig",
+    "find_project_folder_generic",
+    "get_generic_discovery_metrics",
 ]
