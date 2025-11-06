@@ -153,7 +153,19 @@ def _read_file_to_df(
 def combine_shards(
     input_dir: str, signature_columns: Optional[list] = None
 ) -> pd.DataFrame:
-    """Detect and combine all supported data shards in a directory."""
+    """
+    Detect and combine all supported data shards in a directory.
+
+    Uses memory-efficient iterative concatenation to handle large files
+    and avoid PyArrow's 2GB column limit error.
+
+    Args:
+        input_dir: Directory containing data shards
+        signature_columns: Optional column names for CSV/TSV files
+
+    Returns:
+        Combined DataFrame from all shards
+    """
     input_path = Path(input_dir)
     if not input_path.is_dir():
         raise RuntimeError(f"Input directory does not exist: {input_dir}")
@@ -169,9 +181,37 @@ def combine_shards(
     all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
     if not all_shards:
         raise RuntimeError(f"No CSV/JSON/Parquet shards found under {input_dir}")
+
     try:
-        dfs = [_read_file_to_df(shard, signature_columns) for shard in all_shards]
-        return pd.concat(dfs, axis=0, ignore_index=True)
+        # Use iterative concatenation to avoid memory spikes and PyArrow 2GB limit
+        result_df = None
+
+        for i, shard in enumerate(all_shards):
+            try:
+                # Read individual shard
+                shard_df = _read_file_to_df(shard, signature_columns)
+
+                # Concatenate iteratively
+                if result_df is None:
+                    result_df = shard_df
+                else:
+                    result_df = pd.concat(
+                        [result_df, shard_df], axis=0, ignore_index=True
+                    )
+
+                # Explicitly delete to free memory immediately
+                del shard_df
+
+            except Exception as shard_error:
+                raise RuntimeError(
+                    f"Failed to process shard {shard.name} (shard {i + 1}/{len(all_shards)}): {shard_error}"
+                )
+
+        if result_df is None:
+            raise RuntimeError("No data was loaded from any shards")
+
+        return result_df
+
     except Exception as e:
         raise RuntimeError(f"Failed to read or concatenate shards: {e}")
 
@@ -228,34 +268,51 @@ def main(
     df = combine_shards(input_data_dir, signature_columns)
     log(f"[INFO] Combined data shape: {df.shape}")
 
-    # 4. Process columns and labels
+    # 4. Process columns and labels (conditional based on label_field availability)
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
-    if label_field not in df.columns:
-        raise RuntimeError(
-            f"Label field '{label_field}' not found in columns: {df.columns.tolist()}"
+
+    # Only process labels if label_field is provided and exists
+    if label_field:
+        if label_field not in df.columns:
+            raise RuntimeError(
+                f"Label field '{label_field}' not found in columns: {df.columns.tolist()}"
+            )
+
+        if not pd.api.types.is_numeric_dtype(df[label_field]):
+            unique_labels = sorted(df[label_field].dropna().unique())
+            label_map = {val: idx for idx, val in enumerate(unique_labels)}
+            df[label_field] = df[label_field].map(label_map)
+
+        df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype(
+            "Int64"
         )
-
-    if not pd.api.types.is_numeric_dtype(df[label_field]):
-        unique_labels = sorted(df[label_field].dropna().unique())
-        label_map = {val: idx for idx, val in enumerate(unique_labels)}
-        df[label_field] = df[label_field].map(label_map)
-
-    df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype("Int64")
-    df.dropna(subset=[label_field], inplace=True)
-    df[label_field] = df[label_field].astype(int)
-    log(f"[INFO] Data shape after cleaning labels: {df.shape}")
+        df.dropna(subset=[label_field], inplace=True)
+        df[label_field] = df[label_field].astype(int)
+        log(f"[INFO] Data shape after cleaning labels: {df.shape}")
+    else:
+        log("[INFO] No label field provided, skipping label processing")
 
     # 5. Split data if training, otherwise use the job_type as the single split
     if job_type == "training":
-        train_df, holdout_df = train_test_split(
-            df, train_size=train_ratio, random_state=42, stratify=df[label_field]
-        )
-        test_df, val_df = train_test_split(
-            holdout_df,
-            test_size=test_val_ratio,
-            random_state=42,
-            stratify=holdout_df[label_field],
-        )
+        # Use stratified splits if label_field is available, otherwise use random splits
+        if label_field:
+            train_df, holdout_df = train_test_split(
+                df, train_size=train_ratio, random_state=42, stratify=df[label_field]
+            )
+            test_df, val_df = train_test_split(
+                holdout_df,
+                test_size=test_val_ratio,
+                random_state=42,
+                stratify=holdout_df[label_field],
+            )
+        else:
+            # Non-stratified splits when no labels are available
+            train_df, holdout_df = train_test_split(
+                df, train_size=train_ratio, random_state=42
+            )
+            test_df, val_df = train_test_split(
+                holdout_df, test_size=test_val_ratio, random_state=42
+            )
         splits = {"train": train_df, "test": test_df, "val": val_df}
     else:
         splits = {job_type: df}
@@ -288,12 +345,12 @@ if __name__ == "__main__":
 
         # Read configuration from environment variables
         LABEL_FIELD = os.environ.get("LABEL_FIELD")
-        if not LABEL_FIELD:
+        if not LABEL_FIELD and args.job_type != "calibration":
             raise RuntimeError("LABEL_FIELD environment variable must be set.")
         TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
         TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
 
-        # Define standard SageMaker paths - use contract-declared paths directly
+        # Define standard SageMaker paths as constants
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"
         INPUT_SIGNATURE_DIR = "/opt/ml/processing/input/signature"
         OUTPUT_DIR = "/opt/ml/processing/output"
@@ -309,7 +366,7 @@ if __name__ == "__main__":
         # Log key parameters
         logger.info(f"Starting tabular preprocessing with parameters:")
         logger.info(f"  Job Type: {args.job_type}")
-        logger.info(f"  Label Field: {LABEL_FIELD}")
+        logger.info(f"  Label Field: {LABEL_FIELD if LABEL_FIELD else 'Not specified'}")
         logger.info(f"  Train Ratio: {TRAIN_RATIO}")
         logger.info(f"  Test/Val Ratio: {TEST_VAL_RATIO}")
         logger.info(f"  Input Directory: {INPUT_DATA_DIR}")

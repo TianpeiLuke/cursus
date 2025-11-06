@@ -153,7 +153,19 @@ def _read_file_to_df(
 def combine_shards(
     input_dir: str, signature_columns: Optional[list] = None
 ) -> pd.DataFrame:
-    """Detect and combine all supported data shards in a directory."""
+    """
+    Detect and combine all supported data shards in a directory.
+
+    Uses memory-efficient iterative concatenation to handle large files
+    and avoid PyArrow's 2GB column limit error.
+
+    Args:
+        input_dir: Directory containing data shards
+        signature_columns: Optional column names for CSV/TSV files
+
+    Returns:
+        Combined DataFrame from all shards
+    """
     input_path = Path(input_dir)
     if not input_path.is_dir():
         raise RuntimeError(f"Input directory does not exist: {input_dir}")
@@ -169,9 +181,37 @@ def combine_shards(
     all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
     if not all_shards:
         raise RuntimeError(f"No CSV/JSON/Parquet shards found under {input_dir}")
+
     try:
-        dfs = [_read_file_to_df(shard, signature_columns) for shard in all_shards]
-        return pd.concat(dfs, axis=0, ignore_index=True)
+        # Use iterative concatenation to avoid memory spikes and PyArrow 2GB limit
+        result_df = None
+
+        for i, shard in enumerate(all_shards):
+            try:
+                # Read individual shard
+                shard_df = _read_file_to_df(shard, signature_columns)
+
+                # Concatenate iteratively
+                if result_df is None:
+                    result_df = shard_df
+                else:
+                    result_df = pd.concat(
+                        [result_df, shard_df], axis=0, ignore_index=True
+                    )
+
+                # Explicitly delete to free memory immediately
+                del shard_df
+
+            except Exception as shard_error:
+                raise RuntimeError(
+                    f"Failed to process shard {shard.name} (shard {i + 1}/{len(all_shards)}): {shard_error}"
+                )
+
+        if result_df is None:
+            raise RuntimeError("No data was loaded from any shards")
+
+        return result_df
+
     except Exception as e:
         raise RuntimeError(f"Failed to read or concatenate shards: {e}")
 
