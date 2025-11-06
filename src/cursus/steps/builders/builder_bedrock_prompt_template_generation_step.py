@@ -224,57 +224,30 @@ class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
 
             # Handle prompt_configs input
             if logical_name == "prompt_configs":
-                # Check if user provided a custom path
-                if self.config.prompt_configs_path is not None:
-                    # User specified a custom path - use resolved path from config
-                    try:
-                        source_path = self.config.resolved_prompt_configs_path
-                        container_path = self.contract.expected_input_paths[
-                            logical_name
-                        ]
+                # Always use resolved_prompt_configs_path from config (has default "prompt_configs")
+                try:
+                    source_path = self.config.resolved_prompt_configs_path
+                    container_path = self.contract.expected_input_paths[logical_name]
 
-                        processing_inputs.append(
-                            ProcessingInput(
-                                input_name=logical_name,
-                                source=source_path,
-                                destination=container_path,
-                            )
+                    processing_inputs.append(
+                        ProcessingInput(
+                            input_name=logical_name,
+                            source=source_path,
+                            destination=container_path,
                         )
+                    )
 
-                        self.log_info(
-                            "Added local input '%s' (user-specified path): %s -> %s",
-                            logical_name,
-                            source_path,
-                            container_path,
-                        )
-                        continue
-                    except ValueError as e:
-                        raise ValueError(f"Failed to resolve prompt_configs_path: {e}")
-                else:
-                    # User didn't specify path - allow dependency override or require dependency
-                    if logical_name in inputs:
-                        container_path = self.contract.expected_input_paths[
-                            logical_name
-                        ]
-                        processing_inputs.append(
-                            ProcessingInput(
-                                input_name=logical_name,
-                                source=inputs[logical_name],
-                                destination=container_path,
-                            )
-                        )
-                        self.log_info(
-                            "Added dependency input '%s' (no user path, dependency override): %s -> %s",
-                            logical_name,
-                            inputs[logical_name],
-                            container_path,
-                        )
-                        continue
-                    else:
-                        # Required input, no user path, no dependency - this is an error
-                        raise ValueError(
-                            f"Required input '{logical_name}' not provided: either specify prompt_configs_path in config or provide via dependencies"
-                        )
+                    self.log_info(
+                        "Added prompt_configs input: %s -> %s",
+                        source_path,
+                        container_path,
+                    )
+                    continue
+                except ValueError as e:
+                    raise ValueError(
+                        f"Failed to resolve prompt_configs_path: {e}. "
+                        f"Ensure effective_source_dir is configured properly."
+                    )
 
             # Handle other dependency-provided inputs
             # Skip if optional and not provided

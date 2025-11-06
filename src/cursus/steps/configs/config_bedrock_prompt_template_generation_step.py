@@ -553,13 +553,15 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         description="List of input field names to include in the template (e.g., ['input_data', 'context', 'metadata'])",
     )
 
-    # Configuration path - users must specify where their prompt config files are located
+    # ===== Tier 2: System Inputs with Defaults (Optional) =====
+    # These fields have sensible defaults but can be overridden
+
+    # Configuration path - defaults to standard 'prompt_configs' subdirectory
     prompt_configs_path: str = Field(
-        ...,
-        description="Path to prompt configuration directory containing system_prompt.json, output_format.json, instruction.json, and category_definitions.json files, relative to processing source directory",
+        default="prompt_configs",
+        description="Subdirectory name or relative path under the processing source directory for prompt configuration files (system_prompt.json, output_format.json, instruction.json, category_definitions.json). Must be a relative path, not absolute. Examples: 'prompt_configs', 'docker/prompt_configs', 'config/prompts'",
     )
 
-    # ===== Tier 2: System Inputs with Defaults (Optional) =====
     # These fields have sensible defaults but can be overridden
 
     # Template generation settings
@@ -762,6 +764,8 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         """
         Get resolved absolute path for prompt configurations with hybrid resolution.
 
+        Uses effective_source_dir from base class for consistency.
+
         Returns:
             Absolute path to prompt configs directory, or None if not configured
 
@@ -772,22 +776,18 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
             return None
 
         if self._resolved_prompt_configs_path is None:
-            effective_source = self.effective_source_dir
-            if effective_source is None:
+            # Use effective_source_dir from base class (includes hybrid resolution)
+            resolved_source_dir = self.effective_source_dir
+            if resolved_source_dir is None:
                 raise ValueError(
                     "Cannot resolve prompt_configs_path: no processing source directory configured. "
                     "Set either processing_source_dir or source_dir in configuration."
                 )
 
-            # Construct full path following same pattern as script_path
-            if effective_source.startswith("s3://"):
-                self._resolved_prompt_configs_path = (
-                    f"{effective_source.rstrip('/')}/{self.prompt_configs_path}"
-                )
-            else:
-                self._resolved_prompt_configs_path = str(
-                    Path(effective_source) / self.prompt_configs_path
-                )
+            # Construct full path: resolved_source_dir / 'prompt_configs'
+            self._resolved_prompt_configs_path = str(
+                Path(resolved_source_dir) / self.prompt_configs_path
+            )
 
         return self._resolved_prompt_configs_path
 
