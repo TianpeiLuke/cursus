@@ -31,14 +31,14 @@ warnings.filterwarnings("ignore")
 from ...processing.processors import (
     Processor,
 )
-from ...processing.nlp.bsm_processor import (
+from ...processing.text.bsm_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from ...processing.nlp.bert_tokenize_processor import TokenizationProcessor
+from ...processing.text.bert_tokenize_processor import TokenizationProcessor
 from ...processing.categorical.categorical_label_processor import (
     CategoricalLabelProcessor,
 )
