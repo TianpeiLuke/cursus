@@ -422,6 +422,8 @@ class BedrockProcessor:
         df: pd.DataFrame,
         batch_size: Optional[int] = None,
         save_intermediate: bool = True,
+        output_dir: Optional[Path] = None,
+        input_filename: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Process a batch of data through Bedrock using template placeholders.
@@ -492,11 +494,21 @@ class BedrockProcessor:
             # Save intermediate results
             if save_intermediate:
                 intermediate_df = pd.DataFrame(batch_results)
-                output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
-                output_dir.mkdir(parents=True, exist_ok=True)
-                intermediate_file = (
-                    output_dir / f"batch_{batch_num:04d}_results.parquet"
-                )
+                output_dir_path = output_dir if output_dir is not None else Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
+                output_dir_path.mkdir(parents=True, exist_ok=True)
+
+                # Use filename-based naming to prevent collisions
+                if input_filename:
+                    base_name = Path(input_filename).stem
+                    intermediate_file = (
+                        output_dir_path / f"{base_name}_batch_{batch_num:04d}_results.parquet"
+                    )
+                else:
+                    # Fallback for backward compatibility
+                    intermediate_file = (
+                        output_dir_path / f"batch_{batch_num:04d}_results.parquet"
+                    )
+
                 intermediate_df.to_parquet(intermediate_file, index=False)
                 logger.info(f"Saved intermediate results to {intermediate_file}")
 
@@ -827,6 +839,7 @@ class BedrockBatchProcessor(BedrockProcessor):
         df: pd.DataFrame,
         batch_size: Optional[int] = None,
         save_intermediate: bool = True,
+        output_dir: Optional[Path] = None,
     ) -> pd.DataFrame:
         """Process DataFrame using Bedrock batch inference."""
         logger.info(f"Starting batch inference processing for {len(df)} records")
@@ -865,13 +878,15 @@ class BedrockBatchProcessor(BedrockProcessor):
             logger.error(f"Batch inference failed: {e}")
             logger.info("Falling back to real-time processing...")
             # Fallback to parent class real-time processing
-            return super().process_batch(df, batch_size, save_intermediate)
+            return super().process_batch(df, batch_size, save_intermediate, output_dir)
 
     def process_batch(
         self,
         df: pd.DataFrame,
         batch_size: Optional[int] = None,
         save_intermediate: bool = True,
+        output_dir: Optional[Path] = None,
+        input_filename: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Main processing method with automatic batch/real-time selection.
@@ -879,10 +894,10 @@ class BedrockBatchProcessor(BedrockProcessor):
         """
         if self.should_use_batch_processing(df):
             logger.info(f"Using batch processing for {len(df)} records")
-            return self.process_batch_inference(df, batch_size, save_intermediate)
+            return self.process_batch_inference(df, batch_size, save_intermediate, output_dir)
         else:
             logger.info(f"Using real-time processing for {len(df)} records")
-            return super().process_batch(df, batch_size, save_intermediate)
+            return super().process_batch(df, batch_size, save_intermediate, output_dir, input_filename)
 
 
 def load_prompt_templates(
@@ -1100,7 +1115,7 @@ def process_split_directory(
 
         # Process batch (automatically selects batch vs real-time)
         result_df = processor.process_batch(
-            df, save_intermediate=False
+            df, save_intermediate=False, input_filename=input_file.name
         )  # No intermediate saves for splits
 
         # Track batch processing usage
@@ -1363,7 +1378,7 @@ def main(
                     df = load_data_file(input_file, log)
 
                     # Process batch (automatically selects batch vs real-time based on size)
-                    result_df = processor.process_batch(df, save_intermediate=True)
+                    result_df = processor.process_batch(df, save_intermediate=True, output_dir=output_path, input_filename=input_file.name)
 
                     # Track batch processing usage for statistics
                     batch_used = processor.should_use_batch_processing(df)
@@ -1505,7 +1520,7 @@ def main(
                 df = load_data_file(input_file, log)
 
                 # Process batch (automatically selects batch vs real-time based on size)
-                result_df = processor.process_batch(df, save_intermediate=True)
+                result_df = processor.process_batch(df, save_intermediate=True, output_dir=output_path, input_filename=input_file.name)
 
                 # Track batch processing usage
                 batch_used = processor.should_use_batch_processing(df)
@@ -1556,7 +1571,7 @@ def main(
                 )
 
                 # Save results with job_type in filename (same as bedrock_processing.py)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                 base_filename = f"processed_{job_type}_{input_file.stem}_{timestamp}"
 
                 # Save as Parquet (efficient for large datasets)
