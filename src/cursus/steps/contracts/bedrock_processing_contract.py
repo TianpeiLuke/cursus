@@ -38,6 +38,7 @@ BEDROCK_PROCESSING_CONTRACT = ScriptContract(
         "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
         "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
         "BEDROCK_CONCURRENCY_MODE": "sequential",
+        "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
         "pandas": ">=1.2.0",

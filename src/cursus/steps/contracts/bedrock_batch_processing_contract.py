@@ -47,6 +47,7 @@ BEDROCK_BATCH_PROCESSING_CONTRACT = ScriptContract(
         "BEDROCK_BATCH_INPUT_S3_PATH": "",
         "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
         "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+        "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
         "pandas": ">=1.2.0",

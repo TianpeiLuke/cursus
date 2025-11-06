@@ -199,6 +199,7 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                 "BEDROCK_RATE_LIMIT_PER_SECOND": str(
                     self.bedrock_rate_limit_per_second
                 ),
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
 
         return self._bedrock_environment_variables

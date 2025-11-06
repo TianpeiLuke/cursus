@@ -285,6 +285,7 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
                 "DOLLAR_RECALL_FPR": str(self.dollar_recall_fpr),
                 "COUNT_RECALL_CUTOFF": str(self.count_recall_cutoff),
                 "GENERATE_PLOTS": str(self.generate_plots).lower(),
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
         )
 

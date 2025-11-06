@@ -33,6 +33,7 @@ MODEL_METRICS_COMPUTATION_CONTRACT = ScriptContract(
         "COMPARISON_METRICS": "all",
         "STATISTICAL_TESTS": "true",
         "COMPARISON_PLOTS": "true",
+        "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
         "pandas": ">=1.3.0",

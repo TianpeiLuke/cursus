@@ -23,6 +23,7 @@ MODEL_CALIBRATION_CONTRACT = ScriptContract(
         "NUM_CLASSES": "2",
         "SCORE_FIELD_PREFIX": "prob_class_",
         "MULTICLASS_CATEGORIES": "[0, 1]",
+        "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
         "scikit-learn": ">=0.23.2,<1.0.0",

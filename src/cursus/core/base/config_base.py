@@ -100,9 +100,14 @@ class BasePipelineConfig(BaseModel, ABC):
         default=False, description="Enable caching for pipeline steps."
     )
 
+    use_secure_pypi: bool = Field(
+        default=False,
+        description="Use secure CodeArtifact PyPI instead of public PyPI for package installation in processing scripts."
+    )
+
     # ===== Tier 1 Hybrid Resolution Fields =====
     # These fields are required for the hybrid path resolution system
-    
+
     project_root_folder: str = Field(
         description="Root folder name for the user's project (required for hybrid resolution)"
     )

@@ -281,6 +281,7 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
                 "IS_BINARY": str(self.is_binary).lower(),
                 "NUM_CLASSES": str(self.num_classes),
                 "SCORE_FIELD_PREFIX": self.score_field_prefix,
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
         )
 

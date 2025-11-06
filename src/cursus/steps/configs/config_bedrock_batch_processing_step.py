@@ -226,6 +226,7 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                     self.bedrock_rate_limit_per_second
                 ),
                 "BEDROCK_CONCURRENCY_MODE": self.bedrock_concurrency_mode,
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
                 # Batch-specific configuration (unique to batch processing)
                 "BEDROCK_BATCH_MODE": self.bedrock_batch_mode,
                 "BEDROCK_BATCH_THRESHOLD": str(self.bedrock_batch_threshold),
