@@ -1270,10 +1270,24 @@ def main(
 
         # Generate schema template from output format config
         schema_template = None
-        if output_format_config and "type" in output_format_config:
+
+        # Priority 1: Check for json_schema field in output_format_config
+        if (
+            output_format_config
+            and "json_schema" in output_format_config
+            and output_format_config["json_schema"]
+        ):
+            schema_template = output_format_config["json_schema"]
+            log(
+                "Using json_schema from OutputFormatConfig for validation schema generation"
+            )
+        # Priority 2: Check if output_format_config itself is a JSON schema (backward compatibility)
+        elif output_format_config and "type" in output_format_config:
             # Output format config contains a JSON schema
             schema_template = output_format_config
-            log("Using JSON schema from output_format.json for format generation")
+            log(
+                "Using JSON schema from output_format.json for format generation (legacy format)"
+            )
         else:
             # Generate default schema template
             required_fields = output_format_config.get(

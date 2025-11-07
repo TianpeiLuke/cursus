@@ -370,7 +370,7 @@ class BedrockProcessor:
             self.response_model_class = None
 
     def _convert_json_schema_type_to_python(self, field_schema: Dict[str, Any]) -> type:
-        """Convert JSON schema field definition to Python type."""
+        """Convert JSON schema field definition to Python type with support for nested objects."""
         field_type = field_schema.get("type", "string")
 
         if field_type == "string":
@@ -387,14 +387,74 @@ class BedrockProcessor:
         elif field_type == "boolean":
             return bool
         elif field_type == "array":
-            return list
+            # Check if array has items schema for typed arrays
+            items_schema = field_schema.get("items", {})
+            if items_schema.get("type") == "string":
+                from typing import List
+
+                return List[str]
+            elif items_schema.get("type") == "number":
+                from typing import List
+
+                return List[float]
+            elif items_schema.get("type") == "integer":
+                from typing import List
+
+                return List[int]
+            elif items_schema.get("type") == "object":
+                # Array of nested objects
+                from typing import List
+
+                nested_model = self._create_nested_model_from_schema(items_schema)
+                return List[nested_model]
+            else:
+                return list  # Generic list fallback
+        elif field_type == "object":
+            # Create nested Pydantic model for object types
+            return self._create_nested_model_from_schema(field_schema)
         else:
             return str  # Default fallback
 
+    def _create_nested_model_from_schema(self, object_schema: Dict[str, Any]) -> type:
+        """
+        Create a nested Pydantic model from JSON schema object definition.
+
+        Args:
+            object_schema: JSON schema for an object type with properties
+
+        Returns:
+            Dynamically created Pydantic model class
+        """
+        properties = object_schema.get("properties", {})
+        required_fields = object_schema.get("required", [])
+
+        if not properties:
+            # Return generic dict if no properties defined
+            return dict
+
+        # Build fields for nested model
+        nested_fields = {}
+        for prop_name, prop_schema in properties.items():
+            prop_type = self._convert_json_schema_type_to_python(prop_schema)
+            prop_description = prop_schema.get("description", f"The {prop_name} value")
+
+            if prop_name in required_fields:
+                nested_fields[prop_name] = (
+                    prop_type,
+                    Field(..., description=prop_description),
+                )
+            else:
+                nested_fields[prop_name] = (
+                    Optional[prop_type],
+                    Field(None, description=prop_description),
+                )
+
+        # Create dynamic nested model with unique name
+        model_name = object_schema.get("title", f"NestedModel_{id(object_schema)}")
+        return create_model(model_name, **nested_fields)
+
     def _format_prompt(self, row_data: Dict[str, Any]) -> str:
         """Format prompt using template placeholders and DataFrame row data."""
-        template_vars = {}
-
         # Use input_placeholders from template configuration (preferred method)
         placeholders = self.config.get("input_placeholders", [])
 
@@ -407,18 +467,31 @@ class BedrockProcessor:
         else:
             logger.info(f"Using input_placeholders from template: {placeholders}")
 
-        # Map DataFrame columns to template placeholders
+        # Start with the template
+        formatted_prompt = self.config["user_prompt_template"]
+
+        # Replace each placeholder with its value using string replacement
+        # This avoids issues with curly braces in JSON examples being interpreted as placeholders
         for placeholder in placeholders:
+            placeholder_pattern = "{" + placeholder + "}"
             if placeholder in row_data:
-                template_vars[placeholder] = row_data[placeholder]
+                # Convert value to string and replace
+                value = (
+                    str(row_data[placeholder])
+                    if row_data[placeholder] is not None
+                    else ""
+                )
+                formatted_prompt = formatted_prompt.replace(placeholder_pattern, value)
             else:
                 # Log warning for missing placeholder data
                 logger.warning(
                     f"Placeholder '{placeholder}' not found in row data. Available columns: {list(row_data.keys())}"
                 )
-                template_vars[placeholder] = f"[Missing: {placeholder}]"
+                formatted_prompt = formatted_prompt.replace(
+                    placeholder_pattern, f"[Missing: {placeholder}]"
+                )
 
-        return self.config["user_prompt_template"].format(**template_vars)
+        return formatted_prompt
 
     @retry(
         stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
@@ -492,9 +565,14 @@ class BedrockProcessor:
 
         try:
             if self.response_model_class:
+                # FIX: Prepend opening brace since prefilling is not included in response
+                # The assistant message was prefilled with "{", but Bedrock response
+                # continues from after the prefill, so we need to add it back
+                complete_json = "{" + response_text
+
                 # Use Pydantic model for structured parsing
                 validated_response = self.response_model_class.model_validate_json(
-                    response_text
+                    complete_json
                 )
 
                 # Convert to dictionary
