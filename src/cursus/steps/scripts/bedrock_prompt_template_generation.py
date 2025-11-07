@@ -840,19 +840,17 @@ class PromptTemplateGenerator:
         use_real_example = isinstance(example_output, dict)
 
         if use_real_example:
-            # Use the provided example directly
+            # Use the provided example directly (without markdown wrappers to prevent Claude from mimicking them)
             format_parts.extend(
                 [
-                    "```json",
                     json.dumps(example_output, indent=2, ensure_ascii=False),
-                    "```",
                     "",
                 ]
             )
             logger.info("Using provided example_output dict for JSON format")
         else:
-            # Generate placeholder structure from schema (existing logic)
-            format_parts.extend(["```json", "{"])
+            # Generate placeholder structure from schema (without markdown wrappers to prevent Claude from mimicking them)
+            format_parts.extend(["{"])
 
             # Extract properties from schema
             properties = schema.get("properties", {})
@@ -884,7 +882,7 @@ class PromptTemplateGenerator:
                 comma = "," if i < len(required_fields) - 1 else ""
                 format_parts.append(f'    "{field}": "{example_value}"{comma}')
 
-            format_parts.extend(["}", "```", ""])
+            format_parts.extend(["}", ""])
             logger.info(
                 "Generated placeholder JSON structure from schema (no example_output provided)"
             )

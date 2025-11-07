@@ -562,6 +562,15 @@ class BedrockProcessor:
 
         try:
             if self.response_model_class:
+                # Strip markdown code blocks if present (defensive programming)
+                response_text = response_text.strip()
+                if response_text.startswith("```json"):
+                    response_text = response_text.removeprefix("```json").strip()
+                if response_text.startswith("```"):
+                    response_text = response_text.removeprefix("```").strip()
+                if response_text.endswith("```"):
+                    response_text = response_text.removesuffix("```").strip()
+
                 # FIX: Prepend opening brace since prefilling is not included in response
                 # The assistant message was prefilled with "{", but Bedrock response
                 # continues from after the prefill, so we need to add it back
