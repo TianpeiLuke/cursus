@@ -29,13 +29,17 @@ CURRENCY_CONVERSION_VALIDATION_SPEC = StepSpecification(
     script_contract=_get_currency_conversion_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="data_input",
+            logical_name="processed_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
                 "TabularPreprocessing",
                 "ProcessingStep",
                 "CradleDataLoading",
+                "MissingValueImputation",
+                "RiskTableMapping",
+                "StratifiedSampling",
+                "FeatureSelection",
             ],
             semantic_keywords=[
                 "validation",
@@ -53,9 +57,9 @@ CURRENCY_CONVERSION_VALIDATION_SPEC = StepSpecification(
     ],
     outputs=[
         OutputSpec(
-            logical_name="converted_data",
+            logical_name="processed_data",
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['converted_data'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Currency-converted validation data with standardized monetary values",
         )

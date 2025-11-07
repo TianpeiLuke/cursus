@@ -146,16 +146,7 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
-        # Currency-specific validation
-        if self.config.enable_currency_conversion:
-            if not self.config.marketplace_id_col:
-                raise ValueError(
-                    "marketplace_id_col must be provided when conversion is enabled"
-                )
-            if not self.config.currency_conversion_var_list:
-                raise ValueError(
-                    "currency_conversion_var_list cannot be empty when conversion is enabled"
-                )
+        # Currency-specific validation is now handled by the config class itself
 
     def _create_processor(self) -> SKLearnProcessor:
         """
@@ -185,24 +176,24 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
         """
         Create environment variables for the processing job.
 
+        Uses the configuration's environment_variables property which automatically
+        generates all required environment variables from the config fields.
+
         Returns:
             Dict[str, str]: Environment variables for the processing job
         """
-        import json
+        # Get base environment variables from contract
+        env_vars = super()._get_environment_variables()
 
-        env_vars = {
-            "CURRENCY_CONVERSION_VARS": json.dumps(
-                self.config.currency_conversion_var_list
-            ),
-            "CURRENCY_CONVERSION_DICT": json.dumps(
-                self.config.currency_conversion_dict
-            ),
-            "MARKETPLACE_INFO": json.dumps(self.config.marketplace_info),
-            "LABEL_FIELD": self.config.label_field,
-            "TRAIN_RATIO": str(self.config.train_ratio),
-            "TEST_VAL_RATIO": str(self.config.test_val_ratio),
-        }
+        # Get environment variables from config (includes all currency conversion settings)
+        config_env_vars = self.config.environment_variables
+        env_vars.update(config_env_vars)
 
+        # Add environment variables from config.env if they exist
+        if hasattr(self.config, "env") and self.config.env:
+            env_vars.update(self.config.env)
+
+        self.log_info("Processing environment variables: %s", env_vars)
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
@@ -329,35 +320,20 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
 
     def _get_job_arguments(self) -> List[str]:
         """
-        Get command-line arguments for the script.
+        Constructs command-line arguments for the processing script.
+
+        This implementation uses job_type from the configuration, which is required by the script
+        and also included in the contract's expected_arguments.
 
         Returns:
-            List[str]: Command-line arguments
+            A list of strings representing the command-line arguments.
         """
-        args = [
-            "--job-type",
-            self.config.job_type,
-            "--mode",
-            self.config.mode,
-            "--marketplace-id-col",
-            self.config.marketplace_id_col,
-            "--default-currency",
-            self.config.default_currency,
-            "--enable-conversion",
-            str(self.config.enable_currency_conversion).lower(),
-        ]
+        # Get job_type from configuration
+        job_type = self.config.job_type
+        self.log_info("Setting job_type argument to: %s", job_type)
 
-        # Add optional arguments
-        if hasattr(self.config, "currency_col") and self.config.currency_col:
-            args.extend(["--currency-col", self.config.currency_col])
-
-        if (
-            hasattr(self.config, "skip_invalid_currencies")
-            and self.config.skip_invalid_currencies
-        ):
-            args.append("--skip-invalid-currencies")
-
-        return args
+        # Return job_type argument - the script uses this to determine processing mode
+        return ["--job_type", job_type]
 
     def create_step(self, **kwargs) -> ProcessingStep:
         """
