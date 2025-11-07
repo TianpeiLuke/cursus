@@ -6,7 +6,7 @@ while eliminating redundancy and over-engineering from the original implementati
 
 OPTIMIZATION: 600 lines → ~300 lines (50% reduction)
 - Simplified type preservation logic
-- Removed hardcoded module path dependencies  
+- Removed hardcoded module path dependencies
 - Integrated with step catalog for deployment-agnostic class resolution
 - Minimal circular reference tracking
 - Maintained exact JSON structure compatibility
@@ -28,7 +28,7 @@ from .unified_config_manager import get_unified_config_manager
 class TypeAwareConfigSerializer:
     """
     Streamlined serializer with essential type preservation and step catalog integration.
-    
+
     Key Optimizations:
     - 50% code reduction through elimination of redundant logic
     - Step catalog integration for deployment-agnostic class resolution
@@ -57,13 +57,13 @@ class TypeAwareConfigSerializer:
         self.mode = mode
         self.logger = logging.getLogger(__name__)
         self.unified_manager = unified_manager or get_unified_config_manager()
-        
+
         # Get config classes from unified manager if not provided
         if config_classes is None:
             self.config_classes = self.unified_manager.get_config_classes()
         else:
             self.config_classes = config_classes
-        
+
         # Simple circular reference tracking
         self._serializing_ids: Set[int] = set()
 
@@ -101,7 +101,7 @@ class TypeAwareConfigSerializer:
             return self._serialize_sequence(val)
         elif isinstance(val, (set, frozenset)):
             return self._serialize_set(val)
-        
+
         # Fallback to string representation
         return str(val)
 
@@ -133,13 +133,15 @@ class TypeAwareConfigSerializer:
     def _serialize_model(self, val: BaseModel) -> Dict[str, Any]:
         """
         Serialize Pydantic model with tier-aware field selection.
-        
+
         Uses three-tier architecture to include only essential and system fields.
         """
         # Check for circular reference
         obj_id = id(val)
         if obj_id in self._serializing_ids:
-            self.logger.warning(f"Circular reference detected in {val.__class__.__name__}")
+            self.logger.warning(
+                f"Circular reference detected in {val.__class__.__name__}"
+            )
             return {
                 self.MODEL_TYPE_FIELD: val.__class__.__name__,
                 "_circular_ref": True,
@@ -148,14 +150,14 @@ class TypeAwareConfigSerializer:
 
         # Mark as being serialized
         self._serializing_ids.add(obj_id)
-        
+
         try:
             # Create result with type metadata
             result = {self.MODEL_TYPE_FIELD: val.__class__.__name__}
-            
+
             # Use tier-aware serialization if available
             field_tiers = self.unified_manager.get_field_tiers(val)
-            
+
             # Include essential and system fields only
             for tier in ["essential", "system"]:
                 for field_name in field_tiers.get(tier, []):
@@ -164,7 +166,7 @@ class TypeAwareConfigSerializer:
                     if tier == "system" and field_value is None:
                         continue
                     result[field_name] = self.serialize(field_value)
-            
+
             # Include explicitly exported derived fields from model_dump
             if hasattr(val, "model_dump"):
                 dump_data = val.model_dump()
@@ -172,9 +174,9 @@ class TypeAwareConfigSerializer:
                 for field_name, value in dump_data.items():
                     if field_name in derived_fields and field_name not in result:
                         result[field_name] = self.serialize(value)
-            
+
             return result
-            
+
         except Exception as e:
             self.logger.warning(f"Error serializing {val.__class__.__name__}: {str(e)}")
             return {
@@ -188,11 +190,12 @@ class TypeAwareConfigSerializer:
     def _serialize_dict(self, val: dict) -> Any:
         """Serialize dictionary with conditional type preservation."""
         serialized = {k: self.serialize(v) for k, v in val.items()}
-        
+
         # Only add type info if there are complex values and mode requires it
-        if (self.mode == SerializationMode.PRESERVE_TYPES and 
-            any(isinstance(v, (BaseModel, Enum, datetime, Path, set, frozenset, tuple)) 
-                for v in val.values())):
+        if self.mode == SerializationMode.PRESERVE_TYPES and any(
+            isinstance(v, (BaseModel, Enum, datetime, Path, set, frozenset, tuple))
+            for v in val.values()
+        ):
             return {
                 self.TYPE_INFO_FIELD: TYPE_MAPPING["dict"],
                 "value": serialized,
@@ -202,11 +205,12 @@ class TypeAwareConfigSerializer:
     def _serialize_sequence(self, val: Union[list, tuple]) -> Any:
         """Serialize list or tuple with conditional type preservation."""
         serialized = [self.serialize(v) for v in val]
-        
+
         # Only add type info if there are complex values and mode requires it
-        if (self.mode == SerializationMode.PRESERVE_TYPES and 
-            any(isinstance(v, (BaseModel, Enum, datetime, Path, set, frozenset, tuple)) 
-                for v in val)):
+        if self.mode == SerializationMode.PRESERVE_TYPES and any(
+            isinstance(v, (BaseModel, Enum, datetime, Path, set, frozenset, tuple))
+            for v in val
+        ):
             type_key = "tuple" if isinstance(val, tuple) else "list"
             return {
                 self.TYPE_INFO_FIELD: TYPE_MAPPING[type_key],
@@ -217,7 +221,7 @@ class TypeAwareConfigSerializer:
     def _serialize_set(self, val: Union[set, frozenset]) -> Any:
         """Serialize set or frozenset with type preservation."""
         serialized = [self.serialize(v) for v in val]
-        
+
         if self.mode == SerializationMode.PRESERVE_TYPES:
             type_key = "frozenset" if isinstance(val, frozenset) else "set"
             return {
@@ -226,8 +230,12 @@ class TypeAwareConfigSerializer:
             }
         return serialized
 
-    def deserialize(self, field_data: Any, field_name: Optional[str] = None, 
-                   expected_type: Optional[Type] = None) -> Any:
+    def deserialize(
+        self,
+        field_data: Any,
+        field_name: Optional[str] = None,
+        expected_type: Optional[Type] = None,
+    ) -> Any:
         """
         Deserialize data with proper type handling and circular reference protection.
 
@@ -251,14 +259,18 @@ class TypeAwareConfigSerializer:
                 return self._deserialize_model(field_data, expected_type)
             else:
                 # Simple dictionary
-                return {k: self.deserialize(v, f"{field_name}.{k}" if field_name else k) 
-                       for k, v in field_data.items()}
-        
+                return {
+                    k: self.deserialize(v, f"{field_name}.{k}" if field_name else k)
+                    for k, v in field_data.items()
+                }
+
         # Handle lists
         if isinstance(field_data, list):
-            return [self.deserialize(v, f"{field_name}[{i}]" if field_name else f"[{i}]") 
-                   for i, v in enumerate(field_data)]
-        
+            return [
+                self.deserialize(v, f"{field_name}[{i}]" if field_name else f"[{i}]")
+                for i, v in enumerate(field_data)
+            ]
+
         return field_data
 
     def _deserialize_typed_object(self, field_data: Dict[str, Any]) -> Any:
@@ -274,10 +286,14 @@ class TypeAwareConfigSerializer:
             return Path(value)
         elif type_info == TYPE_MAPPING["dict"]:
             return {k: self.deserialize(v) for k, v in value.items()}
-        elif type_info in [TYPE_MAPPING["list"], TYPE_MAPPING["tuple"], 
-                          TYPE_MAPPING["set"], TYPE_MAPPING["frozenset"]]:
+        elif type_info in [
+            TYPE_MAPPING["list"],
+            TYPE_MAPPING["tuple"],
+            TYPE_MAPPING["set"],
+            TYPE_MAPPING["frozenset"],
+        ]:
             return self._deserialize_collection(type_info, value)
-        
+
         return field_data
 
     def _deserialize_enum(self, field_data: Dict[str, Any]) -> Any:
@@ -298,7 +314,7 @@ class TypeAwareConfigSerializer:
     def _deserialize_collection(self, type_info: str, value: List[Any]) -> Any:
         """Deserialize collection types."""
         deserialized_list = [self.deserialize(v) for v in value]
-        
+
         if type_info == TYPE_MAPPING["tuple"]:
             return tuple(deserialized_list)
         elif type_info == TYPE_MAPPING["set"]:
@@ -307,10 +323,12 @@ class TypeAwareConfigSerializer:
             return frozenset(deserialized_list)
         return deserialized_list
 
-    def _deserialize_model(self, field_data: Dict[str, Any], expected_type: Optional[Type] = None) -> Any:
+    def _deserialize_model(
+        self, field_data: Dict[str, Any], expected_type: Optional[Type] = None
+    ) -> Any:
         """
         Deserialize model instance with step catalog integration.
-        
+
         Uses unified manager for robust class discovery and circular reference protection.
         """
         type_name = field_data.get(self.MODEL_TYPE_FIELD)
@@ -321,13 +339,19 @@ class TypeAwareConfigSerializer:
         actual_class = self.config_classes.get(type_name) or expected_type
         if not actual_class:
             self.logger.warning(f"Could not find class {type_name}")
-            return {k: self.deserialize(v) for k, v in field_data.items() 
-                   if k != self.MODEL_TYPE_FIELD}
+            return {
+                k: self.deserialize(v)
+                for k, v in field_data.items()
+                if k != self.MODEL_TYPE_FIELD
+            }
 
         # Prepare data for instantiation
-        filtered_data = {k: v for k, v in field_data.items() 
-                        if k != self.MODEL_TYPE_FIELD and not k.startswith("_")}
-        
+        filtered_data = {
+            k: v
+            for k, v in field_data.items()
+            if k != self.MODEL_TYPE_FIELD and not k.startswith("_")
+        }
+
         # Recursively deserialize nested fields
         for k, v in list(filtered_data.items()):
             nested_type = None
@@ -337,8 +361,9 @@ class TypeAwareConfigSerializer:
 
         # Filter to model fields only for three-tier pattern
         if hasattr(actual_class, "model_fields"):
-            init_kwargs = {k: v for k, v in filtered_data.items() 
-                          if k in actual_class.model_fields}
+            init_kwargs = {
+                k: v for k, v in filtered_data.items() if k in actual_class.model_fields
+            }
         else:
             init_kwargs = filtered_data
 
@@ -348,7 +373,9 @@ class TypeAwareConfigSerializer:
                 return actual_class.model_validate(init_kwargs, strict=False)
             return actual_class(**init_kwargs)
         except Exception as e:
-            self.logger.error(f"Failed to instantiate {actual_class.__name__}: {str(e)}")
+            self.logger.error(
+                f"Failed to instantiate {actual_class.__name__}: {str(e)}"
+            )
             try:
                 if hasattr(actual_class, "model_construct"):
                     return actual_class.model_construct(**init_kwargs)
@@ -359,7 +386,7 @@ class TypeAwareConfigSerializer:
     def generate_step_name(self, config: Any) -> str:
         """
         Generate step name using step catalog integration.
-        
+
         Leverages unified manager's step catalog for consistent naming.
         """
         # Check for step_name_override first
@@ -367,17 +394,26 @@ class TypeAwareConfigSerializer:
             return config.step_name_override
 
         class_name = config.__class__.__name__
-        
+
         # Use step catalog via unified manager
         try:
             from ...registry.step_names import CONFIG_STEP_REGISTRY
+
             if class_name in CONFIG_STEP_REGISTRY:
                 base_step = CONFIG_STEP_REGISTRY[class_name]
             else:
                 # Fallback to simple conversion
-                base_step = class_name.replace("Config", "") if class_name.endswith("Config") else class_name
+                base_step = (
+                    class_name.replace("Config", "")
+                    if class_name.endswith("Config")
+                    else class_name
+                )
         except ImportError:
-            base_step = class_name.replace("Config", "") if class_name.endswith("Config") else class_name
+            base_step = (
+                class_name.replace("Config", "")
+                if class_name.endswith("Config")
+                else class_name
+            )
 
         # Append distinguishing attributes
         step_name = base_step
@@ -418,7 +454,9 @@ def serialize_config(config: Any) -> Dict[str, Any]:
     return result
 
 
-def deserialize_config(data: Dict[str, Any], expected_type: Optional[Type] = None) -> Any:
+def deserialize_config(
+    data: Dict[str, Any], expected_type: Optional[Type] = None
+) -> Any:
     """Deserialize a single config object with optimized serializer."""
     serializer = TypeAwareConfigSerializer()
     return serializer.deserialize(data, expected_type=expected_type)

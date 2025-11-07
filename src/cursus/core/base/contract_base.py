@@ -139,7 +139,10 @@ class ScriptContract(BaseModel):
                     raise ValueError(
                         f"Input path for {logical_name} must start with /opt/ml/processing/, got: {path}"
                     )
-            elif not (path.startswith("/opt/ml/processing/input") or path.startswith("/opt/ml/code")):                
+            elif not (
+                path.startswith("/opt/ml/processing/input")
+                or path.startswith("/opt/ml/code")
+            ):
                 raise ValueError(
                     f"Input path for {logical_name} must start with /opt/ml/processing/input or /opt/ml/code, got: {path}"
                 )
@@ -292,7 +295,7 @@ class ScriptAnalyzer:
                     ):
                         # This is a complex pattern, for now just look for string literals
                         pass
-            
+
             self._input_paths_loaded = True
 
         return self._input_paths
@@ -310,7 +313,7 @@ class ScriptAnalyzer:
                 elif isinstance(node, ast.Constant) and isinstance(node.value, str):
                     if "/opt/ml/processing/output" in node.value:
                         self._output_paths.add(node.value)
-            
+
             self._output_paths_loaded = True
 
         return self._output_paths
@@ -329,7 +332,6 @@ class ScriptAnalyzer:
                     and node.value.value.id == "os"
                     and node.value.attr == "environ"
                 ):
-
                     if isinstance(node.slice, ast.Str):
                         self._env_vars.add(node.slice.s)
                     elif isinstance(node.slice, ast.Constant) and isinstance(
@@ -347,7 +349,6 @@ class ScriptAnalyzer:
                     and node.func.value.attr == "environ"
                     and node.func.attr == "get"
                 ):
-
                     if node.args and isinstance(node.args[0], ast.Str):
                         self._env_vars.add(node.args[0].s)
                     elif (
@@ -365,7 +366,6 @@ class ScriptAnalyzer:
                     and node.func.value.id == "os"
                     and node.func.attr == "getenv"
                 ):
-
                     if node.args and isinstance(node.args[0], ast.Str):
                         self._env_vars.add(node.args[0].s)
                     elif (
@@ -374,7 +374,7 @@ class ScriptAnalyzer:
                         and isinstance(node.args[0].value, str)
                     ):
                         self._env_vars.add(node.args[0].value)
-            
+
             self._env_vars_loaded = True
 
         return self._env_vars
@@ -391,7 +391,6 @@ class ScriptAnalyzer:
                     and isinstance(node.func, ast.Attribute)
                     and node.func.attr == "add_argument"
                 ):
-
                     # Check first argument for the argument name
                     if node.args and (
                         isinstance(node.args[0], ast.Str)
@@ -410,7 +409,7 @@ class ScriptAnalyzer:
                             self._arguments.add(arg_name[2:])
                         elif arg_name.startswith("-"):
                             self._arguments.add(arg_name[1:])
-            
+
             self._arguments_loaded = True
 
         return self._arguments

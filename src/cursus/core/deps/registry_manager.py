@@ -121,7 +121,9 @@ class RegistryManager:
             )
 
         if workspace_aware_context not in self._registries:
-            raise ValueError(f"Registry not found for context '{workspace_aware_context}' and create_if_missing is False")
+            raise ValueError(
+                f"Registry not found for context '{workspace_aware_context}' and create_if_missing is False"
+            )
         # Direct access: key is guaranteed to exist due to the check above
         return self._registries[workspace_aware_context]
 

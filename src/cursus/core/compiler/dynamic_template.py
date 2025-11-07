@@ -18,7 +18,9 @@ from ..base import StepBuilderBase, BasePipelineConfig
 # Import PipelineTemplateBase directly - circular import should be resolved by now
 from ..assembler.pipeline_template_base import PipelineTemplateBase
 
-from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
+from ...step_catalog.adapters.config_resolver import (
+    StepConfigResolverAdapter as StepConfigResolver,
+)
 from ...step_catalog import StepCatalog
 from .validation import ValidationEngine
 from .exceptions import ConfigurationError, ValidationError
@@ -66,18 +68,20 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
 
         self._dag = dag
         self._config_resolver = config_resolver or StepConfigResolver()
-        
+
         # Initialize step_catalog
         if step_catalog is not None:
             self._step_catalog = step_catalog
         else:
-            self.logger.warning("step_catalog parameter is None, creating new StepCatalog()")
+            self.logger.warning(
+                "step_catalog parameter is None, creating new StepCatalog()"
+            )
             try:
                 self._step_catalog = StepCatalog()
             except Exception as e:
                 self.logger.error(f"Failed to create new StepCatalog(): {e}")
                 self._step_catalog = None
-        
+
         self._validation_engine = ValidationEngine()
 
         # Store config_path as an instance attribute so it's available to _detect_config_classes
@@ -164,10 +168,14 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         if not self._config_map_loaded:
             try:
                 dag_nodes = list(self._dag.nodes)
-                self.logger.info(f"Resolving {len(dag_nodes)} DAG nodes to configurations")
+                self.logger.info(
+                    f"Resolving {len(dag_nodes)} DAG nodes to configurations"
+                )
 
                 # Extract metadata from loaded configurations if available
-                if self._loaded_metadata is None and hasattr(self, "loaded_config_data"):
+                if self._loaded_metadata is None and hasattr(
+                    self, "loaded_config_data"
+                ):
                     if (
                         isinstance(self.loaded_config_data, dict)
                         and "metadata" in self.loaded_config_data
@@ -181,7 +189,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                     available_configs=self.configs,
                     metadata=self._loaded_metadata,
                 )
-                
+
                 # Update the early-initialized dict
                 self._resolved_config_map.update(resolved_map)
 
@@ -193,7 +201,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                 for node, config in self._resolved_config_map.items():
                     config_type = type(config).__name__
                     job_type = getattr(config, "job_type", "N/A")
-                    self.logger.debug(f"  {node} → {config_type} (job_type: {job_type})")
+                    self.logger.debug(
+                        f"  {node} → {config_type} (job_type: {job_type})"
+                    )
 
                 self._config_map_loaded = True
 
@@ -221,12 +231,14 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
             try:
                 # Check if step_catalog is None before calling get_builder_map()
                 if self._step_catalog is None:
-                    self.logger.error("CRITICAL: self._step_catalog is None when trying to call get_builder_map()!")
+                    self.logger.error(
+                        "CRITICAL: self._step_catalog is None when trying to call get_builder_map()!"
+                    )
                     raise RegistryError("Step catalog is None - cannot get builder map")
-                
+
                 # Get the complete builder map from StepCatalog
                 builder_map = self._step_catalog.get_builder_map()
-                
+
                 # Update the early-initialized dict
                 self._resolved_builder_map.update(builder_map)
 
@@ -308,7 +320,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                 for config_name, errors in validation_result.config_errors.items():
                     for error in errors:
                         flattened_config_errors.append(f"{config_name}: {error}")
-                
+
                 raise ValidationError(
                     "Dynamic pipeline configuration validation failed",
                     validation_errors={
@@ -409,7 +421,9 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         """
         return {
             "supported_step_types": len(self._step_catalog.list_supported_step_types()),
-            "indexed_steps": len(self._step_catalog._step_index) if hasattr(self._step_catalog, '_step_index') else 0,
+            "indexed_steps": len(self._step_catalog._step_index)
+            if hasattr(self._step_catalog, "_step_index")
+            else 0,
         }
 
     def validate_before_build(self) -> bool:

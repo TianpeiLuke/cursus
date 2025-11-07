@@ -22,24 +22,24 @@ New Three-Tier Architecture Components:
 
 Usage:
     ```python
-    from ..config_field_manager import merge_and_save_configs, load_configs, ConfigClassStore    
+    from ..config_field_manager import merge_and_save_configs, load_configs, ConfigClassStore
     # Register config classes for type-aware serialization
     @ConfigClassStore.register
     class MyConfig:
         ...
-        
+
     # Merge and save configs
     configs = [MyConfig(...), AnotherConfig(...)]
     merge_and_save_configs(configs, "output.json")
-    
+
     # Load configs
     loaded_configs = load_configs("output.json")
-    
+
     # Using the three-tier architecture
-    from ..config_field_manager import (        ConfigFieldTierRegistry, DefaultValuesProvider, 
+    from ..config_field_manager import (        ConfigFieldTierRegistry, DefaultValuesProvider,
         FieldDerivationEngine, DataConfig, ModelConfig, RegistrationConfig
     )
-    
+
     # Apply defaults and derive fields
     DefaultValuesProvider.apply_defaults(config)
     field_engine = FieldDerivationEngine()
@@ -80,42 +80,44 @@ except ImportError:
     # Fallback for environments where step catalog is not available
     class ConfigClassStore:
         """Fallback ConfigClassStore for environments without step catalog."""
+
         _classes = {}
-        
+
         @classmethod
         def register(cls, config_class):
             cls._classes[config_class.__name__] = config_class
             return config_class
-        
+
         @classmethod
         def get_all_classes(cls):
             return cls._classes.copy()
-    
+
     # Fallback ConfigClassDetector
     class ConfigClassDetector:
         """Fallback ConfigClassDetector for environments without step catalog."""
+
         MODEL_TYPE_FIELD = "__model_type__"
         METADATA_FIELD = "metadata"
         CONFIG_TYPES_FIELD = "config_types"
         CONFIGURATION_FIELD = "configuration"
         SPECIFIC_FIELD = "specific"
-        
+
         @classmethod
         def detect_from_json(cls, config_file_path: str):
             return ConfigClassStore.get_all_classes()
-        
+
         @classmethod
         def from_config_store(cls, config_file_path: str):
             return cls.detect_from_json(config_file_path)
-        
+
         @classmethod
         def _extract_class_names(cls, data, logger):
             return set()
-    
+
     def detect_config_classes_from_json(config_file_path: str):
         """Fallback function for detecting config classes from JSON."""
         return ConfigClassDetector.detect_from_json(config_file_path)
-    
+
     def build_complete_config_classes():
         """Fallback function for building complete config classes."""
         return ConfigClassStore.get_all_classes()
@@ -175,7 +177,7 @@ def merge_and_save_configs(
 ) -> Dict[str, Any]:
     """
     Merge and save multiple configs to a single JSON file.
-    
+
     Uses UnifiedConfigManager for streamlined processing with workspace awareness.
 
     Args:
@@ -199,30 +201,32 @@ def merge_and_save_configs(
     try:
         # Use UnifiedConfigManager with workspace awareness
         from .unified_config_manager import UnifiedConfigManager
-        
+
         # Pass workspace_dirs directly to UnifiedConfigManager
         manager = UnifiedConfigManager(workspace_dirs=workspace_dirs)
-        
+
         # Save configs using UnifiedConfigManager
         logger.info(f"Merging and saving {len(config_list)} configs to {output_file}")
-        merged = manager.save(config_list, output_file, processing_step_config_base_class)
-        
+        merged = manager.save(
+            config_list, output_file, processing_step_config_base_class
+        )
+
         logger.info(f"Successfully saved merged configs to {output_file}")
         return merged
-        
+
     except Exception as e:
         logger.error(f"Error merging and saving configs: {str(e)}")
         raise
 
 
 def load_configs(
-    input_file: str, 
+    input_file: str,
     config_classes: Optional[Dict[str, Type]] = None,
     workspace_dirs: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Load multiple configs from a JSON file.
-    
+
     Uses UnifiedConfigManager for streamlined processing with workspace awareness.
 
     Args:
@@ -251,10 +255,10 @@ def load_configs(
     try:
         # Use UnifiedConfigManager with workspace awareness
         from .unified_config_manager import UnifiedConfigManager
-        
+
         # Pass workspace_dirs directly to UnifiedConfigManager
         manager = UnifiedConfigManager(workspace_dirs=workspace_dirs)
-        
+
         # Load configs using UnifiedConfigManager
         logger.info(f"Loading configs from {input_file}")
         loaded_configs = manager.load(input_file, config_classes)
@@ -264,7 +268,7 @@ def load_configs(
         )
 
         return loaded_configs
-        
+
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in input file: {str(e)}")
         raise
@@ -279,39 +283,45 @@ def load_configs(
 def _get_enhanced_config_classes() -> Dict[str, Type]:
     """
     Get config classes using enhanced discovery with step catalog integration.
-        
+
     Returns:
         Dictionary mapping class names to class types
     """
     try:
         # Try to use unified config manager for enhanced discovery
         from .unified_config_manager import get_unified_config_manager
+
         manager = get_unified_config_manager()
         config_classes = manager.get_config_classes()
-        
+
         if config_classes:
-            logger.info(f"Enhanced discovery found {len(config_classes)} config classes")
+            logger.info(
+                f"Enhanced discovery found {len(config_classes)} config classes"
+            )
             return config_classes
-            
+
     except ImportError:
         logger.debug("UnifiedConfigManager not available")
     except Exception as e:
         logger.debug(f"Enhanced discovery failed: {e}")
-    
+
     # Fallback to step catalog integration from utils
     try:
         from ...steps.configs.utils import build_complete_config_classes
+
         config_classes = build_complete_config_classes()
-        
+
         if config_classes:
-            logger.info(f"Step catalog discovery found {len(config_classes)} config classes")
+            logger.info(
+                f"Step catalog discovery found {len(config_classes)} config classes"
+            )
             return config_classes
-            
+
     except ImportError:
         logger.debug("Step catalog utils not available")
     except Exception as e:
         logger.debug(f"Step catalog discovery failed: {e}")
-    
+
     # Final fallback to ConfigClassStore
     return ConfigClassStore.get_all_classes()
 
@@ -319,15 +329,17 @@ def _get_enhanced_config_classes() -> Dict[str, Type]:
 def _get_basic_config_classes() -> Dict[str, Type]:
     """
     Get basic config classes as final fallback.
-    
+
     Returns:
         Dictionary with basic config classes
     """
     try:
         from ...core.base.config_base import BasePipelineConfig
-        from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+        from ...steps.configs.config_processing_step_base import (
+            ProcessingStepConfigBase,
+        )
         from ...core.base.hyperparameters_base import ModelHyperparameters
-        
+
         return {
             "BasePipelineConfig": BasePipelineConfig,
             "ProcessingStepConfigBase": ProcessingStepConfigBase,

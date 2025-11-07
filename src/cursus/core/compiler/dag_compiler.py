@@ -44,7 +44,9 @@ except ImportError:
         subnets=[VPC_SUBNET],
         encrypt_inter_container_traffic=True,
     )
-from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
+from ...step_catalog.adapters.config_resolver import (
+    StepConfigResolverAdapter as StepConfigResolver,
+)
 from ...step_catalog import StepCatalog
 from .validation import (
     ValidationResult,
@@ -414,6 +416,7 @@ class PipelineDAGCompiler:
             # Build pipeline
             from typing import cast
             from sagemaker.workflow.pipeline import Pipeline as SageMakerPipeline
+
             pipeline = cast(SageMakerPipeline, template.generate_pipeline())
 
             # Store the template after generate_pipeline() has updated its internal state
@@ -434,7 +437,7 @@ class PipelineDAGCompiler:
                 else:
                     base_name = "cursus"
                     version = "0.0.0"
-                
+
                 # Generate a name using the same approach as PipelineTemplateBase
                 pipeline.name = generate_pipeline_name(base_name, version)
 
@@ -511,8 +514,12 @@ class PipelineDAGCompiler:
                     "dag_edges": len(dag.edges),
                     "config_path": self.config_path,
                     "step_catalog_stats": {
-                        "supported_step_types": len(self.step_catalog.list_supported_step_types()),
-                        "indexed_steps": len(self.step_catalog._step_index) if hasattr(self.step_catalog, '_step_index') else 0,
+                        "supported_step_types": len(
+                            self.step_catalog.list_supported_step_types()
+                        ),
+                        "indexed_steps": len(self.step_catalog._step_index)
+                        if hasattr(self.step_catalog, "_step_index")
+                        else 0,
                     },
                 },
             )
@@ -524,7 +531,9 @@ class PipelineDAGCompiler:
             self.logger.error(f"Failed to compile DAG with report: {e}")
             raise PipelineAPIError(f"DAG compilation with report failed: {e}") from e
 
-    def create_template(self, dag: PipelineDAG, **kwargs: Any) -> "DynamicPipelineTemplate":
+    def create_template(
+        self, dag: PipelineDAG, **kwargs: Any
+    ) -> "DynamicPipelineTemplate":
         """
         Create a pipeline template from the DAG without generating the pipeline.
 
@@ -635,7 +644,7 @@ class PipelineDAGCompiler:
     # Note: compile_and_fill_execution_doc() method removed as part of Phase 2 cleanup
     # Execution document generation is now handled by the standalone execution document generator
     # (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator)
-    # 
+    #
     # Users should now:
     # 1. Use compile() to generate the pipeline
     # 2. Use ExecutionDocumentGenerator separately to fill execution documents

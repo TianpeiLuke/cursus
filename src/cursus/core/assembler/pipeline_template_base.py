@@ -64,7 +64,7 @@ class PipelineTemplateBase(ABC):
         registry_manager: Optional[RegistryManager] = None,
         dependency_resolver: Optional[UnifiedDependencyResolver] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
-        step_catalog: Optional['StepCatalog'] = None,
+        step_catalog: Optional["StepCatalog"] = None,
     ):
         """
         Initialize base template.
@@ -83,8 +83,10 @@ class PipelineTemplateBase(ABC):
         self.role = role
 
         # Store pipeline parameters for template
-        self._stored_pipeline_parameters: Optional[List[Union[str, ParameterString]]] = pipeline_parameters
-        
+        self._stored_pipeline_parameters: Optional[
+            List[Union[str, ParameterString]]
+        ] = pipeline_parameters
+
         # Store step catalog
         self._step_catalog = step_catalog
 
@@ -144,7 +146,6 @@ class PipelineTemplateBase(ABC):
         # Type cast is safe since all config classes should inherit from BasePipelineConfig
         return load_configs(config_path, complete_classes)  # type: ignore[return-value]
 
-
     def _initialize_components(self) -> None:
         """
         Initialize dependency resolution components.
@@ -157,7 +158,7 @@ class PipelineTemplateBase(ABC):
         if self.configs:
             first_config = next(iter(self.configs.values()))
             context_name = getattr(first_config, "pipeline_name", None)
-        
+
         components = create_pipeline_components(context_name)
 
         if not self._registry_manager:
@@ -247,33 +248,37 @@ class PipelineTemplateBase(ABC):
         """
         pass
 
-    def set_pipeline_parameters(self, parameters: Optional[List[ParameterString]] = None) -> None:
+    def set_pipeline_parameters(
+        self, parameters: Optional[List[ParameterString]] = None
+    ) -> None:
         """
         Set pipeline parameters for this template.
-        
+
         This method allows DAGCompiler to inject custom parameters that will be used
         instead of the default parameters defined in subclasses.
-        
+
         Args:
             parameters: List of pipeline parameters to use
         """
         self._stored_pipeline_parameters = parameters
-        logger.info(f"Set {len(parameters) if parameters else 0} custom pipeline parameters")
+        logger.info(
+            f"Set {len(parameters) if parameters else 0} custom pipeline parameters"
+        )
 
     def _get_pipeline_parameters(self) -> List[ParameterString]:
         """
         Get pipeline parameters.
-        
+
         Returns stored parameters if available, otherwise delegates to subclass implementation.
         This method is called by generate_pipeline() to get parameters for PipelineAssembler.
-        
+
         Returns:
             List of pipeline parameters
         """
         if self._stored_pipeline_parameters is not None:
             logger.info("Using stored custom pipeline parameters")
             return self._stored_pipeline_parameters
-        
+
         # Fallback to subclass implementation (existing behavior)
         logger.info("No stored parameters, using default implementation")
         return []  # Default empty list, subclasses can override
@@ -306,9 +311,10 @@ class PipelineTemplateBase(ABC):
             logger.info("Using provided StepCatalog instance")
         else:
             from ...step_catalog import StepCatalog
+
             step_catalog = StepCatalog()
             logger.info("Created new StepCatalog instance")
-        
+
         template = PipelineAssembler(
             dag=dag,
             config_map=config_map,
@@ -331,7 +337,7 @@ class PipelineTemplateBase(ABC):
     def _get_pipeline_name(self) -> str:
         """
         Get pipeline name using the rule-based generator.
-        
+
         Uses any available config to extract pipeline_name and pipeline_version
         since all configs inherit these fields from BasePipelineConfig.
 
@@ -340,14 +346,15 @@ class PipelineTemplateBase(ABC):
         """
         if not self.configs:
             raise ValueError("No configurations available to extract pipeline name")
-        
+
         # Use any config to get pipeline fields (all configs have the same values due to inheritance)
         first_config = next(iter(self.configs.values()))
-        
+
         # Check if explicit override is provided
         explicit_name = getattr(first_config, "explicit_pipeline_name", None)
         if explicit_name:
             from typing import cast
+
             return cast(str, explicit_name)
 
         # Get pipeline_name and pipeline_version from any config (all have same values due to inheritance)

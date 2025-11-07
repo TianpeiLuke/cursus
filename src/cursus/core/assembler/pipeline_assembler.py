@@ -149,7 +149,9 @@ class PipelineAssembler:
             builder_class = self.step_catalog.get_builder_for_config(config, step_name)
             if not builder_class:
                 config_class_name = type(config).__name__
-                raise ValueError(f"No step builder found for config: {config_class_name}")
+                raise ValueError(
+                    f"No step builder found for config: {config_class_name}"
+                )
 
         # Check that all edges in the DAG connect nodes that exist in the DAG
         for src, dst in self.dag.edges:
@@ -177,12 +179,16 @@ class PipelineAssembler:
         for step_name in self.dag.nodes:
             try:
                 config = self.config_map[step_name]
-                
+
                 # Use StepCatalog for direct config-to-builder resolution
-                builder_cls = self.step_catalog.get_builder_for_config(config, step_name)
+                builder_cls = self.step_catalog.get_builder_for_config(
+                    config, step_name
+                )
                 if not builder_cls:
                     config_class_name = type(config).__name__
-                    raise ValueError(f"No step builder found for config: {config_class_name}")
+                    raise ValueError(
+                        f"No step builder found for config: {config_class_name}"
+                    )
 
                 # Initialize the builder with dependency components
                 builder = builder_cls(
@@ -192,7 +198,7 @@ class PipelineAssembler:
                     registry_manager=self._registry_manager,  # Pass component
                     dependency_resolver=self._dependency_resolver,  # Pass component
                 )
-                
+
                 # Pass execution prefix to the builder using the public method
                 # Find PIPELINE_EXECUTION_TEMP_DIR in pipeline_parameters and pass it to the builder
                 execution_prefix = None
@@ -200,12 +206,12 @@ class PipelineAssembler:
                     if hasattr(param, "name") and param.name == "EXECUTION_S3_PREFIX":
                         execution_prefix = param
                         break
-                
+
                 if execution_prefix:
                     builder.set_execution_prefix(execution_prefix)
                     logger.info(f"Set execution prefix for {step_name}")
                 # If no PIPELINE_EXECUTION_TEMP_DIR found, builder will fall back to config.pipeline_s3_loc
-                
+
                 self.step_builders[step_name] = builder
                 logger.info(
                     f"Initialized builder for step {step_name} using StepCatalog"
@@ -328,7 +334,10 @@ class PipelineAssembler:
         for logical_name, output_spec in builder.spec.outputs.items():
             # Standard path pattern using Join instead of f-string to ensure proper parameter substitution
             from sagemaker.workflow.functions import Join
-            outputs[logical_name] = Join(on="/", values=[base_s3_loc, step_type, logical_name])
+
+            outputs[logical_name] = Join(
+                on="/", values=[base_s3_loc, step_type, logical_name]
+            )
 
             # Add debug log with type-safe handling using safe_value_for_logging
             logger.debug(

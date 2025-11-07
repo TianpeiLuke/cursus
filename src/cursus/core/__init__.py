@@ -95,6 +95,7 @@ from .deps import (
     SemanticMatcher,
     create_pipeline_components,
 )
+
 # Workspace components now available through new simplified workspace system
 try:
     from ..workspace import (
@@ -103,6 +104,7 @@ try:
         WorkspaceIntegrator,
         WorkspaceAPI,
     )
+
     _workspace_available = True
 except ImportError:
     _workspace_available = False
@@ -178,7 +180,7 @@ __all__ = [
     "create_pipeline_components",
     # Workspace components (new simplified system)
     "WorkspaceManager",
-    "WorkspaceValidator", 
+    "WorkspaceValidator",
     "WorkspaceIntegrator",
     "WorkspaceAPI",
 ]

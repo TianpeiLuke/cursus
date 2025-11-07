@@ -40,11 +40,14 @@ def get_thread_components() -> dict:
     if not hasattr(_thread_local, "components"):
         _thread_local.components = create_pipeline_components()
     from typing import cast
+
     return cast(dict, _thread_local.components)
 
 
 @contextmanager
-def dependency_resolution_context(clear_on_exit: bool = True) -> Generator[Dict[str, Any], None, None]:
+def dependency_resolution_context(
+    clear_on_exit: bool = True,
+) -> Generator[Dict[str, Any], None, None]:
     """Create a scoped dependency resolution context."""
     components = create_pipeline_components()
     try:

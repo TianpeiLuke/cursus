@@ -1,7 +1,7 @@
 """
 Property Reference module for SageMaker property path handling.
 
-This module provides the PropertyReference class for bridging between definition-time specifications 
+This module provides the PropertyReference class for bridging between definition-time specifications
 and runtime property references in the SageMaker pipeline context. It handles complex property paths
 across various SageMaker step types.
 """
@@ -115,7 +115,9 @@ class PropertyReference(BaseModel):
 
         return current_obj
 
-    def _parse_property_path(self, path: str) -> List[Union[str, Tuple[str, Union[str, int]]]]:
+    def _parse_property_path(
+        self, path: str
+    ) -> List[Union[str, Tuple[str, Union[str, int]]]]:
         """
         Parse a property path into a sequence of access operations.
 

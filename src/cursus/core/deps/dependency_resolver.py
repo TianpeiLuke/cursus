@@ -252,7 +252,12 @@ class UnifiedDependencyResolver:
                     )
 
         # Sort by score (highest first)
-        candidates.sort(key=lambda x: float(x["score"]) if isinstance(x["score"], (int, float, str)) else 0.0, reverse=True)
+        candidates.sort(
+            key=lambda x: float(x["score"])
+            if isinstance(x["score"], (int, float, str))
+            else 0.0,
+            reverse=True,
+        )
         return candidates
 
     def _get_score_breakdown(
@@ -662,7 +667,7 @@ class UnifiedDependencyResolver:
         total_deps = sum(
             len(spec.dependencies) for spec in self.registry._specifications.values()
         )
-        
+
         # Calculate resolved dependencies with explicit type handling
         resolved_deps = 0
         for details in report["step_details"].values():
@@ -671,7 +676,9 @@ class UnifiedDependencyResolver:
 
         # Get unresolved dependencies list with proper typing
         unresolved_deps = report["unresolved_dependencies"]
-        steps_with_errors = len(unresolved_deps) if isinstance(unresolved_deps, list) else 0
+        steps_with_errors = (
+            len(unresolved_deps) if isinstance(unresolved_deps, list) else 0
+        )
 
         report["resolution_summary"] = {
             "total_dependencies": total_deps,
