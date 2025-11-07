@@ -23,2387 +23,1300 @@ topics:
   - classification task automation
 language: python
 date of note: 2025-10-31
+updated: 2025-11-07
 ---
 
 # Bedrock Prompt Template Generation Step Builder Patterns
 
 ## Overview
 
-This document defines the design patterns for Bedrock prompt template generation step builder implementations in the cursus framework. The Bedrock prompt template generation step creates **ProcessingStep** instances that generate structured, reusable prompt templates specifically designed for categorization and classification tasks. These templates follow a standardized 5-component structure and integrate seamlessly with the existing Bedrock processing steps.
+This document defines the design patterns for Bedrock prompt template generation step builder implementations in the cursus framework. The Bedrock prompt template generation step creates **ProcessingStep** instances that generate structured, reusable prompt templates specifically designed for categorization and classification tasks using a **file-based configuration approach**. These templates follow a standardized **5-component architecture pattern** and integrate seamlessly with existing Bedrock processing steps.
 
-## SageMaker Step Type Classification
+## Key Architectural Approach: File-Based Configuration
 
-Bedrock prompt template generation steps create **ProcessingStep** instances using **SKLearnProcessor** with specialized template generation logic:
-- **SKLearnProcessor**: Standard processing framework for template generation and validation
-- **Template Structure**: 5-component prompt template architecture for classification tasks
-- **Category Management**: Structured category definitions with conditions and exceptions
-- **Schema Generation**: Automated output format and validation schema creation
-- **Integration Ready**: Direct compatibility with existing Bedrock processing steps
+The real implementation uses a **file-based configuration approach** where category definitions and template settings are provided as **JSON files** in a `prompt_configs` directory, rather than environment variables or programmatic configuration.
 
-## Key Differences from Standard Processing Steps
+**Configuration Files Structure:**
+```
+prompt_configs/
+├── category_definitions.json  (REQUIRED)
+├── system_prompt.json         (optional - uses defaults if missing)
+├── output_format.json         (optional - uses defaults if missing)
+└── instruction.json           (optional - uses defaults if missing)
+```
 
-### 1. Template-Centric Processing Pattern
+## Integration with Bedrock Ecosystem
+
+Bedrock prompt template generation steps integrate with the broader Bedrock workflow:
+
+1. **Prompt Template Generation Step**: Generates structured prompt templates from category definitions
+2. **Tabular Preprocessing Step**: Prepares data in train/val/test splits
+3. **Bedrock Processing Step**: Uses generated templates for LLM inference
+4. **Bedrock Batch Processing Step**: Optional cost-efficient batch processing
+
+**Integration Flow:**
+```
+Category Definitions (JSON) → Prompt Template Generation → Prompt Templates (prompts.json)
+                                                              ↓
+Tabular Data → Tabular Preprocessing → Processed Data → Bedrock Processing → Results
+```
+
+## 5-Component Architecture Pattern
+
+The generated prompt templates follow a standardized 5-component structure:
+
+1. **System Prompt**: Role assignment, expertise definition, behavioral guidelines
+2. **Category Definitions**: Structured categories with conditions, exceptions, key indicators
+3. **Input Placeholders**: Variable placeholders for dynamic content injection (e.g., `{dialogue}`, `{shiptrack}`)
+4. **Instructions**: Step-by-step analysis instructions and decision criteria
+5. **Output Format**: Structured schema specification with field definitions and validation rules
+
+## Core Implementation Components
+
+### 1. PlaceholderResolver Class
+
+The real implementation includes a sophisticated **PlaceholderResolver** class for dynamic placeholder resolution:
+
 ```python
-# Standard Processing Step: Data transformation focus
-processor = SKLearnProcessor(
-    framework_version="1.2-1",
-    instance_type=config.processing_instance_type
-)
-
-# Prompt Template Generation Step: Template creation focus
-class PromptTemplateGenerator:
-    def __init__(self, config):
-        self.task_type = config.task_type
-        self.categories = config.category_definitions
-        self.output_schema = config.output_schema_config
-        self.template_style = config.template_style
+class PlaceholderResolver:
+    """
+    Resolves placeholders marked with ${} syntax from various data sources.
+    Connects category definitions to output format through schema enrichment.
+    """
+    
+    def __init__(self, categories: List[Dict[str, Any]], schema: Optional[Dict[str, Any]] = None):
+        self.categories = categories
+        self.schema = schema
+        self.placeholder_registry = {}
+        self.resolution_status = {}
+    
+    def resolve_placeholder(self, placeholder: str, field_name: str, 
+                          source_hint: Optional[str] = None) -> str:
+        """Resolve a placeholder using appropriate strategy."""
+        # Extract placeholder name from ${placeholder_name} syntax
+        placeholder_name = placeholder.strip("${}")
         
-    def generate_template(self):
-        return {
-            'system_prompt': self._generate_system_prompt(),
-            'category_definitions': self._generate_category_definitions(),
-            'input_placeholders': self._generate_input_placeholders(),
-            'instructions': self._generate_instructions(),
-            'output_format': self._generate_output_format()
+        # Try to resolve using various strategies:
+        # 1. Explicit source hint (schema_enum, schema_range, categories)
+        # 2. Infer from placeholder name
+        # 3. Schema lookup by field name
+        
+        resolved = self._resolve_by_strategy(placeholder_name, field_name, source_hint)
+        return resolved
+```
+
+**Placeholder Resolution Strategies:**
+- **Schema Enum**: Resolves from validation schema enum values
+- **Schema Range**: Resolves numeric ranges from schema min/max
+- **Categories**: Directly from category list
+- **Generic Schema**: Fallback to schema field descriptions
+
+### 2. Schema Enrichment Pattern
+
+Categories are automatically integrated into the validation schema:
+
+```python
+def _enrich_schema_with_categories(self, schema: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Enrich schema with category enum values from category definitions.
+    Creates the connection between category definitions and output format.
+    """
+    if not schema or not self.categories:
+        return schema
+    
+    enriched_schema = schema.copy()
+    
+    # Update category field enum if it exists
+    if "properties" in enriched_schema and "category" in enriched_schema["properties"]:
+        category_names = [cat["name"] for cat in self.categories]
+        enriched_schema["properties"]["category"]["enum"] = category_names
+    
+    return enriched_schema
+```
+
+### 3. Tone-Aware System Prompt Generation
+
+System prompts adapt based on tone setting:
+
+```python
+def _generate_system_prompt(self) -> str:
+    """Generate system prompt with role assignment and tone-appropriate language."""
+    system_config = self.config.get("system_prompt_config", DEFAULT_SYSTEM_PROMPT_CONFIG)
+    
+    tone = system_config.get("tone", "professional")
+    tone_adjustments = self._get_tone_adjustments(tone)
+    
+    # Role assignment with tone-appropriate opener
+    system_prompt_parts.append(
+        f"{tone_adjustments['opener']} {role_definition} with extensive knowledge..."
+    )
+    
+    return " ".join(system_prompt_parts)
+
+def _get_tone_adjustments(self, tone: str) -> Dict[str, str]:
+    """Get tone-appropriate language adjustments."""
+    tone_map = {
+        "professional": {
+            "opener": "You are an",
+            "task_connector": "Your task is to",
+            "guideline_adverb": "Always"
+        },
+        "casual": {
+            "opener": "Hey! You're a",
+            "task_connector": "Your job is to",
+            "guideline_adverb": "Make sure to"
+        },
+        "technical": {
+            "opener": "System role: You are a",
+            "task_connector": "Core functions include:",
+            "guideline_adverb": "Operational guidelines require:"
+        },
+        "formal": {
+            "opener": "You shall function as an",
+            "task_connector": "Your responsibilities encompass:",
+            "guideline_adverb": "You must consistently"
         }
-```
-
-### 2. Category-Driven Configuration Pattern
-```python
-# User-configurable category definitions with structured metadata
-class BedrockPromptTemplateGenerationStepConfig(ProcessingStepConfigBase):
-    # Task Configuration
-    task_type: str = Field(
-        default="classification",
-        description="Type of task: classification, categorization, analysis"
-    )
-    
-    # Category Definitions - Core of the template generation
-    category_definitions: List[CategoryDefinition] = Field(
-        default_factory=list,
-        description="List of category definitions with conditions and exceptions"
-    )
-    
-    # Template Structure Configuration
-    template_components: TemplateComponents = Field(
-        default_factory=TemplateComponents,
-        description="Configuration for each template component"
-    )
-    
-    # Output Schema Configuration
-    output_schema_config: OutputSchemaConfig = Field(
-        default_factory=OutputSchemaConfig,
-        description="Configuration for output format and validation schema"
-    )
-
-@dataclass
-class CategoryDefinition:
-    """Definition of a single category for classification"""
-    name: str
-    description: str
-    conditions: List[str]
-    exceptions: List[str]
-    key_indicators: List[str]
-    examples: Optional[List[str]] = None
-    priority: int = 1
-    validation_rules: Optional[List[str]] = None
-```
-
-### 3. Structured Template Generation Pattern
-```python
-# Standard Processing: Fixed output format
-outputs = [
-    ProcessingOutput(
-        output_name="processed_data",
-        source="/opt/ml/processing/output/data"
-    )
-]
-
-# Prompt Template Generation: Structured template outputs
-class TemplateComponents:
-    """Configuration for template component generation"""
-    
-    def __init__(self):
-        self.system_prompt_config = SystemPromptConfig()
-        self.category_section_config = CategorySectionConfig()
-        self.input_placeholder_config = InputPlaceholderConfig()
-        self.instruction_config = InstructionConfig()
-        self.output_format_config = OutputFormatConfig()
-
-@dataclass
-class SystemPromptConfig:
-    """Configuration for system prompt generation"""
-    role_definition: str = "expert analyst"
-    expertise_areas: List[str] = field(default_factory=list)
-    responsibilities: List[str] = field(default_factory=list)
-    behavioral_guidelines: List[str] = field(default_factory=list)
-    tone: str = "professional"
-
-@dataclass
-class OutputFormatConfig:
-    """Configuration for output format generation"""
-    format_type: str = "structured_json"  # structured_json, formatted_text, hybrid
-    required_fields: List[str] = field(default_factory=list)
-    field_descriptions: Dict[str, str] = field(default_factory=dict)
-    validation_requirements: List[str] = field(default_factory=list)
-    example_output: Optional[str] = None
-```
-
-### 4. Template Validation and Quality Assurance Pattern
-```python
-# Standard Processing: Basic validation
-def validate_configuration(self) -> None:
-    if not hasattr(self.config, 'required_attr'):
-        raise ValueError("Missing required attribute")
-
-# Prompt Template Generation: Comprehensive template validation
-class TemplateValidator:
-    """Validates generated prompt templates for quality and completeness"""
-    
-    def validate_template(self, template: Dict[str, Any]) -> ValidationResult:
-        validation_results = []
-        
-        # Validate system prompt
-        validation_results.append(self._validate_system_prompt(template['system_prompt']))
-        
-        # Validate category definitions
-        validation_results.append(self._validate_categories(template['category_definitions']))
-        
-        # Validate input placeholders
-        validation_results.append(self._validate_placeholders(template['input_placeholders']))
-        
-        # Validate instructions
-        validation_results.append(self._validate_instructions(template['instructions']))
-        
-        # Validate output format
-        validation_results.append(self._validate_output_format(template['output_format']))
-        
-        return ValidationResult(
-            is_valid=all(r.is_valid for r in validation_results),
-            validation_details=validation_results,
-            quality_score=self._calculate_quality_score(validation_results),
-            recommendations=self._generate_recommendations(validation_results)
-        )
-```
-
-## Common Implementation Patterns
-
-### 1. Base Architecture Pattern
-
-All Bedrock prompt template generation step builders follow this architecture:
-
-```python
-@register_builder()
-class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
-    def __init__(self, config, sagemaker_session=None, role=None, notebook_root=None, 
-                 registry_manager=None, dependency_resolver=None):
-        # Load prompt template generation specification
-        spec = BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC
-        super().__init__(config=config, spec=spec, ...)
-        
-    def validate_configuration(self) -> None:
-        # Validate prompt template generation configuration
-        
-    def _create_processor(self) -> SKLearnProcessor:
-        # Create SKLearnProcessor for template generation
-        
-    def _get_environment_variables(self) -> Dict[str, str]:
-        # Build template generation environment variables
-        
-    def _get_template_generation_config(self) -> Dict[str, Any]:
-        # Build template generation configuration
-        
-    def _get_inputs(self, inputs) -> List[ProcessingInput]:
-        # Create ProcessingInput objects for category definitions and configs
-        
-    def _get_outputs(self, outputs) -> List[ProcessingOutput]:
-        # Create ProcessingOutput objects for generated templates
-        
-    def _get_job_arguments(self) -> List[str]:
-        # Build command-line arguments for template generation
-        
-    def create_step(self, **kwargs) -> ProcessingStep:
-        # Orchestrate prompt template generation step creation
-```
-
-### 2. Template Generation Strategy Pattern
-
-```python
-def _get_template_generation_config(self) -> Dict[str, Any]:
-    """Build template generation configuration based on task requirements."""
-    
-    config = {
-        'task_type': self.config.task_type,
-        'template_style': self.config.template_style,
-        'categories': [asdict(cat) for cat in self.config.category_definitions],
-        'output_schema': asdict(self.config.output_schema_config),
-        'validation_level': self.config.validation_level
     }
     
-    # Add component-specific configurations
-    config['system_prompt_config'] = asdict(self.config.template_components.system_prompt_config)
-    config['category_section_config'] = asdict(self.config.template_components.category_section_config)
-    config['input_placeholder_config'] = asdict(self.config.template_components.input_placeholder_config)
-    config['instruction_config'] = asdict(self.config.template_components.instruction_config)
-    config['output_format_config'] = asdict(self.config.template_components.output_format_config)
-    
-    return config
+    return tone_map.get(tone.lower(), tone_map["professional"])
 ```
 
-### 3. Environment Variables Pattern for Template Generation (Refactored for File-Based Configs)
+### 4. Dual Output Format Support
+
+Supports both **structured_json** (default) and **structured_text** formats:
 
 ```python
-def _get_environment_variables(self) -> Dict[str, str]:
-    """Build template generation environment variables - simplified for file-based configs."""
-    env_vars = super()._get_environment_variables()
+def _generate_output_format_section(self) -> str:
+    """Generate output format schema section based on format_type."""
+    output_config = self.config.get("output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG)
+    format_type = output_config.get("format_type", "structured_json")
     
-    # Task configuration (simple settings only)
-    env_vars["TEMPLATE_TASK_TYPE"] = self.config.template_task_type
-    env_vars["TEMPLATE_STYLE"] = self.config.template_style
-    env_vars["VALIDATION_LEVEL"] = self.config.validation_level
-    
-    # Input placeholder configuration (simple lists)
-    env_vars["INPUT_PLACEHOLDERS"] = json.dumps(self.config.input_placeholders)
-    
-    # Output configuration (simple settings)
-    env_vars["OUTPUT_FORMAT_TYPE"] = self.config.output_format_type
-    env_vars["REQUIRED_OUTPUT_FIELDS"] = json.dumps(self.config.required_output_fields)
-    
-    # Feature flags (simple boolean settings)
-    env_vars["INCLUDE_EXAMPLES"] = str(self.config.include_examples).lower()
-    env_vars["GENERATE_VALIDATION_SCHEMA"] = str(self.config.generate_validation_schema).lower()
-    env_vars["TEMPLATE_VERSION"] = self.config.template_version
-    
-    return env_vars
+    if format_type == "structured_text":
+        return self._generate_structured_text_output_format_from_config()
+    else:
+        # Default to JSON schema-based generation
+        return self._generate_custom_output_format_from_schema()
 ```
 
-**Key Changes**:
-- **Removed**: Large JSON configurations (`SYSTEM_PROMPT_CONFIG`, `OUTPUT_FORMAT_CONFIG`, `INSTRUCTION_CONFIG`)
-- **File-based**: Complex configurations now loaded from JSON files in `prompt_configs` input directory
-- **Environment-based**: Only simple settings, flags, and scalar values
-- **No Size Limits**: Large configurations moved to files, eliminating environment variable size constraints
+**Structured Text Format Example:**
+```
+1. Category: [One of: Positive, Negative, Neutral]
 
-### 4. Job Arguments Pattern for Template Generation (Simplified)
+2. Confidence Score: [Number between 0.0 and 1.0]
 
-```python
-def _get_job_arguments(self) -> List[str]:
-    """Build command-line arguments for template generation script."""
-    args = []
-    
-    # Only include arguments that provide functionality not covered by environment variables
-    # Most configuration is passed via environment variables to reduce redundancy
-    
-    if self.config.include_examples:
-        args.append("--include-examples")
-        
-    if self.config.generate_validation_schema:
-        args.append("--generate-validation-schema")
-    
-    return args
+3. Key Evidence:
+   * Message Evidence:
+      [sep] [Evidence item 1]
+      [sep] [Evidence item 2]
+   * Shipping Evidence:
+      [sep] [Evidence item 1]
 ```
 
-**Redundancy Elimination**:
-- **Removed**: `--task-type` (available as `TEMPLATE_TASK_TYPE` env var)
-- **Removed**: `--template-style` (available as `TEMPLATE_STYLE` env var)
-- **Removed**: `--validation-level` (available as `VALIDATION_LEVEL` env var)
-- **Removed**: `--output-format` (available as `OUTPUT_FORMAT_TYPE` env var)
-- **Removed**: `--template-version` (available as `TEMPLATE_VERSION` env var)
-- **Kept**: `--include-examples` and `--generate-validation-schema` (boolean flags for optional features)
+### 5. Pydantic Models for Configuration
 
-### 5. Specification-Driven Input/Output Pattern for Template Generation (Updated for prompt_configs)
+Strong typing with Pydantic models:
 
 ```python
-def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
-    """Create ProcessingInput objects for template generation."""
-    if not self.spec or not self.contract:
-        raise ValueError("Step specification and contract are required")
-        
-    processing_inputs = []
-    
-    for _, dependency_spec in self.spec.dependencies.items():
-        logical_name = dependency_spec.logical_name
-        
-        # Handle category_definitions input
-        if logical_name == "category_definitions":
-            # Check if user provided a custom path
-            if self.config.category_definitions_path is not None:
-                # User specified a custom path - use resolved path from config
-                try:
-                    source_path = self.config.resolved_category_definitions_path
-                    container_path = self.contract.expected_input_paths[logical_name]
-                    
-                    processing_inputs.append(
-                        ProcessingInput(
-                            input_name=logical_name,
-                            source=source_path,
-                            destination=container_path,
-                        )
-                    )
-                    
-                    self.log_info(
-                        "Added local input '%s' (user-specified path): %s -> %s",
-                        logical_name,
-                        source_path,
-                        container_path,
-                    )
-                    continue
-                except ValueError as e:
-                    raise ValueError(f"Failed to resolve category_definitions_path: {e}")
-            else:
-                # User didn't specify path - allow dependency override or require dependency
-                if logical_name in inputs:
-                    container_path = self.contract.expected_input_paths[logical_name]
-                    processing_inputs.append(
-                        ProcessingInput(
-                            input_name=logical_name,
-                            source=inputs[logical_name],
-                            destination=container_path,
-                        )
-                    )
-                    self.log_info(
-                        "Added dependency input '%s' (no user path, dependency override): %s -> %s",
-                        logical_name,
-                        inputs[logical_name],
-                        container_path,
-                    )
-                    continue
-                else:
-                    # Required input, no user path, no dependency - this is an error
-                    raise ValueError(f"Required input '{logical_name}' not provided: either specify category_definitions_path in config or provide via dependencies")
-        
-        # Handle other dependency-provided inputs
-        # Skip if optional and not provided
-        if not dependency_spec.required and logical_name not in inputs:
-            self.log_info("Optional input '%s' not provided, skipping", logical_name)
-            continue
-
-        # Make sure required inputs are present
-        if dependency_spec.required and logical_name not in inputs:
-            raise ValueError(f"Required input '{logical_name}' not provided")
-
-        # Get container path from contract
-        container_path = None
-        if logical_name in self.contract.expected_input_paths:
-            container_path = self.contract.expected_input_paths[logical_name]
-        else:
-            raise ValueError(f"No container path found for input: {logical_name}")
-
-        # Use the input value directly - property references are handled by PipelineAssembler
-        processing_inputs.append(
-            ProcessingInput(
-                input_name=logical_name,
-                source=inputs[logical_name],
-                destination=container_path,
-            )
-        )
-
-        self.log_info(
-            "Added dependency input '%s': %s -> %s",
-            logical_name,
-            inputs[logical_name],
-            container_path,
-        )
-        
-    return processing_inputs
-
-def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
-    """Create ProcessingOutput objects for generated templates."""
-    if not self.spec or not self.contract:
-        raise ValueError("Step specification and contract are required")
-        
-    processing_outputs = []
-    
-    for _, output_spec in self.spec.outputs.items():
-        logical_name = output_spec.logical_name
-        container_path = self.contract.expected_output_paths[logical_name]
-        
-        # Use provided destination or generate default
-        destination = outputs.get(logical_name) or self._generate_output_path(logical_name)
-        
-        processing_outputs.append(ProcessingOutput(
-            output_name=logical_name,
-            source=container_path,
-            destination=destination
-        ))
-        
-    return processing_outputs
-```
-
-### 6. Processor Creation Pattern for Template Generation
-
-```python
-def _create_processor(self) -> SKLearnProcessor:
-    """Create SKLearnProcessor for template generation."""
-    instance_type = (self.config.processing_instance_type_large 
-                    if self.config.use_large_processing_instance 
-                    else self.config.processing_instance_type_small)
-    
-    return SKLearnProcessor(
-        framework_version=self.config.processing_framework_version,
-        role=self.role,
-        instance_type=instance_type,
-        instance_count=self.config.processing_instance_count,
-        volume_size_in_gb=self.config.processing_volume_size,
-        base_job_name=self._generate_job_name(),
-        sagemaker_session=self.session,
-        env=self._get_environment_variables(),
-    )
-```
-
-### 7. Step Creation Pattern for Template Generation
-
-```python
-def create_step(self, **kwargs) -> ProcessingStep:
-    """Create Bedrock Prompt Template Generation ProcessingStep."""
-    # Extract parameters
-    inputs_raw = kwargs.get('inputs', {})
-    outputs = kwargs.get('outputs', {})
-    dependencies = kwargs.get('dependencies', [])
-    enable_caching = kwargs.get('enable_caching', True)
-    
-    # Handle inputs from dependencies and explicit inputs
-    inputs = {}
-    if dependencies:
-        extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-        inputs.update(extracted_inputs)
-    inputs.update(inputs_raw)
-    
-    # Create components
-    processor = self._create_processor()
-    proc_inputs = self._get_inputs(inputs)
-    proc_outputs = self._get_outputs(outputs)
-    job_args = self._get_job_arguments()
-    
-    # Get standardized step name
-    step_name = self._get_step_name()
-    
-    # Create step directly (Pattern A - same as standard processing steps)
-    step = ProcessingStep(
-        name=step_name,
-        processor=processor,
-        inputs=proc_inputs,
-        outputs=proc_outputs,
-        code=self.config.get_script_path(),
-        job_arguments=job_args,
-        depends_on=dependencies,
-        cache_config=self._get_cache_config(enable_caching)
-    )
-    
-    # Attach specification for future reference
-    setattr(step, '_spec', self.spec)
-    
-    return step
-```
-
-## Configuration Validation Patterns
-
-### Standard Template Generation Configuration Validation
-```python
-def validate_configuration(self) -> None:
-    """Validate prompt template generation configuration."""
-    # Validate base processing configuration
-    required_processing_attrs = [
-        'processing_instance_count', 'processing_volume_size',
-        'processing_instance_type_large', 'processing_instance_type_small',
-        'processing_framework_version', 'use_large_processing_instance'
-    ]
-    
-    for attr in required_processing_attrs:
-        if not hasattr(self.config, attr) or getattr(self.config, attr) is None:
-            raise ValueError(f"Missing required processing attribute: {attr}")
-    
-    # Validate template generation specific configuration
-    required_template_attrs = [
-        'task_type', 'template_style', 'category_definitions', 
-        'output_schema_config', 'validation_level'
-    ]
-    
-    for attr in required_template_attrs:
-        if not hasattr(self.config, attr) or getattr(self.config, attr) is None:
-            raise ValueError(f"Missing required template attribute: {attr}")
-    
-    # Validate category definitions
-    if not self.config.category_definitions:
-        raise ValueError("At least one category definition is required")
-    
-    for i, category in enumerate(self.config.category_definitions):
-        if not category.name or not category.description:
-            raise ValueError(f"Category {i}: name and description are required")
-        if not category.conditions:
-            raise ValueError(f"Category {i}: at least one condition is required")
-    
-    # Validate task type
-    valid_task_types = ['classification', 'categorization', 'analysis', 'evaluation']
-    if self.config.task_type not in valid_task_types:
-        raise ValueError(f"Invalid task_type: {self.config.task_type}")
-    
-    # Validate template style
-    valid_styles = ['structured', 'conversational', 'technical', 'detailed']
-    if self.config.template_style not in valid_styles:
-        raise ValueError(f"Invalid template_style: {self.config.template_style}")
-    
-    # Validate output format
-    valid_formats = ['structured_json', 'formatted_text', 'hybrid']
-    if self.config.output_schema_config.format_type not in valid_formats:
-        raise ValueError(f"Invalid output format_type: {self.config.output_schema_config.format_type}")
-    
-    self.log_info("BedrockPromptTemplateGenerationStepConfig validation succeeded")
-```
-
-### Category Definition Validation Pattern
-```python
-def _validate_category_definitions(self, categories: List[CategoryDefinition]) -> None:
-    """Validate category definitions for completeness and consistency."""
-    category_names = set()
-    
-    for i, category in enumerate(categories):
-        # Check for duplicate names
-        if category.name in category_names:
-            raise ValueError(f"Duplicate category name: {category.name}")
-        category_names.add(category.name)
-        
-        # Validate required fields
-        if not category.name.strip():
-            raise ValueError(f"Category {i}: name cannot be empty")
-        if not category.description.strip():
-            raise ValueError(f"Category {i}: description cannot be empty")
-        if not category.conditions:
-            raise ValueError(f"Category {i}: at least one condition is required")
-        if not category.key_indicators:
-            raise ValueError(f"Category {i}: at least one key indicator is required")
-        
-        # Validate priority
-        if not isinstance(category.priority, int) or category.priority < 1:
-            raise ValueError(f"Category {i}: priority must be a positive integer")
-        
-        # Validate conditions and exceptions format
-        for j, condition in enumerate(category.conditions):
-            if not condition.strip():
-                raise ValueError(f"Category {i}, condition {j}: cannot be empty")
-        
-        for j, exception in enumerate(category.exceptions):
-            if not exception.strip():
-                raise ValueError(f"Category {i}, exception {j}: cannot be empty")
-```
-
-## Design Components Integration
-
-### 1. Step Specification Pattern (Updated for prompt_configs)
-
-```python
-# specs/bedrock_prompt_template_generation_spec.py
-BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = StepSpecification(
-    step_type=get_spec_step_type("BedrockPromptTemplateGeneration"),
-    node_type=NodeType.INTERNAL,
-    script_contract=_get_prompt_template_generation_contract(),
-    dependencies=[
-        DependencySpec(
-            logical_name="category_definitions",
-            dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=True,
-            compatible_sources=["ProcessingStep", "DataLoad", "ConfigPrep"],
-            semantic_keywords=["categories", "definitions", "classification", "config", "schema", "taxonomy"],
-            data_type="S3Uri",
-            description="Category definitions with conditions, exceptions, and metadata for template generation"
-        )
-    ],
-    outputs=[
-        OutputSpec(
-            logical_name="prompt_templates",
-            output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['prompt_templates'].S3Output.S3Uri",
-            data_type="S3Uri",
-            description="Generated prompt templates in JSON format ready for Bedrock processing",
-            aliases=["templates", "prompts", "prompt_config", "generated_templates"]
-        ),
-        OutputSpec(
-            logical_name="template_metadata",
-            output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['template_metadata'].S3Output.S3Uri",
-            data_type="S3Uri",
-            description="Metadata about generated templates including validation results and quality metrics",
-            aliases=["metadata", "validation_report", "template_info", "quality_metrics"]
-        ),
-        OutputSpec(
-            logical_name="validation_schema",
-            output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['validation_schema'].S3Output.S3Uri",
-            data_type="S3Uri",
-            description="Generated validation schema for output format validation",
-            aliases=["schema", "validation", "output_schema", "format_schema"]
-        )
-    ]
-)
-```
-
-### 2. Script Contract Pattern (Updated for prompt_configs)
-
-```python
-# contracts/bedrock_prompt_template_generation_contract.py
-BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT = ProcessingScriptContract(
-    entry_point="bedrock_prompt_template_generation.py",
-    expected_input_paths={
-        "category_definitions": "/opt/ml/processing/input/categories"
-    },
-    expected_output_paths={
-        "prompt_templates": "/opt/ml/processing/output/templates",
-        "template_metadata": "/opt/ml/processing/output/metadata",
-        "validation_schema": "/opt/ml/processing/output/schema"
-    },
-    expected_arguments={
-        # Removed redundant arguments that are already provided via environment variables:
-        # "--task-type": Already available as TEMPLATE_TASK_TYPE env var
-        # "--template-style": Already available as TEMPLATE_STYLE env var  
-        # "--validation-level": Already available as VALIDATION_LEVEL env var
-        # "--output-format": Already available as OUTPUT_FORMAT_TYPE env var
-        # "--template-version": Already available as TEMPLATE_VERSION env var
-        
-        # Keep only arguments that provide additional functionality not covered by env vars
-        "--include-examples": "Include examples in generated templates (flag)",
-        "--generate-validation-schema": "Generate validation schema (flag)"
-    },
-    required_env_vars=[
-        "TEMPLATE_TASK_TYPE",
-        "TEMPLATE_STYLE", 
-        "OUTPUT_FORMAT_TYPE",
-        "VALIDATION_LEVEL"
-    ],
-    optional_env_vars={
-        "INPUT_PLACEHOLDERS": "JSON list of input placeholder configurations",
-        "REQUIRED_OUTPUT_FIELDS": "JSON list of required output field names",
-        "INCLUDE_EXAMPLES": "Whether to include examples in generated templates",
-        "GENERATE_VALIDATION_SCHEMA": "Whether to generate validation schema",
-        "TEMPLATE_VERSION": "Version identifier for generated templates"
-    },
-    framework_requirements={
-        "pydantic": ">=2.0.0",
-        "jinja2": ">=3.0.0",
-        "jsonschema": ">=4.0.0",
-        "pandas": ">=1.2.0,<2.0.0",
-        "numpy": ">=1.19.0"
-    },
-    description="""
-    Bedrock prompt template generation script that:
-    1. Loads category definitions and task requirements from input files
-    2. Generates structured prompt templates with 5-component architecture:
-       - System prompt with role assignment and expertise definition
-       - Category definitions with conditions, exceptions, and key indicators
-       - Input placeholders for data and context variables
-       - Instructions and rules for LLM inference guidance
-       - Output format schema with field definitions and validation rules
-    3. Validates generated templates for completeness and quality
-    4. Outputs templates in JSON format compatible with Bedrock processing steps
-    5. Generates validation schemas and metadata for template quality assurance
-    
-    Template Generation Features:
-    - Configurable template styles (structured, conversational, technical, detailed)
-    - Dynamic category definition processing with priority handling
-    - Automated output schema generation with field validation
-    - Template quality scoring and validation reporting
-    - Integration-ready output format for seamless Bedrock processing
-    
-    Input Structure:
-    - /opt/ml/processing/input/categories: Category definitions (JSON/CSV)
-    
-    Output Structure:
-    - /opt/ml/processing/output/templates: Generated prompt templates (prompts.json)
-    - /opt/ml/processing/output/metadata: Template metadata and validation results
-    - /opt/ml/processing/output/schema: Generated validation schemas
-    
-    Template Structure (5-Component Architecture):
-    1. System Prompt: Role definition, expertise areas, behavioral guidelines
-    2. Category Definitions: Structured category descriptions with conditions/exceptions
-    3. Input Placeholders: Variable placeholders for data and context injection
-    4. Instructions: Processing rules, guidelines, and inference directions
-    5. Output Format: Structured schema with field definitions and validation rules
-    """
-)
-```
-
-### 3. Configuration Class Pattern
-
-```python
-### 3. Configuration Class Pattern (Current Implementation)
-
-```python
-# configs/config_bedrock_prompt_template_generation_step.py
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
-from typing import Dict, Any, Optional, List
-from pathlib import Path
-import json
-import logging
-
-from .config_processing_step_base import ProcessingStepConfigBase
-
-class SystemPromptConfig(BaseModel):
-    """Configuration for system prompt generation with comprehensive defaults."""
-    
-    role_definition: str = Field(
-        default="expert analyst",
-        description="The AI's primary role"
-    )
-    
-    expertise_areas: List[str] = Field(
-        default=["data analysis", "classification", "pattern recognition"],
-        description="List of expertise domains"
-    )
-    
-    responsibilities: List[str] = Field(
-        default=["analyze data accurately", "classify content systematically", "provide clear reasoning"],
-        description="List of primary tasks and responsibilities"
-    )
-    
-    behavioral_guidelines: List[str] = Field(
-        default=["be precise", "be objective", "be thorough", "be consistent"],
-        description="List of behavioral instructions"
-    )
-    
-    tone: str = Field(
-        default="professional",
-        description="Communication tone"
-    )
-    
-    include_expertise_statement: bool = Field(
-        default=True,
-        description="Whether to include expertise areas in the system prompt"
-    )
-    
-    include_task_context: bool = Field(
-        default=True,
-        description="Whether to include task context and responsibilities"
-    )
-
-class OutputFormatConfig(BaseModel):
-    """Configuration for output format generation with comprehensive defaults."""
-    
-    format_type: str = Field(
-        default="structured_json",
-        description="Type of output format"
-    )
-    
-    required_fields: List[str] = Field(
-        default=["category", "confidence", "key_evidence", "reasoning"],
-        description="List of required fields in the output format"
-    )
-    
-    field_descriptions: Dict[str, str] = Field(
-        default_factory=lambda: {
-            'category': 'The classified category name (must be exactly one of the defined categories)',
-            'confidence': 'Confidence score between 0.0 and 1.0 indicating certainty of classification',
-            'key_evidence': 'Specific evidence from input data that aligns with the selected category conditions',
-            'reasoning': 'Clear explanation of the decision-making process'
-        },
-        description="Dictionary mapping field names to their descriptions"
-    )
-    
-    validation_requirements: List[str] = Field(
-        default_factory=lambda: [
-            'category must match one of the predefined category names exactly',
-            'confidence must be a number between 0.0 and 1.0',
-            'key_evidence must align with category conditions and avoid category exceptions',
-            'reasoning must explain the logical connection between evidence and category selection'
-        ],
-        description="List of validation requirements for the output format"
-    )
-
-class InstructionConfig(BaseModel):
-    """Configuration for instruction generation with comprehensive defaults."""
-    
-    include_analysis_steps: bool = Field(
-        default=True,
-        description="Include numbered step-by-step analysis instructions"
-    )
-    
-    include_decision_criteria: bool = Field(
-        default=True,
-        description="Include decision-making criteria section"
-    )
-    
-    include_edge_case_handling: bool = Field(
-        default=True,
-        description="Include edge case handling guidance"
-    )
-    
-    include_confidence_guidance: bool = Field(
-        default=True,
-        description="Include confidence scoring guidance"
-    )
-    
-    include_reasoning_requirements: bool = Field(
-        default=True,
-        description="Include reasoning requirements and expectations"
-    )
-    
-    step_by_step_format: bool = Field(
-        default=True,
-        description="Use numbered step format for analysis instructions"
-    )
-    
-    include_evidence_validation: bool = Field(
-        default=True,
-        description="Include evidence validation rules and requirements"
-    )
-
-class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
-    """
-    Configuration for Bedrock Prompt Template Generation step using three-tier design.
-    
-    Current implementation uses environment variables for large configs, but this will be
-    refactored to use file-based configs to avoid environment variable size limits.
-    """
-
-    # ===== Tier 2: System Inputs with Defaults (Optional) =====
-    
-    # Template generation settings
-    template_task_type: str = Field(
-        default="classification",
-        description="Type of task for template generation"
-    )
-
-    template_style: str = Field(
-        default="structured",
-        description="Style of template generation"
-    )
-
-    validation_level: str = Field(
-        default="standard",
-        description="Level of template validation"
-    )
-
-    # Input configuration
-    input_placeholders: List[str] = Field(
-        default=["input_data"],
-        description="List of input field names to include in the template"
-    )
-
-    # Output configuration
-    output_format_type: str = Field(
-        default="structured_json",
-        description="Type of output format"
-    )
-
-    required_output_fields: List[str] = Field(
-        default=["category", "confidence", "key_evidence", "reasoning"],
-        description="List of required fields in the output format"
-    )
-
-    # Template features
-    include_examples: bool = Field(
-        default=True,
-        description="Include examples in the generated template"
-    )
-
-    generate_validation_schema: bool = Field(
-        default=True,
-        description="Generate JSON validation schema for downstream use"
-    )
-
-    template_version: str = Field(
-        default="1.0",
-        description="Version identifier for the generated template"
-    )
-
-    # Typed configuration fields (primary interface)
-    system_prompt_settings: Optional[SystemPromptConfig] = Field(
-        default=None,
-        description="System prompt configuration with comprehensive defaults"
-    )
-
-    output_format_settings: Optional[OutputFormatConfig] = Field(
-        default=None,
-        description="Output format configuration with comprehensive defaults"
-    )
-
-    instruction_settings: Optional[InstructionConfig] = Field(
-        default=None,
-        description="Instruction configuration with comprehensive defaults"
-    )
-
-    # Input file paths (relative to processing source directory)
-    category_definitions_path: str = Field(
-        default=None,
-        description="Path to category definitions directory/file, relative to processing source directory"
-    )
-
-    # Processing step overrides
-    processing_entry_point: str = Field(
-        default="bedrock_prompt_template_generation.py",
-        description="Entry point script for prompt template generation"
-    )
-
-    # ===== Tier 3: Derived Fields (Private with Property Access) =====
-    
-    _effective_system_prompt_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _effective_output_format_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _effective_instruction_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _template_metadata: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _environment_variables: Optional[Dict[str, str]] = PrivateAttr(default=None)
-    _resolved_category_definitions_path: Optional[str] = PrivateAttr(default=None)
-
-    @property
-    def effective_system_prompt_config(self) -> Dict[str, Any]:
-        """Get system prompt configuration from typed settings or defaults."""
-        if self._effective_system_prompt_config is None:
-            if self.system_prompt_settings is not None:
-                self._effective_system_prompt_config = self.system_prompt_settings.model_dump()
-            else:
-                self._effective_system_prompt_config = SystemPromptConfig().model_dump()
-        return self._effective_system_prompt_config
-
-    @property
-    def effective_output_format_config(self) -> Dict[str, Any]:
-        """Get output format configuration from typed settings or defaults."""
-        if self._effective_output_format_config is None:
-            if self.output_format_settings is not None:
-                self._effective_output_format_config = self.output_format_settings.model_dump()
-            else:
-                default_config = OutputFormatConfig(
-                    format_type=self.output_format_type,
-                    required_fields=self.required_output_fields
-                )
-                self._effective_output_format_config = default_config.model_dump()
-        return self._effective_output_format_config
-
-    @property
-    def effective_instruction_config(self) -> Dict[str, Any]:
-        """Get instruction configuration from typed settings or defaults."""
-        if self._effective_instruction_config is None:
-            if self.instruction_settings is not None:
-                self._effective_instruction_config = self.instruction_settings.model_dump()
-            else:
-                self._effective_instruction_config = InstructionConfig().model_dump()
-        return self._effective_instruction_config
-
-    @property
-    def environment_variables(self) -> Dict[str, str]:
-        """Get environment variables for the processing step with typed config integration."""
-        if self._environment_variables is None:
-            # Current implementation: Large configs passed as environment variables
-            # TODO: Refactor to use file-based configs to avoid size limits
-            self._environment_variables = {
-                'TEMPLATE_TASK_TYPE': self.template_task_type,
-                'TEMPLATE_STYLE': self.template_style,
-                'VALIDATION_LEVEL': self.validation_level,
-                'SYSTEM_PROMPT_CONFIG': json.dumps(self.effective_system_prompt_config),
-                'OUTPUT_FORMAT_CONFIG': json.dumps(self.effective_output_format_config),
-                'INSTRUCTION_CONFIG': json.dumps(self.effective_instruction_config),
-                'INPUT_PLACEHOLDERS': json.dumps(self.input_placeholders),
-                'OUTPUT_FORMAT_TYPE': self.output_format_type,
-                'REQUIRED_OUTPUT_FIELDS': json.dumps(self.required_output_fields),
-                'INCLUDE_EXAMPLES': str(self.include_examples).lower(),
-                'GENERATE_VALIDATION_SCHEMA': str(self.generate_validation_schema).lower(),
-                'TEMPLATE_VERSION': self.template_version
-            }
-        return self._environment_variables
-
-    @property
-    def resolved_category_definitions_path(self) -> Optional[str]:
-        """Get resolved absolute path for category definitions with hybrid resolution."""
-        if self.category_definitions_path is None:
-            return None
-        
-        if self._resolved_category_definitions_path is None:
-            effective_source = self.effective_source_dir
-            if effective_source is None:
-                raise ValueError(
-                    "Cannot resolve category_definitions_path: no processing source directory configured."
-                )
-            
-            if effective_source.startswith("s3://"):
-                self._resolved_category_definitions_path = f"{effective_source.rstrip('/')}/{self.category_definitions_path}"
-            else:
-                self._resolved_category_definitions_path = str(Path(effective_source) / self.category_definitions_path)
-        
-        return self._resolved_category_definitions_path
-
-@dataclass
-class CategoryDefinition:
-    """Definition of a single category for classification tasks."""
-    name: str
-    description: str
-    conditions: List[str]
-    exceptions: List[str]
-    key_indicators: List[str]
+class CategoryDefinition(BaseModel):
+    """Pydantic model for a single category definition."""
+    name: str = Field(..., min_length=1)
+    description: str = Field(..., min_length=1)
+    conditions: List[str] = Field(..., min_length=1)
+    key_indicators: List[str] = Field(..., min_length=1)
+    exceptions: List[str] = Field(default_factory=list)
     examples: Optional[List[str]] = None
-    priority: int = 1
-    validation_rules: Optional[List[str]] = None
+    priority: int = Field(default=1, ge=1)
     aliases: Optional[List[str]] = None
+    validation_rules: Optional[List[str]] = None
+
+class CategoryDefinitionList(BaseModel):
+    """Pydantic model for a list of categories with uniqueness validation."""
+    categories: List[CategoryDefinition] = Field(..., min_length=1)
     
-    def __post_init__(self):
-        """Validate category definition after initialization."""
-        if not self.name or not self.name.strip():
-            raise ValueError("Category name cannot be empty")
-        if not self.description or not self.description.strip():
-            raise ValueError("Category description cannot be empty")
-        if not self.conditions:
-            raise ValueError("At least one condition is required")
-        if not self.key_indicators:
-            raise ValueError("At least one key indicator is required")
+    @field_validator("categories")
+    @classmethod
+    def categories_must_have_unique_names(cls, v):
+        """Validate all category names are unique."""
+        names = set()
+        for i, category in enumerate(v):
+            if category.name in names:
+                raise ValueError(f'Duplicate category name: "{category.name}"')
+            names.add(category.name)
+        return v
+```
 
-@dataclass
-class TemplateComponents:
-    """Configuration for template component generation."""
-    system_prompt_config: 'SystemPromptConfig' = field(default_factory=lambda: SystemPromptConfig())
-    category_section_config: 'CategorySectionConfig' = field(default_factory=lambda: CategorySectionConfig())
-    input_placeholder_config: 'InputPlaceholderConfig' = field(default_factory=lambda: InputPlaceholderConfig())
-    instruction_config: 'InstructionConfig' = field(default_factory=lambda: InstructionConfig())
-    output_format_config: 'OutputFormatConfig' = field(default_factory=lambda: OutputFormatConfig())
+## Configuration-to-Prompt Integration
 
-@dataclass
-class SystemPromptConfig:
-    """Configuration for system prompt generation."""
+### Overview of Configuration Sub-Components
+
+The prompt generation process uses **four primary configuration objects** that map directly to the 5-component architecture. Each configuration object is optional with comprehensive defaults, allowing users to customize specific aspects while relying on intelligent defaults for others.
+
+**Configuration Objects:**
+1. **SystemPromptConfig** → Component 1: System Prompt
+2. **CategoryDefinition** → Component 2: Category Definitions
+3. **InstructionConfig** → Component 4: Instructions
+4. **OutputFormatConfig** → Component 5: Output Format
+5. **INPUT_PLACEHOLDERS** (simple list) → Component 3: Input Placeholders
+
+### 1. SystemPromptConfig → System Prompt Integration
+
+**Purpose**: Defines the AI's role, expertise, responsibilities, and behavioral guidelines.
+
+**Configuration Structure:**
+```python
+class SystemPromptConfig(BaseModel):
     role_definition: str = "expert analyst"
-    expertise_areas: List[str] = field(default_factory=lambda: ["data analysis", "classification"])
-    responsibilities: List[str] = field(default_factory=lambda: ["analyze data", "classify content", "provide insights"])
-    behavioral_guidelines: List[str] = field(default_factory=lambda: ["be precise", "be objective", "be thorough"])
-    tone: str = "professional"
-    include_expertise_statement: bool = True
-    include_task_context: bool = True
+    expertise_areas: List[str] = ["data analysis", "classification", "pattern recognition"]
+    responsibilities: List[str] = ["analyze data accurately", "classify content systematically"]
+    behavioral_guidelines: List[str] = ["be precise", "be objective", "be thorough"]
+    tone: str = "professional"  # professional, casual, technical, formal
+```
 
-@dataclass
-class CategorySectionConfig:
-    """Configuration for category section generation."""
-    include_priority_ordering: bool = True
-    include_examples: bool = True
-    include_validation_rules: bool = True
-    detailed_conditions: bool = True
-    exception_handling: bool = True
-    cross_category_guidance: bool = True
+**Integration Flow:**
+```python
+def _generate_system_prompt(self) -> str:
+    """Generate system prompt from SystemPromptConfig."""
+    system_config = self.config.get("system_prompt_config", DEFAULT_SYSTEM_PROMPT_CONFIG)
+    
+    # Extract values
+    role_definition = system_config.get("role_definition")
+    expertise_areas = system_config.get("expertise_areas")
+    responsibilities = system_config.get("responsibilities")
+    behavioral_guidelines = system_config.get("behavioral_guidelines")
+    tone = system_config.get("tone", "professional")
+    
+    # Get tone-appropriate language
+    tone_adjustments = self._get_tone_adjustments(tone)
+    
+    # Construct system prompt
+    parts = []
+    parts.append(f"{tone_adjustments['opener']} {role_definition} with extensive knowledge in {', '.join(expertise_areas)}.")
+    parts.append(f"{tone_adjustments['task_connector']} {', '.join(responsibilities)}.")
+    parts.append(f"{tone_adjustments['guideline_adverb']} {', '.join(behavioral_guidelines)} in your analysis.")
+    
+    return " ".join(parts)
+```
 
-@dataclass
-class InputPlaceholderConfig:
-    """Configuration for input placeholder generation."""
-    placeholder_format: str = "curly_braces"  # curly_braces, angle_brackets, custom
-    include_descriptions: bool = True
-    include_data_types: bool = True
-    include_examples: bool = False
-    custom_format_template: Optional[str] = None
+**Generated Output Example:**
+```
+System Prompt: "You are an expert analyst with extensive knowledge in data analysis, classification, pattern recognition. Your task is to analyze data accurately, classify content systematically, provide clear reasoning. Always be precise, be objective, be thorough, be consistent in your analysis."
+```
 
-@dataclass
-class InstructionConfig:
-    """Configuration for instruction section generation."""
+**Tone Variations:**
+- **Professional** (default): "You are an expert analyst... Your task is to... Always be precise..."
+- **Casual**: "Hey! You're a expert analyst... Your job is to... Make sure to be precise..."
+- **Technical**: "System role: You are a expert analyst... Core functions include:... Operational guidelines require: be precise..."
+- **Formal**: "You shall function as an expert analyst... Your responsibilities encompass:... You must consistently be precise..."
+
+### 2. CategoryDefinition → Category Definitions Integration
+
+**Purpose**: Defines categories with conditions, exceptions, key indicators, and examples.
+
+**Configuration Structure:**
+```python
+class CategoryDefinition(BaseModel):
+    name: str  # REQUIRED
+    description: str  # REQUIRED
+    conditions: List[str]  # REQUIRED - at least 1
+    key_indicators: List[str]  # REQUIRED - at least 1
+    exceptions: List[str] = []  # optional
+    examples: Optional[List[str]] = None  # optional
+    priority: int = 1  # optional - for sorting
+    aliases: Optional[List[str]] = None  # optional
+    validation_rules: Optional[List[str]] = None  # optional
+```
+
+**Integration Flow:**
+```python
+def _generate_category_definitions_section(self) -> str:
+    """Generate category definitions from CategoryDefinition list."""
+    section_parts = ["Categories and their criteria:"]
+    
+    for i, category in enumerate(self.categories, 1):
+        category_parts = [f"\n{i}. {category['name']}"]
+        
+        # Description
+        category_parts.append(f"    - {category['description']}")
+        
+        # Key elements/indicators
+        if category.get('key_indicators'):
+            category_parts.append("    - Key elements:")
+            for indicator in category['key_indicators']:
+                category_parts.append(f"        * {indicator}")
+        
+        # Conditions
+        if category.get('conditions'):
+            category_parts.append("    - Conditions:")
+            for condition in category['conditions']:
+                category_parts.append(f"        * {condition}")
+        
+        # Exceptions
+        if category.get('exceptions'):
+            category_parts.append("    - Must NOT include:")
+            for exception in category['exceptions']:
+                category_parts.append(f"        * {exception}")
+        
+        # Examples (if include_examples=true)
+        if category.get('examples') and self.config.get('INCLUDE_EXAMPLES') == 'true':
+            category_parts.append("    - Examples:")
+            for example in category['examples']:
+                category_parts.append(f"        * {example}")
+        
+        section_parts.append('\n'.join(category_parts))
+    
+    return '\n'.join(section_parts)
+```
+
+**Generated Output Example:**
+```
+Categories and their criteria:
+
+1. TrueDNR
+    - Delivered Not Received - Package marked as delivered but buyer claims non-receipt
+    - Key elements:
+        * delivered but not received
+        * tracking shows delivered
+        * missing package investigation
+    - Conditions:
+        * Package marked as delivered (EVENT_301)
+        * Buyer claims non-receipt
+        * Tracking shows delivery
+    - Must NOT include:
+        * Buyer received wrong item
+        * Package damaged on delivery
+    - Examples:
+        * Package shows delivered but I never got it
+        * Tracking says delivered yesterday but nothing here
+
+2. FalseDNR
+    - False Delivered Not Received claim...
+```
+
+### 3. INPUT_PLACEHOLDERS → Input Placeholders Integration
+
+**Purpose**: Defines which input fields should be included in the template for dynamic content injection.
+
+**Configuration Structure:**
+```python
+input_placeholders: List[str] = ["dialogue", "shiptrack", "max_estimated_arrival_date"]
+```
+
+**Integration Flow:**
+```python
+def _generate_input_placeholders_section(self) -> str:
+    """Generate input placeholders from list."""
+    placeholders = json.loads(self.config.get("INPUT_PLACEHOLDERS", '["input_data"]'))
+    
+    section_parts = ["Analysis Instructions:", ""]
+    section_parts.append("Please analyze:")
+    
+    for placeholder in placeholders:
+        section_parts.append(f"{placeholder.title()}: {{{placeholder}}}")
+    
+    return '\n'.join(section_parts)
+```
+
+**Generated Output Example:**
+```
+Analysis Instructions:
+
+Please analyze:
+Dialogue: {dialogue}
+Shiptrack: {shiptrack}
+Max_Estimated_Arrival_Date: {max_estimated_arrival_date}
+```
+
+These placeholders (`{dialogue}`, `{shiptrack}`, etc.) are later replaced with actual values during Bedrock processing.
+
+### 4. InstructionConfig → Instructions Integration
+
+**Purpose**: Defines which instruction components to include and their format.
+
+**Configuration Structure:**
+```python
+class InstructionConfig(BaseModel):
     include_analysis_steps: bool = True
     include_decision_criteria: bool = True
-    include_edge_case_handling: bool = True
-    include_confidence_guidance: bool = True
     include_reasoning_requirements: bool = True
-    step_by_step_format: bool = True
-
-@dataclass
-class OutputFormatConfig:
-    """Configuration for output format generation."""
-    format_type: str = "structured_json"  # structured_json, formatted_text, hybrid
-    required_fields: List[str] = field(default_factory=lambda: ["category", "confidence", "reasoning"])
-    field_descriptions: Dict[str, str] = field(default_factory=dict)
-    validation_requirements: List[str] = field(default_factory=list)
-    example_output: Optional[str] = None
-    include_field_constraints: bool = True
-    include_formatting_rules: bool = True
+    step_by_step_format: bool = True  # True=numbered, False=bullets
+    include_evidence_validation: bool = True
     
-    def __post_init__(self):
-        """Set default field descriptions if not provided."""
-        if not self.field_descriptions:
-            self.field_descriptions = {
-                "category": "The classified category name",
-                "confidence": "Confidence score between 0.0 and 1.0",
-                "reasoning": "Explanation of the classification decision"
-            }
-
-    def validate_template_generation_configuration(self) -> None:
-        """Validate template generation configuration - simplified validation."""
-        # Only validate what user actually provides
-        if not self.category_definitions:
-            raise ValueError("At least one category definition is required")
-        
-        # Validate each category definition
-        category_names = set()
-        for i, category in enumerate(self.category_definitions):
-            if category.name in category_names:
-                raise ValueError(f"Duplicate category name: {category.name}")
-            category_names.add(category.name)
-        
-        # Auto-configure based on categories after validation
-        self._auto_configure_from_categories()
-        
-        # All other settings use optimal defaults - no validation needed
-    
-    def get_template_generation_summary(self) -> Dict[str, Any]:
-        """Get summary of template generation configuration."""
-        return {
-            'task_type': self.task_type,  # Always "classification"
-            'template_style': self.template_style,  # Always "structured"
-            'validation_level': self.validation_level,  # Always "standard"
-            'category_count': len(self.category_definitions),
-            'category_names': [cat.name for cat in self.category_definitions],
-            'output_format': self.output_schema_config.format_type,  # Always "structured_json"
-            'required_fields': self.output_schema_config.required_fields,
-            'input_placeholders': self.input_placeholders,
-            'auto_configured': True,
-            'complexity_detected': self._detect_complexity(),
-            'template_version': self.template_version,
-            'quality_checks_enabled': self.enable_quality_checks,
-            'min_quality_score': self.min_quality_score
-        }
-    
-    def _detect_complexity(self) -> str:
-        """Detect complexity level based on category definitions."""
-        if not self.category_definitions:
-            return "simple"
-            
-        category_count = len(self.category_definitions)
-        has_examples = any(cat.examples for cat in self.category_definitions if cat.examples)
-        has_exceptions = any(cat.exceptions for cat in self.category_definitions if cat.exceptions)
-        avg_conditions = sum(len(cat.conditions) for cat in self.category_definitions) / category_count
-        
-        if category_count > 10 or has_examples or has_exceptions or avg_conditions > 3:
-            return "complex"
-        else:
-            return "simple"
+    # Optional: Detailed classification guidelines
+    classification_guidelines: Optional[Dict[str, Any]] = None
 ```
 
-### 4. Processing Script Pattern
-
+**Integration Flow:**
 ```python
-# scripts/bedrock_prompt_template_generation.py
-"""
-Bedrock Prompt Template Generation Script
-
-Generates structured prompt templates for categorization and classification tasks
-following the 5-component architecture pattern for optimal LLM performance.
-"""
-
-import os
-import json
-import argparse
-import pandas as pd
-import sys
-import traceback
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Callable
-import logging
-from datetime import datetime
-from dataclasses import asdict
-from jinja2 import Template, Environment, BaseLoader
-import jsonschema
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-
-class PromptTemplateGenerator:
-    """
-    Generates structured prompt templates for classification tasks using
-    the 5-component architecture pattern.
-    """
+def _generate_instructions_section(self) -> str:
+    """Generate instructions from InstructionConfig."""
+    instruction_config = self.config.get("instruction_config", DEFAULT_INSTRUCTION_CONFIG)
     
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
-        self.categories = self._load_categories()
-        self.template_env = Environment(loader=BaseLoader())
-        
-    def _load_categories(self) -> List[Dict[str, Any]]:
-        """Load and validate category definitions."""
-        categories = json.loads(self.config.get('category_definitions', '[]'))
-        
-        if not categories:
-            raise ValueError("No category definitions provided")
-        
-        # Validate each category
-        for i, category in enumerate(categories):
-            required_fields = ['name', 'description', 'conditions', 'key_indicators']
-            for field in required_fields:
-                if field not in category or not category[field]:
-                    raise ValueError(f"Category {i}: missing required field '{field}'")
-        
-        # Sort by priority if available
-        categories.sort(key=lambda x: x.get('priority', 999))
-        
-        return categories
+    instructions = ["Provide your analysis in the following structured format:", ""]
     
-    def generate_template(self) -> Dict[str, Any]:
-        """Generate complete prompt template with 5-component structure."""
-        template = {
-            'system_prompt': self._generate_system_prompt(),
-            'user_prompt_template': self._generate_user_prompt_template(),
-            'metadata': self._generate_template_metadata()
-        }
-        
-        return template
-    
-    def _generate_system_prompt(self) -> str:
-        """Generate system prompt with role assignment and expertise definition."""
-        system_config = json.loads(self.config.get('system_prompt_config', '{}'))
-        
-        role_definition = system_config.get('role_definition', 'expert analyst')
-        expertise_areas = system_config.get('expertise_areas', ['data analysis', 'classification'])
-        responsibilities = system_config.get('responsibilities', ['analyze data', 'classify content'])
-        behavioral_guidelines = system_config.get('behavioral_guidelines', ['be precise', 'be objective'])
-        
-        system_prompt_parts = []
-        
-        # Role assignment
-        system_prompt_parts.append(f"You are an {role_definition} with extensive knowledge in {', '.join(expertise_areas)}.")
-        
-        # Responsibilities
-        if responsibilities:
-            system_prompt_parts.append(f"Your task is to {', '.join(responsibilities)}.")
-        
-        # Behavioral guidelines
-        if behavioral_guidelines:
-            guidelines_text = ', '.join(behavioral_guidelines)
-            system_prompt_parts.append(f"Always {guidelines_text} in your analysis.")
-        
-        return ' '.join(system_prompt_parts)
-    
-    def _generate_user_prompt_template(self) -> str:
-        """Generate user prompt template with all 5 components."""
-        components = []
-        
-        # Component 1: System prompt (already handled separately)
-        
-        # Component 2: Category definitions
-        components.append(self._generate_category_definitions_section())
-        
-        # Component 3: Input placeholders
-        components.append(self._generate_input_placeholders_section())
-        
-        # Component 4: Instructions and rules
-        components.append(self._generate_instructions_section())
-        
-        # Component 5: Output format schema
-        components.append(self._generate_output_format_section())
-        
-        return '\n\n'.join(components)
-    
-    def _generate_category_definitions_section(self) -> str:
-        """Generate category definitions with conditions and exceptions."""
-        section_parts = ["Categories and their criteria:"]
-        
-        for i, category in enumerate(self.categories, 1):
-            category_parts = [f"\n{i}. {category['name']}"]
-            
-            # Description
-            if category.get('description'):
-                category_parts.append(f"    - {category['description']}")
-            
-            # Key elements/indicators
-            if category.get('key_indicators'):
-                category_parts.append("    - Key elements:")
-                for indicator in category['key_indicators']:
-                    category_parts.append(f"        * {indicator}")
-            
-            # Conditions
-            if category.get('conditions'):
-                category_parts.append("    - Conditions:")
-                for condition in category['conditions']:
-                    category_parts.append(f"        * {condition}")
-            
-            # Exceptions
-            if category.get('exceptions'):
-                category_parts.append("    - Must NOT include:")
-                for exception in category['exceptions']:
-                    category_parts.append(f"        * {exception}")
-            
-            # Examples if available
-            if category.get('examples') and self.config.get('include_examples', True):
-                category_parts.append("    - Examples:")
-                for example in category['examples']:
-                    category_parts.append(f"        * {example}")
-            
-            section_parts.append('\n'.join(category_parts))
-        
-        return '\n'.join(section_parts)
-    
-    def _generate_input_placeholders_section(self) -> str:
-        """Generate input placeholders section."""
-        placeholders = json.loads(self.config.get('input_placeholders', '["input_data"]'))
-        additional_fields = json.loads(self.config.get('additional_context_fields', '[]'))
-        
-        section_parts = ["Analysis Instructions:", ""]
-        section_parts.append("Please analyze:")
-        
-        for placeholder in placeholders:
-            section_parts.append(f"{placeholder.title()}: {{{placeholder}}}")
-        
-        for field in additional_fields:
-            section_parts.append(f"{field.title()}: {{{field}}}")
-        
-        return '\n'.join(section_parts)
-    
-    def _generate_instructions_section(self) -> str:
-        """Generate instructions and rules section."""
-        instruction_config = json.loads(self.config.get('instruction_config', '{}'))
-        
-        instructions = [
-            "Provide your analysis in the following structured format:",
-            ""
+    # Analysis steps (if enabled)
+    if instruction_config.get("include_analysis_steps", True):
+        analysis_steps = [
+            "Carefully review all provided data",
+            "Identify key patterns and indicators",
+            "Match against category criteria",
+            "Select the most appropriate category",
+            "Validate evidence against conditions and exceptions",
+            "Provide confidence assessment and reasoning"
         ]
         
-        if instruction_config.get('include_analysis_steps', True):
-            instructions.extend([
-                "1. Carefully review all provided data",
-                "2. Identify key patterns and indicators",
-                "3. Match against category criteria",
-                "4. Select the most appropriate category",
-                "5. Provide confidence assessment and reasoning",
-                ""
-            ])
-        
-        if instruction_config.get('include_decision_criteria', True):
-            instructions.extend([
-                "Decision Criteria:",
-                "- Base decisions on explicit evidence in the data",
-                "- Consider all category conditions and exceptions",
-                "- Choose the category with the strongest evidence match",
-                "- Provide clear reasoning for your classification",
-                ""
-            ])
-        
-        return '\n'.join(instructions)
-    
-    def _generate_output_format_section(self) -> str:
-        """Generate output format schema section."""
-        output_config = json.loads(self.config.get('output_format_config', '{}'))
-        format_type = output_config.get('format_type', 'structured_json')
-        required_fields = output_config.get('required_fields', ['category', 'confidence', 'reasoning'])
-        field_descriptions = output_config.get('field_descriptions', {})
-        
-        if format_type == 'structured_json':
-            format_parts = [
-                "## Required Output Format",
-                "",
-                "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
-                "",
-                "```json",
-                "{"
-            ]
-            
-            for i, field in enumerate(required_fields):
-                description = field_descriptions.get(field, f"The {field} value")
-                comma = "," if i < len(required_fields) - 1 else ""
-                format_parts.append(f'    "{field}": "{description}"{comma}')
-            
-            format_parts.extend([
-                "}",
-                "```",
-                "",
-                "Field Descriptions:"
-            ])
-            
-            for field in required_fields:
-                description = field_descriptions.get(field, f"The {field} value")
-                format_parts.append(f"- **{field}**: {description}")
-            
-            format_parts.extend([
-                "",
-                "Do not include any text before or after the JSON object. Only return valid JSON."
-            ])
-            
+        use_step_by_step = instruction_config.get("step_by_step_format", True)
+        if use_step_by_step:
+            instructions.extend([f"{i+1}. {step}" for i, step in enumerate(analysis_steps)])
         else:
-            # Formatted text or hybrid format
-            format_parts = [
-                "## Required Output Format",
-                "",
-                "Provide your response in the following structured format:"
-            ]
-            
-            for field in required_fields:
-                description = field_descriptions.get(field, f"The {field} value")
-                format_parts.append(f"**{field.title()}**: {description}")
-        
-        return '\n'.join(format_parts)
+            instructions.extend([f"- {step}" for step in analysis_steps])
+        instructions.append("")
     
-    def _generate_template_metadata(self) -> Dict[str, Any]:
-        """Generate metadata about the template."""
-        return {
-            'template_version': self.config.get('template_version', '1.0'),
-            'generation_timestamp': datetime.now().isoformat(),
-            'task_type': self.config.get('task_type', 'classification'),
-            'template_style': self.config.get('template_style', 'structured'),
-            'category_count': len(self.categories),
-            'category_names': [cat['name'] for cat in self.categories],
-            'output_format': self.config.get('output_format_type', 'structured_json'),
-            'validation_level': self.config.get('validation_level', 'comprehensive'),
-            'includes_examples': self.config.get('include_examples', True),
-            'generator_config': {
-                'system_prompt_config': json.loads(self.config.get('system_prompt_config', '{}')),
-                'output_format_config': json.loads(self.config.get('output_format_config', '{}'))
-            }
-        }
+    # Decision criteria (if enabled)
+    if instruction_config.get("include_decision_criteria", True):
+        instructions.extend([
+            "Decision Criteria:",
+            "- Base decisions on explicit evidence in the data",
+            "- Consider all category conditions and exceptions",
+            "- Choose the category with the strongest evidence match",
+            "- Provide clear reasoning for your classification",
+            ""
+        ])
+    
+    # Reasoning requirements (if enabled)
+    if instruction_config.get("include_reasoning_requirements", True):
+        instructions.extend([
+            "Reasoning Requirements:",
+            "- Explain WHY the evidence supports the selected category",
+            "- Address HOW the evidence aligns with category conditions",
+            "- Clarify WHAT makes this category the best match",
+            "- Describe WHY other categories were ruled out (if applicable)",
+            ""
+        ])
+    
+    # Evidence validation (if enabled)
+    if instruction_config.get("include_evidence_validation", True):
+        instructions.extend([
+            "Key Evidence Validation:",
+            "- Evidence MUST align with at least one condition for the selected category",
+            "- Evidence MUST NOT match any exceptions listed for the selected category",
+            "- Evidence should reference specific content from the input data",
+            "- Multiple pieces of supporting evidence strengthen the classification",
+            ""
+        ])
+    
+    # Detailed classification guidelines (if provided)
+    classification_guidelines = instruction_config.get("classification_guidelines")
+    if classification_guidelines:
+        guidelines_text = self._generate_classification_guidelines(classification_guidelines)
+        if guidelines_text:
+            instructions.extend([guidelines_text, ""])
+    
+    return '\n'.join(instructions)
+```
 
+**Generated Output Example (with all components enabled):**
+```
+Provide your analysis in the following structured format:
 
+1. Carefully review all provided data
+2. Identify key patterns and indicators
+3. Match against category criteria
+4. Select the most appropriate category
+5. Validate evidence against conditions and exceptions
+6. Provide confidence assessment and reasoning
+
+Decision Criteria:
+- Base decisions on explicit evidence in the data
+- Consider all category conditions and exceptions
+- Choose the category with the strongest evidence match
+- Provide clear reasoning for your classification
+
+Reasoning Requirements:
+- Explain WHY the evidence supports the selected category
+- Address HOW the evidence aligns with category conditions
+- Clarify WHAT makes this category the best match
+- Describe WHY other categories were ruled out (if applicable)
+
+Key Evidence Validation:
+- Evidence MUST align with at least one condition for the selected category
+- Evidence MUST NOT match any exceptions listed for the selected category
+- Evidence should reference specific content from the input data
+- Multiple pieces of supporting evidence strengthen the classification
+```
+
+**Classification Guidelines Support:**
+
+The `classification_guidelines` field supports hierarchical structured guidance:
+
+```json
+{
+  "classification_guidelines": {
+    "sections": [
+      {
+        "title": "## Classification Guidelines",
+        "subsections": [
+          {
+            "title": "### Evidence Requirements",
+            "content": [
+              "- Must reference specific content from input",
+              "- Must align with category conditions",
+              "- Must avoid category exceptions"
+            ]
+          },
+          {
+            "title": "### Decision Process",
+            "content": [
+              "- Evaluate all categories systematically",
+              "- Prioritize categories by evidence strength"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This generates structured sections in the prompt with proper hierarchy.
+
+### 5. OutputFormatConfig → Output Format Integration
+
+**Purpose**: Defines the expected output structure, field descriptions, and validation rules.
+
+**Configuration Structure:**
+```python
+class OutputFormatConfig(BaseModel):
+    format_type: str = "structured_json"  # or "structured_text"
+    required_fields: List[str] = ["category", "confidence", "key_evidence", "reasoning"]
+    field_descriptions: Dict[str, str] = {...}
+    json_schema: Optional[Dict[str, Any]] = None  # Custom JSON schema
+    validation_requirements: List[str] = [...]
+    evidence_validation_rules: List[str] = [...]
+    
+    # For structured_text format:
+    header_text: Optional[str] = None
+    structured_text_sections: Optional[List[Dict[str, Any]]] = None
+    formatting_rules: Optional[List[str]] = None
+    example_output: Optional[Any] = None
+```
+
+#### 5a. Structured JSON Format Integration
+
+**Integration Flow:**
+```python
+def _generate_custom_output_format_from_schema(self) -> str:
+    """Generate JSON output format from OutputFormatConfig."""
+    schema = self.schema_template  # Enriched with category enums
+    output_config = self.config.get("output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG)
+    
+    format_parts = [
+        "## Required Output Format",
+        "",
+        "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
+        ""
+    ]
+    
+    # Check for example_output in config
+    example_output = output_config.get("example_output")
+    if isinstance(example_output, dict):
+        # Use provided example directly
+        format_parts.extend([
+            json.dumps(example_output, indent=2, ensure_ascii=False),
+            ""
+        ])
+    else:
+        # Generate structure from schema
+        format_parts.extend(["{"])
+        
+        properties = schema.get("properties", {})
+        required_fields = schema.get("required", list(properties.keys()))
+        
+        for i, field in enumerate(required_fields):
+            field_schema = properties.get(field, {})
+            # Generate example value based on field type
+            comma = "," if i < len(required_fields) - 1 else ""
+            format_parts.append(f'    "{field}": "{example_value}"{comma}')
+        
+        format_parts.extend(["}", ""])
+    
+    # Field descriptions
+    format_parts.append("Field Descriptions:")
+    
+    properties = schema.get("properties", {})
+    required_fields = schema.get("required", list(properties.keys()))
+    
+    for field in required_fields:
+        field_schema = properties.get(field, {})
+        description = field_schema.get("description", f"The {field} value")
+        field_type = field_schema.get("type", "string")
+        
+        # Add type and constraint information
+        constraints = []
+        if field_type == "number":
+            if "minimum" in field_schema:
+                constraints.append(f"minimum: {field_schema['minimum']}")
+            if "maximum" in field_schema:
+                constraints.append(f"maximum: {field_schema['maximum']}")
+        elif field_type == "string" and "enum" in field_schema:
+            constraints.append(f"must be one of: {', '.join(field_schema['enum'])}")
+        
+        constraint_text = f" ({', '.join(constraints)})" if constraints else ""
+        format_parts.append(f"- **{field}** ({field_type}): {description}{constraint_text}")
+    
+    # Category validation (if category field exists with enum)
+    if "category" in required_fields and properties.get("category", {}).get("enum"):
+        category_names = properties["category"]["enum"]
+        format_parts.extend([
+            "",
+            "**Category Validation:**",
+            f"- The category field must exactly match one of: {', '.join(category_names)}",
+            "- Category names are case-sensitive and must match exactly"
+        ])
+    
+    format_parts.extend([
+        "",
+        "Do not include any text before or after the JSON object. Only return valid JSON."
+    ])
+    
+    return '\n'.join(format_parts)
+```
+
+**Generated Output Example (JSON format with complex nested structures):**
+
+When `json_schema` is provided in output_format.json with nested objects/arrays, the output format reflects that structure:
+
+```
+## Required Output Format
+
+**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**
+
+{
+  "category": "TrueDNR",
+  "confidence_score": 0.92,
+  "key_evidence": {
+    "message_evidence": [
+      "[BUYER]: Package shows delivered but I never got it",
+      "[SELLER]: Tracking confirms delivery on Nov 5"
+    ],
+    "shipping_evidence": [
+      "[Event Time]: 2025-02-21T17:40:49Z [Event]: Delivered to customer",
+      "No return shipment recorded"
+    ],
+    "timeline_evidence": [
+      "Delivery confirmation on 2025-02-21 17:40",
+      "Buyer reports non-receipt starting 2025-02-25"
+    ]
+  },
+  "reasoning": {
+    "contradicting_evidence": [],
+    "primary_factors": [
+      "Tracking shows package was delivered successfully",
+      "Buyer explicitly states they did not receive the package"
+    ],
+    "supporting_evidence": [
+      "Buyer requests refund due to missing package",
+      "No evidence of wrong/defective item"
+    ]
+  }
+}
+
+Field Descriptions:
+- **category** (string): Exactly one category from the predefined list (case-sensitive match required) (must be one of: TrueDNR, Confirmed_Delay, Delivery_Attempt_Failed, ...)
+- **confidence_score** (number): Decimal number between 0.00 and 1.00 indicating classification certainty (minimum: 0.0, maximum: 1.0)
+- **key_evidence** (object): Object containing three arrays of evidence from different sources
+- **reasoning** (object): Object containing three arrays explaining the classification decision
+
+**Category Validation:**
+- The category field must exactly match one of: TrueDNR, Confirmed_Delay, Delivery_Attempt_Failed, ...
+- Category names are case-sensitive and must match exactly
+
+Do not include any text before or after the JSON object. Only return valid JSON.
+```
+
+**Note on json_schema Field:**
+
+The `json_schema` field in OutputFormatConfig allows defining **complex nested structures**:
+
+```json
+{
+  "json_schema": {
+    "type": "object",
+    "properties": {
+      "category": {"type": "string", "enum": []},
+      "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+      "key_evidence": {
+        "type": "object",
+        "properties": {
+          "message_evidence": {"type": "array", "items": {"type": "string"}},
+          "shipping_evidence": {"type": "array", "items": {"type": "string"}},
+          "timeline_evidence": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["message_evidence", "shipping_evidence", "timeline_evidence"]
+      },
+      "reasoning": {
+        "type": "object",
+        "properties": {
+          "contradicting_evidence": {"type": "array", "items": {"type": "string"}},
+          "primary_factors": {"type": "array", "items": {"type": "string"}},
+          "supporting_evidence": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["contradicting_evidence", "primary_factors", "supporting_evidence"]
+      }
+    },
+    "required": ["category", "confidence_score", "key_evidence", "reasoning"]
+  }
+}
+```
+
+This allows the template generator to create prompts with structured evidence collection (multiple arrays organized by type) rather than simple string fields, enabling more sophisticated LLM responses.
+
+#### 5b. Structured Text Format Integration
+
+**Integration Flow:**
+```python
+def _generate_structured_text_output_format_from_config(self) -> str:
+    """Generate structured text output format from OutputFormatConfig."""
+    output_config = self.config.get("output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG)
+    
+    format_parts = ["## Required Output Format", ""]
+    
+    # Header text
+    header_text = output_config.get("header_text", 
+                                     "**CRITICAL: Follow this exact format for automated parsing**")
+    format_parts.append(header_text)
+    format_parts.append("")
+    
+    # Generate sections from config
+    structured_text_sections = output_config.get("structured_text_sections", [])
+    
+    if structured_text_sections:
+        format_parts.append("```")
+        for section in structured_text_sections:
+            section_lines = self._generate_section_from_config(section)
+            format_parts.extend(section_lines)
+        format_parts.append("```")
+        format_parts.append("")
+    
+    # Field descriptions
+    field_descriptions = output_config.get("field_descriptions", {})
+    if field_descriptions:
+        format_parts.append("**Field Descriptions:**")
+        for field, description in field_descriptions.items():
+            format_parts.append(f"- **{field}**: {description}")
+        format_parts.append("")
+    
+    # Formatting rules
+    formatting_rules = output_config.get("formatting_rules", [])
+    if formatting_rules:
+        format_parts.append("**Formatting Rules:**")
+        for rule in formatting_rules:
+            format_parts.append(f"- {rule}")
+        format_parts.append("")
+    
+    # Validation requirements
+    validation_requirements = output_config.get("validation_requirements", [])
+    if validation_requirements:
+        format_parts.append("**Validation Requirements:**")
+        for req in validation_requirements:
+            format_parts.append(f"- {req}")
+        format_parts.append("")
+    
+    # Evidence validation rules
+    evidence_validation_rules = output_config.get("evidence_validation_rules", [])
+    if evidence_validation_rules:
+        format_parts.append("**Evidence Validation:**")
+        for rule in evidence_validation_rules:
+            format_parts.append(f"- {rule}")
+        format_parts.append("")
+    
+    return '\n'.join(format_parts)
+```
+
+**Generated Output Example (Structured Text format):**
+```
+## Required Output Format
+
+**CRITICAL: Follow this exact format for automated parsing**
+
+```
+1. Category: TrueDNR
+
+2. Confidence Score: 0.95
+
+3. Key Evidence:
+   * Message Evidence:
+      [sep] Buyer states: "Package shows delivered but I never got it"
+      [sep] Tracking confirms delivery at 2:15 PM on Nov 5
+   * Shipping Evidence:
+      [sep] EVENT_301 (Delivered) recorded in tracking
+      [sep] No signature required for delivery
+   * Timeline Evidence:
+      [sep] Buyer contacted us 3 hours after delivery timestamp
+```
+
+**Field Descriptions:**
+- **Category**: The classified category name (must match exactly one of the defined categories)
+- **Confidence Score**: Number between 0.0 and 1.0 indicating classification certainty
+- **Key Evidence**: Structured evidence organized by type (message, shipping, timeline)
+
+**Formatting Rules:**
+- Use [sep] prefix for each evidence item
+- Maintain three-space indentation for subsections
+- Include exact quotes from input data when available
+
+**Evidence Validation:**
+- Evidence MUST align with at least one condition for the selected category
+- Evidence MUST NOT match any exceptions listed for the selected category
+```
+
+### Complete Integration Example
+
+**Input Configuration Files:**
+
+1. **category_definitions.json**:
+```json
+[{"name": "TrueDNR", "description": "...", "conditions": [...], "key_indicators": [...]}]
+```
+
+2. **system_prompt.json**:
+```json
+{"role_definition": "expert analyst", "expertise_areas": [...], "tone": "professional"}
+```
+
+3. **instruction.json**:
+```json
+{"include_analysis_steps": true, "include_decision_criteria": true, "step_by_step_format": true}
+```
+
+4. **output_format.json**:
+```json
+{"format_type": "structured_json", "required_fields": ["category", "confidence", "key_evidence", "reasoning"]}
+```
+
+**Integration Process:**
+```
+1. Load all JSON configs → Parsed config objects
+2. SystemPromptConfig → Generate System Prompt (Component 1)
+3. CategoryDefinition list → Generate Category Definitions (Component 2)
+4. INPUT_PLACEHOLDERS → Generate Input Placeholders (Component 3)
+5. InstructionConfig → Generate Instructions (Component 4)
+6. OutputFormatConfig → Generate Output Format (Component 5)
+7. Combine all components → Complete user_prompt_template
+8. Validate template → Quality score and recommendations
+9. Save outputs → prompts.json, metadata, validation schema
+```
+
+**Final Generated Template (prompts.json):**
+```json
+{
+  "system_prompt": "You are an expert analyst with extensive knowledge in data analysis, classification, pattern recognition. Your task is to analyze data accurately, classify content systematically, provide clear reasoning. Always be precise, be objective, be thorough, be consistent in your analysis.",
+  
+  "user_prompt_template": "Categories and their criteria:\n\n1. TrueDNR\n    - Delivered Not Received...\n\nAnalysis Instructions:\n\nPlease analyze:\nDialogue: {dialogue}\nShiptrack: {shiptrack}\n\nProvide your analysis in the following structured format:\n\n1. Carefully review all provided data\n2. Identify key patterns and indicators...\n\n## Required Output Format\n\n**CRITICAL: You must respond with a valid JSON object...",
+  
+  "input_placeholders": ["dialogue", "shiptrack", "max_estimated_arrival_date"]
+}
+```
+
+This complete integration ensures that every aspect of the configuration flows into specific parts of the generated prompt template, creating a coherent and effective prompt for LLM classification tasks.
+
+## Configuration Structure
+
+### Three-Tier Configuration Design
+
+The config follows a three-tier pattern:
+
+**Tier 1: Essential User Inputs (Required)**
+- `input_placeholders`: List of input field names (e.g., `["dialogue", "shiptrack"]`)
+
+**Tier 2: System Inputs with Defaults (Optional)**
+- `prompt_configs_path`: Path to configuration directory (default: `"prompt_configs"`)
+- `template_task_type`: Task type (default: `"classification"`)
+- `template_style`: Template style (default: `"structured"`)
+- `validation_level`: Validation level (default: `"standard"`)
+- Typed configuration objects: `system_prompt_settings`, `output_format_settings`, `instruction_settings`
+- `category_definitions`: List of CategoryDefinition objects
+
+**Tier 3: Derived Fields (Private with Property Access)**
+- `effective_system_prompt_config`: Resolved system prompt configuration
+- `effective_output_format_config`: Resolved output format configuration
+- `effective_instruction_config`: Resolved instruction configuration
+- `resolved_prompt_configs_path`: Absolute path to prompt configs directory
+
+### Configuration File Formats
+
+**category_definitions.json** (REQUIRED):
+```json
+[
+  {
+    "name": "TrueDNR",
+    "description": "Delivered Not Received - Package marked as delivered but buyer claims non-receipt",
+    "conditions": [
+      "Package marked as delivered (EVENT_301)",
+      "Buyer claims non-receipt"
+    ],
+    "exceptions": [
+      "Buyer received wrong item",
+      "Package damaged on delivery"
+    ],
+    "key_indicators": [
+      "delivered but not received",
+      "tracking shows delivered"
+    ],
+    "examples": [
+      "Package shows delivered but I never got it"
+    ],
+    "priority": 1
+  }
+]
+```
+
+**system_prompt.json** (optional):
+```json
+{
+  "role_definition": "expert analyst",
+  "expertise_areas": ["data analysis", "classification", "pattern recognition"],
+  "responsibilities": ["analyze data accurately", "classify content systematically"],
+  "behavioral_guidelines": ["be precise", "be objective", "be thorough"],
+  "tone": "professional"
+}
+```
+
+**output_format.json** (optional):
+```json
+{
+  "format_type": "structured_json",
+  "required_fields": ["category", "confidence", "key_evidence", "reasoning"],
+  "field_descriptions": {
+    "category": "The classified category name",
+    "confidence": "Confidence score between 0.0 and 1.0",
+    "key_evidence": "Specific evidence from input data",
+    "reasoning": "Clear explanation of the decision-making process"
+  },
+  "json_schema": {
+    "type": "object",
+    "properties": {
+      "category": {"type": "string", "enum": []},
+      "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+      "key_evidence": {"type": "string"},
+      "reasoning": {"type": "string"}
+    },
+    "required": ["category", "confidence", "key_evidence", "reasoning"]
+  },
+  "evidence_validation_rules": [
+    "Evidence MUST align with at least one condition for the selected category",
+    "Evidence MUST NOT match any exceptions listed for the selected category"
+  ]
+}
+```
+
+**instruction.json** (optional):
+```json
+{
+  "include_analysis_steps": true,
+  "include_decision_criteria": true,
+  "include_reasoning_requirements": true,
+  "step_by_step_format": true,
+  "include_evidence_validation": true,
+  "classification_guidelines": {
+    "sections": [
+      {
+        "title": "## Classification Guidelines",
+        "subsections": [
+          {
+            "title": "### Evidence Requirements",
+            "content": [
+              "- Must reference specific content from input",
+              "- Must align with category conditions"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## Template Generation Process
+
+### Main Processing Flow
+
+```python
+def main(input_paths, output_paths, environ_vars, job_args, logger):
+    """Main logic for prompt template generation."""
+    
+    # 1. Load configurations from JSON files
+    prompt_configs_path = input_paths.get("prompt_configs")
+    categories = load_category_definitions(prompt_configs_path, log)
+    system_prompt_config = load_config_from_json_file(prompt_configs_path, "system_prompt", 
+                                                       DEFAULT_SYSTEM_PROMPT_CONFIG, log)
+    output_format_config = load_config_from_json_file(prompt_configs_path, "output_format",
+                                                       DEFAULT_OUTPUT_FORMAT_CONFIG, log)
+    instruction_config = load_config_from_json_file(prompt_configs_path, "instruction",
+                                                     DEFAULT_INSTRUCTION_CONFIG, log)
+    
+    # 2. Generate or load schema template
+    schema_template = output_format_config.get("json_schema") or _generate_default_schema(categories)
+    
+    # 3. Initialize template generator with schema
+    generator = PromptTemplateGenerator(config, schema_template)
+    
+    # 4. Generate template
+    template = generator.generate_template()
+    
+    # 5. Validate template
+    validator = TemplateValidator(config["VALIDATION_LEVEL"])
+    validation_results = validator.validate_template(template)
+    
+    # 6. Save outputs
+    # - prompts.json (main template file)
+    # - template_metadata_{timestamp}.json
+    # - validation_schema_{timestamp}.json (if generate_validation_schema=true)
+```
+
+### Output Structure
+
+**prompts.json** (main output):
+```json
+{
+  "system_prompt": "You are an expert analyst with extensive knowledge in...",
+  "user_prompt_template": "Categories and their criteria:\n\n1. Category1...",
+  "input_placeholders": ["dialogue", "shiptrack", "max_estimated_arrival_date"]
+}
+```
+
+**template_metadata_{timestamp}.json**:
+```json
+{
+  "template_version": "1.0",
+  "generation_timestamp": "2025-11-07T11:00:00",
+  "task_type": "classification",
+  "template_style": "structured",
+  "category_count": 13,
+  "category_names": ["TrueDNR", "FalseDNR", ...],
+  "output_format": "structured_json",
+  "validation_results": {
+    "is_valid": true,
+    "quality_score": 0.95
+  },
+  "placeholder_validation": {
+    "all_resolved": true,
+    "successful": 4
+  }
+}
+```
+
+**validation_schema_{timestamp}.json**:
+```json
+{
+  "title": "Bedrock Response Validation Schema",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": ["TrueDNR", "FalseDNR", ...],
+      "description": "The classified category name"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    }
+  },
+  "required": ["category", "confidence", "key_evidence", "reasoning"],
+  "processing_config": {
+    "format_type": "structured_json",
+    "response_model_name": "ClassificationResponse",
+    "validation_level": "standard"
+  }
+}
+```
+
+## Template Validation
+
+The TemplateValidator performs component-specific quality checks:
+
+```python
 class TemplateValidator:
     """Validates generated prompt templates for quality and completeness."""
-    
-    def __init__(self, validation_level: str = "comprehensive"):
-        self.validation_level = validation_level
     
     def validate_template(self, template: Dict[str, Any]) -> Dict[str, Any]:
         """Validate template and return validation results."""
         validation_results = {
-            'is_valid': True,
-            'quality_score': 0.0,
-            'validation_details': [],
-            'recommendations': []
+            "is_valid": True,
+            "quality_score": 0.0,
+            "validation_details": [],
+            "recommendations": []
         }
         
-        # Validate system prompt
-        system_validation = self._validate_system_prompt(template.get('system_prompt', ''))
-        validation_results['validation_details'].append(system_validation)
+        # Validate system prompt (checks for role, expertise, task context, guidelines)
+        system_validation = self._validate_system_prompt(template.get("system_prompt", ""))
         
-        # Validate user prompt template
-        user_validation = self._validate_user_prompt_template(template.get('user_prompt_template', ''))
-        validation_results['validation_details'].append(user_validation)
+        # Validate user prompt template (checks for categories, placeholders, instructions, format)
+        user_validation = self._validate_user_prompt_template(template.get("user_prompt_template", ""))
         
-        # Validate metadata
-        metadata_validation = self._validate_metadata(template.get('metadata', {}))
-        validation_results['validation_details'].append(metadata_validation)
+        # Validate metadata (checks for required fields)
+        metadata_validation = self._validate_metadata(template.get("metadata", {}))
         
         # Calculate overall quality score
-        scores = [v['score'] for v in validation_results['validation_details']]
-        validation_results['quality_score'] = sum(scores) / len(scores) if scores else 0.0
+        scores = [v["score"] for v in validation_results["validation_details"]]
+        validation_results["quality_score"] = sum(scores) / len(scores)
         
-        # Determine overall validity
-        validation_results['is_valid'] = all(v['is_valid'] for v in validation_results['validation_details'])
-        
-        # Generate recommendations
-        validation_results['recommendations'] = self._generate_recommendations(validation_results['validation_details'])
+        # Generate recommendations for improvements
+        validation_results["recommendations"] = self._generate_recommendations(...)
         
         return validation_results
-    
-    def _validate_system_prompt(self, system_prompt: str) -> Dict[str, Any]:
-        """Validate system prompt component."""
-        result = {
-            'component': 'system_prompt',
-            'is_valid': True,
-            'score': 0.0,
-            'issues': []
-        }
-        
-        if not system_prompt or not system_prompt.strip():
-            result['is_valid'] = False
-            result['issues'].append("System prompt is empty")
-            result['score'] = 0.0
-            return result
-        
-        score = 0.0
-        
-        # Check for role definition
-        if any(word in system_prompt.lower() for word in ['you are', 'expert', 'analyst', 'specialist']):
-            score += 0.3
-        else:
-            result['issues'].append("Missing clear role definition")
-        
-        # Check for expertise areas
-        if any(word in system_prompt.lower() for word in ['knowledge', 'experience', 'expertise']):
-            score += 0.2
-        else:
-            result['issues'].append("Missing expertise statement")
-        
-        # Check for task context
-        if any(word in system_prompt.lower() for word in ['task', 'analyze', 'classify', 'categorize']):
-            score += 0.3
-        else:
-            result['issues'].append("Missing task context")
-        
-        # Check for behavioral guidelines
-        if any(word in system_prompt.lower() for word in ['precise', 'objective', 'thorough', 'accurate']):
-            score += 0.2
-        else:
-            result['issues'].append("Missing behavioral guidelines")
-        
-        result['score'] = score
-        if score < 0.7:
-            result['is_valid'] = False
-        
-        return result
-    
-    def _validate_user_prompt_template(self, user_prompt: str) -> Dict[str, Any]:
-        """Validate user prompt template component."""
-        result = {
-            'component': 'user_prompt_template',
-            'is_valid': True,
-            'score': 0.0,
-            'issues': []
-        }
-        
-        if not user_prompt or not user_prompt.strip():
-            result['is_valid'] = False
-            result['issues'].append("User prompt template is empty")
-            result['score'] = 0.0
-            return result
-        
-        score = 0.0
-        
-        # Check for category definitions
-        if 'categories' in user_prompt.lower() and 'criteria' in user_prompt.lower():
-            score += 0.25
-        else:
-            result['issues'].append("Missing category definitions section")
-        
-        # Check for input placeholders
-        if '{' in user_prompt and '}' in user_prompt:
-            score += 0.25
-        else:
-            result['issues'].append("Missing input placeholders")
-        
-        # Check for instructions
-        if any(word in user_prompt.lower() for word in ['analyze', 'instructions', 'provide', 'format']):
-            score += 0.25
-        else:
-            result['issues'].append("Missing analysis instructions")
-        
-        # Check for output format
-        if any(word in user_prompt.lower() for word in ['json', 'format', 'structure', 'output']):
-            score += 0.25
-        else:
-            result['issues'].append("Missing output format specification")
-        
-        result['score'] = score
-        if score < 0.7:
-            result['is_valid'] = False
-        
-        return result
-    
-    def _validate_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate template metadata."""
-        result = {
-            'component': 'metadata',
-            'is_valid': True,
-            'score': 1.0,
-            'issues': []
-        }
-        
-        required_fields = ['template_version', 'generation_timestamp', 'task_type', 'category_count']
-        missing_fields = [field for field in required_fields if field not in metadata]
-        
-        if missing_fields:
-            result['issues'].append(f"Missing metadata fields: {', '.join(missing_fields)}")
-            result['score'] = max(0.0, 1.0 - (len(missing_fields) * 0.2))
-            if len(missing_fields) > 2:
-                result['is_valid'] = False
-        
-        return result
-    
-    def _generate_recommendations(self, validation_details: List[Dict[str, Any]]) -> List[str]:
-        """Generate recommendations based on validation results."""
-        recommendations = []
-        
-        for detail in validation_details:
-            if detail['score'] < 0.8:
-                component = detail['component']
-                recommendations.append(f"Improve {component}: {'; '.join(detail['issues'])}")
-        
-        return recommendations
-
-
-def load_category_definitions(categories_path: str, log: Callable[[str], None]) -> List[Dict[str, Any]]:
-    """Load category definitions from input files (JSON/CSV)."""
-    categories_dir = Path(categories_path)
-
-    if not categories_dir.exists():
-        log(f"Categories directory not found: {categories_path}")
-        return []
-
-    categories = []
-
-    # Look for JSON files first
-    json_files = list(categories_dir.glob("*.json"))
-    if json_files:
-        for json_file in json_files:
-            try:
-                with open(json_file, "r", encoding="utf-8") as f:
-                    file_categories = json.load(f)
-                    if isinstance(file_categories, list):
-                        categories.extend(file_categories)
-                    else:
-                        categories.append(file_categories)
-                log(f"Loaded categories from {json_file}")
-            except Exception as e:
-                log(f"Failed to load categories from {json_file}: {e}")
-
-    # Look for CSV files if no JSON found
-    if not categories and list(categories_dir.glob("*.csv")):
-        csv_files = list(categories_dir.glob("*.csv"))
-        for csv_file in csv_files:
-            try:
-                df = pd.read_csv(csv_file)
-                for _, row in df.iterrows():
-                    category = {
-                        "name": row.get("name", ""),
-                        "description": row.get("description", ""),
-                        "conditions": row.get("conditions", "").split(";")
-                        if row.get("conditions")
-                        else [],
-                        "exceptions": row.get("exceptions", "").split(";")
-                        if row.get("exceptions")
-                        else [],
-                        "key_indicators": row.get("key_indicators", "").split(";")
-                        if row.get("key_indicators")
-                        else [],
-                        "priority": int(row.get("priority", 1)),
-                    }
-                    categories.append(category)
-                log(f"Loaded categories from {csv_file}")
-            except Exception as e:
-                log(f"Failed to load categories from {csv_file}: {e}")
-
-    return categories
-
-
-def main(
-    input_paths: Dict[str, str],
-    output_paths: Dict[str, str],
-    environ_vars: Dict[str, str],
-    job_args: argparse.Namespace,
-    logger: Optional[Callable[[str], None]] = None,
-) -> Dict[str, Any]:
-    """
-    Main logic for prompt template generation, refactored for testability.
-
-    Args:
-        input_paths: Dictionary of input paths with logical names
-        output_paths: Dictionary of output paths with logical names
-        environ_vars: Dictionary of environment variables
-        job_args: Command line arguments
-        logger: Optional logger object (defaults to print if None)
-
-    Returns:
-        Dictionary containing generation results and statistics
-    """
-    # Use print function if no logger is provided
-    log = logger or print
-    
-    try:
-        # Load category definitions from input files
-        categories = []
-        if 'category_definitions' in input_paths:
-            categories = load_category_definitions(input_paths['category_definitions'], log)
-        
-        if not categories:
-            raise ValueError("No category definitions found in input files")
-        
-        # Build configuration from environment variables and loaded data
-        config = {
-            'TEMPLATE_TASK_TYPE': environ_vars.get('TEMPLATE_TASK_TYPE', 'classification'),
-            'TEMPLATE_STYLE': environ_vars.get('TEMPLATE_STYLE', 'structured'),
-            'VALIDATION_LEVEL': environ_vars.get('VALIDATION_LEVEL', 'standard'),
-            'category_definitions': json.dumps(categories),
-            'SYSTEM_PROMPT_CONFIG': environ_vars.get('SYSTEM_PROMPT_CONFIG', '{}'),
-            'OUTPUT_FORMAT_CONFIG': environ_vars.get('OUTPUT_FORMAT_CONFIG', '{}'),
-            'INSTRUCTION_CONFIG': environ_vars.get('INSTRUCTION_CONFIG', '{}'),
-            'INPUT_PLACEHOLDERS': environ_vars.get('INPUT_PLACEHOLDERS', '["input_data"]'),
-            'OUTPUT_FORMAT_TYPE': environ_vars.get('OUTPUT_FORMAT_TYPE', 'structured_json'),
-            'REQUIRED_OUTPUT_FIELDS': environ_vars.get('REQUIRED_OUTPUT_FIELDS', '["category", "confidence", "key_evidence", "reasoning"]'),
-            'INCLUDE_EXAMPLES': environ_vars.get('INCLUDE_EXAMPLES', 'true'),
-            'GENERATE_VALIDATION_SCHEMA': environ_vars.get('GENERATE_VALIDATION_SCHEMA', 'true'),
-            'TEMPLATE_VERSION': environ_vars.get('TEMPLATE_VERSION', '1.0')
-        }
-        
-        # Initialize template generator
-        generator = PromptTemplateGenerator(config)
-        
-        # Generate template
-        log("Generating prompt template...")
-        template = generator.generate_template()
-        
-        # Validate template
-        validator = TemplateValidator(config['validation_level'])
-        validation_results = validator.validate_template(template)
-        
-        log(f"Template validation completed. Quality score: {validation_results['quality_score']:.2f}")
-        
-        # Create output directories
-        templates_path = Path(output_paths['prompt_templates'])
-        metadata_path = Path(output_paths['template_metadata'])
-        schema_path = Path(output_paths['validation_schema'])
-        
-        templates_path.mkdir(parents=True, exist_ok=True)
-        metadata_path.mkdir(parents=True, exist_ok=True)
-        schema_path.mkdir(parents=True, exist_ok=True)
-        
-        # Save generated template
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Save prompts.json (main template file)
-        prompts_file = templates_path / "prompts.json"
-        template_output = {
-            'system_prompt': template['system_prompt'],
-            'user_prompt_template': template['user_prompt_template']
-        }
-        
-        with open(prompts_file, 'w', encoding='utf-8') as f:
-            json.dump(template_output, f, indent=2, ensure_ascii=False)
-        
-        log(f"Saved prompt template to: {prompts_file}")
-        
-        # Save template metadata
-        metadata_file = metadata_path / f"template_metadata_{timestamp}.json"
-        metadata_output = {
-            **template['metadata'],
-            'validation_results': validation_results,
-            'generation_config': {
-                'task_type': config['task_type'],
-                'template_style': config['template_style'],
-                'validation_level': config['validation_level'],
-                'category_count': len(categories)
-            }
-        }
-        
-        with open(metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(metadata_output, f, indent=2, ensure_ascii=False, default=str)
-        
-        log(f"Saved template metadata to: {metadata_file}")
-        
-        # Generate and save validation schema if requested
-        if config['generate_validation_schema']:
-            schema_file = schema_path / f"validation_schema_{timestamp}.json"
-            
-            # Generate JSON schema for output validation
-            required_fields = json.loads(config['required_output_fields'])
-            validation_schema = {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "type": "object",
-                "properties": {},
-                "required": required_fields,
-                "additionalProperties": False
-            }
-            
-            # Add field definitions
-            field_descriptions = json.loads(config.get('output_format_config', '{}')).get('field_descriptions', {})
-            for field in required_fields:
-                if field == 'confidence':
-                    validation_schema['properties'][field] = {
-                        "type": "number",
-                        "minimum": 0.0,
-                        "maximum": 1.0,
-                        "description": field_descriptions.get(field, "Confidence score between 0.0 and 1.0")
-                    }
-                elif field == 'category':
-                    validation_schema['properties'][field] = {
-                        "type": "string",
-                        "enum": [cat['name'] for cat in categories],
-                        "description": field_descriptions.get(field, "The classified category name")
-                    }
-                else:
-                    validation_schema['properties'][field] = {
-                        "type": "string",
-                        "description": field_descriptions.get(field, f"The {field} value")
-                    }
-            
-            with open(schema_file, 'w', encoding='utf-8') as f:
-                json.dump(validation_schema, f, indent=2, ensure_ascii=False)
-            
-            log(f"Saved validation schema to: {schema_file}")
-        
-        # Prepare results summary
-        results = {
-            'success': True,
-            'template_generated': True,
-            'validation_passed': validation_results['is_valid'],
-            'quality_score': validation_results['quality_score'],
-            'category_count': len(categories),
-            'template_version': config['template_version'],
-            'output_files': {
-                'prompts': str(prompts_file),
-                'metadata': str(metadata_file),
-                'schema': str(schema_file) if config['generate_validation_schema'] else None
-            },
-            'validation_details': validation_results,
-            'generation_timestamp': datetime.now().isoformat()
-        }
-        
-        log(f"Template generation completed successfully")
-        log(f"Quality score: {validation_results['quality_score']:.2f}")
-        log(f"Categories processed: {len(categories)}")
-        
-        return results
-        
-    except Exception as e:
-        log(f"Template generation failed: {str(e)}")
-        raise
-
-
-if __name__ == "__main__":
-    try:
-        # Argument parser
-        parser = argparse.ArgumentParser(description="Bedrock prompt template generation script")
-        parser.add_argument("--task-type", default="classification", help="Type of classification task")
-        parser.add_argument("--template-style", default="structured", help="Style of template generation")
-        parser.add_argument("--validation-level", default="comprehensive", help="Level of template validation")
-        parser.add_argument("--output-format", default="structured_json", help="Output format type")
-        parser.add_argument("--include-examples", action="store_true", help="Include examples in template")
-        parser.add_argument("--generate-validation-schema", action="store_true", help="Generate validation schema")
-        parser.add_argument("--template-version", default="1.0", help="Template version identifier")
-        
-        args = parser.parse_args()
-
-        # Define standard SageMaker paths
-        INPUT_CATEGORIES_DIR = "/opt/ml/processing/input/categories"
-        INPUT_REQUIREMENTS_DIR = "/opt/ml/processing/input/requirements"
-        INPUT_SCHEMA_DIR = "/opt/ml/processing/input/schema"
-        OUTPUT_TEMPLATES_DIR = "/opt/ml/processing/output/templates"
-        OUTPUT_METADATA_DIR = "/opt/ml/processing/output/metadata"
-        OUTPUT_SCHEMA_DIR = "/opt/ml/processing/output/schema"
-
-        # Set up logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        logger = logging.getLogger(__name__)
-
-        # Log key parameters
-        logger.info(f"Starting prompt template generation with parameters:")
-        logger.info(f"  Task Type: {args.task_type}")
-        logger.info(f"  Template Style: {args.template_style}")
-        logger.info(f"  Validation Level: {args.validation_level}")
-        logger.info(f"  Output Format: {args.output_format}")
-        logger.info(f"  Include Examples: {args.include_examples}")
-        logger.info(f"  Generate Schema: {args.generate_validation_schema}")
-        logger.info(f"  Template Version: {args.template_version}")
-
-        # Set up path dictionaries
-        input_paths = {
-            "category_definitions": INPUT_CATEGORIES_DIR,
-            "task_requirements": INPUT_REQUIREMENTS_DIR,
-            "output_schema_template": INPUT_SCHEMA_DIR
-        }
-
-        output_paths = {
-            "prompt_templates": OUTPUT_TEMPLATES_DIR,
-            "template_metadata": OUTPUT_METADATA_DIR,
-            "validation_schema": OUTPUT_SCHEMA_DIR
-        }
-
-        # Environment variables dictionary
-        environ_vars = {
-            "TEMPLATE_TASK_TYPE": os.environ.get("TEMPLATE_TASK_TYPE", args.task_type),
-            "TEMPLATE_STYLE": os.environ.get("TEMPLATE_STYLE", args.template_style),
-            "VALIDATION_LEVEL": os.environ.get("VALIDATION_LEVEL", args.validation_level),
-            "CATEGORY_DEFINITIONS": os.environ.get("CATEGORY_DEFINITIONS", "[]"),
-            "SYSTEM_PROMPT_CONFIG": os.environ.get("SYSTEM_PROMPT_CONFIG", "{}"),
-            "OUTPUT_FORMAT_CONFIG": os.environ.get("OUTPUT_FORMAT_CONFIG", "{}"),
-            "INSTRUCTION_CONFIG": os.environ.get("INSTRUCTION_CONFIG", "{}"),
-            "INPUT_PLACEHOLDERS": os.environ.get("INPUT_PLACEHOLDERS", '["input_data"]'),
-            "ADDITIONAL_CONTEXT_FIELDS": os.environ.get("ADDITIONAL_CONTEXT_FIELDS", "[]"),
-            "OUTPUT_FORMAT_TYPE": os.environ.get("OUTPUT_FORMAT_TYPE", args.output_format),
-            "REQUIRED_OUTPUT_FIELDS": os.environ.get("REQUIRED_OUTPUT_FIELDS", '["category", "confidence", "reasoning"]'),
-            "INCLUDE_EXAMPLES": os.environ.get("INCLUDE_EXAMPLES", str(args.include_examples).lower()),
-            "GENERATE_VALIDATION_SCHEMA": os.environ.get("GENERATE_VALIDATION_SCHEMA", str(args.generate_validation_schema).lower()),
-            "TEMPLATE_VERSION": os.environ.get("TEMPLATE_VERSION", args.template_version)
-        }
-
-        # Execute the main processing logic
-        result = main(
-            input_paths=input_paths,
-            output_paths=output_paths,
-            environ_vars=environ_vars,
-            job_args=args,
-            logger=logger.info,
-        )
-
-        # Log completion summary
-        logger.info(f"Prompt template generation completed successfully. Results: {result}")
-        sys.exit(0)
-        
-    except Exception as e:
-        logging.error(f"Error in prompt template generation script: {str(e)}")
-        logging.error(traceback.format_exc())
-        sys.exit(1)
 ```
 
-## Key Differences Between Template Generation Step Types
+**Quality Score Thresholds:**
+- **≥ 0.8**: Production ready
+- **0.7 - 0.79**: Acceptable with minor improvements
+- **< 0.7**: Requires improvement
 
-### 1. By Task Complexity
-- **Simple Classification**: Basic category definitions with minimal conditions
-- **Complex Categorization**: Detailed category hierarchies with extensive conditions and exceptions
-- **Multi-Label Classification**: Support for multiple category assignments
-- **Hierarchical Classification**: Nested category structures with parent-child relationships
+## Step Builder Implementation
 
-### 2. By Task Complexity
-- **Simple Classification**: Basic category definitions with minimal conditions
-- **Complex Categorization**: Detailed category hierarchies with extensive conditions and exceptions
-- **Multi-Label Classification**: Support for multiple category assignments
-- **Hierarchical Classification**: Nested category structures with parent-child relationships
-
-### 3. By Output Format
-- **JSON Response**: Structured JSON output with schema validation (default)
-- **Formatted Text**: Human-readable text with specific formatting requirements
-- **Hybrid**: Combination of structured data and natural language explanations
-
-## Best Practices Identified
-
-1. **Category-Driven Design**: Structure templates around well-defined category specifications
-2. **5-Component Architecture**: Maintain consistent template structure across all generated templates
-3. **Configurable Generation**: Support multiple template styles and output formats
-4. **Quality Validation**: Implement comprehensive template validation and quality scoring
-5. **Integration Ready**: Generate templates compatible with existing Bedrock processing steps
-6. **Version Control**: Include versioning and metadata for template management
-7. **Schema Generation**: Automatically generate validation schemas for output formats
-8. **Extensible Framework**: Support custom template components and validation rules
-9. **Error Handling**: Graceful handling of invalid category definitions and generation failures
-10. **Documentation**: Comprehensive metadata and documentation for generated templates
-
-## Testing Implications
-
-Bedrock prompt template generation step builders should be tested for:
-
-1. **Category Processing**: Correct parsing and validation of category definitions
-2. **Template Structure**: Proper generation of all 5 template components
-3. **Output Format Generation**: Correct schema and format specification generation
-4. **Validation Logic**: Comprehensive template quality validation
-5. **Configuration Handling**: Proper processing of all configuration parameters
-6. **File I/O Operations**: Correct reading of input files and writing of output files
-7. **Error Recovery**: Proper error handling for invalid inputs and generation failures
-8. **Integration Compatibility**: Templates work correctly with Bedrock processing steps
-9. **Version Management**: Proper versioning and metadata generation
-10. **Quality Scoring**: Accurate quality assessment and recommendation generation
-
-### Recommended Test Categories
-
-#### Template Generation Tests
-- Category definition parsing and validation
-- System prompt generation with different configurations
-- User prompt template generation with all components
-- Output format schema generation
-- Template metadata creation
-
-#### Validation Tests
-- Template quality scoring accuracy
-- Validation rule enforcement
-- Recommendation generation
-- Schema validation correctness
-
-#### Integration Tests
-- End-to-end template generation workflow
-- Compatibility with Bedrock processing steps
-- File format and structure validation
-- Configuration parameter processing
-
-#### Error Handling Tests
-- Invalid category definition handling
-- Missing required configuration handling
-- File I/O error recovery
-- Template validation failure handling
-
-## Implementation Examples
-
-### Complete Template Generation Step Builder
+### Standard Builder Pattern
 
 ```python
-from typing import Dict, Optional, Any, List
-from sagemaker.workflow.steps import ProcessingStep
-from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.sklearn import SKLearnProcessor
-
-from ..configs.config_bedrock_prompt_template_generation_step import BedrockPromptTemplateGenerationStepConfig
-from ...core.base.builder_base import StepBuilderBase
-
-# Import template generation specification
-try:
-    from ..specs.bedrock_prompt_template_generation_spec import BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC
-    SPEC_AVAILABLE = True
-except ImportError:
-    BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC = None
-    SPEC_AVAILABLE = False
-
-
 class BedrockPromptTemplateGenerationStepBuilder(StepBuilderBase):
     """Builder for Bedrock Prompt Template Generation Step."""
     
-    def __init__(self, config: BedrockPromptTemplateGenerationStepConfig, sagemaker_session=None, 
-                 role: Optional[str] = None, registry_manager=None, 
-                 dependency_resolver=None):
-        if not isinstance(config, BedrockPromptTemplateGenerationStepConfig):
-            raise ValueError("BedrockPromptTemplateGenerationStepBuilder requires BedrockPromptTemplateGenerationStepConfig")
-            
-        if not SPEC_AVAILABLE or BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC is None:
-            raise ValueError("Bedrock prompt template generation specification not available")
-            
-        super().__init__(
-            config=config,
-            spec=BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC,
-            sagemaker_session=sagemaker_session,
-            role=role,
-            registry_manager=registry_manager,
-            dependency_resolver=dependency_resolver,
-        )
-        self.config: BedrockPromptTemplateGenerationStepConfig = config
+    def __init__(self, config: BedrockPromptTemplateGenerationConfig, ...):
+        # Load specification
+        spec = BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC
+        
+        super().__init__(config=config, spec=spec, ...)
+        self.config = config
     
     def validate_configuration(self) -> None:
         """Validate prompt template generation configuration."""
         # Validate base processing configuration
-        required_processing_attrs = [
-            'processing_instance_count', 'processing_volume_size',
-            'processing_instance_type_large', 'processing_instance_type_small',
-            'processing_framework_version', 'use_large_processing_instance'
-        ]
-        
-        for attr in required_processing_attrs:
-            if not hasattr(self.config, attr) or getattr(self.config, attr) is None:
-                raise ValueError(f"Missing required processing attribute: {attr}")
-        
         # Validate template generation specific configuration
-        self.config.validate_template_generation_configuration()
-        
-        self.log_info("BedrockPromptTemplateGenerationStepConfig validation succeeded")
+        # Validate category definitions
+        # Validate task type, template style, output format
     
-    def create_step(self, **kwargs) -> ProcessingStep:
-        """Create Bedrock Prompt Template Generation ProcessingStep."""
-        # Extract parameters
-        inputs_raw = kwargs.get('inputs', {})
-        outputs = kwargs.get('outputs', {})
-        dependencies = kwargs.get('dependencies', [])
-        enable_caching = kwargs.get('enable_caching', True)
-        
-        # Handle inputs from dependencies
-        inputs = {}
-        if dependencies:
-            try:
-                extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
-                inputs.update(extracted_inputs)
-            except Exception as e:
-                self.log_warning("Failed to extract inputs from dependencies: %s", e)
-        
-        inputs.update(inputs_raw)
-        
-        # Create components
-        processor = self._create_processor()
-        proc_inputs = self._get_inputs(inputs)
-        proc_outputs = self._get_outputs(outputs)
-        job_args = self._get_job_arguments()
-        
-        # Get standardized step name
-        step_name = self._get_step_name()
-        
-        # Create step
-        step = ProcessingStep(
-            name=step_name,
-            processor=processor,
-            inputs=proc_inputs,
-            outputs=proc_outputs,
-            code=self.config.get_script_path(),
-            job_arguments=job_args,
-            depends_on=dependencies,
-            cache_config=self._get_cache_config(enable_caching)
+    def _create_processor(self) -> SKLearnProcessor:
+        """Create SKLearnProcessor for template generation."""
+        return SKLearnProcessor(
+            framework_version="1.2-1",
+            role=self.role,
+            instance_type=self._get_instance_type(),
+            instance_count=self.config.processing_instance_count,
+            volume_size_in_gb=self.config.processing_volume_size,
+            base_job_name=self._generate_job_name(),
+            sagemaker_session=self.session,
+            env=self._get_environment_variables()
         )
-        
-        # Attach specification for future reference
-        setattr(step, '_spec', self.spec)
-        
-        self.log_info("Created Bedrock Prompt Template Generation ProcessingStep: %s", step_name)
-        return step
+    
+    def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
+        """Create ProcessingInput objects for template generation."""
+        # Input: prompt_configs (required directory with JSON config files)
+        return [
+            ProcessingInput(
+                input_name="prompt_configs",
+                source=inputs["prompt_configs"],
+                destination="/opt/ml/processing/input/prompt_configs"
+            )
+        ]
+    
+    def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
+        """Create ProcessingOutput objects for generated templates."""
+        return [
+            ProcessingOutput(
+                output_name="prompt_templates",
+                source="/opt/ml/processing/output/templates",
+                destination=outputs.get("prompt_templates")
+            ),
+            ProcessingOutput(
+                output_name="template_metadata",
+                source="/opt/ml/processing/output/metadata",
+                destination=outputs.get("template_metadata")
+            ),
+            ProcessingOutput(
+                output_name="validation_schema",
+                source="/opt/ml/processing/output/schema",
+                destination=outputs.get("validation_schema")
+            )
+        ]
 ```
 
-## Step Registry Integration
+### Environment Variables Pattern
 
-### Registry Pattern for Template Generation Steps
-
-Following the cursus framework registry pattern, template generation steps must be registered in `src/cursus/registry/step_names_original.py`:
+Only configuration settings (NOT large JSON data) are passed via environment variables:
 
 ```python
-# Registry entries for Bedrock prompt template generation steps
-"BedrockPromptTemplateGeneration": {
-    "config_class": "BedrockPromptTemplateGenerationStepConfig",
-    "builder_step_name": "BedrockPromptTemplateGenerationStepBuilder", 
-    "spec_type": "BedrockPromptTemplateGeneration",
-    "sagemaker_step_type": "Processing",  # SageMaker step type for processing
-    "description": "Bedrock prompt template generation step for classification tasks",
-},
-"BedrockPromptTemplateGenerationClassification": {
-    "config_class": "BedrockPromptTemplateGenerationClassificationConfig",
-    "builder_step_name": "BedrockPromptTemplateGenerationClassificationStepBuilder",
-    "spec_type": "BedrockPromptTemplateGenerationClassification", 
-    "sagemaker_step_type": "Processing",  # SageMaker step type for processing
-    "description": "Specialized prompt template generation for classification tasks",
-},
-"BedrockPromptTemplateGenerationCategorization": {
-    "config_class": "BedrockPromptTemplateGenerationCategorizationConfig",
-    "builder_step_name": "BedrockPromptTemplateGenerationCategorizationStepBuilder",
-    "spec_type": "BedrockPromptTemplateGenerationCategorization",
-    "sagemaker_step_type": "Processing",  # SageMaker step type for processing
-    "description": "Specialized prompt template generation for categorization tasks",
-},
+def _get_environment_variables(self) -> Dict[str, str]:
+    """Build environment variables for the processing step."""
+    return {
+        "TEMPLATE_TASK_TYPE": self.config.template_task_type,
+        "TEMPLATE_STYLE": self.config.template_style,
+        "VALIDATION_LEVEL": self.config.validation_level,
+        "INPUT_PLACEHOLDERS": json.dumps(self.config.input_placeholders),
+        "INCLUDE_EXAMPLES": str(self.config.include_examples).lower(),
+        "GENERATE_VALIDATION_SCHEMA": str(self.config.generate_validation_schema).lower(),
+        "TEMPLATE_VERSION": self.config.template_version
+    }
 ```
-
-**Key Registry Pattern Notes:**
-- **sagemaker_step_type**: Must be `"Processing"` for all template generation steps
-- **spec_type**: Use case-specific specification type (e.g., "BedrockPromptTemplateGeneration")
-- **config_class**: Use case-specific configuration class name
-- **builder_step_name**: Use case-specific builder class name
 
 ## Integration with Bedrock Processing Steps
 
-### Seamless Integration Pattern
+### Seamless Integration
 
-The prompt template generation step is designed to integrate seamlessly with existing Bedrock processing steps:
-
-```python
-# Example pipeline integration
-def create_classification_pipeline():
-    # Step 1: Generate prompt templates
-    template_generation_step = BedrockPromptTemplateGenerationStepBuilder(
-        config=template_config
-    ).create_step(
-        inputs={
-            'category_definitions': category_definitions_s3_uri
-        },
-        outputs={
-            'prompt_templates': 's3://bucket/templates/',
-            'template_metadata': 's3://bucket/metadata/',
-            'validation_schema': 's3://bucket/schema/'
-        }
-    )
-    
-    # Step 2: Use generated templates in Bedrock processing
-    bedrock_processing_step = BedrockProcessingStepBuilder(
-        config=bedrock_config
-    ).create_step(
-        inputs={
-            'input_data': input_data_s3_uri,
-            'prompt_config': template_generation_step.properties.ProcessingOutputConfig.Outputs['prompt_templates'].S3Output.S3Uri
-        },
-        outputs={
-            'processed_data': 's3://bucket/results/',
-            'analysis_summary': 's3://bucket/summary/'
-        },
-        dependencies=[template_generation_step]
-    )
-    
-    return [template_generation_step, bedrock_processing_step]
-```
-
-### Output Compatibility
-
-The template generation step outputs are fully compatible with Bedrock processing step inputs:
+The generated templates integrate directly with Bedrock processing steps:
 
 ```python
-# Template generation output format
-{
-    "system_prompt": "You are an expert analyst...",
-    "user_prompt_template": "Categories and their criteria:\n\n1. Category1...",
-    "metadata": {
-        "template_version": "1.0",
-        "generation_timestamp": "2025-10-31T15:00:00",
-        "task_type": "classification",
-        "category_count": 5
-    }
-}
-
-# Bedrock processing step consumption
-# The above JSON is saved as prompts.json and consumed directly by the Bedrock step
-```
-
-## Simplified User Experience
-
-### The Problem with Overengineering
-The original design included multiple configuration options (template-style, validation-level, task-type) that users don't need to distinguish between. This creates unnecessary complexity and decision fatigue.
-
-### Simplified Design Philosophy
-**One Input, Optimal Output**: Users provide only category definitions. The system automatically configures everything else optimally.
-
-## Usage Examples
-
-### Example 1: Simple Classification (Simplified)
-
-```python
-# Define categories - ONLY thing user needs to provide
-categories = [
-    CategoryDefinition(
-        name="Positive",
-        description="Positive sentiment or feedback",
-        conditions=["Contains positive language", "Expresses satisfaction"],
-        exceptions=["Sarcastic positive statements"],
-        key_indicators=["good", "excellent", "satisfied", "happy"]
-    ),
-    CategoryDefinition(
-        name="Negative", 
-        description="Negative sentiment or feedback",
-        conditions=["Contains negative language", "Expresses dissatisfaction"],
-        exceptions=["Constructive criticism"],
-        key_indicators=["bad", "terrible", "disappointed", "angry"]
-    )
-]
-
-# Simplified configuration - everything else is automatic
-config = BedrockPromptTemplateGenerationStepConfig()
-config.category_definitions = categories
-# That's it! No template_style, validation_level, task_type needed
-
-# Create step
-builder = BedrockPromptTemplateGenerationStepBuilder(config)
-step = builder.create_step(
-    inputs={'category_definitions': 's3://bucket/categories.json'},
-    outputs={'prompt_templates': 's3://bucket/templates/'}
-)
-
-# System automatically:
-# - Uses "structured" template style (optimal for automation)
-# - Uses "standard" validation level (optimal balance)
-# - Uses "classification" task type (optimal for categories)
-# - Detects "simple" complexity and configures accordingly
-```
-
-### Example 2: Complex Categorization (Auto-Detected)
-
-```python
-# Define complex categories - system auto-detects complexity
-categories = [
-    CategoryDefinition(
-        name="TrueDNR",
-        description="Delivered Not Received - Package marked as delivered but buyer claims non-receipt",
-        conditions=[
-            "Package marked as delivered (EVENT_301)",
-            "Buyer claims non-receipt",
-            "Tracking shows delivery"
-        ],
-        exceptions=[
-            "Buyer received wrong item",
-            "Package damaged on delivery"
-        ],
-        key_indicators=[
-            "delivered but not received",
-            "tracking shows delivered",
-            "missing package investigation"
-        ],
-        examples=[
-            "Package shows delivered but I never got it",
-            "Tracking says delivered yesterday but nothing here"
-        ],
-        priority=1
-    ),
-    # ... 12 more complex categories with examples and exceptions
-]
-
-# Still simple configuration - complexity auto-detected
-config = BedrockPromptTemplateGenerationStepConfig()
-config.category_definitions = categories
-# System automatically detects:
-# - 13 categories (>10) = complex
-# - Has examples = complex  
-# - Has exceptions = complex
-# - Configures detailed_conditions=True, exception_handling=True
-
-# Create step - same simple interface
-builder = BedrockPromptTemplateGenerationStepBuilder(config)
-step = builder.create_step(
-    inputs={'category_definitions': 's3://bucket/categories.json'},
-    outputs={'prompt_templates': 's3://bucket/templates/'}
-)
-
-# System automatically:
-# - Uses optimal settings for complex categorization
-# - Generates sophisticated prompt template like your example
-# - Includes all 5 components with appropriate complexity
-# - Validates with standard quality checks
-```
-
-### Example 3: Integration with Bedrock Processing (Simplified)
-
-```python
-# Step 1: Generate templates (simplified)
-template_config = BedrockPromptTemplateGenerationStepConfig()
-template_config.category_definitions = your_categories  # Only required input
-
-template_step = BedrockPromptTemplateGenerationStepBuilder(template_config).create_step(
-    inputs={'category_definitions': 's3://bucket/categories.json'},
-    outputs={'prompt_templates': 's3://bucket/templates/'}
-)
-
-# Step 2: Use templates in Bedrock processing (unchanged)
-bedrock_step = BedrockProcessingStepBuilder(bedrock_config).create_step(
+# Step 1: Generate prompt templates
+template_generation_step = BedrockPromptTemplateGenerationStepBuilder(
+    config=template_config
+).create_step(
     inputs={
-        'input_data': 's3://bucket/data/',
-        'prompt_config': template_step.properties.ProcessingOutputConfig.Outputs['prompt_templates'].S3Output.S3Uri
+        'prompt_configs': 's3://bucket/prompt_configs/'  # Directory with JSON files
     },
-    outputs={'processed_data': 's3://bucket/results/'},
-    dependencies=[template_step]
+    outputs={
+        'prompt_templates': 's3://bucket/templates/'
+    }
+)
+
+# Step 2: Use generated templates in Bedrock processing
+bedrock_processing_step = BedrockProcessingStepBuilder(
+    config=bedrock_config
+).create_step(
+    inputs={
+        'input_data': input_data_s3_uri,
+        'prompt_config': template_generation_step.properties
+                         .ProcessingOutputConfig
+                         .Outputs['prompt_templates']
+                         .S3Output.S3Uri
+    },
+    outputs={
+        'processed_data': 's3://bucket/results/'
+    },
+    dependencies=[template_generation_step]
 )
 ```
 
-## Automatic Intelligence Features
+## Key Design Principles
 
-### 1. **Complexity Detection**
-```python
-def _detect_complexity(self) -> str:
-    category_count = len(self.category_definitions)
-    has_examples = any(cat.examples for cat in self.category_definitions if cat.examples)
-    has_exceptions = any(cat.exceptions for cat in self.category_definitions if cat.exceptions)
-    avg_conditions = sum(len(cat.conditions) for cat in self.category_definitions) / category_count
-    
-    if category_count > 10 or has_examples or has_exceptions or avg_conditions > 3:
-        return "complex"  # Auto-enables detailed features
-    else:
-        return "simple"   # Auto-uses streamlined features
-```
-
-### 2. **Smart Defaults**
-- **Input Placeholders**: Automatically set to `["dialogue", "shiptrack", "max_estimated_arrival_date"]` for common use cases
-- **Output Format**: Always `"structured_json"` for automated processing compatibility
-- **Template Style**: Always `"structured"` for clarity and consistency
-- **Validation Level**: Always `"standard"` for optimal balance
-
-### 3. **Auto-Configuration**
-```python
-def _auto_configure_from_categories(self):
-    if self._detect_complexity() == "complex":
-        self.template_components.category_section_config.detailed_conditions = True
-        self.template_components.category_section_config.exception_handling = True
-        self.template_components.instruction_config.include_edge_case_handling = True
-    else:
-        # Streamlined for simple cases
-        self.template_components.category_section_config.detailed_conditions = False
-        self.template_components.instruction_config.include_edge_case_handling = False
-```
-
-## Benefits of Simplified Design
-
-1. **Reduced Cognitive Load**: Users focus on business logic (categories) not technical configuration
-2. **Optimal Performance**: System chooses best settings automatically
-3. **Fewer Errors**: No invalid configuration combinations
-4. **Faster Adoption**: Minimal learning curve
-5. **Consistent Quality**: Always uses proven optimal settings
-6. **Future-Proof**: Can add intelligence without breaking user code
-
-## Migration from Complex to Simple
-
-### Before (Overengineered):
-```python
-config.task_type = "categorization"           # User had to choose
-config.template_style = "detailed"           # User had to choose  
-config.validation_level = "comprehensive"    # User had to choose
-config.category_definitions = categories     # User provides
-config.output_schema_config.format_type = "structured_json"  # User had to choose
-```
-
-### After (Simplified):
-```python
-config.category_definitions = categories     # User provides - ONLY required input
-# Everything else is automatically optimal
-```
-
-The simplified design eliminates decision fatigue while ensuring optimal results through intelligent automation.
+1. **File-Based Configuration**: Large configurations stored as JSON files, not environment variables
+2. **5-Component Architecture**: Consistent template structure for optimal LLM performance
+3. **Schema Enrichment**: Automatic category enum integration into validation schemas
+4. **Placeholder Resolution**: Dynamic ${} placeholder resolution from multiple sources
+5. **Type Safety**: Pydantic models for strong typing and validation
+6. **Flexible Output Formats**: Support for both structured_json and structured_text
+7. **Quality Validation**: Component-specific quality scoring with recommendations
+8. **Tone Awareness**: System prompts adapt to specified communication tone
+9. **Evidence Validation**: Built-in rules for validating classification evidence
+10. **Integration Ready**: Direct compatibility with Bedrock processing steps
 
 ## Summary
 
-This comprehensive design document establishes the patterns and architecture for Bedrock prompt template generation steps in the cursus framework. The key innovations include:
+The Bedrock Prompt Template Generation step provides a production-ready implementation that:
 
-1. **5-Component Architecture**: Structured template generation following system prompt, category definitions, input placeholders, instructions, and output format components.
+1. **Uses file-based configuration** for maintainability and clarity
+2. **Generates structured templates** following 5-component architecture
+3. **Enriches schemas** with category enums automatically
+4. **Resolves placeholders** dynamically using sophisticated resolution strategies
+5. **Validates templates** with component-specific quality scoring
+6. **Supports multiple formats** (structured_json and structured_text)
+7. **Integrates seamlessly** with Bedrock processing steps via property references
 
-2. **Category-Driven Design**: Templates built around well-defined category specifications with conditions, exceptions, and key indicators.
-
-3. **Quality Validation**: Comprehensive template validation with quality scoring and recommendations.
-
-4. **Seamless Integration**: Direct compatibility with existing Bedrock processing steps through standardized output formats.
-
-5. **Configurable Generation**: Support for multiple template styles, output formats, and validation levels.
-
-6. **Extensible Framework**: Modular design supporting custom template components and validation rules.
-
-The design enables automated generation of high-quality, structured prompt templates specifically optimized for categorization and classification tasks, while maintaining full integration with the existing cursus framework and Bedrock processing capabilities.
+This design ensures that prompt template generation is reliable, maintainable, and optimized for LLM classification tasks while maintaining full compatibility with the cursus framework patterns.

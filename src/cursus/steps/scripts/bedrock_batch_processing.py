@@ -582,10 +582,14 @@ class BedrockProcessor:
                 if response_text.endswith("```"):
                     response_text = response_text.removesuffix("```").strip()
 
-                # FIX: Prepend opening brace since prefilling is not included in response
-                # The assistant message was prefilled with "{", but Bedrock response
-                # continues from after the prefill, so we need to add it back
-                complete_json = "{" + response_text
+                # FIX: Handle prefilling correctly - only prepend { if not already present
+                # The assistant message was prefilled with "{", but sometimes the LLM
+                # includes it in the response. Check before prepending to avoid {{...
+                if not response_text.startswith("{"):
+                    complete_json = "{" + response_text
+                else:
+                    # LLM already included the opening brace
+                    complete_json = response_text
 
                 # Use Pydantic model for structured parsing
                 validated_response = self.response_model_class.model_validate_json(
