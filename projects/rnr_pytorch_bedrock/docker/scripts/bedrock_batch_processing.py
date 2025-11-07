@@ -14,7 +14,6 @@ import json
 import sys
 
 from subprocess import check_call
-import boto3
 import logging
 
 # ============================================================================
@@ -41,6 +40,9 @@ def _get_secure_pypi_access_token() -> str:
     Raises:
         Exception: If token retrieval fails
     """
+    # Local import to avoid loading boto3 before package installation
+    import boto3
+
     try:
         os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
         sts = boto3.client("sts", region_name="us-east-1")
