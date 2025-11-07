@@ -346,6 +346,36 @@ class OutputFormatConfig(BaseModel):
         description="Dictionary mapping field names to their descriptions",
     )
 
+    json_schema: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="""Optional JSON schema for validation schema generation. When provided, this schema
+        will be used directly for generating the validation schema instead of deriving it from field_descriptions.
+        
+        This allows proper specification of complex types like nested objects and arrays:
+        
+        Example:
+        {
+            "type": "object",
+            "properties": {
+                "category": {"type": "string", "enum": []},  # enum will be populated from categories
+                "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "key_evidence": {
+                    "type": "object",
+                    "properties": {
+                        "message_evidence": {"type": "array", "items": {"type": "string"}},
+                        "shipping_evidence": {"type": "array", "items": {"type": "string"}},
+                        "timeline_evidence": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["message_evidence", "shipping_evidence", "timeline_evidence"]
+                }
+            },
+            "required": ["category", "confidence_score", "key_evidence"]
+        }
+        
+        If not provided, a simple schema will be generated from field_descriptions with all fields as strings.
+        """,
+    )
+
     validation_requirements: List[str] = Field(
         default_factory=lambda: [
             "category must match one of the predefined category names exactly",
