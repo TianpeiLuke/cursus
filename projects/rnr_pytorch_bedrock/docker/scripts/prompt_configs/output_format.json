@@ -12,12 +12,99 @@
     "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
     "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
   },
+  "json_schema": {
+    "additionalProperties": false,
+    "properties": {
+      "category": {
+        "description": "Exactly one category from the predefined list (case-sensitive match required)",
+        "enum": [],
+        "type": "string"
+      },
+      "confidence_score": {
+        "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "type": "number"
+      },
+      "key_evidence": {
+        "description": "Object containing three arrays of evidence from different sources",
+        "properties": {
+          "message_evidence": {
+            "description": "Direct quotes from dialogue with speaker identification",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "shipping_evidence": {
+            "description": "Tracking events with timestamps",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "timeline_evidence": {
+            "description": "Chronological sequence of key events",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_evidence",
+          "shipping_evidence",
+          "timeline_evidence"
+        ],
+        "type": "object"
+      },
+      "reasoning": {
+        "description": "Object containing three arrays explaining the classification decision",
+        "properties": {
+          "contradicting_evidence": {
+            "description": "Evidence that contradicts the classification (use empty array if none)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "primary_factors": {
+            "description": "Main reasons supporting the selected category",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "supporting_evidence": {
+            "description": "Additional evidence that strengthens the classification",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "primary_factors",
+          "supporting_evidence",
+          "contradicting_evidence"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "category",
+      "confidence_score",
+      "key_evidence",
+      "reasoning"
+    ],
+    "type": "object"
+  },
   "validation_requirements": [
     "Must be valid JSON format",
     "Category must match exactly from predefined list",
     "Confidence score must be number between 0.0 and 1.0",
     "All required fields must be present",
-    "All arrays must contain string elements"
+    "key_evidence and reasoning must be objects with nested arrays"
   ],
   "evidence_validation_rules": [
     "Message Evidence must include direct quotes with speaker identification",
