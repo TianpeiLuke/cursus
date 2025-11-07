@@ -9,68 +9,171 @@ It supports both binary and multi-class classification scenarios.
 """
 
 import os
+import json
 import sys
 
 from subprocess import check_call
 import boto3
+import logging
+
+# ============================================================================
+# PACKAGE INSTALLATION CONFIGURATION
+# ============================================================================
+
+# Control which PyPI source to use via environment variable
+# Set USE_SECURE_PYPI=true to use secure CodeArtifact PyPI
+# Set USE_SECURE_PYPI=false or leave unset to use public PyPI
+USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def _get_secure_pypi_access_tokens() -> str:
-    os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
-    sts = boto3.client("sts", region_name="us-east-1")
-    caller_identity = sts.get_caller_identity()
-    assumed_role_object = sts.assume_role(
-        RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
-        + caller_identity["Account"],
-        RoleSessionName="SecurePypiReadRole",
+def _get_secure_pypi_access_token() -> str:
+    """
+    Get CodeArtifact access token for secure PyPI.
+
+    Returns:
+        str: Authorization token for CodeArtifact
+
+    Raises:
+        Exception: If token retrieval fails
+    """
+    try:
+        os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
+        sts = boto3.client("sts", region_name="us-east-1")
+        caller_identity = sts.get_caller_identity()
+        assumed_role_object = sts.assume_role(
+            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            + caller_identity["Account"],
+            RoleSessionName="SecurePypiReadRole",
+        )
+        credentials = assumed_role_object["Credentials"]
+        code_artifact_client = boto3.client(
+            "codeartifact",
+            aws_access_key_id=credentials["AccessKeyId"],
+            aws_secret_access_key=credentials["SecretAccessKey"],
+            aws_session_token=credentials["SessionToken"],
+            region_name="us-west-2",
+        )
+        token = code_artifact_client.get_authorization_token(
+            domain="amazon", domainOwner="149122183214"
+        )["authorizationToken"]
+
+        logger.info("Successfully retrieved secure PyPI access token")
+        return token
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve secure PyPI access token: {e}")
+        raise
+
+
+def install_packages_from_public_pypi(packages: list) -> None:
+    """
+    Install packages from standard public PyPI.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+    """
+    logger.info(f"Installing {len(packages)} packages from public PyPI")
+    logger.info(f"Packages: {packages}")
+
+    try:
+        check_call([sys.executable, "-m", "pip", "install", *packages])
+        logger.info("✓ Successfully installed packages from public PyPI")
+    except Exception as e:
+        logger.error(f"✗ Failed to install packages from public PyPI: {e}")
+        raise
+
+
+def install_packages_from_secure_pypi(packages: list) -> None:
+    """
+    Install packages from secure CodeArtifact PyPI.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+    """
+    logger.info(f"Installing {len(packages)} packages from secure PyPI")
+    logger.info(f"Packages: {packages}")
+
+    try:
+        token = _get_secure_pypi_access_token()
+        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                index_url,
+                *packages,
+            ]
+        )
+
+        logger.info("✓ Successfully installed packages from secure PyPI")
+    except Exception as e:
+        logger.error(f"✗ Failed to install packages from secure PyPI: {e}")
+        raise
+
+
+def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None:
+    """
+    Install packages from PyPI source based on configuration.
+
+    This is the main installation function that delegates to either public or
+    secure PyPI based on the USE_SECURE_PYPI environment variable.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+        use_secure: If True, use secure CodeArtifact PyPI; if False, use public PyPI.
+                   Defaults to USE_SECURE_PYPI environment variable.
+
+    Environment Variables:
+        USE_SECURE_PYPI: Set to "true" to use secure PyPI, "false" for public PyPI
+
+    Example:
+        # Install from public PyPI (default)
+        install_packages(["pandas==1.5.0", "numpy"])
+
+        # Install from secure PyPI
+        os.environ["USE_SECURE_PYPI"] = "true"
+        install_packages(["pandas==1.5.0", "numpy"])
+    """
+    logger.info("=" * 70)
+    logger.info("PACKAGE INSTALLATION")
+    logger.info("=" * 70)
+    logger.info(f"PyPI Source: {'SECURE (CodeArtifact)' if use_secure else 'PUBLIC'}")
+    logger.info(
+        f"Environment Variable USE_SECURE_PYPI: {os.environ.get('USE_SECURE_PYPI', 'not set')}"
     )
-    credentials = assumed_role_object["Credentials"]
-    code_artifact_client = boto3.client(
-        "codeartifact",
-        aws_access_key_id=credentials["AccessKeyId"],
-        aws_secret_access_key=credentials["SecretAccessKey"],
-        aws_session_token=credentials["SessionToken"],
-        region_name="us-west-2",
-    )
-    token = code_artifact_client.get_authorization_token(
-        domain="amazon", domainOwner="149122183214"
-    )["authorizationToken"]
+    logger.info(f"Number of packages: {len(packages)}")
+    logger.info("=" * 70)
 
-    return token
+    try:
+        if use_secure:
+            install_packages_from_secure_pypi(packages)
+        else:
+            install_packages_from_public_pypi(packages)
 
+        logger.info("=" * 70)
+        logger.info("✓ PACKAGE INSTALLATION COMPLETED SUCCESSFULLY")
+        logger.info("=" * 70)
 
-def install_requirements(path: str = "requirements.txt") -> None:
-    token = _get_secure_pypi_access_tokens()
-    check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--index-url",
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/",
-            "-r",
-            path,
-        ]
-    )
+    except Exception as e:
+        logger.error("=" * 70)
+        logger.error("✗ PACKAGE INSTALLATION FAILED")
+        logger.error("=" * 70)
+        raise
 
 
-def install_requirements_single(package: str = "numpy") -> None:
-    token = _get_secure_pypi_access_tokens()
-    check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--index-url",
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/",
-            package,
-        ]
-    )
+# ============================================================================
+# INSTALL REQUIRED PACKAGES
+# ============================================================================
 
-
-# Install required packages
+# Define required packages for this script
 required_packages = [
     "numpy==1.24.4",
     "scipy==1.10.1",
@@ -78,11 +181,11 @@ required_packages = [
     "pygam==0.8.1",
 ]
 
-for package in required_packages:
-    install_requirements_single(package)
-print("***********************Package Installed*********************")
+# Install packages using unified installation function
+install_packages(required_packages)
 
-import json
+print("***********************Package Installation Complete*********************")
+
 import logging
 import traceback
 import argparse
