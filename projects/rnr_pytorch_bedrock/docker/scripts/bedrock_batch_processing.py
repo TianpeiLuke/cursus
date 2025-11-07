@@ -818,17 +818,6 @@ class BedrockBatchProcessor(BedrockProcessor):
         self.batch_input_s3_path = config.get("batch_input_s3_path")
         self.batch_output_s3_path = config.get("batch_output_s3_path")
 
-        # DEBUG: Log what we received from environment variables
-        logger.info("=" * 70)
-        logger.info("BATCH S3 PATH CONFIGURATION DEBUG")
-        logger.info("=" * 70)
-        logger.info(f"BEDROCK_BATCH_INPUT_S3_PATH: {self.batch_input_s3_path}")
-        logger.info(f"  Type: {type(self.batch_input_s3_path)}")
-        logger.info(f"BEDROCK_BATCH_OUTPUT_S3_PATH: {self.batch_output_s3_path}")
-        logger.info(f"  Type: {type(self.batch_output_s3_path)}")
-        logger.info(f"BEDROCK_BATCH_ROLE_ARN: {self.batch_role_arn}")
-        logger.info("=" * 70)
-
         # Parse bucket and prefix from the full S3 paths
         if self.batch_input_s3_path:
             self.input_bucket, self.input_prefix = self._parse_s3_path(
