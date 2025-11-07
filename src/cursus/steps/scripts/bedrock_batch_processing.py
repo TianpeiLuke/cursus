@@ -466,9 +466,6 @@ class BedrockProcessor:
         # Fallback to regex extraction if input_placeholders not available
         if not placeholders:
             placeholders = re.findall(r"\{(\w+)\}", self.config["user_prompt_template"])
-            logger.info("Using regex fallback for placeholder extraction")
-        else:
-            logger.info(f"Using input_placeholders from template: {placeholders}")
 
         # Start with the template
         formatted_prompt = self.config["user_prompt_template"]
@@ -698,10 +695,15 @@ class BedrockProcessor:
         output_prefix = self.config["output_column_prefix"]
 
         # Extract placeholders from template to validate DataFrame columns
-        placeholders = re.findall(r"\{(\w+)\}", self.config["user_prompt_template"])
+        # Use input_placeholders from config if available, otherwise use regex
+        if self.config.get("input_placeholders"):
+            placeholders = self.config["input_placeholders"]
+            logger.info(f"Using input_placeholders from template: {placeholders}")
+        else:
+            placeholders = re.findall(r"\{(\w+)\}", self.config["user_prompt_template"])
+            logger.info(f"Using regex fallback for placeholder extraction: {placeholders}")
 
-        # Log template placeholders and available columns
-        logger.info(f"Template placeholders: {placeholders}")
+        # Log available columns
         logger.info(f"Available DataFrame columns: {list(df.columns)}")
         logger.info("Sequential processing mode")
 

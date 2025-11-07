@@ -463,9 +463,6 @@ class BedrockProcessor:
             import re
 
             placeholders = re.findall(r"\{(\w+)\}", self.config["user_prompt_template"])
-            logger.info("Using regex fallback for placeholder extraction")
-        else:
-            logger.info(f"Using input_placeholders from template: {placeholders}")
 
         # Start with the template
         formatted_prompt = self.config["user_prompt_template"]
