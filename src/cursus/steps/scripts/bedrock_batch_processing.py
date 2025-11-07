@@ -701,7 +701,9 @@ class BedrockProcessor:
             logger.info(f"Using input_placeholders from template: {placeholders}")
         else:
             placeholders = re.findall(r"\{(\w+)\}", self.config["user_prompt_template"])
-            logger.info(f"Using regex fallback for placeholder extraction: {placeholders}")
+            logger.info(
+                f"Using regex fallback for placeholder extraction: {placeholders}"
+            )
 
         # Log available columns
         logger.info(f"Available DataFrame columns: {list(df.columns)}")
@@ -806,28 +808,51 @@ class BedrockBatchProcessor(BedrockProcessor):
             "max_concurrent_batch_jobs", 20
         )  # AWS limit
 
-        # Extract S3 paths from environment variables (set by step builder using framework patterns)
-        self.batch_input_s3_path = os.environ.get("BEDROCK_BATCH_INPUT_S3_PATH")
-        self.batch_output_s3_path = os.environ.get("BEDROCK_BATCH_OUTPUT_S3_PATH")
+        # Extract S3 paths from config (populated by main() from environ_vars)
+        self.batch_input_s3_path = config.get("batch_input_s3_path")
+        self.batch_output_s3_path = config.get("batch_output_s3_path")
+
+        # DEBUG: Log what we received from environment variables
+        logger.info("=" * 70)
+        logger.info("BATCH S3 PATH CONFIGURATION DEBUG")
+        logger.info("=" * 70)
+        logger.info(f"BEDROCK_BATCH_INPUT_S3_PATH: {self.batch_input_s3_path}")
+        logger.info(f"  Type: {type(self.batch_input_s3_path)}")
+        logger.info(f"BEDROCK_BATCH_OUTPUT_S3_PATH: {self.batch_output_s3_path}")
+        logger.info(f"  Type: {type(self.batch_output_s3_path)}")
+        logger.info(f"BEDROCK_BATCH_ROLE_ARN: {self.batch_role_arn}")
+        logger.info("=" * 70)
 
         # Parse bucket and prefix from the full S3 paths
         if self.batch_input_s3_path:
             self.input_bucket, self.input_prefix = self._parse_s3_path(
                 self.batch_input_s3_path
             )
+            logger.info(f"Parsed input bucket: {self.input_bucket}")
+            logger.info(f"Parsed input prefix: {self.input_prefix}")
         else:
             self.input_bucket, self.input_prefix = None, None
+            logger.warning("No BEDROCK_BATCH_INPUT_S3_PATH found in environment")
 
         if self.batch_output_s3_path:
             self.output_bucket, self.output_prefix = self._parse_s3_path(
                 self.batch_output_s3_path
             )
+            logger.info(f"Parsed output bucket: {self.output_bucket}")
+            logger.info(f"Parsed output prefix: {self.output_prefix}")
         else:
             self.output_bucket, self.output_prefix = None, None
+            logger.warning("No BEDROCK_BATCH_OUTPUT_S3_PATH found in environment")
 
         # Initialize S3 client for batch operations
         self.s3_client = boto3.client(
             "s3", region_name=config.get("region_name", "us-east-1")
+        )
+
+        # Initialize Bedrock batch client for batch inference operations
+        # Note: bedrock-runtime is for real-time inference, bedrock is for batch operations
+        self.bedrock_batch_client = boto3.client(
+            "bedrock", region_name=config.get("region_name", "us-east-1")
         )
 
         logger.info(
@@ -1043,13 +1068,55 @@ class BedrockBatchProcessor(BedrockProcessor):
 
             raise RuntimeError(f"Multipart upload failed: {e}")
 
+    def _validate_job_name(self, job_name: str) -> None:
+        """
+        Validate job name against AWS Bedrock naming requirements.
+
+        AWS Bedrock job names must match: [a-zA-Z0-9]{1,63}(-*[a-zA-Z0-9\+\-\.]){0,63}
+
+        Allowed characters:
+        - Alphanumeric: a-z, A-Z, 0-9
+        - Hyphens: -
+        - Plus signs: +
+        - Dots: .
+
+        Not allowed:
+        - Underscores: _
+        - Other special characters
+
+        Args:
+            job_name: The job name to validate
+
+        Raises:
+            ValueError: If job name doesn't match AWS requirements
+        """
+        # AWS Bedrock job name pattern
+        pattern = r"^[a-zA-Z0-9]{1,63}(-*[a-zA-Z0-9\+\-\.]){0,63}$"
+
+        if not re.match(pattern, job_name):
+            raise ValueError(
+                f"Invalid job name '{job_name}'. "
+                f"AWS Bedrock job names must match pattern: [a-zA-Z0-9]{{1,63}}(-*[a-zA-Z0-9\\+\\-\\.]{{0,63}}. "
+                f"Allowed: alphanumeric, hyphens, plus signs, dots. "
+                f"Not allowed: underscores or other special characters."
+            )
+
+        if len(job_name) > 126:  # 63 + 63 max length
+            raise ValueError(
+                f"Job name '{job_name}' is too long ({len(job_name)} chars). "
+                f"Maximum length is 126 characters."
+            )
+
     def create_batch_job(self, input_s3_uri: str) -> str:
         """Create Bedrock batch inference job using framework-provided output path."""
         if not self.output_bucket:
             raise RuntimeError("No output S3 bucket configured for batch processing")
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         job_name = f"cursus-bedrock-batch-{timestamp}"
+
+        # Validate job name against AWS requirements
+        self._validate_job_name(job_name)
 
         # Use framework-provided output path
         if self.output_prefix:
@@ -1057,7 +1124,7 @@ class BedrockBatchProcessor(BedrockProcessor):
         else:
             output_s3_uri = f"s3://{self.output_bucket}/batch-output/{timestamp}/"
 
-        response = self.bedrock_client.create_model_invocation_job(
+        response = self.bedrock_batch_client.create_model_invocation_job(
             jobName=job_name,
             roleArn=self.batch_role_arn,
             modelId=self.effective_model_id,
@@ -1082,7 +1149,7 @@ class BedrockBatchProcessor(BedrockProcessor):
         check_count = 0
 
         while True:
-            response = self.bedrock_client.get_model_invocation_job(
+            response = self.bedrock_batch_client.get_model_invocation_job(
                 jobIdentifier=job_arn
             )
             status = response["status"]
@@ -1279,7 +1346,7 @@ class BedrockBatchProcessor(BedrockProcessor):
                     continue
 
                 try:
-                    response = self.bedrock_client.get_model_invocation_job(
+                    response = self.bedrock_batch_client.get_model_invocation_job(
                         jobIdentifier=job_arn
                     )
                     status = response["status"]
@@ -1903,6 +1970,9 @@ def main(
             "batch_timeout_hours": int(
                 environ_vars.get("BEDROCK_BATCH_TIMEOUT_HOURS", "24")
             ),
+            # Batch-specific S3 paths (from step builder via environ_vars)
+            "batch_input_s3_path": environ_vars.get("BEDROCK_BATCH_INPUT_S3_PATH"),
+            "batch_output_s3_path": environ_vars.get("BEDROCK_BATCH_OUTPUT_S3_PATH"),
             # AWS Bedrock batch limits (configurable)
             "max_records_per_job": int(
                 environ_vars.get("BEDROCK_MAX_RECORDS_PER_JOB", "45000")
