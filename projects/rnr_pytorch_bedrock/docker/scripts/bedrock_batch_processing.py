@@ -1115,11 +1115,13 @@ class BedrockBatchProcessor(BedrockProcessor):
         # Validate job name against AWS requirements
         self._validate_job_name(job_name)
 
-        # Use framework-provided output path
+        # Use framework-provided output path (timestamp only, no redundant batch-output/)
         if self.output_prefix:
-            output_s3_uri = f"s3://{self.output_bucket}/{self.output_prefix}/batch-output/{timestamp}/"
+            output_s3_uri = (
+                f"s3://{self.output_bucket}/{self.output_prefix}/{timestamp}/"
+            )
         else:
-            output_s3_uri = f"s3://{self.output_bucket}/batch-output/{timestamp}/"
+            output_s3_uri = f"s3://{self.output_bucket}/{timestamp}/"
 
         response = self.bedrock_batch_client.create_model_invocation_job(
             jobName=job_name,
@@ -1189,10 +1191,15 @@ class BedrockBatchProcessor(BedrockProcessor):
         if "Contents" not in response:
             raise RuntimeError(f"No output files found at {output_s3_uri}")
 
-        # Download and parse results
+        # Log all objects found for debugging
+        logger.info(f"Found {len(response['Contents'])} objects in S3 location")
+        for obj in response["Contents"]:
+            logger.info(f"  S3 object: s3://{bucket}/{obj['Key']}")
+
+        # Download and parse results (Bedrock outputs with .jsonl.out extension)
         all_results = []
         for obj in response["Contents"]:
-            if obj["Key"].endswith(".jsonl"):
+            if obj["Key"].endswith(".jsonl.out"):
                 logger.info(f"Downloading result file: s3://{bucket}/{obj['Key']}")
 
                 # Download JSONL file
@@ -1862,20 +1869,56 @@ def process_split_directory(
 
         # Update statistics
         split_stats["total_records"] += len(df)
-        success_count = len(
-            result_df[result_df[f"{config['output_column_prefix']}status"] == "success"]
-        )
-        failed_count = len(
-            result_df[result_df[f"{config['output_column_prefix']}status"] == "error"]
-        )
-        validation_passed_count = len(
-            result_df[
-                result_df.get(
-                    f"{config['output_column_prefix']}validation_passed", False
-                )
-                == True
-            ]
-        )
+
+        # Check if result DataFrame is empty
+        if len(result_df) == 0:
+            log(f"Warning: No results returned for {input_file.name}")
+            split_stats["files_processed"].append(
+                {
+                    "filename": input_file.name,
+                    "records": len(df),
+                    "successful": 0,
+                    "failed": 0,
+                    "validation_passed": 0,
+                    "success_rate": 0,
+                    "validation_rate": 0,
+                    "batch_processing_used": batch_used,
+                    "warning": "Empty result DataFrame",
+                }
+            )
+            continue
+
+        # Check for required status column
+        status_col = f"{config['output_column_prefix']}status"
+        if status_col not in result_df.columns:
+            log(
+                f"Warning: Column '{status_col}' not found in results for {input_file.name}"
+            )
+            log(f"Available columns: {list(result_df.columns)}")
+            split_stats["files_processed"].append(
+                {
+                    "filename": input_file.name,
+                    "records": len(df),
+                    "successful": 0,
+                    "failed": 0,
+                    "validation_passed": 0,
+                    "success_rate": 0,
+                    "validation_rate": 0,
+                    "batch_processing_used": batch_used,
+                    "warning": f"Missing column: {status_col}",
+                }
+            )
+            continue
+
+        success_count = len(result_df[result_df[status_col] == "success"])
+        failed_count = len(result_df[result_df[status_col] == "error"])
+
+        # Safe check for validation_passed column
+        validation_col = f"{config['output_column_prefix']}validation_passed"
+        if validation_col in result_df.columns:
+            validation_passed_count = len(result_df[result_df[validation_col] == True])
+        else:
+            validation_passed_count = 0
 
         split_stats["successful_records"] += success_count
         split_stats["failed_records"] += failed_count
