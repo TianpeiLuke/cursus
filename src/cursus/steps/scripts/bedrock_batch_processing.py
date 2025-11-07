@@ -81,7 +81,7 @@ def install_packages_from_public_pypi(packages: list) -> None:
     logger.info(f"Packages: {packages}")
 
     try:
-        check_call([sys.executable, "-m", "pip", "install", *packages])
+        check_call([sys.executable, "-m", "pip", "install", "--upgrade", *packages])
         logger.info("✓ Successfully installed packages from public PyPI")
     except Exception as e:
         logger.error(f"✗ Failed to install packages from public PyPI: {e}")
@@ -108,6 +108,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
                 "-m",
                 "pip",
                 "install",
+                "--upgrade",
                 "--index-url",
                 index_url,
                 *packages,
