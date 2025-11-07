@@ -418,6 +418,69 @@ The LLM requires **structured JSON format** to output correct, parseable respons
     "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
   },
   
+  "json_schema": {
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "string",
+        "enum": [],
+        "description": "Exactly one category from the predefined list (case-sensitive match required)"
+      },
+      "confidence_score": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Decimal number between 0.00 and 1.00 indicating classification certainty"
+      },
+      "key_evidence": {
+        "type": "object",
+        "description": "Object containing three arrays of evidence from different sources",
+        "properties": {
+          "message_evidence": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Direct quotes from dialogue with speaker identification"
+          },
+          "shipping_evidence": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tracking events with timestamps"
+          },
+          "timeline_evidence": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Chronological sequence of key events"
+          }
+        },
+        "required": ["message_evidence", "shipping_evidence", "timeline_evidence"]
+      },
+      "reasoning": {
+        "type": "object",
+        "description": "Object containing three arrays explaining the classification decision",
+        "properties": {
+          "primary_factors": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Main reasons supporting the selected category"
+          },
+          "supporting_evidence": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Additional evidence that strengthens the classification"
+          },
+          "contradicting_evidence": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Evidence that contradicts the classification (use empty array if none)"
+          }
+        },
+        "required": ["primary_factors", "supporting_evidence", "contradicting_evidence"]
+      }
+    },
+    "required": ["category", "confidence_score", "key_evidence", "reasoning"],
+    "additionalProperties": false
+  },
+  
   "formatting_rules": [
     "Output MUST be valid, parseable JSON",
     "Use double quotes for all strings, not single quotes",
@@ -434,7 +497,7 @@ The LLM requires **structured JSON format** to output correct, parseable respons
     "Category must match exactly from predefined list",
     "Confidence score must be number between 0.0 and 1.0",
     "All required fields must be present",
-    "All arrays must contain string elements"
+    "key_evidence and reasoning must be objects with nested arrays"
   ],
   
   "evidence_validation_rules": [
@@ -478,8 +541,15 @@ The LLM requires **structured JSON format** to output correct, parseable respons
 
 **Key Points:**
 - `format_type: "structured_json"` - Tells the system to generate JSON format prompts
+- `field_descriptions` - Human-readable descriptions used in prompt generation
+- `json_schema` - Machine-readable JSON schema for validation schema generation (supports nested objects!)
 - `example_output` - A complete JSON object (dict) showing the exact structure expected
 - The LLM will see this example and understand to output valid JSON matching this structure
+
+**Why Both field_descriptions AND json_schema?**
+- `field_descriptions`: Used to generate the prompt text that the LLM reads
+- `json_schema`: Used to generate the validation schema that validates LLM responses
+- This separation allows proper validation of complex nested structures (objects, arrays) that can't be inferred from simple string descriptions
 
 ## Part 4: Instruction Configuration (with Classification Guidelines)
 
@@ -672,16 +742,81 @@ system_prompt_settings = SystemPromptConfig(
     tone="professional"  # Options: "professional", "casual", "technical", "formal"
 )
 
-# Output Format Configuration (Structured JSON)
+# Output Format Configuration (Structured JSON with Nested Objects)
 output_format_settings = OutputFormatConfig(
     format_type="structured_json",
     required_fields=["category", "confidence_score", "key_evidence", "reasoning"],
     
+    # Human-readable descriptions for prompt generation
     field_descriptions={
         "category": "Exactly one category from the predefined list (case-sensitive match required)",
         "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
         "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
         "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
+    },
+    
+    # Machine-readable JSON schema for validation schema generation
+    json_schema={
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "enum": [],  # Will be populated from category_definitions.json
+                "description": "Exactly one category from the predefined list (case-sensitive match required)"
+            },
+            "confidence_score": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty"
+            },
+            "key_evidence": {
+                "type": "object",
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                    "message_evidence": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Direct quotes from dialogue with speaker identification"
+                    },
+                    "shipping_evidence": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tracking events with timestamps"
+                    },
+                    "timeline_evidence": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Chronological sequence of key events"
+                    }
+                },
+                "required": ["message_evidence", "shipping_evidence", "timeline_evidence"]
+            },
+            "reasoning": {
+                "type": "object",
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                    "primary_factors": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Main reasons supporting the selected category"
+                    },
+                    "supporting_evidence": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Additional evidence that strengthens the classification"
+                    },
+                    "contradicting_evidence": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Evidence that contradicts the classification (use empty array if none)"
+                    }
+                },
+                "required": ["primary_factors", "supporting_evidence", "contradicting_evidence"]
+            }
+        },
+        "required": ["category", "confidence_score", "key_evidence", "reasoning"],
+        "additionalProperties": False
     },
     
     formatting_rules=[
@@ -700,7 +835,7 @@ output_format_settings = OutputFormatConfig(
         "Category must match exactly from predefined list",
         "Confidence score must be number between 0.0 and 1.0",
         "All required fields must be present",
-        "All arrays must contain string elements"
+        "key_evidence and reasoning must be objects with nested arrays"
     ],
     
     evidence_validation_rules=[
