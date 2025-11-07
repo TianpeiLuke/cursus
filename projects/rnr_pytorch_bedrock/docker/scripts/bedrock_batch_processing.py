@@ -1288,12 +1288,39 @@ class BedrockBatchProcessor(BedrockProcessor):
 
         return result_df
 
+    def _estimate_jsonl_size(self, jsonl_records: List[Dict[str, Any]]) -> int:
+        """
+        Estimate JSONL file size in bytes.
+        
+        Args:
+            jsonl_records: List of JSONL records
+            
+        Returns:
+            Estimated size in bytes
+        """
+        # Convert first few records to estimate average size
+        sample_size = min(100, len(jsonl_records))
+        sample_records = jsonl_records[:sample_size]
+        
+        # Serialize sample records
+        sample_bytes = 0
+        for record in sample_records:
+            record_json = json.dumps(record)
+            sample_bytes += len(record_json.encode('utf-8')) + 1  # +1 for newline
+        
+        # Estimate total size based on average
+        avg_record_size = sample_bytes / sample_size
+        estimated_total = int(avg_record_size * len(jsonl_records))
+        
+        return estimated_total
+
     def _split_dataframe_for_batch(self, df: pd.DataFrame) -> List[pd.DataFrame]:
         """
         Split DataFrame into chunks that comply with AWS Bedrock batch limits.
 
-        AWS Limit: 50,000 records per file (model-specific)
-        Conservative limit: 45,000 records per chunk
+        AWS Limits:
+        - Record count: 50,000 records per file (conservative: 45,000)
+        - File size: 1GB (1,073,741,824 bytes) per file (conservative: 900MB)
 
         Args:
             df: Input DataFrame
@@ -1301,24 +1328,54 @@ class BedrockBatchProcessor(BedrockProcessor):
         Returns:
             List of DataFrame chunks
         """
+        MAX_FILE_SIZE = 900 * 1024 * 1024  # 900MB conservative limit (AWS: 1GB)
+        
         total_records = len(df)
-        num_chunks = (
-            total_records + self.max_records_per_job - 1
-        ) // self.max_records_per_job
-
-        logger.info(f"Splitting {total_records} records into {num_chunks} chunks")
-        logger.info(f"Max records per job: {self.max_records_per_job}")
-
+        logger.info(f"Splitting {total_records} records with dual limits:")
+        logger.info(f"  Max records per job: {self.max_records_per_job}")
+        logger.info(f"  Max file size: {MAX_FILE_SIZE / (1024 * 1024):.0f}MB")
+        
         chunks = []
-        for i in range(num_chunks):
-            start_idx = i * self.max_records_per_job
-            end_idx = min((i + 1) * self.max_records_per_job, total_records)
-            chunk = df.iloc[start_idx:end_idx].copy()
+        current_start = 0
+        chunk_num = 1
+        
+        while current_start < total_records:
+            # Start with max record count
+            current_end = min(current_start + self.max_records_per_job, total_records)
+            chunk = df.iloc[current_start:current_end].copy()
+            
+            # Convert to JSONL and check size
+            jsonl_records = self.convert_df_to_jsonl(chunk)
+            estimated_size = self._estimate_jsonl_size(jsonl_records)
+            
+            # If too large, split further by reducing record count
+            while estimated_size > MAX_FILE_SIZE and len(chunk) > 1:
+                # Reduce chunk size by proportion
+                size_ratio = MAX_FILE_SIZE / estimated_size
+                new_size = max(1, int(len(chunk) * size_ratio * 0.9))  # 90% safety margin
+                
+                logger.warning(
+                    f"Chunk too large ({estimated_size / (1024 * 1024):.1f}MB > "
+                    f"{MAX_FILE_SIZE / (1024 * 1024):.0f}MB), "
+                    f"reducing from {len(chunk)} to {new_size} records"
+                )
+                
+                current_end = current_start + new_size
+                chunk = df.iloc[current_start:current_end].copy()
+                jsonl_records = self.convert_df_to_jsonl(chunk)
+                estimated_size = self._estimate_jsonl_size(jsonl_records)
+            
             chunks.append(chunk)
             logger.info(
-                f"Chunk {i + 1}/{num_chunks}: {len(chunk)} records (rows {start_idx}-{end_idx - 1})"
+                f"Chunk {chunk_num}: {len(chunk)} records "
+                f"(rows {current_start}-{current_end - 1}), "
+                f"estimated size: {estimated_size / (1024 * 1024):.1f}MB"
             )
-
+            
+            current_start = current_end
+            chunk_num += 1
+        
+        logger.info(f"Split into {len(chunks)} chunks total")
         return chunks
 
     def _monitor_multiple_batch_jobs(self, job_arns: List[str]) -> List[Dict[str, Any]]:
