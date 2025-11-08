@@ -1256,6 +1256,16 @@ def process_split_directory(
             }
         )
 
+        # Filter out error records if configured
+        if config.get("skip_error_records", False):
+            original_count = len(result_df)
+            result_df = result_df[result_df[status_col] != "error"].copy()
+            skipped_count = original_count - len(result_df)
+            if skipped_count > 0:
+                log(
+                    f"Skipped {skipped_count} error records from output for {input_file.name}"
+                )
+
         # Save results maintaining original filename structure
         base_filename = input_file.stem
 
@@ -1370,6 +1380,10 @@ def main(
             "output_column_prefix": environ_vars.get(
                 "BEDROCK_OUTPUT_COLUMN_PREFIX", "llm_"
             ),
+            "skip_error_records": environ_vars.get(
+                "BEDROCK_SKIP_ERROR_RECORDS", "false"
+            ).lower()
+            == "true",
             # Concurrency configuration
             "max_concurrent_workers": int(
                 environ_vars.get("BEDROCK_MAX_CONCURRENT_WORKERS", "5")
@@ -1496,6 +1510,16 @@ def main(
                         }
                     )
 
+                    # Filter out error records if configured
+                    if config.get("skip_error_records", False):
+                        original_count = len(result_df)
+                        result_df = result_df[result_df[status_col] != "error"].copy()
+                        skipped_count = original_count - len(result_df)
+                        if skipped_count > 0:
+                            log(
+                                f"Skipped {skipped_count} error records from output for {input_file.name}"
+                            )
+
                     # Save results
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     base_filename = f"processed_{input_file.stem}_{timestamp}"
@@ -1600,6 +1624,16 @@ def main(
                         else 0,
                     }
                 )
+
+                # Filter out error records if configured
+                if config.get("skip_error_records", False):
+                    original_count = len(result_df)
+                    result_df = result_df[result_df[status_col] != "error"].copy()
+                    skipped_count = original_count - len(result_df)
+                    if skipped_count > 0:
+                        log(
+                            f"Skipped {skipped_count} error records from output for {input_file.name}"
+                        )
 
                 # Save results with job_type in filename
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1715,6 +1749,9 @@ if __name__ == "__main__":
             "BEDROCK_MAX_RETRIES": os.environ.get("BEDROCK_MAX_RETRIES", "3"),
             "BEDROCK_OUTPUT_COLUMN_PREFIX": os.environ.get(
                 "BEDROCK_OUTPUT_COLUMN_PREFIX", "llm_"
+            ),
+            "BEDROCK_SKIP_ERROR_RECORDS": os.environ.get(
+                "BEDROCK_SKIP_ERROR_RECORDS", "false"
             ),
             # Concurrency Configuration:
             # BEDROCK_MAX_CONCURRENT_WORKERS: Number of concurrent threads (default: 5, recommended: 3-10)

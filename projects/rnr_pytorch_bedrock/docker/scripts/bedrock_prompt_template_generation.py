@@ -698,13 +698,15 @@ class PromptTemplateGenerator:
 
         format_parts = ["## Required Output Format", ""]
 
-        # Add header text if provided in config
+        # Use header text from config (like structured_text does)
         header_text = output_config.get(
             "header_text",
-            "**CRITICAL: Follow this exact format for automated parsing**",
+            "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
         )
-        format_parts.append(header_text)
-        format_parts.append("")
+        # Ensure header_text is not None
+        if header_text:
+            format_parts.append(header_text)
+            format_parts.append("")
 
         # Generate example structure from config
         structured_text_sections = output_config.get("structured_text_sections", [])
@@ -822,18 +824,23 @@ class PromptTemplateGenerator:
         return lines
 
     def _generate_custom_output_format_from_schema(self) -> str:
-        """Generate output format section from custom JSON schema template."""
+        """Generate output format section from custom JSON schema template with full output_config support."""
         schema = self.schema_template
         output_config = self.config.get(
             "output_format_config", DEFAULT_OUTPUT_FORMAT_CONFIG
         )
 
-        format_parts = [
-            "## Required Output Format",
-            "",
+        format_parts = ["## Required Output Format", ""]
+
+        # Use header text from config (like structured_text does)
+        header_text = output_config.get(
+            "header_text",
             "**CRITICAL: You must respond with a valid JSON object that follows this exact structure:**",
-            "",
-        ]
+        )
+        # Ensure header_text is not None
+        if header_text:
+            format_parts.append(header_text)
+            format_parts.append("")
 
         # Check if example_output is provided as dict
         example_output = output_config.get("example_output")
@@ -889,14 +896,21 @@ class PromptTemplateGenerator:
 
         format_parts.append("Field Descriptions:")
 
-        # Extract properties from schema for field descriptions
+        # Get field descriptions from config (prefer) or schema (fallback)
+        field_descriptions = output_config.get("field_descriptions", {})
         properties = schema.get("properties", {})
         required_fields = schema.get("required", list(properties.keys()))
 
         # Add detailed field descriptions
         for field in required_fields:
             field_schema = properties.get(field, {})
-            description = field_schema.get("description", f"The {field} value")
+
+            # Prefer config description, fallback to schema
+            if field in field_descriptions:
+                description = field_descriptions[field]
+            else:
+                description = field_schema.get("description", f"The {field} value")
+
             field_type = field_schema.get("type", "string")
 
             # Add type and constraint information
@@ -914,21 +928,46 @@ class PromptTemplateGenerator:
                 f"- **{field}** ({field_type}): {description}{constraint_text}"
             )
 
+        format_parts.append("")
+
         # Add category-specific validation if category field exists
         if "category" in required_fields and properties.get("category", {}).get("enum"):
             category_names = properties["category"]["enum"]
             format_parts.extend(
                 [
-                    "",
                     "**Category Validation:**",
                     f"- The category field must exactly match one of: {', '.join(category_names)}",
                     "- Category names are case-sensitive and must match exactly",
+                    "",
                 ]
             )
 
+        # Add formatting rules from config (like structured_text does)
+        formatting_rules = output_config.get("formatting_rules", [])
+        if formatting_rules:
+            format_parts.append("**Formatting Rules:**")
+            for rule in formatting_rules:
+                format_parts.append(f"- {rule}")
+            format_parts.append("")
+
+        # Add validation requirements from config (like structured_text does)
+        validation_requirements = output_config.get("validation_requirements", [])
+        if validation_requirements:
+            format_parts.append("**Validation Requirements:**")
+            for req in validation_requirements:
+                format_parts.append(f"- {req}")
+            format_parts.append("")
+
+        # Add evidence validation rules from config (like structured_text does)
+        evidence_validation_rules = output_config.get("evidence_validation_rules", [])
+        if evidence_validation_rules:
+            format_parts.append("**Evidence Validation:**")
+            for rule in evidence_validation_rules:
+                format_parts.append(f"- {rule}")
+            format_parts.append("")
+
         format_parts.extend(
             [
-                "",
                 "Do not include any text before or after the JSON object. Only return valid JSON.",
             ]
         )
