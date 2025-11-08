@@ -200,6 +200,70 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def repair_json(text: str) -> str:
+    """
+    Repair common LLM JSON formatting errors.
+
+    This function fixes common syntax errors that LLMs make when generating JSON:
+    1. Unicode quotation marks: „text" or "text" → \"text\" (escape for JSON)
+    2. Missing commas between array elements: ["item1" "item2"] → ["item1", "item2"]
+    3. Missing commas between object properties: }{ → },{
+    4. Trailing commas before closing brackets: [1, 2,] → [1, 2]
+    5. Trailing commas before closing braces: {"a": 1,} → {"a": 1}
+    6. Double quotes before commas: ""," → "," (from special quotation marks like „...")
+
+    Args:
+        text: Raw JSON string that may contain formatting errors
+
+    Returns:
+        Repaired JSON string with common errors fixed
+    """
+    import re
+
+    # CRITICAL FIX: Replace Unicode quotation marks to prevent JSON parsing errors
+    # German quotes like „text" inside JSON strings cause the parser to see THREE quotes: " „ text " "
+    # The middle " looks like a JSON string terminator, causing "Expecting ',' delimiter" errors
+    # Solution: Replace with single quotes to avoid confusion with JSON string delimiters
+
+    # German/fancy quotation marks -> single quotes (safe inside JSON strings)
+    text = text.replace("„", "'")  # U+201E - German opening quote -> single quote
+    text = text.replace('"', "'")  # U+201C - Left double quotation mark -> single quote
+    text = text.replace(
+        '"', "'"
+    )  # U+201D - Right double quotation mark -> single quote
+    text = text.replace(
+        """, "'")  # U+2018 - Left single quotation mark -> single quote
+    text = text.replace(""",
+        "'",
+    )  # U+2019 - Right single quotation mark -> single quote
+    text = text.replace(
+        "‚", "'"
+    )  # U+201A - Single low-9 quotation mark -> single quote
+
+    # Fix double quotes before commas (from special quotation marks)
+    # Pattern: ""," → "," (removes the extra quote)
+    text = re.sub(r'"",', '",', text)
+
+    # Fix missing commas between string array elements (most common error)
+    # Pattern: "text" followed by whitespace and another "text"
+    text = re.sub(r'"\s+(?=")', '", ', text)
+
+    # Fix missing commas between object elements
+    text = re.sub(r"}\s+{", "}, {", text)
+
+    # Fix missing commas between arrays
+    text = re.sub(r"]\s+\[", "], [", text)
+
+    # Remove trailing commas before closing brackets
+    text = re.sub(r",\s*]", "]", text)
+
+    # Remove trailing commas before closing braces
+    text = re.sub(r",\s*}", "}", text)
+
+    return text
+
+
 # Container path constants
 CONTAINER_PATHS = {
     "INPUT_DATA_DIR": "/opt/ml/processing/input/data",
@@ -580,10 +644,37 @@ class BedrockProcessor:
                     # LLM already included the opening brace
                     complete_json = response_text
 
-                # Use Pydantic model for structured parsing
-                validated_response = self.response_model_class.model_validate_json(
-                    complete_json
-                )
+                # FIX: Attempt to repair common JSON formatting errors from LLM
+                try:
+                    # First attempt: parse as-is
+                    validated_response = self.response_model_class.model_validate_json(
+                        complete_json
+                    )
+                except (ValidationError, json.JSONDecodeError) as first_error:
+                    # Second attempt: repair JSON and retry
+                    logger.warning(
+                        f"Initial JSON parsing failed, attempting repair: {first_error}"
+                    )
+                    repaired_json = repair_json(complete_json)
+
+                    try:
+                        validated_response = (
+                            self.response_model_class.model_validate_json(repaired_json)
+                        )
+                        logger.info("JSON repair successful")
+                    except (ValidationError, json.JSONDecodeError) as second_error:
+                        # Log both the original and repaired JSON for debugging
+                        logger.error(
+                            f"JSON repair failed. Original error: {first_error}"
+                        )
+                        logger.error(f"Repair attempt error: {second_error}")
+                        logger.error(
+                            f"Original JSON (first 500 chars): {complete_json[:500]}"
+                        )
+                        logger.error(
+                            f"Repaired JSON (first 500 chars): {repaired_json[:500]}"
+                        )
+                        raise second_error
 
                 # Convert to dictionary
                 result = validated_response.model_dump()

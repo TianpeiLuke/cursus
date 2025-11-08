@@ -485,11 +485,17 @@ The LLM requires **structured JSON format** to output correct, parseable respons
     "Output MUST be valid, parseable JSON",
     "Use double quotes for all strings, not single quotes",
     "Do not include any text before the opening { or after the closing }",
-    "Do not include markdown code fences (```) around the JSON",
+    "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers",
+    "CRITICAL: Output pure JSON starting with { and ending with } - nothing else",
     "Ensure all arrays and objects are properly closed",
     "Use empty arrays [] for missing values, not null or empty strings",
     "Do not include trailing commas",
-    "Ensure proper escaping of special characters in strings"
+    "Ensure proper escaping of special characters in strings",
+    "CRITICAL: Only use standard ASCII double quotes (U+0022) for JSON structure",
+    "CRITICAL: Never use fancy Unicode quotes anywhere in JSON output",
+    "CRITICAL: When quoting text from input, replace fancy quotes with regular ASCII single quotes",
+    "Example: If input contains fancy opening/closing quotes around a name, replace with ASCII apostrophes",
+    "All quotes in message_evidence arrays must use ASCII characters only"
   ],
   
   "validation_requirements": [
@@ -823,11 +829,17 @@ output_format_settings = OutputFormatConfig(
         "Output MUST be valid, parseable JSON",
         "Use double quotes for all strings, not single quotes",
         "Do not include any text before the opening { or after the closing }",
-        "Do not include markdown code fences (```) around the JSON",
+        "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers",
+        "CRITICAL: Output pure JSON starting with { and ending with } - nothing else",
         "Ensure all arrays and objects are properly closed",
         "Use empty arrays [] for missing values, not null or empty strings",
         "Do not include trailing commas",
-        "Ensure proper escaping of special characters in strings"
+        "Ensure proper escaping of special characters in strings",
+        "CRITICAL: Only use standard ASCII double quotes (U+0022) for JSON structure",
+        "CRITICAL: Never use fancy Unicode quotes anywhere in JSON output",
+        "CRITICAL: When quoting text from input, replace fancy quotes with regular ASCII single quotes",
+        "Example: If input contains fancy opening/closing quotes around a name, replace with ASCII apostrophes",
+        "All quotes in message_evidence arrays must use ASCII characters only"
     ],
     
     validation_requirements=[
