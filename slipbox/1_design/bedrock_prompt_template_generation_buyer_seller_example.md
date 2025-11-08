@@ -483,7 +483,6 @@ The LLM requires **structured JSON format** to output correct, parseable respons
   
   "formatting_rules": [
     "Output MUST be valid, parseable JSON",
-    "Use double quotes for all strings, not single quotes",
     "Do not include any text before the opening { or after the closing }",
     "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers",
     "CRITICAL: Output pure JSON starting with { and ending with } - nothing else",
@@ -491,11 +490,13 @@ The LLM requires **structured JSON format** to output correct, parseable respons
     "Use empty arrays [] for missing values, not null or empty strings",
     "Do not include trailing commas",
     "Ensure proper escaping of special characters in strings",
-    "CRITICAL: Only use standard ASCII double quotes (U+0022) for JSON structure",
-    "CRITICAL: Never use fancy Unicode quotes anywhere in JSON output",
-    "CRITICAL: When quoting text from input, replace fancy quotes with regular ASCII single quotes",
-    "Example: If input contains fancy opening/closing quotes around a name, replace with ASCII apostrophes",
-    "All quotes in message_evidence arrays must use ASCII characters only"
+    "",
+    "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes for JSON keys and string boundaries",
+    "Quote Handling - Cited Content: When quoting text containing fancy Unicode quotes, replace them with ASCII apostrophes",
+    "Fancy Unicode quotes to replace: German opening (U+201E), left/right double (U+201C/U+201D), all single quotes",
+    "All fancy quotes become regular apostrophe (') when cited inside JSON string values",
+    "",
+    "Summary: Double quotes for JSON structure, apostrophes for fancy-quoted content inside strings"
   ],
   
   "validation_requirements": [
@@ -827,7 +828,6 @@ output_format_settings = OutputFormatConfig(
     
     formatting_rules=[
         "Output MUST be valid, parseable JSON",
-        "Use double quotes for all strings, not single quotes",
         "Do not include any text before the opening { or after the closing }",
         "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers",
         "CRITICAL: Output pure JSON starting with { and ending with } - nothing else",
@@ -835,11 +835,13 @@ output_format_settings = OutputFormatConfig(
         "Use empty arrays [] for missing values, not null or empty strings",
         "Do not include trailing commas",
         "Ensure proper escaping of special characters in strings",
-        "CRITICAL: Only use standard ASCII double quotes (U+0022) for JSON structure",
-        "CRITICAL: Never use fancy Unicode quotes anywhere in JSON output",
-        "CRITICAL: When quoting text from input, replace fancy quotes with regular ASCII single quotes",
-        "Example: If input contains fancy opening/closing quotes around a name, replace with ASCII apostrophes",
-        "All quotes in message_evidence arrays must use ASCII characters only"
+        "",
+        "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes for JSON keys and string boundaries",
+        "Quote Handling - Cited Content: When quoting text containing fancy Unicode quotes, replace them with ASCII apostrophes",
+        "Fancy Unicode quotes to replace: German opening (U+201E), left/right double (U+201C/U+201D), all single quotes",
+        "All fancy quotes become regular apostrophe (') when cited inside JSON string values",
+        "",
+        "Summary: Double quotes for JSON structure, apostrophes for fancy-quoted content inside strings"
     ],
     
     validation_requirements=[

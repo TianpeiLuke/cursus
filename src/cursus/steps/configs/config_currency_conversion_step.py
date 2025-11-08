@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class CurrencyConversionMappingConfig(BaseModel):
     """
     Single currency conversion mapping entry.
-    
+
     Fields are organized into three tiers:
     1. Tier 1: Essential User Inputs - fields that users must explicitly provide
     2. Tier 2: System Inputs with Defaults - fields with reasonable defaults that can be overridden
@@ -63,7 +63,7 @@ class CurrencyConversionMappingConfig(BaseModel):
 class CurrencyConversionDictConfig(BaseModel):
     """
     Currency conversion dictionary with mappings.
-    
+
     Fields are organized into three tiers:
     1. Tier 1: Essential User Inputs - fields that users must explicitly provide
     2. Tier 2: System Inputs with Defaults - fields with reasonable defaults that can be overridden
@@ -116,7 +116,7 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
     currency_conversion_vars: List[str] = Field(
         description="List of monetary columns to convert"
     )
-    
+
     currency_conversion_dict: CurrencyConversionDictConfig = Field(
         description="Currency conversion mappings"
     )
@@ -128,27 +128,18 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         default="currency_conversion.py",
         description="Entry point script for currency conversion",
     )
-    
+
     currency_code_field: Optional[str] = Field(
-        default=None,
-        description="Name of column containing currency codes directly"
+        default=None, description="Name of column containing currency codes directly"
     )
-    
+
     marketplace_id_field: Optional[str] = Field(
-        default=None,
-        description="Name of column containing marketplace IDs"
+        default=None, description="Name of column containing marketplace IDs"
     )
-    
-    default_currency: str = Field(
-        default="USD",
-        description="Default currency code"
-    )
-    
-    n_workers: int = Field(
-        default=50,
-        ge=1,
-        description="Number of parallel workers"
-    )
+
+    default_currency: str = Field(default="USD", description="Default currency code")
+
+    n_workers: int = Field(default=50, ge=1, description="Number of parallel workers")
 
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
@@ -172,7 +163,9 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         if self._environment_variables is None:
             env_vars = {
                 "CURRENCY_CONVERSION_VARS": json.dumps(self.currency_conversion_vars),
-                "CURRENCY_CONVERSION_DICT": json.dumps(self.currency_conversion_dict.model_dump()),
+                "CURRENCY_CONVERSION_DICT": json.dumps(
+                    self.currency_conversion_dict.model_dump()
+                ),
                 "CURRENCY_CODE_FIELD": self.currency_code_field or "",
                 "MARKETPLACE_ID_FIELD": self.marketplace_id_field or "",
                 "DEFAULT_CURRENCY": self.default_currency,

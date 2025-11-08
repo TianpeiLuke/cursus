@@ -87,14 +87,14 @@ def get_currency_code(
 ) -> str:
     """
     Get currency code for a given row based on available fields.
-    
+
     Args:
         row: Data row
         currency_code_field: Name of column containing currency codes directly
         marketplace_id_field: Name of column containing marketplace IDs
         conversion_dict: Dictionary with currency conversion mappings
         default_currency: Default currency code to use when lookup fails
-        
+
     Returns:
         Currency code for the row
     """
@@ -103,7 +103,7 @@ def get_currency_code(
         currency = row[currency_code_field]
         if pd.notna(currency) and str(currency).strip():
             return str(currency).strip()
-    
+
     # Otherwise use marketplace_id field
     if marketplace_id_field and marketplace_id_field in row:
         marketplace_id = row[marketplace_id_field]
@@ -113,7 +113,7 @@ def get_currency_code(
             for mapping in mappings:
                 if str(mapping.get("marketplace_id")) == str(marketplace_id):
                     return mapping.get("currency_code", default_currency)
-    
+
     # Default fallback
     return default_currency
 
@@ -159,12 +159,12 @@ def process_currency_conversion(
 ) -> pd.DataFrame:
     """Process currency conversion for a DataFrame."""
     logger.info(f"Starting currency conversion on DataFrame with shape: {df.shape}")
-    
+
     # Filter variables that exist in the DataFrame
     currency_conversion_vars = [
         var for var in currency_conversion_vars if var in df.columns
     ]
-    
+
     if not currency_conversion_vars:
         logger.warning("No variables require currency conversion")
         return df
@@ -172,16 +172,19 @@ def process_currency_conversion(
     # Get currency codes for each row
     df["__temp_currency_code__"] = df.apply(
         lambda row: get_currency_code(
-            row, currency_code_field, marketplace_id_field, 
-            currency_conversion_dict, default_currency
+            row,
+            currency_code_field,
+            marketplace_id_field,
+            currency_conversion_dict,
+            default_currency,
         ),
-        axis=1
+        axis=1,
     )
 
     # Create exchange rate series
     exchange_rates = []
     mappings = currency_conversion_dict.get("mappings", [])
-    
+
     for currency_code in df["__temp_currency_code__"]:
         rate = 1.0  # Default no conversion
         for mapping in mappings:
@@ -189,7 +192,7 @@ def process_currency_conversion(
                 rate = mapping.get("conversion_rate", 1.0)
                 break
         exchange_rates.append(rate)
-    
+
     exchange_rate_series = pd.Series(exchange_rates, index=df.index)
 
     logger.info(f"Converting currencies for variables: {currency_conversion_vars}")
@@ -199,10 +202,10 @@ def process_currency_conversion(
         currency_conversion_vars,
         n_workers,
     )
-    
+
     # Clean up temporary column
     df = df.drop(columns=["__temp_currency_code__"])
-    
+
     logger.info("Currency conversion completed")
     return df
 
@@ -230,14 +233,18 @@ def process_data(
     currency_conversion_dict = currency_config.get("CURRENCY_CONVERSION_DICT", {})
     default_currency = currency_config.get("DEFAULT_CURRENCY", "USD")
     n_workers = currency_config.get("N_WORKERS", 50)
-    
+
     # Validate configuration
     if not currency_code_field and not marketplace_id_field:
-        logger.warning("Neither CURRENCY_CODE_FIELD nor MARKETPLACE_ID_FIELD specified. Skipping conversion.")
+        logger.warning(
+            "Neither CURRENCY_CODE_FIELD nor MARKETPLACE_ID_FIELD specified. Skipping conversion."
+        )
         return data_dict
-    
+
     if not currency_conversion_vars:
-        logger.warning("No currency conversion variables specified. Skipping conversion.")
+        logger.warning(
+            "No currency conversion variables specified. Skipping conversion."
+        )
         return data_dict
 
     logger.info(f"Running currency conversion with job_type={job_type}")
@@ -352,8 +359,12 @@ def main(
         currency_config = {
             "CURRENCY_CODE_FIELD": environ_vars.get("CURRENCY_CODE_FIELD"),
             "MARKETPLACE_ID_FIELD": environ_vars.get("MARKETPLACE_ID_FIELD"),
-            "CURRENCY_CONVERSION_VARS": json.loads(environ_vars.get("CURRENCY_CONVERSION_VARS", "[]")),
-            "CURRENCY_CONVERSION_DICT": json.loads(environ_vars.get("CURRENCY_CONVERSION_DICT", "{}")),
+            "CURRENCY_CONVERSION_VARS": json.loads(
+                environ_vars.get("CURRENCY_CONVERSION_VARS", "[]")
+            ),
+            "CURRENCY_CONVERSION_DICT": json.loads(
+                environ_vars.get("CURRENCY_CONVERSION_DICT", "{}")
+            ),
             "DEFAULT_CURRENCY": environ_vars.get("DEFAULT_CURRENCY", "USD"),
             "N_WORKERS": int(environ_vars.get("N_WORKERS", "50")),
         }
@@ -397,8 +408,12 @@ if __name__ == "__main__":
         environ_vars = {
             "CURRENCY_CODE_FIELD": os.environ.get("CURRENCY_CODE_FIELD"),
             "MARKETPLACE_ID_FIELD": os.environ.get("MARKETPLACE_ID_FIELD"),
-            "CURRENCY_CONVERSION_VARS": os.environ.get("CURRENCY_CONVERSION_VARS", "[]"),
-            "CURRENCY_CONVERSION_DICT": os.environ.get("CURRENCY_CONVERSION_DICT", "{}"),
+            "CURRENCY_CONVERSION_VARS": os.environ.get(
+                "CURRENCY_CONVERSION_VARS", "[]"
+            ),
+            "CURRENCY_CONVERSION_DICT": os.environ.get(
+                "CURRENCY_CONVERSION_DICT", "{}"
+            ),
             "DEFAULT_CURRENCY": os.environ.get("DEFAULT_CURRENCY", "USD"),
             "N_WORKERS": os.environ.get("N_WORKERS", "50"),
         }

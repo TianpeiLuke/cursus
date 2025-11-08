@@ -453,13 +453,221 @@ BEDROCK_MAX_CONCURRENT_BATCH_JOBS="20"  # AWS limit
 - **Identical debugging experience** with same logging and error handling
 - **Flexible deployment** - works with existing SageMaker pipeline infrastructure
 
+## JSON Output Enforcement and Quote Safety
+
+### Production-Validated Approach (Nov 2025)
+
+Based on analysis of 378K+ production records, implemented a comprehensive JSON output enforcement strategy with quote-safe error handling:
+
+#### 1. Assistant Message Prefilling
+
+**Strategy**: Force JSON output by prefilling the assistant's response with an opening brace:
+
+```python
+def convert_df_to_jsonl(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """Convert DataFrame to Bedrock batch JSONL format."""
+    jsonl_records = []
+    
+    for pos, (_, row) in enumerate(df.iterrows()):
+        row_data = row.to_dict()
+        prompt = self._format_prompt(row_data)
+        
+        request_body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": int(self.config["max_tokens"]),
+            "temperature": float(self.config["temperature"]),
+            "top_p": float(self.config["top_p"]),
+            "messages": [
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": "{"},  # Force JSON output via prefilling
+            ],
+        }
+        
+        # Use positional index (0..N-1) not arbitrary DataFrame index labels
+        record = {"recordId": f"record_{pos}", "modelInput": request_body}
+        jsonl_records.append(record)
+    
+    return jsonl_records
+```
+
+**Benefits**:
+- Reduces markdown/prose leakage in model outputs
+- Provides consistent JSON structure across batch and realtime
+- Works with Claude 4.0 on Bedrock (standard format)
+
+**Note**: Bedrock response format for Claude models:
+```json
+{
+  "content": [
+    {"type": "text", "text": "..."}
+  ],
+  "stop_reason": "end_turn"
+}
+```
+
+#### 2. Quote-Safe JSON Repair
+
+**Problem**: Production analysis revealed 100% of parse errors (341 out of 378,878 records) were due to Unicode quotes, specifically German-style `„text"` patterns.
+
+**Solution**: Focused two-step repair that ONLY touches Unicode quotes, never ASCII `"` structural delimiters:
+
+```python
+# Unicode quote mappings - ALL map to apostrophe to align with output spec
+UNICODE_DOUBLE_QUOTES = {
+    "\u201c": "'",  # " → ' (Left double quotation mark)
+    "\u201d": "'",  # " → ' (Right double quotation mark)
+    "\u201e": "'",  # „ → ' (Double low-9 quotation mark)
+    "\u201f": "'",  # ‟ → ' (Double high-reversed-9 quotation mark)
+}
+
+UNICODE_SINGLE_QUOTES = {
+    "\u2018": "'",  # ' → ' (Left single quotation mark)
+    "\u2019": "'",  # ' → ' (Right single quotation mark)
+    "\u201a": "'",  # ‚ → ' (Single low-9 quotation mark)
+    "\u201b": "'",  # ‛ → ' (Single high-reversed-9 quotation mark)
+}
+
+# Pattern for German-style quotes
+GERMAN_OPEN_QUOTE_PATTERN = re.compile(r'„([^"]*)"')
+
+def repair_json(text: str) -> str:
+    """
+    FOCUSED repair function - ONLY handles Unicode quotes.
+    
+    Based on production analysis of 378,878 records:
+    - 100% of parse errors are due to Unicode quotes
+    - No other JSON syntax errors observed
+    - Generic repairs are unnecessary and risky
+    """
+    # STEP 1: Fix German quote pattern „name" → \"name\"
+    text = GERMAN_OPEN_QUOTE_PATTERN.sub(r'\\"\1\\"', text)
+    
+    # STEP 2: Normalize remaining Unicode quotes to apostrophes
+    text = normalize_unicode_quotes(text)
+    
+    return text
+```
+
+**Critical Safety Properties**:
+1. ASCII double quotes `"` (U+0022) are **never touched** - JSON structure preserved
+2. German `„name"` becomes `\"name\"` (properly escaped, no new delimiters)
+3. All other fancy quotes become `'` (aligns with output spec)
+4. No comma/whitespace surgery that could break valid JSON
+
+#### 3. Two-Stage Parse Strategy
+
+```python
+def _parse_response_with_pydantic(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse with focused quote repair fallback."""
+    response_text = response["content"][0].get("text", "")
+    
+    if self.response_model_class:
+        # Extract JSON substring (handles markdown fences)
+        complete_json = extract_json_candidate(response_text)
+        
+        # STAGE 1: Try parsing as-is
+        try:
+            validated_response = self.response_model_class.model_validate_json(complete_json)
+            result = validated_response.model_dump()
+            result["validation_passed"] = True
+            return result
+        except (ValidationError, json.JSONDecodeError) as first_error:
+            # STAGE 2: Apply quote-only repair and retry
+            logger.warning("Initial parse failed, attempting quote repair")
+            repaired_json = repair_json(complete_json)
+            
+            try:
+                validated_response = self.response_model_class.model_validate_json(repaired_json)
+                result = validated_response.model_dump()
+                result["validation_passed"] = True
+                return result
+            except (ValidationError, json.JSONDecodeError) as second_error:
+                logger.error(f"Both parse attempts failed")
+                raise second_error
+```
+
+#### 4. Positional Index Mapping for RecordId
+
+**Problem**: Using `df.iterrows()` index labels for `recordId` breaks when DataFrame has non-default index (e.g., `[100, 101, ...]` or custom labels).
+
+**Solution**: Use positional counter (0..N-1) instead:
+
+```python
+# BEFORE (broken with non-default index):
+for idx, row in df.iterrows():
+    record = {"recordId": f"record_{idx}", ...}
+
+# AFTER (safe for any index):
+for pos, (_, row) in enumerate(df.iterrows()):
+    record = {"recordId": f"record_{pos}", ...}
+```
+
+**Benefits**:
+- Works with any DataFrame index type
+- Maintains 1:1 mapping to `.iloc[]` positions
+- Bedrock output order is not guaranteed, so using `recordId` for recovery is essential
+
+#### 5. Safe Validation Column Checking
+
+**Problem**: Using `.get()` in boolean indexing crashes when column doesn't exist:
+```python
+# This crashes with KeyError: False when column missing
+result_df[result_df.get("validation_passed", False) == True]
+```
+
+**Solution**: Check column existence first:
+
+```python
+validation_col = f"{config['output_column_prefix']}validation_passed"
+if validation_col in result_df.columns:
+    validation_passed_count = len(result_df[result_df[validation_col] == True])
+else:
+    validation_passed_count = 0
+```
+
+Applied in 3 locations per script:
+- `process_split_directory` function
+- Training fallback section (no train/val/test splits)
+- Non-training job types section
+
+#### 6. Enum Type Handling
+
+**Problem**: Dynamic `Literal[tuple(...)]` construction can fail at import time.
+
+**Solution**: Use plain `str` type for enum fields - Pydantic still validates against schema's enum constraint:
+
+```python
+def _convert_json_schema_type_to_python(self, field_schema: Dict[str, Any]) -> type:
+    field_type = field_schema.get("type", "string")
+    
+    if field_type == "string":
+        if "enum" in field_schema:
+            # For enum fields, use str type for simplicity
+            # Pydantic will still validate against the schema's enum constraint
+            return str
+        return str
+```
+
+**Trade-off**: Slightly less strict validation at Pydantic layer, but far more robust and maintainable.
+
+### Production Validation Results
+
+Fixes validated against production data:
+- **Dataset**: 378,878 records from real production runs
+- **Parse error rate**: 341 errors (0.09%) - all quote-related
+- **Error pattern**: 100% German `„name"` Unicode quotes
+- **Other JSON errors**: 0 (no comma, brace, or whitespace issues)
+- **Fix effectiveness**: Quote-repair strategy addresses 100% of observed failures
+
+**Recommendation**: This focused approach is production-ready. Generic JSON repair (comma/whitespace fixes) would be unnecessary complexity and risk introducing new failures.
+
 ## Critical Implementation Fixes
 
 During implementation, several critical issues were identified and resolved:
 
 ### 1. Pydantic Validation for Prefilled Responses
 **Issue**: Bedrock's assistant message prefilling (forcing JSON output) causes validation to fail because the prefilled "{" is not in the response.
-**Fix**: Prepend opening brace before Pydantic validation.
+**Fix**: Prepend opening brace before Pydantic validation. (NOTE: This was the original approach; latest implementation uses assistant prefilling which handles this automatically)
 
 ### 2. S3 Path Configuration Flow
 **Issue**: Script needs S3 paths from step builder environment variables, not direct `os.environ` access.

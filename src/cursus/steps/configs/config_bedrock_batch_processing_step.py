@@ -111,6 +111,11 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
         default="llm_", description="Prefix for output columns in processed data"
     )
 
+    bedrock_skip_error_records: bool = Field(
+        default=False,
+        description="Whether to exclude error records from output files (statistics still track all records)",
+    )
+
     # Concurrency configuration (for real-time fallback mode)
     bedrock_concurrency_mode: str = Field(
         default="sequential",
@@ -234,6 +239,9 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                 "BEDROCK_BATCH_SIZE": str(self.bedrock_batch_size),
                 "BEDROCK_MAX_RETRIES": str(self.bedrock_max_retries),
                 "BEDROCK_OUTPUT_COLUMN_PREFIX": self.bedrock_output_column_prefix,
+                "BEDROCK_SKIP_ERROR_RECORDS": str(
+                    self.bedrock_skip_error_records
+                ).lower(),
                 "BEDROCK_MAX_CONCURRENT_WORKERS": str(
                     self.bedrock_max_concurrent_workers
                 ),
