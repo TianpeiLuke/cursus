@@ -24,7 +24,7 @@ date of note: 2025-11-09
 updated: 2025-11-09
 ---
 
-# Ruleset Execution Step Builder Patterns
+# Label Ruleset Execution Step Builder Patterns
 
 ## Overview
 
@@ -126,6 +126,114 @@ OUTPUT_LABELED_DATA/
 ├── execution_report.json
 └── rule_match_statistics.json (optional)
 ```
+
+## Field Availability Validation (Execution-Time)
+
+Before executing rules, the execution step validates that all required fields exist in the actual data:
+
+```python
+class RulesetFieldValidator:
+    """Validates field availability in actual data at execution time."""
+    
+    def validate_fields(
+        self, 
+        ruleset: dict,
+        data_df: pd.DataFrame
+    ) -> Dict[str, Any]:
+        """
+        Validates all field references exist in actual data.
+        
+        This is an EXECUTION-TIME validator that checks:
+        - All required fields exist in DataFrame
+        - All fields used in rules exist in DataFrame  
+        - Field null percentages (data quality check)
+        
+        This validator does NOT check:
+        - Field type declarations (that's generation-time)
+        - Rule logic errors (that's generation-time)
+        
+        Args:
+            ruleset: Validated ruleset configuration
+            data_df: Actual DataFrame to check
+            
+        Returns:
+            Dictionary with validation results:
+            - valid: bool
+            - missing_fields: List[str] - fields referenced but not in data
+            - warnings: List[str] - high null percentages, etc.
+        """
+        result = {
+            "valid": True,
+            "missing_fields": [],
+            "warnings": []
+        }
+        
+        field_config = ruleset.get("field_config", {})
+        required_fields = set(field_config.get("required_fields", []))
+        optional_fields = set(field_config.get("optional_fields", []))
+        
+        rules = ruleset.get("rules", [])
+        
+        # Extract all field references from rules
+        used_fields = set()
+        for rule in rules:
+            if not rule.get("enabled", True):
+                continue
+            fields = self._extract_fields_from_conditions(rule.get("conditions", {}))
+            used_fields.update(fields)
+        
+        # Check field availability in data
+        available_fields = set(data_df.columns)
+        
+        # Check required fields exist
+        missing_required = required_fields - available_fields
+        if missing_required:
+            result["valid"] = False
+            result["missing_fields"].extend(list(missing_required))
+            logger.error(f"Required fields missing in data: {missing_required}")
+        
+        # Check used fields exist
+        missing_used = used_fields - available_fields
+        if missing_used:
+            result["valid"] = False
+            result["missing_fields"].extend(list(missing_used))
+            logger.error(f"Fields used in rules but not in data: {missing_used}")
+        
+        # Check for high null percentages
+        for field in used_fields & available_fields:
+            null_pct = data_df[field].isnull().sum() / len(data_df)
+            if null_pct > 0.5:
+                result["warnings"].append(
+                    f"Field '{field}' has {null_pct:.1%} null values"
+                )
+                logger.warning(f"Field '{field}' has {null_pct:.1%} null values")
+        
+        return result
+    
+    def _extract_fields_from_conditions(self, condition: dict) -> List[str]:
+        """Recursively extract all field names from a condition."""
+        fields = []
+        
+        if "all_of" in condition:
+            for subcond in condition["all_of"]:
+                fields.extend(self._extract_fields_from_conditions(subcond))
+        elif "any_of" in condition:
+            for subcond in condition["any_of"]:
+                fields.extend(self._extract_fields_from_conditions(subcond))
+        elif "none_of" in condition:
+            for subcond in condition["none_of"]:
+                fields.extend(self._extract_fields_from_conditions(subcond))
+        elif "field" in condition:
+            fields.append(condition["field"])
+        
+        return fields
+```
+
+**Key Points:**
+- This validation happens at execution time, not generation time
+- Checks actual DataFrame columns, not just schema declarations
+- Fails fast if required fields are missing
+- Provides warnings for data quality issues (high null percentages)
 
 ## Rule Evaluation Engine
 
@@ -653,15 +761,32 @@ OUTPUT_LABELED_DATA/
 
 ## Pipeline Integration
 
+### Step Dependencies and Input/Output Mapping
+
+The RulesetExecutor step depends on TWO upstream steps:
+
+1. **TabularPreprocessingStep**: Provides processed data (train/val/test splits)
+   - Output: `processed_data` 
+   
+2. **RulesetGeneratorStep**: Provides validated ruleset
+   - Output: `validated_ruleset`
+
 ### Step Creation Example
 
 ```python
-# Step 1: Generate validated ruleset (one-time or when rules change)
+# Step 1: Tabular preprocessing - produces processed data splits
+tabular_preprocessing_step = TabularPreprocessingStepBuilder(
+    config=preprocessing_config
+).create_step(
+    dependencies=[data_load_step]
+)
+
+# Step 2: Generate validated ruleset (uses sample from preprocessing for validation)
 ruleset_generator_step = RulesetGeneratorStepBuilder(
     config=generator_config
 ).create_step(
     inputs={
-        'user_ruleset': 's3://bucket/rules/user_rules.json',
+        'ruleset_configs': 's3://bucket/rules/configs/',  # Auto-generated from config
         'sample_data': tabular_preprocessing_step.properties
                        .ProcessingOutputConfig
                        .Outputs['processed_data']
@@ -674,7 +799,7 @@ ruleset_generator_step = RulesetGeneratorStepBuilder(
     dependencies=[tabular_preprocessing_step]
 )
 
-# Step 2: Execute ruleset on data (can run multiple times with same ruleset)
+# Step 3: Execute ruleset on processed data (DEPENDS ON BOTH STEPS)
 ruleset_executor_step = RulesetExecutorStepBuilder(
     config=executor_config
 ).create_step(
@@ -683,7 +808,7 @@ ruleset_executor_step = RulesetExecutorStepBuilder(
                              .ProcessingOutputConfig
                              .Outputs['validated_ruleset']
                              .S3Output.S3Uri,
-        'processed_data': bedrock_step.properties
+        'processed_data': tabular_preprocessing_step.properties
                           .ProcessingOutputConfig
                           .Outputs['processed_data']
                           .S3Output.S3Uri
@@ -692,10 +817,10 @@ ruleset_executor_step = RulesetExecutorStepBuilder(
         'labeled_data': 's3://bucket/labeled-data/',
         'execution_report': 's3://bucket/reports/execution_report.json'
     },
-    dependencies=[ruleset_generator_step, bedrock_step]
+    dependencies=[ruleset_generator_step, tabular_preprocessing_step]
 )
 
-# Step 3: Training step (consumes labeled data)
+# Step 4: Training step (consumes labeled data)
 training_step = TrainingStepBuilder(
     config=training_config
 ).create_step(
@@ -708,6 +833,67 @@ training_step = TrainingStepBuilder(
     dependencies=[ruleset_executor_step]
 )
 ```
+
+### Input Argument Mapping
+
+The `RulesetExecutorStepBuilder` defines the following input arguments:
+
+| Argument | Description | Required | Source Step | Output Name |
+|----------|-------------|----------|-------------|-------------|
+| validated_ruleset | Validated ruleset JSON | Yes | RulesetGeneratorStep | validated_ruleset |
+| processed_data | Processed data splits | Yes | TabularPreprocessingStep | processed_data |
+
+### Output Property Mapping
+
+The `RulesetExecutorStepBuilder` provides the following output properties:
+
+| Property | Description | Access Pattern |
+|----------|-------------|---------------|
+| labeled_data | Labeled data with train/val/test splits | `step.properties.ProcessingOutputConfig.Outputs["labeled_data"].S3Output.S3Uri` |
+| execution_report | Execution statistics and metrics | `step.properties.ProcessingOutputConfig.Outputs["execution_report"].S3Output.S3Uri` |
+
+### Pipeline DAG Structure
+
+```
+┌─────────────────┐
+│  Data Load Step │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Tabular Preprocessing   │ ─────┐
+│ Output: processed_data  │      │
+└─────────┬───────────────┘      │
+          │                      │
+          ▼                      │
+┌──────────────────────┐         │
+│ Ruleset Generator    │         │
+│ Output: validated_   │         │
+│         ruleset      │         │
+└──────────┬───────────┘         │
+           │                     │
+           │    ┌────────────────┘
+           │    │
+           ▼    ▼
+┌────────────────────────────┐
+│ Ruleset Executor           │
+│ Inputs:                    │
+│   - validated_ruleset      │
+│   - processed_data         │
+│ Output: labeled_data       │
+└────────────┬───────────────┘
+             │
+             ▼
+┌────────────────────┐
+│  Training Step     │
+└────────────────────┘
+```
+
+**Key Points:**
+1. **Ruleset Executor depends on BOTH TabularPreprocessing AND RulesetGenerator**
+2. **processed_data** comes from TabularPreprocessingStep (contains train/val/test splits)
+3. **validated_ruleset** comes from RulesetGeneratorStep (validated rules)
+4. Both dependencies must complete before RulesetExecutor can run
 
 ## Performance Optimizations
 

@@ -36,10 +36,11 @@ This entry point document provides a comprehensive index of all step-related des
 - [Bedrock Prompt Template Generation Input Formats](../1_design/bedrock_prompt_template_generation_input_formats.md) - Input format specifications for prompt generation
 - [Bedrock Prompt Template Generation Output Design](../1_design/bedrock_prompt_template_generation_output_design.md) - Output design for prompt generation steps
 
-### Ruleset Step Patterns
+### Label Ruleset Step Patterns
 
-- [Ruleset Execution Step Patterns](../1_design/ruleset_execution_step_patterns.md) - Design patterns for executing rulesets in pipeline steps
-- [Ruleset Generation Step Patterns](../1_design/ruleset_generation_step_patterns.md) - Patterns for generating rulesets within pipeline steps
+- [Label Ruleset Execution Step Patterns](../1_design/ruleset_execution_step_patterns.md) - Design patterns for executing label rulesets in pipeline steps
+- [Label Ruleset Generation Step Patterns](../1_design/label_ruleset_generation_step_patterns.md) - Patterns for generating and validating label rulesets within pipeline steps
+- [Label Ruleset Optimization Patterns](../1_design/label_ruleset_optimization_patterns.md) - Optimization strategies for label ruleset performance (selectivity, field grouping, complexity ordering)
 
 ### Core Step Builder Patterns
 
@@ -218,7 +219,7 @@ This entry point document provides a comprehensive index of all step-related des
 
 **Bedrock Steps**: Start with bedrock_processing_step_builder_patterns.md
 
-**Ruleset Steps**: Review ruleset_execution_step_patterns.md and ruleset_generation_step_patterns.md
+**Label Ruleset Steps**: Review label_ruleset_execution_step_patterns.md and label_ruleset_generation_step_patterns.md
 
 **Training Steps**: Check training_step_builder_patterns.md and training_step_alignment_validation_patterns.md
 

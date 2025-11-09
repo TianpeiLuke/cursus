@@ -209,8 +209,8 @@ Comprehensive catalog of reusable ML pipeline components.
 - [Tuning Step Builder Patterns](../1_design/tuning_step_builder_patterns.md)
 - [Conditional Step Builder Patterns](../1_design/conditional_step_builder_patterns.md)
 - [Bedrock Processing Step Builder](../1_design/bedrock_processing_step_builder_patterns.md)
-- [Ruleset Execution Step Patterns](../1_design/ruleset_execution_step_patterns.md)
-- [Ruleset Generation Step Patterns](../1_design/ruleset_generation_step_patterns.md)
+- [Label Ruleset Execution Step Patterns](../1_design/label_ruleset_execution_step_patterns.md)
+- [Label Ruleset Generation Step Patterns](../1_design/label_ruleset_generation_step_patterns.md)
 
 **Key Concepts:**
 - Builder pattern implementation
@@ -598,6 +598,7 @@ Multi-developer environment support and configuration isolation.
 - [Core System & MODS Integration Index](./core_and_mods_systems_index.md) - Core orchestration and MODS integration
 - [Step Design and Documentation Index](./step_design_and_documentation_index.md) - Step-specific patterns
 - [Processing Steps Index](./processing_steps_index.md) - Complete processing step catalog
+- [XGBoost Pipelines Index](./xgboost_pipelines_index.md) - Complete XGBoost pipeline variants catalog
 
 ---
 

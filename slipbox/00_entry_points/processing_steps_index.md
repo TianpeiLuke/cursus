@@ -186,6 +186,18 @@ Processing Steps Documentation
 - Proven config-based approach
 - Hybrid resolution system integration
 
+**[Bedrock Prompt Template Generation Step Implementation Plan](../2_project_planning/2025-11-02_bedrock_prompt_template_generation_step_implementation_plan.md)**
+- Implementation of BedrockPromptTemplateGeneration processing step
+- 5-component architecture pattern for structured prompt templates
+- Classification task support with validation schemas
+- Integration with BedrockProcessing and BedrockBatchProcessing steps
+
+**[LightGBM Training Step Implementation Plan](../2_project_planning/2025-10-14_lightgbm_training_step_implementation_plan.md)**
+- Implementation of LightGBM training step following XGBoost patterns
+- SageMaker built-in algorithm integration
+- Specification-driven architecture support
+- Complete alignment with existing training step patterns
+
 ### 3.3 UI & Configuration Plans
 
 **[DAG Config Factory Implementation Plan](../2_project_planning/2025-10-15_dag_config_factory_implementation_plan.md)**

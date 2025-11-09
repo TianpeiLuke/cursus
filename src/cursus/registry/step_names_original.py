@@ -115,6 +115,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Bedrock batch processing step that provides AWS Bedrock batch inference capabilities with automatic fallback to real-time processing for cost-efficient large dataset processing",
     },
+    "LabelRulesetGeneration": {
+        "config_class": "LabelRulesetGenerationConfig",
+        "builder_step_name": "LabelRulesetGenerationStepBuilder",
+        "spec_type": "LabelRulesetGeneration",
+        "sagemaker_step_type": "Processing",
+        "description": "Label ruleset generation step that validates and optimizes user-defined classification rules for transparent, maintainable rule-based label mapping in ML training pipelines",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",

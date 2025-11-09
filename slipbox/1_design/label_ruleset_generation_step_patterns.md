@@ -23,7 +23,7 @@ date of note: 2025-11-09
 updated: 2025-11-09
 ---
 
-# Ruleset Generation Step Builder Patterns
+# Label Ruleset Generation Step Builder Patterns
 
 ## Overview
 
@@ -126,34 +126,9 @@ class LabelConfig(BaseModel):
     model_config = {"extra": "forbid", "validate_assignment": True}
 ```
 
-#### 2. FieldConfig (Field Configuration)
+#### 2. RuleCondition (Condition Expression)
 
-```python
-class FieldConfig(BaseModel):
-    """
-    Configuration for field definitions.
-    
-    Declares expected fields in data with types.
-    """
-    required_fields: List[str] = Field(
-        default_factory=list,
-        description="Fields that must exist in data"
-    )
-    
-    optional_fields: List[str] = Field(
-        default_factory=list,
-        description="Fields that may exist in data"
-    )
-    
-    field_types: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Field name to type mapping (string, int, float, bool)"
-    )
-    
-    model_config = {"extra": "forbid", "validate_assignment": True}
-```
-
-#### 3. RuleCondition (Condition Expression)
+**Note**: FieldConfig is automatically inferred from rule definitions and is not exposed as a user-facing configuration.
 
 ```python
 from enum import Enum
@@ -233,6 +208,289 @@ class RuleCondition(BaseModel):
     
     model_config = {"extra": "forbid", "validate_assignment": True}
 ```
+
+### RuleCondition Examples
+
+Below are comprehensive examples showing how to use each operator category:
+
+#### Comparison Operators
+
+```python
+# Example 1: Simple equality check
+condition_equals = RuleCondition(
+    field="category",
+    operator=ComparisonOperator.EQUALS,
+    value="TrueDNR"
+)
+
+# Example 2: Not equals
+condition_not_equals = RuleCondition(
+    field="status",
+    operator=ComparisonOperator.NOT_EQUALS,
+    value="cancelled"
+)
+
+# Example 3: Greater than
+condition_gt = RuleCondition(
+    field="confidence_score",
+    operator=ComparisonOperator.GT,
+    value=0.8
+)
+
+# Example 4: Greater than or equal
+condition_gte = RuleCondition(
+    field="amount",
+    operator=ComparisonOperator.GTE,
+    value=100.0
+)
+
+# Example 5: Less than
+condition_lt = RuleCondition(
+    field="risk_score",
+    operator=ComparisonOperator.LT,
+    value=0.3
+)
+
+# Example 6: Less than or equal
+condition_lte = RuleCondition(
+    field="processing_time",
+    operator=ComparisonOperator.LTE,
+    value=5000
+)
+```
+
+#### Collection Operators
+
+```python
+# Example 7: Value in collection
+condition_in = RuleCondition(
+    field="country_code",
+    operator=ComparisonOperator.IN,
+    value=["US", "CA", "GB", "AU"]
+)
+
+# Example 8: Value not in collection
+condition_not_in = RuleCondition(
+    field="payment_method",
+    operator=ComparisonOperator.NOT_IN,
+    value=["cash", "check"]
+)
+```
+
+#### String Operators
+
+```python
+# Example 9: Contains substring
+condition_contains = RuleCondition(
+    field="description",
+    operator=ComparisonOperator.CONTAINS,
+    value="urgent"
+)
+
+# Example 10: Does not contain substring
+condition_not_contains = RuleCondition(
+    field="notes",
+    operator=ComparisonOperator.NOT_CONTAINS,
+    value="spam"
+)
+
+# Example 11: Starts with prefix
+condition_starts_with = RuleCondition(
+    field="transaction_id",
+    operator=ComparisonOperator.STARTS_WITH,
+    value="TXN-"
+)
+
+# Example 12: Ends with suffix
+condition_ends_with = RuleCondition(
+    field="email",
+    operator=ComparisonOperator.ENDS_WITH,
+    value="@amazon.com"
+)
+
+# Example 13: Regex match
+condition_regex = RuleCondition(
+    field="order_id",
+    operator=ComparisonOperator.REGEX_MATCH,
+    value=r"^ORD-\d{8}$"  # Matches ORD-12345678
+)
+```
+
+#### Null Operators
+
+```python
+# Example 14: Is null (missing or NaN)
+condition_is_null = RuleCondition(
+    field="optional_comment",
+    operator=ComparisonOperator.IS_NULL,
+    value=None  # value parameter ignored for null checks
+)
+
+# Example 15: Is not null (has value)
+condition_is_not_null = RuleCondition(
+    field="customer_id",
+    operator=ComparisonOperator.IS_NOT_NULL,
+    value=None  # value parameter ignored for null checks
+)
+```
+
+#### Nested Logical Operators
+
+```python
+# Example 16: AND logic (all_of) - All conditions must be true
+condition_and = RuleCondition(
+    all_of=[
+        RuleCondition(field="category", operator=ComparisonOperator.EQUALS, value="Premium"),
+        RuleCondition(field="confidence_score", operator=ComparisonOperator.GTE, value=0.9),
+        RuleCondition(field="amount", operator=ComparisonOperator.GT, value=1000)
+    ]
+)
+
+# Example 17: OR logic (any_of) - At least one condition must be true
+condition_or = RuleCondition(
+    any_of=[
+        RuleCondition(field="priority", operator=ComparisonOperator.EQUALS, value="high"),
+        RuleCondition(field="urgent_flag", operator=ComparisonOperator.EQUALS, value=1),
+        RuleCondition(field="sla_hours", operator=ComparisonOperator.LT, value=4)
+    ]
+)
+
+# Example 18: NOT logic (none_of) - All conditions must be false
+condition_not = RuleCondition(
+    none_of=[
+        RuleCondition(field="status", operator=ComparisonOperator.EQUALS, value="cancelled"),
+        RuleCondition(field="status", operator=ComparisonOperator.EQUALS, value="failed"),
+        RuleCondition(field="error_code", operator=ComparisonOperator.IS_NOT_NULL, value=None)
+    ]
+)
+
+# Example 19: Complex nested logic - (A AND B) OR C
+condition_complex = RuleCondition(
+    any_of=[
+        RuleCondition(
+            all_of=[
+                RuleCondition(field="category", operator=ComparisonOperator.EQUALS, value="TrueDNR"),
+                RuleCondition(field="confidence_score", operator=ComparisonOperator.GTE, value=0.8)
+            ]
+        ),
+        RuleCondition(field="manual_review_flag", operator=ComparisonOperator.EQUALS, value=1)
+    ]
+)
+
+# Example 20: Very complex nested logic - (A AND B) OR (C AND NOT D)
+condition_very_complex = RuleCondition(
+    any_of=[
+        # First branch: High confidence TrueDNR
+        RuleCondition(
+            all_of=[
+                RuleCondition(field="category", operator=ComparisonOperator.EQUALS, value="TrueDNR"),
+                RuleCondition(field="confidence_score", operator=ComparisonOperator.GTE, value=0.9)
+            ]
+        ),
+        # Second branch: Low risk and not flagged
+        RuleCondition(
+            all_of=[
+                RuleCondition(field="risk_score", operator=ComparisonOperator.LT, value=0.3),
+                RuleCondition(
+                    none_of=[
+                        RuleCondition(field="fraud_flag", operator=ComparisonOperator.EQUALS, value=1),
+                        RuleCondition(field="dispute_flag", operator=ComparisonOperator.EQUALS, value=1)
+                    ]
+                )
+            ]
+        )
+    ]
+)
+```
+
+#### Practical Full Rule Examples
+
+```python
+# Example 21: Complete rule for high-confidence reversals
+rule_high_confidence_reversal = RuleDefinition(
+    name="High Confidence Reversal",
+    priority=1,
+    conditions=RuleCondition(
+        all_of=[
+            RuleCondition(field="category", operator=ComparisonOperator.EQUALS, value="Reversal"),
+            RuleCondition(field="confidence_score", operator=ComparisonOperator.GTE, value=0.85),
+            RuleCondition(field="amount", operator=ComparisonOperator.GT, value=0)
+        ]
+    ),
+    output_label=1,
+    description="High confidence reversal with positive amount"
+)
+
+# Example 22: Complete rule for suspected fraud
+rule_fraud_detection = RuleDefinition(
+    name="Suspected Fraud",
+    priority=2,
+    conditions=RuleCondition(
+        all_of=[
+            # Multiple transactions in short time
+            RuleCondition(field="transaction_count_1h", operator=ComparisonOperator.GT, value=10),
+            # From risky countries
+            RuleCondition(
+                field="country_code",
+                operator=ComparisonOperator.IN,
+                value=["XX", "YY", "ZZ"]
+            ),
+            # High amount
+            RuleCondition(field="total_amount", operator=ComparisonOperator.GT, value=5000),
+            # Not verified customer
+            RuleCondition(
+                none_of=[
+                    RuleCondition(field="verification_status", operator=ComparisonOperator.EQUALS, value="verified"),
+                    RuleCondition(field="trusted_customer", operator=ComparisonOperator.EQUALS, value=True)
+                ]
+            )
+        ]
+    ),
+    output_label=1,
+    description="Multiple fraud indicators detected"
+)
+
+# Example 23: Complete rule with string pattern matching
+rule_email_pattern = RuleDefinition(
+    name="Corporate Email Pattern",
+    priority=3,
+    conditions=RuleCondition(
+        any_of=[
+            RuleCondition(field="email", operator=ComparisonOperator.ENDS_WITH, value="@amazon.com"),
+            RuleCondition(field="email", operator=ComparisonOperator.ENDS_WITH, value="@aws.amazon.com"),
+            RuleCondition(field="email", operator=ComparisonOperator.REGEX_MATCH, value=r"^[a-z]+@(corp|internal)\.company\.com$")
+        ]
+    ),
+    output_label=0,
+    description="Trusted corporate email domains"
+)
+
+# Example 24: Complete rule with null handling
+rule_incomplete_data = RuleDefinition(
+    name="Incomplete Data",
+    priority=10,
+    conditions=RuleCondition(
+        any_of=[
+            RuleCondition(field="customer_id", operator=ComparisonOperator.IS_NULL, value=None),
+            RuleCondition(field="transaction_date", operator=ComparisonOperator.IS_NULL, value=None),
+            RuleCondition(field="amount", operator=ComparisonOperator.IS_NULL, value=None)
+        ]
+    ),
+    output_label=1,
+    description="Missing required fields - needs manual review"
+)
+```
+
+#### Best Practices for Rule Conditions
+
+1. **Prefer Simple Conditions**: Start with simple leaf conditions before adding complexity
+2. **Use Appropriate Operators**: Choose operators that match your data types (string operators for strings, comparison for numbers)
+3. **Avoid Deep Nesting**: Keep nesting to 2-3 levels maximum for maintainability
+4. **Test Boundary Cases**: Ensure operators work correctly at edge values (0, empty strings, etc.)
+5. **Handle Nulls Explicitly**: Use `is_null`/`is_not_null` operators to handle missing data
+6. **Order Matters in `all_of`**: Place most selective conditions first for efficiency
+7. **Use `any_of` Sparingly**: Too many OR conditions can be hard to debug
+8. **Document Complex Logic**: Add clear descriptions for rules with nested conditions
 
 #### 4. RuleDefinition (Individual Rule)
 
@@ -441,49 +699,11 @@ The validated ruleset includes:
 }
 ```
 
-## Three-Tier Validation Architecture
+## Two-Tier Validation Architecture
 
-### 1. Field Existence Validation
+**Note**: Field schema validation has been moved to the configuration layer. The config automatically infers `field_config` from rule definitions and validates consistency at initialization time, ensuring field references are correct before the script runs.
 
-```python
-class RulesetFieldValidator:
-    """Validates field references against expected schema."""
-    
-    def validate_fields(
-        self, 
-        ruleset: dict,
-        sample_data: Optional[pd.DataFrame] = None
-    ) -> ValidationResult:
-        """
-        Validates all field references in rules.
-        
-        Args:
-            ruleset: Input ruleset configuration
-            sample_data: Optional sample DataFrame for validation
-            
-        Checks:
-        - All required_fields are listed
-        - All fields in conditions are declared in field_config
-        - Field types are valid Python types
-        - Optional: Field existence in sample_data
-        
-        Returns:
-        - valid: bool
-        - missing_fields: List[str]
-        - undeclared_fields: List[str]
-        - type_errors: List[str]
-        - warnings: List[str]
-        """
-```
-
-**Validation Logic:**
-1. Extract all field references from rule conditions
-2. Check each field is declared in `field_config`
-3. Verify field types are valid
-4. If sample_data provided, verify fields exist
-5. Check for high null percentages (warning)
-
-### 2. Label Value Validation
+### 1. Label Value Validation
 
 ```python
 class RulesetLabelValidator:
@@ -516,7 +736,7 @@ class RulesetLabelValidator:
 4. Identify unreachable label values
 5. Detect potential rule conflicts
 
-### 3. Rule Logic Validation
+### 2. Rule Logic Validation
 
 ```python
 class RulesetLogicValidator:
