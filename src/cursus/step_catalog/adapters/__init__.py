@@ -6,7 +6,7 @@ during the migration from legacy discovery systems to the unified StepCatalog sy
 
 The adapters are organized by functionality:
 - contract_discovery: Contract discovery and management adapters
-- file_resolver: File resolution and discovery adapters  
+- file_resolver: File resolution and discovery adapters
 - workspace_discovery: Workspace discovery and management adapters
 - config_resolver: Configuration resolution adapters
 - config_class_detector: Configuration class detection adapters
@@ -52,24 +52,19 @@ from .legacy_wrappers import (
 __all__ = [
     # Contract discovery
     "ContractDiscoveryResult",
-    "ContractDiscoveryEngineAdapter", 
+    "ContractDiscoveryEngineAdapter",
     "ContractDiscoveryManagerAdapter",
-    
     # File resolvers
     "FlexibleFileResolverAdapter",
-    "DeveloperWorkspaceFileResolverAdapter", 
+    "DeveloperWorkspaceFileResolverAdapter",
     "HybridFileResolverAdapter",
-    
     # Workspace discovery
     "WorkspaceDiscoveryManagerAdapter",
-    
     # Config resolution
     "StepConfigResolverAdapter",
-    
     # Config class detection
     "ConfigClassDetectorAdapter",
     "ConfigClassStoreAdapter",
-    
     # Legacy wrappers
     "LegacyDiscoveryWrapper",
     "build_complete_config_classes",

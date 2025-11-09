@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 class StepConfigResolverAdapter:
     """
     Enhanced adapter maintaining backward compatibility with StepConfigResolver.
-    
+
     Replaces: src/cursus/core/compiler/config_resolver.py
-    
+
     This enhanced version includes essential legacy methods needed for production
     while leveraging the unified step catalog for superior discovery capabilities.
     """
-    
+
     # Job type keywords for matching (simplified from legacy)
     JOB_TYPE_KEYWORDS = {
         "training": ["training", "train"],
@@ -31,7 +31,7 @@ class StepConfigResolverAdapter:
         "evaluation": ["evaluation", "eval", "test"],
         "inference": ["inference", "infer", "predict"],
     }
-    
+
     # Pattern mappings for step type detection (from legacy)
     STEP_TYPE_PATTERNS = {
         r".*data_load.*": ["CradleDataLoading"],
@@ -48,8 +48,10 @@ class StepConfigResolverAdapter:
         r".*risk.*": ["RiskTableMapping"],
         r".*hyperparam.*": ["HyperparameterPrep"],
     }
-    
-    def __init__(self, workspace_root: Optional[Path] = None, confidence_threshold: float = 0.7):
+
+    def __init__(
+        self, workspace_root: Optional[Path] = None, confidence_threshold: float = 0.7
+    ):
         """Initialize with unified catalog."""
         # PORTABLE: Use package-only discovery by default (works in all deployment scenarios)
         if workspace_root is None:
@@ -60,19 +62,24 @@ class StepConfigResolverAdapter:
         self.logger = logging.getLogger(__name__)
         self._metadata_mapping = {}
         self._config_cache = {}
-    
-    def resolve_config_map(self, dag_nodes: List[str], available_configs: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+
+    def resolve_config_map(
+        self,
+        dag_nodes: List[str],
+        available_configs: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Enhanced resolution with direct name matching + catalog fallback."""
         try:
             resolved_configs = {}
-            
+
             for node_name in dag_nodes:
                 # 1. Try direct name matching first (handles 99% of cases)
                 config = self._direct_name_matching(node_name, available_configs)
                 if config is not None:
                     resolved_configs[node_name] = config
                     continue
-                
+
                 # 2. Fallback to catalog-based matching
                 step_info = self.catalog.get_step_info(node_name)
                 if step_info and step_info.config_class:
@@ -84,18 +91,22 @@ class StepConfigResolverAdapter:
                 else:
                     # 3. Last resort: first available config
                     if available_configs:
-                        resolved_configs[node_name] = next(iter(available_configs.values()))
-            
+                        resolved_configs[node_name] = next(
+                            iter(available_configs.values())
+                        )
+
             return resolved_configs
-            
+
         except Exception as e:
             self.logger.error(f"Error resolving config map: {e}")
             return {}
-    
-    def _direct_name_matching(self, node_name: str, configs: Dict[str, Any]) -> Optional[Any]:
+
+    def _direct_name_matching(
+        self, node_name: str, configs: Dict[str, Any]
+    ) -> Optional[Any]:
         """
         Enhanced direct name matching with metadata support.
-        
+
         Based on legacy implementation that supports metadata.config_types mapping.
         """
         # First priority: Direct match with config key
@@ -139,13 +150,15 @@ class StepConfigResolverAdapter:
                 return config
 
         return None
-    
-    def _job_type_matching(self, node_name: str, configs: Dict[str, Any]) -> List[tuple]:
+
+    def _job_type_matching(
+        self, node_name: str, configs: Dict[str, Any]
+    ) -> List[tuple]:
         """
         Match based on job_type attribute and node naming patterns.
-        
+
         Based on legacy implementation from StepConfigResolver.
-        
+
         Args:
             node_name: DAG node name
             configs: Available configurations
@@ -187,11 +200,11 @@ class StepConfigResolverAdapter:
                     matches.append((config, total_confidence, "job_type"))
 
         return matches
-    
+
     def _calculate_config_type_confidence(self, node_name: str, config: Any) -> float:
         """
         Calculate confidence based on how well node name matches config type.
-        
+
         From legacy implementation.
 
         Args:
@@ -215,44 +228,47 @@ class StepConfigResolverAdapter:
 
         # Use sequence matching for similarity
         from difflib import SequenceMatcher
+
         similarity = SequenceMatcher(None, node_lower, config_base).ratio()
         return similarity
-    
-    def _semantic_matching(self, node_name: str, configs: Dict[str, Any]) -> List[tuple]:
+
+    def _semantic_matching(
+        self, node_name: str, configs: Dict[str, Any]
+    ) -> List[tuple]:
         """Semantic matching based on keywords."""
         matches = []
-        
+
         # Define semantic keywords
         semantic_map = {
-            'data': ['loading', 'load', 'cradle'],
-            'preprocess': ['preprocessing', 'tabular', 'process'],
-            'train': ['training', 'xgboost', 'pytorch', 'model'],
-            'evaluate': ['evaluation', 'eval', 'test'],
-            'transform': ['transformation', 'batch']
+            "data": ["loading", "load", "cradle"],
+            "preprocess": ["preprocessing", "tabular", "process"],
+            "train": ["training", "xgboost", "pytorch", "model"],
+            "evaluate": ["evaluation", "eval", "test"],
+            "transform": ["transformation", "batch"],
         }
-        
+
         node_lower = node_name.lower()
-        
+
         for config_key, config_instance in configs.items():
             config_lower = config_key.lower()
             confidence = 0.0
-            
+
             # Check for semantic matches
             for category, keywords in semantic_map.items():
                 if any(keyword in node_lower for keyword in keywords):
                     if any(keyword in config_lower for keyword in keywords):
                         confidence = 0.7
                         break
-            
+
             if confidence > 0:
                 matches.append((config_instance, confidence, "semantic"))
-        
+
         return matches
-    
+
     def _pattern_matching(self, node_name: str, configs: Dict[str, Any]) -> List[tuple]:
         """
         Use regex patterns to match node names to config types.
-        
+
         Based on legacy implementation from StepConfigResolver.
 
         Args:
@@ -269,6 +285,7 @@ class StepConfigResolverAdapter:
         matching_step_types = []
         for pattern, step_types in self.STEP_TYPE_PATTERNS.items():
             import re
+
             if re.match(pattern, node_lower):
                 matching_step_types.extend(step_types)
 
@@ -294,11 +311,11 @@ class StepConfigResolverAdapter:
                 matches.append((config, min(confidence, 0.9), "pattern"))
 
         return matches
-    
+
     def _config_class_to_step_type(self, config_class_name: str) -> str:
         """
         Convert configuration class name to step type using step catalog system.
-        
+
         Enhanced to use step catalog's registry data for accurate mapping.
 
         Args:
@@ -315,13 +332,13 @@ class StepConfigResolverAdapter:
                 if step_info and step_info.config_class == config_class_name:
                     # Use the step name from the catalog as the step type
                     return step_name
-                
+
                 # Also check registry data for builder_step_name
-                if step_info and step_info.registry_data.get('builder_step_name'):
-                    builder_step_name = step_info.registry_data['builder_step_name']
+                if step_info and step_info.registry_data.get("builder_step_name"):
+                    builder_step_name = step_info.registry_data["builder_step_name"]
                     if f"{builder_step_name}Config" == config_class_name:
                         return builder_step_name
-            
+
             # Fallback to legacy logic if not found in catalog
             step_type = config_class_name
 
@@ -340,10 +357,12 @@ class StepConfigResolverAdapter:
                 return "MIMSPackaging"
 
             return step_type
-            
+
         except Exception as e:
-            self.logger.debug(f"Error using catalog for config class mapping, falling back to legacy: {e}")
-            
+            self.logger.debug(
+                f"Error using catalog for config class mapping, falling back to legacy: {e}"
+            )
+
             # Pure legacy fallback
             step_type = config_class_name
             if step_type.endswith("Config"):
@@ -355,11 +374,11 @@ class StepConfigResolverAdapter:
             elif step_type == "PackageStep" or step_type == "Package":
                 return "MIMSPackaging"
             return step_type
-    
+
     def _calculate_job_type_boost(self, node_name: str, config: Any) -> float:
         """
         Calculate confidence boost based on job type matching.
-        
+
         From legacy implementation.
 
         Args:
@@ -382,49 +401,52 @@ class StepConfigResolverAdapter:
                     return 1.0
 
         return 0.0
-    
+
     def _resolve_single_node(self, node_name: str, configs: Dict[str, Any]) -> tuple:
         """Resolve a single node using all matching strategies."""
         # Try direct matching first
         direct_match = self._direct_name_matching(node_name, configs)
         if direct_match is not None:
             return (direct_match, 1.0, "direct_name")
-        
+
         # Collect all matches from different strategies
         all_matches = []
-        
+
         # Job type matching
         job_matches = self._job_type_matching(node_name, configs)
         all_matches.extend(job_matches)
-        
+
         # Semantic matching
         semantic_matches = self._semantic_matching(node_name, configs)
         all_matches.extend(semantic_matches)
-        
+
         # Pattern matching
         pattern_matches = self._pattern_matching(node_name, configs)
         all_matches.extend(pattern_matches)
-        
+
         if not all_matches:
             try:
                 from ...core.compiler.exceptions import ResolutionError
+
                 raise ResolutionError(f"No configuration found for node: {node_name}")
             except ImportError:
                 # Fallback if ResolutionError is not available
                 raise ValueError(f"No configuration found for node: {node_name}")
-        
+
         # Return the highest confidence match
         best_match = max(all_matches, key=lambda x: x[1])
         return best_match
-    
-    def resolve_config_for_step(self, step_name: str, configs: Dict[str, Any]) -> Optional[Any]:
+
+    def resolve_config_for_step(
+        self, step_name: str, configs: Dict[str, Any]
+    ) -> Optional[Any]:
         """
         Resolve configuration for a single step (used by generator.py).
-        
+
         Args:
             step_name: Name of the step
             configs: Available configurations
-            
+
         Returns:
             Resolved configuration or None
         """
@@ -433,36 +455,45 @@ class StepConfigResolverAdapter:
             config = self._direct_name_matching(step_name, configs)
             if config is not None:
                 return config
-            
+
             # Try enhanced resolution
             resolved_tuple = self._resolve_single_node(step_name, configs)
             if resolved_tuple:
                 return resolved_tuple[0]  # Return just the config, not the tuple
-            
+
             return None
-            
+
         except Exception as e:
             self.logger.error(f"Error resolving config for step {step_name}: {e}")
             return None
-    
-    def preview_resolution(self, dag_nodes: List[str], available_configs: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+
+    def preview_resolution(
+        self,
+        dag_nodes: List[str],
+        available_configs: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Enhanced preview resolution with metadata support."""
         try:
             # Extract metadata.config_types mapping if available
             self._metadata_mapping = {}
             if metadata and "config_types" in metadata:
                 self._metadata_mapping = metadata["config_types"]
-                self.logger.info(f"Using metadata.config_types mapping with {len(self._metadata_mapping)} entries")
-            
+                self.logger.info(
+                    f"Using metadata.config_types mapping with {len(self._metadata_mapping)} entries"
+                )
+
             node_resolution = {}
             resolution_confidence = {}
             node_config_map = {}
-            
+
             for node in dag_nodes:
                 try:
                     # Try to resolve the node
-                    config, confidence, method = self._resolve_single_node(node, available_configs)
-                    
+                    config, confidence, method = self._resolve_single_node(
+                        node, available_configs
+                    )
+
                     # Store resolution info
                     node_resolution[node] = {
                         "config_type": type(config).__name__,
@@ -470,10 +501,10 @@ class StepConfigResolverAdapter:
                         "method": method,
                         "job_type": getattr(config, "job_type", "N/A"),
                     }
-                    
+
                     resolution_confidence[node] = confidence
                     node_config_map[node] = type(config).__name__
-                    
+
                 except Exception as e:
                     # Store error information
                     node_resolution[node] = {
@@ -482,7 +513,7 @@ class StepConfigResolverAdapter:
                     }
                     resolution_confidence[node] = 0.0
                     node_config_map[node] = "Unknown"
-            
+
             return {
                 "node_resolution": node_resolution,
                 "resolution_confidence": resolution_confidence,
@@ -490,26 +521,27 @@ class StepConfigResolverAdapter:
                 "metadata_mapping": self._metadata_mapping,
                 "recommendations": [],
             }
-            
+
         except Exception as e:
             self.logger.error(f"Error previewing resolution: {e}")
             return {"error": str(e)}
-    
+
     def _parse_node_name(self, node_name: str) -> Dict[str, str]:
         """
         Parse node name to extract config type and job type information.
-        
+
         Based on legacy implementation patterns from the original StepConfigResolver.
-        
+
         Args:
             node_name: DAG node name
-            
+
         Returns:
             Dictionary with extracted information
         """
         # Check cache first
         if node_name in self._config_cache:
             from typing import cast, Dict
+
             return cast(Dict[str, str], self._config_cache[node_name])
 
         result = {}
@@ -523,6 +555,7 @@ class StepConfigResolverAdapter:
         ]
 
         import re
+
         for pattern, pattern_type in patterns:
             match = re.match(pattern, node_name)
             if match:
@@ -556,47 +589,52 @@ class StepConfigResolverAdapter:
         # Cache the result
         self._config_cache[node_name] = result
         return result
-    
-    def _job_type_matching_enhanced(self, job_type: str, configs: Dict[str, Any], config_type: Optional[str] = None) -> List[tuple]:
+
+    def _job_type_matching_enhanced(
+        self, job_type: str, configs: Dict[str, Any], config_type: Optional[str] = None
+    ) -> List[tuple]:
         """
         Enhanced job type matching with config type filtering.
-        
+
         Args:
             job_type: Job type string (e.g., "training", "calibration")
             configs: Available configurations
             config_type: Optional config type to filter by
-            
+
         Returns:
             List of (config, confidence, method) tuples
         """
         matches = []
         normalized_job_type = job_type.lower()
-        
+
         for config_name, config in configs.items():
             if hasattr(config, "job_type"):
                 config_job_type = getattr(config, "job_type", "").lower()
-                
+
                 # Skip if job types don't match
                 if config_job_type != normalized_job_type:
                     continue
-                
+
                 # Start with base confidence for job type match
                 base_confidence = 0.8
-                
+
                 # If config_type is specified, check for match to boost confidence
                 if config_type:
                     config_class_name = type(config).__name__
                     config_type_lower = config_type.lower()
                     class_name_lower = config_class_name.lower()
-                    
+
                     # Different levels of match for config type
                     if config_class_name == config_type:
                         # Exact match
                         base_confidence = 0.9
-                    elif (config_type_lower in class_name_lower or class_name_lower in config_type_lower):
+                    elif (
+                        config_type_lower in class_name_lower
+                        or class_name_lower in config_type_lower
+                    ):
                         # Partial match
                         base_confidence = 0.85
-                
+
                 matches.append((config, base_confidence, "job_type_enhanced"))
-        
+
         return sorted(matches, key=lambda x: x[1], reverse=True)
