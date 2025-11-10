@@ -1,0 +1,42 @@
+[
+  {
+    "rule_id": "rule_d0f00e0a",
+    "name": "No_Reversal_Categories",
+    "priority": 1,
+    "enabled": true,
+    "conditions": {
+      "field": "llm_category",
+      "operator": "in",
+      "value": [
+        "TrueDNR",
+        "PDA_Undeliverable",
+        "PDA_Early_Refund",
+        "Returnless_Refund"
+      ]
+    },
+    "output_label": 0,
+    "description": "Categories indicating NO reversal: delivered/fraud patterns, logistics delays, goodwill refunds"
+  },
+  {
+    "rule_id": "rule_91b98690",
+    "name": "Reversal_Required_Categories",
+    "priority": 2,
+    "enabled": true,
+    "conditions": {
+      "field": "llm_category",
+      "operator": "in",
+      "value": [
+        "Confirmed_Delay",
+        "Delivery_Attempt_Failed",
+        "Seller_Unable_To_Ship",
+        "Buyer_Received_WrongORDefective_Item",
+        "BuyerCancellation",
+        "Return_NoLongerNeeded",
+        "Product_Information_Support",
+        "Insufficient_Information"
+      ]
+    },
+    "output_label": 1,
+    "description": "Categories indicating reversal required: legitimate refunds, quality issues, cancellations, manual review cases"
+  }
+]

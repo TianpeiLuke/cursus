@@ -3,7 +3,7 @@
     "shared": {
       "author": "lukexie",
       "bucket": "buyer-seller-messaging-reversal",
-      "current_date": "2025-11-06",
+      "current_date": "2025-11-10",
       "enable_caching": false,
       "framework_version": "2.1.0",
       "model_class": "pytorch",
@@ -12,14 +12,15 @@
       "processing_instance_count": 1,
       "processing_instance_type_large": "ml.m5.12xlarge",
       "processing_instance_type_small": "ml.m5.4xlarge",
-      "processing_source_dir": "dockers/scripts",
+      "processing_source_dir": "docker/scripts",
       "processing_volume_size": 500,
       "project_root_folder": "rnr_pytorch_bedrock",
       "py_version": "py310",
       "region": "NA",
       "role": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
       "service_name": "BuyerAbuseRnR",
-      "source_dir": "dockers"
+      "source_dir": "docker",
+      "use_secure_pypi": false
     },
     "specific": {
       "BedrockBatchProcessing_training": {
@@ -55,14 +56,18 @@
           "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
           "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
           "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
+          "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
           "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
+          "BEDROCK_MAX_RECORDS_PER_JOB": "30000",
           "BEDROCK_MAX_RETRIES": "3",
           "BEDROCK_MAX_TOKENS": "32768",
           "BEDROCK_OUTPUT_COLUMN_PREFIX": "llm_",
           "BEDROCK_PRIMARY_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
           "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
+          "BEDROCK_SKIP_ERROR_RECORDS": "false",
           "BEDROCK_TEMPERATURE": "1.0",
-          "BEDROCK_TOP_P": "0.999"
+          "BEDROCK_TOP_P": "0.999",
+          "USE_SECURE_PYPI": "false"
         },
         "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
         "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
@@ -71,12 +76,15 @@
           "anthropic.claude-sonnet-4-20250514-v1:0",
           "anthropic.claude-opus-4-1-20250805-v1:0"
         ],
+        "bedrock_max_concurrent_batch_jobs": 20,
         "bedrock_max_concurrent_workers": 5,
+        "bedrock_max_records_per_job": 30000,
         "bedrock_max_retries": 3,
         "bedrock_max_tokens": 32768,
         "bedrock_output_column_prefix": "llm_",
         "bedrock_primary_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
         "bedrock_rate_limit_per_second": 10,
+        "bedrock_skip_error_records": false,
         "bedrock_temperature": 1.0,
         "bedrock_top_p": 0.999,
         "cost_optimization_info": {
@@ -94,7 +102,7 @@
           "anthropic.claude-opus-4-1-20250805-v1:0"
         ],
         "effective_instance_type": "ml.m5.4xlarge",
-        "effective_source_dir": "dockers/scripts",
+        "effective_source_dir": "docker/scripts",
         "job_type": "training",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
@@ -121,7 +129,7 @@
           "top_p": 0.999,
           "uses_inference_profile": true
         },
-        "script_path": "dockers/scripts/bedrock_batch_processing.py",
+        "script_path": "docker/scripts/bedrock_batch_processing.py",
         "use_large_processing_instance": false
       },
       "BedrockPromptTemplateGeneration": {
@@ -221,103 +229,165 @@
             "Timeline Evidence must show chronological sequence of events",
             "All evidence must reference specific content from input data"
           ],
-          "example_output": "1. Category: TrueDNR\n\n2. Confidence Score: 0.92\n\n3. Key Evidence:\n   * Message Evidence:\n     - [BUYER]: Hello, I have not received my package\n     - [BUYER]: But I did not find any package, please refund me\n   * Shipping Evidence:\n     - [Event Time]: 2025-02-21T17:40:49.323Z [Event]: Delivered\n     - No further shipping events after delivery confirmation\n   * Timeline Evidence:\n     - Delivery confirmation on 2025-02-21 17:40\n     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n4. Reasoning:\n   * Primary Factors:\n     - Tracking shows package was delivered successfully\n     - Buyer explicitly states they did not receive the package\n   * Supporting Evidence:\n     - Buyer requests refund due to missing package\n     - No evidence of buyer receiving wrong/defective item\n   * Contradicting Evidence:\n     - None",
-          "field_descriptions": {
-            "Category": "Exactly one category from the predefined list (case-sensitive match required)",
-            "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
-            "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
-            "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+          "example_output": {
+            "category": "TrueDNR",
+            "confidence_score": 0.92,
+            "key_evidence": {
+              "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+              ],
+              "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+              ],
+              "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+              ]
+            },
+            "reasoning": {
+              "contradicting_evidence": [],
+              "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+              ],
+              "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+              ]
+            }
           },
-          "format_type": "structured_text",
+          "field_descriptions": {
+            "category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
+            "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
+          },
+          "format_type": "structured_json",
           "formatting_rules": [
-            "Use exact section headers with numbers and colons",
-            "No semicolons (;) anywhere in response"
+            "Output MUST be valid, parseable JSON.",
+            "Do not include any text before the opening { or after the closing }.",
+            "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+            "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+            "Ensure all arrays and objects are properly closed.",
+            "Use empty arrays [] for missing values, not null or empty strings.",
+            "Do not include trailing commas.",
+            "Ensure proper escaping of special characters in strings.",
+            "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+            "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+            "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+            "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+            "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+            "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+            "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+            "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+            "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
           ],
-          "header_text": "**CRITICAL: Follow this exact format for automated parsing**",
+          "header_text": null,
+          "json_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "description": "Exactly one category from the predefined list (case-sensitive match required)",
+                "enum": [],
+                "type": "string"
+              },
+              "confidence_score": {
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "key_evidence": {
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                  "message_evidence": {
+                    "description": "Direct quotes from dialogue with speaker identification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "shipping_evidence": {
+                    "description": "Tracking events with timestamps",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "timeline_evidence": {
+                    "description": "Chronological sequence of key events",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "message_evidence",
+                  "shipping_evidence",
+                  "timeline_evidence"
+                ],
+                "type": "object"
+              },
+              "reasoning": {
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                  "contradicting_evidence": {
+                    "description": "Evidence that contradicts the classification (use empty array if none)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "primary_factors": {
+                    "description": "Main reasons supporting the selected category",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "supporting_evidence": {
+                    "description": "Additional evidence that strengthens the classification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "primary_factors",
+                  "supporting_evidence",
+                  "contradicting_evidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "category",
+              "confidence_score",
+              "key_evidence",
+              "reasoning"
+            ],
+            "type": "object"
+          },
           "required_fields": [
             "category",
-            "confidence",
+            "confidence_score",
             "key_evidence",
             "reasoning"
           ],
-          "structured_text_sections": [
-            {
-              "format": "single_value",
-              "header": "Category",
-              "number": 1,
-              "placeholder": "${category_enum}",
-              "placeholder_source": "schema_enum"
-            },
-            {
-              "format": "single_value",
-              "header": "Confidence Score",
-              "number": 2,
-              "placeholder": "${numeric_range}",
-              "placeholder_source": "schema_range"
-            },
-            {
-              "format": "subsections",
-              "header": "Key Evidence",
-              "indent": "   ",
-              "item_prefix": "- ",
-              "number": 3,
-              "subsections": [
-                {
-                  "example_items": [
-                    "- [BUYER]: Example message",
-                    "- [SELLER]: Example response"
-                  ],
-                  "name": "Message Evidence"
-                },
-                {
-                  "example_items": [
-                    "- [Event]: Delivered"
-                  ],
-                  "name": "Shipping Evidence"
-                },
-                {
-                  "example_items": [
-                    "- Delivery on 2025-02-21"
-                  ],
-                  "name": "Timeline Evidence"
-                }
-              ]
-            },
-            {
-              "format": "subsections",
-              "header": "Reasoning",
-              "indent": "   ",
-              "item_prefix": "- ",
-              "number": 4,
-              "subsections": [
-                {
-                  "example_items": [
-                    "- Main reason"
-                  ],
-                  "name": "Primary Factors"
-                },
-                {
-                  "example_items": [
-                    "- Supporting detail"
-                  ],
-                  "name": "Supporting Evidence"
-                },
-                {
-                  "example_items": [
-                    "- None"
-                  ],
-                  "name": "Contradicting Evidence"
-                }
-              ]
-            }
-          ],
+          "structured_text_sections": null,
           "validation_requirements": [
+            "Must be valid JSON format",
             "Category must match exactly from predefined list",
-            "Confidence score must be decimal format (e.g., 0.85, not 85%)",
-            "Each evidence item must start with '[sep] ' token"
+            "Confidence score must be number between 0.0 and 1.0",
+            "All required fields must be present",
+            "key_evidence and reasoning must be objects with nested arrays"
           ]
         },
-        "effective_source_dir": "dockers/scripts",
+        "effective_source_dir": "docker/scripts",
         "effective_system_prompt_config": {
           "behavioral_guidelines": [
             "be precise in classification decisions",
@@ -452,116 +522,178 @@
             "Timeline Evidence must show chronological sequence of events",
             "All evidence must reference specific content from input data"
           ],
-          "example_output": "1. Category: TrueDNR\n\n2. Confidence Score: 0.92\n\n3. Key Evidence:\n   * Message Evidence:\n     - [BUYER]: Hello, I have not received my package\n     - [BUYER]: But I did not find any package, please refund me\n   * Shipping Evidence:\n     - [Event Time]: 2025-02-21T17:40:49.323Z [Event]: Delivered\n     - No further shipping events after delivery confirmation\n   * Timeline Evidence:\n     - Delivery confirmation on 2025-02-21 17:40\n     - Buyer reports non-receipt starting 2025-02-25 07:14\n\n4. Reasoning:\n   * Primary Factors:\n     - Tracking shows package was delivered successfully\n     - Buyer explicitly states they did not receive the package\n   * Supporting Evidence:\n     - Buyer requests refund due to missing package\n     - No evidence of buyer receiving wrong/defective item\n   * Contradicting Evidence:\n     - None",
-          "field_descriptions": {
-            "Category": "Exactly one category from the predefined list (case-sensitive match required)",
-            "Confidence Score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
-            "Key Evidence": "Three subsections: Message Evidence, Shipping Evidence, Timeline Evidence - each with [sep] token separators",
-            "Reasoning": "Three subsections: Primary Factors, Supporting Evidence, Contradicting Evidence - each with [sep] token separators"
+          "example_output": {
+            "category": "TrueDNR",
+            "confidence_score": 0.92,
+            "key_evidence": {
+              "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+              ],
+              "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+              ],
+              "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+              ]
+            },
+            "reasoning": {
+              "contradicting_evidence": [],
+              "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+              ],
+              "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+              ]
+            }
           },
-          "format_type": "structured_text",
+          "field_descriptions": {
+            "category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
+            "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
+          },
+          "format_type": "structured_json",
           "formatting_rules": [
-            "Use exact section headers with numbers and colons",
-            "No semicolons (;) anywhere in response"
+            "Output MUST be valid, parseable JSON.",
+            "Do not include any text before the opening { or after the closing }.",
+            "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+            "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+            "Ensure all arrays and objects are properly closed.",
+            "Use empty arrays [] for missing values, not null or empty strings.",
+            "Do not include trailing commas.",
+            "Ensure proper escaping of special characters in strings.",
+            "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+            "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+            "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+            "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+            "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+            "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+            "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+            "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+            "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
           ],
-          "header_text": "**CRITICAL: Follow this exact format for automated parsing**",
+          "header_text": null,
+          "json_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "description": "Exactly one category from the predefined list (case-sensitive match required)",
+                "enum": [],
+                "type": "string"
+              },
+              "confidence_score": {
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "key_evidence": {
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                  "message_evidence": {
+                    "description": "Direct quotes from dialogue with speaker identification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "shipping_evidence": {
+                    "description": "Tracking events with timestamps",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "timeline_evidence": {
+                    "description": "Chronological sequence of key events",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "message_evidence",
+                  "shipping_evidence",
+                  "timeline_evidence"
+                ],
+                "type": "object"
+              },
+              "reasoning": {
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                  "contradicting_evidence": {
+                    "description": "Evidence that contradicts the classification (use empty array if none)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "primary_factors": {
+                    "description": "Main reasons supporting the selected category",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "supporting_evidence": {
+                    "description": "Additional evidence that strengthens the classification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "primary_factors",
+                  "supporting_evidence",
+                  "contradicting_evidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "category",
+              "confidence_score",
+              "key_evidence",
+              "reasoning"
+            ],
+            "type": "object"
+          },
           "required_fields": [
             "category",
-            "confidence",
+            "confidence_score",
             "key_evidence",
             "reasoning"
           ],
-          "structured_text_sections": [
-            {
-              "format": "single_value",
-              "header": "Category",
-              "number": 1,
-              "placeholder": "${category_enum}",
-              "placeholder_source": "schema_enum"
-            },
-            {
-              "format": "single_value",
-              "header": "Confidence Score",
-              "number": 2,
-              "placeholder": "${numeric_range}",
-              "placeholder_source": "schema_range"
-            },
-            {
-              "format": "subsections",
-              "header": "Key Evidence",
-              "indent": "   ",
-              "item_prefix": "- ",
-              "number": 3,
-              "subsections": [
-                {
-                  "example_items": [
-                    "- [BUYER]: Example message",
-                    "- [SELLER]: Example response"
-                  ],
-                  "name": "Message Evidence"
-                },
-                {
-                  "example_items": [
-                    "- [Event]: Delivered"
-                  ],
-                  "name": "Shipping Evidence"
-                },
-                {
-                  "example_items": [
-                    "- Delivery on 2025-02-21"
-                  ],
-                  "name": "Timeline Evidence"
-                }
-              ]
-            },
-            {
-              "format": "subsections",
-              "header": "Reasoning",
-              "indent": "   ",
-              "item_prefix": "- ",
-              "number": 4,
-              "subsections": [
-                {
-                  "example_items": [
-                    "- Main reason"
-                  ],
-                  "name": "Primary Factors"
-                },
-                {
-                  "example_items": [
-                    "- Supporting detail"
-                  ],
-                  "name": "Supporting Evidence"
-                },
-                {
-                  "example_items": [
-                    "- None"
-                  ],
-                  "name": "Contradicting Evidence"
-                }
-              ]
-            }
-          ],
+          "structured_text_sections": null,
           "validation_requirements": [
+            "Must be valid JSON format",
             "Category must match exactly from predefined list",
-            "Confidence score must be decimal format (e.g., 0.85, not 85%)",
-            "Each evidence item must start with '[sep] ' token"
+            "Confidence score must be number between 0.0 and 1.0",
+            "All required fields must be present",
+            "key_evidence and reasoning must be objects with nested arrays"
           ]
         },
-        "output_format_type": "structured_text",
+        "output_format_type": "structured_json",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
         "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
         "processing_entry_point": "bedrock_prompt_template_generation.py",
-        "prompt_configs_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/dockers/prompt_configs",
+        "prompt_configs_path": "prompt_configs",
         "required_output_fields": [
           "Category",
           "Confidence Score",
           "Key Evidence",
           "Reasoning"
         ],
-        "resolved_prompt_configs_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/dockers/prompt_configs",
-        "script_path": "dockers/scripts/bedrock_prompt_template_generation.py",
+        "resolved_prompt_configs_path": "docker/scripts/prompt_configs",
+        "script_path": "docker/scripts/bedrock_prompt_template_generation.py",
         "system_prompt_settings": {
           "__model_type__": "SystemPromptConfig",
           "behavioral_guidelines": [
@@ -595,7 +727,7 @@
             "shiptrack_event_history_by_order",
             "shiptrack_max_estimated_arrival_date_by_order"
           ],
-          "output_format": "structured_text",
+          "output_format": "structured_json",
           "required_output_fields": [
             "Category",
             "Confidence Score",
@@ -618,7 +750,7 @@
         "aws_region": "us-east-1",
         "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "dockers/scripts",
+        "effective_source_dir": "docker/scripts",
         "job_type": "training",
         "max_file_size_mb": 1000,
         "output_format": "PARQUET",
@@ -626,7 +758,7 @@
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
         "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
         "processing_entry_point": "dummy_data_loading.py",
-        "script_path": "dockers/scripts/dummy_data_loading.py",
+        "script_path": "docker/scripts/dummy_data_loading.py",
         "shard_size": 10000,
         "supported_formats": [
           "csv",
@@ -637,19 +769,159 @@
         "use_large_processing_instance": true,
         "write_data_shards": true
       },
+      "LabelRulesetExecution_training": {
+        "__model_type__": "LabelRulesetExecutionConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "docker/scripts",
+        "enable_progress_logging": true,
+        "enable_rule_match_tracking": true,
+        "execution_configuration": {
+          "fail_on_missing_fields": true,
+          "graceful_degradation": false,
+          "job_type": "training",
+          "performance_optimized": false,
+          "progress_logging": true,
+          "rule_match_tracking": true
+        },
+        "execution_environment_variables": {
+          "ENABLE_PROGRESS_LOGGING": "true",
+          "ENABLE_RULE_MATCH_TRACKING": "true",
+          "FAIL_ON_MISSING_FIELDS": "true",
+          "PREFERRED_INPUT_FORMAT": "csv",
+          "USE_SECURE_PYPI": "false"
+        },
+        "fail_on_missing_fields": true,
+        "job_type": "training",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "preferred_input_format": "CSV",
+        "processing_entry_point": "label_ruleset_execution.py",
+        "processing_metadata": {
+          "fail_on_missing_fields": true,
+          "job_type": "training",
+          "multi_format_support": [
+            "csv",
+            "tsv",
+            "parquet"
+          ],
+          "progress_logging_enabled": true,
+          "rule_match_tracking_enabled": true,
+          "step_type": "label_ruleset_execution",
+          "supports_stacked_preprocessing": true
+        },
+        "script_path": "docker/scripts/label_ruleset_execution.py",
+        "use_large_processing_instance": true
+      },
+      "LabelRulesetGeneration": {
+        "__model_type__": "LabelRulesetGenerationConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "docker/scripts",
+        "enable_field_validation": true,
+        "enable_label_validation": true,
+        "enable_logic_validation": true,
+        "enable_rule_optimization": true,
+        "environment_variables": {
+          "ENABLE_FIELD_VALIDATION": "true",
+          "ENABLE_LABEL_VALIDATION": "true",
+          "ENABLE_LOGIC_VALIDATION": "true",
+          "ENABLE_RULE_OPTIMIZATION": "true"
+        },
+        "label_config": {
+          "__model_type__": "LabelConfig",
+          "default_label": 1,
+          "evaluation_mode": "priority",
+          "label_mapping": {
+            "0": "No_Reversal_Required",
+            "1": "Reversal_Required"
+          },
+          "label_values": [
+            0,
+            1
+          ],
+          "output_label_name": "llm_reversal_flag",
+          "output_label_type": "binary"
+        },
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "processing_entry_point": "label_ruleset_generation.py",
+        "resolved_ruleset_configs_path": "docker/scripts/ruleset_configs",
+        "rule_definitions": {
+          "__model_type__": "RulesetDefinitionList",
+          "rules": [
+            {
+              "conditions": {
+                "__type_info__": "dict",
+                "value": {
+                  "all_of": null,
+                  "any_of": null,
+                  "field": "llm_category",
+                  "none_of": null,
+                  "operator": "in",
+                  "value": [
+                    "TrueDNR",
+                    "PDA_Undeliverable",
+                    "PDA_Early_Refund",
+                    "Returnless_Refund"
+                  ]
+                }
+              },
+              "description": "Categories indicating NO reversal: delivered/fraud patterns, logistics delays, goodwill refunds",
+              "enabled": true,
+              "name": "No_Reversal_Categories",
+              "output_label": 0,
+              "priority": 1
+            },
+            {
+              "conditions": {
+                "__type_info__": "dict",
+                "value": {
+                  "all_of": null,
+                  "any_of": null,
+                  "field": "llm_category",
+                  "none_of": null,
+                  "operator": "in",
+                  "value": [
+                    "Confirmed_Delay",
+                    "Delivery_Attempt_Failed",
+                    "Seller_Unable_To_Ship",
+                    "Buyer_Received_WrongORDefective_Item",
+                    "BuyerCancellation",
+                    "Return_NoLongerNeeded",
+                    "Product_Information_Support",
+                    "Insufficient_Information"
+                  ]
+                }
+              },
+              "description": "Categories indicating reversal required: legitimate refunds, quality issues, cancellations, manual review cases",
+              "enabled": true,
+              "name": "Reversal_Required_Categories",
+              "output_label": 1,
+              "priority": 2
+            }
+          ]
+        },
+        "ruleset_configs_path": "ruleset_configs",
+        "script_path": "docker/scripts/label_ruleset_generation.py",
+        "use_large_processing_instance": false
+      },
       "TabularPreprocessing_training": {
         "__model_type__": "TabularPreprocessingConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "dockers/scripts",
-        "full_script_path": "dockers/scripts/tabular_preprocessing.py",
+        "effective_source_dir": "docker/scripts",
+        "full_script_path": "docker/scripts/tabular_preprocessing.py",
         "job_type": "training",
         "label_name": "reversal_flag",
+        "output_format": "CSV",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
         "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
         "processing_entry_point": "tabular_preprocessing.py",
-        "script_path": "dockers/scripts/tabular_preprocessing.py",
+        "script_path": "docker/scripts/tabular_preprocessing.py",
         "test_val_ratio": 0.5,
         "train_ratio": 0.7,
         "use_large_processing_instance": true
@@ -661,21 +933,27 @@
       "BedrockBatchProcessing_training": "BedrockBatchProcessingConfig",
       "BedrockPromptTemplateGeneration": "BedrockPromptTemplateGenerationConfig",
       "DummyDataLoading_training": "DummyDataLoadingConfig",
+      "LabelRulesetExecution_training": "LabelRulesetExecutionConfig",
+      "LabelRulesetGeneration": "LabelRulesetGenerationConfig",
       "TabularPreprocessing_training": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-06T05:58:47.026194",
+    "created_at": "2025-11-10T04:09:44.760485",
     "field_sources": {
       "author": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "aws_region": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "batch_configuration": [
         "BedrockBatchProcessing_training"
@@ -710,7 +988,13 @@
       "bedrock_inference_profile_required_models": [
         "BedrockBatchProcessing_training"
       ],
+      "bedrock_max_concurrent_batch_jobs": [
+        "BedrockBatchProcessing_training"
+      ],
       "bedrock_max_concurrent_workers": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_records_per_job": [
         "BedrockBatchProcessing_training"
       ],
       "bedrock_max_retries": [
@@ -728,6 +1012,9 @@
       "bedrock_rate_limit_per_second": [
         "BedrockBatchProcessing_training"
       ],
+      "bedrock_skip_error_records": [
+        "BedrockBatchProcessing_training"
+      ],
       "bedrock_temperature": [
         "BedrockBatchProcessing_training"
       ],
@@ -738,7 +1025,9 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "cost_optimization_info": [
         "BedrockBatchProcessing_training"
@@ -747,7 +1036,9 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "data_source": [
         "DummyDataLoading_training"
@@ -762,7 +1053,9 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "effective_instruction_config": [
         "BedrockPromptTemplateGeneration"
@@ -774,7 +1067,9 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "effective_system_prompt_config": [
         "BedrockPromptTemplateGeneration"
@@ -783,16 +1078,48 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "enable_field_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_label_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_logic_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_progress_logging": [
+        "LabelRulesetExecution_training"
+      ],
+      "enable_rule_match_tracking": [
+        "LabelRulesetExecution_training"
+      ],
+      "enable_rule_optimization": [
+        "LabelRulesetGeneration"
       ],
       "environment_variables": [
-        "BedrockPromptTemplateGeneration"
+        "BedrockPromptTemplateGeneration",
+        "LabelRulesetGeneration"
+      ],
+      "execution_configuration": [
+        "LabelRulesetExecution_training"
+      ],
+      "execution_environment_variables": [
+        "LabelRulesetExecution_training"
+      ],
+      "fail_on_missing_fields": [
+        "LabelRulesetExecution_training"
       ],
       "framework_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "full_script_path": [
         "TabularPreprocessing_training"
@@ -812,7 +1139,11 @@
       "job_type": [
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetExecution_training"
+      ],
+      "label_config": [
+        "LabelRulesetGeneration"
       ],
       "label_name": [
         "TabularPreprocessing_training"
@@ -824,10 +1155,13 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "output_format": [
-        "DummyDataLoading_training"
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
       ],
       "output_format_settings": [
         "BedrockPromptTemplateGeneration"
@@ -839,76 +1173,104 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "pipeline_name": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "pipeline_s3_loc": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "pipeline_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "preferred_input_format": [
+        "LabelRulesetExecution_training"
       ],
       "processing_entry_point": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "processing_framework_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "processing_instance_count": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "processing_instance_type_large": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "processing_instance_type_small": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "processing_metadata": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetExecution_training"
       ],
       "processing_source_dir": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "processing_volume_size": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "project_root_folder": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "prompt_configs_path": [
         "BedrockPromptTemplateGeneration"
@@ -917,13 +1279,17 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "region": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "required_output_fields": [
         "BedrockPromptTemplateGeneration"
@@ -931,23 +1297,38 @@
       "resolved_prompt_configs_path": [
         "BedrockPromptTemplateGeneration"
       ],
+      "resolved_ruleset_configs_path": [
+        "LabelRulesetGeneration"
+      ],
       "role": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "rule_definitions": [
+        "LabelRulesetGeneration"
+      ],
+      "ruleset_configs_path": [
+        "LabelRulesetGeneration"
       ],
       "script_path": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "service_name": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "shard_size": [
         "DummyDataLoading_training"
@@ -956,7 +1337,9 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "supported_formats": [
         "DummyDataLoading_training"
@@ -986,7 +1369,17 @@
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "TabularPreprocessing_training",
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "use_secure_pypi": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "validation_level": [
         "BedrockPromptTemplateGeneration"

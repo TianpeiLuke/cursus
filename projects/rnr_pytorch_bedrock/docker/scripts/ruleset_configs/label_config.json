@@ -1,0 +1,14 @@
+{
+  "output_label_name": "llm_reversal_flag",
+  "output_label_type": "binary",
+  "label_values": [
+    0,
+    1
+  ],
+  "label_mapping": {
+    "0": "No_Reversal_Required",
+    "1": "Reversal_Required"
+  },
+  "default_label": 1,
+  "evaluation_mode": "priority"
+}
