@@ -604,7 +604,6 @@ def main(
         job_type = job_args.job_type
         input_dir = input_paths["data_input"]
         output_dir = output_paths["processed_data"]
-        config_dir = input_paths.get("config_input", DEFAULT_CONFIG_DIR)
 
         # For non-training jobs, check if risk table input path is provided
         risk_table_input_dir = None
@@ -681,7 +680,7 @@ if __name__ == "__main__":
         # Define standard SageMaker paths based on contract
         input_paths = {
             "data_input": DEFAULT_INPUT_DIR,
-            "config_input": DEFAULT_CONFIG_DIR,
+            "hyperparameters_s3_uri": DEFAULT_CONFIG_DIR,
         }
 
         output_paths = {

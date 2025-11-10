@@ -11,7 +11,7 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     entry_point="risk_table_mapping.py",
     expected_input_paths={
         "data_input": "/opt/ml/processing/input/data",
-        "hyperparameters_s3_uri": "/opt/ml/processing/input/config",
+        "hyperparameters_s3_uri": "/opt/ml/code/hyperparams",
         "risk_tables_input": "/opt/ml/processing/input/risk_tables",  # Optional for training modes
     },
     expected_output_paths={
