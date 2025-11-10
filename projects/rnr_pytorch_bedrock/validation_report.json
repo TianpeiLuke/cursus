@@ -1,0 +1,49 @@
+{
+  "validation_status": "passed",
+  "field_validation": {
+    "passed_at_config_level": true
+  },
+  "label_validation": {
+    "valid": true,
+    "missing_fields": [],
+    "undeclared_fields": [],
+    "type_errors": [],
+    "invalid_labels": [],
+    "uncovered_classes": [],
+    "conflicting_rules": [],
+    "tautologies": [],
+    "contradictions": [],
+    "unreachable_rules": [],
+    "type_mismatches": [],
+    "warnings": []
+  },
+  "logic_validation": {
+    "valid": true,
+    "missing_fields": [],
+    "undeclared_fields": [],
+    "type_errors": [],
+    "invalid_labels": [],
+    "uncovered_classes": [],
+    "conflicting_rules": [],
+    "tautologies": [],
+    "contradictions": [],
+    "unreachable_rules": [],
+    "type_mismatches": [],
+    "warnings": []
+  },
+  "optimization_applied": true,
+  "metadata": {
+    "total_rules": 2,
+    "enabled_rules": 2,
+    "disabled_rules": 0,
+    "field_usage": {
+      "llm_category": 2
+    },
+    "validation_summary": {
+      "field_validation": "passed_at_config_level",
+      "label_validation": "passed",
+      "logic_validation": "passed",
+      "warnings": []
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "generated_timestamp": "2025-11-10T04:19:52.729777",
+  "label_config": {
+    "output_label_name": "llm_reversal_flag",
+    "output_label_type": "binary",
+    "label_values": [
+      0,
+      1
+    ],
+    "label_mapping": {
+      "0": "No_Reversal_Required",
+      "1": "Reversal_Required"
+    },
+    "default_label": 1,
+    "evaluation_mode": "priority"
+  },
+  "field_config": {
+    "required_fields": [
+      "llm_category"
+    ],
+    "field_types": {
+      "llm_category": "string"
+    }
+  },
+  "ruleset": [
+    {
+      "rule_id": "rule_fae41b32",
+      "name": "No_Reversal_Categories",
+      "priority": 1,
+      "enabled": true,
+      "conditions": {
+        "field": "llm_category",
+        "operator": "in",
+        "value": [
+          "TrueDNR",
+          "PDA_Undeliverable",
+          "PDA_Early_Refund",
+          "Returnless_Refund"
+        ]
+      },
+      "output_label": 0,
+      "description": "Categories indicating NO reversal: delivered/fraud patterns, logistics delays, goodwill refunds",
+      "complexity_score": 1
+    },
+    {
+      "rule_id": "rule_f3f69555",
+      "name": "Reversal_Required_Categories",
+      "priority": 2,
+      "enabled": true,
+      "conditions": {
+        "field": "llm_category",
+        "operator": "in",
+        "value": [
+          "Confirmed_Delay",
+          "Delivery_Attempt_Failed",
+          "Seller_Unable_To_Ship",
+          "Buyer_Received_WrongORDefective_Item",
+          "BuyerCancellation",
+          "Return_NoLongerNeeded",
+          "Product_Information_Support",
+          "Insufficient_Information"
+        ]
+      },
+      "output_label": 1,
+      "description": "Categories indicating reversal required: legitimate refunds, quality issues, cancellations, manual review cases",
+      "complexity_score": 1
+    }
+  ],
+  "metadata": {
+    "total_rules": 2,
+    "enabled_rules": 2,
+    "disabled_rules": 0,
+    "field_usage": {
+      "llm_category": 2
+    },
+    "validation_summary": {
+      "field_validation": "passed_at_config_level",
+      "label_validation": "passed",
+      "logic_validation": "passed",
+      "warnings": []
+    }
+  }
+}

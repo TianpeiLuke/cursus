@@ -1,0 +1,351 @@
+{
+  "template_version": "2.0",
+  "generation_timestamp": "2025-11-10T04:19:45.920494",
+  "task_type": "buyer_seller_classification",
+  "template_style": "structured",
+  "category_count": 12,
+  "category_names": [
+    "TrueDNR",
+    "Confirmed_Delay",
+    "Delivery_Attempt_Failed",
+    "Seller_Unable_To_Ship",
+    "PDA_Undeliverable",
+    "PDA_Early_Refund",
+    "Buyer_Received_WrongORDefective_Item",
+    "Returnless_Refund",
+    "BuyerCancellation",
+    "Return_NoLongerNeeded",
+    "Product_Information_Support",
+    "Insufficient_Information"
+  ],
+  "output_format": "structured_json",
+  "validation_level": "comprehensive",
+  "includes_examples": true,
+  "generator_config": {
+    "system_prompt_config": {
+      "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+      "expertise_areas": [
+        "buyer-seller messaging analysis",
+        "shipping logistics",
+        "delivery timing analysis",
+        "e-commerce dispute resolution",
+        "classification and categorization"
+      ],
+      "responsibilities": [
+        "classify interactions based on message content",
+        "analyze shipping events and delivery timing",
+        "categorize into predefined dispute categories",
+        "provide evidence-based reasoning for classifications"
+      ],
+      "behavioral_guidelines": [
+        "be precise in classification decisions",
+        "be objective in evidence evaluation",
+        "be thorough in timeline analysis",
+        "follow exact formatting requirements",
+        "consider all available evidence sources"
+      ],
+      "tone": "professional"
+    },
+    "output_format_config": {
+      "format_type": "structured_json",
+      "required_fields": [
+        "category",
+        "confidence_score",
+        "key_evidence",
+        "reasoning"
+      ],
+      "field_descriptions": {
+        "category": "Exactly one category from the predefined list (case-sensitive match required)",
+        "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+        "key_evidence": "Object containing three arrays: message_evidence, shipping_evidence, timeline_evidence",
+        "reasoning": "Object containing three arrays: primary_factors, supporting_evidence, contradicting_evidence"
+      },
+      "validation_requirements": [
+        "Must be valid JSON format",
+        "Category must match exactly from predefined list",
+        "Confidence score must be number between 0.0 and 1.0",
+        "All required fields must be present",
+        "key_evidence and reasoning must be objects with nested arrays"
+      ],
+      "evidence_validation_rules": [
+        "Message Evidence must include direct quotes with speaker identification",
+        "Shipping Evidence must include tracking events with timestamps",
+        "Timeline Evidence must show chronological sequence of events",
+        "All evidence must reference specific content from input data"
+      ],
+      "json_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "description": "Exactly one category from the predefined list (case-sensitive match required)",
+            "enum": [
+              "TrueDNR",
+              "Confirmed_Delay",
+              "Delivery_Attempt_Failed",
+              "Seller_Unable_To_Ship",
+              "PDA_Undeliverable",
+              "PDA_Early_Refund",
+              "Buyer_Received_WrongORDefective_Item",
+              "Returnless_Refund",
+              "BuyerCancellation",
+              "Return_NoLongerNeeded",
+              "Product_Information_Support",
+              "Insufficient_Information"
+            ],
+            "type": "string"
+          },
+          "confidence_score": {
+            "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "type": "number"
+          },
+          "key_evidence": {
+            "description": "Object containing three arrays of evidence from different sources",
+            "properties": {
+              "message_evidence": {
+                "description": "Direct quotes from dialogue with speaker identification",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "shipping_evidence": {
+                "description": "Tracking events with timestamps",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "timeline_evidence": {
+                "description": "Chronological sequence of key events",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "message_evidence",
+              "shipping_evidence",
+              "timeline_evidence"
+            ],
+            "type": "object"
+          },
+          "reasoning": {
+            "description": "Object containing three arrays explaining the classification decision",
+            "properties": {
+              "contradicting_evidence": {
+                "description": "Evidence that contradicts the classification (use empty array if none)",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "primary_factors": {
+                "description": "Main reasons supporting the selected category",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "supporting_evidence": {
+                "description": "Additional evidence that strengthens the classification",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "primary_factors",
+              "supporting_evidence",
+              "contradicting_evidence"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "category",
+          "confidence_score",
+          "key_evidence",
+          "reasoning"
+        ],
+        "type": "object"
+      },
+      "header_text": null,
+      "structured_text_sections": null,
+      "formatting_rules": [
+        "Output MUST be valid, parseable JSON.",
+        "Do not include any text before the opening { or after the closing }.",
+        "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+        "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+        "Ensure all arrays and objects are properly closed.",
+        "Use empty arrays [] for missing values, not null or empty strings.",
+        "Do not include trailing commas.",
+        "Ensure proper escaping of special characters in strings.",
+        "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+        "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+        "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+        "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+        "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+        "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+        "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+        "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+        "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
+      ],
+      "example_output": {
+        "category": "TrueDNR",
+        "confidence_score": 0.92,
+        "key_evidence": {
+          "message_evidence": [
+            "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+            "[BUYER]: But I did not find any package, please refund me, thank you"
+          ],
+          "shipping_evidence": [
+            "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+            "No further shipping events after delivery confirmation"
+          ],
+          "timeline_evidence": [
+            "Delivery confirmation on 2025-02-21 17:40",
+            "Buyer reports non-receipt starting 2025-02-25 07:14"
+          ]
+        },
+        "reasoning": {
+          "contradicting_evidence": [],
+          "primary_factors": [
+            "Tracking shows package was delivered successfully",
+            "Buyer explicitly states they did not receive the package after delivery scan"
+          ],
+          "supporting_evidence": [
+            "Buyer requests refund due to missing package",
+            "No evidence of buyer receiving wrong/defective item"
+          ]
+        }
+      }
+    },
+    "instruction_config": {
+      "include_analysis_steps": true,
+      "include_decision_criteria": true,
+      "include_reasoning_requirements": true,
+      "step_by_step_format": true,
+      "include_evidence_validation": true,
+      "classification_guidelines": {
+        "sections": [
+          {
+            "subsections": [
+              {
+                "content": [
+                  "**Category Selection:**",
+                  "- Choose exactly ONE category from the provided list",
+                  "- Category name must match exactly (case-sensitive)",
+                  "",
+                  "**Confidence Score:**",
+                  "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                  "- Base confidence for complete data: 0.7-1.0",
+                  "- Missing one field: reduce by 0.1-0.2",
+                  "- Missing two fields: reduce by 0.2-0.3",
+                  "- Minimum confidence threshold: 0.5"
+                ],
+                "title": "### 1. Output Format Requirements"
+              },
+              {
+                "content": [
+                  "**Multiple Shipment Structure:**",
+                  "- Multiple shipment sequences separated by shipment IDs",
+                  "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                  "",
+                  "**Analysis Approach:**",
+                  "- Process each shipment sequence separately",
+                  "- Compare delivery events (EVENT_301) across all sequences",
+                  "",
+                  "**Key Event Codes:**",
+                  "- EVENT_301: Delivery confirmation",
+                  "- EVENT_302: Out for delivery",
+                  "- EVENT_201: Arrival at facility"
+                ],
+                "title": "### 2. Shiptrack Parsing Rules"
+              },
+              {
+                "content": [
+                  "**When Dialogue is Empty but Shiptrack Exists:**",
+                  "- Focus on shipping events and timeline",
+                  "- Reduce confidence score by 0.1-0.2",
+                  "",
+                  "**When Shiptrack is Empty but Dialogue Exists:**",
+                  "- Focus on message content and reported issues",
+                  "- Reduce confidence score by 0.1-0.2"
+                ],
+                "title": "### 3. Missing Data Handling"
+              },
+              {
+                "content": [
+                  "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                  "- PDA_Undeliverable: Verify no delivery + refund given",
+                  "- PDA_Early_Refund: Verify refund before delivery",
+                  "",
+                  "**Tier 2: Delivery Status Categories**",
+                  "- TrueDNR: Delivered but disputed",
+                  "- Confirmed_Delay: External factors confirmed"
+                ],
+                "title": "### 4. Category Priority Hierarchy"
+              },
+              {
+                "content": [
+                  "**Message Evidence Must Include:**",
+                  "- Direct quotes from dialogue with speaker identification",
+                  "",
+                  "**Shipping Evidence Must Include:**",
+                  "- All tracking events listed chronologically",
+                  "",
+                  "**Timeline Evidence Must Show:**",
+                  "- Clear chronological sequence of events"
+                ],
+                "title": "### 5. Evidence Requirements"
+              }
+            ],
+            "title": "## Classification Guidelines"
+          }
+        ]
+      }
+    }
+  },
+  "placeholder_validation": {
+    "total_placeholders": 0,
+    "successful": 0,
+    "failed": 0,
+    "failures": [],
+    "all_resolved": true
+  },
+  "validation_results": {
+    "is_valid": true,
+    "quality_score": 1.0,
+    "validation_details": [
+      {
+        "component": "system_prompt",
+        "is_valid": true,
+        "score": 1.0,
+        "issues": []
+      },
+      {
+        "component": "user_prompt_template",
+        "is_valid": true,
+        "score": 1.0,
+        "issues": []
+      },
+      {
+        "component": "metadata",
+        "is_valid": true,
+        "score": 1.0,
+        "issues": []
+      }
+    ],
+    "recommendations": []
+  },
+  "generation_config": {
+    "task_type": "buyer_seller_classification",
+    "template_style": "structured",
+    "validation_level": "comprehensive",
+    "category_count": 12
+  }
+}
