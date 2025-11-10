@@ -20,6 +20,7 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     required_env_vars=["TRAIN_RATIO", "TEST_VAL_RATIO"],
     optional_env_vars={
         "LABEL_FIELD": "",
+        "OUTPUT_FORMAT": "CSV",
         "CATEGORICAL_COLUMNS": "",
         "NUMERICAL_COLUMNS": "",
         "TEXT_COLUMNS": "",
@@ -36,7 +37,7 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     2. Loads column signature for CSV/TSV files if provided
     3. Cleans and processes label field
     4. Splits data into train/test/val for training jobs
-    5. Outputs processed CSV files by split
+    5. Outputs processed files in configurable format (CSV/TSV/Parquet)
     
     Contract aligned with actual script implementation:
     - Inputs: 
@@ -53,6 +54,13 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     - Processes labels (converts categorical to numeric if needed)
     - Splits data based on job_type (training creates train/test/val splits)
     - Outputs processed files to split subdirectories under /opt/ml/processing/output
+    
+    Output Format Configuration:
+    - OUTPUT_FORMAT environment variable controls output format
+    - Valid values: "CSV" (default), "TSV", "Parquet"
+    - Case-insensitive, defaults to CSV if invalid value provided
+    - Format applies to all output splits (train/val/test)
+    - Parquet recommended for large datasets (better compression and performance)
     
     Signature File Format:
     - CSV format with comma-separated column names

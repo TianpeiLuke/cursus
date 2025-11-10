@@ -39,49 +39,137 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# --- File I/O Helper Functions with Format Preservation ---
+
+
+def _detect_file_format(split_dir: Path, split_name: str) -> tuple:
+    """
+    Detect the format of processed data file.
+
+    Returns:
+        Tuple of (file_path, format) where format is 'csv', 'tsv', or 'parquet'
+    """
+    # Try different formats in order of preference
+    formats = [
+        (f"{split_name}_processed_data.csv", "csv"),
+        (f"{split_name}_processed_data.tsv", "tsv"),
+        (f"{split_name}_processed_data.parquet", "parquet"),
+    ]
+
+    for filename, fmt in formats:
+        file_path = split_dir / filename
+        if file_path.exists():
+            return file_path, fmt
+
+    raise RuntimeError(
+        f"No processed data file found in {split_dir}. "
+        f"Looked for: {[f[0] for f in formats]}"
+    )
+
+
 def load_split_data(job_type: str, input_dir: str) -> Dict[str, pd.DataFrame]:
     """
-    Load data according to job_type, following risk_table_mapping pattern.
+    Load data according to job_type with automatic format detection.
 
     For 'training': Loads data from train, test, and val subdirectories
     For others: Loads single job_type split
+
+    Returns:
+        Dictionary with DataFrames and detected format stored in 'format' key
     """
     input_path = Path(input_dir)
+    result = {}
 
     if job_type == "training":
         # For training, we expect data in train/test/val subdirectories
-        train_df = pd.read_csv(input_path / "train" / "train_processed_data.csv")
-        test_df = pd.read_csv(input_path / "test" / "test_processed_data.csv")
-        val_df = pd.read_csv(input_path / "val" / "val_processed_data.csv")
+        splits = ["train", "test", "val"]
+        detected_format = None
+
+        for split_name in splits:
+            split_dir = input_path / split_name
+            file_path, fmt = _detect_file_format(split_dir, split_name)
+
+            # Store format from first split (they should all match)
+            if detected_format is None:
+                detected_format = fmt
+
+            # Read based on format
+            if fmt == "csv":
+                df = pd.read_csv(file_path)
+            elif fmt == "tsv":
+                df = pd.read_csv(file_path, sep="\t")
+            elif fmt == "parquet":
+                df = pd.read_parquet(file_path)
+            else:
+                raise RuntimeError(f"Unsupported format: {fmt}")
+
+            result[split_name] = df
+
+        result["_format"] = detected_format  # Store detected format
         logger.info(
-            f"Loaded training data splits: train={train_df.shape}, test={test_df.shape}, val={val_df.shape}"
+            f"Loaded training data splits (format={detected_format}): "
+            f"train={result['train'].shape}, test={result['test'].shape}, val={result['val'].shape}"
         )
-        return {"train": train_df, "test": test_df, "val": val_df}
     else:
         # For other job types, we expect data in a single directory named after job_type
-        df = pd.read_csv(input_path / job_type / f"{job_type}_processed_data.csv")
-        logger.info(f"Loaded {job_type} data: {df.shape}")
-        return {job_type: df}
+        split_dir = input_path / job_type
+        file_path, detected_format = _detect_file_format(split_dir, job_type)
+
+        # Read based on format
+        if detected_format == "csv":
+            df = pd.read_csv(file_path)
+        elif detected_format == "tsv":
+            df = pd.read_csv(file_path, sep="\t")
+        elif detected_format == "parquet":
+            df = pd.read_parquet(file_path)
+        else:
+            raise RuntimeError(f"Unsupported format: {detected_format}")
+
+        result[job_type] = df
+        result["_format"] = detected_format  # Store detected format
+        logger.info(f"Loaded {job_type} data (format={detected_format}): {df.shape}")
+
+    return result
 
 
 def save_output_data(
     job_type: str, output_dir: str, data_dict: Dict[str, pd.DataFrame]
 ) -> None:
     """
-    Save processed data according to job_type, following risk_table_mapping pattern.
+    Save processed data according to job_type, preserving input format.
 
     For 'training': Saves data to train, test, and val subdirectories
     For others: Saves to single job_type directory
     """
     output_path = Path(output_dir)
 
+    # Extract format from data_dict (stored during load)
+    output_format = data_dict.get("_format", "csv")  # Default to CSV if not found
+
     for split_name, df in data_dict.items():
+        # Skip the format metadata key
+        if split_name == "_format":
+            continue
+
         split_output_dir = output_path / split_name
         split_output_dir.mkdir(exist_ok=True, parents=True)
 
-        output_file = split_output_dir / f"{split_name}_processed_data.csv"
-        df.to_csv(output_file, index=False)
-        logger.info(f"Saved {split_name} data to {output_file}, shape: {df.shape}")
+        # Save in detected format
+        if output_format == "csv":
+            output_file = split_output_dir / f"{split_name}_processed_data.csv"
+            df.to_csv(output_file, index=False)
+        elif output_format == "tsv":
+            output_file = split_output_dir / f"{split_name}_processed_data.tsv"
+            df.to_csv(output_file, sep="\t", index=False)
+        elif output_format == "parquet":
+            output_file = split_output_dir / f"{split_name}_processed_data.parquet"
+            df.to_parquet(output_file, index=False)
+        else:
+            raise RuntimeError(f"Unsupported output format: {output_format}")
+
+        logger.info(
+            f"Saved {split_name} data to {output_file} (format={output_format}), shape: {df.shape}"
+        )
 
 
 def analyze_missing_values(df: pd.DataFrame) -> Dict[str, Any]:

@@ -27,6 +27,92 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# ============================================================================
+
+
+def _detect_file_format(file_path: str) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    from pathlib import Path
+
+    suffix = Path(file_path).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: str) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: str, format_str: str
+) -> str:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    from pathlib import Path
+
+    output_path = Path(output_path)
+
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return str(file_path)
+
+
 def get_calibrated_score_map(
     df: pd.DataFrame,
     score_field: str,
@@ -1272,16 +1358,12 @@ def main(
 
         logger.info(f"Loading calibration data from {calibration_scores_path}")
 
-        # Load the data with better format support
+        # Load the data with format preservation
         try:
-            if calibration_scores_path.endswith(".csv"):
-                df_calibration_scores = pd.read_csv(calibration_scores_path)
-            elif calibration_scores_path.endswith(".parquet"):
-                df_calibration_scores = pd.read_parquet(calibration_scores_path)
-            elif calibration_scores_path.endswith(".json"):
-                df_calibration_scores = pd.read_json(calibration_scores_path)
-            else:
-                raise ValueError(f"Unsupported file format: {calibration_scores_path}")
+            df_calibration_scores, input_format = load_dataframe_with_format(
+                calibration_scores_path
+            )
+            logger.info(f"Detected input format: {input_format}")
         except Exception as e:
             raise ValueError(
                 f"Failed to load data from {calibration_scores_path}: {str(e)}"
@@ -1444,11 +1526,17 @@ def main(
         df_calibrated = df_calibration_scores.copy()
         df_calibrated[f"{score_field}_percentile"] = calibrated_scores
 
-        # Save calibrated data
-        calibrated_data_path = os.path.join(calibrated_data_dir, "calibrated_data.csv")
-        df_calibrated.to_csv(calibrated_data_path, index=False)
+        # Save calibrated data with format preservation
+        from pathlib import Path
 
-        logger.info(f"Saved calibrated data to {calibrated_data_path}")
+        calibrated_data_base = os.path.join(calibrated_data_dir, "calibrated_data")
+        calibrated_data_path = save_dataframe_with_format(
+            df_calibrated, calibrated_data_base, input_format
+        )
+
+        logger.info(
+            f"Saved calibrated data (format={input_format}): {calibrated_data_path}"
+        )
 
         # Return results
         results = {

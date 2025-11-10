@@ -1,58 +1,50 @@
-from typing import Dict, Optional, Any, List
-from pathlib import Path
-import logging
-import importlib
+"""
+Label Ruleset Execution Step Builder
 
-from sagemaker.workflow.steps import ProcessingStep, Step
+Builder for creating Label Ruleset Execution processing steps that apply validated
+rulesets to processed data to generate classification labels.
+"""
+
+from typing import Dict, Optional, Any, List
+import logging
+
+from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
 
-from ..configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
+from ..configs.config_label_ruleset_execution_step import LabelRulesetExecutionConfig
 from ...core.base.builder_base import StepBuilderBase
 
-# Import specifications based on job type
+# Import specification
 try:
-    from ..specs.tabular_preprocessing_training_spec import (
-        TABULAR_PREPROCESSING_TRAINING_SPEC,
-    )
-    from ..specs.tabular_preprocessing_calibration_spec import (
-        TABULAR_PREPROCESSING_CALIBRATION_SPEC,
-    )
-    from ..specs.tabular_preprocessing_validation_spec import (
-        TABULAR_PREPROCESSING_VALIDATION_SPEC,
-    )
-    from ..specs.tabular_preprocessing_testing_spec import (
-        TABULAR_PREPROCESSING_TESTING_SPEC,
-    )
+    from ..specs.label_ruleset_execution_spec import LABEL_RULESET_EXECUTION_SPEC
 
-    SPECS_AVAILABLE = True
+    SPEC_AVAILABLE = True
 except ImportError:
-    TABULAR_PREPROCESSING_TRAINING_SPEC = TABULAR_PREPROCESSING_CALIBRATION_SPEC = (
-        TABULAR_PREPROCESSING_VALIDATION_SPEC
-    ) = TABULAR_PREPROCESSING_TESTING_SPEC = None
-    SPECS_AVAILABLE = False
+    LABEL_RULESET_EXECUTION_SPEC = None
+    SPEC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
-class TabularPreprocessingStepBuilder(StepBuilderBase):
+class LabelRulesetExecutionStepBuilder(StepBuilderBase):
     """
-    Builder for a Tabular Preprocessing ProcessingStep.
+    Builder for Label Ruleset Execution ProcessingStep.
 
-    This implementation uses the fully specification-driven approach where inputs, outputs,
+    This implementation uses the specification-driven approach where inputs, outputs,
     and behavior are defined by step specifications and script contracts.
     """
 
     def __init__(
         self,
-        config: TabularPreprocessingConfig,
+        config: LabelRulesetExecutionConfig,
         sagemaker_session=None,
         role: Optional[str] = None,
         registry_manager: Optional["RegistryManager"] = None,
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
         """
-        Initialize with specification based on job type.
+        Initialize with specification.
 
         Args:
             config: Configuration for the step
@@ -62,57 +54,24 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
             dependency_resolver: Optional dependency resolver for dependency injection
 
         Raises:
-            ValueError: If no specification is available for the job type
+            ValueError: If specification is not available
         """
-        # Get the appropriate spec based on job type
-        spec = None
-        if not hasattr(config, "job_type"):
-            raise ValueError("config.job_type must be specified")
-
-        job_type = config.job_type.lower()
-
-        # Get specification based on job type
-        if job_type == "training" and TABULAR_PREPROCESSING_TRAINING_SPEC is not None:
-            spec = TABULAR_PREPROCESSING_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and TABULAR_PREPROCESSING_CALIBRATION_SPEC is not None
-        ):
-            spec = TABULAR_PREPROCESSING_CALIBRATION_SPEC
-        elif (
-            job_type == "validation"
-            and TABULAR_PREPROCESSING_VALIDATION_SPEC is not None
-        ):
-            spec = TABULAR_PREPROCESSING_VALIDATION_SPEC
-        elif job_type == "testing" and TABULAR_PREPROCESSING_TESTING_SPEC is not None:
-            spec = TABULAR_PREPROCESSING_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.tabular_preprocessing_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"TABULAR_PREPROCESSING_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
-
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        if not SPEC_AVAILABLE or LABEL_RULESET_EXECUTION_SPEC is None:
+            raise ValueError(
+                "Label Ruleset Execution specification not available. "
+                "Ensure label_ruleset_execution_spec.py is properly installed."
+            )
 
         super().__init__(
             config=config,
-            spec=spec,
+            spec=LABEL_RULESET_EXECUTION_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
-        self.config: TabularPreprocessingConfig = config
+        self.config: LabelRulesetExecutionConfig = config
+        self.log_info("Initialized Label Ruleset Execution step builder")
 
     def validate_configuration(self) -> None:
         """
@@ -145,10 +104,9 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
-        # Validate label_name - now optional, but if provided must be non-empty
-        if hasattr(self.config, "label_name") and self.config.label_name is not None:
-            if not self.config.label_name.strip():
-                raise ValueError("label_name must be either None or a non-empty string")
+        self.log_info(
+            "Configuration validation passed for job_type: %s", self.config.job_type
+        )
 
     def _create_processor(self) -> SKLearnProcessor:
         """
@@ -163,20 +121,30 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
             else self.config.processing_instance_type_small
         )
 
+        self.log_info(
+            "Creating processor with instance type: %s (large=%s)",
+            instance_type,
+            self.config.use_large_processing_instance,
+        )
+
         return SKLearnProcessor(
             framework_version=self.config.processing_framework_version,
             role=self.role,
             instance_type=instance_type,
             instance_count=self.config.processing_instance_count,
             volume_size_in_gb=self.config.processing_volume_size,
-            base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
+            base_job_name=self._generate_job_name(),
             sagemaker_session=self.session,
             env=self._get_environment_variables(),
         )
 
     def _get_environment_variables(self) -> Dict[str, str]:
         """
-        Create environment variables for the processing job.
+        Constructs a dictionary of environment variables to be passed to the processing job.
+
+        This method combines:
+        1. Base environment variables from the contract
+        2. Configuration-specific environment variables from config.execution_environment_variables
 
         Returns:
             Dict[str, str]: Environment variables for the processing job
@@ -184,20 +152,15 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
 
-        # Update with preprocessing-specific environment variables from config
-        if hasattr(self.config, "preprocessing_environment_variables"):
-            env_vars.update(self.config.preprocessing_environment_variables)
+        # Add configuration-specific environment variables
+        config_env_vars = self.config.execution_environment_variables
+        env_vars.update(config_env_vars)
 
-        # Add optional column configurations (not in preprocessing_environment_variables)
-        for column_type in [
-            "categorical_columns",
-            "numerical_columns",
-            "text_columns",
-            "date_columns",
-        ]:
-            if hasattr(self.config, column_type) and getattr(self.config, column_type):
-                env_var_name = column_type.upper()
-                env_vars[env_var_name] = ",".join(getattr(self.config, column_type))
+        self.log_info(
+            "Label ruleset execution environment variables: FAIL_ON_MISSING_FIELDS=%s, RULE_MATCH_TRACKING=%s",
+            config_env_vars.get("FAIL_ON_MISSING_FIELDS"),
+            config_env_vars.get("ENABLE_RULE_MATCH_TRACKING"),
+        )
 
         return env_vars
 
@@ -242,6 +205,13 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
                 container_path = self.contract.expected_input_paths[logical_name]
             else:
                 raise ValueError(f"No container path found for input: {logical_name}")
+
+            self.log_info(
+                "Adding input '%s': %s -> %s",
+                logical_name,
+                inputs[logical_name],
+                container_path,
+            )
 
             # Use the input value directly - property references are handled by PipelineAssembler
             processing_inputs.append(
@@ -303,7 +273,7 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
                     on="/",
                     values=[
                         base_output_path,
-                        "tabular_preprocessing",
+                        "label_ruleset_execution",
                         self.config.job_type,
                         logical_name,
                     ],
@@ -328,21 +298,14 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         """
         Constructs the list of command-line arguments to be passed to the processing script.
 
-        This implementation uses job_type from the configuration, which is required by the script
-        and also included in the contract's expected_arguments (though we prioritize config).
-        This approach allows different preprocessing jobs to use different job_type values
-        based on their configuration.
-
         Returns:
             A list of strings representing the command-line arguments.
         """
-        # Get job_type from configuration (takes precedence over contract)
+        # Get job_type from configuration (required by script)
         job_type = self.config.job_type
-        self.log_info("Setting job_type argument to: %s", job_type)
+        self.log_info("Setting job-type argument to: %s", job_type)
 
-        # For tabular preprocessing, we always return the job_type from config
-        # The contract has a default job_type, but config value takes precedence
-        return ["--job_type", job_type]
+        return ["--job-type", job_type]
 
     def create_step(self, **kwargs) -> ProcessingStep:
         """
@@ -372,16 +335,20 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
             try:
                 extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
                 inputs.update(extracted_inputs)
+                self.log_info(
+                    "Extracted %d inputs from dependencies", len(extracted_inputs)
+                )
             except Exception as e:
                 self.log_warning("Failed to extract inputs from dependencies: %s", e)
 
         # Add explicitly provided inputs (overriding any extracted ones)
         inputs.update(inputs_raw)
 
-        # Add direct keyword arguments (e.g., DATA, METADATA from template)
-        for key in ["DATA", "METADATA", "SIGNATURE"]:
-            if key in kwargs and key not in inputs:
-                inputs[key] = kwargs[key]
+        # Log input summary
+        self.log_info(
+            "Creating step with inputs: %s",
+            ", ".join(inputs.keys()) if inputs else "none",
+        )
 
         # Create processor and get inputs/outputs
         processor = self._create_processor()
@@ -389,10 +356,10 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
         proc_outputs = self._get_outputs(outputs)
         job_args = self._get_job_arguments()
 
-        # Get step name using standardized method with auto-detection
+        # Get step name using standardized method
         step_name = self._get_step_name()
 
-        # Get script path using modernized method with comprehensive fallbacks
+        # Get script path using config method with comprehensive fallbacks
         script_path = self.config.get_script_path()
         self.log_info("Using script path: %s", script_path)
 
@@ -410,5 +377,9 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
 
         # Attach specification to the step for future reference
         setattr(step, "_spec", self.spec)
+
+        self.log_info(
+            "Successfully created Label Ruleset Execution step: %s", step_name
+        )
 
         return step

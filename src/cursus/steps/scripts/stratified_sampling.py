@@ -226,35 +226,95 @@ class StratifiedSampler:
             return pd.DataFrame()
 
 
-# --- File I/O Helper Functions ---
+# --- File I/O Helper Functions with Format Preservation ---
 
 
-def _read_processed_data(input_dir: str, split_name: str) -> pd.DataFrame:
-    """Read processed data from tabular_preprocessing output structure."""
+def _detect_file_format(split_dir: Path, split_name: str) -> tuple[Path, str]:
+    """
+    Detect the format of processed data file.
+
+    Returns:
+        Tuple of (file_path, format) where format is 'csv', 'tsv', or 'parquet'
+    """
+    # Try different formats in order of preference
+    formats = [
+        (f"{split_name}_processed_data.csv", "csv"),
+        (f"{split_name}_processed_data.tsv", "tsv"),
+        (f"{split_name}_processed_data.parquet", "parquet"),
+    ]
+
+    for filename, fmt in formats:
+        file_path = split_dir / filename
+        if file_path.exists():
+            return file_path, fmt
+
+    raise RuntimeError(
+        f"No processed data file found in {split_dir}. "
+        f"Looked for: {[f[0] for f in formats]}"
+    )
+
+
+def _read_processed_data(input_dir: str, split_name: str) -> tuple[pd.DataFrame, str]:
+    """
+    Read processed data from tabular_preprocessing output structure.
+    Automatically detects and preserves the input format.
+
+    Returns:
+        Tuple of (DataFrame, format) where format is 'csv', 'tsv', or 'parquet'
+    """
     input_path = Path(input_dir)
     split_dir = input_path / split_name
 
-    # Look for the processed data file
-    processed_file = split_dir / f"{split_name}_processed_data.csv"
+    # Detect format and read file
+    file_path, detected_format = _detect_file_format(split_dir, split_name)
 
-    if not processed_file.exists():
-        raise RuntimeError(f"Processed data file not found: {processed_file}")
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
 
-    return pd.read_csv(processed_file)
+    return df, detected_format
 
 
 def _save_sampled_data(
-    df: pd.DataFrame, output_dir: str, split_name: str, logger: Callable[[str], None]
+    df: pd.DataFrame,
+    output_dir: str,
+    split_name: str,
+    output_format: str,
+    logger: Callable[[str], None],
 ):
-    """Save sampled data maintaining the same folder structure as tabular_preprocessing."""
+    """
+    Save sampled data maintaining the same folder structure and format as input.
+
+    Args:
+        df: DataFrame to save
+        output_dir: Output directory path
+        split_name: Name of the split (train/val/test)
+        output_format: Format to save in ('csv', 'tsv', or 'parquet')
+        logger: Logger function
+    """
     output_path = Path(output_dir)
     split_dir = output_path / split_name
     split_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save with same naming convention
-    output_file = split_dir / f"{split_name}_processed_data.csv"
-    df.to_csv(output_file, index=False)
-    logger(f"[INFO] Saved {output_file} (shape={df.shape})")
+    # Determine file extension and save based on format
+    if output_format == "csv":
+        output_file = split_dir / f"{split_name}_processed_data.csv"
+        df.to_csv(output_file, index=False)
+    elif output_format == "tsv":
+        output_file = split_dir / f"{split_name}_processed_data.tsv"
+        df.to_csv(output_file, sep="\t", index=False)
+    elif output_format == "parquet":
+        output_file = split_dir / f"{split_name}_processed_data.parquet"
+        df.to_parquet(output_file, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {output_format}")
+
+    logger(f"[INFO] Saved {output_file} (format={output_format}, shape={df.shape})")
 
 
 # --- Main Processing Logic ---
@@ -337,8 +397,10 @@ def main(
             log(f"[INFO] Processing {split_name} split...")
 
             # Read the processed data from tabular_preprocessing output
-            df = _read_processed_data(input_data_dir, split_name)
-            log(f"[INFO] Loaded {split_name} data with shape: {df.shape}")
+            df, detected_format = _read_processed_data(input_data_dir, split_name)
+            log(
+                f"[INFO] Loaded {split_name} data with shape: {df.shape}, format: {detected_format}"
+            )
 
             # Validate strata column exists
             if strata_column not in df.columns:
@@ -380,8 +442,8 @@ def main(
             strata_counts = sampled_df[strata_column].value_counts().sort_index()
             log(f"[INFO] {split_name} stratum distribution: {dict(strata_counts)}")
 
-            # Save sampled data
-            _save_sampled_data(sampled_df, output_dir, split_name, log)
+            # Save sampled data (preserve format)
+            _save_sampled_data(sampled_df, output_dir, split_name, detected_format, log)
             sampled_splits[split_name] = sampled_df
 
         except Exception as e:
@@ -391,9 +453,11 @@ def main(
     # For training job_type, also copy test split unchanged (if it exists)
     if job_type == "training":
         try:
-            test_df = _read_processed_data(input_data_dir, "test")
-            log(f"[INFO] Copying test split unchanged (shape: {test_df.shape})")
-            _save_sampled_data(test_df, output_dir, "test", log)
+            test_df, test_format = _read_processed_data(input_data_dir, "test")
+            log(
+                f"[INFO] Copying test split unchanged (shape: {test_df.shape}, format: {test_format})"
+            )
+            _save_sampled_data(test_df, output_dir, "test", test_format, log)
             sampled_splits["test"] = test_df
         except Exception as e:
             log(f"[WARNING] Could not copy test split: {str(e)}")

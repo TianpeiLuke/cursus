@@ -80,6 +80,7 @@ This entry point document provides a comprehensive index of all step-related des
 
 ### Step-Specific Script Design
 
+- [Data Format Preservation Patterns](../1_design/data_format_preservation_patterns.md) - Design for automatic format preservation across pipeline scripts (CSV/TSV/Parquet)
 - [Multi Sequence Preprocessing Design](../1_design/multi_sequence_preprocessing_design.md) - Design for multi-sequence preprocessing scripts
 - [Multi Sequence Feature Engineering Design](../1_design/multi_sequence_feature_engineering_design.md) - Design for multi-sequence feature engineering scripts
 - [Model Metrics Computation Design](../1_design/model_metrics_computation_design.md) - Design for model metrics computation scripts

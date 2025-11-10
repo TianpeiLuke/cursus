@@ -88,14 +88,72 @@ User Rules → RulesetGenerator → Validated Ruleset
     "output_label_name": "final_reversal_flag",
     "output_label_type": "binary",
     "label_values": [0, 1],
+    "label_mapping": {
+      "0": "No_Reversal",
+      "1": "Reversal"
+    },
     "default_label": 1,
     "evaluation_mode": "priority"
   },
-  "field_config": { /* field definitions */ },
-  "ruleset": [ /* validated, optimized rules */ ],
-  "metadata": { /* validation metadata */ }
+  "field_config": {
+    "required_fields": ["category", "confidence_score", "reversal_flag", "conc_si"],
+    "field_types": {
+      "category": "string",
+      "confidence_score": "float",
+      "reversal_flag": "int",
+      "conc_si": "float"
+    }
+  },
+  "ruleset": [
+    {
+      "rule_id": "rule_001",
+      "name": "High confidence TrueDNR",
+      "priority": 1,
+      "enabled": true,
+      "conditions": {
+        "all_of": [
+          {
+            "field": "category",
+            "operator": "equals",
+            "value": "TrueDNR"
+          },
+          {
+            "field": "confidence_score",
+            "operator": ">=",
+            "value": 0.8
+          }
+        ]
+      },
+      "output_label": 0,
+      "description": "High confidence TrueDNR cases indicate no reversal",
+      "complexity_score": 2
+    }
+  ],
+  "metadata": {
+    "total_rules": 5,
+    "enabled_rules": 4,
+    "disabled_rules": 1,
+    "field_usage": {
+      "category": 3,
+      "confidence_score": 5,
+      "reversal_flag": 2,
+      "conc_si": 1
+    },
+    "validation_summary": {
+      "field_validation": "passed_at_config_level",
+      "label_validation": "passed",
+      "logic_validation": "passed",
+      "warnings": []
+    }
+  }
 }
 ```
+
+**Key Points:**
+- `field_config` contains only `required_fields` and `field_types` (no `optional_fields`)
+- All fields used in rules are marked as required
+- Rules include `complexity_score` from optimization
+- Metadata includes field usage statistics
 
 ### 2. Processed Data
 
@@ -113,10 +171,12 @@ Each CSV contains columns referenced by the ruleset (e.g., category, confidence_
 
 ## Output Structure
 
-### Labeled Data with Statistics
+### Processed Data with Labels
+
+To support stacked preprocessing steps, the output uses the same logical name as input (`processed_data`), allowing seamless chaining:
 
 ```
-OUTPUT_LABELED_DATA/
+OUTPUT_PROCESSED_DATA/
 ├── train/
 │   └── train_processed_data.csv (original + label column)
 ├── val/
@@ -126,6 +186,14 @@ OUTPUT_LABELED_DATA/
 ├── execution_report.json
 └── rule_match_statistics.json (optional)
 ```
+
+**Key Design Decision:** Using `processed_data` for both input and output enables preprocessing pipeline composition:
+- **Risk Table Mapping**: `processed_data` → `processed_data` (adds risk columns)
+- **Missing Value Imputation**: `processed_data` → `processed_data` (imputes nulls)
+- **Stratified Sampling**: `processed_data` → `processed_data` (balances classes)
+- **Ruleset Executor**: `processed_data` → `processed_data` (adds labels)
+
+Each step reads `processed_data`, transforms it, and outputs `processed_data` for the next step.
 
 ## Field Availability Validation (Execution-Time)
 
@@ -466,6 +534,91 @@ def _apply_operator(
         raise ValueError(f"Unsupported operator: {operator}")
 ```
 
+## Job Type Variants
+
+The RulesetExecutor step supports multiple job type variants to handle different execution scenarios:
+
+### Supported Job Types
+
+Aligned with tabular preprocessing step's job types:
+
+| Job Type | Description | Splits Processed | Use Case |
+|----------|-------------|-----------------|----------|
+| `training` | Full pipeline execution | train, val, test | Complete model training pipeline |
+| `validation` | Validation split only | val | Validation set labeling |
+| `testing` | Test split only | test | Test set labeling |
+| `calibration` | Calibration split only | calibration | Calibration set labeling |
+
+### Job Type Behavior
+
+```python
+# In main() function
+if job_args.job_type == "training":
+    # Process all splits for complete training pipeline
+    # Training mode creates three splits: train, val, test
+    splits = ["train", "val", "test"]
+else:
+    # Process single specified split using job_type as directory name
+    # validation → validation/
+    # testing → testing/
+    # calibration → calibration/
+    splits = [job_args.job_type]
+```
+
+**Important:** For non-training job types, the directory name matches the job_type exactly:
+- `validation` job type → `validation/` directory (not `val/`)
+- `testing` job type → `testing/` directory (not `test/`)
+- `calibration` job type → `calibration/` directory
+
+This aligns with tabular preprocessing output structure where:
+- Training mode: creates `train/`, `val/`, `test/` directories
+- Other modes: create directory matching job_type name (e.g., `validation/`, `testing/`, `calibration/`)
+
+### Configuration Examples
+
+**Training Pipeline (all splits):**
+```python
+ruleset_executor_config = RulesetExecutorConfig(
+    job_type="training",
+    # ... other config
+)
+```
+
+**Single Split Processing:**
+```python
+# Process validation split only
+ruleset_executor_config = RulesetExecutorConfig(
+    job_type="validation",
+    # ... other config
+)
+
+# Process test split only
+ruleset_executor_config = RulesetExecutorConfig(
+    job_type="testing",
+    # ... other config
+)
+
+# Process calibration split only
+ruleset_executor_config = RulesetExecutorConfig(
+    job_type="calibration",
+    # ... other config
+)
+```
+
+### Command Line Arguments
+
+The script accepts job_type as a command line argument, matching tabular preprocessing conventions:
+
+```bash
+# Training mode (all splits: train, val, test)
+python ruleset_execution.py --job-type training
+
+# Single splits
+python ruleset_execution.py --job-type validation  # Processes val/ directory
+python ruleset_execution.py --job-type testing     # Processes test/ directory
+python ruleset_execution.py --job-type calibration # Processes calibration/ directory
+```
+
 ## Script Implementation
 
 ### Main Processing Logic
@@ -506,11 +659,15 @@ def main(
     log(f"[INFO] Loaded validated ruleset v{validated_ruleset.get('version')}")
     log(f"[INFO] Rules: {validated_ruleset['metadata']['enabled_rules']} enabled")
     
-    # 2. Initialize rule engine
+    # 2. Initialize field validator
+    field_validator = RulesetFieldValidator()
+    log(f"[INFO] Initialized field validator")
+    
+    # 3. Initialize rule engine
     rule_engine = RuleEngine(validated_ruleset)
     log(f"[INFO] Initialized rule engine")
     
-    # 3. Determine splits to process
+    # 4. Determine splits to process
     input_dir = Path(input_paths["processed_data"])
     output_dir = Path(output_paths["labeled_data"])
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -540,6 +697,23 @@ def main(
         
         df = pd.read_csv(data_file)
         log(f"[INFO] Loaded {split_name}: {df.shape}")
+        
+        # Validate field availability in data
+        validation_result = field_validator.validate_fields(validated_ruleset, df)
+        if not validation_result["valid"]:
+            error_msg = f"Field validation failed for {split_name}: {validation_result['missing_fields']}"
+            log(f"[ERROR] {error_msg}")
+            if environ_vars.get("FAIL_ON_MISSING_FIELDS", "true").lower() == "true":
+                raise ValueError(error_msg)
+            else:
+                log(f"[WARNING] Skipping {split_name} due to validation failure")
+                continue
+        
+        # Log warnings if any
+        for warning in validation_result.get("warnings", []):
+            log(f"[WARNING] {warning}")
+        
+        log(f"[INFO] Field validation passed for {split_name}")
         
         # Apply rules to generate labels
         output_label_name = rule_engine.output_label_name
@@ -771,7 +945,7 @@ The RulesetExecutor step depends on TWO upstream steps:
 2. **RulesetGeneratorStep**: Provides validated ruleset
    - Output: `validated_ruleset`
 
-### Step Creation Example
+### Step Creation Example (Simple Pipeline)
 
 ```python
 # Step 1: Tabular preprocessing - produces processed data splits
@@ -781,25 +955,21 @@ tabular_preprocessing_step = TabularPreprocessingStepBuilder(
     dependencies=[data_load_step]
 )
 
-# Step 2: Generate validated ruleset (uses sample from preprocessing for validation)
+# Step 2: Generate validated ruleset
 ruleset_generator_step = RulesetGeneratorStepBuilder(
     config=generator_config
 ).create_step(
     inputs={
         'ruleset_configs': 's3://bucket/rules/configs/',  # Auto-generated from config
-        'sample_data': tabular_preprocessing_step.properties
-                       .ProcessingOutputConfig
-                       .Outputs['processed_data']
-                       .S3Output.S3Uri + '/train/train_processed_data.csv'
     },
     outputs={
         'validated_ruleset': 's3://bucket/rulesets/validated_ruleset.json',
         'validation_report': 's3://bucket/reports/validation_report.json'
-    },
-    dependencies=[tabular_preprocessing_step]
+    }
 )
 
 # Step 3: Execute ruleset on processed data (DEPENDS ON BOTH STEPS)
+# Output: processed_data (with labels) - ready for training or further preprocessing
 ruleset_executor_step = RulesetExecutorStepBuilder(
     config=executor_config
 ).create_step(
@@ -814,25 +984,125 @@ ruleset_executor_step = RulesetExecutorStepBuilder(
                           .S3Output.S3Uri
     },
     outputs={
-        'labeled_data': 's3://bucket/labeled-data/',
+        'processed_data': 's3://bucket/processed-data-with-labels/',
         'execution_report': 's3://bucket/reports/execution_report.json'
     },
     dependencies=[ruleset_generator_step, tabular_preprocessing_step]
 )
 
-# Step 4: Training step (consumes labeled data)
+# Step 4: Training step (consumes processed_data with labels)
 training_step = TrainingStepBuilder(
     config=training_config
 ).create_step(
     inputs={
         'training_data': ruleset_executor_step.properties
                          .ProcessingOutputConfig
-                         .Outputs['labeled_data']
+                         .Outputs['processed_data']
                          .S3Output.S3Uri
     },
     dependencies=[ruleset_executor_step]
 )
 ```
+
+### Stacked Preprocessing Pipeline Example
+
+```python
+# Demonstrate how processed_data enables preprocessing composition
+
+# Step 1: Base tabular preprocessing
+base_preprocessing_step = TabularPreprocessingStepBuilder(
+    config=base_config
+).create_step(
+    dependencies=[data_load_step]
+)
+
+# Step 2: Risk table mapping (adds risk columns)
+risk_mapping_step = RiskTableMappingStepBuilder(
+    config=risk_config
+).create_step(
+    inputs={
+        'processed_data': base_preprocessing_step.properties
+                          .ProcessingOutputConfig
+                          .Outputs['processed_data']
+                          .S3Output.S3Uri
+    },
+    outputs={
+        'processed_data': 's3://bucket/processed-data-with-risk/'
+    },
+    dependencies=[base_preprocessing_step]
+)
+
+# Step 3: Missing value imputation
+imputation_step = MissingValueImputationStepBuilder(
+    config=imputation_config
+).create_step(
+    inputs={
+        'processed_data': risk_mapping_step.properties
+                          .ProcessingOutputConfig
+                          .Outputs['processed_data']
+                          .S3Output.S3Uri
+    },
+    outputs={
+        'processed_data': 's3://bucket/processed-data-imputed/'
+    },
+    dependencies=[risk_mapping_step]
+)
+
+# Step 4: Ruleset execution (adds labels)
+ruleset_executor_step = RulesetExecutorStepBuilder(
+    config=executor_config
+).create_step(
+    inputs={
+        'validated_ruleset': ruleset_generator_step.properties
+                             .ProcessingOutputConfig
+                             .Outputs['validated_ruleset']
+                             .S3Output.S3Uri,
+        'processed_data': imputation_step.properties
+                          .ProcessingOutputConfig
+                          .Outputs['processed_data']
+                          .S3Output.S3Uri
+    },
+    outputs={
+        'processed_data': 's3://bucket/processed-data-labeled/'
+    },
+    dependencies=[ruleset_generator_step, imputation_step]
+)
+
+# Step 5: Stratified sampling (balances classes)
+sampling_step = StratifiedSamplingStepBuilder(
+    config=sampling_config
+).create_step(
+    inputs={
+        'processed_data': ruleset_executor_step.properties
+                          .ProcessingOutputConfig
+                          .Outputs['processed_data']
+                          .S3Output.S3Uri
+    },
+    outputs={
+        'processed_data': 's3://bucket/processed-data-final/'
+    },
+    dependencies=[ruleset_executor_step]
+)
+
+# Step 6: Training (consumes final processed_data)
+training_step = TrainingStepBuilder(
+    config=training_config
+).create_step(
+    inputs={
+        'training_data': sampling_step.properties
+                         .ProcessingOutputConfig
+                         .Outputs['processed_data']
+                         .S3Output.S3Uri
+    },
+    dependencies=[sampling_step]
+)
+```
+
+**Benefits of Stacked Preprocessing:**
+1. **Composability**: Each step reads and writes `processed_data`
+2. **Flexibility**: Easy to add/remove/reorder preprocessing steps
+3. **Consistency**: Same logical name throughout pipeline
+4. **Clarity**: Data flow is clear and predictable
 
 ### Input Argument Mapping
 
@@ -861,39 +1131,42 @@ The `RulesetExecutorStepBuilder` provides the following output properties:
          │
          ▼
 ┌─────────────────────────┐
-│ Tabular Preprocessing   │ ─────┐
-│ Output: processed_data  │      │
-└─────────┬───────────────┘      │
-          │                      │
-          ▼                      │
-┌──────────────────────┐         │
-│ Ruleset Generator    │         │
-│ Output: validated_   │         │
-│         ruleset      │         │
-└──────────┬───────────┘         │
-           │                     │
-           │    ┌────────────────┘
-           │    │
-           ▼    ▼
-┌────────────────────────────┐
-│ Ruleset Executor           │
-│ Inputs:                    │
-│   - validated_ruleset      │
-│   - processed_data         │
-│ Output: labeled_data       │
-└────────────┬───────────────┘
-             │
-             ▼
-┌────────────────────┐
-│  Training Step     │
-└────────────────────┘
+│ Tabular Preprocessing   │
+│ Output: processed_data  │
+└─────────┬───────────────┘
+          │
+          │
+          │    ┌──────────────────────┐
+          │    │ Ruleset Generator    │
+          │    │ (Independent)        │
+          │    │ Output: validated_   │
+          │    │         ruleset      │
+          │    └──────────┬───────────┘
+          │               │
+          │               │
+          └───────┐   ┐───┘
+                  │   │
+                  ▼   ▼
+        ┌────────────────────────────┐
+        │ Ruleset Executor           │
+        │ Inputs:                    │
+        │   - validated_ruleset      │
+        │   - processed_data         │
+        │ Output: labeled_data       │
+        └────────────┬───────────────┘
+                     │
+                     ▼
+        ┌────────────────────┐
+        │  Training Step     │
+        └────────────────────┘
 ```
 
 **Key Points:**
-1. **Ruleset Executor depends on BOTH TabularPreprocessing AND RulesetGenerator**
-2. **processed_data** comes from TabularPreprocessingStep (contains train/val/test splits)
-3. **validated_ruleset** comes from RulesetGeneratorStep (validated rules)
-4. Both dependencies must complete before RulesetExecutor can run
+1. **RulesetGenerator is INDEPENDENT** - validates rules without needing actual data
+2. **TabularPreprocessing is INDEPENDENT** - processes data without needing rules
+3. **RulesetExecutor depends on BOTH** - needs validated rules AND processed data
+4. Generator and Preprocessing can run in parallel
+5. Both must complete before RulesetExecutor can run
 
 ## Performance Optimizations
 

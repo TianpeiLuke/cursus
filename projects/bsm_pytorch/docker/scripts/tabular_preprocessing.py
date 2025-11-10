@@ -318,14 +318,30 @@ def main(
         splits = {job_type: df}
 
     # 6. Save output files
+    # Get output format from environment variable (default: CSV)
+    output_format = environ_vars.get("OUTPUT_FORMAT", "CSV").lower()
+    if output_format not in ["csv", "tsv", "parquet"]:
+        log(f"[WARNING] Invalid OUTPUT_FORMAT '{output_format}', defaulting to CSV")
+        output_format = "csv"
+
     for split_name, split_df in splits.items():
         subfolder = output_path / split_name
         subfolder.mkdir(exist_ok=True)
 
-        # Only output processed_data.csv
-        proc_path = subfolder / f"{split_name}_processed_data.csv"
-        split_df.to_csv(proc_path, index=False)
-        log(f"[INFO] Saved {proc_path} (shape={split_df.shape})")
+        # Determine file extension and save method based on output format
+        if output_format == "csv":
+            proc_path = subfolder / f"{split_name}_processed_data.csv"
+            split_df.to_csv(proc_path, index=False)
+        elif output_format == "tsv":
+            proc_path = subfolder / f"{split_name}_processed_data.tsv"
+            split_df.to_csv(proc_path, sep="\t", index=False)
+        elif output_format == "parquet":
+            proc_path = subfolder / f"{split_name}_processed_data.parquet"
+            split_df.to_parquet(proc_path, index=False)
+
+        log(
+            f"[INFO] Saved {proc_path} (format={output_format}, shape={split_df.shape})"
+        )
 
     log("[INFO] Preprocessing complete.")
     return splits
@@ -383,6 +399,7 @@ if __name__ == "__main__":
             "LABEL_FIELD": LABEL_FIELD,
             "TRAIN_RATIO": str(TRAIN_RATIO),
             "TEST_VAL_RATIO": str(TEST_VAL_RATIO),
+            "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "CSV"),
         }
 
         # Execute the main processing logic

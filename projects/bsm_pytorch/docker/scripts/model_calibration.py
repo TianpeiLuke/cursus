@@ -221,6 +221,90 @@ OUTPUT_METRICS_PATH = "/opt/ml/processing/output/metrics"
 OUTPUT_CALIBRATED_DATA_PATH = "/opt/ml/processing/output/calibrated_data"
 
 
+# ============================================================================
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# ============================================================================
+
+
+def _detect_file_format(file_path) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    from pathlib import Path
+
+    suffix = Path(file_path).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(df: pd.DataFrame, output_path, format_str: str):
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    from pathlib import Path
+
+    output_path = Path(output_path)
+
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return str(file_path)
+
+
 class CalibrationConfig:
     """Configuration class for model calibration."""
 
@@ -339,14 +423,14 @@ def find_first_data_file(
     )
 
 
-def load_data(config: Optional["CalibrationConfig"] = None) -> pd.DataFrame:
-    """Load evaluation data with predictions.
+def load_data(config: Optional["CalibrationConfig"] = None) -> Tuple[pd.DataFrame, str]:
+    """Load evaluation data with predictions using format preservation.
 
     Args:
         config: Configuration object (optional, created from environment if not provided)
 
     Returns:
-        pd.DataFrame: Loaded evaluation data
+        Tuple[pd.DataFrame, str]: Loaded evaluation data and detected format
 
     Raises:
         FileNotFoundError: If no data file is found
@@ -356,12 +440,8 @@ def load_data(config: Optional["CalibrationConfig"] = None) -> pd.DataFrame:
     data_file = find_first_data_file(config.input_data_path, config)
 
     logger.info(f"Loading data from {data_file}")
-    if data_file.endswith(".parquet"):
-        df = pd.read_parquet(data_file)
-    elif data_file.endswith(".csv"):
-        df = pd.read_csv(data_file)
-    else:
-        raise ValueError(f"Unsupported file format: {data_file}")
+    df, input_format = load_dataframe_with_format(data_file)
+    logger.info(f"Detected format: {input_format}")
 
     # Validate required columns
     if config.label_field not in df.columns:
@@ -648,15 +728,23 @@ def load_and_prepare_data(
         )
         try:
             df = extract_and_load_nested_tarball_data(config)
+            # Tarball extraction doesn't support format detection yet
+            input_format = "csv"  # Default for nested tarballs
         except Exception as e:
             logger.warning(f"Failed to extract data from nested tarballs: {e}")
             logger.warning(f"Exception details: {traceback.format_exc()}")
             logger.info("Falling back to standard data loading")
-            df = load_data(config)
+            df, input_format = load_data(config)
     else:
         # Calibration, validation, and testing job outputs are direct files from XGBoostModelEval
         logger.info(f"Loading data for job_type={job_type} using standard loading")
-        df = load_data(config)
+        df, input_format = load_data(config)
+
+    # Store input format in config for later use when saving
+    config._input_format = input_format
+    logger.info(
+        f"Stored input format '{input_format}' in config for output preservation"
+    )
 
     if config.is_binary:
         # Binary case - single score field
@@ -1365,12 +1453,15 @@ def main(
             with open(calibrator_path, "wb") as f:
                 pkl.dump(calibrator, f)
 
-            # Add calibrated scores to dataframe and save
+            # Add calibrated scores to dataframe and save with format preservation
             df["calibrated_" + config.score_field] = y_prob_calibrated
-            output_path = os.path.join(
-                config.output_calibrated_data_path, "calibrated_data.csv"
+            output_base = os.path.join(
+                config.output_calibrated_data_path, "calibrated_data"
             )
-            df.to_csv(output_path, index=False)
+            # Get input format from load_and_prepare_data if available, otherwise default to csv
+            input_format = getattr(config, "_input_format", "csv")
+            output_path = save_dataframe_with_format(df, output_base, input_format)
+            logger.info(f"Saved calibrated data (format={input_format}): {output_path}")
 
             # Write summary
             summary = {
@@ -1497,16 +1588,19 @@ def main(
                     pkl.dump(calibrator, f)
                 calibrator_paths[f"class_{class_name}"] = calibrator_path
 
-            # Add calibrated scores to dataframe and save
+            # Add calibrated scores to dataframe and save with format preservation
             for i in range(config.num_classes):
                 class_name = config.multiclass_categories[i]
                 col_name = f"{config.score_field_prefix}{class_name}"
                 df[f"calibrated_{col_name}"] = y_prob_calibrated[:, i]
 
-            output_path = os.path.join(
-                config.output_calibrated_data_path, "calibrated_data.csv"
+            output_base = os.path.join(
+                config.output_calibrated_data_path, "calibrated_data"
             )
-            df.to_csv(output_path, index=False)
+            # Get input format from load_and_prepare_data if available, otherwise default to csv
+            input_format = getattr(config, "_input_format", "csv")
+            output_path = save_dataframe_with_format(df, output_base, input_format)
+            logger.info(f"Saved calibrated data (format={input_format}): {output_path}")
 
             # Write summary
             summary = {

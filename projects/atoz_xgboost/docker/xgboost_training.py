@@ -272,6 +272,92 @@ class XGBoostConfig(XGBoostModelHyperparameters):
 
 
 # -------------------------------------------------------------------------
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# -------------------------------------------------------------------------
+
+
+def _detect_file_format(file_path: str) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    from pathlib import Path
+
+    suffix = Path(file_path).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: str) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: str, format_str: str
+) -> str:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    from pathlib import Path
+
+    output_path = Path(output_path)
+
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return str(file_path)
+
+
+# -------------------------------------------------------------------------
 # Helper Functions
 # -------------------------------------------------------------------------
 def load_and_validate_config(hparam_path: str) -> dict:
@@ -320,8 +406,15 @@ def find_first_data_file(data_dir: str) -> str:
     return None
 
 
-def load_datasets(input_path: str) -> tuple:
-    """Loads the training, validation, and test datasets."""
+def load_datasets(
+    input_path: str,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, str]:
+    """
+    Loads the training, validation, and test datasets with format detection.
+
+    Returns:
+        Tuple of (train_df, val_df, test_df, detected_format)
+    """
     train_file = find_first_data_file(os.path.join(input_path, "train"))
     val_file = find_first_data_file(os.path.join(input_path, "val"))
     test_file = find_first_data_file(os.path.join(input_path, "test"))
@@ -331,26 +424,25 @@ def load_datasets(input_path: str) -> tuple:
             "Training, validation, or test data file not found in the expected subfolders."
         )
 
-    train_df = (
-        pd.read_parquet(train_file)
-        if train_file.endswith(".parquet")
-        else pd.read_csv(train_file)
-    )
-    val_df = (
-        pd.read_parquet(val_file)
-        if val_file.endswith(".parquet")
-        else pd.read_csv(val_file)
-    )
-    test_df = (
-        pd.read_parquet(test_file)
-        if test_file.endswith(".parquet")
-        else pd.read_csv(test_file)
-    )
+    # Load with format detection
+    train_df, train_format = load_dataframe_with_format(train_file)
+    val_df, val_format = load_dataframe_with_format(val_file)
+    test_df, test_format = load_dataframe_with_format(test_file)
+
+    # Use training data format as the primary format
+    detected_format = train_format
+    logger.info(f"Detected input format: {detected_format}")
+
+    if val_format != detected_format or test_format != detected_format:
+        logger.warning(
+            f"Mixed formats detected - train:{train_format}, val:{val_format}, test:{test_format}. "
+            f"Using train format ({detected_format}) for outputs."
+        )
 
     logger.info(
         f"Loaded data -> train: {train_df.shape}, val: {val_df.shape}, test: {test_df.shape}"
     )
-    return train_df, val_df, test_df
+    return train_df, val_df, test_df, detected_format
 
 
 def apply_numerical_imputation(
@@ -581,7 +673,15 @@ def save_artifacts(
 # -------------------------------------------------------------------------
 # New: inference + evaluation helpers
 # -------------------------------------------------------------------------
-def save_preds_and_metrics(ids, y_true, y_prob, id_col, label_col, out_dir, is_binary):
+def save_preds_and_metrics(
+    ids, y_true, y_prob, id_col, label_col, out_dir, is_binary, output_format="csv"
+):
+    """
+    Save predictions and metrics with format preservation.
+
+    Args:
+        output_format: Format to save predictions in ('csv', 'tsv', or 'parquet')
+    """
     os.makedirs(out_dir, exist_ok=True)
     # metrics
     metrics = {}
@@ -627,11 +727,15 @@ def save_preds_and_metrics(ids, y_true, y_prob, id_col, label_col, out_dir, is_b
         logger.info(f"F1-Score (macro): {metrics['f1_score_macro']}")
     with open(os.path.join(out_dir, "metrics.json"), "w") as f:
         json.dump(metrics, f, indent=2)
-    # preds
+
+    # Save predictions with format preservation
     df = pd.DataFrame({id_col: ids, label_col: y_true})
     for i in range(y_prob.shape[1]):
         df[f"prob_class_{i}"] = y_prob[:, i]
-    df.to_csv(os.path.join(out_dir, "predictions.csv"), index=False)
+
+    output_base = os.path.join(out_dir, "predictions")
+    saved_path = save_dataframe_with_format(df, output_base, output_format)
+    logger.info(f"Saved predictions (format={output_format}): {saved_path}")
 
 
 def plot_curves(y_true, y_prob, out_dir, prefix, is_binary):
@@ -687,7 +791,15 @@ def plot_curves(y_true, y_prob, out_dir, prefix, is_binary):
                 plt.close()
 
 
-def evaluate_split(name, df, feats, model, cfg, prefix="/opt/ml/output/data"):
+def evaluate_split(
+    name, df, feats, model, cfg, output_format="csv", prefix="/opt/ml/output/data"
+):
+    """
+    Evaluate a data split and save results with format preservation.
+
+    Args:
+        output_format: Format to save predictions in ('csv', 'tsv', or 'parquet')
+    """
     is_bin = cfg.get("is_binary", True)
     label = cfg["label_name"]
     idi = cfg.get("id_name", "id")
@@ -708,7 +820,9 @@ def evaluate_split(name, df, feats, model, cfg, prefix="/opt/ml/output/data"):
     out_metrics = os.path.join(prefix, f"{name}_metrics")
 
     # save preds & metrics, then plots, then tar
-    save_preds_and_metrics(ids, y_true, y_prob, idi, label, out_base, is_bin)
+    save_preds_and_metrics(
+        ids, y_true, y_prob, idi, label, out_base, is_bin, output_format
+    )
     plot_curves(y_true, y_prob, out_metrics, f"{name}_", is_bin)
 
     tar = os.path.join(prefix, f"{name}.tar.gz")
@@ -774,8 +888,11 @@ def main(
         logger.info("Configuration loaded successfully")
 
         logger.info("Loading datasets...")
-        train_df, val_df, test_df = load_datasets(data_dir)
+        train_df, val_df, test_df, input_format = load_datasets(data_dir)
         logger.info("Datasets loaded successfully")
+
+        # Store format in config for output preservation
+        config["_input_format"] = input_format
 
         # Apply numerical imputation
         logger.info("Starting numerical imputation...")
@@ -825,10 +942,16 @@ def main(
             logger.warning(f"Output directory {output_dir} does not exist, creating...")
             os.makedirs(output_dir, exist_ok=True)
 
+        # Get format for output preservation
+        output_format = config.get("_input_format", "csv")
+        logger.info(f"Using format {output_format} for evaluation outputs")
+
         # Validation evaluation with exception handling
         logger.info("Starting inference & evaluation on validation set")
         try:
-            evaluate_split("val", val_df, feature_columns, model, config, output_dir)
+            evaluate_split(
+                "val", val_df, feature_columns, model, config, output_format, output_dir
+            )
             logger.info("✓ Validation evaluation completed successfully")
         except Exception as e:
             logger.error(f"ERROR in validation evaluation: {str(e)}")
@@ -837,7 +960,15 @@ def main(
         # Test evaluation with exception handling
         logger.info("Starting inference & evaluation on test set")
         try:
-            evaluate_split("test", test_df, feature_columns, model, config, output_dir)
+            evaluate_split(
+                "test",
+                test_df,
+                feature_columns,
+                model,
+                config,
+                output_format,
+                output_dir,
+            )
             logger.info("✓ Test evaluation completed successfully")
         except Exception as e:
             logger.error(f"ERROR in test evaluation: {str(e)}")

@@ -112,6 +112,12 @@ Processing Steps Documentation
 - Essential, System, and Derived field patterns
 - Pydantic v2 implementation guide
 
+**[Data Format Preservation Patterns](../1_design/data_format_preservation_patterns.md)**
+- Format preservation strategy for processing scripts
+- Automatic CSV/TSV/Parquet format detection and propagation
+- Three-function pattern for consistent file I/O
+- Storage optimization (50% reduction in Bedrock scripts)
+
 **Related Configuration Documents:**
 - [Config Manager Three-Tier Implementation](../1_design/config_manager_three_tier_implementation.md)
 - [Deployment Context Agnostic Path Resolution](../1_design/deployment_context_agnostic_path_resolution_design.md)

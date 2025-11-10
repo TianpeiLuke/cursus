@@ -73,11 +73,19 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         description="Fraction of the holdout to allocate to the test set vs. validation (only if job_type=='training').",
     )
 
+    output_format: str = Field(
+        default="CSV",
+        description="Output format for processed data ('CSV', 'TSV', or 'Parquet'). Default: CSV",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
     # They are private with public read-only property access
 
     _full_script_path: Optional[str] = PrivateAttr(default=None)
+    _preprocessing_environment_variables: Optional[Dict[str, str]] = PrivateAttr(
+        default=None
+    )
 
     model_config = ProcessingStepConfigBase.model_config.copy()
     model_config.update({"arbitrary_types_allowed": True, "validate_assignment": True})
@@ -109,6 +117,32 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
                 )
 
         return self._full_script_path
+
+    @property
+    def preprocessing_environment_variables(self) -> Dict[str, str]:
+        """
+        Get preprocessing-specific environment variables.
+
+        Returns:
+            Dictionary mapping environment variable names to values
+        """
+        if self._preprocessing_environment_variables is None:
+            env_vars = {}
+
+            # Add label field
+            if self.label_name:
+                env_vars["LABEL_FIELD"] = self.label_name
+
+            # Add split ratios
+            env_vars["TRAIN_RATIO"] = str(self.train_ratio)
+            env_vars["TEST_VAL_RATIO"] = str(self.test_val_ratio)
+
+            # Add output format
+            env_vars["OUTPUT_FORMAT"] = self.output_format
+
+            self._preprocessing_environment_variables = env_vars
+
+        return self._preprocessing_environment_variables
 
     # ===== Validators =====
 
@@ -145,6 +179,17 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         """
         if not (0.0 < v < 1.0):
             raise ValueError(f"Split ratio must be strictly between 0 and 1, got {v}")
+        return v
+
+    @field_validator("output_format")
+    @classmethod
+    def validate_output_format(cls, v: str) -> str:
+        """
+        Ensure output_format is one of the allowed values (case-insensitive).
+        """
+        allowed = {"CSV", "TSV", "Parquet"}
+        if v not in allowed:
+            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
         return v
 
     # Initialize derived fields at creation time

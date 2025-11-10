@@ -91,6 +91,34 @@ CONTAINER_PATHS = {
 
 
 # -------------------------------------------------------------------------
+# File I/O Helper Functions with Format Preservation
+# -------------------------------------------------------------------------
+def _detect_file_format(split_dir: Path, split_name: str) -> tuple:
+    """
+    Detect the format of processed data file.
+
+    Returns:
+        Tuple of (file_path, format) where format is 'csv', 'tsv', or 'parquet'
+    """
+    # Try different formats in order of preference
+    formats = [
+        (f"{split_name}_processed_data.csv", "csv"),
+        (f"{split_name}_processed_data.tsv", "tsv"),
+        (f"{split_name}_processed_data.parquet", "parquet"),
+    ]
+
+    for filename, fmt in formats:
+        file_path = split_dir / filename
+        if file_path.exists():
+            return file_path, fmt
+
+    raise RuntimeError(
+        f"No processed data file found in {split_dir}. "
+        f"Looked for: {[f[0] for f in formats]}"
+    )
+
+
+# -------------------------------------------------------------------------
 # Data Loading Functions
 # -------------------------------------------------------------------------
 def load_selected_features(selected_features_dir: str) -> List[str]:
@@ -133,28 +161,34 @@ def load_single_split_data(
     input_data_dir: str, job_type: str
 ) -> Dict[str, pd.DataFrame]:
     """
-    Load single split data for non-training job types.
+    Load single split data for non-training job types with format detection.
 
     Args:
         input_data_dir: Directory containing job_type subdirectory
         job_type: Type of job (validation, testing, etc.)
 
     Returns:
-        Dictionary with single split DataFrame
+        Dictionary with single split DataFrame and format metadata
     """
-    split_dir = os.path.join(input_data_dir, job_type)
-    if not os.path.exists(split_dir):
+    split_dir = Path(input_data_dir) / job_type
+    if not split_dir.exists():
         raise FileNotFoundError(f"Split directory not found: {split_dir}")
 
-    # Look for the processed data file
-    data_file = os.path.join(split_dir, f"{job_type}_processed_data.csv")
-    if not os.path.exists(data_file):
-        raise FileNotFoundError(f"Processed data file not found: {data_file}")
-
     try:
-        df = pd.read_csv(data_file)
-        logger.info(f"Loaded {job_type} split: {df.shape}")
-        return {job_type: df}
+        # Detect format and read file
+        file_path, detected_format = _detect_file_format(split_dir, job_type)
+
+        if detected_format == "csv":
+            df = pd.read_csv(file_path)
+        elif detected_format == "tsv":
+            df = pd.read_csv(file_path, sep="\t")
+        elif detected_format == "parquet":
+            df = pd.read_parquet(file_path)
+        else:
+            raise RuntimeError(f"Unsupported format: {detected_format}")
+
+        logger.info(f"Loaded {job_type} split (format={detected_format}): {df.shape}")
+        return {job_type: df, "_format": detected_format}
 
     except Exception as e:
         logger.error(f"Error loading {job_type} data: {e}")
@@ -163,31 +197,43 @@ def load_single_split_data(
 
 def load_preprocessed_data(input_data_dir: str) -> Dict[str, pd.DataFrame]:
     """
-    Load train/val/test splits from tabular preprocessing output.
+    Load train/val/test splits from tabular preprocessing output with format detection.
 
     Args:
         input_data_dir: Directory containing train/val/test subdirectories
 
     Returns:
-        Dictionary with 'train', 'val', 'test' DataFrames
+        Dictionary with 'train', 'val', 'test' DataFrames and format metadata
     """
     splits = {}
+    detected_format = None
 
     for split_name in ["train", "val", "test"]:
-        split_dir = os.path.join(input_data_dir, split_name)
-        if not os.path.exists(split_dir):
+        split_dir = Path(input_data_dir) / split_name
+        if not split_dir.exists():
             logger.warning(f"Split directory not found: {split_dir}")
             continue
 
-        # Look for the processed data file (following tabular_preprocessing pattern)
-        data_file = os.path.join(split_dir, f"{split_name}_processed_data.csv")
-        if not os.path.exists(data_file):
-            logger.warning(f"Processed data file not found: {data_file}")
-            continue
-
         try:
-            splits[split_name] = pd.read_csv(data_file)
-            logger.info(f"Loaded {split_name} split: {splits[split_name].shape}")
+            # Detect format and read file
+            file_path, fmt = _detect_file_format(split_dir, split_name)
+
+            # Store format from first split (they should all match)
+            if detected_format is None:
+                detected_format = fmt
+
+            if fmt == "csv":
+                df = pd.read_csv(file_path)
+            elif fmt == "tsv":
+                df = pd.read_csv(file_path, sep="\t")
+            elif fmt == "parquet":
+                df = pd.read_parquet(file_path)
+            else:
+                raise RuntimeError(f"Unsupported format: {fmt}")
+
+            splits[split_name] = df
+            logger.info(f"Loaded {split_name} split (format={fmt}): {df.shape}")
+
         except Exception as e:
             logger.error(f"Error loading {split_name} data: {e}")
             raise
@@ -195,6 +241,8 @@ def load_preprocessed_data(input_data_dir: str) -> Dict[str, pd.DataFrame]:
     if not splits:
         raise FileNotFoundError("No valid data splits found in input directory")
 
+    # Store detected format for use in saving
+    splits["_format"] = detected_format
     return splits
 
 
@@ -205,10 +253,10 @@ def save_selected_data(
     output_dir: str,
 ) -> None:
     """
-    Save feature-selected splits in format expected by XGBoost training.
+    Save feature-selected splits preserving input format.
 
     Args:
-        splits: Dictionary of DataFrames by split name
+        splits: Dictionary of DataFrames by split name (includes "_format" key)
         selected_features: List of selected feature names
         target_variable: Target column name
         output_dir: Output directory path
@@ -216,10 +264,17 @@ def save_selected_data(
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
+    # Extract format from splits dictionary
+    output_format = splits.get("_format", "csv")  # Default to CSV if not found
+
     # Features to keep (selected features + target)
     columns_to_keep = selected_features + [target_variable]
 
     for split_name, df in splits.items():
+        # Skip the format metadata key
+        if split_name == "_format":
+            continue
+
         # Create split subdirectory
         split_dir = os.path.join(output_dir, split_name)
         os.makedirs(split_dir, exist_ok=True)
@@ -233,12 +288,23 @@ def save_selected_data(
         # Filter to selected features + target
         selected_df = df[columns_to_keep].copy()
 
-        # Save in same format as tabular preprocessing output
-        output_file = os.path.join(split_dir, f"{split_name}_processed_data.csv")
-        selected_df.to_csv(output_file, index=False)
+        # Save in detected format
+        if output_format == "csv":
+            output_file = os.path.join(split_dir, f"{split_name}_processed_data.csv")
+            selected_df.to_csv(output_file, index=False)
+        elif output_format == "tsv":
+            output_file = os.path.join(split_dir, f"{split_name}_processed_data.tsv")
+            selected_df.to_csv(output_file, sep="\t", index=False)
+        elif output_format == "parquet":
+            output_file = os.path.join(
+                split_dir, f"{split_name}_processed_data.parquet"
+            )
+            selected_df.to_parquet(output_file, index=False)
+        else:
+            raise RuntimeError(f"Unsupported output format: {output_format}")
 
         logger.info(
-            f"Saved {split_name} split with {len(selected_features)} features: {output_file}"
+            f"Saved {split_name} split with {len(selected_features)} features (format={output_format}): {output_file}"
         )
 
 

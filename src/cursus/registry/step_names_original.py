@@ -122,6 +122,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Label ruleset generation step that validates and optimizes user-defined classification rules for transparent, maintainable rule-based label mapping in ML training pipelines",
     },
+    "LabelRulesetExecution": {
+        "config_class": "LabelRulesetExecutionConfig",
+        "builder_step_name": "LabelRulesetExecutionStepBuilder",
+        "spec_type": "LabelRulesetExecution",
+        "sagemaker_step_type": "Processing",
+        "description": "Label ruleset execution step that applies validated rulesets to processed data to generate classification labels using priority-based rule evaluation with execution-time field validation",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",

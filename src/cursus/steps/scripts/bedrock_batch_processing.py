@@ -323,6 +323,86 @@ CONTAINER_PATHS = {
 }
 
 
+# ============================================================================
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# ============================================================================
+
+
+def _detect_file_format(file_path: Path) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: Path) -> tuple:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: Path, format_str: str
+) -> Path:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return file_path
+
+
 class BedrockProcessor:
     """
     Base Bedrock processor with template-driven response processing.
@@ -2003,7 +2083,8 @@ def process_split_directory(
         log(f"Processing {split_name} file: {input_file}")
 
         # Load data with format detection
-        df = load_data_file(input_file, log)
+        df, input_format = load_dataframe_with_format(input_file)
+        log(f"Detected input format: {input_format}")
 
         # Process batch (automatically selects batch vs real-time)
         result_df = processor.process_batch(
@@ -2096,19 +2177,15 @@ def process_split_directory(
                     f"Skipped {skipped_count} error records from output for {input_file.name}"
                 )
 
-        # Save results maintaining original filename structure
+        # Save results maintaining original filename structure and format
         base_filename = input_file.stem
+        output_base = split_output_path / f"{base_filename}_processed_data"
 
-        # Save as Parquet (efficient for large datasets)
-        parquet_file = split_output_path / f"{base_filename}_processed_data.parquet"
-        result_df.to_parquet(parquet_file, index=False)
-
-        # Save as CSV (human-readable)
-        csv_file = split_output_path / f"{base_filename}_processed_data.csv"
-        result_df.to_csv(csv_file, index=False)
+        # Save in same format as input
+        saved_file = save_dataframe_with_format(result_df, output_base, input_format)
 
         split_results.append(result_df)
-        log(f"Saved {split_name} results to: {parquet_file} and {csv_file}")
+        log(f"Saved {split_name} results (format={input_format}): {saved_file}")
 
     # Calculate split-level statistics
     split_stats["success_rate"] = (
@@ -2327,7 +2404,8 @@ def main(
                     log(f"Processing file: {input_file}")
 
                     # Load data with format detection
-                    df = load_data_file(input_file, log)
+                    df, input_format = load_dataframe_with_format(input_file)
+                    log(f"Detected input format: {input_format}")
 
                     # Process batch (automatically selects batch vs real-time based on size)
                     result_df = processor.process_batch(
@@ -2395,17 +2473,15 @@ def main(
                                 f"Skipped {skipped_count} error records from output for {input_file.name}"
                             )
 
-                    # Save results (same format as bedrock_processing.py)
+                    # Save results in same format as input
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     base_filename = f"processed_{input_file.stem}_{timestamp}"
+                    output_base = output_path / base_filename
 
-                    parquet_file = output_path / f"{base_filename}.parquet"
-                    result_df.to_parquet(parquet_file, index=False)
-
-                    csv_file = output_path / f"{base_filename}.csv"
-                    result_df.to_csv(csv_file, index=False)
-
-                    log(f"Saved results to: {parquet_file} and {csv_file}")
+                    saved_file = save_dataframe_with_format(
+                        result_df, output_base, input_format
+                    )
+                    log(f"Saved results (format={input_format}): {saved_file}")
 
                 processing_stats["total_files"] = len(input_files)
             else:
@@ -2478,7 +2554,8 @@ def main(
                 log(f"Processing file: {input_file}")
 
                 # Load data with format detection
-                df = load_data_file(input_file, log)
+                df, input_format = load_dataframe_with_format(input_file)
+                log(f"Detected input format: {input_format}")
 
                 # Process batch (automatically selects batch vs real-time based on size)
                 result_df = processor.process_batch(
@@ -2540,19 +2617,15 @@ def main(
                             f"Skipped {skipped_count} error records from output for {input_file.name}"
                         )
 
-                # Save results with job_type in filename (same as bedrock_processing.py)
+                # Save results in same format as input
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                 base_filename = f"processed_{job_type}_{input_file.stem}_{timestamp}"
+                output_base = output_path / base_filename
 
-                # Save as Parquet (efficient for large datasets)
-                parquet_file = output_path / f"{base_filename}.parquet"
-                result_df.to_parquet(parquet_file, index=False)
-
-                # Save as CSV (human-readable)
-                csv_file = output_path / f"{base_filename}.csv"
-                result_df.to_csv(csv_file, index=False)
-
-                log(f"Saved results to: {parquet_file} and {csv_file}")
+                saved_file = save_dataframe_with_format(
+                    result_df, output_base, input_format
+                )
+                log(f"Saved results (format={input_format}): {saved_file}")
 
         # Calculate overall statistics
         processing_stats["overall_success_rate"] = (

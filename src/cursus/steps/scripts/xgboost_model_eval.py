@@ -392,6 +392,86 @@ CONTAINER_PATHS = {
 }
 
 
+# ============================================================================
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# ============================================================================
+
+
+def _detect_file_format(file_path: Path) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: Path) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: Path, format_str: str
+) -> Path:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return file_path
+
+
 def load_model_artifacts(
     model_dir: str,
 ) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
@@ -828,17 +908,17 @@ def perform_statistical_tests(
     return test_results
 
 
-def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
+def load_eval_data(eval_data_dir: str) -> Tuple[pd.DataFrame, str]:
     """
-    Load the first .csv or .parquet file found in the evaluation data directory.
-    Returns a pandas DataFrame.
+    Load the first data file found in the evaluation data directory.
+    Returns a pandas DataFrame and the detected format.
     """
     logger.info(f"Loading eval data from {eval_data_dir}")
     eval_files = sorted(
         [
             f
             for f in Path(eval_data_dir).glob("**/*")
-            if f.suffix in [".csv", ".parquet"]
+            if f.suffix in [".csv", ".tsv", ".parquet"]
         ]
     )
     if not eval_files:
@@ -846,12 +926,10 @@ def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
         raise RuntimeError("No eval data file found in eval_data input.")
     eval_file = eval_files[0]
     logger.info(f"Using eval data file: {eval_file}")
-    if eval_file.suffix == ".parquet":
-        df = pd.read_parquet(eval_file)
-    else:
-        df = pd.read_csv(eval_file)
-    logger.info(f"Loaded eval data shape: {df.shape}")
-    return df
+
+    df, input_format = load_dataframe_with_format(eval_file)
+    logger.info(f"Loaded eval data shape: {df.shape}, format: {input_format}")
+    return df, input_format
 
 
 def get_id_label_columns(
@@ -874,18 +952,20 @@ def save_predictions(
     id_col: str,
     label_col: str,
     output_eval_dir: str,
+    input_format: str = "csv",
 ) -> None:
     """
-    Save predictions to a CSV file, including id, true label, and class probabilities.
+    Save predictions preserving input format, including id, true label, and class probabilities.
     """
-    logger.info(f"Saving predictions to {output_eval_dir}")
+    logger.info(f"Saving predictions to {output_eval_dir} in {input_format} format")
     prob_cols = [f"prob_class_{i}" for i in range(y_prob.shape[1])]
     out_df = pd.DataFrame({id_col: ids, label_col: y_true})
     for i, col in enumerate(prob_cols):
         out_df[col] = y_prob[:, i]
-    out_path = os.path.join(output_eval_dir, "eval_predictions.csv")
-    out_df.to_csv(out_path, index=False)
-    logger.info(f"Saved predictions to {out_path}")
+
+    output_base = Path(output_eval_dir) / "eval_predictions"
+    output_path = save_dataframe_with_format(out_df, output_base, input_format)
+    logger.info(f"Saved predictions (format={input_format}): {output_path}")
 
 
 def save_metrics(
@@ -1322,9 +1402,10 @@ def evaluate_model(
     hyperparams: Dict[str, Any],
     output_eval_dir: str,
     output_metrics_dir: str,
+    input_format: str = "csv",
 ) -> None:
     """
-    Run model prediction and evaluation, then save predictions and metrics.
+    Run model prediction and evaluation, then save predictions and metrics preserving format.
     Also generate and save ROC and PR curves as JPG.
     """
     logger.info("Evaluating model")
@@ -1368,7 +1449,9 @@ def evaluate_model(
                     y_true_bin, y_prob[:, i], output_metrics_dir, prefix=f"class_{i}_"
                 )
 
-    save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir)
+    save_predictions(
+        ids, y_true, y_prob, id_col, label_col, output_eval_dir, input_format
+    )
     save_metrics(metrics, output_metrics_dir)
     logger.info("Evaluation complete")
 
@@ -1386,9 +1469,10 @@ def evaluate_model_with_comparison(
     comparison_metrics: str,
     statistical_tests: bool,
     comparison_plots: bool,
+    input_format: str = "csv",
 ) -> None:
     """
-    Run model prediction and evaluation with comparison to previous model scores.
+    Run model prediction and evaluation with comparison to previous model scores preserving format.
     Generates comprehensive comparison metrics, statistical tests, and visualizations.
     """
     logger.info("Evaluating model with comparison mode enabled")
@@ -1506,7 +1590,14 @@ def evaluate_model_with_comparison(
 
     # Save enhanced predictions with previous scores
     save_predictions_with_comparison(
-        ids, y_true, y_prob, previous_scores, id_col, label_col, output_eval_dir
+        ids,
+        y_true,
+        y_prob,
+        previous_scores,
+        id_col,
+        label_col,
+        output_eval_dir,
+        input_format,
     )
 
     # Save comprehensive metrics
@@ -1526,11 +1617,14 @@ def save_predictions_with_comparison(
     id_col: str,
     label_col: str,
     output_eval_dir: str,
+    input_format: str = "csv",
 ) -> None:
     """
-    Save predictions to a CSV file, including id, true label, new model probabilities, and previous model scores.
+    Save predictions preserving input format, including id, true label, new model probabilities, and previous model scores.
     """
-    logger.info(f"Saving predictions with comparison to {output_eval_dir}")
+    logger.info(
+        f"Saving predictions with comparison to {output_eval_dir} in {input_format} format"
+    )
 
     # Create base dataframe
     prob_cols = [f"new_model_prob_class_{i}" for i in range(y_prob.shape[1])]
@@ -1547,9 +1641,11 @@ def save_predictions_with_comparison(
     if y_prob.shape[1] == 2:
         out_df["score_difference"] = y_prob[:, 1] - previous_scores
 
-    out_path = os.path.join(output_eval_dir, "eval_predictions_with_comparison.csv")
-    out_df.to_csv(out_path, index=False)
-    logger.info(f"Saved predictions with comparison to {out_path}")
+    output_base = Path(output_eval_dir) / "eval_predictions_with_comparison"
+    output_path = save_dataframe_with_format(out_df, output_base, input_format)
+    logger.info(
+        f"Saved predictions with comparison (format={input_format}): {output_path}"
+    )
 
 
 def create_comparison_report(
@@ -1721,8 +1817,8 @@ def main(
         load_model_artifacts(model_dir)
     )
 
-    # Load and preprocess data
-    df = load_eval_data(eval_data_dir)
+    # Load and preprocess data with format detection
+    df, input_format = load_eval_data(eval_data_dir)
 
     # Get ID and label columns before preprocessing
     id_col, label_col = get_id_label_columns(df, id_field, label_field)
@@ -1772,6 +1868,7 @@ def main(
             comparison_metrics,
             statistical_tests,
             comparison_plots,
+            input_format,
         )
     else:
         # Standard evaluation
@@ -1784,6 +1881,7 @@ def main(
             hyperparams,
             output_eval_dir,
             output_metrics_dir,
+            input_format,
         )
 
     logger.info("Model evaluation script complete")
