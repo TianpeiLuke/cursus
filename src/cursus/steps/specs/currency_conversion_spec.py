@@ -12,7 +12,7 @@ from ...core.base.specification_base import (
     DependencyType,
     NodeType,
 )
-from ...registry.step_names import get_spec_step_type_with_job_type
+from ...registry.step_names import get_spec_step_type
 
 
 # Import the contract at runtime to avoid circular imports
@@ -24,7 +24,7 @@ def _get_currency_conversion_contract():
 
 # Currency Conversion Step Specification
 CURRENCY_CONVERSION_SPEC = StepSpecification(
-    step_type=get_spec_step_type_with_job_type("CurrencyConversion", "training"),
+    step_type=get_spec_step_type("CurrencyConversion"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_currency_conversion_contract(),
     dependencies=[
@@ -44,8 +44,15 @@ CURRENCY_CONVERSION_SPEC = StepSpecification(
             semantic_keywords=[
                 "input_data",
                 "processed_data",
+                "output_data",
                 "training",
                 "train",
+                "validation",
+                "val",
+                "testing",
+                "test",
+                "calibration",
+                "calib",
                 "data",
                 "processed",
                 "tabular",
@@ -54,7 +61,7 @@ CURRENCY_CONVERSION_SPEC = StepSpecification(
                 "conversion",
             ],
             data_type="S3Uri",
-            description="Processed training data requiring currency conversion",
+            description="Processed data requiring currency conversion. Supports all job types: training, validation, testing, and calibration",
         )
     ],
     outputs=[
@@ -67,7 +74,7 @@ CURRENCY_CONVERSION_SPEC = StepSpecification(
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="Currency-converted training data with standardized monetary values",
+            description="Currency-converted data with standardized monetary values. Compatible with all job types (training, validation, testing, calibration)",
         )
     ],
 )

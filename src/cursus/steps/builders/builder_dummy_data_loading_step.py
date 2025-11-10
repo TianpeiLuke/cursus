@@ -11,14 +11,8 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the dummy data loading specification
-try:
-    from ..specs.dummy_data_loading_spec import DUMMY_DATA_LOADING_SPEC
-
-    SPEC_AVAILABLE = True
-except ImportError:
-    DUMMY_DATA_LOADING_SPEC = None
-    SPEC_AVAILABLE = False
+# Import the unified dummy data loading specification
+from ..specs.dummy_data_loading_spec import DUMMY_DATA_LOADING_SPEC
 
 logger = logging.getLogger(__name__)
 
@@ -55,57 +49,12 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
                 "DummyDataLoadingStepBuilder requires a DummyDataLoadingConfig instance."
             )
 
-        # Select specification based on job type
-        spec = None
-        if hasattr(config, "job_type"):
-            job_type = config.job_type.lower()
-            if job_type == "training":
-                from ..specs.dummy_data_loading_training_spec import (
-                    DUMMY_DATA_LOADING_TRAINING_SPEC,
-                )
-
-                spec = DUMMY_DATA_LOADING_TRAINING_SPEC
-                logger.info("Using training-specific DUMMY_DATA_LOADING_TRAINING_SPEC")
-            elif job_type == "validation":
-                from ..specs.dummy_data_loading_validation_spec import (
-                    DUMMY_DATA_LOADING_VALIDATION_SPEC,
-                )
-
-                spec = DUMMY_DATA_LOADING_VALIDATION_SPEC
-                logger.info(
-                    "Using validation-specific DUMMY_DATA_LOADING_VALIDATION_SPEC"
-                )
-            elif job_type == "testing":
-                from ..specs.dummy_data_loading_testing_spec import (
-                    DUMMY_DATA_LOADING_TESTING_SPEC,
-                )
-
-                spec = DUMMY_DATA_LOADING_TESTING_SPEC
-                logger.info("Using testing-specific DUMMY_DATA_LOADING_TESTING_SPEC")
-            elif job_type == "calibration":
-                from ..specs.dummy_data_loading_calibration_spec import (
-                    DUMMY_DATA_LOADING_CALIBRATION_SPEC,
-                )
-
-                spec = DUMMY_DATA_LOADING_CALIBRATION_SPEC
-                logger.info(
-                    "Using calibration-specific DUMMY_DATA_LOADING_CALIBRATION_SPEC"
-                )
-
-            # If no specific type-based spec is found, try to use the generic one
-            if spec is None:
-                spec = DUMMY_DATA_LOADING_SPEC if SPEC_AVAILABLE else None
-                if spec:
-                    logger.info(
-                        "Using generic DUMMY_DATA_LOADING_SPEC for job type: %s",
-                        job_type,
-                    )
-                else:
-                    logger.warning("No specification found for job type: %s", job_type)
+        # Use unified specification for all job types
+        logger.info("Using unified DUMMY_DATA_LOADING_SPEC for all job types")
 
         super().__init__(
             config=config,
-            spec=spec,
+            spec=DUMMY_DATA_LOADING_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

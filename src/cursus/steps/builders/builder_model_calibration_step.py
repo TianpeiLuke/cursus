@@ -19,23 +19,8 @@ from sagemaker.workflow.entities import PipelineVariable
 from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_model_calibration_step import ModelCalibrationConfig
 
-# Import specifications based on job type
-try:
-    from ..specs.model_calibration_training_spec import MODEL_CALIBRATION_TRAINING_SPEC
-    from ..specs.model_calibration_calibration_spec import (
-        MODEL_CALIBRATION_CALIBRATION_SPEC,
-    )
-    from ..specs.model_calibration_validation_spec import (
-        MODEL_CALIBRATION_VALIDATION_SPEC,
-    )
-    from ..specs.model_calibration_testing_spec import MODEL_CALIBRATION_TESTING_SPEC
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    MODEL_CALIBRATION_TRAINING_SPEC = MODEL_CALIBRATION_CALIBRATION_SPEC = (
-        MODEL_CALIBRATION_VALIDATION_SPEC
-    ) = MODEL_CALIBRATION_TESTING_SPEC = None
-    SPECS_AVAILABLE = False
+# Import the unified model calibration specification
+from ..specs.model_calibration_spec import MODEL_CALIBRATION_SPEC
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +42,7 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         registry_manager=None,
         dependency_resolver=None,
     ):
-        """Initialize the ModelCalibrationStepBuilder with specification based on job type.
+        """Initialize the ModelCalibrationStepBuilder with unified specification for all job types.
 
         Args:
             config: Configuration object for this step
@@ -67,52 +52,22 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             dependency_resolver: Resolver for step dependencies
 
         Raises:
-            ValueError: If config is not a ModelCalibrationConfig instance or no specification found
+            ValueError: If config is not a ModelCalibrationConfig instance
         """
         if not isinstance(config, ModelCalibrationConfig):
             raise ValueError(
                 "ModelCalibrationStepBuilder requires a ModelCalibrationConfig instance."
             )
 
-        # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
-
-        # Get specification based on job type
-        if job_type == "training" and MODEL_CALIBRATION_TRAINING_SPEC is not None:
-            spec = MODEL_CALIBRATION_TRAINING_SPEC
-        elif (
-            job_type == "calibration" and MODEL_CALIBRATION_CALIBRATION_SPEC is not None
-        ):
-            spec = MODEL_CALIBRATION_CALIBRATION_SPEC
-        elif job_type == "validation" and MODEL_CALIBRATION_VALIDATION_SPEC is not None:
-            spec = MODEL_CALIBRATION_VALIDATION_SPEC
-        elif job_type == "testing" and MODEL_CALIBRATION_TESTING_SPEC is not None:
-            spec = MODEL_CALIBRATION_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.model_calibration_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"MODEL_CALIBRATION_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
-
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        # Use unified specification for all job types
+        logger.info("Using unified MODEL_CALIBRATION_SPEC for all job types")
 
         super().__init__(
             config=config,
-            spec=spec,
+            spec=MODEL_CALIBRATION_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

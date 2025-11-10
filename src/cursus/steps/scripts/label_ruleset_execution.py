@@ -405,7 +405,7 @@ def main(
     Args:
         input_paths: Dictionary with keys:
             - "validated_ruleset": Path to validated ruleset JSON
-            - "processed_data": Directory with train/val/test splits
+            - "input_data": Directory with train/val/test splits
         output_paths: Dictionary with keys:
             - "processed_data": Directory for output with labels
             - "execution_report": Path for execution statistics
@@ -437,7 +437,7 @@ def main(
     log(f"[INFO] Initialized rule engine")
 
     # 4. Determine splits to process
-    input_dir = Path(input_paths["processed_data"])
+    input_dir = Path(input_paths["input_data"])
     output_dir = Path(output_paths["processed_data"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -616,7 +616,7 @@ if __name__ == "__main__":
         # Set up paths using container paths
         input_paths = {
             "validated_ruleset": "/opt/ml/processing/input/validated_ruleset",
-            "processed_data": "/opt/ml/processing/input/processed_data",
+            "input_data": "/opt/ml/processing/input/data",
         }
 
         output_paths = {

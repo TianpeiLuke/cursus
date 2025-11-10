@@ -12,7 +12,7 @@ from ...core.base.specification_base import (
     DependencyType,
     NodeType,
 )
-from ...registry.step_names import get_spec_step_type_with_job_type
+from ...registry.step_names import get_spec_step_type
 
 
 # Import the contract at runtime to avoid circular imports
@@ -26,7 +26,7 @@ def _get_tabular_preprocess_contract():
 
 # Tabular Preprocessing Step Specification
 TABULAR_PREPROCESSING_SPEC = StepSpecification(
-    step_type=get_spec_step_type_with_job_type("TabularPreprocessing", "training"),
+    step_type=get_spec_step_type("TabularPreprocessing"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_tabular_preprocess_contract(),
     dependencies=[
@@ -50,9 +50,19 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
                 "training",
                 "train",
                 "model_training",
+                "validation",
+                "val",
+                "model_validation",
+                "holdout",
+                "testing",
+                "test",
+                "model_testing",
+                "calibration",
+                "calib",
+                "model_calibration",
             ],
             data_type="S3Uri",
-            description="Raw tabular data for preprocessing",
+            description="Raw tabular data for preprocessing. Supports all job types: training, validation, testing, and calibration",
         ),
         DependencySpec(
             logical_name="SIGNATURE",
@@ -79,11 +89,18 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
                 "training_data",
                 "model_input_data",
                 "input_data",
-            ],  # Added aliases for better matching including BedrockProcessing compatibility
+                "validation_data",
+                "testing_data",
+                "calibration_data",
+                "processed_training_data",
+                "processed_validation_data",
+                "processed_testing_data",
+                "processed_calibration_data",
+            ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="Processed tabular data with train/val/test splits",
+            description="Processed tabular data. Compatible with all job types (training, validation, testing, calibration)",
         )
     ],
 )

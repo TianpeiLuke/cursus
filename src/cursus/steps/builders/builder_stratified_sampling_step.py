@@ -10,27 +10,8 @@ from sagemaker.sklearn import SKLearnProcessor
 from ..configs.config_stratified_sampling_step import StratifiedSamplingConfig
 from ...core.base.builder_base import StepBuilderBase
 
-# Import specifications based on job type
-try:
-    from ..specs.stratified_sampling_training_spec import (
-        STRATIFIED_SAMPLING_TRAINING_SPEC,
-    )
-    from ..specs.stratified_sampling_calibration_spec import (
-        STRATIFIED_SAMPLING_CALIBRATION_SPEC,
-    )
-    from ..specs.stratified_sampling_validation_spec import (
-        STRATIFIED_SAMPLING_VALIDATION_SPEC,
-    )
-    from ..specs.stratified_sampling_testing_spec import (
-        STRATIFIED_SAMPLING_TESTING_SPEC,
-    )
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    STRATIFIED_SAMPLING_TRAINING_SPEC = STRATIFIED_SAMPLING_CALIBRATION_SPEC = (
-        STRATIFIED_SAMPLING_VALIDATION_SPEC
-    ) = STRATIFIED_SAMPLING_TESTING_SPEC = None
-    SPECS_AVAILABLE = False
+# Import the unified stratified sampling specification
+from ..specs.stratified_sampling_spec import STRATIFIED_SAMPLING_SPEC
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +33,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
         """
-        Initialize with specification based on job type.
+        Initialize with unified specification for all job types.
 
         Args:
             config: Configuration for the step
@@ -60,52 +41,16 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
             role: IAM role
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
-
-        Raises:
-            ValueError: If no specification is available for the job type
         """
-        # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
-
-        # Get specification based on job type
-        if job_type == "training" and STRATIFIED_SAMPLING_TRAINING_SPEC is not None:
-            spec = STRATIFIED_SAMPLING_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and STRATIFIED_SAMPLING_CALIBRATION_SPEC is not None
-        ):
-            spec = STRATIFIED_SAMPLING_CALIBRATION_SPEC
-        elif (
-            job_type == "validation" and STRATIFIED_SAMPLING_VALIDATION_SPEC is not None
-        ):
-            spec = STRATIFIED_SAMPLING_VALIDATION_SPEC
-        elif job_type == "testing" and STRATIFIED_SAMPLING_TESTING_SPEC is not None:
-            spec = STRATIFIED_SAMPLING_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.stratified_sampling_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"STRATIFIED_SAMPLING_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
-
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        # Use unified specification for all job types
+        logger.info("Using unified STRATIFIED_SAMPLING_SPEC for all job types")
 
         super().__init__(
             config=config,
-            spec=spec,
+            spec=STRATIFIED_SAMPLING_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

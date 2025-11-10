@@ -12,7 +12,7 @@ from ...core.base.specification_base import (
     DependencyType,
     NodeType,
 )
-from ...registry.step_names import get_spec_step_type_with_job_type
+from ...registry.step_names import get_spec_step_type
 
 
 # Import the contract at runtime to avoid circular imports
@@ -24,7 +24,7 @@ def _get_stratified_sampling_contract():
 
 # Stratified Sampling Step Specification
 STRATIFIED_SAMPLING_SPEC = StepSpecification(
-    step_type=get_spec_step_type_with_job_type("StratifiedSampling", "training"),
+    step_type=get_spec_step_type("StratifiedSampling"),
     node_type=NodeType.INTERNAL,
     script_contract=_get_stratified_sampling_contract(),
     dependencies=[
@@ -36,6 +36,7 @@ STRATIFIED_SAMPLING_SPEC = StepSpecification(
             semantic_keywords=[
                 "input_data",
                 "processed_data",
+                "output_data",
                 "preprocessed",
                 "cleaned",
                 "tabular",
@@ -44,10 +45,20 @@ STRATIFIED_SAMPLING_SPEC = StepSpecification(
                 "dataset",
                 "training",
                 "train",
+                "validation",
+                "val",
+                "testing",
+                "test",
+                "calibration",
+                "calib",
                 "splits",
+                "model_training",
+                "model_validation",
+                "model_testing",
+                "model_calibration",
             ],
             data_type="S3Uri",
-            description="Processed tabular data from preprocessing step for stratified sampling",
+            description="Processed tabular data from preprocessing step for stratified sampling. Supports all job types: training, validation, testing, and calibration",
         )
     ],
     outputs=[
@@ -57,6 +68,9 @@ STRATIFIED_SAMPLING_SPEC = StepSpecification(
                 "sampled_data",
                 "stratified_data",
                 "training_data",
+                "validation_data",
+                "testing_data",
+                "calibration_data",
                 "model_input_data",
                 "input_path",
                 "input_data",
@@ -64,7 +78,7 @@ STRATIFIED_SAMPLING_SPEC = StepSpecification(
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
-            description="Stratified sampled data with balanced train/val/test splits",
+            description="Stratified sampled data. Compatible with all job types (training, validation, testing, calibration)",
         )
     ],
 )

@@ -12,27 +12,8 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import specifications based on job type
-try:
-    from ..specs.currency_conversion_training_spec import (
-        CURRENCY_CONVERSION_TRAINING_SPEC,
-    )
-    from ..specs.currency_conversion_calibration_spec import (
-        CURRENCY_CONVERSION_CALIBRATION_SPEC,
-    )
-    from ..specs.currency_conversion_validation_spec import (
-        CURRENCY_CONVERSION_VALIDATION_SPEC,
-    )
-    from ..specs.currency_conversion_testing_spec import (
-        CURRENCY_CONVERSION_TESTING_SPEC,
-    )
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    CURRENCY_CONVERSION_TRAINING_SPEC = CURRENCY_CONVERSION_CALIBRATION_SPEC = (
-        CURRENCY_CONVERSION_VALIDATION_SPEC
-    ) = CURRENCY_CONVERSION_TESTING_SPEC = None
-    SPECS_AVAILABLE = False
+# Import the unified currency conversion specification
+from ..specs.currency_conversion_spec import CURRENCY_CONVERSION_SPEC
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +35,7 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
         dependency_resolver: Optional["UnifiedDependencyResolver"] = None,
     ):
         """
-        Initialize with specification based on job type.
+        Initialize with unified specification for all job types.
 
         Args:
             config: Configuration for the step
@@ -62,52 +43,16 @@ class CurrencyConversionStepBuilder(StepBuilderBase):
             role: IAM role
             registry_manager: Optional registry manager for dependency injection
             dependency_resolver: Optional dependency resolver for dependency injection
-
-        Raises:
-            ValueError: If no specification is available for the job type
         """
-        # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
-
-        # Get specification based on job type
-        if job_type == "training" and CURRENCY_CONVERSION_TRAINING_SPEC is not None:
-            spec = CURRENCY_CONVERSION_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and CURRENCY_CONVERSION_CALIBRATION_SPEC is not None
-        ):
-            spec = CURRENCY_CONVERSION_CALIBRATION_SPEC
-        elif (
-            job_type == "validation" and CURRENCY_CONVERSION_VALIDATION_SPEC is not None
-        ):
-            spec = CURRENCY_CONVERSION_VALIDATION_SPEC
-        elif job_type == "testing" and CURRENCY_CONVERSION_TESTING_SPEC is not None:
-            spec = CURRENCY_CONVERSION_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.currency_conversion_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"CURRENCY_CONVERSION_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
-
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        # Use unified specification for all job types
+        logger.info("Using unified CURRENCY_CONVERSION_SPEC for all job types")
 
         super().__init__(
             config=config,
-            spec=spec,
+            spec=CURRENCY_CONVERSION_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,
