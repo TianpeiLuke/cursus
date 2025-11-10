@@ -2313,6 +2313,11 @@ def process_split_directory(
 
         # Save results maintaining original filename structure and format
         base_filename = input_file.stem
+
+        # Remove existing _processed_data suffix if present to avoid duplication
+        if base_filename.endswith("_processed_data"):
+            base_filename = base_filename[: -len("_processed_data")]
+
         output_base = split_output_path / f"{base_filename}_processed_data"
 
         # Save in same format as input
@@ -2621,7 +2626,13 @@ def main(
 
                     # Save results in same format as input
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    base_filename = f"processed_{input_file.stem}_{timestamp}"
+
+                    # Remove existing _processed_data suffix if present to avoid duplication
+                    input_stem = input_file.stem
+                    if input_stem.endswith("_processed_data"):
+                        input_stem = input_stem[: -len("_processed_data")]
+
+                    base_filename = f"processed_{input_stem}_{timestamp}"
                     output_base = output_path / base_filename
 
                     saved_file = save_dataframe_with_format(
@@ -2765,7 +2776,13 @@ def main(
 
                 # Save results in same format as input
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                base_filename = f"processed_{job_type}_{input_file.stem}_{timestamp}"
+
+                # Remove existing _processed_data suffix if present to avoid duplication
+                input_stem = input_file.stem
+                if input_stem.endswith("_processed_data"):
+                    input_stem = input_stem[: -len("_processed_data")]
+
+                base_filename = f"processed_{job_type}_{input_stem}_{timestamp}"
                 output_base = output_path / base_filename
 
                 saved_file = save_dataframe_with_format(

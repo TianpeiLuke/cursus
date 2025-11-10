@@ -15,6 +15,7 @@ import numpy as np
 import json
 import pickle as pkl
 import traceback
+import shutil
 from pathlib import Path
 from sklearn.impute import SimpleImputer
 import logging
@@ -24,10 +25,11 @@ from datetime import datetime
 # Default paths (will be overridden by parameters in main function)
 DEFAULT_INPUT_DIR = "/opt/ml/processing/input/data"
 DEFAULT_OUTPUT_DIR = "/opt/ml/processing/output"
-DEFAULT_IMPUTATION_PARAMS_DIR = "/opt/ml/processing/input/imputation_params"
+DEFAULT_MODEL_ARTIFACTS_DIR = "/opt/ml/processing/input/model_artifacts"
 
 # Constants for file paths to ensure consistency between training and inference
-IMPUTATION_PARAMS_FILENAME = "imputation_parameters.pkl"
+# Match XGBoost training output format
+IMPUTATION_PARAMS_FILENAME = "impute_dict.pkl"
 IMPUTATION_SUMMARY_FILENAME = "imputation_summary.json"
 
 # Set up logging
@@ -608,25 +610,34 @@ def save_imputation_artifacts(
     """
     Save imputation artifacts to the specified output path.
 
+    Output format matches XGBoost training's impute_dict.pkl format:
+    A simple dictionary mapping column names to imputation values.
+
     Args:
         imputation_engine: SimpleImputationEngine instance with fitted parameters
         imputation_config: Imputation configuration dictionary
         output_path: Path to save artifacts to
     """
-    # Prepare imputation parameters for serialization
-    imputation_parameters = {
-        "fitted_imputers": imputation_engine.fitted_imputers,
-        "imputation_statistics": imputation_engine.imputation_statistics,
-        "config": imputation_config,
-        "version": "1.0",
-        "timestamp": datetime.utcnow().isoformat(),
-    }
+    # Extract simple imputation dictionary matching XGBoost training format
+    # Format: {column_name: imputation_value}
+    impute_dict = {}
+    for column, imputer in imputation_engine.fitted_imputers.items():
+        # Get the imputation value from the sklearn SimpleImputer
+        if hasattr(imputer, "statistics_") and imputer.statistics_ is not None:
+            # For mean/median/mode strategies, use statistics_
+            impute_dict[column] = float(imputer.statistics_[0])
+        elif hasattr(imputer, "fill_value"):
+            # For constant strategy, use fill_value
+            impute_dict[column] = imputer.fill_value
+        else:
+            logger.warning(f"Could not extract imputation value for column {column}")
 
-    # Save imputation parameters - using consistent filename
+    # Save imputation dictionary in XGBoost training format
     params_output_path = output_path / IMPUTATION_PARAMS_FILENAME
     with open(params_output_path, "wb") as f:
-        pkl.dump(imputation_parameters, f)
-    logger.info(f"Saved imputation parameters to {params_output_path}")
+        pkl.dump(impute_dict, f)
+    logger.info(f"Saved imputation dictionary to {params_output_path}")
+    logger.info(f"Format: {{{list(impute_dict.keys())[:3]}...}} -> values")
     logger.info(f"This file can be used as input for non-training jobs")
 
     # Save human-readable summary
@@ -641,11 +652,14 @@ def load_imputation_parameters(imputation_params_path: Path) -> Dict:
     """
     Load imputation parameters from a pickle file.
 
+    Expected format (XGBoost training compatible):
+    Simple dict mapping column names to imputation values: {column: value}
+
     Args:
         imputation_params_path: Path to the imputation parameters file
 
     Returns:
-        Dictionary of imputation parameters
+        Dictionary of imputation parameters {column_name: imputation_value}
     """
     if not imputation_params_path.exists():
         raise FileNotFoundError(
@@ -654,12 +668,13 @@ def load_imputation_parameters(imputation_params_path: Path) -> Dict:
 
     logger.info(f"Loading imputation parameters from {imputation_params_path}")
     with open(imputation_params_path, "rb") as f:
-        imputation_parameters = pkl.load(f)
+        impute_dict = pkl.load(f)
 
-    logger.info(
-        f"Successfully loaded imputation parameters with {len(imputation_parameters['fitted_imputers'])} imputers"
-    )
-    return imputation_parameters
+    if not isinstance(impute_dict, dict):
+        raise ValueError(f"Expected dict format, got {type(impute_dict)}")
+
+    logger.info(f"Loaded imputation parameters for {len(impute_dict)} columns")
+    return impute_dict
 
 
 def process_data(
@@ -677,7 +692,7 @@ def process_data(
         label_field: Target column name
         job_type: Type of job (training, validation, testing, calibration)
         imputation_config: Imputation configuration dictionary
-        imputation_parameters: Pre-fitted imputation parameters (for non-training jobs)
+        imputation_parameters: Pre-fitted imputation parameters (simple dict {column: value})
 
     Returns:
         Tuple containing:
@@ -703,28 +718,34 @@ def process_data(
             logger.info(f"Imputed {split_name} data, shape: {df_imputed.shape}")
 
     else:
-        # Non-training mode: load pre-fitted parameters
+        # Non-training mode: use simple imputation dict {column: value}
         if not imputation_parameters:
             raise ValueError(
                 "For non-training job types, imputation_parameters must be provided"
             )
 
-        # Load pre-fitted imputation parameters
-        imputation_engine.fitted_imputers = imputation_parameters["fitted_imputers"]
-        imputation_engine.imputation_statistics = imputation_parameters[
-            "imputation_statistics"
-        ]
-
         logger.info(
-            f"Using pre-fitted imputation parameters with {len(imputation_engine.fitted_imputers)} imputers"
+            f"Using pre-fitted imputation parameters for {len(imputation_parameters)} columns"
         )
 
-        # Transform the data
+        # Transform the data using simple fillna with the imputation dict
         transformed_data = {}
         for split_name, df in data_dict.items():
-            df_imputed = imputation_engine.transform(df)
+            df_imputed = df.copy()
+            for column, impute_value in imputation_parameters.items():
+                if column in df_imputed.columns:
+                    # Only fill NaN values
+                    df_imputed[column] = df_imputed[column].fillna(impute_value)
+
             transformed_data[split_name] = df_imputed
             logger.info(f"Imputed {split_name} data, shape: {df_imputed.shape}")
+
+        # Create a minimal engine for consistency (won't be used for transformation)
+        # This is just for returning a consistent interface
+        imputation_engine.imputation_statistics = {
+            col: {"strategy": "constant", "fill_value": val}
+            for col, val in imputation_parameters.items()
+        }
 
     return transformed_data, imputation_engine
 
@@ -867,6 +888,38 @@ def generate_imputation_recommendations(
     return recommendations
 
 
+def copy_existing_artifacts(src_dir: str, dst_dir: str) -> None:
+    """
+    Copy all existing model artifacts from previous processing steps.
+
+    This enables the parameter accumulator pattern where each step:
+    1. Copies artifacts from previous steps
+    2. Adds its own artifacts
+    3. Passes all artifacts to the next step
+
+    Args:
+        src_dir: Source directory containing existing artifacts
+        dst_dir: Destination directory to copy artifacts to
+    """
+    if not src_dir or not os.path.exists(src_dir):
+        logger.info(f"No existing artifacts to copy from {src_dir}")
+        return
+
+    os.makedirs(dst_dir, exist_ok=True)
+    copied_count = 0
+
+    for filename in os.listdir(src_dir):
+        src_file = os.path.join(src_dir, filename)
+        dst_file = os.path.join(dst_dir, filename)
+
+        if os.path.isfile(src_file):
+            shutil.copy2(src_file, dst_file)
+            copied_count += 1
+            logger.info(f"  Copied existing artifact: {filename}")
+
+    logger.info(f"✓ Copied {copied_count} existing artifact(s) to {dst_dir}")
+
+
 def generate_imputation_text_summary(report: Dict[str, Any]) -> str:
     """
     Generate human-readable text summary of imputation process.
@@ -918,8 +971,8 @@ def internal_main(
     output_dir: str,
     imputation_config: Dict[str, Any],
     label_field: str,
-    imputation_params_input_dir: Optional[str] = None,
-    imputation_params_output_dir: Optional[str] = None,
+    model_artifacts_input_dir: Optional[str] = None,
+    model_artifacts_output_dir: Optional[str] = None,
     load_data_func: Callable = load_split_data,
     save_data_func: Callable = save_output_data,
 ) -> Tuple[Dict[str, pd.DataFrame], SimpleImputationEngine]:
@@ -932,7 +985,8 @@ def internal_main(
         output_dir: Output directory for processed data
         imputation_config: Imputation configuration dictionary
         label_field: Target column name
-        imputation_params_input_dir: Directory containing pre-trained imputation parameters (for non-training jobs)
+        model_artifacts_input_dir: Directory containing model artifacts from previous steps
+        model_artifacts_output_dir: Directory to save model artifacts for next steps
         load_data_func: Function to load data (for dependency injection in tests)
         save_data_func: Function to save data (for dependency injection in tests)
 
@@ -947,20 +1001,37 @@ def internal_main(
     logger.info(f"Using imputation configuration: {imputation_config}")
     logger.info(f"Label field: {label_field}")
 
+    # Determine model artifacts output directory
+    artifacts_output_dir = (
+        Path(model_artifacts_output_dir)
+        if model_artifacts_output_dir
+        else output_path / "model_artifacts"
+    )
+    artifacts_output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy existing artifacts from previous steps (parameter accumulator pattern)
+    if model_artifacts_input_dir:
+        copy_existing_artifacts(model_artifacts_input_dir, str(artifacts_output_dir))
+
     # Load data according to job type
     data_dict = load_data_func(job_type, input_dir)
 
     # Load imputation parameters if needed (non-training modes)
     imputation_parameters = None
-    if job_type != "training" and imputation_params_input_dir:
+    if job_type != "training" and model_artifacts_input_dir:
         # Use the consistent filename for loading imputation parameters
         imputation_params_path = (
-            Path(imputation_params_input_dir) / IMPUTATION_PARAMS_FILENAME
+            Path(model_artifacts_input_dir) / IMPUTATION_PARAMS_FILENAME
         )
-        imputation_parameters = load_imputation_parameters(imputation_params_path)
-        logger.info(
-            f"Loaded pre-trained imputation parameters from {imputation_params_path}"
-        )
+        if imputation_params_path.exists():
+            imputation_parameters = load_imputation_parameters(imputation_params_path)
+            logger.info(
+                f"Loaded pre-trained imputation parameters from {imputation_params_path}"
+            )
+        else:
+            logger.warning(
+                f"Imputation parameters not found at {imputation_params_path}"
+            )
 
     # Process the data
     transformed_data, imputation_engine = process_data(
@@ -976,15 +1047,8 @@ def internal_main(
 
     # Save fitted artifacts (only for training jobs)
     if job_type == "training":
-        # Use imputation_params_output_dir if provided, otherwise fall back to output_path
-        params_output_path = (
-            Path(imputation_params_output_dir)
-            if imputation_params_output_dir
-            else output_path
-        )
-        params_output_path.mkdir(parents=True, exist_ok=True)
         save_imputation_artifacts(
-            imputation_engine, imputation_config, params_output_path
+            imputation_engine, imputation_config, artifacts_output_dir
         )
 
     # Generate comprehensive report
@@ -1012,9 +1076,10 @@ def main(
     Args:
         input_paths: Dictionary of input paths with logical names
             - "data_input": Input data directory (from tabular_preprocessing)
-            - "imputation_params_input": Imputation parameters directory (for non-training jobs)
+            - "model_artifacts_input": Model artifacts from previous steps (standardized)
         output_paths: Dictionary of output paths with logical names
             - "data_output": Output directory for imputed data
+            - "model_artifacts_output": Model artifacts output for next steps (standardized)
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments containing job_type
 
@@ -1025,46 +1090,39 @@ def main(
     """
     try:
         # Extract paths from input parameters - required keys must be present
-        if "data_input" not in input_paths:
-            raise ValueError("Missing required input path: data_input")
-        if "data_output" not in output_paths:
-            raise ValueError("Missing required output path: data_output")
+        if "input_data" not in input_paths:
+            raise ValueError("Missing required input path: input_data")
+        if "processed_data" not in output_paths:
+            raise ValueError("Missing required output path: processed_data")
 
         # Extract job_type from args
         if job_args is None or not hasattr(job_args, "job_type"):
             raise ValueError("job_args must contain job_type parameter")
 
         job_type = job_args.job_type
-        input_dir = input_paths["data_input"]
-        output_dir = output_paths["data_output"]
+        input_dir = input_paths["input_data"]
+        output_dir = output_paths["processed_data"]
 
-        # For non-training jobs, check if imputation parameters input path is provided
-        imputation_params_input_dir = None
-        if job_type != "training":
-            imputation_params_input_dir = input_paths.get("imputation_params")
-            if not imputation_params_input_dir:
-                logger.warning(
-                    f"No imputation_params path provided for non-training job {job_type}. "
-                    + "Imputation may fail."
-                )
+        # Get standardized model artifacts paths
+        model_artifacts_input_dir = input_paths.get("model_artifacts_input")
+        model_artifacts_output_dir = output_paths.get("model_artifacts_output")
 
         # Log input/output paths for clarity
         logger.info(f"Input data directory: {input_dir}")
         logger.info(f"Output directory: {output_dir}")
-        if imputation_params_input_dir:
+        if model_artifacts_input_dir:
+            logger.info(f"Model artifacts input directory: {model_artifacts_input_dir}")
             logger.info(
-                f"Imputation parameters input directory: {imputation_params_input_dir}"
+                f"Expected imputation parameters path: {Path(model_artifacts_input_dir) / IMPUTATION_PARAMS_FILENAME}"
             )
+        if model_artifacts_output_dir:
             logger.info(
-                f"Expected imputation parameters path: {Path(imputation_params_input_dir) / IMPUTATION_PARAMS_FILENAME}"
+                f"Model artifacts output directory: {model_artifacts_output_dir}"
             )
 
         # Load imputation configuration from environment variables
         imputation_config = load_imputation_config(environ_vars)
         label_field = environ_vars.get("LABEL_FIELD", "target")
-
-        # Get imputation parameters output directory
-        imputation_params_output_dir = output_paths.get("imputation_params")
 
         # Execute the internal main logic
         return internal_main(
@@ -1073,8 +1131,8 @@ def main(
             output_dir=output_dir,
             imputation_config=imputation_config,
             label_field=label_field,
-            imputation_params_input_dir=imputation_params_input_dir,
-            imputation_params_output_dir=imputation_params_output_dir,
+            model_artifacts_input_dir=model_artifacts_input_dir,
+            model_artifacts_output_dir=model_artifacts_output_dir,
         )
 
     except Exception as e:
@@ -1096,15 +1154,19 @@ if __name__ == "__main__":
         args = parser.parse_args()
 
         # Define standard SageMaker paths based on contract
+        # Separate data and model artifacts into different subfolders
         input_paths = {
-            "data_input": DEFAULT_INPUT_DIR,
+            "input_data": DEFAULT_INPUT_DIR,
         }
 
-        output_paths = {"data_output": DEFAULT_OUTPUT_DIR}
+        output_paths = {
+            "processed_data": DEFAULT_OUTPUT_DIR + "/data",
+            "model_artifacts_output": DEFAULT_OUTPUT_DIR + "/model_artifacts",
+        }
 
-        # For non-training jobs, add imputation parameters input path
+        # For non-training jobs, add model artifacts input path
         if args.job_type != "training":
-            input_paths["imputation_params"] = DEFAULT_IMPUTATION_PARAMS_DIR
+            input_paths["model_artifacts_input"] = DEFAULT_MODEL_ARTIFACTS_DIR
 
         # Environment variables dictionary
         environ_vars = {

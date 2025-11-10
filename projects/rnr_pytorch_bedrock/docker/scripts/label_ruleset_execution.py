@@ -465,44 +465,56 @@ def main(
             log(f"[WARNING] Split directory not found: {split_dir}")
             continue
 
-        # Try to find data file in supported formats
-        # If preferred format specified, check it first
+        # Find any data file with supported extensions (no filename assumptions)
         data_file = None
         input_format = None
 
+        # Define supported extensions with their priority order
+        supported_extensions = [".csv", ".parquet", ".tsv", ".pq", ".csv.gz", ".tsv.gz"]
+
+        # If preferred format specified, reorder to check it first
         if preferred_format:
-            # Try preferred format first
             format_extensions = {
                 "csv": [".csv", ".csv.gz"],
                 "tsv": [".tsv", ".tsv.gz"],
                 "parquet": [".parquet", ".pq"],
             }
 
-            for ext in format_extensions[preferred_format]:
-                candidate = split_dir / f"{split_name}_processed_data{ext}"
-                if candidate.exists():
-                    data_file = candidate
-                    input_format = preferred_format
+            preferred_exts = format_extensions.get(preferred_format, [])
+            # Put preferred extensions first, then others
+            other_exts = [
+                ext for ext in supported_extensions if ext not in preferred_exts
+            ]
+            supported_extensions = preferred_exts + other_exts
+            log(
+                f"[INFO] Looking for '{preferred_format}' format first for {split_name}"
+            )
+
+        # Search for files with supported extensions
+        found_files = []
+        for ext in supported_extensions:
+            matching_files = list(split_dir.glob(f"*{ext}"))
+            if matching_files:
+                found_files.extend(matching_files)
+                # Use first match from this extension
+                data_file = matching_files[0]
+                input_format = _detect_file_format(data_file)
+
+                if len(matching_files) > 1:
                     log(
-                        f"[INFO] Using preferred format '{preferred_format}' for {split_name}"
+                        f"[WARNING] Multiple {ext} files found in {split_dir}, using: {data_file.name}"
                     )
-                    break
-
-        # Fallback to trying all formats if preferred not found or not specified
-        if data_file is None:
-            for ext in [".csv", ".tsv", ".parquet", ".pq", ".csv.gz", ".tsv.gz"]:
-                candidate = split_dir / f"{split_name}_processed_data{ext}"
-                if candidate.exists():
-                    data_file = candidate
-                    input_format = _detect_file_format(data_file)
-                    if preferred_format:
-                        log(
-                            f"[INFO] Preferred format not found, using '{input_format}' for {split_name}"
-                        )
-                    break
+                else:
+                    log(
+                        f"[INFO] Found data file: {data_file.name} (format: {input_format})"
+                    )
+                break
 
         if data_file is None:
-            log(f"[WARNING] No data file found in {split_dir}")
+            log(
+                f"[WARNING] No data file with supported extensions found in {split_dir}"
+            )
+            log(f"[WARNING] Supported extensions: {', '.join(supported_extensions)}")
             continue
 
         df = _read_dataframe(data_file)
