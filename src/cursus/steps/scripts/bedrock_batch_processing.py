@@ -2454,7 +2454,7 @@ def main(
             ),
             # Input truncation configuration
             "max_input_field_length": int(
-                environ_vars.get("BEDROCK_MAX_INPUT_FIELD_LENGTH", "50000")
+                environ_vars.get("BEDROCK_MAX_INPUT_FIELD_LENGTH", "300000")
             ),
             "truncation_enabled": environ_vars.get(
                 "BEDROCK_TRUNCATION_ENABLED", "true"
@@ -2941,7 +2941,7 @@ if __name__ == "__main__":
             ),
             # Input truncation configuration
             "BEDROCK_MAX_INPUT_FIELD_LENGTH": os.environ.get(
-                "BEDROCK_MAX_INPUT_FIELD_LENGTH", "50000"
+                "BEDROCK_MAX_INPUT_FIELD_LENGTH", "300000"
             ),
             "BEDROCK_TRUNCATION_ENABLED": os.environ.get(
                 "BEDROCK_TRUNCATION_ENABLED", "true"
