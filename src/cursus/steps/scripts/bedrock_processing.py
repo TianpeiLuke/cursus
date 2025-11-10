@@ -279,25 +279,55 @@ def repair_json(text: str) -> str:
 
 def extract_json_candidate(response_text: str) -> str:
     """
-    Extract the JSON object substring from model response.
+    Extract the first complete JSON object using intelligent brace counting.
 
-    Finds content between the first '{' and last '}' to isolate the JSON object
-    from any surrounding text (markdown fences, explanatory text, etc.).
+    This function properly handles assistant prefilling and finds the first
+    structurally complete JSON object by tracking brace balance, accounting
+    for braces inside strings.
 
     Args:
         response_text: Raw response text from LLM
 
     Returns:
-        Extracted JSON substring, or original text if braces not found
+        Extracted JSON substring, or original text if no valid object found
     """
     start = response_text.find("{")
-    end = response_text.rfind("}")
-
-    if start == -1 or end == -1 or start >= end:
-        # Fall back to the raw text if we can't find braces
+    if start == -1:
         return response_text.strip()
 
-    return response_text[start : end + 1].strip()
+    brace_count = 0
+    in_string = False
+    escape_next = False
+
+    for i in range(start, len(response_text)):
+        char = response_text[i]
+
+        # Handle escape sequences
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == "\\":
+            escape_next = True
+            continue
+
+        # Track string boundaries (braces inside strings don't count)
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+
+        # Count braces only outside strings
+        if not in_string:
+            if char == "{":
+                brace_count += 1
+            elif char == "}":
+                brace_count -= 1
+                # Found first complete JSON object when count returns to 0
+                if brace_count == 0:
+                    return response_text[start : i + 1]
+
+    # Fallback: no complete object found, return from first brace onwards
+    return response_text[start:].strip()
 
 
 # Container path constants
@@ -750,16 +780,14 @@ class BedrockProcessor:
 
         try:
             if self.response_model_class:
-                # STEP 0: Extract JSON substring between first { and last }
-                # This handles markdown fences and extraneous text
-                complete_json = extract_json_candidate(response_text)
-
-                # STEP 0.5: Handle assistant prefilling - prepend { if missing
-                # When using assistant prefilling with "content": "{", the opening brace
-                # is not included in the response text, so we need to add it back
-                if not complete_json.strip().startswith("{"):
-                    complete_json = "{" + complete_json
+                # STEP 0: Handle assistant prefilling BEFORE extraction (CRITICAL)
+                # Prepend { BEFORE extraction to avoid grabbing nested objects
+                if not response_text.strip().startswith("{"):
+                    response_text = "{" + response_text
                     logger.info("Prepended opening brace from assistant prefilling")
+
+                # STEP 1: Extract JSON with smart brace counting
+                complete_json = extract_json_candidate(response_text)
 
                 # STEP 1: Try parsing as-is
                 try:

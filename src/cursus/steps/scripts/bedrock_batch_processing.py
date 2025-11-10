@@ -292,25 +292,55 @@ def repair_json(text: str) -> str:
 
 def extract_json_candidate(response_text: str) -> str:
     """
-    Extract the JSON object substring from model response.
+    Extract the first complete JSON object using intelligent brace counting.
 
-    Finds content between the first '{' and last '}' to isolate the JSON object
-    from any surrounding text (markdown fences, explanatory text, etc.).
+    This function properly handles assistant prefilling and finds the first
+    structurally complete JSON object by tracking brace balance, accounting
+    for braces inside strings.
 
     Args:
         response_text: Raw response text from LLM
 
     Returns:
-        Extracted JSON substring, or original text if braces not found
+        Extracted JSON substring, or original text if no valid object found
     """
     start = response_text.find("{")
-    end = response_text.rfind("}")
-
-    if start == -1 or end == -1 or start >= end:
-        # Fall back to the raw text if we can't find braces
+    if start == -1:
         return response_text.strip()
 
-    return response_text[start : end + 1].strip()
+    brace_count = 0
+    in_string = False
+    escape_next = False
+
+    for i in range(start, len(response_text)):
+        char = response_text[i]
+
+        # Handle escape sequences
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == "\\":
+            escape_next = True
+            continue
+
+        # Track string boundaries (braces inside strings don't count)
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+
+        # Count braces only outside strings
+        if not in_string:
+            if char == "{":
+                brace_count += 1
+            elif char == "}":
+                brace_count -= 1
+                # Found first complete JSON object when count returns to 0
+                if brace_count == 0:
+                    return response_text[start : i + 1]
+
+    # Fallback: no complete object found, return from first brace onwards
+    return response_text[start:].strip()
 
 
 # Container path constants
@@ -432,6 +462,18 @@ class BedrockProcessor:
         self.request_semaphore = threading.Semaphore(self.max_concurrent_workers)
         self.last_request_times = {}
         self.time_lock = threading.Lock()
+
+        # Input truncation configuration
+        self.max_input_field_length = config.get("max_input_field_length", 300000)
+        self.truncation_enabled = config.get("truncation_enabled", True)
+        self.log_truncations = config.get("log_truncations", True)
+
+        # Truncation tracking
+        self.truncation_stats = {
+            "total_truncations": 0,
+            "truncated_records": 0,
+            "truncated_fields": {},
+        }
 
         self._initialize_bedrock_client()
         self._configure_inference_profile()
@@ -646,8 +688,95 @@ class BedrockProcessor:
         model_name = object_schema.get("title", f"NestedModel_{id(object_schema)}")
         return create_model(model_name, **nested_fields)
 
+    def _truncate_field_value(
+        self, value: str, field_name: str, max_length: int
+    ) -> tuple[str, bool]:
+        """
+        Truncate field value to maximum length, preserving as much original content as possible.
+
+        Args:
+            value: Field value to potentially truncate
+            field_name: Name of the field (for logging)
+            max_length: Maximum length in characters
+
+        Returns:
+            Tuple of (truncated_value, was_truncated)
+        """
+        if len(value) <= max_length:
+            return value, False
+
+        # Truncation needed
+        truncation_marker = "\n... [TRUNCATED DUE TO LENGTH]"
+        keep_length = max_length - len(truncation_marker)
+
+        if keep_length <= 0:
+            # Edge case: max_length is too small
+            logger.warning(
+                f"Field '{field_name}' truncation limit ({max_length}) is too small. "
+                f"Using minimum truncation."
+            )
+            return value[: max(100, max_length)] + truncation_marker, True
+
+        truncated = value[:keep_length] + truncation_marker
+
+        # Log truncation
+        if self.log_truncations:
+            logger.info(
+                f"Truncated field '{field_name}': {len(value)} → {len(truncated)} chars "
+                f"({len(value) - len(truncated)} chars removed)"
+            )
+
+        # Track truncation stats
+        self.truncation_stats["total_truncations"] += 1
+        if field_name not in self.truncation_stats["truncated_fields"]:
+            self.truncation_stats["truncated_fields"][field_name] = 0
+        self.truncation_stats["truncated_fields"][field_name] += 1
+
+        return truncated, True
+
+    def _truncate_input_data(
+        self, row_data: Dict[str, Any]
+    ) -> tuple[Dict[str, Any], List[str]]:
+        """
+        Truncate input fields if they exceed maximum length.
+
+        Args:
+            row_data: Dictionary containing row data
+
+        Returns:
+            Tuple of (truncated_row_data, list_of_truncated_field_names)
+        """
+        if not self.truncation_enabled:
+            return row_data, []
+
+        truncated_data = row_data.copy()
+        truncated_fields = []
+
+        for field_name, value in row_data.items():
+            # Only truncate string fields
+            if isinstance(value, str) and len(value) > self.max_input_field_length:
+                truncated_value, was_truncated = self._truncate_field_value(
+                    value, field_name, self.max_input_field_length
+                )
+                truncated_data[field_name] = truncated_value
+                if was_truncated:
+                    truncated_fields.append(field_name)
+
+        return truncated_data, truncated_fields
+
     def _format_prompt(self, row_data: Dict[str, Any]) -> str:
-        """Format prompt using template placeholders and DataFrame row data."""
+        """Format prompt using template placeholders and DataFrame row data with input truncation."""
+        # Apply truncation if enabled
+        truncated_data, truncated_fields = self._truncate_input_data(row_data)
+
+        if truncated_fields:
+            # Track that this record had truncation
+            self.truncation_stats["truncated_records"] += 1
+            if self.log_truncations:
+                logger.info(
+                    f"Record had {len(truncated_fields)} truncated fields: {truncated_fields}"
+                )
+
         # Use input_placeholders from template configuration (preferred method)
         placeholders = self.config.get("input_placeholders", [])
 
@@ -662,18 +791,18 @@ class BedrockProcessor:
         # This avoids issues with curly braces in JSON examples being interpreted as placeholders
         for placeholder in placeholders:
             placeholder_pattern = "{" + placeholder + "}"
-            if placeholder in row_data:
+            if placeholder in truncated_data:
                 # Convert value to string and replace
                 value = (
-                    str(row_data[placeholder])
-                    if row_data[placeholder] is not None
+                    str(truncated_data[placeholder])
+                    if truncated_data[placeholder] is not None
                     else ""
                 )
                 formatted_prompt = formatted_prompt.replace(placeholder_pattern, value)
             else:
                 # Log warning for missing placeholder data
                 logger.warning(
-                    f"Placeholder '{placeholder}' not found in row data. Available columns: {list(row_data.keys())}"
+                    f"Placeholder '{placeholder}' not found in row data. Available columns: {list(truncated_data.keys())}"
                 )
                 formatted_prompt = formatted_prompt.replace(
                     placeholder_pattern, f"[Missing: {placeholder}]"
@@ -761,16 +890,14 @@ class BedrockProcessor:
 
         try:
             if self.response_model_class:
-                # STEP 0: Extract JSON substring between first { and last }
-                # This handles markdown fences and extraneous text
-                complete_json = extract_json_candidate(response_text)
-
-                # STEP 0.5: Handle assistant prefilling - prepend { if missing
-                # When using assistant prefilling with "content": "{", the opening brace
-                # is not included in the response text, so we need to add it back
-                if not complete_json.strip().startswith("{"):
-                    complete_json = "{" + complete_json
+                # STEP 0: Handle assistant prefilling BEFORE extraction (CRITICAL)
+                # Prepend { BEFORE extraction to avoid grabbing nested objects
+                if not response_text.strip().startswith("{"):
+                    response_text = "{" + response_text
                     logger.info("Prepended opening brace from assistant prefilling")
+
+                # STEP 1: Extract JSON with smart brace counting
+                complete_json = extract_json_candidate(response_text)
 
                 # STEP 1: Try parsing as-is
                 try:
@@ -2325,6 +2452,18 @@ def main(
             "max_concurrent_batch_jobs": int(
                 environ_vars.get("BEDROCK_MAX_CONCURRENT_BATCH_JOBS", "20")
             ),
+            # Input truncation configuration
+            "max_input_field_length": int(
+                environ_vars.get("BEDROCK_MAX_INPUT_FIELD_LENGTH", "50000")
+            ),
+            "truncation_enabled": environ_vars.get(
+                "BEDROCK_TRUNCATION_ENABLED", "true"
+            ).lower()
+            == "true",
+            "log_truncations": environ_vars.get(
+                "BEDROCK_LOG_TRUNCATIONS", "true"
+            ).lower()
+            == "true",
         }
 
         # Initialize batch processor (extends BedrockProcessor)
@@ -2648,6 +2787,19 @@ def main(
         )
         processing_stats["processing_timestamp"] = datetime.now().isoformat()
 
+        # Add truncation statistics
+        processing_stats["truncation_stats"] = {
+            "truncation_enabled": config["truncation_enabled"],
+            "max_input_field_length": config["max_input_field_length"],
+            "total_truncations": processor.truncation_stats["total_truncations"],
+            "truncated_records": processor.truncation_stats["truncated_records"],
+            "truncated_fields": processor.truncation_stats["truncated_fields"],
+            "truncation_rate": processor.truncation_stats["truncated_records"]
+            / processing_stats["total_records"]
+            if processing_stats["total_records"] > 0
+            else 0,
+        }
+
         # Save processing summary
         summary_file = (
             summary_path
@@ -2662,6 +2814,22 @@ def main(
         log(f"Validation rate: {processing_stats['overall_validation_rate']:.2%}")
         log(f"Model used: {processing_stats['effective_model_id']}")
         log(f"Batch processing used: {processing_stats['batch_processing_used']}")
+
+        # Log truncation statistics
+        if processing_stats["truncation_stats"]["truncation_enabled"]:
+            log(
+                f"Truncation enabled: max_input_field_length={processing_stats['truncation_stats']['max_input_field_length']}"
+            )
+            log(
+                f"Truncated records: {processing_stats['truncation_stats']['truncated_records']} ({processing_stats['truncation_stats']['truncation_rate']:.2%})"
+            )
+            log(
+                f"Total truncations: {processing_stats['truncation_stats']['total_truncations']}"
+            )
+            if processing_stats["truncation_stats"]["truncated_fields"]:
+                log(
+                    f"Truncated fields: {processing_stats['truncation_stats']['truncated_fields']}"
+                )
 
         if job_type == "training" and processing_stats["splits_processed"]:
             log("Split-level statistics:")
@@ -2770,6 +2938,16 @@ if __name__ == "__main__":
             ),
             "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": os.environ.get(
                 "BEDROCK_MAX_CONCURRENT_BATCH_JOBS", "20"
+            ),
+            # Input truncation configuration
+            "BEDROCK_MAX_INPUT_FIELD_LENGTH": os.environ.get(
+                "BEDROCK_MAX_INPUT_FIELD_LENGTH", "50000"
+            ),
+            "BEDROCK_TRUNCATION_ENABLED": os.environ.get(
+                "BEDROCK_TRUNCATION_ENABLED", "true"
+            ),
+            "BEDROCK_LOG_TRUNCATIONS": os.environ.get(
+                "BEDROCK_LOG_TRUNCATIONS", "true"
             ),
         }
 

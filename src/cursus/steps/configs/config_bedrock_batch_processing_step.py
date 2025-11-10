@@ -173,6 +173,24 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
         description="Maximum concurrent batch jobs (AWS limit: 20)",
     )
 
+    # Input truncation configuration
+    bedrock_max_input_field_length: int = Field(
+        default=300000,
+        ge=100,
+        le=1000000,
+        description="Maximum length in characters for input fields before truncation (default: 300,000 chars ≈ 75,000 tokens)",
+    )
+
+    bedrock_truncation_enabled: bool = Field(
+        default=True,
+        description="Enable automatic truncation of oversized input fields to prevent error 413 'Input is too long'",
+    )
+
+    bedrock_log_truncations: bool = Field(
+        default=True,
+        description="Log detailed information about truncated fields for debugging and monitoring",
+    )
+
     # Processing step overrides
     processing_entry_point: str = Field(
         default="bedrock_batch_processing.py",
@@ -260,6 +278,14 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                 "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": str(
                     self.bedrock_max_concurrent_batch_jobs
                 ),
+                # Input truncation configuration
+                "BEDROCK_MAX_INPUT_FIELD_LENGTH": str(
+                    self.bedrock_max_input_field_length
+                ),
+                "BEDROCK_TRUNCATION_ENABLED": str(
+                    self.bedrock_truncation_enabled
+                ).lower(),
+                "BEDROCK_LOG_TRUNCATIONS": str(self.bedrock_log_truncations).lower(),
                 # S3 paths for batch processing (set by step builder using framework patterns)
                 # These will be populated by the step builder using _get_base_output_path() and Join()
                 "BEDROCK_BATCH_INPUT_S3_PATH": "",  # Will be set by step builder
