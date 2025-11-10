@@ -214,26 +214,26 @@ CONTAINER_PATHS = {
 def _detect_file_format(file_path: str) -> str:
     """
     Detect file format based on extension.
-    
+
     Args:
         file_path: Path to file
-        
+
     Returns:
         Format string: 'csv', 'tsv', 'parquet', or 'json'
     """
     file_path_lower = file_path.lower()
-    
-    if file_path_lower.endswith(('.parquet', '.pq')):
-        return 'parquet'
-    elif file_path_lower.endswith('.tsv'):
-        return 'tsv'
-    elif file_path_lower.endswith('.json'):
-        return 'json'
-    elif file_path_lower.endswith('.csv'):
-        return 'csv'
+
+    if file_path_lower.endswith((".parquet", ".pq")):
+        return "parquet"
+    elif file_path_lower.endswith(".tsv"):
+        return "tsv"
+    elif file_path_lower.endswith(".json"):
+        return "json"
+    elif file_path_lower.endswith(".csv"):
+        return "csv"
     else:
         # Default to CSV for unknown extensions
-        return 'csv'
+        return "csv"
 
 
 def detect_and_load_predictions(
@@ -259,8 +259,10 @@ def detect_and_load_predictions(
         file_path = os.path.join(input_dir, f"predictions.{fmt}")
         if os.path.exists(file_path):
             detected_format = _detect_file_format(file_path)
-            logger.info(f"Loading predictions from {file_path} (format: {detected_format})")
-            
+            logger.info(
+                f"Loading predictions from {file_path} (format: {detected_format})"
+            )
+
             if detected_format == "parquet":
                 return pd.read_parquet(file_path)
             elif detected_format == "tsv":

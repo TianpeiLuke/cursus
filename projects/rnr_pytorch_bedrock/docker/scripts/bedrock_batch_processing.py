@@ -765,6 +765,13 @@ class BedrockProcessor:
                 # This handles markdown fences and extraneous text
                 complete_json = extract_json_candidate(response_text)
 
+                # STEP 0.5: Handle assistant prefilling - prepend { if missing
+                # When using assistant prefilling with "content": "{", the opening brace
+                # is not included in the response text, so we need to add it back
+                if not complete_json.strip().startswith("{"):
+                    complete_json = "{" + complete_json
+                    logger.info("Prepended opening brace from assistant prefilling")
+
                 # STEP 1: Try parsing as-is
                 try:
                     validated_response = self.response_model_class.model_validate_json(

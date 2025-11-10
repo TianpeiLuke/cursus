@@ -11,6 +11,7 @@ from pathlib import Path
 from enum import Enum
 import json
 import logging
+import uuid
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -58,9 +59,14 @@ class RuleCondition(BaseModel):
 
     Supports nested logical operators (all_of, any_of, none_of) and
     leaf conditions with field comparisons using validated operators.
+
+    All fields are optional (Tier 2) but mutually exclusive validation ensures
+    conditions are either leaf (field/operator/value) or logical (all_of/any_of/none_of).
     """
 
-    # Leaf condition fields
+    # ===== Tier 2: Optional Condition Types (Mutually Exclusive) =====
+
+    # Leaf condition fields (used together for field comparisons)
     field: Optional[str] = Field(
         default=None, description="Field name for leaf condition"
     )
@@ -157,7 +163,13 @@ class LabelConfig(BaseModel):
     Pydantic model for label configuration.
 
     Defines the output label structure, valid values, and mapping to human-readable names.
+
+    Follows three-tier design:
+    - Tier 1: Required user inputs
+    - Tier 2: Optional user inputs with defaults
     """
+
+    # ===== Tier 1: Required User Inputs =====
 
     output_label_name: str = Field(
         ...,
@@ -185,6 +197,8 @@ class LabelConfig(BaseModel):
         ...,
         description="Default label when no rules match (must be in label_values)",
     )
+
+    # ===== Tier 2: Optional User Inputs with Defaults =====
 
     evaluation_mode: str = Field(
         default="priority",
@@ -249,7 +263,13 @@ class FieldConfig(BaseModel):
     Pydantic model for field configuration.
 
     Defines the schema of fields that can be referenced in rules.
+
+    Follows three-tier design:
+    - Tier 1: Required user inputs
+    - Tier 2: Optional user inputs with defaults
     """
+
+    # ===== Tier 1: Required User Inputs =====
 
     required_fields: List[str] = Field(
         ...,
@@ -257,14 +277,16 @@ class FieldConfig(BaseModel):
         description="Array of required field names that must exist in data",
     )
 
-    optional_fields: List[str] = Field(
-        default_factory=list,
-        description="Array of optional field names that may exist in data",
-    )
-
     field_types: Dict[str, str] = Field(
         ...,
         description="Dictionary mapping field names to types: 'string', 'int', 'float', 'bool'",
+    )
+
+    # ===== Tier 2: Optional User Inputs with Defaults =====
+
+    optional_fields: List[str] = Field(
+        default_factory=list,
+        description="Array of optional field names that may exist in data",
     )
 
     @field_validator("field_types")
@@ -313,13 +335,15 @@ class RuleDefinition(BaseModel):
     Pydantic model for a single rule definition.
 
     Defines a classification rule with conditions and output label.
+    The rule_id is auto-generated and should not be provided by users.
+
+    Follows three-tier design:
+    - Tier 1: Required user inputs
+    - Tier 2: Optional user inputs with defaults
+    - Tier 3: Derived fields (private, auto-generated)
     """
 
-    rule_id: str = Field(
-        ...,
-        min_length=1,
-        description="Unique rule identifier (e.g., 'rule_001')",
-    )
+    # ===== Tier 1: Required User Inputs =====
 
     name: str = Field(
         ...,
@@ -333,11 +357,6 @@ class RuleDefinition(BaseModel):
         description="Priority for evaluation (lower = higher priority, 1 = highest)",
     )
 
-    enabled: bool = Field(
-        default=True,
-        description="Whether rule is active",
-    )
-
     conditions: RuleCondition = Field(
         ...,
         description="Nested condition expression using RuleCondition with validated operators",
@@ -348,18 +367,26 @@ class RuleDefinition(BaseModel):
         description="Label value to output when rule matches",
     )
 
+    # ===== Tier 2: Optional User Inputs with Defaults =====
+
+    enabled: bool = Field(
+        default=True,
+        description="Whether rule is active",
+    )
+
     description: str = Field(
         default="",
         description="Description of what this rule identifies",
     )
 
-    @field_validator("rule_id")
-    @classmethod
-    def validate_rule_id(cls, v: str) -> str:
-        """Validate rule_id is not empty."""
-        if not v.strip():
-            raise ValueError("rule_id cannot be empty or whitespace")
-        return v.strip()
+    # ===== Tier 3: Derived Fields (Private, Auto-Generated) =====
+
+    _rule_id: str = PrivateAttr(default_factory=lambda: f"rule_{uuid.uuid4().hex[:8]}")
+
+    @property
+    def rule_id(self) -> str:
+        """Get auto-generated unique rule identifier."""
+        return self._rule_id
 
     @field_validator("name")
     @classmethod
@@ -380,6 +407,12 @@ class RuleDefinition(BaseModel):
             "output_label": self.output_label,
             "description": self.description,
         }
+
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        """Override model_dump to include auto-generated rule_id."""
+        data = super().model_dump(**kwargs)
+        data["rule_id"] = self.rule_id
+        return data
 
     model_config = {"extra": "forbid", "validate_assignment": True}
 
