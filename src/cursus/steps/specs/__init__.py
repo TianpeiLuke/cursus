@@ -12,12 +12,15 @@ from .batch_transform_testing_spec import BATCH_TRANSFORM_TESTING_SPEC
 from .batch_transform_training_spec import BATCH_TRANSFORM_TRAINING_SPEC
 from .batch_transform_validation_spec import BATCH_TRANSFORM_VALIDATION_SPEC
 
+# Bedrock specifications
+from .bedrock_batch_processing_spec import BEDROCK_BATCH_PROCESSING_SPEC
+from .bedrock_processing_spec import BEDROCK_PROCESSING_SPEC
+from .bedrock_prompt_template_generation_spec import (
+    BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC,
+)
+
 # Currency Conversion specifications
 from .currency_conversion_spec import CURRENCY_CONVERSION_SPEC
-from .currency_conversion_calibration_spec import CURRENCY_CONVERSION_CALIBRATION_SPEC
-from .currency_conversion_testing_spec import CURRENCY_CONVERSION_TESTING_SPEC
-from .currency_conversion_training_spec import CURRENCY_CONVERSION_TRAINING_SPEC
-from .currency_conversion_validation_spec import CURRENCY_CONVERSION_VALIDATION_SPEC
 
 # Data Loading specifications
 from .cradle_data_loading_spec import DATA_LOADING_SPEC
@@ -28,10 +31,17 @@ from .cradle_data_loading_validation_spec import DATA_LOADING_VALIDATION_SPEC
 
 # Dummy Data Loading specifications
 from .dummy_data_loading_spec import DUMMY_DATA_LOADING_SPEC
-from .dummy_data_loading_calibration_spec import DUMMY_DATA_LOADING_CALIBRATION_SPEC
-from .dummy_data_loading_testing_spec import DUMMY_DATA_LOADING_TESTING_SPEC
-from .dummy_data_loading_training_spec import DUMMY_DATA_LOADING_TRAINING_SPEC
-from .dummy_data_loading_validation_spec import DUMMY_DATA_LOADING_VALIDATION_SPEC
+
+# Feature Selection specifications
+from .feature_selection_spec import FEATURE_SELECTION_SPEC
+from .feature_selection_calibration_spec import FEATURE_SELECTION_CALIBRATION_SPEC
+from .feature_selection_testing_spec import FEATURE_SELECTION_TESTING_SPEC
+from .feature_selection_training_spec import FEATURE_SELECTION_TRAINING_SPEC
+from .feature_selection_validation_spec import FEATURE_SELECTION_VALIDATION_SPEC
+
+# Label Ruleset specifications
+from .label_ruleset_execution_spec import LABEL_RULESET_EXECUTION_SPEC
+from .label_ruleset_generation_spec import LABEL_RULESET_GENERATION_SPEC
 
 # Training specifications
 from .dummy_training_spec import DUMMY_TRAINING_SPEC
@@ -58,12 +68,11 @@ from .missing_value_imputation_validation_spec import (
 
 # Model operations specifications
 from .model_calibration_spec import MODEL_CALIBRATION_SPEC
-from .model_calibration_calibration_spec import MODEL_CALIBRATION_CALIBRATION_SPEC
-from .model_calibration_testing_spec import MODEL_CALIBRATION_TESTING_SPEC
-from .model_calibration_training_spec import MODEL_CALIBRATION_TRAINING_SPEC
-from .model_calibration_validation_spec import MODEL_CALIBRATION_VALIDATION_SPEC
 from .model_metrics_computation_spec import MODEL_METRICS_COMPUTATION_SPEC
 from .model_wiki_generator_spec import MODEL_WIKI_GENERATOR_SPEC
+from .percentile_model_calibration_spec import PERCENTILE_MODEL_CALIBRATION_SPEC
+from .pytorch_model_eval_spec import PYTORCH_MODEL_EVAL_SPEC
+from .pytorch_model_inference_spec import PYTORCH_MODEL_INFERENCE_SPEC
 from .xgboost_model_eval_spec import MODEL_EVAL_SPEC
 from .xgboost_model_inference_spec import XGBOOST_MODEL_INFERENCE_SPEC
 
@@ -74,19 +83,9 @@ from .registration_spec import REGISTRATION_SPEC
 
 # Stratified Sampling specifications
 from .stratified_sampling_spec import STRATIFIED_SAMPLING_SPEC
-from .stratified_sampling_calibration_spec import STRATIFIED_SAMPLING_CALIBRATION_SPEC
-from .stratified_sampling_testing_spec import STRATIFIED_SAMPLING_TESTING_SPEC
-from .stratified_sampling_training_spec import STRATIFIED_SAMPLING_TRAINING_SPEC
-from .stratified_sampling_validation_spec import STRATIFIED_SAMPLING_VALIDATION_SPEC
 
 # Preprocessing specifications
 from .tabular_preprocessing_spec import TABULAR_PREPROCESSING_SPEC
-from .tabular_preprocessing_calibration_spec import (
-    TABULAR_PREPROCESSING_CALIBRATION_SPEC,
-)
-from .tabular_preprocessing_testing_spec import TABULAR_PREPROCESSING_TESTING_SPEC
-from .tabular_preprocessing_training_spec import TABULAR_PREPROCESSING_TRAINING_SPEC
-from .tabular_preprocessing_validation_spec import TABULAR_PREPROCESSING_VALIDATION_SPEC
 
 # Risk Table Mapping specifications
 from .risk_table_mapping_calibration_spec import RISK_TABLE_MAPPING_CALIBRATION_SPEC
@@ -130,12 +129,12 @@ __all__ = [
     "BATCH_TRANSFORM_TESTING_SPEC",
     "BATCH_TRANSFORM_TRAINING_SPEC",
     "BATCH_TRANSFORM_VALIDATION_SPEC",
+    # Bedrock specifications
+    "BEDROCK_BATCH_PROCESSING_SPEC",
+    "BEDROCK_PROCESSING_SPEC",
+    "BEDROCK_PROMPT_TEMPLATE_GENERATION_SPEC",
     # Currency Conversion specifications
     "CURRENCY_CONVERSION_SPEC",
-    "CURRENCY_CONVERSION_CALIBRATION_SPEC",
-    "CURRENCY_CONVERSION_TESTING_SPEC",
-    "CURRENCY_CONVERSION_TRAINING_SPEC",
-    "CURRENCY_CONVERSION_VALIDATION_SPEC",
     # Data Loading specifications
     "DATA_LOADING_SPEC",
     "DATA_LOADING_CALIBRATION_SPEC",
@@ -144,10 +143,15 @@ __all__ = [
     "DATA_LOADING_VALIDATION_SPEC",
     # Dummy Data Loading specifications
     "DUMMY_DATA_LOADING_SPEC",
-    "DUMMY_DATA_LOADING_CALIBRATION_SPEC",
-    "DUMMY_DATA_LOADING_TESTING_SPEC",
-    "DUMMY_DATA_LOADING_TRAINING_SPEC",
-    "DUMMY_DATA_LOADING_VALIDATION_SPEC",
+    # Feature Selection specifications
+    "FEATURE_SELECTION_SPEC",
+    "FEATURE_SELECTION_CALIBRATION_SPEC",
+    "FEATURE_SELECTION_TESTING_SPEC",
+    "FEATURE_SELECTION_TRAINING_SPEC",
+    "FEATURE_SELECTION_VALIDATION_SPEC",
+    # Label Ruleset specifications
+    "LABEL_RULESET_EXECUTION_SPEC",
+    "LABEL_RULESET_GENERATION_SPEC",
     # Training specifications
     "DUMMY_TRAINING_SPEC",
     "LIGHTGBM_TRAINING_SPEC",
@@ -164,12 +168,11 @@ __all__ = [
     "MISSING_VALUE_IMPUTATION_VALIDATION_SPEC",
     # Model operations specifications
     "MODEL_CALIBRATION_SPEC",
-    "MODEL_CALIBRATION_CALIBRATION_SPEC",
-    "MODEL_CALIBRATION_TESTING_SPEC",
-    "MODEL_CALIBRATION_TRAINING_SPEC",
-    "MODEL_CALIBRATION_VALIDATION_SPEC",
     "MODEL_METRICS_COMPUTATION_SPEC",
     "MODEL_WIKI_GENERATOR_SPEC",
+    "PERCENTILE_MODEL_CALIBRATION_SPEC",
+    "PYTORCH_MODEL_EVAL_SPEC",
+    "PYTORCH_MODEL_INFERENCE_SPEC",
     "MODEL_EVAL_SPEC",
     "XGBOOST_MODEL_INFERENCE_SPEC",
     # Packaging and deployment specifications
@@ -178,16 +181,8 @@ __all__ = [
     "REGISTRATION_SPEC",
     # Stratified Sampling specifications
     "STRATIFIED_SAMPLING_SPEC",
-    "STRATIFIED_SAMPLING_CALIBRATION_SPEC",
-    "STRATIFIED_SAMPLING_TESTING_SPEC",
-    "STRATIFIED_SAMPLING_TRAINING_SPEC",
-    "STRATIFIED_SAMPLING_VALIDATION_SPEC",
     # Preprocessing specifications
     "TABULAR_PREPROCESSING_SPEC",
-    "TABULAR_PREPROCESSING_CALIBRATION_SPEC",
-    "TABULAR_PREPROCESSING_TESTING_SPEC",
-    "TABULAR_PREPROCESSING_TRAINING_SPEC",
-    "TABULAR_PREPROCESSING_VALIDATION_SPEC",
     # Risk Table Mapping specifications
     "RISK_TABLE_MAPPING_CALIBRATION_SPEC",
     "RISK_TABLE_MAPPING_TESTING_SPEC",
