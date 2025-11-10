@@ -88,6 +88,7 @@ FEATURE_SELECTION_TESTING_SPEC = StepSpecification(
                 "output_data",
                 "filtered_data",
                 "input_data",
+                "input_path",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",

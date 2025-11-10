@@ -95,7 +95,13 @@ RISK_TABLE_MAPPING_TESTING_SPEC = StepSpecification(
     outputs=[
         OutputSpec(
             logical_name="processed_data",
-            aliases=["testing_data", "model_testing_data", "data_input", "input_data"],
+            aliases=[
+                "testing_data",
+                "model_testing_data",
+                "data_input",
+                "input_data",
+                "input_path",
+            ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",

@@ -60,7 +60,10 @@ CURRENCY_CONVERSION_TESTING_SPEC = StepSpecification(
     outputs=[
         OutputSpec(
             logical_name="processed_data",
-            aliases=["input_data"],
+            aliases=[
+                "input_data",
+                "input_path",
+            ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",

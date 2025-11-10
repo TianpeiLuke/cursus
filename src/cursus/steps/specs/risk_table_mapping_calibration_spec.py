@@ -100,6 +100,7 @@ RISK_TABLE_MAPPING_CALIBRATION_SPEC = StepSpecification(
                 "model_calibration_data",
                 "data_input",
                 "input_data",
+                "input_path",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",

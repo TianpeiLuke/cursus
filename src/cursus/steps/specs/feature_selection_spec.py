@@ -90,6 +90,7 @@ FEATURE_SELECTION_SPEC = StepSpecification(
                 "calibration_data",
                 "model_input_data",
                 "input_path",
+                "input_data",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
