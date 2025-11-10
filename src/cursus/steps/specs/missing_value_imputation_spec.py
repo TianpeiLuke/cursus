@@ -85,8 +85,8 @@ MISSING_VALUE_IMPUTATION_SPEC = StepSpecification(
             logical_name="processed_data",
             aliases=[
                 "data_input",
+                "input_data",
                 "imputed_data",
-                "processed_data",
                 "cleaned_data",
                 "filled_data",
                 "training_data",
