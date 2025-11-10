@@ -9,7 +9,7 @@ from ...core.base.contract_base import ScriptContract
 
 STRATIFIED_SAMPLING_CONTRACT = ScriptContract(
     entry_point="stratified_sampling.py",
-    expected_input_paths={"processed_data": "/opt/ml/processing/input/data"},
+    expected_input_paths={"input_data": "/opt/ml/processing/input/data"},
     expected_output_paths={"processed_data": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - job_type comes from config

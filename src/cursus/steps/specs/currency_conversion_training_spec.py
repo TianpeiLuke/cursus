@@ -29,7 +29,7 @@ CURRENCY_CONVERSION_TRAINING_SPEC = StepSpecification(
     script_contract=_get_currency_conversion_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="processed_data",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -50,6 +50,8 @@ CURRENCY_CONVERSION_TRAINING_SPEC = StepSpecification(
                 "currency",
                 "monetary",
                 "conversion",
+                "input_data",
+                "output_data",
             ],
             data_type="S3Uri",
             description="Processed training data requiring currency conversion",
@@ -58,6 +60,7 @@ CURRENCY_CONVERSION_TRAINING_SPEC = StepSpecification(
     outputs=[
         OutputSpec(
             logical_name="processed_data",
+            aliases=["input_data"],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",

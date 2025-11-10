@@ -24,7 +24,9 @@ from typing import Dict, List, Tuple, Any, Optional, Callable
 DEFAULT_INPUT_DIR = "/opt/ml/processing/input/data"
 DEFAULT_CONFIG_DIR = "/opt/ml/code/hyperparams"  # Source directory path
 DEFAULT_OUTPUT_DIR = "/opt/ml/processing/output"
-DEFAULT_RISK_TABLE_DIR = "/opt/ml/processing/input/risk_tables"
+DEFAULT_RISK_TABLE_DIR = (
+    "/opt/ml/processing/input/risk_tables"  # Maps to risk_tables_input in contract
+)
 
 # Constants for file paths to ensure consistency between training and inference
 # These constants ensure the same filenames are used across all job types,
@@ -495,6 +497,7 @@ def internal_main(
     output_dir: str,
     hyperparams: Dict[str, Any],
     risk_table_input_dir: Optional[str] = None,
+    risk_table_output_dir: Optional[str] = None,
     load_data_func: Callable = load_split_data,
     save_data_func: Callable = save_output_data,
 ) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
@@ -556,7 +559,12 @@ def internal_main(
     save_data_func(job_type, output_dir, transformed_data)
 
     # Save fitted artifacts
-    save_artifacts(binner, hyperparams, output_path)
+    # Use risk_table_output_dir if provided, otherwise fall back to output_path
+    artifacts_output_path = (
+        Path(risk_table_output_dir) if risk_table_output_dir else output_path
+    )
+    artifacts_output_path.mkdir(parents=True, exist_ok=True)
+    save_artifacts(binner, hyperparams, artifacts_output_path)
 
     logger.info("Risk-table mapping complete.")
     return transformed_data, binner
@@ -595,7 +603,7 @@ def main(
 
         job_type = job_args.job_type
         input_dir = input_paths["data_input"]
-        output_dir = output_paths["data_output"]
+        output_dir = output_paths["processed_data"]
         config_dir = input_paths.get("config_input", DEFAULT_CONFIG_DIR)
 
         # For non-training jobs, check if risk table input path is provided
@@ -639,6 +647,9 @@ def main(
                 f"input channel or in source directory at /opt/ml/code/hyperparams/hyperparameters.json"
             )
 
+        # Get risk tables output directory
+        risk_table_output_dir = output_paths.get("risk_tables_output")
+
         # Execute the internal main logic
         return internal_main(
             job_type=job_type,
@@ -646,6 +657,7 @@ def main(
             output_dir=output_dir,
             hyperparams=hyperparams,
             risk_table_input_dir=risk_table_input_dir,
+            risk_table_output_dir=risk_table_output_dir,
         )
 
     except Exception as e:
@@ -672,11 +684,14 @@ if __name__ == "__main__":
             "config_input": DEFAULT_CONFIG_DIR,
         }
 
-        output_paths = {"data_output": DEFAULT_OUTPUT_DIR}
+        output_paths = {
+            "processed_data": DEFAULT_OUTPUT_DIR,
+            "risk_tables_output": DEFAULT_OUTPUT_DIR,
+        }
 
         # For non-training jobs, add risk table input path
         if args.job_type != "training":
-            input_paths["risk_table_input"] = DEFAULT_RISK_TABLE_DIR
+            input_paths["risk_tables_input"] = DEFAULT_RISK_TABLE_DIR
 
         # Environment variables dictionary (not used in this script)
         environ_vars = {}

@@ -1041,7 +1041,7 @@ def main(
         # For non-training jobs, check if imputation parameters input path is provided
         imputation_params_input_dir = None
         if job_type != "training":
-            imputation_params_input_dir = input_paths.get("imputation_params")
+            imputation_params_input_dir = input_paths.get("imputation_params_input")
             if not imputation_params_input_dir:
                 logger.warning(
                     f"No imputation_params path provided for non-training job {job_type}. "
@@ -1064,7 +1064,7 @@ def main(
         label_field = environ_vars.get("LABEL_FIELD", "target")
 
         # Get imputation parameters output directory
-        imputation_params_output_dir = output_paths.get("imputation_params")
+        imputation_params_output_dir = output_paths.get("imputation_params_output")
 
         # Execute the internal main logic
         return internal_main(
@@ -1100,11 +1100,14 @@ if __name__ == "__main__":
             "data_input": DEFAULT_INPUT_DIR,
         }
 
-        output_paths = {"data_output": DEFAULT_OUTPUT_DIR}
+        output_paths = {
+            "data_output": DEFAULT_OUTPUT_DIR,
+            "imputation_params_output": DEFAULT_OUTPUT_DIR + "/imputation_params",
+        }
 
         # For non-training jobs, add imputation parameters input path
         if args.job_type != "training":
-            input_paths["imputation_params"] = DEFAULT_IMPUTATION_PARAMS_DIR
+            input_paths["imputation_params_input"] = DEFAULT_IMPUTATION_PARAMS_DIR
 
         # Environment variables dictionary
         environ_vars = {

@@ -426,8 +426,8 @@ def main(
     """
     try:
         # Extract paths from input parameters - required keys must be present
-        if "processed_data" not in input_paths:
-            raise ValueError("Missing required input path: processed_data")
+        if "input_data" not in input_paths:
+            raise ValueError("Missing required input path: input_data")
         if "processed_data" not in output_paths:
             raise ValueError("Missing required output path: processed_data")
 
@@ -436,7 +436,7 @@ def main(
             raise ValueError("job_args must contain job_type parameter")
 
         job_type = job_args.job_type
-        input_dir = input_paths["processed_data"]
+        input_dir = input_paths["input_data"]
         output_dir = output_paths["processed_data"]
 
         # Log input/output paths for clarity
@@ -485,7 +485,7 @@ if __name__ == "__main__":
 
         # Define standard paths based on contract
         input_paths = {
-            "processed_data": DEFAULT_INPUT_DIR,
+            "input_data": DEFAULT_INPUT_DIR,
         }
 
         output_paths = {

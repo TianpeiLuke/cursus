@@ -1412,7 +1412,7 @@ def main(
             logger.info("Running in TRAINING mode: performing full feature selection")
 
             # Load preprocessed data (all splits)
-            input_data_dir = input_paths["processed_data"]
+            input_data_dir = input_paths["input_data"]
             logger.info(f"Loading data from {input_data_dir}")
             splits = load_preprocessed_data(input_data_dir)
 
@@ -1432,9 +1432,9 @@ def main(
                 output_data_dir,
             )
 
-            # Save selection results and metadata to selected_features channel
+            # Save selection results and metadata to selected_features_output channel
             selected_features_dir = output_paths.get(
-                "selected_features", output_data_dir
+                "selected_features_output", output_data_dir
             )
 
             logger.info(f"Saving all results to {selected_features_dir}")
@@ -1447,19 +1447,19 @@ def main(
             )
 
             # Load pre-computed selected features
-            if "selected_features" not in input_paths:
+            if "selected_features_input" not in input_paths:
                 raise ValueError(
-                    f"For non-training job type '{job_args.job_type}', selected_features input path must be provided"
+                    f"For non-training job type '{job_args.job_type}', selected_features_input input path must be provided"
                 )
 
-            selected_features_input_dir = input_paths["selected_features"]
+            selected_features_input_dir = input_paths["selected_features_input"]
             logger.info(
                 f"Loading pre-computed selected features from {selected_features_input_dir}"
             )
             selected_features = load_selected_features(selected_features_input_dir)
 
             # Load single split data
-            input_data_dir = input_paths["processed_data"]
+            input_data_dir = input_paths["input_data"]
             logger.info(f"Loading {job_args.job_type} data from {input_data_dir}")
             splits = load_single_split_data(input_data_dir, job_args.job_type)
 
@@ -1492,7 +1492,7 @@ def main(
 
             # Save minimal metadata (copy from training job artifacts)
             selected_features_dir = output_paths.get(
-                "selected_features", output_data_dir
+                "selected_features_output", output_data_dir
             )
 
             logger.info(f"Copying all metadata to {selected_features_dir}")
@@ -1572,17 +1572,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Define input and output paths using container defaults
-    input_paths = {"processed_data": CONTAINER_PATHS["INPUT_DATA"]}
+    input_paths = {"input_data": CONTAINER_PATHS["INPUT_DATA"]}
 
-    # For non-training jobs, add selected_features input path
+    # For non-training jobs, add selected_features_input input path
     if args.job_type != "training":
-        input_paths["selected_features"] = (
+        input_paths["selected_features_input"] = (
             CONTAINER_PATHS["INPUT_DATA"] + "/selected_features"
         )
 
     output_paths = {
         "processed_data": CONTAINER_PATHS["OUTPUT_DATA"],
-        "selected_features": CONTAINER_PATHS["OUTPUT_DATA"] + "/selected_features",
+        "selected_features_output": CONTAINER_PATHS["OUTPUT_DATA"]
+        + "/selected_features",
     }
 
     # Collect environment variables
@@ -1600,7 +1601,7 @@ if __name__ == "__main__":
 
     try:
         logger.info(f"Starting feature selection with:")
-        logger.info(f"  Input directory: {input_paths['processed_data']}")
+        logger.info(f"  Input directory: {input_paths['input_data']}")
         logger.info(f"  Output directory: {output_paths['processed_data']}")
         logger.info(f"  Job type: {args.job_type}")
 

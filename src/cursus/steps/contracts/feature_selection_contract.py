@@ -11,12 +11,12 @@ from ...core.base.contract_base import ScriptContract
 FEATURE_SELECTION_CONTRACT = ScriptContract(
     entry_point="feature_selection.py",
     expected_input_paths={
-        "processed_data": "/opt/ml/processing/input",
-        "selected_features": "/opt/ml/processing/input/selected_features",  # Optional for non-training modes
+        "input_data": "/opt/ml/processing/input",
+        "selected_features_input": "/opt/ml/processing/input/selected_features",  # Optional for non-training modes
     },
     expected_output_paths={
         "processed_data": "/opt/ml/processing/output",
-        "selected_features": "/opt/ml/processing/output/selected_features",
+        "selected_features_output": "/opt/ml/processing/output/selected_features",
     },
     expected_arguments={
         # No expected arguments - job_type comes from config

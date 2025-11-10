@@ -29,7 +29,7 @@ STRATIFIED_SAMPLING_CALIBRATION_SPEC = StepSpecification(
     script_contract=_get_stratified_sampling_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="processed_data",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["TabularPreprocessing", "ProcessingStep"],
@@ -44,6 +44,8 @@ STRATIFIED_SAMPLING_CALIBRATION_SPEC = StepSpecification(
                 "input",
                 "dataset",
                 "model_calibration",
+                "input_data",
+                "output_data",
             ],
             data_type="S3Uri",
             description="Processed calibration data from preprocessing step for stratified sampling",
@@ -58,6 +60,7 @@ STRATIFIED_SAMPLING_CALIBRATION_SPEC = StepSpecification(
                 "calibration_data",
                 "model_input_data",
                 "input_path",
+                "input_data",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",

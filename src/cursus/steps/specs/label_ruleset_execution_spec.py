@@ -52,7 +52,7 @@ LABEL_RULESET_EXECUTION_SPEC = StepSpecification(
             description="Validated ruleset from Label Ruleset Generation step (validated_ruleset.json)",
         ),
         DependencySpec(
-            logical_name="processed_data",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -71,6 +71,7 @@ LABEL_RULESET_EXECUTION_SPEC = StepSpecification(
                 "data",
                 "dataset",
                 "input",
+                "input_data",
                 "processed_data",
                 "features",
             ],
@@ -82,10 +83,10 @@ LABEL_RULESET_EXECUTION_SPEC = StepSpecification(
         OutputSpec(
             logical_name="processed_data",
             aliases=[
+                "input_data",
                 "input_path",
                 "training_data",
                 "model_input_data",
-                "input_data",
                 "labeled_data",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,

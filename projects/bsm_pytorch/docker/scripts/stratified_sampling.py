@@ -352,8 +352,8 @@ def main(
     random_state = int(environ_vars.get("RANDOM_STATE", 42))
 
     # Extract paths
-    input_data_dir = input_paths.get("data_input", "/opt/ml/processing/input/data")
-    output_dir = output_paths.get("data_output", "/opt/ml/processing/output")
+    input_data_dir = input_paths.get("input_data", "/opt/ml/processing/input/data")
+    output_dir = output_paths.get("processed_data", "/opt/ml/processing/output")
 
     # Use print function if no logger is provided
     log = logger or print
@@ -514,8 +514,8 @@ if __name__ == "__main__":
         logger.info(f"  Output Directory: {OUTPUT_DIR}")
 
         # Set up path dictionaries
-        input_paths = {"data_input": INPUT_DATA_DIR}
-        output_paths = {"data_output": OUTPUT_DIR}
+        input_paths = {"input_data": INPUT_DATA_DIR}
+        output_paths = {"processed_data": OUTPUT_DIR}
 
         # Environment variables dictionary
         environ_vars = {

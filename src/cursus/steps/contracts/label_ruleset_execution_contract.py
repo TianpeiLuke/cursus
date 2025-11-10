@@ -12,7 +12,7 @@ LABEL_RULESET_EXECUTION_CONTRACT = ScriptContract(
     entry_point="label_ruleset_execution.py",
     expected_input_paths={
         "validated_ruleset": "/opt/ml/processing/input/validated_ruleset",
-        "processed_data": "/opt/ml/processing/input/processed_data",
+        "input_data": "/opt/ml/processing/input/data",
     },
     expected_output_paths={
         "processed_data": "/opt/ml/processing/output/processed_data",
