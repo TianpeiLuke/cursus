@@ -61,7 +61,7 @@ DUMMY_DATA_LOADING_SPEC = StepSpecification(
         # Identical outputs to CradleDataLoadingStep for drop-in replacement
         OutputSpec(
             logical_name="DATA",
-            aliases=["data", "input_data", "raw_data", "dataset"],
+            aliases=["input_data", "raw_data", "dataset"],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri",
             data_type="S3Uri",
@@ -69,7 +69,7 @@ DUMMY_DATA_LOADING_SPEC = StepSpecification(
         ),
         OutputSpec(
             logical_name="METADATA",
-            aliases=["metadata", "meta", "schema", "data_metadata"],
+            aliases=["meta", "schema", "data_metadata"],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri",
             data_type="S3Uri",
@@ -77,7 +77,7 @@ DUMMY_DATA_LOADING_SPEC = StepSpecification(
         ),
         OutputSpec(
             logical_name="SIGNATURE",
-            aliases=["signature", "sig", "column_signature", "data_signature"],
+            aliases=["sig", "column_signature", "data_signature"],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri",
             data_type="S3Uri",
