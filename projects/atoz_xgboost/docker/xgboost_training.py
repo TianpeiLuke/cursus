@@ -169,11 +169,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 required_packages = [
     "scikit-learn>=0.23.2,<1.0.0",
     "pandas>=1.2.0,<2.0.0",
-    "beautifulsoup4>=4.9.3",
     "pyarrow>=4.0.0,<6.0.0",
-    "pydantic>=2.0.0,<3.0.0",
-    "typing-extensions>=4.2.0",
-    "flask>=2.0.0,<3.0.0",
 ]
 
 # Install packages using unified installation function
