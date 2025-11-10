@@ -1,6 +1,185 @@
 #!/usr/bin/env python3
 import os
 import sys
+
+from subprocess import check_call
+import logging
+
+# ============================================================================
+# PACKAGE INSTALLATION CONFIGURATION
+# ============================================================================
+
+# Control which PyPI source to use via environment variable
+# Set USE_SECURE_PYPI=true to use secure CodeArtifact PyPI (default)
+# Set USE_SECURE_PYPI=false to use public PyPI
+USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "true").lower() == "true"
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def _get_secure_pypi_access_token() -> str:
+    """
+    Get CodeArtifact access token for secure PyPI.
+
+    Returns:
+        str: Authorization token for CodeArtifact
+
+    Raises:
+        Exception: If token retrieval fails
+    """
+    # Local import to avoid loading boto3 before package installation
+    import boto3
+
+    try:
+        os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
+        sts = boto3.client("sts", region_name="us-east-1")
+        caller_identity = sts.get_caller_identity()
+        assumed_role_object = sts.assume_role(
+            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            + caller_identity["Account"],
+            RoleSessionName="SecurePypiReadRole",
+        )
+        credentials = assumed_role_object["Credentials"]
+        code_artifact_client = boto3.client(
+            "codeartifact",
+            aws_access_key_id=credentials["AccessKeyId"],
+            aws_secret_access_key=credentials["SecretAccessKey"],
+            aws_session_token=credentials["SessionToken"],
+            region_name="us-west-2",
+        )
+        token = code_artifact_client.get_authorization_token(
+            domain="amazon", domainOwner="149122183214"
+        )["authorizationToken"]
+
+        logger.info("Successfully retrieved secure PyPI access token")
+        return token
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve secure PyPI access token: {e}")
+        raise
+
+
+def install_packages_from_public_pypi(packages: list) -> None:
+    """
+    Install packages from standard public PyPI.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+    """
+    logger.info(f"Installing {len(packages)} packages from public PyPI")
+    logger.info(f"Packages: {packages}")
+
+    try:
+        check_call([sys.executable, "-m", "pip", "install", *packages])
+        logger.info("✓ Successfully installed packages from public PyPI")
+    except Exception as e:
+        logger.error(f"✗ Failed to install packages from public PyPI: {e}")
+        raise
+
+
+def install_packages_from_secure_pypi(packages: list) -> None:
+    """
+    Install packages from secure CodeArtifact PyPI.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+    """
+    logger.info(f"Installing {len(packages)} packages from secure PyPI")
+    logger.info(f"Packages: {packages}")
+
+    try:
+        token = _get_secure_pypi_access_token()
+        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                index_url,
+                *packages,
+            ]
+        )
+
+        logger.info("✓ Successfully installed packages from secure PyPI")
+    except Exception as e:
+        logger.error(f"✗ Failed to install packages from secure PyPI: {e}")
+        raise
+
+
+def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None:
+    """
+    Install packages from PyPI source based on configuration.
+
+    This is the main installation function that delegates to either public or
+    secure PyPI based on the USE_SECURE_PYPI environment variable.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+        use_secure: If True, use secure CodeArtifact PyPI; if False, use public PyPI.
+                   Defaults to USE_SECURE_PYPI environment variable.
+
+    Environment Variables:
+        USE_SECURE_PYPI: Set to "true" to use secure PyPI, "false" for public PyPI
+
+    Example:
+        # Install from public PyPI (default)
+        install_packages(["pandas==1.5.0", "numpy"])
+
+        # Install from secure PyPI
+        os.environ["USE_SECURE_PYPI"] = "true"
+        install_packages(["pandas==1.5.0", "numpy"])
+    """
+    logger.info("=" * 70)
+    logger.info("PACKAGE INSTALLATION")
+    logger.info("=" * 70)
+    logger.info(f"PyPI Source: {'SECURE (CodeArtifact)' if use_secure else 'PUBLIC'}")
+    logger.info(
+        f"Environment Variable USE_SECURE_PYPI: {os.environ.get('USE_SECURE_PYPI', 'not set')}"
+    )
+    logger.info(f"Number of packages: {len(packages)}")
+    logger.info("=" * 70)
+
+    try:
+        if use_secure:
+            install_packages_from_secure_pypi(packages)
+        else:
+            install_packages_from_public_pypi(packages)
+
+        logger.info("=" * 70)
+        logger.info("✓ PACKAGE INSTALLATION COMPLETED SUCCESSFULLY")
+        logger.info("=" * 70)
+
+    except Exception as e:
+        logger.error("=" * 70)
+        logger.error("✗ PACKAGE INSTALLATION FAILED")
+        logger.error("=" * 70)
+        raise
+
+
+# ============================================================================
+# INSTALL REQUIRED PACKAGES
+# ============================================================================
+
+# Define required packages for this script
+required_packages = [
+    "scikit-learn>=0.23.2,<1.0.0",
+    "pandas>=1.2.0,<2.0.0",
+    "beautifulsoup4>=4.9.3",
+    "pyarrow>=4.0.0,<6.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "typing-extensions>=4.2.0",
+]
+
+# Install packages using unified installation function
+install_packages(required_packages)
+
+print("***********************Package Installation Complete*********************")
+
 import argparse
 import json
 import logging
@@ -22,6 +201,135 @@ from sklearn.metrics import (
     roc_curve,
     precision_recall_curve,
 )
+
+
+# -------------------------------------------------------------------------
+# Feature Selection Integration Functions
+# -------------------------------------------------------------------------
+def detect_feature_selection_artifacts(
+    model_artifacts_dir: Optional[str],
+) -> Optional[str]:
+    """
+    Conservatively detect if feature selection was applied in model_artifacts_input.
+    Returns path to selected_features.json if found, None otherwise.
+
+    Args:
+        model_artifacts_dir: Path to model artifacts directory
+
+    Returns:
+        Path to selected_features.json if found, None otherwise
+    """
+    if not model_artifacts_dir or not os.path.exists(model_artifacts_dir):
+        logger.info("No model artifacts directory - no feature selection artifacts")
+        return None
+
+    # Check for selected_features.json in model_artifacts_input
+    features_path = os.path.join(model_artifacts_dir, "selected_features.json")
+
+    if os.path.exists(features_path):
+        logger.info(f"Feature selection artifacts detected at: {features_path}")
+        return features_path
+
+    logger.info("No feature selection artifacts found in model_artifacts_input")
+    return None
+
+
+def load_selected_features(fs_artifacts_path: str) -> Optional[List[str]]:
+    """
+    Load selected features from feature selection artifacts.
+
+    Args:
+        fs_artifacts_path: Path to selected_features.json
+
+    Returns:
+        List of selected feature names, or None if loading fails
+    """
+    try:
+        with open(fs_artifacts_path, "r") as f:
+            fs_data = json.load(f)
+
+        selected_features = fs_data.get("selected_features", [])
+        if not selected_features:
+            logger.warning("Empty selected_features list found")
+            return None
+
+        logger.info(f"Loaded {len(selected_features)} selected features from artifacts")
+        logger.info(f"Selected features: {selected_features}")
+        return selected_features
+
+    except Exception as e:
+        logger.warning(f"Error loading feature selection artifacts: {e}")
+        return None
+
+
+def get_effective_feature_columns(
+    config: dict, model_artifacts_dir: Optional[str], train_df: pd.DataFrame
+) -> Tuple[List[str], bool]:
+    """
+    Get feature columns with fallback-first approach.
+
+    Args:
+        config: Configuration dictionary
+        model_artifacts_dir: Path to model artifacts directory
+        train_df: Training dataframe for validation
+
+    Returns:
+        Tuple of (feature_columns, feature_selection_applied)
+    """
+    # STEP 1: Always start with original behavior
+    original_features = config["tab_field_list"] + config["cat_field_list"]
+
+    logger.info("=== FEATURE SELECTION DETECTION ===")
+    logger.info(f"Original configuration features: {len(original_features)}")
+
+    # STEP 2: Check if feature selection artifacts exist
+    fs_artifacts_path = detect_feature_selection_artifacts(model_artifacts_dir)
+    if fs_artifacts_path is None:
+        # NO FEATURE SELECTION - Original behavior exactly
+        logger.info(
+            "Using original feature configuration (no feature selection detected)"
+        )
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 3: Feature selection detected - try to load
+    selected_features = load_selected_features(fs_artifacts_path)
+    if selected_features is None:
+        logger.warning(
+            "Failed to load selected features - falling back to original behavior"
+        )
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 4: Validate selected features exist in data
+    available_columns = set(train_df.columns)
+    missing_features = [f for f in selected_features if f not in available_columns]
+
+    if missing_features:
+        logger.warning(f"Selected features missing from data: {missing_features}")
+        logger.warning("Falling back to original behavior")
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 5: Additional validation - ensure reasonable subset
+    if len(selected_features) > len(original_features):
+        logger.warning(
+            f"Selected features ({len(selected_features)}) more than original ({len(original_features)}) - suspicious"
+        )
+        logger.warning("Falling back to original behavior")
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 6: Success - use selected features
+    logger.info(f"Feature selection successfully applied!")
+    logger.info(
+        f"Features reduced from {len(original_features)} to {len(selected_features)}"
+    )
+    logger.info(
+        f"Reduction ratio: {len(selected_features) / len(original_features):.2%}"
+    )
+    logger.info("=====================================")
+    return selected_features, True
 
 
 # -------------------------------------------------------------------------
@@ -89,141 +397,6 @@ class XGBoostConfig(XGBoostModelHyperparameters):
     count_threshold: int = Field(
         default=0, description="Minimum count threshold for risk table"
     )
-
-
-# -------------------------------------------------------------------------
-# Feature Selection Integration Functions
-# -------------------------------------------------------------------------
-def detect_feature_selection_artifacts(input_paths: Dict[str, str]) -> Optional[str]:
-    """
-    Conservatively detect if feature selection was applied.
-    Returns path to selected_features.json if found, None otherwise.
-
-    Args:
-        input_paths: Dictionary of input paths
-
-    Returns:
-        Path to selected_features.json if found, None otherwise
-    """
-    # Only look in expected locations, never assume
-    possible_locations = [
-        # From feature selection step output (most common location)
-        os.path.join(
-            input_paths.get("input_path", ""),
-            "selected_features",
-            "selected_features.json",
-        ),
-        # Alternative location in processing input
-        "/opt/ml/processing/input/selected_features/selected_features.json",
-        # Direct in input path (fallback)
-        os.path.join(input_paths.get("input_path", ""), "selected_features.json"),
-    ]
-
-    for location in possible_locations:
-        if os.path.exists(location):
-            logger.info(f"Feature selection artifacts detected at: {location}")
-            return location
-
-    logger.info("No feature selection artifacts detected - using original behavior")
-    return None
-
-
-def load_selected_features(fs_artifacts_path: str) -> Optional[List[str]]:
-    """
-    Load selected features from feature selection artifacts.
-
-    Args:
-        fs_artifacts_path: Path to selected_features.json
-
-    Returns:
-        List of selected feature names, or None if loading fails
-    """
-    try:
-        with open(fs_artifacts_path, "r") as f:
-            fs_data = json.load(f)
-
-        selected_features = fs_data.get("selected_features", [])
-        if not selected_features:
-            logger.warning("Empty selected_features list found")
-            return None
-
-        logger.info(f"Loaded {len(selected_features)} selected features from artifacts")
-        logger.info(f"Selected features: {selected_features}")
-        return selected_features
-
-    except Exception as e:
-        logger.warning(f"Error loading feature selection artifacts: {e}")
-        return None
-
-
-def get_effective_feature_columns(
-    config: dict, input_paths: Dict[str, str], train_df: pd.DataFrame
-) -> Tuple[List[str], bool]:
-    """
-    Get feature columns with fallback-first approach.
-
-    Args:
-        config: Configuration dictionary
-        input_paths: Dictionary of input paths
-        train_df: Training dataframe for validation
-
-    Returns:
-        Tuple of (feature_columns, feature_selection_applied)
-    """
-    # STEP 1: Always start with original behavior
-    original_features = config["tab_field_list"] + config["cat_field_list"]
-
-    logger.info("=== FEATURE SELECTION DETECTION ===")
-    logger.info(f"Original configuration features: {len(original_features)}")
-
-    # STEP 2: Check if feature selection artifacts exist
-    fs_artifacts_path = detect_feature_selection_artifacts(input_paths)
-    if fs_artifacts_path is None:
-        # NO FEATURE SELECTION - Original behavior exactly
-        logger.info(
-            "Using original feature configuration (no feature selection detected)"
-        )
-        logger.info("=====================================")
-        return original_features, False
-
-    # STEP 3: Feature selection detected - try to load
-    selected_features = load_selected_features(fs_artifacts_path)
-    if selected_features is None:
-        logger.warning(
-            "Failed to load selected features - falling back to original behavior"
-        )
-        logger.info("=====================================")
-        return original_features, False
-
-    # STEP 4: Validate selected features exist in data
-    available_columns = set(train_df.columns)
-    missing_features = [f for f in selected_features if f not in available_columns]
-
-    if missing_features:
-        logger.warning(f"Selected features missing from data: {missing_features}")
-        logger.warning("Falling back to original behavior")
-        logger.info("=====================================")
-        return original_features, False
-
-    # STEP 5: Additional validation - ensure reasonable subset
-    if len(selected_features) > len(original_features):
-        logger.warning(
-            f"Selected features ({len(selected_features)}) more than original ({len(original_features)}) - suspicious"
-        )
-        logger.warning("Falling back to original behavior")
-        logger.info("=====================================")
-        return original_features, False
-
-    # STEP 6: Success - use selected features
-    logger.info(f"Feature selection successfully applied!")
-    logger.info(
-        f"Features reduced from {len(original_features)} to {len(selected_features)}"
-    )
-    logger.info(
-        f"Reduction ratio: {len(selected_features) / len(original_features):.2%}"
-    )
-    logger.info("=====================================")
-    return selected_features, True
 
 
 # -------------------------------------------------------------------------
@@ -456,20 +629,10 @@ def fit_and_apply_risk_tables(
 
 
 def prepare_dmatrices(
-    config: dict,
-    train_df: pd.DataFrame,
-    val_df: pd.DataFrame,
-    input_paths: Dict[str, str],
+    config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame
 ) -> Tuple[xgb.DMatrix, xgb.DMatrix, List[str]]:
     """
     Prepares XGBoost DMatrix objects from dataframes.
-    NOW: Feature selection aware, but defaults to original behavior.
-
-    Args:
-        config: Configuration dictionary
-        train_df: Training dataframe
-        val_df: Validation dataframe
-        input_paths: Dictionary of input paths for feature selection detection
 
     Returns:
         Tuple containing:
@@ -477,16 +640,8 @@ def prepare_dmatrices(
         - Validation DMatrix
         - List of feature columns in the exact order used for the model
     """
-    # Get effective feature columns (with fallback to original behavior)
-    feature_columns, fs_applied = get_effective_feature_columns(
-        config, input_paths, train_df
-    )
-
-    # Log the decision for transparency
-    if fs_applied:
-        logger.info("Feature selection detected and applied successfully")
-    else:
-        logger.info("Using original feature configuration (no feature selection)")
+    # Maintain exact ordering of features as they'll be used in the model
+    feature_columns = config["tab_field_list"] + config["cat_field_list"]
 
     # Check for any remaining NaN/inf values
     X_train = train_df[feature_columns].astype(float)
@@ -586,9 +741,6 @@ def save_artifacts(
     model_path: str,
     feature_columns: List[str],
     config: dict,
-    feature_selection_applied: bool = False,
-    original_features: List[str] = None,
-    feature_selection_metadata: dict = None,
 ):
     """
     Saves the trained model and preprocessing artifacts.
@@ -598,11 +750,8 @@ def save_artifacts(
         risk_tables: Dictionary of risk tables
         impute_dict: Dictionary of imputation values
         model_path: Path to save model artifacts
-        feature_columns: List of feature column names (actual features used)
+        feature_columns: List of feature column names
         config: Configuration dictionary containing hyperparameters
-        feature_selection_applied: Whether feature selection was applied
-        original_features: Original feature list from config (before selection)
-        feature_selection_metadata: Metadata from feature selection artifacts
     """
     os.makedirs(model_path, exist_ok=True)
 
@@ -648,25 +797,13 @@ def save_artifacts(
         json.dump(config, f, indent=2, sort_keys=True)
     logger.info(f"Saved hyperparameters configuration to {hyperparameters_file}")
 
-    # Log feature selection summary if applied (for transparency)
-    if feature_selection_applied and original_features is not None:
-        logger.info("✓ Feature selection was applied during training")
-        logger.info(f"  - Selected features: {len(feature_columns)}")
-        logger.info(f"  - Original features: {len(original_features)}")
-        logger.info(
-            f"  - Reduction ratio: {len(feature_columns) / len(original_features):.2%}"
-        )
-        logger.info("  - Selected features are saved in feature_columns.txt")
-    else:
-        logger.info("No feature selection applied - using all configured features")
-
 
 # -------------------------------------------------------------------------
 # New: inference + evaluation helpers
 # -------------------------------------------------------------------------
 def save_preds_and_metrics(
     ids, y_true, y_prob, id_col, label_col, out_dir, is_binary, output_format="csv"
-) -> None:
+):
     """
     Save predictions and metrics with format preservation.
 
@@ -729,7 +866,7 @@ def save_preds_and_metrics(
     logger.info(f"Saved predictions (format={output_format}): {saved_path}")
 
 
-def plot_curves(y_true, y_prob, out_dir, prefix, is_binary) -> None:
+def plot_curves(y_true, y_prob, out_dir, prefix, is_binary):
     os.makedirs(out_dir, exist_ok=True)
     if is_binary:
         score = y_prob[:, 1]
@@ -784,7 +921,7 @@ def plot_curves(y_true, y_prob, out_dir, prefix, is_binary) -> None:
 
 def evaluate_split(
     name, df, feats, model, cfg, output_format="csv", prefix="/opt/ml/output/data"
-) -> None:
+):
     """
     Evaluate a data split and save results with format preservation.
 
@@ -825,6 +962,161 @@ def evaluate_split(
 
 
 # -------------------------------------------------------------------------
+# PRE-COMPUTED ARTIFACT LOADING AND APPLICATION
+# -------------------------------------------------------------------------
+def load_precomputed_artifacts(
+    model_artifacts_dir: Optional[str],
+    use_imputation: bool,
+    use_risk_tables: bool,
+    use_features: bool,
+) -> Dict[str, Any]:
+    """
+    Auto-detect and load pre-computed artifacts from model_artifacts_input directory.
+
+    Args:
+        model_artifacts_dir: Path to model artifacts directory
+        use_imputation: Whether to use pre-computed imputation
+        use_risk_tables: Whether to use pre-computed risk tables
+        use_features: Whether to use pre-computed features
+
+    Returns:
+        Dictionary with loaded artifacts:
+        {
+            'impute_dict': dict or None,
+            'risk_tables': dict or None,
+            'selected_features': list or None,
+            'loaded': {
+                'imputation': bool,
+                'risk_tables': bool,
+                'features': bool
+            }
+        }
+    """
+    result = {
+        "impute_dict": None,
+        "risk_tables": None,
+        "selected_features": None,
+        "loaded": {"imputation": False, "risk_tables": False, "features": False},
+    }
+
+    if not model_artifacts_dir or not os.path.exists(model_artifacts_dir):
+        logger.warning(
+            f"Model artifacts directory not found or not provided: {model_artifacts_dir}"
+        )
+        return result
+
+    logger.info(
+        f"Attempting to load pre-computed artifacts from: {model_artifacts_dir}"
+    )
+
+    # 1. Try to load imputation dictionary
+    if use_imputation:
+        impute_path = os.path.join(model_artifacts_dir, "impute_dict.pkl")
+        if os.path.exists(impute_path):
+            try:
+                with open(impute_path, "rb") as f:
+                    result["impute_dict"] = pkl.load(f)
+                result["loaded"]["imputation"] = True
+                logger.info(
+                    f"✓ Loaded pre-computed imputation dictionary from {impute_path}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load imputation dict: {e}. Will compute inline."
+                )
+        else:
+            logger.warning(
+                f"Imputation dict not found at {impute_path}. Will compute inline."
+            )
+
+    # 2. Try to load risk tables
+    if use_risk_tables:
+        risk_path = os.path.join(model_artifacts_dir, "risk_table_map.pkl")
+        if os.path.exists(risk_path):
+            try:
+                with open(risk_path, "rb") as f:
+                    result["risk_tables"] = pkl.load(f)
+                result["loaded"]["risk_tables"] = True
+                logger.info(f"✓ Loaded pre-computed risk tables from {risk_path}")
+            except Exception as e:
+                logger.warning(f"Failed to load risk tables: {e}. Will compute inline.")
+        else:
+            logger.warning(
+                f"Risk tables not found at {risk_path}. Will compute inline."
+            )
+
+    # 3. Try to load selected features
+    if use_features:
+        features_path = os.path.join(model_artifacts_dir, "selected_features.json")
+        if os.path.exists(features_path):
+            try:
+                with open(features_path, "r") as f:
+                    result["selected_features"] = json.load(f)
+                result["loaded"]["features"] = True
+                logger.info(
+                    f"✓ Loaded pre-computed feature selection from {features_path}"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load features: {e}. Will compute inline.")
+        else:
+            logger.warning(
+                f"Features not found at {features_path}. Will compute inline."
+            )
+
+    return result
+
+
+def validate_precomputed_data_state(
+    train_df: pd.DataFrame, config: dict, imputation_used: bool, risk_tables_used: bool
+) -> None:
+    """
+    Validate that data state matches the pre-computed artifact flags.
+
+    When using pre-computed artifacts, the incoming data should already be
+    in the transformed state (imputed, risk-mapped, etc.).
+
+    Args:
+        train_df: Training DataFrame to validate
+        config: Configuration dictionary
+        imputation_used: Whether pre-computed imputation is being used
+        risk_tables_used: Whether pre-computed risk tables are being used
+
+    Raises:
+        ValueError: If data state doesn't match the expected state
+    """
+    if imputation_used:
+        # Verify data has no NaN in numerical columns
+        tab_fields = config.get("tab_field_list", [])
+        if tab_fields:
+            nan_cols = (
+                train_df[tab_fields].columns[train_df[tab_fields].isna().any()].tolist()
+            )
+            if nan_cols:
+                raise ValueError(
+                    f"USE_PRECOMPUTED_IMPUTATION=true but data contains NaN values in columns: {nan_cols}. "
+                    "Data must be pre-imputed when using pre-computed imputation artifacts."
+                )
+            logger.info(
+                "✓ Validated: Data has no NaN values (consistent with pre-computed imputation)"
+            )
+
+    if risk_tables_used:
+        # Verify categorical columns are numeric (risk-mapped)
+        cat_fields = config.get("cat_field_list", [])
+        for col in cat_fields:
+            if col in train_df.columns:
+                if not pd.api.types.is_numeric_dtype(train_df[col]):
+                    raise ValueError(
+                        f"USE_PRECOMPUTED_RISK_TABLES=true but column '{col}' is not numeric. "
+                        "Data must be pre-transformed when using pre-computed risk table artifacts."
+                    )
+        if cat_fields:
+            logger.info(
+                "✓ Validated: Categorical columns are numeric (consistent with pre-computed risk tables)"
+            )
+
+
+# -------------------------------------------------------------------------
 # Main Orchestrator
 # -------------------------------------------------------------------------
 def main(
@@ -840,6 +1132,7 @@ def main(
         input_paths: Dictionary of input paths with logical names
             - "input_path": Directory containing train/val/test data
             - "hyperparameters_s3_uri": Path to hyperparameters directory (now points to /opt/ml/code/hyperparams)
+            - "model_artifacts_input": (Optional) Directory containing pre-computed model artifacts from previous steps
         output_paths: Dictionary of output paths with logical names
             - "model_output": Directory to save model artifacts
             - "evaluation_output": Directory to save evaluation outputs
@@ -854,15 +1147,33 @@ def main(
         model_dir = output_paths["model_output"]
         output_dir = output_paths["evaluation_output"]
 
-        # Build hyperparameters path - handle both file path and directory cases
-        if "hyperparameters_s3_uri" in input_paths:
-            hparam_path = input_paths["hyperparameters_s3_uri"]
-            # If it's a directory path, append the filename
-            if not hparam_path.endswith("hyperparameters.json"):
-                hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+        # Optional: Get model artifacts input directory (for pre-computed parameters)
+        model_artifacts_input_dir = input_paths.get("model_artifacts_input")
+        if model_artifacts_input_dir:
+            logger.info(f"Model artifacts input directory: {model_artifacts_input_dir}")
         else:
-            # Fallback to source directory if not provided
-            hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
+            logger.info(
+                "No model_artifacts_input provided - will compute all parameters inline"
+            )
+
+        # Priority-based hyperparameters path resolution
+        # Priority 1: Start with code directory (highest priority)
+        hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
+
+        # Priority 2: If code directory file doesn't exist, check input_paths
+        if not os.path.exists(hparam_path):
+            logger.info(f"Hyperparameters not found in code directory: {hparam_path}")
+
+            if "hyperparameters_s3_uri" in input_paths:
+                hparam_path = input_paths["hyperparameters_s3_uri"]
+                # If it's a directory path, append the filename
+                if not hparam_path.endswith("hyperparameters.json"):
+                    hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+                logger.info(f"Using fallback hyperparameters path: {hparam_path}")
+            else:
+                logger.error("No hyperparameters_s3_uri provided in input_paths")
+        else:
+            logger.info(f"Found hyperparameters in code directory: {hparam_path}")
 
         logger.info("Starting XGBoost training process...")
         logger.info(f"Loading configuration from {hparam_path}")
@@ -876,53 +1187,128 @@ def main(
         # Store format in config for output preservation
         config["_input_format"] = input_format
 
-        # Apply numerical imputation
-        logger.info("Starting numerical imputation...")
-        train_df, val_df, test_df, impute_dict = apply_numerical_imputation(
-            config, train_df, val_df, test_df
+        # Extract environment variables for preprocessing control
+        use_precomputed_imputation = environ_vars.get(
+            "USE_PRECOMPUTED_IMPUTATION", False
         )
-        logger.info("Numerical imputation completed")
+        use_precomputed_risk_tables = environ_vars.get(
+            "USE_PRECOMPUTED_RISK_TABLES", False
+        )
+        use_precomputed_features = environ_vars.get("USE_PRECOMPUTED_FEATURES", False)
 
-        # Apply risk table mapping
-        logger.info("Starting risk table mapping...")
-        train_df, val_df, test_df, risk_tables = fit_and_apply_risk_tables(
-            config, train_df, val_df, test_df
+        # ===== PREPROCESSING ARTIFACT CONTROL =====
+        logger.info("=" * 70)
+        logger.info("PREPROCESSING ARTIFACT CONTROL")
+        logger.info("=" * 70)
+        logger.info(f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
+        logger.info(f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
+        logger.info(f"USE_PRECOMPUTED_FEATURES: {use_precomputed_features}")
+        logger.info(f"model_artifacts_input directory: {model_artifacts_input_dir}")
+        logger.info("=" * 70)
+
+        # Try to load pre-computed artifacts
+        precomputed = load_precomputed_artifacts(
+            model_artifacts_input_dir,
+            use_precomputed_imputation,
+            use_precomputed_risk_tables,
+            use_precomputed_features,
         )
-        logger.info("Risk table mapping completed")
+
+        # Validate data state matches pre-computed artifact flags
+        validate_precomputed_data_state(
+            train_df,
+            config,
+            precomputed["loaded"]["imputation"],
+            precomputed["loaded"]["risk_tables"],
+        )
+
+        # ===== 1. Numerical Imputation =====
+        if precomputed["loaded"]["imputation"]:
+            # Data already imputed - just use the artifacts for model packaging
+            impute_dict = precomputed["impute_dict"]
+            logger.info(
+                "✓ Using pre-computed imputation artifacts (data already transformed)"
+            )
+            logger.info("  → Skipping imputation transformation")
+        else:
+            # Compute inline AND transform data
+            logger.info(
+                "Computing numerical imputation inline and transforming data..."
+            )
+            train_df, val_df, test_df, impute_dict = apply_numerical_imputation(
+                config, train_df, val_df, test_df
+            )
+            logger.info("✓ Numerical imputation completed")
+
+        # ===== 2. Risk Table Mapping =====
+        if precomputed["loaded"]["risk_tables"]:
+            # Data already risk-mapped - just use the artifacts for model packaging
+            risk_tables = precomputed["risk_tables"]
+            logger.info(
+                "✓ Using pre-computed risk table artifacts (data already transformed)"
+            )
+            logger.info("  → Skipping risk table transformation")
+        else:
+            # Compute inline AND transform data
+            logger.info("Computing risk tables inline and transforming data...")
+            train_df, val_df, test_df, risk_tables = fit_and_apply_risk_tables(
+                config, train_df, val_df, test_df
+            )
+            logger.info("✓ Risk table mapping completed")
+
+        # ===== 3. Feature Selection =====
+        if use_precomputed_features:
+            logger.info(
+                "Determining effective feature columns (USE_PRECOMPUTED_FEATURES=true)..."
+            )
+            feature_columns, fs_applied = get_effective_feature_columns(
+                config, model_artifacts_input_dir, train_df
+            )
+
+            if fs_applied:
+                logger.info("✓ Feature selection successfully applied")
+                logger.info(f"  → Using {len(feature_columns)} selected features")
+
+                # Filter DataFrames to only include selected features plus label
+                label_col = config["label_name"]
+                id_col = config.get("id_name", "id")
+
+                # Keep only selected features, label, and ID (if present)
+                cols_to_keep = feature_columns + [label_col]
+                if id_col in train_df.columns:
+                    cols_to_keep.append(id_col)
+
+                train_df = train_df[cols_to_keep]
+                val_df = val_df[cols_to_keep]
+                test_df = test_df[cols_to_keep]
+
+                logger.info(f"  → Filtered datasets to {len(cols_to_keep)} columns")
+            else:
+                logger.info(
+                    "Feature selection artifacts not found - using original features"
+                )
+                feature_columns = config["tab_field_list"] + config["cat_field_list"]
+        else:
+            logger.info(
+                "USE_PRECOMPUTED_FEATURES=false - using original feature configuration"
+            )
+            feature_columns = config["tab_field_list"] + config["cat_field_list"]
+            logger.info(f"  → Using {len(feature_columns)} features from config")
 
         logger.info("Preparing DMatrices for XGBoost...")
-        dtrain, dval, feature_columns = prepare_dmatrices(
-            config, train_df, val_df, input_paths
-        )
+        # Update config with actual feature columns for DMatrix preparation
+        config["tab_field_list"] = [
+            f for f in feature_columns if f in config.get("tab_field_list", [])
+        ]
+        config["cat_field_list"] = [
+            f for f in feature_columns if f in config.get("cat_field_list", [])
+        ]
+
+        dtrain, dval, feature_columns = prepare_dmatrices(config, train_df, val_df)
         logger.info("DMatrices prepared successfully")
         logger.info(
             f"Using {len(feature_columns)} features in order: {feature_columns}"
         )
-
-        # Collect feature selection information for model artifacts
-        original_features = config["tab_field_list"] + config["cat_field_list"]
-        feature_selection_applied = len(feature_columns) != len(
-            original_features
-        ) or set(feature_columns) != set(original_features)
-        feature_selection_metadata = None
-
-        if feature_selection_applied:
-            # Try to load original feature selection metadata
-            fs_artifacts_path = detect_feature_selection_artifacts(input_paths)
-            if fs_artifacts_path:
-                try:
-                    with open(fs_artifacts_path, "r") as f:
-                        fs_data = json.load(f)
-                    feature_selection_metadata = fs_data.get("selection_metadata", {})
-                    if "method_contributions" in fs_data:
-                        feature_selection_metadata["method_contributions"] = fs_data[
-                            "method_contributions"
-                        ]
-                    logger.info(
-                        "Loaded original feature selection metadata for model artifacts"
-                    )
-                except Exception as e:
-                    logger.warning(f"Could not load feature selection metadata: {e}")
 
         logger.info("Starting model training...")
         model = train_model(config, dtrain, dval)
@@ -939,9 +1325,6 @@ def main(
             model_path=model_dir,
             feature_columns=feature_columns,
             config=config,
-            feature_selection_applied=feature_selection_applied,
-            original_features=original_features if feature_selection_applied else None,
-            feature_selection_metadata=feature_selection_metadata,
         )
         logger.info("✓ Model artifacts saved successfully")
 
@@ -1007,6 +1390,7 @@ if __name__ == "__main__":
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
         "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path
+        "MODEL_ARTIFACTS_INPUT": "/opt/ml/input/data/model_artifacts_input",  # Optional pre-computed artifacts
     }
 
     # Define input and output paths using contract logical names
@@ -1016,15 +1400,32 @@ if __name__ == "__main__":
         "hyperparameters_s3_uri": CONTAINER_PATHS["CONFIG_DIR"],
     }
 
+    # Add model_artifacts_input only if the directory exists (optional)
+    if os.path.exists(CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]):
+        input_paths["model_artifacts_input"] = CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]
+        logger.info(
+            f"Found model artifacts input directory: {CONTAINER_PATHS['MODEL_ARTIFACTS_INPUT']}"
+        )
+
     output_paths = {
         "model_output": CONTAINER_PATHS["MODEL_DIR"],
         "evaluation_output": CONTAINER_PATHS["OUTPUT_DATA"],
     }
 
-    # Collect environment variables (none currently used, but following the pattern)
+    # Collect environment variables for preprocessing artifact control
     environ_vars = {
-        # Add any environment variables the script needs here
-        # Example: "LOG_LEVEL": os.environ.get("LOG_LEVEL", "INFO")
+        "USE_PRECOMPUTED_IMPUTATION": os.environ.get(
+            "USE_PRECOMPUTED_IMPUTATION", "false"
+        ).lower()
+        == "true",
+        "USE_PRECOMPUTED_RISK_TABLES": os.environ.get(
+            "USE_PRECOMPUTED_RISK_TABLES", "false"
+        ).lower()
+        == "true",
+        "USE_PRECOMPUTED_FEATURES": os.environ.get(
+            "USE_PRECOMPUTED_FEATURES", "false"
+        ).lower()
+        == "true",
     }
 
     # Create empty args namespace to maintain function signature

@@ -31,7 +31,7 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
     script_contract=_get_missing_value_imputation_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="data_input",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -61,7 +61,7 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
             description="Processed validation data from preprocessing steps for missing value imputation",
         ),
         DependencySpec(
-            logical_name="imputation_params_input",
+            logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["MissingValueImputation_Training", "ProcessingStep"],
@@ -77,6 +77,7 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
                 "fitted",
                 "imputation_params_input",
                 "imputation_params_output",
+                "model_artifacts_output",
             ],
             data_type="S3Uri",
             description="Pre-trained imputation parameters from training job",
@@ -84,7 +85,7 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
     ],
     outputs=[
         OutputSpec(
-            logical_name="data_output",
+            logical_name="processed_data",
             aliases=[
                 "imputed_data",
                 "processed_data",
@@ -96,12 +97,12 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
                 "data_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['data_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Validation data with missing values imputed using pre-trained parameters",
         ),
         OutputSpec(
-            logical_name="imputation_params_output",
+            logical_name="model_artifacts_output",
             aliases=[
                 "imputation_params",
                 "imputation_parameters",
@@ -110,9 +111,10 @@ MISSING_VALUE_IMPUTATION_VALIDATION_SPEC = StepSpecification(
                 "imputation_model",
                 "training_artifacts",
                 "imputation_params_input",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['imputation_params_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Imputation parameters (passthrough from training)",
         ),

@@ -175,10 +175,10 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
 
     # Input truncation configuration
     bedrock_max_input_field_length: int = Field(
-        default=300000,
+        default=400000,
         ge=100,
         le=1000000,
-        description="Maximum length in characters for input fields before truncation (default: 300,000 chars ≈ 75,000 tokens)",
+        description="Maximum length in characters for input fields before truncation (default: 400,000 chars ≈ 100,000 tokens)",
     )
 
     bedrock_truncation_enabled: bool = Field(

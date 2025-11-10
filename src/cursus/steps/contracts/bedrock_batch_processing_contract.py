@@ -52,7 +52,7 @@ BEDROCK_BATCH_PROCESSING_CONTRACT = ScriptContract(
         "BEDROCK_MAX_RECORDS_PER_JOB": "45000",
         "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
         # Input truncation configuration
-        "BEDROCK_MAX_INPUT_FIELD_LENGTH": "300000",
+        "BEDROCK_MAX_INPUT_FIELD_LENGTH": "400000",
         "BEDROCK_TRUNCATION_ENABLED": "true",
         "BEDROCK_LOG_TRUNCATIONS": "true",
         "USE_SECURE_PYPI": "false",

@@ -58,7 +58,7 @@ FEATURE_SELECTION_CALIBRATION_SPEC = StepSpecification(
             description="Processed calibration data from preprocessing steps for feature selection",
         ),
         DependencySpec(
-            logical_name="selected_features_input",
+            logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["FeatureSelection_Training"],
@@ -72,6 +72,7 @@ FEATURE_SELECTION_CALIBRATION_SPEC = StepSpecification(
                 "feature_list",
                 "feature_scores",
                 "selected_features_output",
+                "model_artifacts_output",
             ],
             data_type="S3Uri",
             description="Selected features metadata and scores from training step",
@@ -96,7 +97,7 @@ FEATURE_SELECTION_CALIBRATION_SPEC = StepSpecification(
             description="Calibration data with selected features applied using pre-computed selection",
         ),
         OutputSpec(
-            logical_name="selected_features_output",
+            logical_name="model_artifacts_output",
             aliases=[
                 "selected_features",
                 "feature_selection",
@@ -105,9 +106,10 @@ FEATURE_SELECTION_CALIBRATION_SPEC = StepSpecification(
                 "selection_results",
                 "feature_list",
                 "selected_features_input",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['selected_features_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Selected features metadata and scores (passthrough from training)",
         ),

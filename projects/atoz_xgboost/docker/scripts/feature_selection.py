@@ -17,6 +17,7 @@ import json
 import logging
 import traceback
 import time
+import shutil
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -119,21 +120,51 @@ def _detect_file_format(split_dir: Path, split_name: str) -> tuple:
 
 
 # -------------------------------------------------------------------------
-# Data Loading Functions
+# Artifact Management Functions
 # -------------------------------------------------------------------------
-def load_selected_features(selected_features_dir: str) -> List[str]:
+def copy_existing_artifacts(src_dir: str, dst_dir: str) -> None:
+    """
+    Copy all existing model artifacts from previous processing steps.
+
+    This enables the parameter accumulator pattern where each step:
+    1. Copies artifacts from previous steps
+    2. Adds its own artifacts
+    3. Passes all artifacts to the next step
+
+    Args:
+        src_dir: Source directory containing existing artifacts
+        dst_dir: Destination directory to copy artifacts to
+    """
+    if not src_dir or not os.path.exists(src_dir):
+        logger.info(f"No existing artifacts to copy from {src_dir}")
+        return
+
+    os.makedirs(dst_dir, exist_ok=True)
+    copied_count = 0
+
+    for filename in os.listdir(src_dir):
+        src_file = os.path.join(src_dir, filename)
+        dst_file = os.path.join(dst_dir, filename)
+
+        if os.path.isfile(src_file):
+            shutil.copy2(src_file, dst_file)
+            copied_count += 1
+            logger.info(f"  Copied existing artifact: {filename}")
+
+    logger.info(f"✓ Copied {copied_count} existing artifact(s) to {dst_dir}")
+
+
+def load_selected_features(model_artifacts_dir: str) -> List[str]:
     """
     Load pre-computed selected features from training job.
 
     Args:
-        selected_features_dir: Directory containing selected_features.json
+        model_artifacts_dir: Directory containing selected_features.json
 
     Returns:
         List of selected feature names
     """
-    selected_features_file = os.path.join(
-        selected_features_dir, "selected_features.json"
-    )
+    selected_features_file = os.path.join(model_artifacts_dir, "selected_features.json")
 
     if not os.path.exists(selected_features_file):
         raise FileNotFoundError(
@@ -155,6 +186,11 @@ def load_selected_features(selected_features_dir: str) -> List[str]:
     except Exception as e:
         logger.error(f"Error loading selected features: {e}")
         raise
+
+
+# -------------------------------------------------------------------------
+# Data Loading Functions
+# -------------------------------------------------------------------------
 
 
 def load_single_split_data(
@@ -1217,17 +1253,17 @@ def apply_feature_selection_pipeline(
 # Output Generation
 # -------------------------------------------------------------------------
 def save_selection_results(
-    selection_results: Dict[str, Any], selected_features_dir: str
+    selection_results: Dict[str, Any], model_artifacts_dir: str
 ) -> None:
     """
-    Save feature selection results and metadata to selected_features channel.
+    Save feature selection results and metadata to model artifacts directory.
 
     Args:
         selection_results: Results from feature selection pipeline
-        selected_features_dir: Directory for all feature selection output files
+        model_artifacts_dir: Directory for all feature selection output files
     """
     # Ensure output directory exists
-    os.makedirs(selected_features_dir, exist_ok=True)
+    os.makedirs(model_artifacts_dir, exist_ok=True)
 
     # Save selected features metadata
     selected_features_data = {
@@ -1250,7 +1286,7 @@ def save_selection_results(
         ],
     }
 
-    with open(os.path.join(selected_features_dir, "selected_features.json"), "w") as f:
+    with open(os.path.join(model_artifacts_dir, "selected_features.json"), "w") as f:
         json.dump(selected_features_data, f, indent=2, sort_keys=True)
 
     # Save detailed feature scores
@@ -1277,7 +1313,7 @@ def save_selection_results(
     # Save as CSV
     feature_scores_df = pd.DataFrame(feature_scores_data)
     feature_scores_df.to_csv(
-        os.path.join(selected_features_dir, "feature_scores.csv"), index=False
+        os.path.join(model_artifacts_dir, "feature_scores.csv"), index=False
     )
 
     # Save selection summary report (merged into same directory)
@@ -1317,11 +1353,11 @@ def save_selection_results(
     }
 
     with open(
-        os.path.join(selected_features_dir, "feature_selection_report.json"), "w"
+        os.path.join(model_artifacts_dir, "feature_selection_report.json"), "w"
     ) as f:
         json.dump(summary_report, f, indent=2, sort_keys=True)
 
-    logger.info(f"Saved all feature selection results to {selected_features_dir}")
+    logger.info(f"Saved all feature selection results to {model_artifacts_dir}")
 
 
 # -------------------------------------------------------------------------
@@ -1338,11 +1374,11 @@ def main(
 
     Args:
         input_paths: Dictionary of input paths with logical names
-            - "processed_data": Directory containing train/val/test splits from tabular preprocessing
+            - "input_data": Directory containing train/val/test splits from tabular preprocessing
+            - "model_artifacts_input": Model artifacts from previous steps (standardized)
         output_paths: Dictionary of output paths with logical names
             - "processed_data": Directory for feature-selected train/val/test splits (XGBoost input format)
-            - "selected_features": Directory for selected_features.json and feature_scores.csv
-            - "selection_report": Directory for feature_selection_report.json
+            - "model_artifacts_output": Model artifacts output for next steps (standardized)
         environ_vars: Dictionary of environment variables
             - "FEATURE_SELECTION_METHODS": Comma-separated list of methods
             - "LABEL_FIELD": Target column name (standard across framework)
@@ -1416,6 +1452,21 @@ def main(
             logger.info(f"Loading data from {input_data_dir}")
             splits = load_preprocessed_data(input_data_dir)
 
+            # Determine model artifacts output directory
+            model_artifacts_output_dir = output_paths.get("model_artifacts_output")
+            if not model_artifacts_output_dir:
+                model_artifacts_output_dir = os.path.join(
+                    output_paths["processed_data"], "model_artifacts"
+                )
+            os.makedirs(model_artifacts_output_dir, exist_ok=True)
+
+            # Copy existing artifacts from previous steps (parameter accumulator pattern)
+            model_artifacts_input_dir = input_paths.get("model_artifacts_input")
+            if model_artifacts_input_dir:
+                copy_existing_artifacts(
+                    model_artifacts_input_dir, model_artifacts_output_dir
+                )
+
             # Apply feature selection pipeline
             logger.info("Starting feature selection pipeline...")
             selection_results = apply_feature_selection_pipeline(
@@ -1432,13 +1483,9 @@ def main(
                 output_data_dir,
             )
 
-            # Save selection results and metadata to selected_features_output channel
-            selected_features_dir = output_paths.get(
-                "selected_features_output", output_data_dir
-            )
-
-            logger.info(f"Saving all results to {selected_features_dir}")
-            save_selection_results(selection_results, selected_features_dir)
+            # Save selection results and metadata to model artifacts directory
+            logger.info(f"Saving all results to {model_artifacts_output_dir}")
+            save_selection_results(selection_results, model_artifacts_output_dir)
 
         else:
             # Non-training mode: Use pre-computed selected features
@@ -1447,21 +1494,34 @@ def main(
             )
 
             # Load pre-computed selected features
-            if "selected_features_input" not in input_paths:
+            if "model_artifacts_input" not in input_paths:
                 raise ValueError(
-                    f"For non-training job type '{job_args.job_type}', selected_features_input input path must be provided"
+                    f"For non-training job type '{job_args.job_type}', model_artifacts_input input path must be provided"
                 )
 
-            selected_features_input_dir = input_paths["selected_features_input"]
+            model_artifacts_input_dir = input_paths["model_artifacts_input"]
             logger.info(
-                f"Loading pre-computed selected features from {selected_features_input_dir}"
+                f"Loading pre-computed selected features from {model_artifacts_input_dir}"
             )
-            selected_features = load_selected_features(selected_features_input_dir)
+            selected_features = load_selected_features(model_artifacts_input_dir)
 
             # Load single split data
             input_data_dir = input_paths["input_data"]
             logger.info(f"Loading {job_args.job_type} data from {input_data_dir}")
             splits = load_single_split_data(input_data_dir, job_args.job_type)
+
+            # Determine model artifacts output directory
+            model_artifacts_output_dir = output_paths.get("model_artifacts_output")
+            if not model_artifacts_output_dir:
+                model_artifacts_output_dir = os.path.join(
+                    output_paths["processed_data"], "model_artifacts"
+                )
+            os.makedirs(model_artifacts_output_dir, exist_ok=True)
+
+            # Copy existing artifacts from previous steps (parameter accumulator pattern)
+            copy_existing_artifacts(
+                model_artifacts_input_dir, model_artifacts_output_dir
+            )
 
             # Apply feature filtering (no computation, just filtering)
             logger.info(
@@ -1490,35 +1550,21 @@ def main(
                 "n_selected_features": len(selected_features),
             }
 
-            # Save minimal metadata (copy from training job artifacts)
-            selected_features_dir = output_paths.get(
-                "selected_features_output", output_data_dir
-            )
+            # Metadata files are already copied via copy_existing_artifacts
+            # Just verify they exist
+            logger.info(f"Verifying metadata files in {model_artifacts_output_dir}")
 
-            logger.info(f"Copying all metadata to {selected_features_dir}")
-
-            # Copy all files from input selected_features directory
-            import shutil
-
-            os.makedirs(selected_features_dir, exist_ok=True)
-
-            # Copy files from input selected_features directory
-            for filename in [
-                "selected_features.json",
-                "feature_scores.csv",
-                "feature_selection_report.json",
-            ]:
-                src_file = os.path.join(selected_features_input_dir, filename)
-                dst_file = os.path.join(selected_features_dir, filename)
-                if os.path.exists(src_file):
-                    shutil.copy2(src_file, dst_file)
-                    logger.info(f"Copied {filename} from training job")
+            # Verify key files exist
+            for filename in ["selected_features.json", "feature_scores.csv"]:
+                file_path = os.path.join(model_artifacts_output_dir, filename)
+                if os.path.exists(file_path):
+                    logger.info(f"✓ Found {filename}")
                 else:
-                    logger.warning(f"File {filename} not found in training artifacts")
+                    logger.warning(f"⚠ Missing {filename}")
 
             # If report file wasn't found, create minimal one
             report_file = os.path.join(
-                selected_features_dir, "feature_selection_report.json"
+                model_artifacts_output_dir, "feature_selection_report.json"
             )
             if not os.path.exists(report_file):
                 minimal_report = {
@@ -1574,16 +1620,15 @@ if __name__ == "__main__":
     # Define input and output paths using container defaults
     input_paths = {"input_data": CONTAINER_PATHS["INPUT_DATA"]}
 
-    # For non-training jobs, add selected_features_input input path
+    # For non-training jobs, add model_artifacts_input input path
     if args.job_type != "training":
-        input_paths["selected_features_input"] = (
-            CONTAINER_PATHS["INPUT_DATA"] + "/selected_features"
+        input_paths["model_artifacts_input"] = (
+            CONTAINER_PATHS["INPUT_DATA"] + "/model_artifacts"
         )
 
     output_paths = {
-        "processed_data": CONTAINER_PATHS["OUTPUT_DATA"],
-        "selected_features_output": CONTAINER_PATHS["OUTPUT_DATA"]
-        + "/selected_features",
+        "processed_data": CONTAINER_PATHS["OUTPUT_DATA"] + "/data",
+        "model_artifacts_output": CONTAINER_PATHS["OUTPUT_DATA"] + "/model_artifacts",
     }
 
     # Collect environment variables

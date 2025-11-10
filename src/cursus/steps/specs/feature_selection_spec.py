@@ -29,7 +29,7 @@ FEATURE_SELECTION_SPEC = StepSpecification(
     script_contract=_get_feature_selection_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="processed_data",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -59,7 +59,7 @@ FEATURE_SELECTION_SPEC = StepSpecification(
         ),
         # Selected features dependency - optional for training mode, required for others
         DependencySpec(
-            logical_name="selected_features",
+            logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
             compatible_sources=[
@@ -73,6 +73,7 @@ FEATURE_SELECTION_SPEC = StepSpecification(
                 "feature_metadata",
                 "feature_artifacts",
                 "training_artifacts",
+                "model_artifacts",
             ],
             data_type="S3Uri",
             description="Selected features metadata and scores (required for non-training modes)",
@@ -98,16 +99,19 @@ FEATURE_SELECTION_SPEC = StepSpecification(
             description="Data with selected features applied using statistical and ML methods",
         ),
         OutputSpec(
-            logical_name="selected_features",
+            logical_name="model_artifacts_output",
             aliases=[
+                "selected_features",
                 "feature_selection",
                 "feature_metadata",
                 "feature_artifacts",
                 "selection_results",
                 "training_artifacts",
+                "model_artifacts",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['selected_features'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Selected features metadata and scores for downstream consumption",
         ),

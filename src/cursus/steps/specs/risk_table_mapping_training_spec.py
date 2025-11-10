@@ -29,7 +29,7 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
     script_contract=_get_risk_table_mapping_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="data_input",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -78,7 +78,7 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
         ),
         # Risk tables dependency - optional for training mode since training creates them
         DependencySpec(
-            logical_name="risk_tables_input",
+            logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
             compatible_sources=["RiskTableMapping_Training", "ProcessingStep"],
@@ -89,6 +89,7 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
                 "model_artifacts",
                 "risk_tables_input",
                 "risk_tables_output",
+                "model_artifacts_output",
             ],
             data_type="S3Uri",
             description="Optional pre-existing risk tables (training mode creates new ones if not provided)",
@@ -110,16 +111,17 @@ RISK_TABLE_MAPPING_TRAINING_SPEC = StepSpecification(
             description="Processed data with risk table mappings applied",
         ),
         OutputSpec(
-            logical_name="risk_tables_output",
+            logical_name="model_artifacts_output",
             aliases=[
                 "risk_tables",
                 "bin_mapping",
                 "risk_table_artifacts",
                 "categorical_mappings",
                 "risk_tables_input",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['risk_tables_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Risk tables and imputation models for categorical features",
         ),

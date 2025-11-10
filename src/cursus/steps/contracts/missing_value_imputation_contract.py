@@ -11,12 +11,12 @@ from ...core.base.contract_base import ScriptContract
 MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     entry_point="missing_value_imputation.py",
     expected_input_paths={
-        "data_input": "/opt/ml/processing/input/data",
-        "imputation_params_input": "/opt/ml/processing/input/imputation_params",  # Optional for training modes
+        "input_data": "/opt/ml/processing/input/data",
+        "model_artifacts_input": "/opt/ml/processing/input/model_artifacts",  # Optional for non-training modes
     },
     expected_output_paths={
-        "data_output": "/opt/ml/processing/output",
-        "imputation_params_output": "/opt/ml/processing/output/imputation_params",
+        "processed_data": "/opt/ml/processing/output/data",
+        "model_artifacts_output": "/opt/ml/processing/output/model_artifacts",
     },
     expected_arguments={
         # No expected arguments - job_type comes from config
@@ -55,14 +55,14 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     - /opt/ml/processing/input/data: Preprocessed data from tabular_preprocessing
       - Training mode: train/, test/, val/ subdirectories with *_processed_data.csv files
       - Other modes: {job_type}/ subdirectory with {job_type}_processed_data.csv file
-    - /opt/ml/processing/input/imputation_params: Pre-trained imputation parameters (for non-training modes)
-      - imputation_parameters.pkl: Fitted SimpleImputer objects and statistics
+    - /opt/ml/processing/input/model_artifacts: Pre-trained model artifacts (for non-training modes)
+      - impute_dict.pkl: Simple imputation dictionary {column: value}
       - imputation_summary.json: Human-readable summary of imputation process
     
     Output Structure:
-    - /opt/ml/processing/output/{split}/{split}_processed_data.csv: Imputed data by split
-    - /opt/ml/processing/output/imputation_parameters.pkl: Fitted imputation parameters (training mode only)
-    - /opt/ml/processing/output/imputation_summary.json: Human-readable imputation summary
+    - /opt/ml/processing/output/data/{split}/{split}_processed_data.csv: Imputed data by split
+    - /opt/ml/processing/output/model_artifacts/impute_dict.pkl: Imputation dictionary (training mode)
+    - /opt/ml/processing/output/model_artifacts/imputation_summary.json: Human-readable summary
     - /opt/ml/processing/output/imputation_report.json: Comprehensive analysis report
     - /opt/ml/processing/output/imputation_summary.txt: Text summary with recommendations
     
@@ -81,17 +81,24 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     - Saves imputation parameters and comprehensive reports
     
     Non-Training Modes:
-    - Loads pre-trained imputation parameters from imputation_params_input
+    - Loads pre-trained imputation parameters from model_artifacts_input
+    - Copies all existing artifacts from previous steps (parameter accumulator pattern)
     - Transforms data using loaded parameters for consistent imputation
     - Maintains same output structure as training mode
     
     Dependency Path Compatibility:
     - Input: Consumes output from tabular_preprocessing (processed_data)
     - Output: Provides imputed data for downstream steps like risk_table_mapping
-    - Path Structure: Maintains same directory structure as tabular_preprocessing
+    - Path Structure: Separates data and model artifacts
       - tabular_preprocessing outputs: /opt/ml/processing/output/{split}/{split}_processed_data.csv
       - missing_value_imputation inputs: /opt/ml/processing/input/data/{split}/{split}_processed_data.csv
-      - missing_value_imputation outputs: /opt/ml/processing/output/{split}/{split}_processed_data.csv
+      - missing_value_imputation data outputs: /opt/ml/processing/output/data/{split}/{split}_processed_data.csv
+      - missing_value_imputation artifact outputs: /opt/ml/processing/output/model_artifacts/impute_dict.pkl
+    
+    Parameter Accumulator Pattern:
+    - Copies all existing artifacts from model_artifacts_input to model_artifacts_output
+    - Adds its own imputation parameters to the accumulated artifacts
+    - Enables downstream steps to access all preprocessing parameters in one location
     
     Environment Variables:
     - LABEL_FIELD: Target column name to exclude from imputation

@@ -70,6 +70,35 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         "If False, hyperparameters_s3_uri channel is created as TrainingInput.",
     )
 
+    # Environment variables for preprocessing artifact control
+    use_secure_pypi: bool = Field(
+        default=True,
+        description="Controls PyPI source for package installation. "
+        "If True (default), uses secure CodeArtifact PyPI. "
+        "If False, uses public PyPI.",
+    )
+
+    use_precomputed_imputation: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed imputation artifacts. "
+        "If True, expects input data to be already imputed and loads impute_dict.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes imputation inline and transforms data.",
+    )
+
+    use_precomputed_risk_tables: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed risk table artifacts. "
+        "If True, expects input data to be already risk-mapped and loads risk_table_map.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes risk tables inline and transforms data.",
+    )
+
+    use_precomputed_features: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed feature selection. "
+        "If True, expects input data to be already feature-selected and loads selected_features.json from model_artifacts_input, skipping inline computation. "
+        "If False (default), uses all features without selection.",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
     # with public read-only properties for access
@@ -172,6 +201,10 @@ class XGBoostTrainingConfig(BasePipelineConfig):
             "framework_version": self.framework_version,
             "py_version": self.py_version,
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
+            "use_secure_pypi": self.use_secure_pypi,
+            "use_precomputed_imputation": self.use_precomputed_imputation,
+            "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
+            "use_precomputed_features": self.use_precomputed_features,
         }
 
         # Combine base fields and training fields (training fields take precedence if overlap)

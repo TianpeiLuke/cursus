@@ -10,13 +10,13 @@ from ...core.base.contract_base import ScriptContract
 RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     entry_point="risk_table_mapping.py",
     expected_input_paths={
-        "data_input": "/opt/ml/processing/input/data",
+        "input_data": "/opt/ml/processing/input/data",
         "hyperparameters_s3_uri": "/opt/ml/code/hyperparams",
-        "risk_tables_input": "/opt/ml/processing/input/risk_tables",  # Optional for training modes
+        "model_artifacts_input": "/opt/ml/processing/input/model_artifacts",  # Optional for non-training modes
     },
     expected_output_paths={
-        "processed_data": "/opt/ml/processing/output",
-        "risk_tables_output": "/opt/ml/processing/output",  # Shared path with processed_data
+        "processed_data": "/opt/ml/processing/output/data",
+        "model_artifacts_output": "/opt/ml/processing/output/model_artifacts",
     },
     expected_arguments={
         # No expected arguments - job_type comes from config
@@ -41,22 +41,21 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     5. Saves fitted artifacts for reuse in inference
     
     Input Structure:
-    - /opt/ml/processing/input/data: Data files from tabular preprocessing
+    - /opt/ml/processing/input/data: Data files from missing_value_imputation or tabular preprocessing
       - Training mode: train/, test/, val/ subdirectories with processed data
       - Other modes: job_type/ subdirectory with processed data
-    - /opt/ml/processing/input/config: Configuration files
-      - config.json: Model configuration including category risk parameters
-      - metadata.csv: Variable metadata with types and imputation strategies
-      - job_type: Configuration parameter specifying job type (training, validation, testing, calibration)
-    - /opt/ml/processing/input/risk_tables: Pre-trained risk tables (for non-training modes)
-      - bin_mapping.pkl: Risk table mappings for categorical features
-      - missing_value_imputation.pkl: Imputation values for numeric features
+    - /opt/ml/code/hyperparams: Configuration files
+      - hyperparameters.json: Model configuration including category risk parameters (cat_field_list, smooth_factor, count_threshold)
+    - /opt/ml/processing/input/model_artifacts: Pre-trained model artifacts (for non-training modes)
+      - risk_table_map.pkl: Risk table mappings for categorical features
+      - impute_dict.pkl: Imputation values (from previous missing_value_imputation step)
+      - Other artifacts from previous steps (parameter accumulator pattern)
     
     Output Structure:
-    - /opt/ml/processing/output/{split}/{split}_processed_data.csv: Transformed data by split
-    - /opt/ml/processing/output/bin_mapping.pkl: Risk table mappings for categorical features
-    - /opt/ml/processing/output/missing_value_imputation.pkl: Imputation values for numeric features
-    - /opt/ml/processing/output/config.pkl: Serialized configuration with metadata
+    - /opt/ml/processing/output/data/{split}/{split}_processed_data.csv: Transformed data by split
+    - /opt/ml/processing/output/model_artifacts/risk_table_map.pkl: Risk table mappings
+    - /opt/ml/processing/output/model_artifacts/hyperparameters.json: Copy of hyperparameters
+    - /opt/ml/processing/output/model_artifacts/impute_dict.pkl: Copied from previous step (accumulator pattern)
     
     Job Types (from config):
     - training: Fits risk tables on training data, transforms all splits
@@ -68,8 +67,14 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
     - Saves risk tables and imputation models
     
     Non-Training Modes:
-    - Loads pre-trained risk tables and imputation models
+    - Loads pre-trained risk tables from model_artifacts_input
+    - Copies all existing artifacts from previous steps (parameter accumulator pattern)
     - Transforms data using loaded artifacts
     - Maintains the same output structure as training mode
+    
+    Parameter Accumulator Pattern:
+    - Copies all existing artifacts from model_artifacts_input to model_artifacts_output
+    - Adds its own risk table mappings to the accumulated artifacts
+    - Enables downstream steps to access all preprocessing parameters in one location
     """,
 )

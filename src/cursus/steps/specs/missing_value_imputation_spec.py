@@ -31,7 +31,7 @@ MISSING_VALUE_IMPUTATION_SPEC = StepSpecification(
     script_contract=_get_missing_value_imputation_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="data_input",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -57,11 +57,32 @@ MISSING_VALUE_IMPUTATION_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Processed tabular data from preprocessing steps for missing value imputation",
-        )
+        ),
+        # Model artifacts dependency - optional for training mode since training creates them
+        DependencySpec(
+            logical_name="model_artifacts_input",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,
+            compatible_sources=["MissingValueImputation_Training", "ProcessingStep"],
+            semantic_keywords=[
+                "model_artifacts",
+                "imputation_parameters",
+                "fitted_imputers",
+                "imputation_artifacts",
+                "imputation_model",
+                "training_artifacts",
+                "model_artifacts_input",
+                "imputation_params_input",
+                "imputation_params_output",
+                "model_artifacts_output",
+            ],
+            data_type="S3Uri",
+            description="Optional pre-existing model artifacts (training mode creates new ones if not provided)",
+        ),
     ],
     outputs=[
         OutputSpec(
-            logical_name="data_output",
+            logical_name="processed_data",
             aliases=[
                 "data_input",
                 "imputed_data",
@@ -73,20 +94,23 @@ MISSING_VALUE_IMPUTATION_SPEC = StepSpecification(
                 "input_path",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['data_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Data with missing values imputed using statistical methods",
         ),
         OutputSpec(
-            logical_name="imputation_params",
+            logical_name="model_artifacts_output",
             aliases=[
+                "imputation_params",
                 "imputation_parameters",
                 "fitted_imputers",
                 "imputation_artifacts",
                 "imputation_model",
+                "model_artifacts",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['data_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Fitted imputation parameters for inference mode",
         ),

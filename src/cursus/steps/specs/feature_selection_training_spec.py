@@ -60,7 +60,7 @@ FEATURE_SELECTION_TRAINING_SPEC = StepSpecification(
         ),
         # Selected features dependency - optional for training mode since training creates them
         DependencySpec(
-            logical_name="selected_features_input",
+            logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
             compatible_sources=["FeatureSelection_Training", "ProcessingStep"],
@@ -72,6 +72,7 @@ FEATURE_SELECTION_TRAINING_SPEC = StepSpecification(
                 "training_artifacts",
                 "selected_features_input",
                 "selected_features_output",
+                "model_artifacts_output",
             ],
             data_type="S3Uri",
             description="Optional pre-existing selected features (training mode creates new ones if not provided)",
@@ -96,7 +97,7 @@ FEATURE_SELECTION_TRAINING_SPEC = StepSpecification(
             description="Training data with selected features applied using statistical and ML methods",
         ),
         OutputSpec(
-            logical_name="selected_features_output",
+            logical_name="model_artifacts_output",
             aliases=[
                 "selected_features",
                 "feature_selection",
@@ -105,9 +106,10 @@ FEATURE_SELECTION_TRAINING_SPEC = StepSpecification(
                 "selection_results",
                 "training_artifacts",
                 "selected_features_input",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['selected_features_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Selected features metadata and scores from training data for inference mode",
         ),

@@ -29,7 +29,7 @@ RISK_TABLE_MAPPING_CALIBRATION_SPEC = StepSpecification(
     script_contract=_get_risk_table_mapping_contract(),
     dependencies=[
         DependencySpec(
-            logical_name="data_input",
+            logical_name="input_data",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=[
@@ -76,7 +76,7 @@ RISK_TABLE_MAPPING_CALIBRATION_SPEC = StepSpecification(
             description="Optional external hyperparameters configuration file (will be overridden by internal generation)",
         ),
         DependencySpec(
-            logical_name="risk_tables_input",
+            logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=True,
             compatible_sources=["RiskTableMapping_Training"],
@@ -87,6 +87,7 @@ RISK_TABLE_MAPPING_CALIBRATION_SPEC = StepSpecification(
                 "model_artifacts",
                 "risk_tables_input",
                 "risk_tables_output",
+                "model_artifacts_output",
             ],
             data_type="S3Uri",
             description="Risk tables and imputation models from training step",
@@ -108,16 +109,18 @@ RISK_TABLE_MAPPING_CALIBRATION_SPEC = StepSpecification(
             description="Processed calibration data with risk table mappings applied",
         ),
         OutputSpec(
-            logical_name="risk_tables_output",
+            logical_name="model_artifacts_output",
             aliases=[
                 "risk_tables",
+                "risk_tables_output",
                 "bin_mapping",
                 "risk_table_artifacts",
                 "categorical_mappings",
                 "risk_tables_input",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
-            property_path="properties.ProcessingOutputConfig.Outputs['risk_tables_output'].S3Output.S3Uri",
+            property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
             data_type="S3Uri",
             description="Risk tables and imputation models (passthrough from training)",
         ),
