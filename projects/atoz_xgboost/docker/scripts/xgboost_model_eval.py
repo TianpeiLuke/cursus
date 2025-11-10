@@ -19,6 +19,7 @@ import xgboost as xgb
 import matplotlib.pyplot as plt
 import time
 import sys
+import tarfile
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
@@ -472,6 +473,20 @@ def save_dataframe_with_format(
     return file_path
 
 
+def decompress_model_artifacts(model_dir: str):
+    """
+    Checks for a model.tar.gz file in the model directory and extracts it.
+    """
+    model_tar_path = Path(model_dir) / "model.tar.gz"
+    if model_tar_path.exists():
+        logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
+        with tarfile.open(model_tar_path, "r:gz") as tar:
+            tar.extractall(path=model_dir)
+        logger.info("Extraction complete.")
+    else:
+        logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
+
+
 def load_model_artifacts(
     model_dir: str,
 ) -> Tuple[xgb.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
@@ -480,6 +495,11 @@ def load_model_artifacts(
     Returns model, risk_tables, impute_dict, feature_columns, and hyperparameters.
     """
     logger.info(f"Loading model artifacts from {model_dir}")
+
+    # Decompress the model tarball if it exists
+    logger.info("Checking for model.tar.gz and decompressing if present")
+    decompress_model_artifacts(model_dir)
+
     model = xgb.Booster()
     model.load_model(os.path.join(model_dir, "xgboost_model.bst"))
     logger.info("Loaded xgboost_model.bst")
