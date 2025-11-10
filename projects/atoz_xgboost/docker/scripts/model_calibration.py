@@ -472,7 +472,7 @@ def load_data(config: Optional["CalibrationConfig"] = None) -> Tuple[pd.DataFram
             )
 
     logger.info(f"Loaded data with shape {df.shape}")
-    return df
+    return df, input_format
 
 
 def log_section(title: str) -> None:
@@ -527,7 +527,8 @@ def extract_and_load_nested_tarball_data(
             logger.info(
                 f"Found direct data file: {direct_file}, using standard loading"
             )
-            return load_data(config)
+            df, _ = load_data(config)
+            return df
     except FileNotFoundError:
         # No direct data file, continue with tarball extraction
         pass
@@ -578,7 +579,8 @@ def extract_and_load_nested_tarball_data(
         logger.warning(
             "No output.tar.gz found anywhere, falling back to standard data loading"
         )
-        return load_data(config)
+        df, _ = load_data(config)
+        return df
 
     logger.info(f"Found SageMaker output archive: {output_archive}")
     logger.info(f"File size: {os.path.getsize(output_archive) / (1024 * 1024):.2f} MB")
