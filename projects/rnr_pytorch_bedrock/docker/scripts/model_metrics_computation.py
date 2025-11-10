@@ -211,41 +211,73 @@ CONTAINER_PATHS = {
 }
 
 
+def _detect_file_format(file_path: str) -> str:
+    """
+    Detect file format based on extension.
+    
+    Args:
+        file_path: Path to file
+        
+    Returns:
+        Format string: 'csv', 'tsv', 'parquet', or 'json'
+    """
+    file_path_lower = file_path.lower()
+    
+    if file_path_lower.endswith(('.parquet', '.pq')):
+        return 'parquet'
+    elif file_path_lower.endswith('.tsv'):
+        return 'tsv'
+    elif file_path_lower.endswith('.json'):
+        return 'json'
+    elif file_path_lower.endswith('.csv'):
+        return 'csv'
+    else:
+        # Default to CSV for unknown extensions
+        return 'csv'
+
+
 def detect_and_load_predictions(
     input_dir: str, preferred_format: str = None
 ) -> pd.DataFrame:
     """
-    Auto-detect and load predictions file in CSV, Parquet, or JSON format.
+    Auto-detect and load predictions file in CSV, TSV, Parquet, or JSON format.
     Supports intelligent format detection and graceful fallback.
+    Aligned with format preservation pattern used across cursus framework.
     """
+    # Determine order of formats to try
     formats_to_try = []
     if preferred_format:
         formats_to_try.append(preferred_format)
 
     # Add other formats as fallback
-    for fmt in ["parquet", "csv", "json"]:
+    for fmt in ["parquet", "csv", "tsv", "json"]:
         if fmt not in formats_to_try:
             formats_to_try.append(fmt)
 
+    # Try each format in order
     for fmt in formats_to_try:
         file_path = os.path.join(input_dir, f"predictions.{fmt}")
         if os.path.exists(file_path):
-            logger.info(f"Loading predictions from {file_path}")
-            if fmt == "parquet":
+            detected_format = _detect_file_format(file_path)
+            logger.info(f"Loading predictions from {file_path} (format: {detected_format})")
+            
+            if detected_format == "parquet":
                 return pd.read_parquet(file_path)
-            elif fmt == "json":
+            elif detected_format == "tsv":
+                return pd.read_csv(file_path, sep="\t")
+            elif detected_format == "json":
                 return pd.read_json(file_path)
-            else:
+            else:  # csv or default
                 return pd.read_csv(file_path)
 
     # Also try eval_predictions.csv from xgboost_model_eval output
     eval_pred_path = os.path.join(input_dir, "eval_predictions.csv")
     if os.path.exists(eval_pred_path):
-        logger.info(f"Loading predictions from {eval_pred_path}")
+        logger.info(f"Loading predictions from {eval_pred_path} (format: csv)")
         return pd.read_csv(eval_pred_path)
 
     raise FileNotFoundError(
-        "No predictions file found in supported formats (csv, parquet, json)"
+        "No predictions file found in supported formats (csv, tsv, parquet, json)"
     )
 
 
