@@ -161,6 +161,15 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
 
+        # Add USE_SECURE_PYPI environment variable from config
+        # This controls which PyPI source the training script uses for package installation
+        if hasattr(self.config, "use_secure_pypi"):
+            env_vars["USE_SECURE_PYPI"] = str(self.config.use_secure_pypi).lower()
+            self.log_info(
+                "Set USE_SECURE_PYPI=%s from config.use_secure_pypi",
+                env_vars["USE_SECURE_PYPI"],
+            )
+
         # Add environment variables from config if they exist
         if hasattr(self.config, "env") and self.config.env:
             env_vars.update(self.config.env)

@@ -23,7 +23,9 @@ XGBOOST_TRAIN_CONTRACT = TrainingScriptContract(
     required_env_vars=[
         # No strictly required environment variables - script uses hyperparameters.json
     ],
-    optional_env_vars={},
+    optional_env_vars={
+        "USE_SECURE_PYPI": "true",  # Controls PyPI source for package installation (default: secure CodeArtifact)
+    },
     framework_requirements={
         "boto3": ">=1.26.0",
         "xgboost": "==1.7.6",

@@ -10,9 +10,9 @@ import logging
 # ============================================================================
 
 # Control which PyPI source to use via environment variable
-# Set USE_SECURE_PYPI=true to use secure CodeArtifact PyPI
-# Set USE_SECURE_PYPI=false or leave unset to use public PyPI
-USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
+# Set USE_SECURE_PYPI=true to use secure CodeArtifact PyPI (default)
+# Set USE_SECURE_PYPI=false to use public PyPI
+USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "true").lower() == "true"
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
