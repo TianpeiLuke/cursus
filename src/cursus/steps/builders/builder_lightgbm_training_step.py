@@ -118,7 +118,7 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         Creates and configures the LightGBM estimator using Scikit-Learn framework container.
         This defines the execution environment for the training job, including the instance
         type, framework version, and environment variables.
-        
+
         LightGBM will be installed dynamically by the training script (similar to XGBoost pattern),
         allowing full control over the LightGBM version and dependencies.
 
@@ -134,9 +134,9 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         self.log_info("Using source directory: %s", source_dir)
 
         # Get framework version from config or use default
-        framework_version = getattr(self.config, 'framework_version', '1.2-1')
-        py_version = getattr(self.config, 'py_version', 'py3')
-        
+        framework_version = getattr(self.config, "framework_version", "1.2-1")
+        py_version = getattr(self.config, "py_version", "py3")
+
         self.log_info("Using Scikit-Learn framework version: %s", framework_version)
         self.log_info("Using Python version: %s", py_version)
         self.log_info("LightGBM will be installed by training script")

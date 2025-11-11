@@ -20,7 +20,7 @@ from ...core.base.config_base import BasePipelineConfig
 
 class LightGBMTrainingConfig(BasePipelineConfig):
     """
-    Configuration specific to the SageMaker LightGBM Training Step using built-in algorithm.
+    Configuration specific to the SageMaker LightGBM Training Step.
     This version is streamlined to work with specification-driven architecture.
     Input/output paths are now provided via step specifications and dependencies.
 
@@ -28,10 +28,6 @@ class LightGBMTrainingConfig(BasePipelineConfig):
     1. Tier 1: Essential User Inputs - fields that users must explicitly provide
     2. Tier 2: System Inputs with Defaults - fields with reasonable defaults that can be overridden
     3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
-
-    Note: Hyperparameters are managed by the user - they must create a LightGBMModelHyperparameters
-    instance and save it as hyperparameters.json in the source_dir. The training script
-    will load this JSON file from the container's source directory.
     """
 
     # ===== Essential User Inputs (Tier 1) =====
@@ -57,6 +53,17 @@ class LightGBMTrainingConfig(BasePipelineConfig):
         default=30, ge=1, description="Volume size (GB) for training instances."
     )
 
+    # Framework versions for SageMaker Scikit-Learn container (used for LightGBM)
+    framework_version: str = Field(
+        default="1.2-1",
+        description="SageMaker Scikit-Learn framework version for LightGBM container.",
+    )
+
+    py_version: str = Field(
+        default="py3",
+        description="Python version for the SageMaker Scikit-Learn container.",
+    )
+
     # Override model_class to match hyperparameters
     model_class: str = Field(
         default="lightgbm", description="Model class identifier, set to LightGBM."
@@ -68,6 +75,35 @@ class LightGBMTrainingConfig(BasePipelineConfig):
         description="Whether to skip hyperparameters_s3_uri channel during _get_inputs. "
         "If True (default), hyperparameters are loaded from script folder. "
         "If False, hyperparameters_s3_uri channel is created as TrainingInput.",
+    )
+
+    # Environment variables for preprocessing artifact control
+    use_secure_pypi: bool = Field(
+        default=True,
+        description="Controls PyPI source for package installation. "
+        "If True (default), uses secure CodeArtifact PyPI. "
+        "If False, uses public PyPI.",
+    )
+
+    use_precomputed_imputation: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed imputation artifacts. "
+        "If True, expects input data to be already imputed and loads impute_dict.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes imputation inline and transforms data.",
+    )
+
+    use_precomputed_risk_tables: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed risk table artifacts. "
+        "If True, expects input data to be already risk-mapped and loads risk_table_map.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes risk tables inline and transforms data.",
+    )
+
+    use_precomputed_features: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed feature selection. "
+        "If True, expects input data to be already feature-selected and loads selected_features.json from model_artifacts_input, skipping inline computation. "
+        "If False (default), uses all features without selection.",
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -162,8 +198,14 @@ class LightGBMTrainingConfig(BasePipelineConfig):
             "training_instance_type": self.training_instance_type,
             "training_instance_count": self.training_instance_count,
             "training_volume_size": self.training_volume_size,
+            "framework_version": self.framework_version,
+            "py_version": self.py_version,
             "model_class": self.model_class,
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
+            "use_secure_pypi": self.use_secure_pypi,
+            "use_precomputed_imputation": self.use_precomputed_imputation,
+            "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
+            "use_precomputed_features": self.use_precomputed_features,
         }
 
         # Combine base fields and training fields (training fields take precedence if overlap)

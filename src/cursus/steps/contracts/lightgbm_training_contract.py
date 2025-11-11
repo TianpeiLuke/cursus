@@ -13,6 +13,7 @@ LIGHTGBM_TRAINING_CONTRACT = TrainingScriptContract(
     expected_input_paths={
         "input_path": "/opt/ml/input/data",
         "hyperparameters_s3_uri": "/opt/ml/code/hyperparams/hyperparameters.json",
+        "model_artifacts_input": "/opt/ml/input/data/model_artifacts_input",  # Optional: Pre-computed preprocessing artifacts
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
@@ -24,7 +25,12 @@ LIGHTGBM_TRAINING_CONTRACT = TrainingScriptContract(
     required_env_vars=[
         # No strictly required environment variables - script uses hyperparameters.json
     ],
-    optional_env_vars={},
+    optional_env_vars={
+        "USE_SECURE_PYPI": "true",  # Controls PyPI source for package installation (default: secure CodeArtifact)
+        "USE_PRECOMPUTED_IMPUTATION": "false",  # If true, uses pre-computed imputation artifacts and skips inline computation
+        "USE_PRECOMPUTED_RISK_TABLES": "false",  # If true, uses pre-computed risk table artifacts and skips inline computation
+        "USE_PRECOMPUTED_FEATURES": "false",  # If true, uses pre-computed feature selection and skips inline computation
+    },
     framework_requirements={
         "boto3": ">=1.26.0",
         "lightgbm": ">=3.0.0",
@@ -41,26 +47,43 @@ LIGHTGBM_TRAINING_CONTRACT = TrainingScriptContract(
     description="""
     LightGBM training script for tabular data classification that:
     1. Loads training, validation, and test datasets from split directories
-    2. Applies numerical imputation using mean strategy for missing values
-    3. Fits risk tables on categorical features using training data
-    4. Transforms all datasets using fitted preprocessing artifacts
-    5. Trains LightGBM model with configurable hyperparameters
-    6. Supports both binary and multiclass classification
-    7. Handles class weights for imbalanced datasets
-    8. Evaluates model performance with comprehensive metrics
-    9. Saves model artifacts and preprocessing components
-    10. Generates prediction files and performance visualizations
+    2. Optionally uses pre-computed preprocessing artifacts from previous steps OR computes inline
+    3. Applies numerical imputation using mean strategy for missing values (inline or pre-computed)
+    4. Fits risk tables on categorical features using training data (inline or pre-computed)
+    5. Transforms all datasets using preprocessing artifacts (skipped if data already processed)
+    6. Trains LightGBM model with configurable hyperparameters
+    7. Supports both binary and multiclass classification
+    8. Handles class weights for imbalanced datasets
+    9. Evaluates model performance with comprehensive metrics
+    10. Saves model artifacts and preprocessing components
+    11. Generates prediction files and performance visualizations
     
-    Input Structure (aligned with XGBoost):
+    Pre-Computed Artifact Support:
+    - USE_PRECOMPUTED_IMPUTATION=true: Input data already imputed, loads impute_dict.pkl, skips transformation
+    - USE_PRECOMPUTED_RISK_TABLES=true: Input data already risk-mapped, loads risk_table_map.pkl, skips transformation
+    - USE_PRECOMPUTED_FEATURES=true: Input data already feature-selected, loads selected_features.json, skips selection
+    - Default (all false): Computes all preprocessing inline and transforms data
+    - Validates data state matches environment variable flags
+    - All artifacts (pre-computed or inline) packaged into model.tar.gz
+    
+    Input Structure:
     - /opt/ml/input/data: Root directory containing train/val/test subdirectories
       - /opt/ml/input/data/train: Training data files (.csv, .parquet, .json)
       - /opt/ml/input/data/val: Validation data files
       - /opt/ml/input/data/test: Test data files
-    - /opt/ml/code/hyperparams/hyperparameters.json: Model configuration
+    - /opt/ml/input/data/model_artifacts_input: Optional directory with pre-computed artifacts
+      - /opt/ml/input/data/model_artifacts_input/impute_dict.pkl: Pre-computed imputation parameters
+      - /opt/ml/input/data/model_artifacts_input/risk_table_map.pkl: Pre-computed risk tables
+      - /opt/ml/input/data/model_artifacts_input/selected_features.json: Pre-computed feature selection
+    - /opt/ml/input/data/config/hyperparameters.json: Model configuration (optional)
     
-    Output Structure (aligned with XGBoost):
+    Output Structure:
     - /opt/ml/model: Model artifacts directory
-      - /opt/ml/model/lightgbm_model.txt: Trained LightGBM model
+      - /opt/ml/model/lightgbm_model.txt: Trained LightGBM model in text format
+        * Standard LightGBM Booster text format (human-readable, version-stable)
+        * Analogous to XGBoost's .bst format but text-based instead of binary
+        * Can be loaded with lightgbm.Booster(model_file='lightgbm_model.txt')
+        * Alternative formats: .bin (binary), .pkl/.joblib (scikit-learn API)
       - /opt/ml/model/risk_table_map.pkl: Risk table mappings for categorical features
       - /opt/ml/model/impute_dict.pkl: Imputation values for numerical features
       - /opt/ml/model/feature_importance.json: Feature importance scores
