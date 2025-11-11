@@ -240,6 +240,7 @@ from src.cursus.steps.configs.config_label_ruleset_generation_step import (
     LabelConfig,
     RuleDefinition,
     RuleCondition,
+    RulesetDefinitionList,
     ComparisonOperator
 )
 
@@ -305,8 +306,10 @@ rule_reversal_required = RuleDefinition(
     description="Categories indicating reversal required: legitimate refunds, quality issues, cancellations, manual review cases"
 )
 
-# Collect all rules (just 2 rules now!)
-all_rules = [rule_no_reversal, rule_reversal_required]
+# Wrap rules in RulesetDefinitionList (required by config)
+ruleset_definitions = RulesetDefinitionList(
+    rules=[rule_no_reversal, rule_reversal_required]
+)
 
 # ============================================================================
 # STEP 3: Configure Ruleset Generation Step
@@ -317,40 +320,50 @@ step_name = "LabelRulesetGeneration"
 factory.set_step_config(
     step_name,
     
+    # ===== Tier 1: Required Configuration =====
+    
     # Label configuration (Pydantic model)
     label_settings=label_config,
     
-    # Rule definitions (list of Pydantic models)
-    rule_definitions=all_rules,
+    # Rule definitions (RulesetDefinitionList with Pydantic models)
+    rule_definitions=ruleset_definitions,
     
-    # Validation configuration
+    # ===== Tier 2: Optional Configuration (with defaults) =====
+    
+    # Validation settings (all default to True)
     enable_field_validation=True,
     enable_label_validation=True,
     enable_logic_validation=True,
-    fail_on_validation_warning=False,
     
-    # Optimization configuration
+    # Optimization settings (defaults to True)
     enable_rule_optimization=True,
-    optimize_by_frequency=False,
     
-    # Sample data validation
-    use_sample_data_validation=True,
-    sample_size=100,
+    # Configuration path (defaults to 'ruleset_configs')
+    ruleset_configs_path='ruleset_configs',
     
-    # Output configuration
-    include_metadata=True,
-    include_optimization_report=True,
-    
-    # Processing configuration
+    # Processing configuration (defaults to 'label_ruleset_generation.py')
     processing_entry_point='label_ruleset_generation.py',
-    instance_type="ml.m5.xlarge",
-    instance_count=1,
-    max_runtime_in_seconds=3600,
-    volume_size_in_gb=30
+    
+    # ===== Processing Step Base Configuration =====
+    
+    # SageMaker instance configuration (from ProcessingStepConfigBase)
+    processing_instance_count=1,
+    processing_volume_size=30,
+    use_large_processing_instance=False,  # False = ml.m5.2xlarge (small), True = ml.m5.4xlarge (large)
+    processing_framework_version="1.2-1"  # SKLearn 1.2.2 with Python 3.8
 )
 
-print(f"✅ {step_name} configured")
+print(f"✅ {step_name} configured with {len(ruleset_definitions.rules)} rules")
 ```
+
+**Configuration Notes:**
+
+- **label_settings**: Factory parameter name (maps to `label_config` in config class)
+- **rule_definitions**: Must be a `RulesetDefinitionList` wrapping your rules
+- **No sample data fields**: The script auto-infers field config from rules at runtime
+- **Auto-generation**: Config automatically generates JSON files in `ruleset_configs/`
+- **Field inference**: No need to specify `field_config` - derived from rules
+- **Instance sizing**: Set `use_large_processing_instance=True` for ml.m5.4xlarge, False for ml.m5.2xlarge
 
 ## Part 5: Python DAG Configuration for Ruleset Execution
 
@@ -366,24 +379,52 @@ step_name = "LabelRulesetExecution"
 factory.set_step_config(
     step_name,
     
-    # Execution configuration
+    # ===== Tier 1: Required Configuration =====
+    
+    # Job type determines which splits to process
+    job_type='training',  # One of: 'training', 'validation', 'testing', 'calibration'
+    
+    # ===== Tier 2: Optional Configuration (with defaults) =====
+    
+    # Execution configuration (all default to True)
     fail_on_missing_fields=True,  # Fail if llm_category field missing
     enable_rule_match_tracking=True,  # Track which rules match
     enable_progress_logging=True,  # Log progress during execution
     
-    # Data format configuration
-    preferred_input_format="parquet",  # Prefer parquet if available
+    # Data format configuration (defaults to empty string for auto-detection)
+    preferred_input_format="parquet",  # Options: 'CSV', 'TSV', 'Parquet', or '' for auto
     
-    # Processing configuration
+    # Processing configuration (defaults to 'label_ruleset_execution.py')
     processing_entry_point='label_ruleset_execution.py',
-    instance_type="ml.m5.2xlarge",
-    instance_count=1,
-    max_runtime_in_seconds=7200,
-    volume_size_in_gb=50
+    
+    # ===== Processing Step Base Configuration =====
+    
+    # SageMaker instance configuration (from ProcessingStepConfigBase)
+    processing_instance_count=1,
+    processing_volume_size=50,
+    use_large_processing_instance=True,  # True = ml.m5.4xlarge (large), False = ml.m5.2xlarge (small)
+    processing_framework_version="1.2-1"  # SKLearn 1.2.2 with Python 3.8
 )
 
-print(f"✅ {step_name} configured")
+print(f"✅ {step_name} configured for job_type='training'")
 ```
+
+**Configuration Notes:**
+
+- **job_type** (REQUIRED): Determines which data splits to process
+  - `'training'`: Processes train/val/test splits
+  - `'validation'`: Processes only validation split
+  - `'testing'`: Processes only test split
+  - `'calibration'`: Processes calibration split
+- **fail_on_missing_fields**: Whether to fail if required fields are missing (recommended: True for production)
+- **enable_rule_match_tracking**: Track per-rule statistics (recommended: True for observability)
+- **enable_progress_logging**: Log detailed progress (recommended: True for debugging)
+- **preferred_input_format**: Format preference when multiple formats available (empty string for auto-detection)
+- **Instance sizing**: 
+  - `use_large_processing_instance=False`: Uses `ml.m5.2xlarge` (small, 8 vCPU, 32 GB RAM)
+  - `use_large_processing_instance=True`: Uses `ml.m5.4xlarge` (large, 16 vCPU, 64 GB RAM)
+- **Volume size**: `processing_volume_size` in GB (10-1000, default 500)
+- **Framework**: `processing_framework_version` for SKLearn container (default "1.2-1" = SKLearn 1.2.2, Python 3.8)
 
 ## Generated Ruleset Structure
 
