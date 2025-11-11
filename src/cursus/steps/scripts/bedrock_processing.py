@@ -1379,9 +1379,8 @@ def process_split_directory(
                     f"Skipped {skipped_count} error records from output for {input_file.name}"
                 )
 
-        # Save results maintaining original filename structure and format
-        base_filename = input_file.stem
-        output_base = split_output_path / f"{base_filename}_processed_data"
+        # Save results with simple channel-based naming
+        output_base = split_output_path / f"{split_name}_processed_data"
 
         # Save in same format as input
         saved_file = save_dataframe_with_format(result_df, output_base, input_format)
@@ -1627,10 +1626,8 @@ def main(
                                 f"Skipped {skipped_count} error records from output for {input_file.name}"
                             )
 
-                    # Save results in same format as input
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    base_filename = f"processed_{input_file.stem}_{timestamp}"
-                    output_base = output_path / base_filename
+                    # Save results with simple channel-based naming
+                    output_base = output_path / f"{job_type}_processed_data"
 
                     saved_file = save_dataframe_with_format(
                         result_df, output_base, input_format
@@ -1738,10 +1735,8 @@ def main(
                             f"Skipped {skipped_count} error records from output for {input_file.name}"
                         )
 
-                # Save results in same format as input
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                base_filename = f"processed_{job_type}_{input_file.stem}_{timestamp}"
-                output_base = output_path / base_filename
+                # Save results with simple channel-based naming
+                output_base = output_path / f"{job_type}_processed_data"
 
                 saved_file = save_dataframe_with_format(
                     result_df, output_base, input_format

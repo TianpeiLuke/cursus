@@ -894,7 +894,7 @@ class BedrockProcessor:
                 # Prepend { BEFORE extraction to avoid grabbing nested objects
                 if not response_text.strip().startswith("{"):
                     response_text = "{" + response_text
-                    logger.info("Prepended opening brace from assistant prefilling")
+                    logger.debug("Prepended opening brace from assistant prefilling")
 
                 # STEP 1: Extract JSON with smart brace counting
                 complete_json = extract_json_candidate(response_text)
@@ -2311,14 +2311,8 @@ def process_split_directory(
                     f"Skipped {skipped_count} error records from output for {input_file.name}"
                 )
 
-        # Save results maintaining original filename structure and format
-        base_filename = input_file.stem
-
-        # Remove existing _processed_data suffix if present to avoid duplication
-        if base_filename.endswith("_processed_data"):
-            base_filename = base_filename[: -len("_processed_data")]
-
-        output_base = split_output_path / f"{base_filename}_processed_data"
+        # Save results with simple channel-based naming
+        output_base = split_output_path / f"{split_name}_processed_data"
 
         # Save in same format as input
         saved_file = save_dataframe_with_format(result_df, output_base, input_format)
@@ -2624,16 +2618,8 @@ def main(
                                 f"Skipped {skipped_count} error records from output for {input_file.name}"
                             )
 
-                    # Save results in same format as input
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-                    # Remove existing _processed_data suffix if present to avoid duplication
-                    input_stem = input_file.stem
-                    if input_stem.endswith("_processed_data"):
-                        input_stem = input_stem[: -len("_processed_data")]
-
-                    base_filename = f"processed_{input_stem}_{timestamp}"
-                    output_base = output_path / base_filename
+                    # Save results with simple channel-based naming
+                    output_base = output_path / f"{job_type}_processed_data"
 
                     saved_file = save_dataframe_with_format(
                         result_df, output_base, input_format
@@ -2774,16 +2760,8 @@ def main(
                             f"Skipped {skipped_count} error records from output for {input_file.name}"
                         )
 
-                # Save results in same format as input
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-
-                # Remove existing _processed_data suffix if present to avoid duplication
-                input_stem = input_file.stem
-                if input_stem.endswith("_processed_data"):
-                    input_stem = input_stem[: -len("_processed_data")]
-
-                base_filename = f"processed_{job_type}_{input_stem}_{timestamp}"
-                output_base = output_path / base_filename
+                # Save results with simple channel-based naming
+                output_base = output_path / f"{job_type}_processed_data"
 
                 saved_file = save_dataframe_with_format(
                     result_df, output_base, input_format

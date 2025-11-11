@@ -1,6 +1,6 @@
 [
   {
-    "rule_id": "rule_d0f00e0a",
+    "rule_id": "rule_e71bc91e",
     "name": "No_Reversal_Categories",
     "priority": 1,
     "enabled": true,
@@ -18,7 +18,7 @@
     "description": "Categories indicating NO reversal: delivered/fraud patterns, logistics delays, goodwill refunds"
   },
   {
-    "rule_id": "rule_91b98690",
+    "rule_id": "rule_451b3688",
     "name": "Reversal_Required_Categories",
     "priority": 2,
     "enabled": true,
