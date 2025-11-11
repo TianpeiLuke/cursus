@@ -9,8 +9,7 @@ from botocore.exceptions import ClientError
 
 from sagemaker.workflow.steps import TrainingStep, Step
 from sagemaker.inputs import TrainingInput
-from sagemaker.estimator import Estimator
-from sagemaker import image_uris
+from sagemaker.sklearn import SKLearn
 from sagemaker.s3 import S3Uploader
 from sagemaker.workflow.functions import Join
 
@@ -34,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 class LightGBMTrainingStepBuilder(StepBuilderBase):
     """
-    Builder for a LightGBM Training Step using SageMaker built-in algorithm.
-    This class creates a SageMaker TrainingStep using the generic Estimator
-    with LightGBM built-in algorithm image URI.
+    Builder for a LightGBM Training Step using SageMaker Scikit-Learn container.
+    This class creates a SageMaker TrainingStep using the SKLearn framework estimator,
+    with LightGBM installed via the training script (similar to XGBoost pattern).
     """
 
     def __init__(
@@ -114,49 +113,44 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
 
         self.log_info("LightGBMTrainingConfig validation succeeded.")
 
-    def _get_lightgbm_image_uri(self) -> str:
-        """Get LightGBM JumpStart model image URI for the current region."""
-        # LightGBM is available as a JumpStart model, not a traditional built-in algorithm
-        return image_uris.retrieve(
-            region=self.aws_region,
-            framework=None,
-            model_id="lightgbm-classification-model",
-            model_version="*",  # Latest version
-            image_scope="training",
-            instance_type=self.config.training_instance_type,
-        )
-
-    def _create_estimator(self, output_path=None) -> Estimator:
+    def _create_estimator(self, output_path=None) -> SKLearn:
         """
-        Creates and configures the LightGBM estimator using built-in algorithm.
+        Creates and configures the LightGBM estimator using Scikit-Learn framework container.
         This defines the execution environment for the training job, including the instance
-        type, built-in algorithm image, and environment variables.
+        type, framework version, and environment variables.
+        
+        LightGBM will be installed dynamically by the training script (similar to XGBoost pattern),
+        allowing full control over the LightGBM version and dependencies.
 
         Args:
             output_path: Optional override for model output path. If provided, this will be used
                          instead of generating a default path.
 
         Returns:
-            An instance of sagemaker.estimator.Estimator configured for LightGBM.
+            An instance of sagemaker.sklearn.SKLearn configured for LightGBM training.
         """
-        # Get LightGBM built-in algorithm image URI
-        image_uri = self._get_lightgbm_image_uri()
-        self.log_info("Using LightGBM built-in algorithm image: %s", image_uri)
-
         # Use modernized effective_source_dir with comprehensive hybrid resolution
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
 
-        return Estimator(
-            image_uri=image_uri,
+        # Get framework version from config or use default
+        framework_version = getattr(self.config, 'framework_version', '1.2-1')
+        py_version = getattr(self.config, 'py_version', 'py3')
+        
+        self.log_info("Using Scikit-Learn framework version: %s", framework_version)
+        self.log_info("Using Python version: %s", py_version)
+        self.log_info("LightGBM will be installed by training script")
+
+        return SKLearn(
             entry_point=self.config.training_entry_point,
             source_dir=source_dir,
+            framework_version=framework_version,
+            py_version=py_version,
             role=self.role,
             instance_type=self.config.training_instance_type,
             instance_count=self.config.training_instance_count,
             volume_size=self.config.training_volume_size,
             max_run=86400,  # 24 hours default
-            input_mode="File",
             output_path=output_path,  # Use provided output_path directly
             base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
             sagemaker_session=self.session,
@@ -166,13 +160,50 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """
         Constructs a dictionary of environment variables to be passed to the training job.
-        For built-in algorithms, minimal environment variables are needed.
+        These variables are used to control the behavior of the training script.
 
         Returns:
             A dictionary of environment variables.
         """
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
+
+        # Add USE_SECURE_PYPI environment variable from config (similar to XGBoost)
+        # This controls which PyPI source the training script uses for package installation
+        if hasattr(self.config, "use_secure_pypi"):
+            env_vars["USE_SECURE_PYPI"] = str(self.config.use_secure_pypi).lower()
+            self.log_info(
+                "Set USE_SECURE_PYPI=%s from config.use_secure_pypi",
+                env_vars["USE_SECURE_PYPI"],
+            )
+
+        # Add preprocessing artifact control environment variables from config
+        if hasattr(self.config, "use_precomputed_imputation"):
+            env_vars["USE_PRECOMPUTED_IMPUTATION"] = str(
+                self.config.use_precomputed_imputation
+            ).lower()
+            self.log_info(
+                "Set USE_PRECOMPUTED_IMPUTATION=%s from config.use_precomputed_imputation",
+                env_vars["USE_PRECOMPUTED_IMPUTATION"],
+            )
+
+        if hasattr(self.config, "use_precomputed_risk_tables"):
+            env_vars["USE_PRECOMPUTED_RISK_TABLES"] = str(
+                self.config.use_precomputed_risk_tables
+            ).lower()
+            self.log_info(
+                "Set USE_PRECOMPUTED_RISK_TABLES=%s from config.use_precomputed_risk_tables",
+                env_vars["USE_PRECOMPUTED_RISK_TABLES"],
+            )
+
+        if hasattr(self.config, "use_precomputed_features"):
+            env_vars["USE_PRECOMPUTED_FEATURES"] = str(
+                self.config.use_precomputed_features
+            ).lower()
+            self.log_info(
+                "Set USE_PRECOMPUTED_FEATURES=%s from config.use_precomputed_features",
+                env_vars["USE_PRECOMPUTED_FEATURES"],
+            )
 
         # Add environment variables from config if they exist
         if hasattr(self.config, "env") and self.config.env:
@@ -385,9 +416,10 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         """
         Creates a SageMaker TrainingStep for the pipeline.
 
-        This method creates the LightGBM estimator using built-in algorithm, sets up training inputs
-        from the input data, and creates the SageMaker TrainingStep. Hyperparameters are embedded
-        in the source directory.
+        This method creates the LightGBM estimator using Scikit-Learn framework container,
+        sets up training inputs from the input data, and creates the SageMaker TrainingStep.
+        LightGBM will be installed by the training script, similar to the XGBoost pattern.
+        Hyperparameters are embedded in the source directory.
 
         Args:
             **kwargs: Keyword arguments for configuring the step, including:
