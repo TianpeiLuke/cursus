@@ -284,21 +284,22 @@ The default MTGBM implementation with predefined fixed weights for task aggregat
 #### Mathematical Formulation
 
 **Gradient Computation:**
-```
-For each task i:
-  G_i = σ(pred_i) - y_i              # Individual gradient
-  H_i = σ(pred_i) * (1 - σ(pred_i))  # Individual hessian
 
-where σ is the sigmoid function
-```
+For each task $i$:
+
+$$G_i = \sigma(\text{pred}_i) - y_i$$
+
+$$H_i = \sigma(\text{pred}_i) \cdot (1 - \sigma(\text{pred}_i))$$
+
+where $\sigma$ is the sigmoid function: $\sigma(z) = \frac{1}{1 + e^{-z}}$
 
 **Ensemble Gradient/Hessian:**
-```
-G_e = Σ(w_i * G_i)                   # Weighted gradient sum
-H_e = Σ(w_i * H_i)                   # Weighted hessian sum
 
-where w_i are fixed weights
-```
+$$G_e = \sum_{i=1}^{K} w_i \cdot G_i$$
+
+$$H_e = \sum_{i=1}^{K} w_i \cdot H_i$$
+
+where $w_i$ are fixed weights and $K$ is the number of tasks.
 
 #### Implementation Details
 
@@ -392,25 +393,28 @@ Dynamic task weighting based on task similarity, without knowledge distillation.
 #### Task Similarity Computation
 
 **Jensen-Shannon Divergence:**
-```
-JS(P||Q) = 0.5 * [KL(P||M) + KL(Q||M)]
+
+$$\text{JS}(P||Q) = \frac{1}{2}[\text{KL}(P||M) + \text{KL}(Q||M)]$$
 
 where:
-  M = 0.5 * (P + Q)                   # Mixture distribution
-  KL = Kullback-Leibler divergence
-  P = main task label distribution
-  Q = subtask prediction distribution
-```
+- $M = \frac{1}{2}(P + Q)$ is the mixture distribution
+- $\text{KL}$ is the Kullback-Leibler divergence
+- $P$ is the main task label distribution
+- $Q$ is the subtask prediction distribution
 
 **Similarity Weight Calculation:**
-```
-For each subtask j:
-  dis[j] = JS(y_main, pred_subtask[j])     # JS divergence
-  sim[j] = 1 / dis[j]                       # Inverse similarity
-  
-w = normalize(sim) * learning_rate          # L2 normalized weights
-w = [1, w[1], w[2], ...]                    # Prepend main task weight
-```
+
+For each subtask $j$:
+
+$$\text{dis}[j] = \text{JS}(y_{\text{main}}, \text{pred}_{\text{subtask}}[j])$$
+
+$$\text{sim}[j] = \frac{1}{\text{dis}[j]}$$
+
+$$w = \frac{\text{sim}}{\|\text{sim}\|_2} \cdot \text{lr}$$
+
+$$w = [1, w[1], w[2], \ldots, w[K-1]]$$
+
+where the main task weight is prepended and $K$ is the total number of tasks.
 
 #### Implementation Details
 
