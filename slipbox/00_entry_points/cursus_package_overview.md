@@ -928,6 +928,11 @@ config = factory.build_config_from_widget(widget)
 - [Workspace Setup Guide](../01_developer_guide_workspace_aware/ws_workspace_setup_guide.md) - Workspace configuration
 - [Workspace CLI Reference](../01_developer_guide_workspace_aware/ws_workspace_cli_reference.md) - Command-line tools
 
+### Model-Specific Design and Optimization
+- [MTGBM Loss Functions Refactoring Design](../1_design/mtgbm_models_refactoring_design.md) - Comprehensive refactoring design for MTGBM loss function implementations with abstract base classes, strategy pattern, and factory pattern
+- [MTGBM Model Classes Refactoring Design](../1_design/mtgbm_model_classes_refactoring_design.md) - Architectural design for refactoring MTGBM model class implementations with template method pattern, base model abstractions, and state management
+- [MTGBM Models Optimization Analysis](../4_analysis/2025-11-11_mtgbm_models_optimization_analysis.md) - Detailed analysis identifying optimization opportunities for MTGBM implementations
+
 ### Advanced Topics
 - [Agentic Workflow Design](../1_design/agentic_workflow_design.md) - AI-powered workflow automation
 - [MCP Integration](../1_design/mcp_agentic_workflow_master_design.md) - Model Context Protocol integration

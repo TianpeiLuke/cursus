@@ -45,11 +45,19 @@ This entry point document provides a comprehensive index of all step-related des
 - [Label Ruleset Optimization Patterns](../1_design/label_ruleset_optimization_patterns.md) - Optimization strategies for label ruleset performance (selectivity, field grouping, complexity ordering)
 - [Label Ruleset Generation Configuration Examples](../1_design/label_ruleset_generation_configuration_examples.md) - Complete working examples for binary, multiclass, and multilabel classification with DAGConfigFactory integration, JSON configurations, and best practices
 
+### MTGBM (Multi-Task Gradient Boosting Machine) Refactoring
+
+- [LightGBM Multi-Task Training Step Design](../1_design/lightgbm_multi_task_training_step_design.md) - Design for LightGBM multi-task/multi-label training with adaptive weighting and knowledge distillation
+- [MTGBM Loss Functions Refactoring Design](../1_design/mtgbm_models_refactoring_design.md) - Comprehensive refactoring design for MTGBM loss function implementations with abstract base classes, strategy pattern, and factory pattern (complements model classes refactoring)
+- [MTGBM Model Classes Refactoring Design](../1_design/mtgbm_model_classes_refactoring_design.md) - Architectural design for refactoring MTGBM model class implementations with template method pattern, base model abstractions, and state management (complements loss function refactoring)
+- [LightGBMMT Multi-Task Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md) - Analysis of LightGBMMT framework implementation, custom loss functions, and multi-task learning patterns
+- [MTGBM Models Optimization Analysis](../4_analysis/2025-11-11_mtgbm_models_optimization_analysis.md) - Detailed analysis identifying optimization opportunities, code duplication issues, and performance bottlenecks in MTGBM implementations
+- [MTGBM Pipeline Reusability Analysis](../4_analysis/2025-11-11_mtgbm_pipeline_reusability_analysis.md) - Analysis of MTGBM pipeline architecture reusability patterns and extensibility opportunities
+
 ### Core Step Builder Patterns
 
 - [Processing Step Builder Patterns](../1_design/processing_step_builder_patterns.md) - General patterns for building processing steps
 - [Training Step Builder Patterns](../1_design/training_step_builder_patterns.md) - Patterns for building training steps
-- [LightGBM Multi-Task Training Step Design](../1_design/lightgbm_multi_task_training_step_design.md) - Design for LightGBM multi-task/multi-label training with adaptive weighting and knowledge distillation
 - [Transform Step Builder Patterns](../1_design/transform_step_builder_patterns.md) - Patterns for building transform steps
 - [Tuning Step Builder Patterns](../1_design/tuning_step_builder_patterns.md) - Patterns for building hyperparameter tuning steps
 - [Conditional Step Builder Patterns](../1_design/conditional_step_builder_patterns.md) - Patterns for building conditional execution steps
