@@ -16,18 +16,18 @@ from transformers import AutoTokenizer
 from processing.processors import (
     Processor,
 )
-from processing.bsm_processor import (
+from processing.text.bsm_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.bert_tokenize_processor import TokenizationProcessor
-from processing.categorical_label_processor import CategoricalLabelProcessor
-from processing.multiclass_label_processor import MultiClassLabelProcessor
-from processing.bsm_datasets import BSMDataset
-from processing.bsm_dataloader import build_collate_batch
+from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
+from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.datasets.bsm_datasets import BSMDataset
+from processing.dataloaders.bsm_dataloader import build_collate_batch
 
 from lightning_models.pl_train import (
     model_inference,
@@ -181,7 +181,7 @@ def data_preprocess_pipeline(
             truncate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
         )
-        >> TokenizationProcessor(
+        >> BertTokenizeProcessor(
             tokenizer,
             add_special_tokens=True,
             max_length=config.max_sen_len,

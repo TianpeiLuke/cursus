@@ -31,18 +31,18 @@ warnings.filterwarnings("ignore")
 from processing.processors import (
     Processor,
 )
-from processing.bsm_processor import (
+from processing.text.bsm_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.bert_tokenize_processor import TokenizationProcessor
-from processing.categorical_label_processor import CategoricalLabelProcessor
-from processing.multiclass_label_processor import MultiClassLabelProcessor
-from processing.bsm_datasets import BSMDataset
-from processing.bsm_dataloader import build_collate_batch
+from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
+from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.datasets.bsm_datasets import BSMDataset
+from processing.dataloaders.bsm_dataloader import build_collate_batch
 from lightning_models.pl_tab_ae import TabAE
 from lightning_models.pl_text_cnn import TextCNN
 from lightning_models.pl_multimodal_cnn import MultimodalCNN
@@ -109,6 +109,90 @@ def log_once(logger, message, level=logging.INFO):
         logger.log(level, message)
 
 
+# -------------------------------------------------------------------------
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# -------------------------------------------------------------------------
+def _detect_file_format(file_path: str) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    from pathlib import Path
+
+    suffix = Path(file_path).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: str) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: str, format_str: str
+) -> str:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    from pathlib import Path
+
+    output_path = Path(output_path)
+
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return str(file_path)
+
+
 # ================================================================================
 class Config(BaseModel):
     id_name: str = "order_id"
@@ -167,6 +251,7 @@ class Config(BaseModel):
     )
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
+    _input_format: Optional[str] = None  # Added: input data format for preservation
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -351,7 +436,7 @@ def data_preprocess_pipeline(
             truncate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
         )
-        >> TokenizationProcessor(
+        >> BertTokenizeProcessor(
             tokenizer,
             add_special_tokens=True,
             max_length=config.max_sen_len,
@@ -437,6 +522,14 @@ def load_and_preprocess_data(
     if not os.path.exists(checkpoint_path):
         print(f"Creating checkpoint folder {checkpoint_path}")
         os.makedirs(checkpoint_path)
+
+    # Detect input format from training data file
+    train_file_path = os.path.join(train_path, train_filename)
+    detected_format = _detect_file_format(train_file_path)
+    log_once(logger, f"Detected input data format: {detected_format}")
+
+    # Store format in config for output preservation
+    config._input_format = detected_format
 
     # === Load raw datasets ===
     train_bsm_dataset = load_data_module(train_path, train_filename, config)
@@ -576,12 +669,60 @@ def export_model_to_onnx(
 
 
 # ----------------- Evaluation and Logging -----------------------
+def save_predictions_as_dataframe(
+    predictions: np.ndarray,
+    true_labels: np.ndarray,
+    ids: np.ndarray,
+    output_dir: str,
+    split_name: str,
+    id_col: str,
+    label_col: str,
+    output_format: str = "csv",
+) -> None:
+    """
+    Save predictions as DataFrame with format preservation.
+
+    Args:
+        predictions: Prediction probabilities of shape (N, num_classes)
+        true_labels: True labels of shape (N,)
+        ids: Sample IDs of shape (N,)
+        output_dir: Directory to save predictions
+        split_name: Name of split (e.g., 'val', 'test')
+        id_col: Name of ID column
+        label_col: Name of label column
+        output_format: Format to save in ('csv', 'tsv', or 'parquet')
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create DataFrame with ID and label columns
+    df = pd.DataFrame({id_col: ids, label_col: true_labels})
+
+    # Add probability columns for each class
+    num_classes = predictions.shape[1] if len(predictions.shape) > 1 else 1
+    if num_classes == 1:
+        # Binary with single probability
+        df["prob_class_0"] = 1 - predictions.squeeze()
+        df["prob_class_1"] = predictions.squeeze()
+    else:
+        for i in range(num_classes):
+            df[f"prob_class_{i}"] = predictions[:, i]
+
+    # Save with format preservation
+    output_base = os.path.join(output_dir, f"{split_name}_predictions")
+    saved_path = save_dataframe_with_format(df, output_base, output_format)
+    log_once(
+        logger, f"Saved {split_name} predictions (format={output_format}): {saved_path}"
+    )
+
+
 def evaluate_and_log_results(
     model: nn.Module,
     val_dataloader: DataLoader,
     test_dataloader: DataLoader,
     config: Config,
     trainer: pl.Trainer,
+    val_dataset: BSMDataset,
+    test_dataset: BSMDataset,
 ) -> None:
     log_once(logger, "Inference Starts ...")
     val_predict_labels, val_true_labels = model_inference(
@@ -649,9 +790,53 @@ def evaluate_and_log_results(
             global_step=trainer.global_step,
         )
         writer.close()
+
+        # Save legacy tensor format for backward compatibility
         prediction_filename = os.path.join(output_path, "predict_results.pth")
         log_once(logger, f"Saving prediction result to {prediction_filename}")
         save_prediction(prediction_filename, test_true_labels, test_predict_labels)
+
+        # NEW: Save predictions as DataFrames with format preservation
+        log_once(logger, "Saving predictions as DataFrames with format preservation...")
+        output_format = config._input_format or "csv"
+
+        # Get IDs from datasets
+        val_ids = (
+            val_dataset.DataReader[config.id_name].values
+            if config.id_name in val_dataset.DataReader.columns
+            else np.arange(len(val_true_labels))
+        )
+        test_ids = (
+            test_dataset.DataReader[config.id_name].values
+            if config.id_name in test_dataset.DataReader.columns
+            else np.arange(len(test_true_labels))
+        )
+
+        # Save validation predictions
+        save_predictions_as_dataframe(
+            predictions=val_predict_labels,
+            true_labels=val_true_labels,
+            ids=val_ids,
+            output_dir=output_path,
+            split_name="val",
+            id_col=config.id_name,
+            label_col=config.label_name,
+            output_format=output_format,
+        )
+
+        # Save test predictions
+        save_predictions_as_dataframe(
+            predictions=test_predict_labels,
+            true_labels=test_true_labels,
+            ids=test_ids,
+            output_dir=output_path,
+            split_name="test",
+            id_col=config.id_name,
+            label_col=config.label_name,
+            output_format=output_format,
+        )
+
+        log_once(logger, "Prediction DataFrames saved successfully")
 
 
 # ----------------- Main Function ---------------------------
@@ -741,7 +926,17 @@ def main(
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
-    evaluate_and_log_results(model, val_dataloader, test_dataloader, config, trainer)
+    # Extract datasets for evaluation
+    train_dataset, val_dataset, test_dataset = datasets
+    evaluate_and_log_results(
+        model,
+        val_dataloader,
+        test_dataloader,
+        config,
+        trainer,
+        val_dataset,
+        test_dataset,
+    )
 
 
 # ----------------- Entrypoint ---------------------------
@@ -753,7 +948,7 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/input/config",  # Source directory path
+        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path (matches XGBoost)
     }
 
     # Define input and output paths using contract logical names

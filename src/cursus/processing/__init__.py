@@ -18,7 +18,9 @@ from .processors import Processor, ComposedProcessor, IdentityProcessor
 # Import specific processors
 from .categorical.categorical_label_processor import CategoricalLabelProcessor
 from .categorical.multiclass_label_processor import MultiClassLabelProcessor
-from .numerical.numerical_imputation_processor import NumericalVariableImputationProcessor
+from .numerical.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
 from .numerical.numerical_binning_processor import NumericalBinningProcessor
 
 # Import atomic processors
@@ -35,41 +37,57 @@ from .numerical.feature_normalization_processor import FeatureNormalizationProce
 
 # Import text/NLP processors (with optional dependency handling)
 try:
-    from .nlp.bert_tokenize_processor import BertTokenizeProcessor
+    from .text.bert_tokenize_processor import BertTokenizeProcessor
 except ImportError:
     BertTokenizeProcessor = None
 
 try:
-    from .nlp.gensim_tokenize_processor import GensimTokenizeProcessor
+    from .text.gensim_tokenize_processor import GensimTokenizeProcessor
 except ImportError:
     GensimTokenizeProcessor = None
 
-# Import domain-specific processors (with optional dependency handling)
+# Import domain-specific text processors (with optional dependency handling)
 try:
-    from .nlp.bsm_processor import BSMProcessor
+    from .text.bsm_processor import (
+        TextNormalizationProcessor,
+        TextUpperProcessor,
+        DialogueSplitterProcessor,
+        DialogueChunkerProcessor,
+        EmojiRemoverProcessor,
+        HTMLNormalizerProcessor,
+    )
 except ImportError:
-    BSMProcessor = None
+    TextNormalizationProcessor = None
+    TextUpperProcessor = None
+    DialogueSplitterProcessor = None
+    DialogueChunkerProcessor = None
+    EmojiRemoverProcessor = None
+    HTMLNormalizerProcessor = None
 
 try:
-    from .nlp.cs_processor import CSProcessor
+    from .text.cs_processor import (
+        CSChatSplitterProcessor,
+        CSAdapter,
+    )
 except ImportError:
-    CSProcessor = None
+    CSChatSplitterProcessor = None
+    CSAdapter = None
 
 try:
-    from .categorical.risk_table_processor import RiskTableProcessor
+    from .categorical.risk_table_processor import RiskTableMappingProcessor
 except ImportError:
-    RiskTableProcessor = None
+    RiskTableMappingProcessor = None
 
 # Import data loading utilities (with optional dependency handling)
 try:
-    from .dataloaders.bsm_dataloader import BSMDataLoader
+    from .dataloaders.bsm_dataloader import build_collate_batch
 except ImportError:
-    BSMDataLoader = None
+    build_collate_batch = None
 
 try:
-    from .datasets.bsm_datasets import BSMDatasets
+    from .datasets.bsm_datasets import BSMDataset
 except ImportError:
-    BSMDatasets = None
+    BSMDataset = None
 
 # Export all available processors
 __all__ = [
@@ -99,11 +117,17 @@ __all__ = [
 _optional_processors = [
     ("BertTokenizeProcessor", BertTokenizeProcessor),
     ("GensimTokenizeProcessor", GensimTokenizeProcessor),
-    ("BSMProcessor", BSMProcessor),
-    ("CSProcessor", CSProcessor),
-    ("RiskTableProcessor", RiskTableProcessor),
-    ("BSMDataLoader", BSMDataLoader),
-    ("BSMDatasets", BSMDatasets),
+    ("TextNormalizationProcessor", TextNormalizationProcessor),
+    ("TextUpperProcessor", TextUpperProcessor),
+    ("DialogueSplitterProcessor", DialogueSplitterProcessor),
+    ("DialogueChunkerProcessor", DialogueChunkerProcessor),
+    ("EmojiRemoverProcessor", EmojiRemoverProcessor),
+    ("HTMLNormalizerProcessor", HTMLNormalizerProcessor),
+    ("CSChatSplitterProcessor", CSChatSplitterProcessor),
+    ("CSAdapter", CSAdapter),
+    ("RiskTableMappingProcessor", RiskTableMappingProcessor),
+    ("build_collate_batch", build_collate_batch),
+    ("BSMDataset", BSMDataset),
 ]
 
 for name, processor_class in _optional_processors:

@@ -193,8 +193,8 @@ import xgboost as xgb
 from flask import Response
 
 # Local imports
-from processing.risk_table_processor import RiskTableMappingProcessor
-from processing.numerical_imputation_processor import (
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 
@@ -346,11 +346,21 @@ def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
         return pkl.load(f)
 
 
-def create_numerical_processor(
+def create_numerical_processors(
     impute_dict: Dict[str, Any],
-) -> NumericalVariableImputationProcessor:
-    """Create numerical imputation processor."""
-    return NumericalVariableImputationProcessor(imputation_dict=impute_dict)
+) -> Dict[str, NumericalVariableImputationProcessor]:
+    """
+    Create numerical imputation processors for each numerical feature.
+
+    Uses single-column architecture - one processor per column.
+    """
+    numerical_processors = {}
+    for feature, imputation_value in impute_dict.items():
+        processor = NumericalVariableImputationProcessor(
+            column_name=feature, imputation_value=imputation_value
+        )
+        numerical_processors[feature] = processor
+    return numerical_processors
 
 
 def load_feature_importance(model_dir: str) -> Dict[str, Any]:
@@ -659,7 +669,7 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
         risk_processors = create_risk_processors(risk_tables)
 
         impute_dict = load_imputation_dict(model_dir)
-        numerical_processor = create_numerical_processor(impute_dict)
+        numerical_processors = create_numerical_processors(impute_dict)
 
         feature_importance = load_feature_importance(model_dir)
         feature_columns = read_feature_columns(model_dir)
@@ -676,7 +686,7 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
         return {
             "model": model,
             "risk_processors": risk_processors,
-            "numerical_processor": numerical_processor,
+            "numerical_processors": numerical_processors,
             "feature_importance": feature_importance,
             "config": config,
             "version": __version__,
@@ -849,7 +859,7 @@ def apply_preprocessing(
     df: pd.DataFrame,
     feature_columns: List[str],
     risk_processors: Dict[str, Any],
-    numerical_processor: Any,
+    numerical_processors: Dict[str, Any],
 ) -> pd.DataFrame:
     """
     Apply preprocessing steps to input data.
@@ -858,7 +868,7 @@ def apply_preprocessing(
         df: Input DataFrame
         feature_columns: List of feature columns
         risk_processors: Dictionary of risk table processors
-        numerical_processor: Numerical imputation processor
+        numerical_processors: Dictionary of numerical imputation processors
 
     Returns:
         Preprocessed DataFrame
@@ -874,8 +884,11 @@ def apply_preprocessing(
             logger.debug(f"Applying risk table mapping for feature: {feature}")
             df[feature] = processor.transform(df[feature])
 
-    # Apply numerical imputation
-    df = numerical_processor.transform(df)
+    # Apply numerical imputation (one processor per column)
+    for feature, processor in numerical_processors.items():
+        if feature in df.columns:
+            logger.debug(f"Applying numerical imputation for feature: {feature}")
+            df[feature] = processor.transform(df[feature])
 
     return df
 
@@ -994,7 +1007,7 @@ def predict_fn(
         # Extract configuration
         model = model_artifacts["model"]
         risk_processors = model_artifacts["risk_processors"]
-        numerical_processor = model_artifacts["numerical_processor"]
+        numerical_processors = model_artifacts["numerical_processors"]
         config = model_artifacts["config"]
         feature_columns = config["feature_columns"]
         is_multiclass = config["is_multiclass"]
@@ -1008,7 +1021,7 @@ def predict_fn(
 
         # Apply preprocessing
         df = apply_preprocessing(
-            df, feature_columns, risk_processors, numerical_processor
+            df, feature_columns, risk_processors, numerical_processors
         )
 
         # Convert to numeric
