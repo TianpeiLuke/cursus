@@ -71,11 +71,12 @@ class ValidationResult:
 
 
 class RulesetLabelValidator:
-    """Validates output labels match configuration."""
+    """Validates output labels match configuration (extended for multilabel)."""
 
     def validate_labels(self, ruleset: dict) -> ValidationResult:
         """
         Validates all output_label values in rules.
+        Extended to support multilabel mode.
 
         Args:
             ruleset: Input ruleset configuration
@@ -86,29 +87,167 @@ class RulesetLabelValidator:
         result = ValidationResult()
 
         label_config = ruleset.get("label_config", {})
-        label_values = set(label_config.get("label_values", []))
+        label_values = label_config.get("label_values", [])
         label_type = label_config.get("output_label_type", "binary")
         default_label = label_config.get("default_label")
+        output_label_name = label_config.get("output_label_name")
 
         rules = ruleset.get("ruleset", [])
 
-        # Validate default label
-        if default_label not in label_values:
-            result.valid = False
-            result.invalid_labels.append(
-                ("default_label", default_label, "not in label_values")
-            )
-            logger.error(f"Default label {default_label} not in label_values")
+        # NEW: Validate multilabel configuration structure
+        if label_type == "multilabel":
+            # output_label_name must be a list
+            if not isinstance(output_label_name, list):
+                result.valid = False
+                result.type_errors.append(
+                    "multilabel mode requires list for output_label_name"
+                )
+                return result
 
-        # Extract all output labels
+            if len(output_label_name) < 2:
+                result.valid = False
+                result.type_errors.append("multilabel requires at least 2 columns")
+
+            # Check for duplicate column names
+            if len(output_label_name) != len(set(output_label_name)):
+                result.valid = False
+                result.type_errors.append("Duplicate column names in output_label_name")
+
+            # Validate per-column structures if used
+            if isinstance(label_values, dict):
+                missing = set(output_label_name) - set(label_values.keys())
+                if missing:
+                    result.valid = False
+                    result.type_errors.append(
+                        f"label_values missing columns: {missing}"
+                    )
+
+            label_mapping = label_config.get("label_mapping", {})
+            if isinstance(label_mapping, dict) and all(
+                isinstance(v, dict) for v in label_mapping.values()
+            ):
+                missing = set(output_label_name) - set(label_mapping.keys())
+                if missing:
+                    result.valid = False
+                    result.type_errors.append(
+                        f"label_mapping missing columns: {missing}"
+                    )
+
+        # Convert label_values to set for validation
+        if isinstance(label_values, list):
+            label_values_set = set(label_values)
+        else:
+            # Per-column: collect all possible values
+            label_values_set = set()
+            for col_values in label_values.values():
+                label_values_set.update(col_values)
+
+        # Validate default label
+        if isinstance(default_label, dict):
+            # Per-column default_label
+            for col, default_val in default_label.items():
+                if isinstance(label_values, dict):
+                    col_values = set(label_values.get(col, []))
+                    if default_val not in col_values:
+                        result.valid = False
+                        result.invalid_labels.append(
+                            (
+                                f"default_label[{col}]",
+                                default_val,
+                                f"not in label_values[{col}]",
+                            )
+                        )
+                        logger.error(
+                            f"Default label {default_val} for column {col} not in label_values"
+                        )
+                else:
+                    if default_val not in label_values_set:
+                        result.valid = False
+                        result.invalid_labels.append(
+                            (
+                                f"default_label[{col}]",
+                                default_val,
+                                "not in label_values",
+                            )
+                        )
+                        logger.error(
+                            f"Default label {default_val} for column {col} not in label_values"
+                        )
+        else:
+            # Global default_label
+            if default_label not in label_values_set:
+                result.valid = False
+                result.invalid_labels.append(
+                    ("default_label", default_label, "not in label_values")
+                )
+                logger.error(f"Default label {default_label} not in label_values")
+
+        # Extract and validate all output labels
         used_labels = set()
         for rule in rules:
             output_label = rule.get("output_label")
-            if output_label is not None:
+
+            # NEW: Handle multilabel dict format
+            if isinstance(output_label, dict):
+                # Multilabel mode
+                if label_type != "multilabel":
+                    result.valid = False
+                    result.type_errors.append(
+                        f"Rule {rule.get('rule_id')}: dict output_label requires multilabel mode"
+                    )
+                    continue
+
+                if len(output_label) == 0:
+                    result.valid = False
+                    result.invalid_labels.append(
+                        (
+                            rule.get("rule_id"),
+                            "empty_dict",
+                            "output_label cannot be empty dict",
+                        )
+                    )
+                    continue
+
+                # Validate target columns exist
+                valid_columns = (
+                    set(output_label_name)
+                    if isinstance(output_label_name, list)
+                    else set()
+                )
+                for col, value in output_label.items():
+                    if col not in valid_columns:
+                        result.valid = False
+                        result.invalid_labels.append(
+                            (rule.get("rule_id"), col, f"not in output_label_name")
+                        )
+
+                    # Validate value for this column
+                    if isinstance(label_values, dict):
+                        col_values = set(label_values.get(col, []))
+                        if value not in col_values:
+                            result.valid = False
+                            result.invalid_labels.append(
+                                (
+                                    rule.get("rule_id"),
+                                    value,
+                                    f"not valid for column {col}",
+                                )
+                            )
+                    else:
+                        if value not in label_values_set:
+                            result.valid = False
+                            result.invalid_labels.append(
+                                (rule.get("rule_id"), value, "not in label_values")
+                            )
+
+                    used_labels.add(value)
+
+            elif output_label is not None:
+                # Single-label mode (existing logic)
                 used_labels.add(output_label)
 
                 # Check if label is valid
-                if output_label not in label_values:
+                if output_label not in label_values_set:
                     result.valid = False
                     result.invalid_labels.append(
                         (
@@ -123,19 +262,27 @@ class RulesetLabelValidator:
 
         # Check binary constraints
         if label_type == "binary":
-            if not label_values.issubset({0, 1}):
+            if isinstance(label_values, list) and not label_values_set.issubset({0, 1}):
                 result.valid = False
                 result.warnings.append(
                     "Binary classification should use label_values [0, 1]"
                 )
                 logger.warning("Binary classification should use label_values [0, 1]")
 
-        # Identify uncovered classes
-        uncovered = label_values - used_labels - {default_label}
-        if uncovered:
-            result.uncovered_classes = list(uncovered)
-            result.warnings.append(f"Label values not covered by any rule: {uncovered}")
-            logger.warning(f"Label values not covered by any rule: {uncovered}")
+        # Identify uncovered classes (for single-label mode)
+        if label_type in ["binary", "multiclass"]:
+            default_set = (
+                {default_label}
+                if not isinstance(default_label, dict)
+                else set(default_label.values())
+            )
+            uncovered = label_values_set - used_labels - default_set
+            if uncovered:
+                result.uncovered_classes = list(uncovered)
+                result.warnings.append(
+                    f"Label values not covered by any rule: {uncovered}"
+                )
+                logger.warning(f"Label values not covered by any rule: {uncovered}")
 
         # Check for conflicting rules (same priority, different outputs)
         priority_labels = {}
@@ -155,6 +302,53 @@ class RulesetLabelValidator:
                     )
             else:
                 priority_labels[priority] = (output_label, rule_name)
+
+        return result
+
+
+class RuleCoverageValidator:
+    """Validates that all label columns have at least one rule."""
+
+    def validate(self, label_config: dict, rules: List[dict]) -> ValidationResult:
+        """
+        Validates rule coverage for all label columns.
+
+        Checks:
+        - Each label column has at least one rule targeting it
+        - Warns about orphan label columns
+
+        Args:
+            label_config: Label configuration
+            rules: List of rule definitions
+
+        Returns:
+            ValidationResult with coverage validation status
+        """
+        result = ValidationResult()
+
+        label_type = label_config.get("output_label_type", "binary")
+
+        # Only applicable to multilabel
+        if label_type != "multilabel":
+            return result
+
+        output_columns = label_config.get("output_label_name", [])
+        if not isinstance(output_columns, list):
+            return result
+
+        # Check rule coverage
+        covered_columns = set()
+        for rule in rules:
+            if not rule.get("enabled", True):
+                continue
+
+            output_label = rule.get("output_label")
+            if isinstance(output_label, dict):
+                covered_columns.update(output_label.keys())
+
+        uncovered = set(output_columns) - covered_columns
+        if uncovered:
+            result.warnings.append(f"Label columns without rules: {uncovered}")
 
         return result
 
@@ -647,6 +841,7 @@ def main(
     # 2. Initialize validators (field validation removed - handled at config level)
     label_validator = RulesetLabelValidator()
     logic_validator = RulesetLogicValidator()
+    coverage_validator = RuleCoverageValidator()
 
     # 3. Run validation
     log("[INFO] Running validation...")
@@ -662,6 +857,15 @@ def main(
     logic_validation = (
         logic_validator.validate_logic(user_ruleset) if enable_logic else None
     )
+
+    # NEW: Additional coverage check for multilabel
+    label_type = label_config.get("output_label_type", "binary")
+    if label_type == "multilabel":
+        coverage_validation = coverage_validator.validate(label_config, ruleset_rules)
+        if coverage_validation.warnings:
+            log("[INFO] Coverage validation warnings:")
+            for warning in coverage_validation.warnings:
+                log(f"  [WARNING] {warning}")
 
     # 4. Check validation results
     all_valid = (label_validation.valid if label_validation else True) and (

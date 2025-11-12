@@ -348,11 +348,76 @@ LABEL_RULESET_EXECUTION_CONTRACT = ScriptContract(
     ```
     
     Output Data Structure:
+    
+    === Single-Label Output (Binary/Multiclass) ===
     - All original columns preserved
     - New label column added (name from ruleset configuration)
     - No modification to existing columns
     - Same row order maintained
     - Same data types preserved
+    
+    Example Single-Label Output:
+    | txn_id | amount | payment_method | final_reversal_flag |
+    |--------|--------|----------------|---------------------|
+    | 1      | 1200   | CC             | 1                   |
+    | 2      | 500    | DC             | 0                   |
+    | 3      | 8000   | ACH            | 1                   |
+    
+    === Multi-Label Output (NEW) ===
+    - All original columns preserved
+    - Multiple label columns added (names from ruleset configuration)
+    - No modification to existing columns
+    - Same row order maintained
+    - Sparse representation: NaN for non-matching columns (default)
+    - Dense representation: default_label for all columns (optional)
+    
+    Example Multi-Label Output (Sparse):
+    | txn_id | amount | payment_method | is_fraud_CC | is_fraud_DC | is_fraud_ACH |
+    |--------|--------|----------------|-------------|-------------|--------------|
+    | 1      | 1200   | CC             | 1           | NaN         | NaN          |
+    | 2      | 500    | DC             | NaN         | 0           | NaN          |
+    | 3      | 8000   | ACH            | NaN         | NaN         | 1            |
+    | 4      | 2000   | CC             | 1           | NaN         | NaN          |
+    
+    Example Multi-Label Output (Dense):
+    | txn_id | amount | payment_method | is_fraud_CC | is_fraud_DC | is_fraud_ACH |
+    |--------|--------|----------------|-------------|-------------|--------------|
+    | 1      | 1200   | CC             | 1           | 0           | 0            |
+    | 2      | 500    | DC             | 0           | 0           | 0            |
+    | 3      | 8000   | ACH            | 0           | 0           | 1            |
+    | 4      | 2000   | CC             | 1           | 0           | 0            |
+    
+    Multi-Label Statistics Format:
+    {
+      "label_type": "multilabel",
+      "total_evaluated": 1000,
+      "per_column_statistics": {
+        "is_fraud_CC": {
+          "rule_match_counts": {"rule_cc_001": 50, "rule_multi_001": 30},
+          "default_label_count": 20,
+          "rule_match_percentages": {"rule_cc_001": 5.0, "rule_multi_001": 3.0},
+          "default_label_percentage": 2.0
+        },
+        "is_fraud_DC": {
+          "rule_match_counts": {"rule_dc_001": 40, "rule_multi_001": 30},
+          "default_label_count": 30,
+          "rule_match_percentages": {"rule_dc_001": 4.0, "rule_multi_001": 3.0},
+          "default_label_percentage": 3.0
+        },
+        "is_fraud_ACH": {
+          "rule_match_counts": {"rule_ach_001": 60, "rule_multi_001": 30},
+          "default_label_count": 10,
+          "rule_match_percentages": {"rule_ach_001": 6.0, "rule_multi_001": 3.0},
+          "default_label_percentage": 1.0
+        }
+      }
+    }
+    
+    Backward Compatibility:
+    - Single-label mode remains the default
+    - Existing pipelines continue to work unchanged
+    - Statistics format extended, not replaced
+    - Single-label output format unchanged
     
     The script is production-ready with comprehensive error handling, performance
     optimizations, and integration capabilities for enterprise ML pipelines. It

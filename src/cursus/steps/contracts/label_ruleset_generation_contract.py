@@ -97,6 +97,8 @@ LABEL_RULESET_GENERATION_CONTRACT = ScriptContract(
     
     Input Configuration File Formats:
     
+    === Single-Label Configuration (Binary/Multiclass) ===
+    
     label_config.json (required):
     {
       "output_label_name": "final_reversal_flag",
@@ -109,6 +111,47 @@ LABEL_RULESET_GENERATION_CONTRACT = ScriptContract(
       "default_label": 1,
       "evaluation_mode": "priority"
     }
+    
+    === Multi-Label Configuration (NEW) ===
+    
+    label_config.json with multiple output columns:
+    {
+      "output_label_name": ["is_fraud_CC", "is_fraud_DC", "is_fraud_ACH"],
+      "output_label_type": "multilabel",
+      "label_values": [0, 1],
+      "label_mapping": {
+        "0": "No_Fraud",
+        "1": "Fraud"
+      },
+      "default_label": 0,
+      "evaluation_mode": "priority",
+      "sparse_representation": true
+    }
+    
+    Per-Column Configuration (Advanced):
+    {
+      "output_label_name": ["is_fraud_CC", "is_fraud_DC", "is_fraud_ACH"],
+      "output_label_type": "multilabel",
+      "label_values": {
+        "is_fraud_CC": [0, 1],
+        "is_fraud_DC": [0, 1],
+        "is_fraud_ACH": [0, 1, 2]
+      },
+      "label_mapping": {
+        "is_fraud_CC": {"0": "No_Fraud", "1": "Fraud"},
+        "is_fraud_DC": {"0": "No_Fraud", "1": "Fraud"},
+        "is_fraud_ACH": {"0": "No_Fraud", "1": "Low_Risk_Fraud", "2": "High_Risk_Fraud"}
+      },
+      "default_label": {
+        "is_fraud_CC": 0,
+        "is_fraud_DC": 0,
+        "is_fraud_ACH": 0
+      },
+      "evaluation_mode": "priority",
+      "sparse_representation": true
+    }
+    
+    === Single-Label Rules ===
     
     ruleset.json (required):
     [
@@ -133,6 +176,58 @@ LABEL_RULESET_GENERATION_CONTRACT = ScriptContract(
         },
         "output_label": 0,
         "description": "High confidence TrueDNR cases indicate no reversal"
+      }
+    ]
+    
+    === Multi-Label Rules (NEW) ===
+    
+    ruleset.json with multilabel output:
+    [
+      {
+        "rule_id": "rule_cc_001",
+        "name": "High value CC transaction",
+        "priority": 1,
+        "enabled": true,
+        "conditions": {
+          "all_of": [
+            {"field": "payment_method", "operator": "equals", "value": "CC"},
+            {"field": "amount", "operator": ">", "value": 1000}
+          ]
+        },
+        "output_label": {"is_fraud_CC": 1},
+        "description": "High value credit card transaction flagged as fraud"
+      },
+      {
+        "rule_id": "rule_dc_001",
+        "name": "International DC transaction",
+        "priority": 2,
+        "enabled": true,
+        "conditions": {
+          "all_of": [
+            {"field": "payment_method", "operator": "equals", "value": "DC"},
+            {"field": "is_international", "operator": "equals", "value": true}
+          ]
+        },
+        "output_label": {"is_fraud_DC": 1},
+        "description": "International debit card transaction flagged as fraud"
+      },
+      {
+        "rule_id": "rule_multi_001",
+        "name": "Suspicious pattern across methods",
+        "priority": 3,
+        "enabled": true,
+        "conditions": {
+          "all_of": [
+            {"field": "velocity_score", "operator": ">", "value": 0.9},
+            {"field": "device_risk", "operator": "equals", "value": "high"}
+          ]
+        },
+        "output_label": {
+          "is_fraud_CC": 1,
+          "is_fraud_DC": 1,
+          "is_fraud_ACH": 1
+        },
+        "description": "Suspicious pattern applies to all payment methods"
       }
     ]
     

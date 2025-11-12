@@ -160,9 +160,12 @@ class RuleCondition(BaseModel):
 
 class LabelConfig(BaseModel):
     """
-    Pydantic model for label configuration.
+    Pydantic model for label configuration with multi-label support.
 
-    Defines the output label structure, valid values, and mapping to human-readable names.
+    Supports three modes via output_label_type:
+    - 'binary': Single binary column
+    - 'multiclass': Single multiclass column
+    - 'multilabel': Multiple columns (new)
 
     Follows three-tier design:
     - Tier 1: Required user inputs
@@ -171,31 +174,60 @@ class LabelConfig(BaseModel):
 
     # ===== Tier 1: Required User Inputs =====
 
-    output_label_name: str = Field(
+    # Unified output field (works for all modes)
+    output_label_name: Union[str, List[str]] = Field(
         ...,
-        min_length=1,
-        description="Name of the output label column (e.g., 'final_reversal_flag', 'category')",
+        description=(
+            "Output label column name(s). "
+            "String for single column (binary/multiclass), "
+            "List[str] for multiple columns (multilabel)"
+        ),
     )
 
+    # Extended to support multilabel
     output_label_type: str = Field(
         ...,
-        description="Type of classification: 'binary' or 'multiclass'",
+        description="Type of classification: 'binary', 'multiclass', or 'multilabel'",
     )
 
-    label_values: List[Union[int, str]] = Field(
+    # Flexible: Global (List) or Per-Column (Dict)
+    label_values: Union[
+        List[Union[int, str]],  # Global: same for all columns
+        Dict[str, List[Union[int, str]]],  # Per-column: different per column
+    ] = Field(
         ...,
-        min_length=1,
-        description="Array of valid label values (e.g., [0, 1] for binary, ['A', 'B', 'C'] for multiclass)",
+        description=(
+            "Valid label values. "
+            "List for global (all columns same), "
+            "Dict[column_name -> values] for per-column"
+        ),
     )
 
-    label_mapping: Dict[str, str] = Field(
+    # Flexible: Global (Dict) or Per-Column (Dict[Dict])
+    label_mapping: Union[
+        Dict[str, str],  # Global: same for all columns
+        Dict[str, Dict[str, str]],  # Per-column: different per column
+    ] = Field(
         ...,
-        description="Dictionary mapping label values to human-readable names (e.g., {'0': 'No_Reversal', '1': 'Reversal'})",
+        description=(
+            "Label to human-readable mapping. "
+            "Dict for global (all columns same), "
+            "Dict[column_name -> mapping] for per-column"
+        ),
     )
 
-    default_label: Union[int, str] = Field(
+    # Flexible: Global (int/str) or Per-Column (Dict)
+    default_label: Union[
+        int,
+        str,  # Global: same for all columns
+        Dict[str, Union[int, str]],  # Per-column: different per column
+    ] = Field(
         ...,
-        description="Default label when no rules match (must be in label_values)",
+        description=(
+            "Default label when no rules match. "
+            "int/str for global (all columns same), "
+            "Dict[column_name -> value] for per-column"
+        ),
     )
 
     # ===== Tier 2: Optional User Inputs with Defaults =====
@@ -205,12 +237,19 @@ class LabelConfig(BaseModel):
         description="Rule evaluation mode: 'priority' (first match wins) or 'confidence' (highest confidence wins)",
     )
 
+    sparse_representation: bool = Field(
+        default=True,
+        description="Use NaN for non-matching categories in multilabel mode",
+    )
+
     @field_validator("output_label_type")
     @classmethod
     def validate_label_type(cls, v: str) -> str:
-        """Validate label type is either binary or multiclass."""
-        if v not in ["binary", "multiclass"]:
-            raise ValueError("output_label_type must be 'binary' or 'multiclass'")
+        """Validate label_type is valid."""
+        if v not in ["binary", "multiclass", "multilabel"]:
+            raise ValueError(
+                "output_label_type must be 'binary', 'multiclass', or 'multilabel'"
+            )
         return v
 
     @field_validator("evaluation_mode")
@@ -222,23 +261,129 @@ class LabelConfig(BaseModel):
         return v
 
     @model_validator(mode="after")
+    def validate_consistency(self) -> "LabelConfig":
+        """Validate fields match output_label_type."""
+        is_list = isinstance(self.output_label_name, list)
+
+        if self.output_label_type in ["binary", "multiclass"]:
+            # Single-label: normalize to string
+            if is_list:
+                if len(self.output_label_name) != 1:
+                    raise ValueError(
+                        f"{self.output_label_type} requires single column name"
+                    )
+                # Normalize single-element list to string
+                self.output_label_name = self.output_label_name[0]
+
+            # Validate label_values and label_mapping are global format
+            if isinstance(self.label_values, dict):
+                raise ValueError("Single-label mode requires list for label_values")
+            if isinstance(self.label_mapping, dict) and any(
+                isinstance(v, dict) for v in self.label_mapping.values()
+            ):
+                raise ValueError(
+                    "Single-label mode requires simple dict for label_mapping"
+                )
+
+        elif self.output_label_type == "multilabel":
+            # Multilabel: must be list with at least 2 columns
+            if not is_list:
+                raise ValueError("multilabel requires list of column names")
+            if len(self.output_label_name) < 2:
+                raise ValueError("multilabel requires at least 2 columns")
+
+            # Check for duplicates
+            if len(self.output_label_name) != len(set(self.output_label_name)):
+                raise ValueError("Duplicate column names in multilabel")
+
+            # Validate per-column structures if used
+            valid_columns = set(self.output_label_name)
+
+            if isinstance(self.label_values, dict):
+                label_values_cols = set(self.label_values.keys())
+                missing = valid_columns - label_values_cols
+                extra = label_values_cols - valid_columns
+
+                if missing:
+                    raise ValueError(f"label_values missing columns: {missing}")
+                if extra:
+                    raise ValueError(
+                        f"label_values has invalid columns not in output_label_name: {extra}"
+                    )
+
+            if isinstance(self.label_mapping, dict) and all(
+                isinstance(v, dict) for v in self.label_mapping.values()
+            ):
+                # Per-column mapping
+                label_mapping_cols = set(self.label_mapping.keys())
+                missing = valid_columns - label_mapping_cols
+                extra = label_mapping_cols - valid_columns
+
+                if missing:
+                    raise ValueError(f"label_mapping missing columns: {missing}")
+                if extra:
+                    raise ValueError(
+                        f"label_mapping has invalid columns not in output_label_name: {extra}"
+                    )
+
+            if isinstance(self.default_label, dict):
+                # Per-column default_label
+                default_label_cols = set(self.default_label.keys())
+                missing = valid_columns - default_label_cols
+                extra = default_label_cols - valid_columns
+
+                if missing:
+                    raise ValueError(f"default_label missing columns: {missing}")
+                if extra:
+                    raise ValueError(
+                        f"default_label has invalid columns not in output_label_name: {extra}"
+                    )
+
+        return self
+
+    @model_validator(mode="after")
     def validate_default_label(self) -> "LabelConfig":
         """Validate default_label is in label_values."""
-        # Convert to string for comparison to handle both int and string values
-        default_str = str(self.default_label)
-        label_values_str = [str(v) for v in self.label_values]
+        # Handle per-column default_label
+        if isinstance(self.default_label, dict):
+            for col, default_val in self.default_label.items():
+                if isinstance(self.label_values, dict):
+                    col_values = [str(v) for v in self.label_values.get(col, [])]
+                    if str(default_val) not in col_values:
+                        raise ValueError(
+                            f"default_label[{col}] '{default_val}' must be in label_values[{col}]"
+                        )
+                else:
+                    label_values_str = [str(v) for v in self.label_values]
+                    if str(default_val) not in label_values_str:
+                        raise ValueError(
+                            f"default_label[{col}] '{default_val}' must be in label_values"
+                        )
+        else:
+            # Global default_label
+            if isinstance(self.label_values, list):
+                label_values_str = [str(v) for v in self.label_values]
+            else:
+                # Collect all values from per-column
+                label_values_str = []
+                for col_values in self.label_values.values():
+                    label_values_str.extend([str(v) for v in col_values])
 
-        if default_str not in label_values_str:
-            raise ValueError(
-                f"default_label '{self.default_label}' must be in label_values {self.label_values}"
-            )
+            if str(self.default_label) not in label_values_str:
+                raise ValueError(
+                    f"default_label '{self.default_label}' must be in label_values"
+                )
+
         return self
 
     @model_validator(mode="after")
     def validate_binary_constraints(self) -> "LabelConfig":
         """Validate binary classification uses [0, 1] values."""
         if self.output_label_type == "binary":
-            if set(self.label_values) != {0, 1}:
+            if isinstance(self.label_values, list) and set(self.label_values) != {
+                0,
+                1,
+            }:
                 logger.warning(
                     f"Binary classification should use label_values [0, 1], got {self.label_values}"
                 )
@@ -253,6 +398,7 @@ class LabelConfig(BaseModel):
             "label_mapping": self.label_mapping,
             "default_label": self.default_label,
             "evaluation_mode": self.evaluation_mode,
+            "sparse_representation": self.sparse_representation,
         }
 
     model_config = {"extra": "forbid", "validate_assignment": True}
@@ -362,9 +508,13 @@ class RuleDefinition(BaseModel):
         description="Nested condition expression using RuleCondition with validated operators",
     )
 
-    output_label: Union[int, str] = Field(
+    output_label: Union[int, str, Dict[str, Union[int, str]]] = Field(
         ...,
-        description="Label value to output when rule matches",
+        description=(
+            "Output label value(s). "
+            "int/str for single-label mode, "
+            "Dict[column_name -> value] for multilabel mode"
+        ),
     )
 
     # ===== Tier 2: Optional User Inputs with Defaults =====
@@ -395,6 +545,15 @@ class RuleDefinition(BaseModel):
         if not v.strip():
             raise ValueError("rule name cannot be empty or whitespace")
         return v.strip()
+
+    @model_validator(mode="after")
+    def validate_output_label(self) -> "RuleDefinition":
+        """Validate output_label format."""
+        # Validate multi-label dict is not empty
+        if isinstance(self.output_label, dict) and len(self.output_label) == 0:
+            raise ValueError("output_label dict cannot be empty for multilabel mode")
+
+        return self
 
     def to_script_format(self) -> Dict[str, Any]:
         """Convert to format expected by script."""

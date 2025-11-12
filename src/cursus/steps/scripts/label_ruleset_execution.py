@@ -116,17 +116,19 @@ class RulesetFieldValidator:
 class RuleEngine:
     """
     Evaluates validated rules against data rows to produce labels.
+    Extended for multilabel support.
 
     Optimized for:
     - Batch processing (vectorized where possible)
     - Priority-based evaluation (first match wins)
     - Efficient condition checking
     - Minimal memory footprint
+    - Multilabel sparse representation
     """
 
     def __init__(self, validated_ruleset: dict):
         """
-        Initialize rule engine with validated ruleset.
+        Initialize rule engine with multilabel support.
 
         Args:
             validated_ruleset: Pre-validated ruleset from RulesetGenerator
@@ -140,79 +142,195 @@ class RuleEngine:
         # Filter to enabled rules only (already sorted by priority)
         self.active_rules = [r for r in self.ruleset if r.get("enabled", True)]
 
-        # Configuration
-        self.output_label_name = self.label_config["output_label_name"]
+        # Determine label type
+        self.label_type = self.label_config.get("output_label_type", "binary")
+
+        # Get output column names (normalize to list)
+        output_label_name = self.label_config["output_label_name"]
+        if isinstance(output_label_name, str):
+            # Single-label: string → list of one
+            self.output_columns = [output_label_name]
+        else:
+            # Multilabel: already a list
+            self.output_columns = output_label_name
+
+        # Multilabel-specific configuration
+        self.sparse_representation = self.label_config.get(
+            "sparse_representation", True
+        )
+
+        # Common configuration
         self.default_label = self.label_config["default_label"]
         self.evaluation_mode = self.label_config.get("evaluation_mode", "priority")
 
-        # Statistics tracking
-        self.rule_match_counts = {r["rule_id"]: 0 for r in self.active_rules}
-        self.default_label_count = 0
+        # Statistics tracking (per column)
+        self.rule_match_counts = {
+            col: {r["rule_id"]: 0 for r in self.active_rules}
+            for col in self.output_columns
+        }
+        self.default_label_counts = {col: 0 for col in self.output_columns}
         self.total_evaluated = 0
 
-    def evaluate_row(self, row: pd.Series) -> int:
+    def evaluate_row(self, row: pd.Series):
         """
-        Evaluate rules against a single DataFrame row.
-
-        Args:
-            row: DataFrame row as Series
+        Evaluate rules against a single row.
 
         Returns:
-            Numerical label value (int)
+            - Single-label mode: int or str (label value)
+            - Multilabel mode: Dict[str, Any] (column → value mapping)
         """
         self.total_evaluated += 1
+
+        if self.label_type in ["binary", "multiclass"]:
+            return self._evaluate_row_single_label(row)
+        else:
+            return self._evaluate_row_multilabel(row)
+
+    def _evaluate_row_single_label(self, row: pd.Series):
+        """Evaluate rules for single-label mode (backward compatible)."""
+        # Single column name (output_columns is list of one)
+        output_col = self.output_columns[0]
+
+        for rule in self.active_rules:
+            try:
+                if self._evaluate_conditions(rule["conditions"], row):
+                    rule_id = rule["rule_id"]
+                    output_label = rule["output_label"]
+
+                    # output_label should be int/str for single-label
+                    self.rule_match_counts[output_col][rule_id] += 1
+                    return output_label
+            except Exception as e:
+                logger.warning(f"Error evaluating rule {rule['rule_id']}: {e}")
+                continue
+
+        self.default_label_counts[output_col] += 1
+        return self.default_label
+
+    def _evaluate_row_multilabel(self, row: pd.Series) -> Dict[str, Any]:
+        """Evaluate rules for multilabel mode with sparse representation."""
+        import numpy as np
+
+        # Initialize all columns with NaN (sparse) or default (dense)
+        if self.sparse_representation:
+            result = {col: np.nan for col in self.output_columns}
+        else:
+            # Handle per-column default_label
+            if isinstance(self.default_label, dict):
+                result = {col: self.default_label[col] for col in self.output_columns}
+            else:
+                result = {col: self.default_label for col in self.output_columns}
 
         # Evaluate rules in priority order
         for rule in self.active_rules:
             try:
-                if self._evaluate_conditions(rule["conditions"], row):
-                    # Match found
-                    self.rule_match_counts[rule["rule_id"]] += 1
-                    return rule["output_label"]
+                if not self._evaluate_conditions(rule["conditions"], row):
+                    continue
+
+                # Rule matched - get output
+                output_label = rule.get("output_label")
+
+                if isinstance(output_label, dict):
+                    # Multilabel: dict mapping column → value
+                    for col, value in output_label.items():
+                        if col not in result:
+                            continue
+
+                        # Only set if not already set (priority order)
+                        if pd.isna(result[col]) or result[col] == self.default_label:
+                            result[col] = value
+                            self.rule_match_counts[col][rule["rule_id"]] += 1
+
             except Exception as e:
-                # Log but continue (fail-safe approach)
                 logger.warning(f"Error evaluating rule {rule['rule_id']}: {e}")
                 continue
 
-        # No rule matched, use default
-        self.default_label_count += 1
-        return self.default_label
+        # Fill remaining NaN columns with default if dense mode
+        for col in result:
+            if pd.isna(result[col]):
+                self.default_label_counts[col] += 1
+                if not self.sparse_representation:
+                    # Handle per-column default_label
+                    if isinstance(self.default_label, dict):
+                        result[col] = self.default_label[col]
+                    else:
+                        result[col] = self.default_label
 
-    def evaluate_batch(self, df: pd.DataFrame) -> pd.Series:
+        return result
+
+    def evaluate_batch(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Evaluate rules for entire DataFrame.
 
-        Args:
-            df: Input DataFrame
-
         Returns:
-            Series of label values, one per row
+            DataFrame with label column(s) added
         """
-        return df.apply(self.evaluate_row, axis=1)
+        if self.label_type in ["binary", "multiclass"]:
+            # Single column result (backward compatible)
+            output_col = self.output_columns[0]
+            df[output_col] = df.apply(self.evaluate_row, axis=1)
+            return df
+
+        else:
+            # Multi-column result (multilabel)
+            results = df.apply(self.evaluate_row, axis=1, result_type="expand")
+
+            # Add all label columns to original dataframe
+            for col in self.output_columns:
+                df[col] = results[col]
+
+            return df
 
     def get_statistics(self) -> Dict[str, Any]:
-        """
-        Get execution statistics.
+        """Get execution statistics with multilabel support."""
+        if self.label_type in ["binary", "multiclass"]:
+            # Single-label statistics (backward compatible)
+            output_col = self.output_columns[0]
 
-        Returns:
-            Dictionary with execution statistics
-        """
-        return {
-            "total_evaluated": self.total_evaluated,
-            "rule_match_counts": self.rule_match_counts,
-            "default_label_count": self.default_label_count,
-            "rule_match_percentages": {
-                rule_id: (count / self.total_evaluated * 100)
-                if self.total_evaluated > 0
-                else 0
-                for rule_id, count in self.rule_match_counts.items()
-            },
-            "default_label_percentage": (
-                (self.default_label_count / self.total_evaluated * 100)
-                if self.total_evaluated > 0
-                else 0
-            ),
-        }
+            return {
+                "total_evaluated": self.total_evaluated,
+                "rule_match_counts": self.rule_match_counts[output_col],
+                "default_label_count": self.default_label_counts[output_col],
+                "rule_match_percentages": {
+                    rule_id: (count / self.total_evaluated * 100)
+                    if self.total_evaluated > 0
+                    else 0
+                    for rule_id, count in self.rule_match_counts[output_col].items()
+                },
+                "default_label_percentage": (
+                    self.default_label_counts[output_col] / self.total_evaluated * 100
+                    if self.total_evaluated > 0
+                    else 0
+                ),
+            }
+
+        else:
+            # Multilabel statistics (per column)
+            stats = {
+                "label_type": "multilabel",
+                "total_evaluated": self.total_evaluated,
+                "per_column_statistics": {},
+            }
+
+            for col in self.output_columns:
+                col_stats = {
+                    "rule_match_counts": self.rule_match_counts[col],
+                    "default_label_count": self.default_label_counts[col],
+                    "rule_match_percentages": {
+                        rule_id: (count / self.total_evaluated * 100)
+                        if self.total_evaluated > 0
+                        else 0
+                        for rule_id, count in self.rule_match_counts[col].items()
+                    },
+                    "default_label_percentage": (
+                        self.default_label_counts[col] / self.total_evaluated * 100
+                        if self.total_evaluated > 0
+                        else 0
+                    ),
+                }
+                stats["per_column_statistics"][col] = col_stats
+
+            return stats
 
     def _evaluate_conditions(self, conditions: dict, row: pd.Series) -> bool:
         """
@@ -538,11 +656,18 @@ def main(
         log(f"[INFO] Field validation passed for {split_name}")
 
         # Apply rules to generate labels
-        output_label_name = rule_engine.output_label_name
-        df[output_label_name] = rule_engine.evaluate_batch(df)
+        df = rule_engine.evaluate_batch(df)
 
-        # Compute label distribution
-        label_dist = df[output_label_name].value_counts().to_dict()
+        # Compute label distribution (handles both single-label and multilabel)
+        label_dist = {}
+        for col in rule_engine.output_columns:
+            if col in df.columns:
+                label_dist[col] = df[col].value_counts().to_dict()
+
+        if rule_engine.label_type in ["binary", "multiclass"]:
+            # Single-label: flatten dict
+            label_dist = label_dist.get(rule_engine.output_columns[0], {})
+
         log(f"[INFO] {split_name} label distribution: {label_dist}")
 
         # Save statistics
@@ -554,9 +679,12 @@ def main(
 
         # Reset engine statistics for next split
         rule_engine.rule_match_counts = {
-            r["rule_id"]: 0 for r in rule_engine.active_rules
+            col: {r["rule_id"]: 0 for r in rule_engine.active_rules}
+            for col in rule_engine.output_columns
         }
-        rule_engine.default_label_count = 0
+        rule_engine.default_label_counts = {
+            col: 0 for col in rule_engine.output_columns
+        }
         rule_engine.total_evaluated = 0
 
         # Save labeled data in same format as input

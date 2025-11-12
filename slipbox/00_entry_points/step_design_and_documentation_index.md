@@ -40,7 +40,10 @@ This entry point document provides a comprehensive index of all step-related des
 
 - [Label Ruleset Execution Step Patterns](../1_design/ruleset_execution_step_patterns.md) - Design patterns for executing label rulesets in pipeline steps
 - [Label Ruleset Generation Step Patterns](../1_design/label_ruleset_generation_step_patterns.md) - Patterns for generating and validating label rulesets within pipeline steps
+- [Label Ruleset Multilabel Extension Design](../1_design/label_ruleset_multilabel_extension_design.md) - Design for extending label ruleset system to support multi-label output for multi-task learning with category-conditional rules
+- [Label Ruleset Multilabel Extension Implementation Plan](../2_project_planning/2025-11-11_label_ruleset_multilabel_extension_implementation_plan.md) - Detailed 5-phase implementation plan for multilabel support with unified design approach, configuration models, validators, execution engine, and comprehensive examples
 - [Label Ruleset Optimization Patterns](../1_design/label_ruleset_optimization_patterns.md) - Optimization strategies for label ruleset performance (selectivity, field grouping, complexity ordering)
+- [Label Ruleset Generation Configuration Examples](../1_design/label_ruleset_generation_configuration_examples.md) - Complete working examples for binary, multiclass, and multilabel classification with DAGConfigFactory integration, JSON configurations, and best practices
 
 ### Core Step Builder Patterns
 
