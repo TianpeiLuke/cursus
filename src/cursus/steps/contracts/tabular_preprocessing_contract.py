@@ -21,10 +21,6 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     optional_env_vars={
         "LABEL_FIELD": "",
         "OUTPUT_FORMAT": "CSV",
-        "CATEGORICAL_COLUMNS": "",
-        "NUMERICAL_COLUMNS": "",
-        "TEXT_COLUMNS": "",
-        "DATE_COLUMNS": "",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
