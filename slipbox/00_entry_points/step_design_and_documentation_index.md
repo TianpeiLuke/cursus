@@ -46,6 +46,7 @@ This entry point document provides a comprehensive index of all step-related des
 
 - [Processing Step Builder Patterns](../1_design/processing_step_builder_patterns.md) - General patterns for building processing steps
 - [Training Step Builder Patterns](../1_design/training_step_builder_patterns.md) - Patterns for building training steps
+- [LightGBM Multi-Task Training Step Design](../1_design/lightgbm_multi_task_training_step_design.md) - Design for LightGBM multi-task/multi-label training with adaptive weighting and knowledge distillation
 - [Transform Step Builder Patterns](../1_design/transform_step_builder_patterns.md) - Patterns for building transform steps
 - [Tuning Step Builder Patterns](../1_design/tuning_step_builder_patterns.md) - Patterns for building hyperparameter tuning steps
 - [Conditional Step Builder Patterns](../1_design/conditional_step_builder_patterns.md) - Patterns for building conditional execution steps

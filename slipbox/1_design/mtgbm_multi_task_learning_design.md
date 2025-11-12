@@ -35,6 +35,7 @@ This document outlines the design and implementation of Multi-Task Gradient Boos
 The implementation builds on a custom fork of LightGBM (`lightgbmmt`) that supports multi-label training with sophisticated loss functions including adaptive task weighting and knowledge distillation mechanisms.
 
 ## Related Documents
+- **[LightGBMMT Multi-Task Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)** - Comprehensive analysis of lightgbmmt framework
 - **[LightGBM Training Contract](../../src/cursus/steps/contracts/lightgbm_training_contract.py)** - LightGBM training interface
 - **[Feature Selection Script Design](./feature_selection_script_design.md)** - Feature engineering patterns
 - **[Model Metrics Computation Design](./model_metrics_computation_design.md)** - Evaluation metrics
