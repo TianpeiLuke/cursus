@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore")
 from processing.processors import (
     Processor,
 )
-from processing.text.bsm_processor import (
+from processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,

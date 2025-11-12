@@ -1,11 +1,11 @@
 from typing import List, Optional, Dict
 from transformers import AutoTokenizer
 
-from .processors import Processor
+from ..processors import Processor
 
 
 # --- Processor 6: Tokenization Processor using AutoTokenizer ---
-class TokenizationProcessor(Processor):
+class BertTokenizeProcessor(Processor):
     def __init__(
         self,
         tokenizer: AutoTokenizer,

@@ -4,12 +4,12 @@ from typing import Dict, List, Tuple, Optional, Union, Any
 from pathlib import Path
 import json
 
-from .processors import Processor
+from ..processors import Processor
 
 
-class BinningProcessor(Processor):
+class RiskTableMappingProcessor(Processor):
     """
-    A processor that performs risk-based binning on a specified categorical variable.
+    A processor that performs risk-table-based mapping on a specified categorical variable.
     The 'process' method (called via __call__) handles single values.
     The 'transform' method handles pandas Series or DataFrames.
     """
@@ -23,7 +23,7 @@ class BinningProcessor(Processor):
         risk_tables: Optional[Dict] = None,
     ):
         """
-        Initialize BinningProcessor.
+        Initialize RiskTableMappingProcessor.
 
         Args:
             column_name: Name of the categorical column to be binned.
@@ -33,7 +33,7 @@ class BinningProcessor(Processor):
             risk_tables: Optional pre-computed risk tables.
         """
         super().__init__()  # Initialize base Processor
-        self.processor_name = "binning_processor"
+        self.processor_name = "risk_table_mapping_processor"
         # Lists primary public methods for potential introspection
         self.function_name_list = ["process", "transform", "fit"]
 
@@ -74,7 +74,7 @@ class BinningProcessor(Processor):
         self.risk_tables = risk_tables
         self.is_fitted = True
 
-    def fit(self, data: pd.DataFrame) -> "BinningProcessor":
+    def fit(self, data: pd.DataFrame) -> "RiskTableMappingProcessor":
         if not isinstance(data, pd.DataFrame):
             raise TypeError("fit() requires a pandas DataFrame.")
         if self.label_name not in data.columns:
@@ -175,7 +175,7 @@ class BinningProcessor(Processor):
         """
         if not self.is_fitted:
             raise RuntimeError(
-                "BinningProcessor must be fitted or initialized with risk tables before processing."
+                "RiskTableMappingProcessor must be fitted or initialized with risk tables before processing."
             )
         str_value = str(input_value)
         return self.risk_tables["bins"].get(str_value, self.risk_tables["default_bin"])
@@ -191,7 +191,7 @@ class BinningProcessor(Processor):
         """
         if not self.is_fitted:
             raise RuntimeError(
-                "BinningProcessor must be fitted or initialized with risk tables before transforming."
+                "RiskTableMappingProcessor must be fitted or initialized with risk tables before transforming."
             )
 
         if isinstance(data, pd.DataFrame):
@@ -219,7 +219,7 @@ class BinningProcessor(Processor):
     def get_risk_tables(self) -> Dict:
         if not self.is_fitted:
             raise RuntimeError(
-                "BinningProcessor has not been fitted or initialized with risk tables."
+                "RiskTableMappingProcessor has not been fitted or initialized with risk tables."
             )
         return self.risk_tables
 

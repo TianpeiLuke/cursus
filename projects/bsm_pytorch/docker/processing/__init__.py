@@ -48,7 +48,7 @@ except ImportError:
 
 # Import domain-specific text processors (with optional dependency handling)
 try:
-    from .text.bsm_processor import (
+    from .text.dialogue_processor import (
         TextNormalizationProcessor,
         TextUpperProcessor,
         DialogueSplitterProcessor,
@@ -65,7 +65,7 @@ except ImportError:
     HTMLNormalizerProcessor = None
 
 try:
-    from .text.cs_processor import (
+    from .text.cs_format_processor import (
         CSChatSplitterProcessor,
         CSAdapter,
     )

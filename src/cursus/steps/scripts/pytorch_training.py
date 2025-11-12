@@ -31,14 +31,14 @@ warnings.filterwarnings("ignore")
 from ...processing.processors import (
     Processor,
 )
-from ...processing.nlp.bsm_processor import (
+from ...processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from ...processing.nlp.bert_tokenize_processor import TokenizationProcessor
+from ...processing.text.bert_tokenize_processor import BertTokenizeProcessor
 from ...processing.categorical.categorical_label_processor import (
     CategoricalLabelProcessor,
 )
@@ -355,7 +355,7 @@ def data_preprocess_pipeline(
             truncate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
         )
-        >> TokenizationProcessor(
+        >> BertTokenizeProcessor(
             tokenizer,
             add_special_tokens=True,
             max_length=config.max_sen_len,

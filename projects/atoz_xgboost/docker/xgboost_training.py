@@ -589,7 +589,7 @@ def apply_numerical_imputation(
     # Create one processor per numerical column (single-column architecture)
     for var in config["tab_field_list"]:
         proc = NumericalVariableImputationProcessor(column_name=var, strategy="mean")
-        proc.fit(train_df)
+        proc.fit(train_df[var])  # Fit on single column Series for consistency
         imputation_processors[var] = proc
 
         # Transform each split

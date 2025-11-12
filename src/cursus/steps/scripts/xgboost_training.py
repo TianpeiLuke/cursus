@@ -576,21 +576,37 @@ def load_datasets(
 def apply_numerical_imputation(
     config: dict, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame
 ) -> tuple:
-    """Applies numerical imputation to the datasets."""
-    imputer = NumericalVariableImputationProcessor(
-        variables=config["tab_field_list"], strategy="mean"
-    )
-    imputer.fit(train_df)
+    """
+    Applies numerical imputation to the datasets using single-column architecture.
 
-    train_df_imputed = imputer.transform(train_df)
-    val_df_imputed = imputer.transform(val_df)
-    test_df_imputed = imputer.transform(test_df)
+    Creates one processor per numerical column, similar to risk table mapping.
+    """
+    imputation_processors = {}
+    train_df_imputed = train_df.copy()
+    val_df_imputed = val_df.copy()
+    test_df_imputed = test_df.copy()
+
+    # Create one processor per numerical column (single-column architecture)
+    for var in config["tab_field_list"]:
+        proc = NumericalVariableImputationProcessor(column_name=var, strategy="mean")
+        proc.fit(train_df[var])  # Fit on single column Series for consistency
+        imputation_processors[var] = proc
+
+        # Transform each split
+        train_df_imputed[var] = proc.transform(train_df_imputed[var])
+        val_df_imputed[var] = proc.transform(val_df_imputed[var])
+        test_df_imputed[var] = proc.transform(test_df_imputed[var])
+
+    # Build imputation dictionary for artifact saving
+    impute_dict = {
+        var: proc.get_imputation_value() for var, proc in imputation_processors.items()
+    }
 
     return (
         train_df_imputed,
         val_df_imputed,
         test_df_imputed,
-        imputer.get_params()["imputation_dict"],
+        impute_dict,
     )
 
 
