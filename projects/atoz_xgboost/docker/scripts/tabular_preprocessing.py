@@ -361,8 +361,8 @@ if __name__ == "__main__":
 
         # Read configuration from environment variables
         LABEL_FIELD = os.environ.get("LABEL_FIELD")
-        if not LABEL_FIELD and args.job_type != "calibration":
-            raise RuntimeError("LABEL_FIELD environment variable must be set.")
+        # LABEL_FIELD is now optional for all job types
+        # The script will skip label processing if not provided
         TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
         TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
 
