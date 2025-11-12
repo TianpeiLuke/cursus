@@ -38,6 +38,7 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
                 "StratifiedSampling",
                 "RiskTableMapping",
                 "MissingValueImputation",
+                "LabelRulesetExecution",
                 "ProcessingStep",
                 "DataLoad",
             ],

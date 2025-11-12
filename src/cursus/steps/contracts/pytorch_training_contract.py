@@ -12,6 +12,7 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     expected_input_paths={
         "input_path": "/opt/ml/input/data",
         "hyperparameters_s3_uri": "/opt/ml/code/hyperparams/hyperparameters.json",
+        "model_artifacts_input": "/opt/ml/input/data/model_artifacts_input",  # Optional: Pre-computed preprocessing artifacts
     },
     expected_output_paths={
         "model_output": "/opt/ml/model",
@@ -23,7 +24,13 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     required_env_vars=[
         # No strictly required environment variables - script uses hyperparameters.json
     ],
-    optional_env_vars={"SM_CHECKPOINT_DIR": "/opt/ml/checkpoints"},
+    optional_env_vars={
+        "SM_CHECKPOINT_DIR": "/opt/ml/checkpoints",
+        "USE_SECURE_PYPI": "true",  # Controls PyPI source for package installation (default: secure CodeArtifact)
+        "USE_PRECOMPUTED_IMPUTATION": "false",  # If true, uses pre-computed imputation artifacts and skips inline computation
+        "USE_PRECOMPUTED_RISK_TABLES": "false",  # If true, uses pre-computed risk table artifacts and skips inline computation
+        "USE_PRECOMPUTED_FEATURES": "false",  # If true, uses pre-computed feature selection and skips inline computation
+    },
     framework_requirements={
         "torch": "==2.1.2",
         "torchvision": "==0.16.2",
@@ -60,7 +67,11 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
       - /opt/ml/input/data/train: Training data files (.csv, .tsv, .parquet)
       - /opt/ml/input/data/val: Validation data files
       - /opt/ml/input/data/test: Test data files
-    - /opt/ml/input/config/hyperparameters.json: Model configuration and hyperparameters
+    - /opt/ml/input/data/model_artifacts_input: Optional directory with pre-computed artifacts
+      - /opt/ml/input/data/model_artifacts_input/impute_dict.pkl: Pre-computed imputation parameters
+      - /opt/ml/input/data/model_artifacts_input/risk_table_map.pkl: Pre-computed risk tables
+      - /opt/ml/input/data/model_artifacts_input/selected_features.json: Pre-computed feature selection
+    - /opt/ml/code/hyperparams/hyperparameters.json: Model configuration and hyperparameters
     
     Output Structure:
     - /opt/ml/model: Model artifacts directory
@@ -76,8 +87,18 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     - Inputs: input_path (required), hyperparameters_s3_uri (optional)
     - Outputs: model_output (primary), evaluation_output (secondary)
     
+    Pre-Computed Artifact Support:
+    - USE_PRECOMPUTED_IMPUTATION=true: Input data already imputed, loads impute_dict.pkl, skips transformation
+    - USE_PRECOMPUTED_RISK_TABLES=true: Input data already risk-mapped, loads risk_table_map.pkl, skips transformation
+    - USE_PRECOMPUTED_FEATURES=true: Input data already feature-selected, loads selected_features.json, skips selection
+    - Default (all false): Computes all preprocessing inline and transforms data
+    
     Environment Variables:
     - SM_CHECKPOINT_DIR: SageMaker checkpoint directory (optional)
+    - USE_SECURE_PYPI: Controls PyPI source for package installation (default: true for secure CodeArtifact)
+    - USE_PRECOMPUTED_IMPUTATION: Use pre-computed imputation artifacts (default: false)
+    - USE_PRECOMPUTED_RISK_TABLES: Use pre-computed risk table artifacts (default: false)
+    - USE_PRECOMPUTED_FEATURES: Use pre-computed feature selection (default: false)
     
     Hyperparameters (via JSON config):
     - Model architecture: model_class (multimodal_bert, multimodal_cnn, bert, lstm, etc.)

@@ -199,12 +199,9 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             ),
         )
 
-    def _create_data_channel_from_source(self, base_path):
+    def _create_data_channels_from_source(self, base_path):
         """
-        Create a data channel input from a base path.
-
-        For PyTorch, we create a single 'data' channel (unlike XGBoost which needs separate train/val/test channels)
-        since the PyTorch script expects train/val/test subdirectories within one main directory.
+        Create train, validation, and test channel inputs from a base path.
 
         Args:
             base_path: Base S3 path containing train/val/test subdirectories
@@ -212,7 +209,17 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
         Returns:
             Dictionary of channel name to TrainingInput
         """
-        return {"data": TrainingInput(s3_data=base_path)}
+        from sagemaker.workflow.functions import Join
+
+        # Base path is used directly - property references are handled by PipelineAssembler
+
+        channels = {
+            "train": TrainingInput(s3_data=Join(on="/", values=[base_path, "train/"])),
+            "val": TrainingInput(s3_data=Join(on="/", values=[base_path, "val/"])),
+            "test": TrainingInput(s3_data=Join(on="/", values=[base_path, "test/"])),
+        }
+
+        return channels
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> Dict[str, TrainingInput]:
         """
@@ -265,15 +272,16 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             if logical_name in self.contract.expected_input_paths:
                 container_path = self.contract.expected_input_paths[logical_name]
 
-                # Handle input_path - create single data channel for PyTorch
+                # SPECIAL HANDLING FOR input_path
+                # For '/opt/ml/input/data', we need to create train/val/test channels
                 if logical_name == "input_path":
                     base_path = inputs[logical_name]
 
-                    # Create data channel using helper method
-                    data_channel = self._create_data_channel_from_source(base_path)
-                    training_inputs.update(data_channel)
+                    # Create separate channels for each data split using helper method
+                    data_channels = self._create_data_channels_from_source(base_path)
+                    training_inputs.update(data_channels)
                     self.log_info(
-                        "Created data channel from %s: %s", logical_name, base_path
+                        "Created data channels from %s: %s", logical_name, base_path
                     )
                 else:
                     # For other inputs, use logical name as channel
