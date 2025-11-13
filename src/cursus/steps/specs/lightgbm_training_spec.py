@@ -17,9 +17,9 @@ from ...registry.step_names import get_spec_step_type
 
 # Import the contract at runtime to avoid circular imports
 def _get_lightgbm_train_contract():
-    from ..contracts.lightgbm_training_contract import LIGHTGBM_TRAINING_CONTRACT
+    from ..contracts.lightgbm_training_contract import LIGHTGBM_TRAIN_CONTRACT
 
-    return LIGHTGBM_TRAINING_CONTRACT
+    return LIGHTGBM_TRAIN_CONTRACT
 
 
 # LightGBM Training Step Specification

@@ -32,7 +32,8 @@ from .xgboost_model_eval_contract import XGBOOST_MODEL_EVAL_CONTRACT
 from .xgboost_model_inference_contract import XGBOOST_MODEL_INFERENCE_CONTRACT
 
 # Training script contracts
-from .lightgbm_training_contract import LIGHTGBM_TRAINING_CONTRACT
+from .lightgbm_training_contract import LIGHTGBM_TRAIN_CONTRACT
+from .lightgbmmt_training_contract import LIGHTGBMMT_TRAIN_CONTRACT
 from .pytorch_training_contract import PYTORCH_TRAIN_CONTRACT
 from .xgboost_training_contract import XGBOOST_TRAIN_CONTRACT
 
@@ -67,7 +68,8 @@ __all__ = [
     "XGBOOST_MODEL_EVAL_CONTRACT",
     "XGBOOST_MODEL_INFERENCE_CONTRACT",
     # Training contracts
-    "LIGHTGBM_TRAINING_CONTRACT",
+    "LIGHTGBM_TRAIN_CONTRACT",
+    "LIGHTGBMMT_TRAIN_CONTRACT",
     "PYTORCH_TRAIN_CONTRACT",
     "XGBOOST_TRAIN_CONTRACT",
     # Data loading contracts
