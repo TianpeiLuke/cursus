@@ -32,7 +32,7 @@ LIGHTGBMMT_TRAIN_CONTRACT = TrainingScriptContract(
     },
     framework_requirements={
         "boto3": ">=1.26.0",
-        "lightgbm": ">=3.0.0",  # Custom lightgbmmt fork with multi-task support
+        "lightgbm": ">=3.3.0",  # Standard LightGBM with custom Python loss functions
         "scikit-learn": ">=0.23.2,<1.0.0",
         "pandas": ">=1.2.0,<2.0.0",
         "pyarrow": ">=4.0.0,<6.0.0",
@@ -51,7 +51,7 @@ LIGHTGBMMT_TRAIN_CONTRACT = TrainingScriptContract(
     6. Identifies task columns and creates task-specific indices for multi-label learning
     7. Initializes refactored loss function (Fixed/Adaptive/KD) via LossFactory with hyperparameters
     8. Creates multi-task model via ModelFactory with TrainingState for checkpointing
-    9. Trains LightGBM model with shared tree structures and custom multi-task loss
+    9. Trains standard LightGBM with shared tree structures using refactored custom Python loss functions (fobj)
     10. Performs adaptive weight computation based on task similarity (JS divergence)
     11. Optionally applies knowledge distillation for struggling tasks (adaptive_kd loss)
     12. Evaluates per-task and aggregate performance with comprehensive metrics

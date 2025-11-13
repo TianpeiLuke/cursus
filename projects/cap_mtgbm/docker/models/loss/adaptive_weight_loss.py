@@ -55,12 +55,17 @@ class AdaptiveWeightLoss(BaseLossFunction):
         weights : np.ndarray
             Computed task weights [N_tasks]
         """
-        # Compute similarity between main task (task 0) and subtasks
-        main_pred = preds_mat[:, 0]
-        similarities = np.zeros(self.num_col)
-        similarities[0] = 1.0  # Main task has similarity 1 with itself
+        # Get main task index from hyperparameters (defaults to 0 for backward compatibility)
+        main_idx = getattr(self.hyperparams, "main_task_index", 0)
 
-        for i in range(1, self.num_col):
+        # Compute similarity between main task and subtasks
+        main_pred = preds_mat[:, main_idx]
+        similarities = np.zeros(self.num_col)
+        similarities[main_idx] = 1.0  # Main task has similarity 1 with itself
+
+        for i in range(self.num_col):
+            if i == main_idx:
+                continue  # Skip main task
             subtask_pred = preds_mat[:, i]
 
             # Compute Jensen-Shannon divergence

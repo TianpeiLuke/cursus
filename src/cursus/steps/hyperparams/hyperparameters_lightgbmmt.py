@@ -22,7 +22,7 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     Follows three-tier hyperparameter pattern:
     - Tier 1: Essential User Inputs (from ModelHyperparameters + LightGBM essentials)
     - Tier 2: System Inputs with Defaults (LightGBM + MT-specific parameters)
-    - Tier 3: Derived Fields (enable_kd computed from loss_type)
+    - Tier 3: Derived Fields (enable_kd computed from loss_type, num_tasks from task_label_names)
 
     Design Notes:
     - No separate LossConfig class - all loss parameters integrated here
@@ -31,18 +31,47 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     - No TrainingConfig class - only TrainingState for runtime tracking
     """
 
-    # ===== Override model_class (Tier 2) =====
+    # ========================================================================
+    # TIER 1: ESSENTIAL USER INPUTS (Required, no defaults)
+    # ========================================================================
+
+    # Multi-Task Configuration
+    task_label_names: list[str] = Field(
+        description=(
+            "List of task/label column names for multi-task learning (REQUIRED). "
+            "Each column represents one task's binary labels. "
+            "Aligns with label_config['output_label_name'] from ruleset generation. "
+            "Example: ['isFraud', 'isCCfrd', 'isDDfrd']"
+        ),
+    )
+
+    main_task_index: int = Field(
+        ge=0,
+        description="Index of the main task in the task list (e.g., 0 = first task, 1 = second task)",
+    )
+
+    # ========================================================================
+    # TIER 2: SYSTEM INPUTS WITH DEFAULTS
+    # ========================================================================
+
+    # Override model_class
     model_class: str = Field(
         default="lightgbmmt",
         description="Model class identifier for multi-task LightGBM",
     )
 
-    # ===== Essential LightGBM Parameters (Tier 1) =====
-    num_leaves: int = Field(description="Maximum number of leaves in one tree")
+    # Essential LightGBM Parameters
+    num_leaves: int = Field(
+        default=31,
+        description="Maximum number of leaves in one tree (LightGBM default: 31)",
+    )
 
-    learning_rate: float = Field(description="Boosting learning rate (shrinkage_rate)")
+    learning_rate: float = Field(
+        default=0.1,
+        description="Boosting learning rate / shrinkage_rate (LightGBM default: 0.1)",
+    )
 
-    # ===== LightGBM Core Parameters (Tier 2) =====
+    # LightGBM Core Parameters
     boosting_type: str = Field(
         default="gbdt", description="Boosting type: gbdt, rf, dart, goss"
     )
@@ -102,28 +131,13 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
         default=None, description="Random seed for reproducibility"
     )
 
-    # ===== Multi-Task Configuration (Tier 2) =====
-    num_tasks: Optional[int] = Field(
-        default=None,
-        ge=2,
-        description="Total number of tasks (main + subtasks). If None, inferred from data at runtime",
-    )
-
-    main_task_index: int = Field(
-        default=0,
-        ge=0,
-        description="Index of the main task in the task list (default: 0 = first task)",
-    )
-
-    # ===== Loss Function Selection (Tier 2) =====
+    # Loss Function Selection
     loss_type: Literal["fixed", "adaptive", "adaptive_kd"] = Field(
         default="adaptive",
         description="Loss function type: 'fixed' (static weights), 'adaptive' (similarity-based), 'adaptive_kd' (with knowledge distillation)",
     )
 
-    # ===== Loss Configuration Parameters (Tier 2) =====
-    # All parameters prefixed with 'loss_' for clarity
-
+    # Loss Configuration Parameters (all prefixed with 'loss_')
     # Numerical stability
     loss_epsilon: float = Field(
         default=1e-15,
@@ -207,6 +221,14 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     _enable_kd: Optional[bool] = PrivateAttr(default=None)
     _objective: Optional[str] = PrivateAttr(default=None)
     _metric: Optional[list] = PrivateAttr(default=None)
+    _num_tasks: Optional[int] = PrivateAttr(default=None)
+
+    @property
+    def num_tasks(self) -> int:
+        """Get number of tasks derived from task_label_names."""
+        if self._num_tasks is None:
+            self._num_tasks = len(self.task_label_names)
+        return self._num_tasks
 
     @property
     def enable_kd(self) -> bool:
@@ -240,6 +262,7 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
         super().validate_dimensions()
 
         # Initialize derived fields
+        self._num_tasks = len(self.task_label_names)
         self._enable_kd = self.loss_type == "adaptive_kd"
         self._objective = "binary" if self.is_binary else "multiclass"
         self._metric = (
@@ -317,6 +340,7 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
         """Override to include MT-specific and LightGBM-specific derived fields."""
         base_fields = super().get_public_init_fields()
         derived_fields = {
+            "num_tasks": self.num_tasks,
             "enable_kd": self.enable_kd,
             "objective": self.objective,
             "metric": self.metric,

@@ -47,12 +47,23 @@ This entry point document provides a comprehensive index of all step-related des
 
 ### MTGBM (Multi-Task Gradient Boosting Machine) Refactoring
 
+#### Design Documents
+
 - [LightGBM Multi-Task Training Step Design](../1_design/lightgbm_multi_task_training_step_design.md) - Design for LightGBM multi-task/multi-label training with adaptive weighting and knowledge distillation
 - [MTGBM Loss Functions Refactoring Design](../1_design/mtgbm_models_refactoring_design.md) - Comprehensive refactoring design for MTGBM loss function implementations with abstract base classes, strategy pattern, and factory pattern (complements model classes refactoring)
 - [MTGBM Model Classes Refactoring Design](../1_design/mtgbm_model_classes_refactoring_design.md) - Architectural design for refactoring MTGBM model class implementations with template method pattern, base model abstractions, and state management (complements loss function refactoring)
+
+#### Implementation Plans
+
+- [LightGBMMT Implementation Part 1: Script Contract & Hyperparameters](../2_project_planning/2025-11-12_lightgbmmt_implementation_part1_script_contract_hyperparams.md) - Phase 1 implementation plan covering script contract definition, hyperparameter classes, loss function refactoring with base class architecture, and factory patterns (67% code reduction achieved)
+- [LightGBMMT Implementation Part 2: Training Script Alignment](../2_project_planning/2025-11-12_lightgbmmt_implementation_part2_training_script_alignment.md) - Phase 2 implementation plan for training script development aligned with XGBoost patterns, model architecture integration, and multi-task evaluation framework
+
+#### Analysis Documents
+
 - [LightGBMMT Multi-Task Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md) - Analysis of LightGBMMT framework implementation, custom loss functions, and multi-task learning patterns
 - [MTGBM Models Optimization Analysis](../4_analysis/2025-11-11_mtgbm_models_optimization_analysis.md) - Detailed analysis identifying optimization opportunities, code duplication issues, and performance bottlenecks in MTGBM implementations
 - [MTGBM Pipeline Reusability Analysis](../4_analysis/2025-11-11_mtgbm_pipeline_reusability_analysis.md) - Analysis of MTGBM pipeline architecture reusability patterns and extensibility opportunities
+- [Python Refactored vs LightGBMMT Fork Architecture Comparison](../4_analysis/2025-11-12_python_refactored_vs_lightgbmmt_fork_comparison.md) - Comprehensive comparison analysis demonstrating Python refactored approach achieves 4-30% better performance, 67% code reduction, eliminates fork dependency, and provides $635K cost savings over 5 years compared to C++ lightgbmmt fork
 
 ### Core Step Builder Patterns
 

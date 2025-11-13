@@ -26,10 +26,21 @@ class FixedWeightLoss(BaseLossFunction):
         self.logger.info(f"Fixed weights: {self.weights}")
 
     def _generate_weights(self) -> np.ndarray:
-        """Generate weight vector dynamically based on num_col."""
+        """Generate weight vector dynamically based on num_col and main_task_index."""
         weights = np.zeros(self.num_col)
-        weights[0] = self.main_task_weight
-        weights[1:] = self.main_task_weight * self.beta
+
+        # Get main task index from hyperparameters (defaults to 0 for backward compatibility)
+        main_idx = getattr(self.hyperparams, "main_task_index", 0)
+
+        # Set main task weight
+        weights[main_idx] = self.main_task_weight
+
+        # Set subtask weights (all tasks except main task)
+        subtask_weight = self.main_task_weight * self.beta
+        for i in range(self.num_col):
+            if i != main_idx:
+                weights[i] = subtask_weight
+
         return weights
 
     def compute_weights(
