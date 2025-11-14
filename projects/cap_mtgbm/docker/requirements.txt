@@ -16,3 +16,10 @@ scipy>=1.7.0  # Required for Jensen-Shannon divergence in adaptive loss
 # Validation & Type Support
 pydantic>=2.0.0,<3.0.0
 typing-extensions>=4.2.0
+
+# ONNX Export
+onnx==1.15.0
+onnxruntime==1.17.0
+
+# Serving
+flask==3.0.2

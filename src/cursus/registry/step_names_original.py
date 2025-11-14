@@ -180,6 +180,20 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "XGBoost model inference step for prediction generation without metrics",
     },
+    "LightGBMModelEval": {
+        "config_class": "LightGBMModelEvalConfig",
+        "builder_step_name": "LightGBMModelEvalStepBuilder",
+        "spec_type": "LightGBMModelEval",
+        "sagemaker_step_type": "Processing",
+        "description": "LightGBM model evaluation step",
+    },
+    "LightGBMModelInference": {
+        "config_class": "LightGBMModelInferenceConfig",
+        "builder_step_name": "LightGBMModelInferenceStepBuilder",
+        "spec_type": "LightGBMModelInference",
+        "sagemaker_step_type": "Processing",
+        "description": "LightGBM model inference step for prediction generation without metrics",
+    },
     "PyTorchModelEval": {
         "config_class": "PyTorchModelEvalConfig",
         "builder_step_name": "PyTorchModelEvalStepBuilder",

@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
-from flask import Response
 from transformers import AutoTokenizer
 
 from processing.processors import (
@@ -317,22 +316,16 @@ def input_fn(request_body, request_content_type, context=None):
 
         else:
             logger.warning(f"Unsupported content type: {request_content_type}")
-            # THIS RETURNS A Response OBJECT, NOT A DataFrame
-            return Response(
-                response=f"This predictor only supports CSV, JSON, or Parquet data. Received: {request_content_type}",
-                status=415,
-                mimetype="text/plain",
+            raise ValueError(
+                f"This predictor only supports CSV, JSON, or Parquet data. Received: {request_content_type}"
             )
     except Exception as e:
-        # THIS ALSO RETURNS A Response OBJECT, NOT A DataFrame
         logger.error(
             f"Failed to parse input ({request_content_type}). Error: {e}", exc_info=True
-        )  # Log full traceback
-        return Response(
-            response=f"Invalid input format or corrupted data. Error during parsing: {e}",
-            status=400,
-            mimetype="text/plain",
         )
+        raise ValueError(
+            f"Invalid input format or corrupted data. Error during parsing: {e}"
+        ) from e
 
 
 # ================== Prediction Function ============================
