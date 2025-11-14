@@ -390,6 +390,13 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Config: `XGBoostModelInferenceConfig`
 - Builder: `XGBoostModelInferenceStepBuilder`
 
+**LightGBMMT Model Inference**
+- Description: LightGBMMT multi-task model inference step for generating N independent binary task predictions
+- **Design Doc:** [LightGBMMT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
+- Config: `LightGBMMTModelInferenceConfig`
+- Builder: `LightGBMMTModelInferenceStepBuilder`
+- **Key Features:** Multi-task prediction, per-task calibration support, reuses XGBoost multiclass output format for compatibility
+
 **PyTorchModelEval**
 - Description: PyTorch model evaluation step
 - Config: `PyTorchModelEvalConfig`

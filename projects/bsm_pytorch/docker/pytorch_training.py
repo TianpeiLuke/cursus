@@ -43,16 +43,19 @@ from processing.categorical.categorical_label_processor import CategoricalLabelP
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import build_collate_batch
-from lightning_models.pl_tab_ae import TabAE
-from lightning_models.pl_text_cnn import TextCNN
-from lightning_models.pl_multimodal_cnn import MultimodalCNN
-from lightning_models.pl_multimodal_bert import MultimodalBert
-from lightning_models.pl_multimodal_moe import MultimodalBertMoE
-from lightning_models.pl_multimodal_gate_fusion import MultimodalBertGateFusion
-from lightning_models.pl_multimodal_cross_attn import MultimodalBertCrossAttn
-from lightning_models.pl_bert_classification import TextBertClassification
-from lightning_models.pl_lstm import TextLSTM
-from lightning_models.pl_train import (
+from lightning_models.tabular.pl_tab_ae import TabAE
+from lightning_models.text.pl_text_cnn import TextCNN
+from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
+from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
+from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
+from lightning_models.bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
+from lightning_models.bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
+from lightning_models.trimodal.pl_trimodal_bert import TrimodalBert
+from lightning_models.trimodal.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
+from lightning_models.trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
+from lightning_models.text.pl_bert_classification import TextBertClassification
+from lightning_models.text.pl_lstm import TextLSTM
+from lightning_models.utils.pl_train import (
     model_train,
     model_inference,
     predict_stack_transform,
@@ -63,12 +66,12 @@ from lightning_models.pl_train import (
     load_artifacts,
     load_checkpoint,
 )
-from lightning_models.pl_model_plots import (
+from lightning_models.utils.pl_model_plots import (
     compute_metrics,
     roc_metric_plot,
     pr_metric_plot,
 )
-from lightning_models.dist_utils import get_rank, is_main_process
+from lightning_models.utils.dist_utils import get_rank, is_main_process
 from pydantic import (
     BaseModel,
     Field,
@@ -472,22 +475,48 @@ def build_categorical_label_pipelines(
 def model_select(
     model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
-    if model_class == "multimodal_cnn":
-        return MultimodalCNN(config.model_dump(), vocab_size, embedding_mat)
-    elif model_class == "bert":
-        return TextBertClassification(config.model_dump())
-    elif model_class == "lstm":
-        return TextLSTM(config.model_dump(), vocab_size, embedding_mat)
-    elif model_class == "multimodal_bert":
-        return MultimodalBert(config.model_dump())
-    elif model_class == "multimodal_moe":
-        return MultimodalBertMoE(config.model_dump())
-    elif model_class == "multimodal_gate_fusion":
-        return MultimodalBertGateFusion(config.model_dump())
-    elif model_class == "multimodal_cross_attn":
-        return MultimodalBertCrossAttn(config.model_dump())
-    else:
-        return TextBertClassification(config.model_dump())
+    """
+    Select and instantiate a model based on model_class string.
+
+    Supports:
+    - General categories: "bimodal", "trimodal"
+    - Specific bimodal models: "bimodal_bert", "bimodal_cnn", etc.
+    - Specific trimodal models: "trimodal_bert", etc.
+    - Text-only models: "bert", "lstm"
+    - Backward compatibility: "multimodal_*" maps to "bimodal_*"
+    """
+    model_map = {
+        # General categories (default to bert variants)
+        "bimodal": lambda: BimodalBert(config.model_dump()),
+        "trimodal": lambda: TrimodalBert(config.model_dump()),
+        # Specific bimodal models
+        "bimodal_cnn": lambda: BimodalCNN(
+            config.model_dump(), vocab_size, embedding_mat
+        ),
+        "bimodal_bert": lambda: BimodalBert(config.model_dump()),
+        "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
+        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
+        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        # Specific trimodal models
+        "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
+        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
+        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config.model_dump()),
+        # Text-only models
+        "bert": lambda: TextBertClassification(config.model_dump()),
+        "lstm": lambda: TextLSTM(config.model_dump(), vocab_size, embedding_mat),
+        # Backward compatibility (multimodal -> bimodal)
+        "multimodal_cnn": lambda: BimodalCNN(
+            config.model_dump(), vocab_size, embedding_mat
+        ),
+        "multimodal_bert": lambda: BimodalBert(config.model_dump()),
+        "multimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
+        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
+        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+    }
+
+    return model_map.get(
+        model_class, lambda: TextBertClassification(config.model_dump())
+    )()
 
 
 # ----------------- Training Setup -----------------------

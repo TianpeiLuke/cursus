@@ -29,14 +29,14 @@ from processing.categorical.multiclass_label_processor import MultiClassLabelPro
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import build_collate_batch
 
-from lightning_models.pl_train import (
+from lightning_models.utils.pl_train import (
     model_inference,
     model_online_inference,
     load_model,
     load_artifacts,
     load_onnx_model,
 )
-from lightning_models.dist_utils import get_rank, is_main_process
+from lightning_models.utils.dist_utils import get_rank, is_main_process
 from pydantic import BaseModel, Field, ValidationError  # For Config Validation
 
 # =================== Logging Setup =================================

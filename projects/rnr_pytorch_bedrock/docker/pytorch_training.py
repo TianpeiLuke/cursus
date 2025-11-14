@@ -31,31 +31,31 @@ warnings.filterwarnings("ignore")
 from processing.processors import (
     Processor,
 )
-from processing.bsm_processor import (
+from processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.bert_tokenize_processor import TokenizationProcessor
-from processing.categorical_label_processor import CategoricalLabelProcessor
-from processing.multiclass_label_processor import MultiClassLabelProcessor
-from processing.bsm_datasets import BSMDataset
-from processing.bsm_dataloader import build_collate_batch, build_trimodal_collate_batch
-from lightning_models.pl_tab_ae import TabAE
-from lightning_models.pl_text_cnn import TextCNN
-from lightning_models.pl_multimodal_cnn import MultimodalCNN
-from lightning_models.pl_multimodal_bert import MultimodalBert
-from lightning_models.pl_trimodal_bert import TrimodalBert
-from lightning_models.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
-from lightning_models.pl_trimodal_gate_fusion import TrimodalGateFusionBert
-from lightning_models.pl_multimodal_moe import MultimodalBertMoE
-from lightning_models.pl_multimodal_gate_fusion import MultimodalBertGateFusion
-from lightning_models.pl_multimodal_cross_attn import MultimodalBertCrossAttn
-from lightning_models.pl_bert_classification import TextBertClassification
-from lightning_models.pl_lstm import TextLSTM
-from lightning_models.pl_train import (
+from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
+from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.datasets.bsm_datasets import BSMDataset
+from processing.dataloaders.bsm_dataloader import build_collate_batch
+from lightning_models.tabular.pl_tab_ae import TabAE
+from lightning_models.text.pl_text_cnn import TextCNN
+from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
+from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
+from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
+from lightning_models.bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
+from lightning_models.bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
+from lightning_models.trimodal.pl_trimodal_bert import TrimodalBert
+from lightning_models.trimodal.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
+from lightning_models.trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
+from lightning_models.text.pl_bert_classification import TextBertClassification
+from lightning_models.text.pl_lstm import TextLSTM
+from lightning_models.utils.pl_train import (
     model_train,
     model_inference,
     predict_stack_transform,
@@ -66,12 +66,12 @@ from lightning_models.pl_train import (
     load_artifacts,
     load_checkpoint,
 )
-from lightning_models.pl_model_plots import (
+from lightning_models.utils.pl_model_plots import (
     compute_metrics,
     roc_metric_plot,
     pr_metric_plot,
 )
-from lightning_models.dist_utils import get_rank, is_main_process
+from lightning_models.utils.dist_utils import get_rank, is_main_process
 from pydantic import (
     BaseModel,
     Field,
@@ -79,16 +79,13 @@ from pydantic import (
     field_validator,
 )  # For Config Validation
 
-# Import TriModalHyperparameters from local hyperparams
-from hyperparams.hyperparameters_trimodal import TriModalHyperparameters
-
 
 # ================== Model, Data and Hyperparameter Folder =================
 prefix = "/opt/ml/"
 input_path = os.path.join(prefix, "input/data")
 output_path = os.path.join(prefix, "output/data")
 model_path = os.path.join(prefix, "model")
-hparam_path = os.path.join(prefix, "code/hyperparams/hyperparameters.json")
+hparam_path = os.path.join(prefix, "input/config/hyperparameters.json")
 checkpoint_path = os.environ.get("SM_CHECKPOINT_DIR", "/opt/ml/checkpoints")
 train_channel = "train"
 train_path = os.path.join(input_path, train_channel)
@@ -115,9 +112,183 @@ def log_once(logger, message, level=logging.INFO):
         logger.log(level, message)
 
 
+# -------------------------------------------------------------------------
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# -------------------------------------------------------------------------
+def _detect_file_format(file_path: str) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    from pathlib import Path
+
+    suffix = Path(file_path).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: str) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: str, format_str: str
+) -> str:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    from pathlib import Path
+
+    output_path = Path(output_path)
+
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return str(file_path)
+
+
 # ================================================================================
-# Use TriModalHyperparameters as the main configuration class
-Config = TriModalHyperparameters
+class Config(BaseModel):
+    id_name: str = "order_id"
+    text_name: str = "text"
+    label_name: str = "label"
+    batch_size: int = 32
+    full_field_list: List[str] = Field(default_factory=list)
+    cat_field_list: List[str] = Field(default_factory=list)
+    tab_field_list: List[str] = Field(default_factory=list)
+    categorical_features_to_encode: List[str] = Field(default_factory=list)
+    header: int = 0
+    max_sen_len: int = 512
+    chunk_trancate: bool = False
+    max_total_chunks: int = 5
+    kernel_size: List[int] = Field(default_factory=lambda: [3, 5, 7])
+    num_layers: int = 2
+    num_channels: List[int] = Field(default_factory=lambda: [100, 100])
+    hidden_common_dim: int = 100
+    input_tab_dim: int = 11
+    num_classes: int = 2
+    is_binary: bool = True
+    multiclass_categories: List[Union[int, str]] = Field(default_factory=lambda: [0, 1])
+    max_epochs: int = 10
+    lr: float = 0.02
+    lr_decay: float = 0.05
+    momentum: float = 0.9
+    weight_decay: float = 0
+    class_weights: List[float] = Field(default_factory=lambda: [1.0, 10.0])
+    dropout_keep: float = 0.5
+    optimizer: str = "SGD"
+    fixed_tokenizer_length: bool = True
+    is_embeddings_trainable: bool = True
+    tokenizer: str = "bert-base-multilingual-cased"
+    metric_choices: List[str] = Field(default_factory=lambda: ["auroc", "f1_score"])
+    early_stop_metric: str = "val/f1_score"
+    early_stop_patience: int = 3
+    gradient_clip_val: float = 1.0
+    model_class: str = "multimodal_bert"
+    load_ckpt: bool = False
+    val_check_interval: float = 0.25
+    adam_epsilon: float = 1e-08
+    fp16: bool = False
+    run_scheduler: bool = True
+    reinit_pooler: bool = True
+    reinit_layers: int = 2
+    warmup_steps: int = 300
+    text_input_ids_key: str = "input_ids"  # Configurable text input key
+    text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
+    train_filename: Optional[str] = None
+    val_filename: Optional[str] = None
+    test_filename: Optional[str] = None
+    embed_size: Optional[int] = None  # Added for type consistency
+    model_path: str = "/opt/ml/model"  # Add model_path with a default value
+    categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = (
+        None  # Add this line
+    )
+    label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
+    id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
+    _input_format: Optional[str] = None  # Added: input data format for preservation
+
+    def model_post_init(self, __context):
+        # Validate consistency between multiclass_categories and num_classes
+        if self.is_binary and self.num_classes != 2:
+            raise ValueError("For binary classification, num_classes must be 2.")
+        if not self.is_binary:
+            if self.num_classes < 2:
+                raise ValueError(
+                    "For multiclass classification, num_classes must be >= 2."
+                )
+            if not self.multiclass_categories:
+                raise ValueError(
+                    "multiclass_categories must be provided for multiclass classification."
+                )
+            if len(self.multiclass_categories) != self.num_classes:
+                raise ValueError(
+                    f"num_classes={self.num_classes} does not match "
+                    f"len(multiclass_categories)={len(self.multiclass_categories)}"
+                )
+            if len(set(self.multiclass_categories)) != len(self.multiclass_categories):
+                raise ValueError("multiclass_categories must contain unique values.")
+        else:
+            # Optional: Warn if multiclass_categories is defined when binary
+            if self.multiclass_categories and len(self.multiclass_categories) != 2:
+                raise ValueError(
+                    "For binary classification, multiclass_categories must contain exactly 2 items."
+                )
+
+        # New: validate class_weights length
+        if self.class_weights and len(self.class_weights) != self.num_classes:
+            raise ValueError(
+                f"class_weights must have the same number of elements as num_classes "
+                f"(expected {self.num_classes}, got {len(self.class_weights)})."
+            )
 
 
 # ------------------- Improved Hyperparameter Parser ----------------------
@@ -250,197 +421,34 @@ def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
 
 
 # ----------------- Updated Data Preprocessing Pipeline ------------------
-def build_processing_pipeline(
-    processing_steps: List[str],
-    tokenizer: AutoTokenizer,
+def data_preprocess_pipeline(
     config: Config,
-    input_ids_key: str = "input_ids",
-    attention_mask_key: str = "attention_mask",
-) -> Processor:
-    """
-    Build a processing pipeline based on the specified steps.
-
-    Args:
-        processing_steps: List of processing step names
-        tokenizer: Tokenizer to use for tokenization step
-        config: Configuration object
-        input_ids_key: Key name for input_ids in tokenized output
-        attention_mask_key: Key name for attention_mask in tokenized output
-
-    Returns:
-        Composed processor pipeline
-    """
-    # Map step names to processor classes
-    step_map = {
-        "dialogue_splitter": DialogueSplitterProcessor,
-        "html_normalizer": HTMLNormalizerProcessor,
-        "emoji_remover": EmojiRemoverProcessor,
-        "text_normalizer": TextNormalizationProcessor,
-        "dialogue_chunker": lambda: DialogueChunkerProcessor(
+) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    if not config.tokenizer:
+        config.tokenizer = "bert-base-multilingual-cased"
+    log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
+    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+    dialogue_pipeline = (
+        DialogueSplitterProcessor()
+        >> HTMLNormalizerProcessor()
+        >> EmojiRemoverProcessor()
+        >> TextNormalizationProcessor()
+        >> DialogueChunkerProcessor(
             tokenizer=tokenizer,
             max_tokens=config.max_sen_len,
             truncate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
-        ),
-        "tokenizer": lambda: TokenizationProcessor(
+        )
+        >> BertTokenizeProcessor(
             tokenizer,
             add_special_tokens=True,
             max_length=config.max_sen_len,
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
-        ),
-    }
-
-    # Build pipeline by chaining processors
-    pipeline = None
-    for step_name in processing_steps:
-        if step_name not in step_map:
-            log_once(
-                logger, f"Warning: Unknown processing step '{step_name}', skipping"
-            )
-            continue
-
-        processor_class = step_map[step_name]
-        processor = (
-            processor_class() if not callable(processor_class) else processor_class()
+            input_ids_key=config.text_input_ids_key,  # Pass key names
+            attention_mask_key=config.text_attention_mask_key,
         )
-
-        if pipeline is None:
-            pipeline = processor
-        else:
-            pipeline = pipeline >> processor
-
-    if pipeline is None:
-        raise ValueError(f"No valid processing steps found in: {processing_steps}")
-
-    return pipeline
-
-
-def data_preprocess_pipeline(
-    config: Config,
-) -> Tuple[Dict[str, AutoTokenizer], Dict[str, Processor]]:
-    """
-    Create preprocessing pipelines for text modalities.
-    Supports both single text (bi-modal) and dual text (tri-modal) configurations
-    with configurable processing steps.
-    """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-cased"
-
-    tokenizers = {}
-    pipelines = {}
-
-    # Check if this is tri-modal configuration
-    is_trimodal = (
-        hasattr(config, "primary_text_name")
-        and hasattr(config, "secondary_text_name")
-        and config.primary_text_name
-        and config.secondary_text_name
     )
-
-    if is_trimodal:
-        log_once(logger, "Setting up tri-modal text processing pipelines")
-
-        # Primary text pipeline (e.g., chat)
-        primary_tokenizer_name = (
-            getattr(config, "primary_tokenizer", None) or config.tokenizer
-        )
-        log_once(logger, f"Constructing primary tokenizer: {primary_tokenizer_name}")
-        primary_tokenizer = AutoTokenizer.from_pretrained(primary_tokenizer_name)
-
-        # Get processing steps from config
-        primary_steps = getattr(
-            config,
-            "primary_text_processing_steps",
-            [
-                "dialogue_splitter",
-                "html_normalizer",
-                "emoji_remover",
-                "text_normalizer",
-                "dialogue_chunker",
-                "tokenizer",
-            ],
-        )
-        log_once(logger, f"Primary text processing steps: {primary_steps}")
-
-        primary_pipeline = build_processing_pipeline(
-            primary_steps,
-            primary_tokenizer,
-            config,
-            input_ids_key=getattr(config, "primary_text_input_ids_key", "input_ids"),
-            attention_mask_key=getattr(
-                config, "primary_text_attention_mask_key", "attention_mask"
-            ),
-        )
-
-        # Secondary text pipeline (e.g., shiptrack)
-        secondary_tokenizer_name = (
-            getattr(config, "secondary_tokenizer", None) or config.tokenizer
-        )
-        log_once(
-            logger, f"Constructing secondary tokenizer: {secondary_tokenizer_name}"
-        )
-        secondary_tokenizer = AutoTokenizer.from_pretrained(secondary_tokenizer_name)
-
-        # Get processing steps from config
-        secondary_steps = getattr(
-            config,
-            "secondary_text_processing_steps",
-            ["dialogue_splitter", "text_normalizer", "dialogue_chunker", "tokenizer"],
-        )
-        log_once(logger, f"Secondary text processing steps: {secondary_steps}")
-
-        secondary_pipeline = build_processing_pipeline(
-            secondary_steps,
-            secondary_tokenizer,
-            config,
-            input_ids_key=getattr(config, "secondary_text_input_ids_key", "input_ids"),
-            attention_mask_key=getattr(
-                config, "secondary_text_attention_mask_key", "attention_mask"
-            ),
-        )
-
-        tokenizers = {"primary": primary_tokenizer, "secondary": secondary_tokenizer}
-
-        pipelines = {
-            config.primary_text_name: primary_pipeline,
-            config.secondary_text_name: secondary_pipeline,
-        }
-
-        log_once(logger, f"Primary text field: {config.primary_text_name}")
-        log_once(logger, f"Secondary text field: {config.secondary_text_name}")
-
-    else:
-        # Traditional bi-modal setup
-        log_once(logger, "Setting up bi-modal text processing pipeline")
-        log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
-        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-
-        # Use default processing steps for bi-modal
-        default_steps = [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-
-        dialogue_pipeline = build_processing_pipeline(
-            default_steps,
-            tokenizer,
-            config,
-            input_ids_key=getattr(config, "text_input_ids_key", "input_ids"),
-            attention_mask_key=getattr(
-                config, "text_attention_mask_key", "attention_mask"
-            ),
-        )
-
-        tokenizers = {"main": tokenizer}
-        pipelines = {config.text_name: dialogue_pipeline}
-        log_once(logger, f"Text field: {config.text_name}")
-
-    return tokenizers, pipelines
+    pipelines = {config.text_name: dialogue_pipeline}
+    return tokenizer, pipelines
 
 
 # ----------------- Updated Categorical Label Pipeline ------------------
@@ -467,28 +475,48 @@ def build_categorical_label_pipelines(
 def model_select(
     model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
-    if model_class == "multimodal_cnn":
-        return MultimodalCNN(config.model_dump(), vocab_size, embedding_mat)
-    elif model_class == "bert":
-        return TextBertClassification(config.model_dump())
-    elif model_class == "lstm":
-        return TextLSTM(config.model_dump(), vocab_size, embedding_mat)
-    elif model_class == "multimodal_bert":
-        return MultimodalBert(config.model_dump())
-    elif model_class == "trimodal_bert":
-        return TrimodalBert(config.model_dump())
-    elif model_class == "trimodal_cross_attn_bert":
-        return TrimodalCrossAttentionBert(config.model_dump())
-    elif model_class == "trimodal_gate_fusion_bert":
-        return TrimodalGateFusionBert(config.model_dump())
-    elif model_class == "multimodal_moe":
-        return MultimodalBertMoE(config.model_dump())
-    elif model_class == "multimodal_gate_fusion":
-        return MultimodalBertGateFusion(config.model_dump())
-    elif model_class == "multimodal_cross_attn":
-        return MultimodalBertCrossAttn(config.model_dump())
-    else:
-        return TextBertClassification(config.model_dump())
+    """
+    Select and instantiate a model based on model_class string.
+
+    Supports:
+    - General categories: "bimodal", "trimodal"
+    - Specific bimodal models: "bimodal_bert", "bimodal_cnn", etc.
+    - Specific trimodal models: "trimodal_bert", etc.
+    - Text-only models: "bert", "lstm"
+    - Backward compatibility: "multimodal_*" maps to "bimodal_*"
+    """
+    model_map = {
+        # General categories (default to bert variants)
+        "bimodal": lambda: BimodalBert(config.model_dump()),
+        "trimodal": lambda: TrimodalBert(config.model_dump()),
+        # Specific bimodal models
+        "bimodal_cnn": lambda: BimodalCNN(
+            config.model_dump(), vocab_size, embedding_mat
+        ),
+        "bimodal_bert": lambda: BimodalBert(config.model_dump()),
+        "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
+        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
+        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        # Specific trimodal models
+        "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
+        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
+        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config.model_dump()),
+        # Text-only models
+        "bert": lambda: TextBertClassification(config.model_dump()),
+        "lstm": lambda: TextLSTM(config.model_dump(), vocab_size, embedding_mat),
+        # Backward compatibility (multimodal -> bimodal)
+        "multimodal_cnn": lambda: BimodalCNN(
+            config.model_dump(), vocab_size, embedding_mat
+        ),
+        "multimodal_bert": lambda: BimodalBert(config.model_dump()),
+        "multimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
+        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
+        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+    }
+
+    return model_map.get(
+        model_class, lambda: TextBertClassification(config.model_dump())
+    )()
 
 
 # ----------------- Training Setup -----------------------
@@ -505,12 +533,12 @@ def setup_training_environment(config: Config) -> torch.device:
 # ----------------- Data Loading and Preprocessing ------------------
 def load_and_preprocess_data(
     config: Config,
-) -> Tuple[List[BSMDataset], Dict[str, AutoTokenizer], Dict]:
+) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:
     """
     Loads and preprocesses the train/val/test datasets according to the provided config.
 
     Returns:
-        Tuple of ([train_dataset, val_dataset, test_dataset], tokenizers, config)
+        Tuple of ([train_dataset, val_dataset, test_dataset], tokenizer, config)
     """
     train_filename = config.train_filename or find_first_data_file(train_path)
     val_filename = config.val_filename or find_first_data_file(val_path)
@@ -524,76 +552,24 @@ def load_and_preprocess_data(
         print(f"Creating checkpoint folder {checkpoint_path}")
         os.makedirs(checkpoint_path)
 
+    # Detect input format from training data file
+    train_file_path = os.path.join(train_path, train_filename)
+    detected_format = _detect_file_format(train_file_path)
+    log_once(logger, f"Detected input data format: {detected_format}")
+
+    # Store format in config for output preservation
+    config._input_format = detected_format
+
     # === Load raw datasets ===
     train_bsm_dataset = load_data_module(train_path, train_filename, config)
     val_bsm_dataset = load_data_module(val_path, val_filename, config)
     test_bsm_dataset = load_data_module(test_path, test_filename, config)
 
     # === Build tokenizer and preprocessing pipelines ===
-    tokenizers, pipelines = data_preprocess_pipeline(config)
-
-    # Apply pipelines to datasets based on model type
-    is_trimodal_model = config.model_class in [
-        "trimodal_bert",
-        "trimodal_cross_attn_bert",
-        "trimodal_gate_fusion_bert",
-    ]
-    has_dual_text_config = (
-        hasattr(config, "primary_text_name")
-        and hasattr(config, "secondary_text_name")
-        and config.primary_text_name
-        and config.secondary_text_name
-    )
-
-    if is_trimodal_model and has_dual_text_config:
-        # Apply both primary and secondary text pipelines for trimodal model
-        log_once(
-            logger, f"Applying dual text processing for {config.model_class} model"
-        )
-        train_bsm_dataset.add_pipeline(
-            config.primary_text_name, pipelines[config.primary_text_name]
-        )
-        train_bsm_dataset.add_pipeline(
-            config.secondary_text_name, pipelines[config.secondary_text_name]
-        )
-
-        val_bsm_dataset.add_pipeline(
-            config.primary_text_name, pipelines[config.primary_text_name]
-        )
-        val_bsm_dataset.add_pipeline(
-            config.secondary_text_name, pipelines[config.secondary_text_name]
-        )
-
-        test_bsm_dataset.add_pipeline(
-            config.primary_text_name, pipelines[config.primary_text_name]
-        )
-        test_bsm_dataset.add_pipeline(
-            config.secondary_text_name, pipelines[config.secondary_text_name]
-        )
-    elif has_dual_text_config:
-        # For non-trimodal models with dual text config, use only primary text
-        log_once(logger, f"Using only primary text for {config.model_class} model")
-        train_bsm_dataset.add_pipeline(
-            config.primary_text_name, pipelines[config.primary_text_name]
-        )
-        val_bsm_dataset.add_pipeline(
-            config.primary_text_name, pipelines[config.primary_text_name]
-        )
-        test_bsm_dataset.add_pipeline(
-            config.primary_text_name, pipelines[config.primary_text_name]
-        )
-
-        # Update config to use primary text as the main text field for bi-modal models
-        config.text_name = config.primary_text_name
-    else:
-        # Traditional single text pipeline
-        log_once(
-            logger,
-            f"Using traditional single text processing for {config.model_class} model",
-        )
-        train_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
-        val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
-        test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
+    tokenizer, pipelines = data_preprocess_pipeline(config)
+    train_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
+    val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
+    test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
 
     # === Build categorical feature encoders (tabular side) ===
     categorical_processors = build_categorical_label_pipelines(
@@ -628,49 +604,17 @@ def load_and_preprocess_data(
     config.categorical_processor_mappings = {
         field: proc.category_to_label for field, proc in categorical_processors.items()
     }
-    return [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset], tokenizers, config
+    return [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset], tokenizer, config
 
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, tokenizers: Dict[str, AutoTokenizer], datasets: List[BSMDataset]
+    config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    # Determine collate function based on model type and configuration
-    is_trimodal_model = config.model_class in [
-        "trimodal_bert",
-        "trimodal_cross_attn_bert",
-        "trimodal_gate_fusion_bert",
-    ]
-    has_dual_text_config = (
-        hasattr(config, "primary_text_name")
-        and hasattr(config, "secondary_text_name")
-        and config.primary_text_name
-        and config.secondary_text_name
-    )
-
-    if is_trimodal_model and has_dual_text_config:
-        # For tri-modal models, use the enhanced collate function that handles multiple text fields
-        log_once(
-            logger, f"Using tri-modal collate function for {config.model_class} model"
-        )
-        bsm_collate_batch = build_trimodal_collate_batch()
-    else:
-        # For bi-modal models (including those with dual text config but non-trimodal model)
-        log_once(
-            logger, f"Using bi-modal collate function for {config.model_class} model"
-        )
-        # Use primary text keys if available, otherwise fall back to traditional text keys
-        input_ids_key = getattr(config, "primary_text_input_ids_key", None) or getattr(
-            config, "text_input_ids_key", "input_ids"
-        )
-        attention_mask_key = getattr(
-            config, "primary_text_attention_mask_key", None
-        ) or getattr(config, "text_attention_mask_key", "attention_mask")
-
-        bsm_collate_batch = build_collate_batch(
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
-        )
+    bsm_collate_batch = build_collate_batch(
+        input_ids_key=config.text_input_ids_key,
+        attention_mask_key=config.text_attention_mask_key,
+    )  # Pass key names
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
 
@@ -687,13 +631,6 @@ def build_model_and_optimizer(
         test_bsm_dataset, collate_fn=bsm_collate_batch, batch_size=config.batch_size
     )
 
-    # Get the main tokenizer for embedding extraction
-    main_tokenizer = (
-        tokenizers.get("primary")
-        or tokenizers.get("main")
-        or list(tokenizers.values())[0]
-    )
-
     log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
     embedding_model = AutoModel.from_pretrained(config.tokenizer)
     embedding_mat = embedding_model.embeddings.word_embeddings.weight
@@ -701,7 +638,7 @@ def build_model_and_optimizer(
         logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]"
     )
     config.embed_size = embedding_mat.shape[1]
-    vocab_size = main_tokenizer.vocab_size
+    vocab_size = tokenizer.vocab_size
     log_once(logger, f"Vocabulary Size: {vocab_size}")
     log_once(logger, f"Model choice: {config.model_class}")
     model = model_select(config.model_class, config, vocab_size, embedding_mat)
@@ -761,12 +698,60 @@ def export_model_to_onnx(
 
 
 # ----------------- Evaluation and Logging -----------------------
+def save_predictions_as_dataframe(
+    predictions: np.ndarray,
+    true_labels: np.ndarray,
+    ids: np.ndarray,
+    output_dir: str,
+    split_name: str,
+    id_col: str,
+    label_col: str,
+    output_format: str = "csv",
+) -> None:
+    """
+    Save predictions as DataFrame with format preservation.
+
+    Args:
+        predictions: Prediction probabilities of shape (N, num_classes)
+        true_labels: True labels of shape (N,)
+        ids: Sample IDs of shape (N,)
+        output_dir: Directory to save predictions
+        split_name: Name of split (e.g., 'val', 'test')
+        id_col: Name of ID column
+        label_col: Name of label column
+        output_format: Format to save in ('csv', 'tsv', or 'parquet')
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create DataFrame with ID and label columns
+    df = pd.DataFrame({id_col: ids, label_col: true_labels})
+
+    # Add probability columns for each class
+    num_classes = predictions.shape[1] if len(predictions.shape) > 1 else 1
+    if num_classes == 1:
+        # Binary with single probability
+        df["prob_class_0"] = 1 - predictions.squeeze()
+        df["prob_class_1"] = predictions.squeeze()
+    else:
+        for i in range(num_classes):
+            df[f"prob_class_{i}"] = predictions[:, i]
+
+    # Save with format preservation
+    output_base = os.path.join(output_dir, f"{split_name}_predictions")
+    saved_path = save_dataframe_with_format(df, output_base, output_format)
+    log_once(
+        logger, f"Saved {split_name} predictions (format={output_format}): {saved_path}"
+    )
+
+
 def evaluate_and_log_results(
     model: nn.Module,
     val_dataloader: DataLoader,
     test_dataloader: DataLoader,
     config: Config,
     trainer: pl.Trainer,
+    val_dataset: BSMDataset,
+    test_dataset: BSMDataset,
 ) -> None:
     log_once(logger, "Inference Starts ...")
     val_predict_labels, val_true_labels = model_inference(
@@ -834,9 +819,53 @@ def evaluate_and_log_results(
             global_step=trainer.global_step,
         )
         writer.close()
+
+        # Save legacy tensor format for backward compatibility
         prediction_filename = os.path.join(output_path, "predict_results.pth")
         log_once(logger, f"Saving prediction result to {prediction_filename}")
         save_prediction(prediction_filename, test_true_labels, test_predict_labels)
+
+        # NEW: Save predictions as DataFrames with format preservation
+        log_once(logger, "Saving predictions as DataFrames with format preservation...")
+        output_format = config._input_format or "csv"
+
+        # Get IDs from datasets
+        val_ids = (
+            val_dataset.DataReader[config.id_name].values
+            if config.id_name in val_dataset.DataReader.columns
+            else np.arange(len(val_true_labels))
+        )
+        test_ids = (
+            test_dataset.DataReader[config.id_name].values
+            if config.id_name in test_dataset.DataReader.columns
+            else np.arange(len(test_true_labels))
+        )
+
+        # Save validation predictions
+        save_predictions_as_dataframe(
+            predictions=val_predict_labels,
+            true_labels=val_true_labels,
+            ids=val_ids,
+            output_dir=output_path,
+            split_name="val",
+            id_col=config.id_name,
+            label_col=config.label_name,
+            output_format=output_format,
+        )
+
+        # Save test predictions
+        save_predictions_as_dataframe(
+            predictions=test_predict_labels,
+            true_labels=test_true_labels,
+            ids=test_ids,
+            output_dir=output_path,
+            split_name="test",
+            id_col=config.id_name,
+            label_col=config.label_name,
+            output_format=output_format,
+        )
+
+        log_once(logger, "Prediction DataFrames saved successfully")
 
 
 # ----------------- Main Function ---------------------------
@@ -883,9 +912,9 @@ def main(
     log_once(logger, "Starting the training process.")
 
     device = setup_training_environment(config)
-    datasets, tokenizers, config = load_and_preprocess_data(config)
+    datasets, tokenizer, config = load_and_preprocess_data(config)
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
-        build_model_and_optimizer(config, tokenizers, datasets)
+        build_model_and_optimizer(config, tokenizer, datasets)
     )
     # update tab dimension
     config.input_tab_dim = len(config.tab_field_list)
@@ -913,32 +942,30 @@ def main(
         save_model(model_filename, model)
         artifact_filename = os.path.join(model_path, "model_artifacts.pth")
         logger.info(f"Saving model artifacts to {artifact_filename}")
-        # Get the main tokenizer for vocab extraction
-        main_tokenizer = (
-            tokenizers.get("primary")
-            or tokenizers.get("main")
-            or list(tokenizers.values())[0]
-        )
         save_artifacts(
             artifact_filename,
             config.model_dump(),
             embedding_mat,
-            main_tokenizer.vocab,
+            tokenizer.vocab,
             model_class=config.model_class,
         )
-
-        # ------------------ Save Hyperparameters ------------------
-        hyperparams_filename = os.path.join(model_path, "hyperparameters.json")
-        logger.info(f"Saving hyperparameters to {hyperparams_filename}")
-        with open(hyperparams_filename, "w") as f:
-            json.dump(config.model_dump(), f, indent=2, default=str)
 
         # ------------------ ONNX Export ------------------
         onnx_path = os.path.join(model_path, "model.onnx")
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
-    evaluate_and_log_results(model, val_dataloader, test_dataloader, config, trainer)
+    # Extract datasets for evaluation
+    train_dataset, val_dataset, test_dataset = datasets
+    evaluate_and_log_results(
+        model,
+        val_dataloader,
+        test_dataloader,
+        config,
+        trainer,
+        val_dataset,
+        test_dataset,
+    )
 
 
 # ----------------- Entrypoint ---------------------------
@@ -950,7 +977,7 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path
+        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path (matches XGBoost)
     }
 
     # Define input and output paths using contract logical names

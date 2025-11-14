@@ -469,6 +469,8 @@ class BuilderAutoDiscovery:
                 result_parts.append("XGBoost")
             elif part.lower() == "pytorch":
                 result_parts.append("PyTorch")
+            elif part.lower() == "lightgbm":
+                result_parts.append("LightGBM")
             else:
                 result_parts.append(part.capitalize())
 
