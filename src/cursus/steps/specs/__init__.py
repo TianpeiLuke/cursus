@@ -46,6 +46,7 @@ from .label_ruleset_generation_spec import LABEL_RULESET_GENERATION_SPEC
 # Training specifications
 from .dummy_training_spec import DUMMY_TRAINING_SPEC
 from .lightgbm_training_spec import LIGHTGBM_TRAINING_SPEC
+from .lightgbmmt_training_spec import LIGHTGBMMT_TRAINING_SPEC
 from .pytorch_training_spec import PYTORCH_TRAINING_SPEC
 from .xgboost_training_spec import XGBOOST_TRAINING_SPEC
 
@@ -155,6 +156,7 @@ __all__ = [
     # Training specifications
     "DUMMY_TRAINING_SPEC",
     "LIGHTGBM_TRAINING_SPEC",
+    "LIGHTGBMMT_TRAINING_SPEC",
     "PYTORCH_TRAINING_SPEC",
     "XGBOOST_TRAINING_SPEC",
     # Model specifications

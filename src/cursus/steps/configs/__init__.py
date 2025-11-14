@@ -26,6 +26,7 @@ from .config_cradle_data_loading_step import (
 from .config_dummy_data_loading_step import DummyDataLoadingConfig
 from .config_dummy_training_step import DummyTrainingConfig
 from .config_lightgbm_training_step import LightGBMTrainingConfig
+from .config_lightgbmmt_training_step import LightGBMMTTrainingConfig
 from .config_missing_value_imputation_step import MissingValueImputationConfig
 from .config_model_calibration_step import ModelCalibrationConfig
 from .config_model_metrics_computation_step import ModelMetricsComputationConfig
@@ -72,6 +73,7 @@ __all__ = [
     "DummyDataLoadingConfig",
     "DummyTrainingConfig",
     "LightGBMTrainingConfig",
+    "LightGBMMTTrainingConfig",
     "MissingValueImputationConfig",
     "ModelCalibrationConfig",
     "ModelMetricsComputationConfig",

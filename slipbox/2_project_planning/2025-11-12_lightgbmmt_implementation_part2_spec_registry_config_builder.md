@@ -48,11 +48,11 @@ This document covers the second phase of LightGBMMT Training Step implementation
 - ✅ Follows all Cursus patterns (three-tier config, builder base, etc.)
 - ✅ >90% test coverage with validation framework
 
-## Phase 1: Step Specification (Week 3, Days 1-2)
+## Phase 1: Step Specification ✅ COMPLETED (2025-11-13)
 
-### 1.1 Create Step Specification
+### 1.1 Create Step Specification ✅
 
-**File**: `src/cursus/steps/specs/lightgbmmt_training_spec.py`
+**File**: `src/cursus/steps/specs/lightgbmmt_training_spec.py` ✅ CREATED
 
 ```python
 """
@@ -168,25 +168,17 @@ LIGHTGBMMT_TRAINING_SPEC = StepSpecification(
 - ✅ Multi-task specific outputs with comprehensive aliases
 - ✅ Compatible with existing preprocessing steps
 
-### 1.2 Update Specs Module
+### 1.2 Update Specs Module ✅
 
-**File**: `src/cursus/steps/specs/__init__.py`
+**File**: `src/cursus/steps/specs/__init__.py` ✅ UPDATED
 
-Add export:
-```python
-from .lightgbmmt_training_spec import LIGHTGBMMT_TRAINING_SPEC
+Added import and export for LIGHTGBMMT_TRAINING_SPEC
 
-__all__ = [
-    ...,
-    'LIGHTGBMMT_TRAINING_SPEC',
-]
-```
+## Phase 2: Registry Integration ✅ COMPLETED (2025-11-13)
 
-## Phase 2: Registry Integration (Week 3, Day 3)
+### 2.1 Update Step Registry ✅
 
-### 2.1 Update Step Registry
-
-**File**: `src/cursus/registry/step_names_original.py`
+**File**: `src/cursus/registry/step_names_original.py` ✅ UPDATED
 
 Add entry to `STEP_NAMES` dictionary:
 
@@ -194,12 +186,12 @@ Add entry to `STEP_NAMES` dictionary:
 STEP_NAMES = {
     # ... existing entries ...
     
-    "LightGBMMTTraining": {
-        "config_class": "LightGBMMTTrainingConfig",
-        "builder_step_name": "LightGBMMTTrainingStepBuilder",
-        "spec_type": "LightGBMMTTraining",
+    "LightgbmmtTraining": {
+        "config_class": "LightgbmmtTrainingConfig",
+        "builder_step_name": "LightgbmmtTrainingStepBuilder",
+        "spec_type": "LightgbmmtTraining",
         "sagemaker_step_type": "Training",
-        "description": "LightGBMMT multi-task model training step using custom framework",
+        "description": "LightGBM multi-task training with adaptive weighting and knowledge distillation",
     },
     
     # ... rest of entries ...
@@ -217,11 +209,105 @@ STEP_NAMES = {
 - `SPEC_TYPES`: Maps step name → specification type
 - `SAGEMAKER_STEP_TYPES`: Maps step name → SageMaker step type
 
-## Phase 3: Configuration Class (Week 3, Days 4-5)
+### 2.2 Naming Convention: Using `LightGBMMT` for Readability
 
-### 3.1 Create LightGBMMT Configuration
+**✅ Final Decision**: Use `LightGBMMT` (mixed case) throughout for better readability and consistency with the LightGBM naming convention.
 
-**File**: `src/cursus/steps/configs/config_lightgbmmt_training_step.py`
+#### Multi-Layer Discovery Strategy
+
+The discovery system in `src/cursus/step_catalog/builder_discovery.py` uses a **multi-layer strategy** where registry matching is the PRIMARY method:
+
+```python
+def _extract_step_name_from_builder_file(self, file_name, class_name):
+    """Extract step name using multi-layer strategy."""
+    
+    # Layer 1: Registry + Class Name Match (PRIMARY - MOST ROBUST)
+    for step_name, step_info in self._registry_info.items():
+        builder_step_name = step_info.get("builder_step_name")
+        if builder_step_name and builder_step_name == class_name:
+            return step_name  # ← Direct match! No file parsing needed
+    
+    # Layer 2: File Name Pattern Matching (FALLBACK)
+    if file_name.startswith("builder_") and file_name.endswith("_step"):
+        step_name_parts = file_name[8:-5].split("_")
+        step_name = self._convert_parts_to_pascal_case_with_special_cases(step_name_parts)
+    
+    # Layer 3: Class Name Extraction (FALLBACK)
+    if class_name.endswith("StepBuilder"):
+        step_name = class_name[:-11]
+    
+    # Layer 4: Registry Validation
+    if step_name in self._registry_info:
+        return step_name
+```
+
+#### Why `LightGBMMT` Works Perfectly
+
+**For `LightGBMMTTrainingStepBuilder`**:
+
+1. **Layer 1 (Registry Match)**: ✅ PRIMARY METHOD
+   - Class name: `LightGBMMTTrainingStepBuilder`
+   - Registry entry: `"builder_step_name": "LightGBMMTTrainingStepBuilder"`
+   - **Match found!** Returns `"LightGBMMTTraining"` immediately
+   - **No need for file name parsing!**
+
+2. **Layer 2-4**: Never reached because Layer 1 succeeds
+
+#### Discovery Strategy Insights
+
+| Layer | Method | When Used | For LightGBMMT |
+|-------|--------|-----------|----------------|
+| 1 | Registry + Class Match | **Primary** | ✅ **Used** - Direct match |
+| 2 | File Name Parsing | Fallback | ❌ Not reached |
+| 3 | Class Name Extract | Fallback | ❌ Not reached |
+| 4 | Registry Validation | Final check | ❌ Not reached |
+
+**Key Insight**: The special case for `lightgbm` we added helps **future base LightGBM steps** (not multi-task), while `LightGBMMT` uses the standard registry matching via Layer 1!
+
+#### Framework Comparison
+
+| Framework | Class Name | Registry Match | Result |
+|-----------|------------|----------------|---------|
+| XGBoost | `XGBoostTrainingStepBuilder` | Via registry | ✅ `XGBoostTraining` |
+| PyTorch | `PyTorchTrainingStepBuilder` | Via registry | ✅ `PyTorchTraining` |
+| LightGBM | `LightGBMTrainingStepBuilder` | Via registry | ✅ `LightGBMTraining` |
+| **LightGBMMT** | `LightGBMMTTrainingStepBuilder` | **Via registry** | ✅ **`LightGBMMTTraining`** |
+
+#### Updated Registry Entry
+
+```python
+"LightGBMMTTraining": {  # ← Note: LightGBMMT for readability!
+    "config_class": "LightGBMMTTrainingConfig",
+    "builder_step_name": "LightGBMMTTrainingStepBuilder",
+    "spec_type": "LightGBMMTTraining",
+    "sagemaker_step_type": "Training",
+    "description": "LightGBM multi-task training with adaptive weighting and knowledge distillation",
+}
+```
+
+**All class names use readable convention**:
+- ✅ `LightGBMMTTrainingConfig` (readable, follows LightGBM pattern)
+- ✅ `LightGBMMTTrainingStepBuilder` (readable, follows LightGBM pattern)
+- ✅ File: `builder_lightgbmmt_training_step.py` (lowercase in filename, standard)
+
+#### Special Case Addition (Defensive)
+
+We added a special case for `lightgbm` in builder discovery:
+
+```python
+elif part.lower() == "lightgbm":
+    result_parts.append("LightGBM")
+```
+
+This helps **Layer 2 (file name fallback)** for future base LightGBM steps, but our `LightGBMMT` step doesn't need it - it works via **Layer 1 (registry match)**! 🎯
+
+This naming ensures the step is **readable, maintainable, and fully integrated** with the Cursus framework's multi-layer discovery architecture.
+
+## Phase 3: Configuration Class ✅ COMPLETED (2025-11-13)
+
+### 3.1 Create LightGBMMT Configuration ✅
+
+**File**: `src/cursus/steps/configs/config_lightgbmmt_training_step.py` ✅ CREATED
 
 ```python
 from pydantic import Field, field_validator
@@ -316,25 +402,17 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
 - ✅ Multi-task specific model_class
 - ✅ Clear docstrings for all fields
 
-### 3.2 Update Configs Module
+### 3.2 Update Configs Module ✅
 
-**File**: `src/cursus/steps/configs/__init__.py`
+**File**: `src/cursus/steps/configs/__init__.py` ✅ UPDATED
 
-Add export:
-```python
-from .config_lightgbmmt_training_step import LightGBMMTTrainingConfig
+Added import and export for LightGBMMTTrainingConfig
 
-__all__ = [
-    ...,
-    'LightGBMMTTrainingConfig',
-]
-```
+## Phase 4: Step Builder ✅ COMPLETED (2025-11-13)
 
-## Phase 4: Step Builder (Week 3, Days 6-7)
+### 4.1 Create LightGBMMT Step Builder ✅
 
-### 4.1 Create LightGBMMT Step Builder
-
-**File**: `src/cursus/steps/builders/builder_lightgbmmt_training_step.py`
+**File**: `src/cursus/steps/builders/builder_lightgbmmt_training_step.py` ✅ CREATED
 
 ```python
 """
@@ -366,13 +444,13 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
     accommodating multi-task specific requirements.
     """
     
-    def __init__(self, config: LightGBMMTTrainingConfig, **kwargs):
+    def __init__(self, config: LightgbmmtTrainingConfig, **kwargs):
         """
-        Initialize LightGBMMT training step builder.
+        Initialize Lightgbmmt training step builder.
         
         Parameters
         ----------
-        config : LightGBMMTTrainingConfig
+        config : LightgbmmtTrainingConfig
             Configuration for the training step
         **kwargs
             Additional arguments passed to StepBuilderBase
@@ -606,19 +684,11 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
 - ✅ Comprehensive logging
 - ✅ Aligned with LightGBM builder patterns
 
-### 4.2 Update Builders Module
+### 4.2 Update Builders Module ✅
 
-**File**: `src/cursus/steps/builders/__init__.py`
+**File**: `src/cursus/steps/builders/__init__.py` ✅ UPDATED
 
-Add export:
-```python
-from .builder_lightgbmmt_training_step import LightGBMMTTrainingStepBuilder
-
-__all__ = [
-    ...,
-    'LightGBMMTTrainingStepBuilder',
-]
-```
+Added import and export for LightGBMMTTrainingStepBuilder
 
 ## Phase 5: Testing & Validation (Week 3, Day 8)
 
@@ -816,48 +886,3 @@ if __name__ == '__main__':
 4. ✅ Step builder (specification-driven)
 5. ✅ Complete Cursus integration
 6. ✅ Comprehensive testing
-
-### Complete Flow
-
-```python
-# Complete usage example
-
-# 1. Create hyperparameters (from Part 1)
-from cursus.steps.hyperparams import LightGBMMtModelHyperparameters
-
-hyperparams = LightGBMMtModelHyperparameters(
-    # Base fields
-    full_field_list=fields,
-    cat_field_list=cat_fields,
-    tab_field_list=tab_fields,
-    id_name='id',
-    label_name='label',
-    multiclass_categories=[0, 1],
-    
-    # LightGBM fields
-    num_leaves=750,
-    learning_rate=0.05,
-    num_iterations=100,
-    
-    # MT-GBM fields
-    num_tasks=6,
-    loss_type='adaptive_kd',
-    loss_beta=0.3,
-    loss_patience=50,
-    loss_weight_method='sqrt',
-)
-
-# 2. Create config (from Part 2)
-from cursus.steps.configs import LightGBMMTTrainingConfig
-
-config = LightGBMMTTrainingConfig(
-    region="us-west-2",
-    pipeline_s3_loc="s3://bucket/prefix",
-    training_entry_point="lightgbmmt_training.py",
-    training_instance_type="ml.m5.4xlarge",
-)
-
-# 3. Create builder (from Part 2)
-from cursus.steps.builders import LightGBMMTTrainingStepBuilder
-
-builder = LightGBMMTTraining

@@ -151,6 +151,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Training",
         "description": "LightGBM model training step using built-in algorithm",
     },
+    "LightGBMMTTraining": {
+        "config_class": "LightGBMMTTrainingConfig",
+        "builder_step_name": "LightGBMMTTrainingStepBuilder",
+        "spec_type": "LightGBMMTTraining",
+        "sagemaker_step_type": "Training",
+        "description": "LightGBM multi-task training with adaptive weighting and knowledge distillation",
+    },
     "DummyTraining": {
         "config_class": "DummyTrainingConfig",
         "builder_step_name": "DummyTrainingStepBuilder",

@@ -11,6 +11,7 @@ from ...core.base.builder_base import StepBuilderBase
 from .builder_batch_transform_step import BatchTransformStepBuilder
 from .builder_currency_conversion_step import CurrencyConversionStepBuilder
 from .builder_dummy_training_step import DummyTrainingStepBuilder
+from .builder_lightgbmmt_training_step import LightGBMMTTrainingStepBuilder
 from .builder_model_calibration_step import ModelCalibrationStepBuilder
 from .builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
 from .builder_pytorch_model_step import PyTorchModelStepBuilder
@@ -36,6 +37,7 @@ __all__ = [
     "BatchTransformStepBuilder",
     "CurrencyConversionStepBuilder",
     "DummyTrainingStepBuilder",
+    "LightGBMMTTrainingStepBuilder",
     "ModelCalibrationStepBuilder",
     "XGBoostModelEvalStepBuilder",
     "PyTorchModelStepBuilder",
