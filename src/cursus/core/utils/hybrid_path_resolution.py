@@ -162,11 +162,22 @@ class HybridPathResolver:
                 )
                 return resolved
 
+            # Strategy 4: Default Scripts Discovery (final fallback for cursus/steps/scripts)
+            # This checks cursus/steps/scripts as a last resort when all other strategies fail
+            resolved = self._default_scripts_discovery(relative_path)
+            if resolved:
+                resolution_time = time.time() - start_time
+                _hybrid_resolution_metrics.record_strategy_2_success(resolution_time)
+                logger.info(
+                    f"Hybrid resolution completed successfully via Default Scripts Discovery: {resolved}"
+                )
+                return resolved
+
             # Resolution failed
             resolution_time = time.time() - start_time
             _hybrid_resolution_metrics.record_failure(resolution_time)
             logger.warning(
-                f"Hybrid resolution failed - all three strategies unsuccessful for project_root_folder='{project_root_folder}', relative_path='{relative_path}'"
+                f"Hybrid resolution failed - all strategies unsuccessful for project_root_folder='{project_root_folder}', relative_path='{relative_path}'"
             )
             return None
 
@@ -174,6 +185,60 @@ class HybridPathResolver:
             resolution_time = time.time() - start_time
             _hybrid_resolution_metrics.record_failure(resolution_time)
             logger.error(f"Hybrid resolution error: {e}")
+            return None
+
+    def _default_scripts_discovery(self, relative_path: str) -> Optional[str]:
+        """
+        Discover scripts using cursus package location to find default scripts directory.
+
+        This strategy specifically looks for scripts in cursus/steps/scripts by:
+        1. Starting from Path(__file__) which is in cursus/core/utils/
+        2. Navigating up to cursus/ root
+        3. Going to steps/scripts/
+        4. Appending the relative_path (script filename or subdirectory path)
+
+        This enables automatic discovery of scripts in the default location without
+        requiring users to specify source_dir or project_root_folder.
+
+        Args:
+            relative_path: Relative path to script (can be just filename like "xgboost_training.py"
+                          or subdirectory path like "calibration/standard_calibration_dictionary.json")
+
+        Returns:
+            Resolved absolute path if found, None otherwise
+        """
+        try:
+            cursus_file = Path(__file__)  # cursus/core/utils/hybrid_path_resolution.py
+            logger.debug(f"Default scripts discovery starting from: {cursus_file}")
+
+            # Navigate from cursus/core/utils/ up to cursus/ then to steps/scripts/
+            # cursus_file.parent = cursus/core/utils/
+            # cursus_file.parent.parent = cursus/core/
+            # cursus_file.parent.parent.parent = cursus/
+            cursus_root = cursus_file.parent.parent.parent  # Go up 3 levels to cursus/
+            scripts_dir = cursus_root / "steps" / "scripts"
+
+            logger.debug(f"Checking default scripts directory: {scripts_dir}")
+
+            if scripts_dir.exists() and scripts_dir.is_dir():
+                target_path = scripts_dir / relative_path
+                logger.debug(f"Checking default scripts path: {target_path}")
+
+                if target_path.exists():
+                    logger.info(f"Default scripts discovery succeeded: {target_path}")
+                    return str(target_path)
+                else:
+                    logger.debug(f"Script not found at default location: {target_path}")
+            else:
+                logger.debug(f"Default scripts directory does not exist: {scripts_dir}")
+
+            logger.debug(
+                "Default scripts discovery failed - script not found in cursus/steps/scripts"
+            )
+            return None
+
+        except Exception as e:
+            logger.warning(f"Default scripts discovery failed with error: {e}")
             return None
 
     def _package_location_discovery(
