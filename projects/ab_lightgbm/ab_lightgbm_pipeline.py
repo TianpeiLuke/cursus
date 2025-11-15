@@ -41,21 +41,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Default model and region settings
-DEFAULT_MODEL_CLASS = "xgboost"
+DEFAULT_MODEL_CLASS = "lightgbm"
 DEFAULT_REGION = "NA"
-DEFAULT_SERVICE_NAME = "AtoZ"
+DEFAULT_SERVICE_NAME = "AB"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_xgboost_complete_e2e_dag() -> PipelineDAG:
+def create_lightgbm_complete_e2e_dag() -> PipelineDAG:
     """
-    Create a DAG for a complete XGBoost end-to-end workflow.
+    Create a DAG for a complete LightGBM end-to-end workflow.
 
     This DAG represents a complete end-to-end workflow including training,
-    calibration, packaging, registration, and evaluation of an XGBoost model.
+    calibration, packaging, registration, and evaluation of an LightGBM model.
 
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
@@ -65,7 +65,7 @@ def create_xgboost_complete_e2e_dag() -> PipelineDAG:
     # Add all nodes
     dag.add_node("CradleDataLoading_training")  # Data load for training
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node("XGBoostTraining")  # XGBoost training step
+    dag.add_node("LightGBMTraining")  # LightGBM training step
     dag.add_node(
         "ModelCalibration_calibration"
     )  # Model calibration step with calibration variant
@@ -76,47 +76,47 @@ def create_xgboost_complete_e2e_dag() -> PipelineDAG:
     dag.add_node(
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
-    dag.add_node("XGBoostModelEval_calibration")  # Model evaluation step
+    dag.add_node("LightGBMModelEval_calibration")  # Model evaluation step
 
     # Training flow
     dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-    dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
+    dag.add_edge("TabularPreprocessing_training", "LightGBMTraining")
 
     # Calibration flow
     dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
 
     # Evaluation flow
-    dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
+    dag.add_edge("LightGBMTraining", "LightGBMModelEval_calibration")
+    dag.add_edge("TabularPreprocessing_calibration", "LightGBMModelEval_calibration")
 
     # Model calibration flow - depends on model evaluation
-    dag.add_edge("XGBoostModelEval_calibration", "ModelCalibration_calibration")
+    dag.add_edge("LightGBMModelEval_calibration", "ModelCalibration_calibration")
 
     # Output flow
     dag.add_edge("ModelCalibration_calibration", "Package")
-    dag.add_edge("XGBoostTraining", "Package")  # Raw model is also input to packaging
-    dag.add_edge("XGBoostTraining", "Payload")  # Payload test uses the raw model
+    dag.add_edge("LightGBMTraining", "Package")  # Raw model is also input to packaging
+    dag.add_edge("LightGBMTraining", "Payload")  # Payload test uses the raw model
     dag.add_edge("Package", "Registration")
     dag.add_edge("Payload", "Registration")
 
     logger.info(
-        f"Created XGBoost complete E2E DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
+        f"Created LightGBM complete E2E DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
     )
     return dag
 
 
 # Define constants
 AUTHOR = "lukexie"
-PIPELINE_VERSION = "1.3.14"
-PIPELINE_DESCRIPTION = "XGBoost End-to-End Pipeline using Cursus DAG Compiler"
+PIPELINE_VERSION = "1.0.0"
+PIPELINE_DESCRIPTION = "LightGBM End-to-End Pipeline using Cursus DAG Compiler"
 
 
 @MODSTemplate(author=AUTHOR, description=PIPELINE_DESCRIPTION, version=PIPELINE_VERSION)
-class XGBoostAtoZPipeline:
+class LightGBMBusinessAbusePipeline:
     """
     Adapter class that bridges between Cursus DAG-based pipeline architecture and MODS Template structure.
 
-    This class specifically creates an XGBoost end-to-end pipeline using the DAG compiler.
+    This class specifically creates a LightGBM end-to-end pipeline using the DAG compiler.
     """
 
     def __init__(
@@ -147,7 +147,6 @@ class XGBoostAtoZPipeline:
         pipeline_name = None
         pipeline_description = None
 
-        # Build fixed config path similar to how regional_xgboost_na does it
         module_dir = Path(__file__).resolve().parent
         config_dir = module_dir / "pipeline_config"
         pipeline_config_name = f"config.json"
@@ -158,10 +157,10 @@ class XGBoostAtoZPipeline:
         self.pipeline_name = pipeline_name
         self.pipeline_description = pipeline_description
 
-        # Create XGBoost DAG
-        self.dag = create_xgboost_complete_e2e_dag()
+        # Create LightGBM DAG
+        self.dag = create_lightgbm_complete_e2e_dag()
         logger.info(
-            f"Created XGBoost DAG with {len(self.dag.nodes)} nodes and {len(self.dag.edges)} edges"
+            f"Created LightGBM DAG with {len(self.dag.nodes)} nodes and {len(self.dag.edges)} edges"
         )
 
         # Initialize compiler (but don't compile yet)
@@ -244,7 +243,7 @@ class XGBoostAtoZPipeline:
 
 # Example usage:
 #
-# from mods_pipeline_adapter import XGBoostCursusPipelineAdapter
+# from ab_lightgbm_pipeline import LightGBMBusinessAbusePipeline
 # from sagemaker import Session
 # from sagemaker.workflow.pipeline_context import PipelineSession
 # from mods_workflow_helper.sagemaker_pipeline_helper import SagemakerPipelineHelper, SecurityConfig
@@ -280,14 +279,14 @@ class XGBoostAtoZPipeline:
 # role = pipeline_session.get_caller_identity_arn()
 #
 # # Create adapter instance with default configuration path
-# adapter = XGBoostCursusPipelineAdapter(
+# adapter = LightGBMBusinessAbusePipeline(
 #     sagemaker_session=pipeline_session,
 #     execution_role=role,
-#     pipeline_name="XGBoost-MODS-Pipeline",
-#     pipeline_description="XGBoost pipeline using MODS adapter",
+#     pipeline_name="LightGBM-MODS-Pipeline",
+#     pipeline_description="LightGBM pipeline using MODS adapter",
 #     regional_alias="NA",
-#     model_class="xgboost",
-#     service_name="AtoZ"
+#     model_class="lightgbm",
+#     service_name="AB"
 # )
 #
 # # Generate pipeline

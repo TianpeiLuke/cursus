@@ -384,7 +384,7 @@ logger = setup_logging()
 # Pydantic V2 model for all hyperparameters
 # -------------------------------------------------------------------------
 from pydantic import BaseModel, Field, model_validator
-from ..hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
+from .hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
 
 
 class LightGBMConfig(LightGBMModelHyperparameters):
