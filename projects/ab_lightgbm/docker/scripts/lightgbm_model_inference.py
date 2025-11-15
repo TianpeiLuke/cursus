@@ -455,7 +455,7 @@ def load_model_artifacts(
 
     # Check if we need to extract model.tar.gz
     model_tar_path = os.path.join(model_dir, "model.tar.gz")
-    model_bst_path = os.path.join(model_dir, "xgboost_model.bst")
+    model_bst_path = os.path.join(model_dir, "lightgbm_model.txt")
 
     if os.path.exists(model_tar_path) and not os.path.exists(model_bst_path):
         logger.info("Found model.tar.gz - extracting model artifacts...")
@@ -473,18 +473,18 @@ def load_model_artifacts(
     else:
         # List available files for debugging
         available_files = os.listdir(model_dir) if os.path.exists(model_dir) else []
-        logger.error(f"Neither model.tar.gz nor xgboost_model.bst found in {model_dir}")
+        logger.error(f"Neither model.tar.gz nor lightgbm_model.txt found in {model_dir}")
         logger.error(f"Available files: {available_files}")
         raise FileNotFoundError(
             f"Model artifacts not found in {model_dir}. "
-            f"Expected either 'model.tar.gz' or 'xgboost_model.bst'. "
+            f"Expected either 'model.tar.gz' or 'lightgbm_model.txt'. "
             f"Available files: {available_files}"
         )
 
     # Now load the extracted files
     logger.info("Loading individual model artifacts...")
 
-    # Load XGBoost model
+    # Load LightGBM model
     model_file = os.path.join(model_dir, "lightgbm_model.txt")
     model = lgb.Booster(model_file=model_file)
     logger.info("✓ Loaded lightgbm_model.txt")

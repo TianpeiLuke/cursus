@@ -757,9 +757,9 @@ def compute_comparison_metrics(
         )
         # Fallback to numpy correlation
         pearson_corr = float(np.corrcoef(y_new_score, y_prev_score)[0, 1])
-        pearson_p = 0.0  # p-value not available with numpy
+        pearson_p = np.nan  # p-value not available with numpy
         spearman_corr = pearson_corr  # Use Pearson as fallback
-        spearman_p = 0.0
+        spearman_p = np.nan  # p-value not available with numpy
 
     comparison_metrics.update(
         {
@@ -1297,20 +1297,10 @@ def plot_score_distributions(
                 axes.append(ax)
             axes = np.array(axes).reshape(2, 2)
         except Exception as e2:
-            logger.error(
-                f"Fallback subplot creation also failed: {e2}. Creating minimal plot."
-            )
-            # Final fallback: create a simple single plot to satisfy test expectations
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(1, 1, 1)
-            ax.text(0.5, 0.5, "Plot generation failed", ha="center", va="center")
-            ax.set_title("Score Distributions (Error)")
-            # Continue to save this minimal plot
-            out_path = os.path.join(output_dir, "score_distributions.jpg")
-            plt.savefig(out_path, format="jpg", dpi=150, bbox_inches="tight")
-            plt.close()
-            logger.info(f"Saved minimal error plot to {out_path}")
-            return out_path
+            logger.error(f"Fallback subplot creation also failed: {e2}")
+            raise RuntimeError(
+                f"Failed to create matplotlib plots after multiple attempts: {e2}"
+            ) from e2
 
     # Separate positive and negative examples
     pos_mask = y_true == 1
