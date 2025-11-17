@@ -5,6 +5,130 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2025-11-17
+
+### Added
+- **Multi-Task Gradient Boosting (MT-GBM) Framework** - Comprehensive multi-task learning capabilities
+  - **MT-GBM Training Step** - New training step for multi-task gradient boosting models
+  - **MT-GBM Inference Step** - Dedicated inference step for MT-GBM models
+  - **LightGBM Multi-Task Support** - Complete LightGBM multi-task compiled C code implementation
+  - **MT-GBM Analysis Tools** - Analysis and evaluation tools for multi-task models
+
+- **LightGBM Framework Integration** - Full LightGBM support for various ML workflows
+  - **LightGBM Training Step** - New SKLearn-based LightGBM training step using SKLearn container
+  - **LightGBM Model Evaluation** - Enhanced model evaluation capabilities for LightGBM
+  - **LightGBM Model Inference** - Complete inference pipeline for LightGBM models
+  - **LightGBM Multi-Task Extensions** - Extended support for multi-task LightGBM workflows
+
+- **Multi-Label Classification Support** - Comprehensive multi-label ML capabilities
+  - **Multi-Label Preprocessing Step** - New preprocessing step for multi-label classification tasks
+  - **Multi-Label Ruleset System** - Label ruleset generation and execution for multi-label scenarios
+  - **Multi-Label Extensions** - Extended label ruleset transform for multi-label workflows
+
+- **Label Ruleset System** - Advanced label transformation and optimization
+  - **Label Ruleset Generation Step** - Automated generation of label transformation rules
+  - **Label Ruleset Execution Step** - Execution engine for label transformation rulesets
+  - **Label Ruleset Optimization** - Optimization algorithms for ruleset efficiency
+  - **Ruleset-Based Pipelines** - Complete pipelines with ruleset-based label transformation
+
+- **Bedrock Enhancements** - Expanded AWS Bedrock integration capabilities
+  - **Bedrock Batch Processing Role** - Enhanced role management for batch processing
+  - **Multi-Job Bedrock Processing** - Support for multiple concurrent Bedrock jobs
+  - **Improved Prompt Generation** - Enhanced prompt template generation with better JSON handling
+  - **Bedrock Pipeline Expansion** - Extended Bedrock pipelines with ruleset integration
+
+### Enhanced
+- **Format Preservation Strategy** - Comprehensive format handling across processing steps
+  - **Universal Format Detection** - Automatic format detection for all processing steps
+  - **Metric Computation Format** - Enhanced format preservation for metric computation
+  - **Input/Output Format Consistency** - Maintained format consistency across pipeline steps
+
+- **Processing Infrastructure Improvements** - Major enhancements to data processing
+  - **Processor Alignment** - Aligned processors with corresponding processing steps
+  - **Processor Reorganization** - Renamed and restructured processors for better clarity
+  - **Iterative Data Loading** - Tabular preprocessing now supports iterative loading for large datasets
+  - **Lightning Model Reorganization** - Restructured projects to better organize Lightning models
+
+- **Path and Input/Output Management** - Enhanced path handling and I/O configurations
+  - **Input/Output Path Alignment** - Fixed multiple input/output path misalignment issues
+  - **Unique Logical Names** - Renamed input/output logical names for global uniqueness
+  - **Artifact Passing** - Preprocessing steps now properly pass model artifacts down the pipeline
+  - **XGBoost Artifact Integration** - XGBoost training now accepts preprocessing artifacts
+
+- **Configuration and Contract Improvements** - Better configuration handling
+  - **Currency Conversion Simplification** - Simplified and structured input/output/env variables for currency conversion
+  - **Tabular Preprocessing Contract** - Corrected contract to allow no-label input scenarios
+  - **JSONL Output Handling** - Changed expected output to jsonl.out file from batch mode
+  - **Nested Instance Handling** - Enhanced handling of nested multiple instances
+
+- **Script and Step Catalog Enhancements** - Improved script discovery and catalog management
+  - **Internal Script Search Strategy** - Added strategy to search internal scripts more effectively
+  - **Step Catalog LightGBM Support** - Adjusted step catalog to support LightGBM framework
+  - **Verbose Log Suppression** - Suppressed verbose logging in step catalog for cleaner output
+  - **Generic Path Discovery** - Added generic path discovery capabilities
+
+### Fixed
+- **Dependency and Package Management** - Critical dependency and installation fixes
+  - **Dependency Updates** - Updated package dependencies for better compatibility
+  - **Package Install Issues** - Fixed package installation issues across various scripts
+  - **PyPI Package Installation** - Added public/secure PyPI install in train/inference for XGBoost
+  - **Pip Install Upgrade** - Upgraded pip installation process for reliability
+  - **Boto3 Upgrade** - Updated boto3 for latest AWS features and bug fixes
+
+- **Parsing and Format Issues** - Comprehensive parsing error fixes
+  - **Output Parsing Issues** - Fixed output parsing errors and truncation problems
+  - **JSON Format Handling** - Fixed JSON output format to handle {{ and special characters
+  - **German Double Quote Fix** - Fixed German double quote issues causing parsing errors
+  - **Output Format Preservation** - Fixed output format issues for JSON output from LLM
+  - **Input/Output Ordering** - Preserved input and output ordering in configurations
+
+- **Script and Contract Alignment** - Enhanced alignment between scripts and contracts
+  - **PyTorch Training Fix** - Fixed error in PyTorch training script with new optional input
+  - **Script Contract Mismatch** - Corrected multiple script-contract mismatches
+  - **Duplicate Alias Fix** - Resolved duplicate alias issues in configurations
+  - **Filename Mismatch** - Fixed filename output and mismatch issues
+
+- **Bedrock Processing Fixes** - Specific fixes for Bedrock workflows
+  - **Bedrock Batch Processing** - Fixed errors in calling Bedrock batch processing
+  - **Job Name Issues** - Corrected job name generation for Bedrock jobs
+  - **Prompt Config Location** - Changed prompt config location to be local in source directory
+  - **Uncompressed File Handling** - Fixed handling of uncompressed files in Bedrock workflows
+  - **File Size Limit Checks** - Added file size limit validation
+
+- **Test Infrastructure** - Test reliability improvements
+  - **Test Error Fixes** - Fixed errors in various test suites
+  - **Bedrock Batch Processing Tests** - Fixed tests for Bedrock batch processing
+  - **Script Test Corrections** - Corrected script testing issues
+  - **DAG Config Test Fixes** - Fixed DAG configuration test issues
+
+- **Code Quality and Organization** - General code cleanup and improvements
+  - **Redundant Step Specs Removal** - Removed redundant step specifications with duplicate I/O
+  - **Legacy Code Separation** - Separated legacy code from refactored implementations
+  - **Debug Message Cleanup** - Removed unnecessary debug messages for cleaner logs
+  - **Reformat and Cleanup** - Applied code formatting and cleanup across multiple modules
+
+### Technical Details
+- **MT-GBM Architecture** - Complete multi-task gradient boosting framework with LightGBM integration
+- **LightGBM Integration** - Full LightGBM support using SKLearn framework containers
+- **Multi-Label Framework** - Comprehensive multi-label classification with ruleset-based transforms
+- **Label Ruleset System** - Advanced label transformation with generation, execution, and optimization
+- **Format Preservation** - Universal format detection and preservation across all processing steps
+- **Bedrock Enhancements** - Extended Bedrock capabilities with batch processing and multi-job support
+- **Path Management** - Enhanced input/output path handling with global unique logical names
+- **Processor Architecture** - Aligned and restructured processor system for better maintainability
+
+### Quality Assurance
+- **Enhanced Testing** - Improved test coverage for MT-GBM, LightGBM, and multi-label workflows
+- **Configuration Validation** - Better validation for complex multi-task and multi-label configurations
+- **Contract Alignment** - Systematic alignment improvements between scripts, contracts, and specifications
+- **Format Consistency** - Ensured format consistency across all processing steps and pipelines
+
+### Performance Improvements
+- **Iterative Loading** - Memory-efficient iterative loading for large datasets in tabular preprocessing
+- **Package Installation** - Optimized package installation with environment variable controls
+- **Processing Efficiency** - Improved processing efficiency with aligned processors and format preservation
+- **Catalog Performance** - Reduced verbose logging for faster step catalog operations
+
 ## [1.4.2] - 2025-11-03
 
 ### Added
