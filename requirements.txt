@@ -16,16 +16,11 @@ requests>=2.32.0
 packaging>=24.2.0
 typing_extensions>=4.14.0
 
-# Data processing (required by scripts)
-pandas>=2.1.0
-numpy>=1.26.0
-scikit-learn>=1.3.0
-joblib>=1.5.0
-pyarrow>=14.0.0
-
-# Optional ML frameworks (used in specific scripts)
-xgboost>=2.0.0
-matplotlib>=3.8.0
-
-# Note: Jupyter dependencies moved to optional dependencies in pyproject.toml
-# Install with: pip install cursus[jupyter] if needed
+# Note: Optional dependencies have been reorganized in pyproject.toml
+# For data processing utilities: pip install cursus[processing]
+# For XGBoost support: pip install cursus[xgboost]
+# For PyTorch support: pip install cursus[pytorch]
+# For visualization: pip install cursus[viz]
+# For Jupyter integration: pip install cursus[jupyter]
+# For development tools: pip install cursus[dev]
+# For all optional dependencies: pip install cursus[all]
