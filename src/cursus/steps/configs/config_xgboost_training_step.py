@@ -99,6 +99,17 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         "If False (default), uses all features without selection.",
     )
 
+    # Semi-supervised learning support
+    job_type: Optional[str] = Field(
+        default=None,
+        description=(
+            "Training job type for semi-supervised learning workflows:\n"
+            "• None (default): Standard supervised learning - no step name suffix\n"
+            "• 'pretrain': SSL pretraining phase - adds '-Pretrain' suffix\n"
+            "• 'finetune': SSL fine-tuning phase - adds '-Finetune' suffix"
+        ),
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
     # with public read-only properties for access
@@ -137,6 +148,22 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         )
 
         return self
+
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: Optional[str]) -> Optional[str]:
+        """Validate job_type is one of allowed values."""
+        if v is None:
+            return None  # Standard supervised learning
+
+        allowed = {"pretrain", "finetune"}
+        if v not in allowed:
+            raise ValueError(
+                f"job_type must be None (standard) or one of {allowed}, got '{v}'. "
+                f"Use None for standard training, 'pretrain' for SSL pretraining, "
+                f"'finetune' for SSL fine-tuning."
+            )
+        return v
 
     @field_validator("training_instance_type")
     @classmethod
@@ -205,6 +232,7 @@ class XGBoostTrainingConfig(BasePipelineConfig):
             "use_precomputed_imputation": self.use_precomputed_imputation,
             "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
             "use_precomputed_features": self.use_precomputed_features,
+            "job_type": self.job_type,
         }
 
         # Combine base fields and training fields (training fields take precedence if overlap)

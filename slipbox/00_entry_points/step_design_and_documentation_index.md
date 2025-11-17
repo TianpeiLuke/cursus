@@ -118,6 +118,8 @@ This entry point document provides a comprehensive index of all step-related des
 - [Inference Handler Spec Design](../1_design/inference_handler_spec_design.md) - Design for inference handler specifications
 - [Inference Test Result Design](../1_design/inference_test_result_design.md) - Design for inference testing result models
 - [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md) - Design for XGBoost model inference scripts
+- [XGBoost Semi-Supervised Learning Pipeline Design](../1_design/xgboost_semi_supervised_learning_pipeline_design.md) - Complete semi-supervised learning pipeline architecture with pseudo-labeling workflow for XGBoost
+- [XGBoost Semi-Supervised Learning Training Design](../1_design/xgboost_semi_supervised_learning_training_design.md) - Training step extension with job_type support for SSL pretraining and fine-tuning phases
 
 ### Step Testing and Validation
 

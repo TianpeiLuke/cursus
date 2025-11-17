@@ -741,6 +741,8 @@ All XGBoost pipeline steps follow the three-tier configuration pattern:
 
 **XGBoost-Specific Designs**:
 - [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md)
+- [XGBoost Semi-Supervised Learning Pipeline Design](../1_design/xgboost_semi_supervised_learning_pipeline_design.md)
+- [XGBoost Semi-Supervised Learning Training Design](../1_design/xgboost_semi_supervised_learning_training_design.md)
 - [Simplified XGBoost Config Implementation Plan](../2_project_planning/2025-07-25_simplified_xgboost_config_implementation_plan.md)
 - [Specification-Driven XGBoost Pipeline Plan](../2_project_planning/2025-07-04_specification_driven_xgboost_pipeline_plan.md)
 

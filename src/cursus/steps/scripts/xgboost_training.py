@@ -1140,6 +1140,7 @@ def main(
     output_paths: Dict[str, str],
     environ_vars: Dict[str, str],
     job_args: argparse.Namespace,
+    logger: Optional[logging.Logger] = None,
 ) -> None:
     """
     Main function to execute the XGBoost training logic.
@@ -1154,8 +1155,13 @@ def main(
             - "evaluation_output": Directory to save evaluation outputs
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments
+        logger: Optional logger function
     """
     try:
+        # Get job_type from command-line arguments - direct access like processing scripts
+        job_type = job_args.job_type
+        logger.info(f"Running XGBoost training with job_type: {job_type}")
+
         logger.info("====== STARTING MAIN EXECUTION ======")
 
         # Extract paths from parameters using contract logical names
@@ -1428,6 +1434,18 @@ if __name__ == "__main__":
         "evaluation_output": CONTAINER_PATHS["OUTPUT_DATA"],
     }
 
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--job_type",
+        type=str,
+        required=False,  # Optional for backward compatibility
+        default=None,  # Standard training when not provided
+        choices=["pretrain", "finetune"],  # SSL-specific job types
+        help="Training job type: 'pretrain' for SSL pretraining, 'finetune' for SSL fine-tuning. Omit for standard supervised training.",
+    )
+    args = parser.parse_args()
+
     # Collect environment variables for preprocessing artifact control
     environ_vars = {
         "USE_PRECOMPUTED_IMPUTATION": os.environ.get(
@@ -1443,9 +1461,6 @@ if __name__ == "__main__":
         ).lower()
         == "true",
     }
-
-    # Create empty args namespace to maintain function signature
-    args = argparse.Namespace()
 
     try:
         logger.info(f"Starting main process with paths:")

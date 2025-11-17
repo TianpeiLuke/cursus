@@ -205,6 +205,20 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         self.log_info("Training environment variables: %s", env_vars)
         return env_vars
 
+    def _get_job_arguments(self) -> Optional[List[str]]:
+        """
+        Constructs command-line arguments including job_type.
+        Follows the established pattern from processing steps.
+        """
+        # If job_type is None (standard training), no arguments needed
+        if self.config.job_type is None:
+            return None
+
+        # Pass job_type as command-line argument
+        job_type = self.config.job_type
+        self.log_info("Setting job_type argument to: %s", job_type)
+        return ["--job_type", job_type]
+
     def _create_data_channels_from_source(self, base_path):
         """
         Create train, validation, and test channel inputs from a base path.
