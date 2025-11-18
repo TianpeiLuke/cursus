@@ -133,7 +133,7 @@ graph LR
 - **DummyDataLoading**: Dummy data loading for testing without external services
 - **TabularPreprocessing**: [Tabular Preprocessing Step](../steps/builders/tabular_preprocessing_step.md)
 - **XGBoostTraining**: [XGBoost Training Step](../steps/builders/training_step_xgboost.md)
-- **XGBoostModelEval**: [XGBoost Model Eval Step](../steps/builders/model_eval_step_xgboost.md) | Script: [Model Evaluation](../steps/scripts/model_evaluation_xgb_doc.md)
+- **XGBoostModelEval**: [XGBoost Model Eval Step](../steps/builders/model_eval_step_xgboost.md) | Script: [Model Evaluation](xgboost_model_eval_script.md)
 
 **Code References**:
 - DAG Definition: `src/cursus/pipeline_catalog/shared_dags/xgboost/training_with_evaluation_dummy_dag.py`
@@ -215,7 +215,7 @@ graph LR
 - **CradleDataLoading**: [Data Load Step](../steps/builders/data_load_step_cradle.md) (training & calibration variants)
 - **TabularPreprocessing**: [Tabular Preprocessing Step](../steps/builders/tabular_preprocessing_step.md) (training & calibration variants)
 - **XGBoostTraining**: [XGBoost Training Step](../steps/builders/training_step_xgboost.md)
-- **ModelCalibration_training**: Model calibration step with training variant | Script: [Model Calibration](../steps/scripts/model_calibration_doc.md)
+- **ModelCalibration_training**: Model calibration step with training variant | Script: [Model Calibration](model_calibration_script.md)
 
 **Code References**:
 - DAG Definition: `src/cursus/pipeline_catalog/shared_dags/xgboost/training_with_calibration_dag.py`
@@ -394,7 +394,7 @@ graph LR
 - **CradleDataLoading**: [Data Load Step](../steps/builders/data_load_step_cradle.md) (training & evaluation variants)
 - **TabularPreprocessing**: [Tabular Preprocessing Step](../steps/builders/tabular_preprocessing_step.md) (training & evaluation variants)
 - **MissingValueImputation**: Missing value imputation step (training & evaluation variants) | Design: [Missing Value Imputation Design](../1_design/missing_value_imputation_design.md)
-- **RiskTableMapping**: [Risk Table Mapping Step](../steps/builders/risk_table_map_step.md) | Contract: [Risk Table Mapping](../steps/contracts/risk_table_mapping_contract.md) | Script: [Risk Table Mapping](../steps/scripts/risk_table_mapping_doc.md)
+- **RiskTableMapping**: [Risk Table Mapping Step](../steps/builders/risk_table_map_step.md) | Contract: [Risk Table Mapping](../steps/contracts/risk_table_mapping_contract.md) | Script: [Risk Table Mapping](risk_table_mapping_script.md)
 - **XGBoostTraining**: [XGBoost Training Step](../steps/builders/training_step_xgboost.md)
 - **XGBoostModelEval**: [XGBoost Model Eval Step](../steps/builders/model_eval_step_xgboost.md)
 
@@ -495,10 +495,10 @@ graph TB
 - **TabularPreprocessing**: [Tabular Preprocessing Step](../steps/builders/tabular_preprocessing_step.md) (training & calibration variants)
 - **XGBoostTraining**: [XGBoost Training Step](../steps/builders/training_step_xgboost.md)
 - **XGBoostModelEval_calibration**: [XGBoost Model Eval Step](../steps/builders/model_eval_step_xgboost.md)
-- **ModelCalibration_calibration**: Model calibration step | Script: [Model Calibration](../steps/scripts/model_calibration_doc.md)
-- **Package**: [MIMS Packaging Step](../steps/builders/mims_packaging_step.md) | Contract: [MIMS Package](../steps/contracts/mims_package_contract.md) | Script: [MIMS Package](../steps/scripts/mims_package_doc.md)
-- **Payload**: [MIMS Payload Step](../steps/builders/mims_payload_step.md) | Contract: [MIMS Payload](../steps/contracts/mims_payload_contract.md) | Script: [MIMS Payload](../steps/scripts/mims_payload_doc.md)
-- **Registration**: [MIMS Registration Step](../steps/builders/mims_registration_step.md) | Contract: [MIMS Registration](../steps/contracts/mims_registration_contract.md) | Script: [MODS MIMS Registration](../steps/scripts/MODS_MIMS_Model_Registration.md)
+- **ModelCalibration_calibration**: Model calibration step | Script: [Model Calibration](model_calibration_script.md)
+- **Package**: [MIMS Packaging Step](../steps/builders/mims_packaging_step.md) | Contract: [MIMS Package](../steps/contracts/mims_package_contract.md) | Script: [MIMS Package](package_doc.md)
+- **Payload**: [MIMS Payload Step](../steps/builders/mims_payload_step.md) | Contract: [MIMS Payload](../steps/contracts/mims_payload_contract.md) | Script: [MIMS Payload](payload_doc.md)
+- **Registration**: [MIMS Registration Step](../steps/builders/mims_registration_step.md) | Contract: [MIMS Registration](../steps/contracts/mims_registration_contract.md) | Script: [MODS MIMS Registration](mims_registration_script.md)
 
 **Code References**:
 - DAG Definition: `src/cursus/pipeline_catalog/shared_dags/xgboost/complete_e2e_dag.py`
@@ -695,7 +695,7 @@ All XGBoost pipelines use a common set of core components. Below are the key ste
 - [ModelMetricsComputation](../1_design/model_metrics_computation_design.md) - Comprehensive metrics calculation
 
 **Model Calibration**
-- [ModelCalibration](../steps/scripts/model_calibration_doc.md) - Standard probability calibration
+- [ModelCalibration](model_calibration_script.md) - Standard probability calibration
 - [PercentileModelCalibration](../1_design/percentile_model_calibration_design.md) - Percentile-based calibration
 
 **Model Deployment**

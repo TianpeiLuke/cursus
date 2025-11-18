@@ -91,8 +91,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Cradle Data Load Config Single Page UI Design](../1_design/cradle_data_load_config_single_page_ui_design.md) - Single-page UI for Cradle configuration
 
 **Implementation Documentation**
-- [Data Load Step Builder (Cradle)](../steps/builders/data_load_step_cradle.md) - Step builder implementation
-- [Cradle Data Loading Contract](../steps/contracts/cradle_data_loading_contract.md) - Contract definition
+- [Data Load Step Builder (Cradle)](cradle_data_loading_step.md) - Step builder implementation
 - [Data Loading Training Spec](../steps/specs/data_loading_training_spec.md) - Step specification
 
 **Data Format & Quality**
@@ -119,14 +118,11 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Temporal Self Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Detailed analysis of TSA scripts and preprocessing requirements
 
 **Implementation Documentation**
-- [Tabular Preprocessing Step Builder](../steps/builders/tabular_preprocessing_step.md) - Step builder implementation
-- [Tabular Preprocess Contract](../steps/contracts/tabular_preprocess_contract.md) - Contract definition
+- [Tabular Preprocessing Step Builder](../steps/tabular_preprocessing_step.md) - Step builder implementation
 - [Tabular Preprocess Documentation](../steps/scripts/tabular_preprocess_doc.md) - Script documentation
-- [Risk Table Map Step Builder](../steps/builders/risk_table_map_step.md) - Risk table mapping step builder
-- [Risk Table Mapping Contract](../steps/contracts/risk_table_mapping_contract.md) - Risk table mapping contract
+- [Risk Table Map Step Builder](../steps/risk_table_map_step.md) - Risk table mapping step builder
 - [Risk Table Mapping Documentation](../steps/scripts/risk_table_mapping_doc.md) - Risk table mapping script
-- [Currency Conversion Step Builder](../steps/builders/currency_conversion_step.md) - Currency conversion step builder
-- [Currency Conversion Contract](../steps/contracts/currency_conversion_contract.md) - Currency conversion contract
+- [Currency Conversion Step Builder](../steps/currency_conversion_step.md) - Currency conversion step builder
 - [Currency Conversion Documentation](../steps/scripts/currency_conversion_doc.md) - Currency conversion script
 
 **Feature Engineering & Selection**
@@ -139,6 +135,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 
 **Sampling & Balancing**
 - [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md) - Complete step builder patterns for intelligent sample selection in semi-supervised and active learning pipelines
+- [Active Sample Selection Script](../scripts/active_sample_selection_script.md) - Script documentation for modular sample selection with uncertainty, diversity, and BADGE strategies
 - [Active Sampling Script Design](../1_design/active_sampling_script_design.md) - Modular sample selection engine with uncertainty, diversity, and BADGE strategies
 - [Active Sampling BADGE Design](../1_design/active_sampling_badge.md) - BADGE algorithm for combining uncertainty and diversity in sample selection
 - [Active Sampling Uncertainty Design](../1_design/active_sampling_uncertainty_margin_entropy.md) - Uncertainty-based sampling strategies
@@ -160,11 +157,14 @@ This index is organized to mirror the **actual pipeline execution order**, group
 
 **Bedrock AI Processing**
 - [Bedrock Prompt Template Generation Step Patterns](../1_design/bedrock_prompt_template_generation_step_patterns.md) - Patterns for generating prompt templates in pipeline steps
+- [Bedrock Prompt Template Generation Script](../scripts/bedrock_prompt_template_generation_script.md) - Script documentation for template generation with 5-component architecture
 - [Bedrock Prompt Template Generation Buyer Seller Example](../1_design/bedrock_prompt_template_generation_buyer_seller_example.md) - Concrete example of buyer-seller prompt generation
 - [Bedrock Prompt Template Generation Input Formats](../1_design/bedrock_prompt_template_generation_input_formats.md) - Input format specifications for prompt generation
 - [Bedrock Prompt Template Generation Output Design](../1_design/bedrock_prompt_template_generation_output_design.md) - Output design for prompt generation steps
 - [Bedrock Processing Step Builder Patterns](../1_design/bedrock_processing_step_builder_patterns.md) - General processing step patterns for Bedrock integration
+- [Bedrock Processing Script](../scripts/bedrock_processing_script.md) - Script documentation for real-time Bedrock LLM processing
 - [Bedrock Batch Processing Step Builder Patterns](../1_design/bedrock_batch_processing_step_builder_patterns.md) - Design patterns for building batch processing steps with Bedrock
+- [Bedrock Batch Processing Script](../scripts/bedrock_batch_processing_script.md) - Script documentation for cost-optimized batch inference
 
 **Label Ruleset System**
 - [Label Ruleset Generation Step Patterns](../1_design/label_ruleset_generation_step_patterns.md) - Patterns for generating and validating label rulesets within pipeline steps
@@ -194,11 +194,8 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [XGBoost Semi-Supervised Learning Training Design](../1_design/xgboost_semi_supervised_learning_training_design.md) - Training step extension with job_type support for SSL phases
 
 **Implementation Documentation**
-- [Training Step Builder (XGBoost)](../steps/builders/training_step_xgboost.md) - XGBoost training step builder
-- [XGBoost Train Contract](../steps/contracts/xgboost_train_contract.md) - XGBoost training contract
-- [Training Step Builder (PyTorch)](../steps/builders/training_step_pytorch.md) - PyTorch training step builder
-- [PyTorch Train Contract](../steps/contracts/pytorch_train_contract.md) - PyTorch training contract
-- [Dummy Training Contract](../steps/contracts/dummy_training_contract.md) - Dummy training contract
+- [Training Step Builder (XGBoost)](xgboost_training_step.md) - XGBoost training step builder
+- [Training Step Builder (PyTorch)](pytorch_training_step.md) - PyTorch training step builder
 - [Dummy Training Documentation](../steps/scripts/dummy_training_doc.md) - Dummy training script
 
 **Deep Learning Training**
@@ -241,11 +238,10 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [PyTorch Model Evaluation Design](../1_design/pytorch_model_eval_design.md) - Design for PyTorch deep learning model evaluation with GPU/CPU support
 
 **Implementation Documentation**
-- [Model Evaluation Step Builder (XGBoost)](../steps/builders/model_eval_step_xgboost.md) - XGBoost evaluation step builder
-- [Model Evaluation Contract](../steps/contracts/model_evaluation_contract.md) - Model evaluation contract
+- [Model Evaluation Step Builder (XGBoost)](xgboost_model_eval_step.md) - XGBoost evaluation step builder
 - [Model Evaluation XGBoost Documentation](../steps/scripts/model_evaluation_xgb_doc.md) - XGBoost evaluation script
-- [Model Step Builder (PyTorch)](../steps/builders/model_step_pytorch.md) - PyTorch model step builder
-- [Model Step Builder (XGBoost)](../steps/builders/model_step_xgboost.md) - XGBoost model step builder
+- [Model Step Builder (PyTorch)](pytorch_model_step.md) - PyTorch model step builder
+- [Model Step Builder (XGBoost)](xgboost_model_step.md) - XGBoost model step builder
 
 **Model Evaluation & Metrics**
 - [Model Metrics Computation Design](../1_design/model_metrics_computation_design.md) - Design for model metrics computation scripts
@@ -280,16 +276,13 @@ This index is organized to mirror the **actual pipeline execution order**, group
 | BatchTransform | Transform | Batch transform step |
 
 **Model Packaging & Registration**
-- [MIMS Packaging Step Builder](../steps/builders/mims_packaging_step.md) - MIMS packaging step builder
-- [MIMS Package Contract](../steps/contracts/mims_package_contract.md) - MIMS package contract
+- [MIMS Packaging Step Builder](packaging_step.md) - MIMS packaging step builder
 - [MIMS Package Documentation](../steps/scripts/mims_package_doc.md) - MIMS packaging script
-- [MIMS Payload Step Builder](../steps/builders/mims_payload_step.md) - MIMS payload step builder
-- [MIMS Payload Contract](../steps/contracts/mims_payload_contract.md) - MIMS payload contract
+- [MIMS Payload Step Builder](payload_step.md) - MIMS payload step builder
 - [MIMS Payload Documentation](../steps/scripts/mims_payload_doc.md) - MIMS payload script
-- [MIMS Registration Step Builder](../steps/builders/mims_registration_step.md) - MIMS registration step builder
-- [MIMS Registration Contract](../steps/contracts/mims_registration_contract.md) - MIMS registration contract
+- [MIMS Registration Step Builder](../steps/mims_registration_step.md) - MIMS registration step builder
 - [MODS MIMS Model Registration](../steps/scripts/MODS_MIMS_Model_Registration.md) - MODS MIMS registration
-- [Batch Transform Step Builder](../steps/builders/batch_transform_step.md) - Batch transform step builder
+- [Batch Transform Step Builder](../steps/batch_transform_step.md) - Batch transform step builder
 
 ### Phase 8: Utilities & Cross-Cutting Concerns
 
@@ -303,65 +296,45 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Conditional Step Builder Patterns](../1_design/conditional_step_builder_patterns.md) - Patterns for building conditional execution steps
 
 **Implementation Documentation**
-- [Hyperparameter Prep Step Builder](../steps/builders/hyperparameter_prep_step.md) - Hyperparameter preparation step builder
-- [Hyperparameter Prep Contract](../steps/contracts/hyperparameter_prep_contract.md) - Hyperparameter prep contract
+- [Hyperparameter Prep Step Builder](../steps/hyperparameter_prep_step.md) - Hyperparameter preparation step builder
 - [Contract Utils Documentation](../steps/scripts/contract_utils_doc.md) - Contract utilities
 
 ---
 
 ## Part 2: Step Implementation Documentation
 
-### Step Builders (slipbox/steps/builders)
+### Step Documentation (slipbox/steps)
 
-- [README](../steps/builders/README.md) - Overview of step builders
-- [Batch Transform Step](../steps/builders/batch_transform_step.md)
-- [Currency Conversion Step](../steps/builders/currency_conversion_step.md)
-- [Data Load Step (Cradle)](../steps/builders/data_load_step_cradle.md)
-- [Hyperparameter Prep Step](../steps/builders/hyperparameter_prep_step.md)
-- [MIMS Packaging Step](../steps/builders/mims_packaging_step.md)
-- [MIMS Payload Step](../steps/builders/mims_payload_step.md)
-- [MIMS Registration Step](../steps/builders/mims_registration_step.md)
-- [Model Evaluation Step (XGBoost)](../steps/builders/model_eval_step_xgboost.md)
-- [Model Step (PyTorch)](../steps/builders/model_step_pytorch.md)
-- [Model Step (XGBoost)](../steps/builders/model_step_xgboost.md)
-- [Risk Table Map Step](../steps/builders/risk_table_map_step.md)
-- [Tabular Preprocessing Step](../steps/builders/tabular_preprocessing_step.md)
-- [Training Step (PyTorch)](../steps/builders/training_step_pytorch.md)
-- [Training Step (XGBoost)](../steps/builders/training_step_xgboost.md)
+**Note:** Step specifications and contracts are now part of the source code and are not separately documented. The following documents focus on step builder implementations and usage.
 
-### Step Contracts (slipbox/steps/contracts)
+- [README](../steps/README.md) - Overview of step documentation
+- [Batch Transform Step](../steps/batch_transform_step.md)
+- [Currency Conversion Step](../steps/currency_conversion_step.md)
+- [Data Load Step (Cradle)](cradle_data_loading_step.md)
+- [Hyperparameter Prep Step](../steps/hyperparameter_prep_step.md)
+- [MIMS Packaging Step](packaging_step.md)
+- [MIMS Payload Step](payload_step.md)
+- [MIMS Registration Step](../steps/mims_registration_step.md)
+- [Model Evaluation Step (XGBoost)](xgboost_model_eval_step.md)
+- [Model Step (PyTorch)](pytorch_model_step.md)
+- [Model Step (XGBoost)](xgboost_model_step.md)
+- [Risk Table Map Step](../steps/risk_table_map_step.md)
+- [Tabular Preprocessing Step](../steps/tabular_preprocessing_step.md)
+- [Training Step (PyTorch)](pytorch_training_step.md)
+- [Training Step (XGBoost)](xgboost_training_step.md)
 
-- [README](../steps/contracts/README.md) - Overview of step contracts
-- [Cradle Data Loading Contract](../steps/contracts/cradle_data_loading_contract.md)
-- [Currency Conversion Contract](../steps/contracts/currency_conversion_contract.md)
-- [Dummy Training Contract](../steps/contracts/dummy_training_contract.md)
-- [Hyperparameter Prep Contract](../steps/contracts/hyperparameter_prep_contract.md)
-- [MIMS Package Contract](../steps/contracts/mims_package_contract.md)
-- [MIMS Payload Contract](../steps/contracts/mims_payload_contract.md)
-- [MIMS Registration Contract](../steps/contracts/mims_registration_contract.md)
-- [Model Evaluation Contract](../steps/contracts/model_evaluation_contract.md)
-- [PyTorch Train Contract](../steps/contracts/pytorch_train_contract.md)
-- [Risk Table Mapping Contract](../steps/contracts/risk_table_mapping_contract.md)
-- [Tabular Preprocess Contract](../steps/contracts/tabular_preprocess_contract.md)
-- [XGBoost Train Contract](../steps/contracts/xgboost_train_contract.md)
+### Step Scripts (slipbox/scripts)
 
-### Step Scripts (slipbox/steps/scripts)
-
-- [Contract Utils Documentation](../steps/scripts/contract_utils_doc.md)
-- [Currency Conversion Documentation](../steps/scripts/currency_conversion_doc.md)
-- [Dummy Training Documentation](../steps/scripts/dummy_training_doc.md)
-- [MIMS Package Documentation](../steps/scripts/mims_package_doc.md)
-- [MIMS Payload Documentation](../steps/scripts/mims_payload_doc.md)
-- [Model Calibration Documentation](../steps/scripts/model_calibration_doc.md)
-- [Model Evaluation XGBoost Documentation](../steps/scripts/model_evaluation_xgb_doc.md)
-- [MODS MIMS Model Registration](../steps/scripts/MODS_MIMS_Model_Registration.md)
-- [Risk Table Mapping Documentation](../steps/scripts/risk_table_mapping_doc.md)
-- [Tabular Preprocess Documentation](../steps/scripts/tabular_preprocess_doc.md)
-
-### Step Specifications (slipbox/steps/specs)
-
-- [README](../steps/specs/README.md) - Overview of step specifications
-- [Data Loading Training Spec](../steps/specs/data_loading_training_spec.md)
+- [Contract Utils Documentation](../scripts/contract_utils_doc.md)
+- [Currency Conversion Documentation](../scripts/currency_conversion_script.md)
+- [Dummy Training Documentation](../scripts/dummy_training_script.md)
+- [MIMS Package Documentation](../scripts/package_doc.md)
+- [MIMS Payload Documentation](../scripts/payload_doc.md)
+- [Model Calibration Documentation](../scripts/model_calibration_script.md)
+- [Model Evaluation XGBoost Documentation](../scripts/xgboost_model_eval_script.md)
+- [MIMS Registration Documentation](../scripts/mims_registration_script.md)
+- [Risk Table Mapping Documentation](../scripts/risk_table_mapping_script.md)
+- [Tabular Preprocess Documentation](../scripts/tabular_preprocess_script.md)
 
 ---
 
@@ -514,7 +487,7 @@ When adding new step-related documentation:
 ## See Also
 
 - [Cursus Package Overview](cursus_package_overview.md) - Main package entry point
-- [Registered Steps Pipeline Reference](../steps/registered_steps_pipeline_reference.md) - Complete reference of all 37 registered steps with component architecture details
+- [Registered Steps Pipeline Reference](0_registered_steps_pipeline_reference.md) - Complete reference of all 37 registered steps with component architecture details
 - [Processing Steps Index](processing_steps_index.md) - Processing step documentation
 - [Pipeline Catalog Design](../1_design/pipeline_catalog_design.md) - Pipeline catalog architecture
 - [Step Catalog Integration Guide](../0_developer_guide/step_catalog_integration_guide.md) - Catalog integration

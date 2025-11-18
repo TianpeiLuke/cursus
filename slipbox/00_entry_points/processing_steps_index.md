@@ -118,12 +118,12 @@ This section organizes all 28 registered processing steps by their position and 
 | CurrencyConversion | Currency conversion processing | - |
 
 **Key Documentation:**
-- [Tabular Preprocessing Step Guide](../steps/builders/tabular_preprocessing_step.md)
+- [Tabular Preprocessing Step Guide](../steps/tabular_preprocessing_step.md)
 - [Temporal Sequence Normalization Design](../1_design/temporal_sequence_normalization_design.md)
 - [Temporal Feature Engineering Design](../1_design/temporal_feature_engineering_design.md)
 - [Missing Value Imputation Design](../1_design/missing_value_imputation_design.md)
 - [Feature Selection Script Design](../1_design/feature_selection_script_design.md)
-- [Risk Table Mapping Step Guide](../steps/builders/risk_table_map_step.md)
+- [Risk Table Mapping Step Guide](../steps/risk_table_map_step.md)
 
 ### Phase 3: Label Generation & Data Augmentation
 
@@ -431,7 +431,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **TabularPreprocessing**
 - Description: Tabular data preprocessing step
-- **Documentation:** [Tabular Preprocessing Step Guide](../steps/builders/tabular_preprocessing_step.md)
+- **Documentation:** [Tabular Preprocessing Step Guide](../steps/tabular_preprocessing_step.md)
 - Builder: `src/cursus/steps/builders/builder_tabular_preprocessing_step.py`
 - Config: `src/cursus/steps/configs/config_tabular_preprocessing_step.py`
 - Script: `src/cursus/steps/scripts/tabular_preprocessing.py`
@@ -456,7 +456,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **RiskTableMapping**
 - Description: Risk table mapping step for categorical features
-- **Documentation:** [Risk Table Mapping Step Guide](../steps/builders/risk_table_map_step.md)
+- **Documentation:** [Risk Table Mapping Step Guide](../steps/risk_table_map_step.md)
 - Builder: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
 - Config: `src/cursus/steps/configs/config_risk_table_mapping_step.py`
 - **Key Features:** Risk score mapping, job type variants, custom transformation logic
@@ -482,6 +482,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **BedrockPromptTemplateGeneration**
 - Description: Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern
+- **Script Documentation:** [Bedrock Prompt Template Generation Script](../scripts/bedrock_prompt_template_generation_script.md)
 - **Design Docs:**
   - [Bedrock Prompt Template Generation Step Patterns](../1_design/bedrock_prompt_template_generation_step_patterns.md)
   - [Bedrock Prompt Template Generation Input Formats](../1_design/bedrock_prompt_template_generation_input_formats.md)
@@ -492,12 +493,14 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **BedrockProcessing**
 - Description: Bedrock processing step that processes input data through AWS Bedrock models using generated prompt templates and validation schemas
+- **Script Documentation:** [Bedrock Processing Script](../scripts/bedrock_processing_script.md)
 - **Design Doc:** [Bedrock Processing Step Builder Patterns](../1_design/bedrock_processing_step_builder_patterns.md)
 - Config: `BedrockProcessingConfig`
 - Builder: `BedrockProcessingStepBuilder`
 
 **BedrockBatchProcessing**
 - Description: Bedrock batch processing step that provides AWS Bedrock batch inference capabilities with automatic fallback to real-time processing for cost-efficient large dataset processing
+- **Script Documentation:** [Bedrock Batch Processing Script](../scripts/bedrock_batch_processing_script.md)
 - **Design Doc:** [Bedrock Batch Processing Step Builder Patterns](../1_design/bedrock_batch_processing_step_builder_patterns.md)
 - Config: `BedrockBatchProcessingConfig`
 - Builder: `BedrockBatchProcessingStepBuilder`
@@ -590,6 +593,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **ActiveSampling**
 - Description: Modular sample selection engine for semi-supervised and active learning pipelines that intelligently selects high-value samples from unlabeled data pools
+- **Script Documentation:** [Active Sample Selection Script](../scripts/active_sample_selection_script.md)
 - **Design Docs:**
   - [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md) - Complete step builder patterns with contract, spec, config, and builder implementations
   - [Active Sampling Script Design](../1_design/active_sampling_script_design.md) - Main script design with uncertainty, diversity, and BADGE strategies
@@ -811,7 +815,7 @@ class CustomProcessingStepBuilder(StepBuilderBase):
 
 - [Cursus Package Overview](./cursus_package_overview.md) - System architecture overview
 - [Cursus Code Structure Index](./cursus_code_structure_index.md) - Complete code-to-doc mapping
-- [Registered Steps Pipeline Reference](../steps/registered_steps_pipeline_reference.md) - Complete reference of all 37 registered steps with component architecture details
+- [Registered Steps Pipeline Reference](0_registered_steps_pipeline_reference.md) - Complete reference of all 37 registered steps with component architecture details
 - [Step Design and Documentation Index](./step_design_and_documentation_index.md) - All step types index
 
 ### Step Builder Patterns
@@ -833,6 +837,18 @@ class CustomProcessingStepBuilder(StepBuilderBase):
 - [Step Builder Guide](../0_developer_guide/step_builder.md) - Builder implementation
 - [Script Development Guide](../0_developer_guide/script_development_guide.md) - Script implementation
 - [Validation Framework Guide](../0_developer_guide/validation_framework_guide.md) - Validation system
+
+### Documentation Standards
+
+- **[Script Documentation Guide](../6_resources/script_documentation_guide.md)**: Comprehensive guide for documenting processing scripts with standardized 15-section format
+- **[YAML Frontmatter Standard](../6_resources/documentation_yaml_frontmatter_standard.md)**: Standard format for YAML frontmatter in documentation files
+- **[Script Documentation Standardization Project Plan](../2_project_planning/2025-11-18_script_documentation_standardization_project_plan.md)**: Complete project plan for documenting all 31 processing scripts in the Cursus framework
+
+### Script Documentation Examples
+
+- **[Active Sample Selection Script](../scripts/active_sample_selection_script.md)**: Complete example of script documentation following standardized format
+- **[Bedrock Batch Processing Script](../scripts/bedrock_batch_processing_script.md)**: Complete example of complex script documentation with proper markdown links
+- **[Bedrock Processing Script](../scripts/bedrock_processing_script.md)**: Complete example demonstrating all documentation sections and best practices
 
 ---
 
