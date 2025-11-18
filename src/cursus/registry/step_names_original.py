@@ -129,6 +129,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Label ruleset execution step that applies validated rulesets to processed data to generate classification labels using priority-based rule evaluation with execution-time field validation",
     },
+    "ActiveSampleSelection": {
+        "config_class": "ActiveSampleSelectionConfig",
+        "builder_step_name": "ActiveSampleSelectionStepBuilder",
+        "spec_type": "ActiveSampleSelection",
+        "sagemaker_step_type": "Processing",
+        "description": "Active sample selection step that intelligently selects high-value samples from model predictions for Semi-Supervised Learning (SSL) or Active Learning workflows using confidence-based, uncertainty-based, diversity-based, or hybrid strategies",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",

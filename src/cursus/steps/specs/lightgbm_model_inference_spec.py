@@ -97,6 +97,7 @@ LIGHTGBM_MODEL_INFERENCE_SPEC = StepSpecification(
                 "model_predictions",
                 "inference_results",
                 "prediction_data",
+                "evaluation_data",
             ],
             description="Model inference results with predictions and original data",
         ),

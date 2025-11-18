@@ -96,10 +96,11 @@ from ...core.base.contract_base import ScriptContract
 ACTIVE_SAMPLE_SELECTION_CONTRACT = ScriptContract(
     entry_point="active_sample_selection.py",
     expected_input_paths={
-        "evaluation_data": "/opt/ml/processing/input/predictions",
+        "evaluation_data": "/opt/ml/processing/input/evaluation_data",
     },
     expected_output_paths={
-        "selected_samples": "/opt/ml/processing/output/selected",
+        "selected_samples": "/opt/ml/processing/output/selected_samples",
+        "selection_metadata": "/opt/ml/processing/output/selection_metadata",
     },
     expected_arguments={
         # No expected arguments - job_type comes from config
@@ -271,6 +272,18 @@ ACTIVE_SAMPLE_SELECTION_SPEC = StepSpecification(
                 "processed_data",
             ],
             description="Selected samples with confidence scores and metadata",
+        ),
+        "selection_metadata": OutputSpec(
+            logical_name="selection_metadata",
+            output_type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.ProcessingOutputConfig.Outputs['selection_metadata'].S3Output.S3Uri",
+            data_type="S3Uri",
+            aliases=[
+                "metadata",
+                "selection_info",
+                "sampling_metadata",
+            ],
+            description="Selection metadata including strategy config, counts, and timestamp",
         ),
     },
 )

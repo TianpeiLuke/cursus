@@ -97,6 +97,7 @@ PYTORCH_MODEL_INFERENCE_SPEC = StepSpecification(
                 "inference_results",
                 "prediction_data",
                 "pytorch_predictions",
+                "evaluation_data",
             ],
             description="PyTorch model inference results with predictions and original data",
         ),

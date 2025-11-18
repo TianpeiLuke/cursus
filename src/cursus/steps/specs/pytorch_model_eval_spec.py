@@ -84,6 +84,14 @@ PYTORCH_MODEL_EVAL_SPEC = StepSpecification(
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri",
             data_type="S3Uri",
+            aliases=[
+                "inference_output",
+                "predictions",
+                "model_predictions",
+                "inference_results",
+                "prediction_data",
+                "evaluation_data",
+            ],
             description="PyTorch model evaluation results including predictions",
         ),
         OutputSpec(

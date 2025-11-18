@@ -147,7 +147,6 @@ def get_dag_metadata() -> DAGMetadata:
             ],
             "exit_points": [
                 "Registration",
-                "LightGBMModelEval_calibration",
                 "ModelWikiGenerator",
             ],
             "required_configs": [

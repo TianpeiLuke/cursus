@@ -8,7 +8,13 @@ serialization capabilities.
 
 from ...core.base.config_base import BasePipelineConfig
 from .config_processing_step_base import ProcessingStepConfigBase
+from .config_active_sample_selection_step import ActiveSampleSelectionConfig
 from .config_batch_transform_step import BatchTransformStepConfig
+from .config_bedrock_batch_processing_step import BedrockBatchProcessingConfig
+from .config_bedrock_processing_step import BedrockProcessingConfig
+from .config_bedrock_prompt_template_generation_step import (
+    BedrockPromptTemplateGenerationConfig,
+)
 from .config_currency_conversion_step import CurrencyConversionConfig
 from .config_cradle_data_loading_step import (
     CradleDataLoadingConfig,
@@ -25,12 +31,20 @@ from .config_cradle_data_loading_step import (
 )
 from .config_dummy_data_loading_step import DummyDataLoadingConfig
 from .config_dummy_training_step import DummyTrainingConfig
+from .config_feature_selection_step import FeatureSelectionConfig
+from .config_label_ruleset_execution_step import LabelRulesetExecutionConfig
+from .config_label_ruleset_generation_step import LabelRulesetGenerationConfig
+from .config_lightgbm_model_eval_step import LightGBMModelEvalConfig
+from .config_lightgbm_model_inference_step import LightGBMModelInferenceConfig
 from .config_lightgbm_training_step import LightGBMTrainingConfig
 from .config_lightgbmmt_training_step import LightGBMMTTrainingConfig
 from .config_missing_value_imputation_step import MissingValueImputationConfig
 from .config_model_calibration_step import ModelCalibrationConfig
 from .config_model_metrics_computation_step import ModelMetricsComputationConfig
 from .config_model_wiki_generator_step import ModelWikiGeneratorConfig
+from .config_percentile_model_calibration_step import PercentileModelCalibrationConfig
+from .config_pytorch_model_eval_step import PyTorchModelEvalConfig
+from .config_pytorch_model_inference_step import PyTorchModelInferenceConfig
 from .config_stratified_sampling_step import StratifiedSamplingConfig
 from .config_temporal_sequence_normalization_step import (
     TemporalSequenceNormalizationConfig,
@@ -67,17 +81,29 @@ __all__ = [
     "BasePipelineConfig",
     "ProcessingStepConfigBase",
     # Step configurations
+    "ActiveSampleSelectionConfig",
     "BatchTransformStepConfig",
+    "BedrockBatchProcessingConfig",
+    "BedrockProcessingConfig",
+    "BedrockPromptTemplateGenerationConfig",
     "CurrencyConversionConfig",
     "CradleDataLoadingConfig",
     "DummyDataLoadingConfig",
     "DummyTrainingConfig",
+    "FeatureSelectionConfig",
+    "LabelRulesetExecutionConfig",
+    "LabelRulesetGenerationConfig",
+    "LightGBMModelEvalConfig",
+    "LightGBMModelInferenceConfig",
     "LightGBMTrainingConfig",
     "LightGBMMTTrainingConfig",
     "MissingValueImputationConfig",
     "ModelCalibrationConfig",
     "ModelMetricsComputationConfig",
     "ModelWikiGeneratorConfig",
+    "PercentileModelCalibrationConfig",
+    "PyTorchModelEvalConfig",
+    "PyTorchModelInferenceConfig",
     "StratifiedSamplingConfig",
     "TemporalSequenceNormalizationConfig",
     "TemporalFeatureEngineeringConfig",

@@ -50,7 +50,14 @@ class DAGMetadata(BaseModel):
     @classmethod
     def validate_framework(cls, v):
         """Validate framework."""
-        valid_frameworks = {"xgboost", "lightgbm", "lightgbmmt", "pytorch", "generic", "dummy"}
+        valid_frameworks = {
+            "xgboost",
+            "lightgbm",
+            "lightgbmmt",
+            "pytorch",
+            "generic",
+            "dummy",
+        }
         if v not in valid_frameworks:
             raise ValueError(
                 f"Invalid framework: {v}. Must be one of {valid_frameworks}"

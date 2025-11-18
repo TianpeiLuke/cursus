@@ -6,6 +6,9 @@ dependencies, outputs, and script contracts. These specifications serve as the
 single source of truth for step behavior and connectivity.
 """
 
+# Active Sample Selection specifications
+from .active_sample_selection_spec import ACTIVE_SAMPLE_SELECTION_SPEC
+
 # Batch Transform specifications
 from .batch_transform_calibration_spec import BATCH_TRANSFORM_CALIBRATION_SPEC
 from .batch_transform_testing_spec import BATCH_TRANSFORM_TESTING_SPEC
@@ -49,6 +52,10 @@ from .lightgbm_training_spec import LIGHTGBM_TRAINING_SPEC
 from .lightgbmmt_training_spec import LIGHTGBMMT_TRAINING_SPEC
 from .pytorch_training_spec import PYTORCH_TRAINING_SPEC
 from .xgboost_training_spec import XGBOOST_TRAINING_SPEC
+
+# LightGBM Model specifications
+from .lightgbm_model_eval_spec import LIGHTGBM_MODEL_EVAL_SPEC
+from .lightgbm_model_inference_spec import LIGHTGBM_MODEL_INFERENCE_SPEC
 
 # Model specifications
 from .pytorch_model_spec import PYTORCH_MODEL_SPEC
@@ -125,6 +132,8 @@ from .temporal_feature_engineering_validation_spec import (
 )
 
 __all__ = [
+    # Active Sample Selection specifications
+    "ACTIVE_SAMPLE_SELECTION_SPEC",
     # Batch Transform specifications
     "BATCH_TRANSFORM_CALIBRATION_SPEC",
     "BATCH_TRANSFORM_TESTING_SPEC",
@@ -159,6 +168,9 @@ __all__ = [
     "LIGHTGBMMT_TRAINING_SPEC",
     "PYTORCH_TRAINING_SPEC",
     "XGBOOST_TRAINING_SPEC",
+    # LightGBM Model specifications
+    "LIGHTGBM_MODEL_EVAL_SPEC",
+    "LIGHTGBM_MODEL_INFERENCE_SPEC",
     # Model specifications
     "PYTORCH_MODEL_SPEC",
     "XGBOOST_MODEL_SPEC",
