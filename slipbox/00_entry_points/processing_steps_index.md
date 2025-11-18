@@ -19,74 +19,200 @@ date of note: 2025-11-09
 
 # Processing Steps Index & Documentation Hub
 
-## Overview
+## Purpose
 
-This index card serves as the comprehensive navigation hub for all Processing Step-related documentation, design patterns, implementation guides, and analysis across the Cursus framework. Processing steps are a fundamental component type that handles data transformation, preprocessing, and feature engineering operations within ML pipelines.
+This index serves as the comprehensive navigation hub for all Processing Step-related documentation across the Cursus framework. Processing steps are fundamental components that handle data transformation, preprocessing, feature engineering, model evaluation, and deployment operations within ML pipelines.
 
-## Quick Navigation
+## Organization Principle
 
-### Documentation Categories
-```
-Processing Steps Documentation
-├── Design Patterns       → Step builder patterns and architecture
-├── Validation Patterns   → Alignment and testing frameworks
-├── Implementation Plans  → Development roadmaps and guides
-├── Analysis Reports      → System analysis and optimization
-├── Code Examples         → Actual implementations
-└── Integration Guides    → Usage and best practices
-```
+This index is organized to mirror the **actual pipeline execution order**, grouping processing steps by their functional phase in the ML workflow. Additional sections cover design patterns, validation frameworks, implementation plans, and best practices.
 
-### All Processing Steps (28 Total)
+## Table of Contents
 
-**Data Loading (2)**
-- DummyDataLoading
-- CradleDataLoading
+### [Part 1: Pipeline Flow - Processing Steps by Execution Phase](#part-1-pipeline-flow---processing-steps-by-execution-phase)
+- [Phase 1: Data Acquisition & Loading](#phase-1-data-acquisition--loading)
+- [Phase 2: Data Preparation & Feature Engineering](#phase-2-data-preparation--feature-engineering)
+- [Phase 3: Label Generation & Data Augmentation](#phase-3-label-generation--data-augmentation)
+- [Phase 4: Model Training](#phase-4-model-training)
+- [Phase 5: Model Inference & Evaluation](#phase-5-model-inference--evaluation)
+- [Phase 6: Model Post-Processing & Calibration](#phase-6-model-post-processing--calibration)
+- [Phase 7: Model Deployment & Serving](#phase-7-model-deployment--serving)
 
-**Data Preprocessing (9)**
-- TabularPreprocessing ✓ [Has Design Docs]
-- TemporalSequenceNormalization ✓ [Has Design Doc]
-- TemporalFeatureEngineering ✓ [Has Design Doc]
-- StratifiedSampling
-- RiskTableMapping ✓ [Has Design Docs]
-- MissingValueImputation ✓ [Has Design Doc]
-- FeatureSelection ✓ [Has Design Doc]
-- CurrencyConversion
+### [Part 2: Core Design Documentation](#part-2-core-design-documentation)
+- [Primary Design Patterns](#21-primary-design-patterns)
+- [Configuration & Architecture](#22-configuration--architecture)
 
-**Bedrock Processing (3)**
-- BedrockPromptTemplateGeneration ✓ [Has Design Docs]
-- BedrockProcessing ✓ [Has Design Doc]
-- BedrockBatchProcessing ✓ [Has Design Doc]
+### [Part 3: Validation & Testing](#part-3-validation--testing)
+- [Validation Framework](#31-validation-framework)
+- [Test Infrastructure](#32-test-infrastructure)
 
-**Model Evaluation & Inference (6)**
-- XGBoostModelEval
-- XGBoostModelInference ✓ [Has Design Doc]
-- PyTorchModelEval
-- PyTorchModelInference ✓ [Has Design Doc]
-- ModelMetricsComputation ✓ [Has Design Doc]
-- ModelWikiGenerator ✓ [Has Design Doc]
+### [Part 4: Implementation Plans & Roadmaps](#part-4-implementation-plans--roadmaps)
+- [Core Implementation Plans](#41-core-implementation-plans)
+- [Feature Enhancement Plans](#42-feature-enhancement-plans)
+- [UI & Configuration Plans](#43-ui--configuration-plans)
 
-**Model Calibration (2)**
-- ModelCalibration
-- PercentileModelCalibration ✓ [Has Design Doc]
+### [Part 5: Analysis & Optimization](#part-5-analysis--optimization)
+- [System Analysis](#51-system-analysis)
+- [Alignment & Standardization](#52-alignment--standardization)
+- [Configuration & Path Resolution](#53-configuration--path-resolution)
 
-**Deployment & Testing (3)**
-- Package
-- Registration
-- Payload
+### [Part 6: Integration & Usage](#part-6-integration--usage)
+- [Pipeline Integration](#61-pipeline-integration)
+- [Dependency Resolution](#62-dependency-resolution)
 
-**Special (1)**
-- DummyTraining
+### [Part 7: Validation & Quality Assurance](#part-7-validation--quality-assurance)
+- [Validation Frameworks](#71-validation-frameworks)
+- [Test Infrastructure](#72-test-infrastructure)
 
-**Quick Access:**
-- [Section 5: Complete Registry Details](#5-complete-processing-steps-registry) - Full step descriptions with docs
-- [Section 1: Design Patterns](#1-core-design-documentation) - Architecture and patterns
-- [Section 2: Validation](#2-validation--testing) - Testing frameworks
+### [Part 8: Historical Context & Evolution](#part-8-historical-context--evolution)
+- [Implementation History](#81-implementation-history)
+- [Feature Evolution](#82-feature-evolution)
+
+### [Part 9: Migration & Modernization](#part-9-migration--modernization)
+- [Registry Migration](#91-registry-migration)
+- [Step Catalog Integration](#92-step-catalog-integration)
+
+### [Part 10: Best Practices & Guidelines](#part-10-best-practices--guidelines)
+- [Development Guidelines](#101-development-guidelines)
+- [Testing Best Practices](#102-testing-best-practices)
+
+### Additional Sections
+- [Related Documentation](#part-11-related-documentation)
+- [Processing Step Statistics](#part-12-processing-step-statistics)
+- [Quick Reference](#quick-reference)
 
 ---
 
-## 1. Core Design Documentation
+## Part 1: Pipeline Flow - Processing Steps by Execution Phase
 
-### 1.1 Primary Design Patterns
+This section organizes all 28 registered processing steps by their position and function in the ML pipeline execution flow.
+
+### Phase 1: Data Acquisition & Loading
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| DummyDataLoading | Dummy data loading step that processes user-provided data instead of calling Cradle services | ✓ |
+| CradleDataLoading | Cradle data loading step | ✓ |
+
+**Key Documentation:**
+- Builder: `src/cursus/steps/builders/builder_cradle_data_load_step.py`
+- Config: `src/cursus/steps/configs/config_cradle_data_load_step.py`
+- [Cradle Data Load Config Helper Design](../1_design/cradle_data_load_config_helper_design.md)
+- [Cradle Data Load Config UI Design](../1_design/cradle_data_load_config_ui_design.md)
+
+### Phase 2: Data Preparation & Feature Engineering
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| TabularPreprocessing | Tabular data preprocessing step with multi-variant support | ✓ |
+| TemporalSequenceNormalization | Temporal sequence normalization with configurable operations | ✓ |
+| TemporalFeatureEngineering | Temporal feature engineering for ML models | ✓ |
+| StratifiedSampling | Stratified sampling with multiple allocation strategies | - |
+| RiskTableMapping | Risk table mapping for categorical features | ✓ |
+| MissingValueImputation | Missing value imputation using statistical methods | ✓ |
+| FeatureSelection | Feature selection with statistical and ML-based methods | ✓ |
+| CurrencyConversion | Currency conversion processing | - |
+
+**Key Documentation:**
+- [Tabular Preprocessing Step Guide](../steps/builders/tabular_preprocessing_step.md)
+- [Temporal Sequence Normalization Design](../1_design/temporal_sequence_normalization_design.md)
+- [Temporal Feature Engineering Design](../1_design/temporal_feature_engineering_design.md)
+- [Missing Value Imputation Design](../1_design/missing_value_imputation_design.md)
+- [Feature Selection Script Design](../1_design/feature_selection_script_design.md)
+- [Risk Table Mapping Step Guide](../steps/builders/risk_table_map_step.md)
+
+### Phase 3: Label Generation & Data Augmentation
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| BedrockPromptTemplateGeneration | Bedrock prompt template generation with 5-component architecture | ✓ |
+| BedrockProcessing | Bedrock processing through AWS Bedrock models | ✓ |
+| BedrockBatchProcessing | Bedrock batch inference with automatic fallback | ✓ |
+| LabelRulesetGeneration | Label ruleset generation and validation | ✓ |
+| LabelRulesetExecution | Label ruleset execution with priority-based evaluation | ✓ |
+| ActiveSampleSelection | Active sample selection for SSL/Active Learning | ✓ |
+| PseudoLabelMerge | Intelligent merge of labeled and pseudo-labeled data | ✓ |
+
+**Key Documentation:**
+- [Bedrock Prompt Template Generation Step Patterns](../1_design/bedrock_prompt_template_generation_step_patterns.md)
+- [Bedrock Processing Step Builder Patterns](../1_design/bedrock_processing_step_builder_patterns.md)
+- [Bedrock Batch Processing Step Builder Patterns](../1_design/bedrock_batch_processing_step_builder_patterns.md)
+- [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md)
+- [Pseudo Label Merge Script Design](../1_design/pseudo_label_merge_script_design.md)
+
+### Phase 4: Model Training
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| DummyTraining | Training step that uses a pretrained model | - |
+
+**Note:** DummyTraining is classified as Processing type despite training-related functionality.
+
+### Phase 5: Model Inference & Evaluation
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| XGBoostModelEval | XGBoost model evaluation with job type support | - |
+| XGBoostModelInference | XGBoost model inference for prediction generation | ✓ |
+| LightGBMMTModelInference | LightGBMMT multi-task model inference | ✓ |
+| PyTorchModelEval | PyTorch model evaluation step | - |
+| PyTorchModelInference | PyTorch model inference for prediction generation | ✓ |
+| ModelMetricsComputation | Comprehensive model performance evaluation | ✓ |
+| ModelWikiGenerator | Automated model documentation creation | ✓ |
+
+**Key Documentation:**
+- Builder: `src/cursus/steps/builders/builder_xgboost_model_eval_step.py`
+- Config: `src/cursus/steps/configs/config_xgboost_model_eval_step.py`
+- [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md)
+- [LightGBMMT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
+- [PyTorch Model Inference Design](../1_design/pytorch_model_inference_design.md)
+- [Model Metrics Computation Design](../1_design/model_metrics_computation_design.md)
+- [Model Wiki Generator Design](../1_design/model_wiki_generator_design.md)
+
+### Phase 6: Model Post-Processing & Calibration
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| ModelCalibration | Calibrates model prediction scores to accurate probabilities | - |
+| PercentileModelCalibration | Creates percentile mapping using ROC curve analysis | ✓ |
+
+**Key Documentation:**
+- Builder: `src/cursus/steps/builders/builder_model_calibration_step.py`
+- Config: `src/cursus/steps/configs/config_model_calibration_step.py`
+- [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md)
+
+### Phase 7: Model Deployment & Serving
+
+#### Registered Processing Steps in This Phase
+
+| Step Name | Description | Has Design Docs |
+|-----------|-------------|-----------------|
+| Package | Model packaging step | - |
+| Registration | Model registration step (MimsModelRegistrationProcessing) | - |
+| Payload | Payload testing step | - |
+
+**Key Documentation:**
+- Builder: `src/cursus/steps/builders/builder_package_step.py`
+- Config: `src/cursus/steps/configs/config_package_step.py`
+- Config: `src/cursus/steps/configs/config_payload_step.py`
+
+---
+
+## Part 2: Core Design Documentation
+
+### 2.1 Primary Design Patterns
 
 **[Processing Step Builder Patterns](../1_design/processing_step_builder_patterns.md)**
 - Comprehensive processing step builder implementation patterns
@@ -100,7 +226,7 @@ Processing Steps Documentation
 - Property path validation for processing outputs
 - Integration with unified alignment tester
 
-### 1.2 Configuration & Architecture
+### 2.2 Configuration & Architecture
 
 **[Config Portability Path Resolution](../1_design/config_portability_path_resolution_design.md)**
 - Portable path support for processing step scripts
@@ -125,9 +251,9 @@ Processing Steps Documentation
 
 ---
 
-## 2. Validation & Testing
+## Part 3: Validation & Testing
 
-### 2.1 Validation Framework
+### 3.1 Validation Framework
 
 **[Script Execution Spec](../1_design/script_execution_spec_design.md)**
 - Script validation specification for processing steps
@@ -140,7 +266,7 @@ Processing Steps Documentation
 - SageMaker processing path validation
 - Framework-specific validation rules
 
-### 2.2 Test Infrastructure
+### 3.2 Test Infrastructure
 
 **Processing Test Modules:**
 - [Processing Test](../validation/builders/variants/processing_test.md) - Main processing step test suite
@@ -156,9 +282,9 @@ Processing Steps Documentation
 
 ---
 
-## 3. Implementation Plans & Roadmaps
+## Part 4: Implementation Plans & Roadmaps
 
-### 3.1 Core Implementation Plans
+### 4.1 Core Implementation Plans
 
 **[Config Portability Path Resolution Implementation Plan](../2_project_planning/2025-09-20_config_portability_path_resolution_implementation_plan.md)**
 - Portable path implementation for processing step configs
@@ -175,7 +301,7 @@ Processing Steps Documentation
 - Pattern-based testing framework
 - Processing-specific test coverage
 
-### 3.2 Feature Enhancement Plans
+### 4.2 Feature Enhancement Plans
 
 **[SageMaker Step Type Variants 4-Level Validation Implementation](../2_project_planning/2025-08-15_sagemaker_step_type_variants_4level_validation_implementation.md)**
 - Processing step-specific validation requirements
@@ -204,7 +330,7 @@ Processing Steps Documentation
 - Specification-driven architecture support
 - Complete alignment with existing training step patterns
 
-### 3.3 UI & Configuration Plans
+### 4.3 UI & Configuration Plans
 
 **[DAG Config Factory Implementation Plan](../2_project_planning/2025-10-15_dag_config_factory_implementation_plan.md)**
 - Interactive configuration for processing steps
@@ -223,9 +349,9 @@ Processing Steps Documentation
 
 ---
 
-## 4. Analysis & Optimization
+## Part 5: Analysis & Optimization
 
-### 4.1 System Analysis
+### 5.1 System Analysis
 
 **[Step Builder Methods Comprehensive Analysis](../4_analysis/step_builder_methods_comprehensive_analysis.md)**
 - Analysis of processing step builder methods
@@ -247,7 +373,7 @@ Processing Steps Documentation
 - Processing step alignment validation patterns
 - Test framework effectiveness
 
-### 4.2 Alignment & Standardization
+### 5.2 Alignment & Standardization
 
 **[Code Alignment Standardization Plan](../2_project_planning/2025-08-11_code_alignment_standardization_plan.md)**
 - Processing step alignment improvements
@@ -264,7 +390,7 @@ Processing Steps Documentation
 - Builder-aware detection fixes
 - Naming variation logic improvements
 
-### 4.3 Configuration & Path Resolution
+### 5.3 Configuration & Path Resolution
 
 **[Runtime Script Discovery Redundancy Analysis](../4_analysis/2025-10-16_runtime_script_discovery_redundancy_analysis.md)**
 - Processing step config base proven approach
@@ -283,11 +409,11 @@ Processing Steps Documentation
 
 ---
 
-## 5. Complete Processing Steps Registry
+## Part 6: Complete Processing Steps Registry
 
 This section lists ALL processing steps registered in `src/cursus/registry/step_names_original.py` with `sagemaker_step_type="Processing"`.
 
-### 5.1 Data Loading Steps
+### 6.1 Data Loading Steps
 
 **DummyDataLoading**
 - Description: Dummy data loading step that processes user-provided data instead of calling Cradle services
@@ -301,7 +427,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Builder: `src/cursus/steps/builders/builder_cradle_data_load_step.py`
 - Config: `src/cursus/steps/configs/config_cradle_data_load_step.py`
 
-### 5.2 Data Preprocessing Steps
+### 6.2 Data Preprocessing Steps
 
 **TabularPreprocessing**
 - Description: Tabular data preprocessing step
@@ -352,7 +478,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Builder: `src/cursus/steps/builders/builder_currency_conversion_step.py`
 - Config: `src/cursus/steps/configs/config_currency_conversion_step.py`
 
-### 5.3 Bedrock Processing Steps
+### 6.3 Bedrock Processing Steps
 
 **BedrockPromptTemplateGeneration**
 - Description: Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern
@@ -376,7 +502,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Config: `BedrockBatchProcessingConfig`
 - Builder: `BedrockBatchProcessingStepBuilder`
 
-### 5.4 Model Evaluation & Inference Steps
+### 6.4 Model Evaluation & Inference Steps
 
 **XGBoostModelEval**
 - Description: XGBoost model evaluation step
@@ -420,7 +546,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Config: `ModelWikiGeneratorConfig`
 - Builder: `ModelWikiGeneratorStepBuilder`
 
-### 5.5 Model Calibration Steps
+### 6.5 Model Calibration Steps
 
 **ModelCalibration**
 - Description: Calibrates model prediction scores to accurate probabilities
@@ -434,7 +560,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Config: `PercentileModelCalibrationConfig`
 - Builder: `PercentileModelCalibrationStepBuilder`
 
-### 5.6 Deployment & Testing Steps
+### 6.6 Deployment & Testing Steps
 
 **Package**
 - Description: Model packaging step
@@ -452,7 +578,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Config: `src/cursus/steps/configs/config_payload_step.py`
 - Builder: `PayloadStepBuilder`
 
-### 5.7 Special Processing Steps
+### 6.7 Special Processing Steps
 
 **DummyTraining**
 - Description: Training step that uses a pretrained model
@@ -460,7 +586,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Builder: `DummyTrainingStepBuilder`
 - Note: Classified as Processing type despite training-related functionality
 
-### 5.8 Semi-Supervised Learning & Active Learning Steps
+### 6.8 Semi-Supervised Learning & Active Learning Steps
 
 **ActiveSampling**
 - Description: Modular sample selection engine for semi-supervised and active learning pipelines that intelligently selects high-value samples from unlabeled data pools
@@ -486,9 +612,9 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 ---
 
-## 6. Integration & Usage
+## Part 7: Integration & Usage
 
-### 6.1 Pipeline Integration
+### 7.1 Pipeline Integration
 
 **[Specification-Driven Step Builder Plan](../2_project_planning/2025-07-07_specification_driven_step_builder_plan.md)**
 - Processing steps in specification-driven architecture
@@ -505,7 +631,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Training and calibration variants
 - Complete pipeline implementation
 
-### 6.2 Dependency Resolution
+### 7.2 Dependency Resolution
 
 **[Comprehensive Dependency Matching Analysis](../2_project_planning/2025-07-08_comprehensive_dependency_matching_analysis.md)**
 - Processing step output matching
@@ -519,9 +645,9 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 ---
 
-## 7. Validation & Quality Assurance
+## Part 8: Validation & Quality Assurance
 
-### 7.1 Validation Frameworks
+### 8.1 Validation Frameworks
 
 **[Validation Alignment Builders Analysis](../4_analysis/validation_alignment_builders_analysis.md)**
 - Processing test suite structure
@@ -538,7 +664,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Redundancy elimination strategies
 - Test code optimization
 
-### 7.2 Test Infrastructure
+### 8.2 Test Infrastructure
 
 **[Universal Step Builder Simplified Approach Analysis](../4_analysis/universal_step_builder_simplified_approach_analysis.md)**
 - Processing step creation tests
@@ -557,9 +683,9 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 ---
 
-## 8. Historical Context & Evolution
+## Part 9: Historical Context & Evolution
 
-### 8.1 Implementation History
+### 9.1 Implementation History
 
 **[Phase 1 Solution Summary](../2_project_planning/phase1_solution_summary.md)**
 - Initial processing step modernization
@@ -576,7 +702,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Specification-driven approach adoption
 - Architecture corrections
 
-### 8.2 Feature Evolution
+### 9.2 Feature Evolution
 
 **[Contract Alignment Implementation Summary](../2_project_planning/2025-07-04_contract_alignment_implementation_summary.md)**
 - Processing step contract validation
@@ -590,9 +716,9 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 ---
 
-## 9. Migration & Modernization
+## Part 10: Migration & Modernization
 
-### 9.1 Registry Migration
+### 10.1 Registry Migration
 
 **[Registry Migration Implementation Analysis](../4_analysis/registry_migration_implementation_analysis.md)**
 - TabularPreprocessing step registry updates
@@ -609,7 +735,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Migration approach analysis
 - Implementation recommendations
 
-### 9.2 Step Catalog Integration
+### 10.2 Step Catalog Integration
 
 **[Step Catalog System Integration Analysis](../4_analysis/step_catalog_system_integration_analysis.md)**
 - Processing step specializations
@@ -628,9 +754,9 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 ---
 
-## 10. Best Practices & Guidelines
+## Part 11: Best Practices & Guidelines
 
-### 10.1 Development Guidelines
+### 11.1 Development Guidelines
 
 **Key Principles:**
 1. **Three-Tier Configuration**: Use Essential, System, and Derived field pattern
@@ -662,7 +788,7 @@ class CustomProcessingStepBuilder(StepBuilderBase):
         )
 ```
 
-### 10.2 Testing Best Practices
+### 11.2 Testing Best Practices
 
 **Validation Levels:**
 1. **Level 1**: Script contract alignment
@@ -679,12 +805,13 @@ class CustomProcessingStepBuilder(StepBuilderBase):
 
 ---
 
-## 11. Related Documentation
+## Part 12: Related Documentation
 
 ### Core Framework
 
 - [Cursus Package Overview](./cursus_package_overview.md) - System architecture overview
 - [Cursus Code Structure Index](./cursus_code_structure_index.md) - Complete code-to-doc mapping
+- [Registered Steps Pipeline Reference](../steps/registered_steps_pipeline_reference.md) - Complete reference of all 37 registered steps with component architecture details
 - [Step Design and Documentation Index](./step_design_and_documentation_index.md) - All step types index
 
 ### Step Builder Patterns
@@ -709,7 +836,7 @@ class CustomProcessingStepBuilder(StepBuilderBase):
 
 ---
 
-## 12. Processing Step Statistics
+## Part 13: Processing Step Statistics
 
 ### Line Count Analysis (as of 2025-09-29)
 

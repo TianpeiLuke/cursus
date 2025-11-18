@@ -1,3 +1,24 @@
+---
+tags:
+  - entry_point
+  - documentation
+  - script_contracts
+  - overview
+keywords:
+  - script contracts
+  - I/O contracts
+  - environment validation
+  - contract validator
+  - AST analysis
+  - script compliance
+topics:
+  - script contract documentation
+  - validation framework
+  - contract specifications
+language: python
+date of note: 2025-11-09
+---
+
 # Pipeline Script Contracts
 
 This module provides script contracts that define explicit I/O and environment requirements for pipeline scripts, bridging the gap between step specifications and script implementations with automated validation capabilities.

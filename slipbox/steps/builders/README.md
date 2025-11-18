@@ -1,3 +1,24 @@
+---
+tags:
+  - entry_point
+  - documentation
+  - step_builders
+  - overview
+keywords:
+  - step builders
+  - pipeline steps
+  - SageMaker steps
+  - step specifications
+  - dependency resolution
+  - pipeline architecture
+topics:
+  - step builder documentation
+  - pipeline step catalog
+  - specification-driven design
+language: python
+date of note: 2025-11-09
+---
+
 # Pipeline Steps Documentation
 
 This directory contains documentation for each step in the MODS pipeline. Each markdown file provides a detailed description of a specific pipeline step, including its purpose, inputs, outputs, configuration parameters, and usage examples.

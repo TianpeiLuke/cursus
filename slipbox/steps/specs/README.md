@@ -1,3 +1,24 @@
+---
+tags:
+  - entry_point
+  - documentation
+  - step_specifications
+  - overview
+keywords:
+  - step specifications
+  - dependency resolution
+  - job type variants
+  - pipeline specs
+  - semantic matching
+  - specification registry
+topics:
+  - step specification documentation
+  - specification catalog
+  - pipeline construction
+language: python
+date of note: 2025-11-09
+---
+
 # Pipeline Step Specifications
 
 This module contains concrete step specifications for all pipeline components. These specifications define the input/output requirements, parameters, and metadata for each step type, enabling automatic dependency resolution and pipeline construction.
