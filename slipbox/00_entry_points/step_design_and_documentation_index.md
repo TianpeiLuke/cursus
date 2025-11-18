@@ -125,6 +125,7 @@ This entry point document provides a comprehensive index of all step-related des
 - [Active Sampling BADGE Design](../1_design/active_sampling_badge.md) - BADGE (Batch Active learning by Diverse Gradient Embeddings) algorithm design for combining uncertainty and diversity in sample selection
 - [Active Sampling Uncertainty Design](../1_design/active_sampling_uncertainty_margin_entropy.md) - Uncertainty-based sampling strategies including margin, entropy, and least confidence methods
 - [Active Sampling Core-Set Design](../1_design/active_sampling_core_set_leaf_core_set.md) - Diversity sampling with core-set and leaf core-set algorithms using k-center selection
+- [Pseudo Label Merge Script Design](../1_design/pseudo_label_merge_script_design.md) - Unified data combination engine for merging labeled and pseudo-labeled data in SSL pipelines with split-aware merge, auto-inferred split ratios, format preservation, and schema alignment
 
 ### Step Testing and Validation
 

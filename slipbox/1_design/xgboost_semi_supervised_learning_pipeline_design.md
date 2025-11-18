@@ -416,6 +416,13 @@ class ActiveSampleSelectionConfig(ProcessingStepConfigBase):
 
 The PseudoLabelMerge step combines original labeled data with pseudo-labeled samples, maintaining data provenance and ensuring schema compatibility.
 
+**Complete design documentation**: See [Pseudo Label Merge Script Design](pseudo_label_merge_script_design.md) for comprehensive implementation details including:
+- Split-aware merge for training jobs (maintains train/test/val boundaries)
+- Auto-inferred split ratios (adapts to base data proportions)
+- Simple merge for validation/testing jobs
+- Data format preservation (CSV/TSV/Parquet)
+- Schema alignment and provenance tracking
+
 #### Purpose
 Create a combined training dataset that includes both ground-truth labeled data and high-confidence pseudo-labeled data, enabling the model to learn from both sources.
 
@@ -490,6 +497,137 @@ PSEUDO_LABEL_MERGE_CONTRACT = ProcessingScriptContract(
 )
 ```
 
+#### Step Specification
+
+The PseudoLabelMerge spec uses **semantic differentiation** to handle symmetric inputs while enabling flexible dependency resolution across multiple pipeline patterns.
+
+```python
+from cursus.core.base import StepSpecification, DependencySpec, OutputSpec, DependencyType
+
+PSEUDO_LABEL_MERGE_SPEC = StepSpecification(
+    step_type="PseudoLabelMerge",
+    
+    dependencies={
+        # Dependency 1: Augmentation data (pseudo-labeled, selected, or inference)
+        "augmentation_data": DependencySpec(
+            logical_name="augmentation_data",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            data_type="S3Uri",
+            required=True,
+            compatible_sources=[
+                # Primary SSL sources
+                "ActiveSampleSelection",      # SSL: Selected high-confidence samples
+                "LabelRulesetExecution",      # Pattern A: Rule-generated labels
+                "XGBoostModelInference",      # Pattern C: Direct inference output
+                
+                # Alternative model inference sources
+                "LightGBMModelInference",     # LightGBM predictions
+                "PyTorchModelInference",      # PyTorch predictions
+                "BedrockBatchProcessing",     # LLM/Bedrock predictions
+                
+                # Fallback: preprocessing sources (if used symmetrically)
+                "TabularPreprocessing",       # Preprocessed data
+                "FeatureSelection",           # After feature selection
+            ],
+            semantic_keywords=[
+                "augmentation", "pseudo", "selected", "inference",
+                "predictions", "generated", "synthetic", "labeled"
+            ],
+            description="Data to augment training set (pseudo-labels, selected samples, predictions)"
+        ),
+        
+        # Dependency 2: Base training data (original labeled data)
+        "base_training_data": DependencySpec(
+            logical_name="base_training_data",
+            dependency_type=DependencyType.TRAINING_DATA,  # Compatible with PROCESSING_OUTPUT
+            data_type="S3Uri",
+            required=True,
+            compatible_sources=[
+                # Primary labeled data sources
+                "TabularPreprocessing",       # Most common: preprocessed labeled data
+                "CradleDataLoading",          # Direct data loading
+                
+                # After preprocessing steps
+                "FeatureSelection",           # After feature selection
+                "MissingValueImputation",     # After missing value imputation
+                "TemporalFeatureEngineering", # After temporal feature engineering
+                "TemporalSequenceNormalization", # After sequence normalization
+                "StratifiedSampling",         # Sampled labeled data
+                
+                # Fallback: Can also accept inference sources (if used symmetrically)
+                "ActiveSampleSelection",      # If roles are swapped
+                "LabelRulesetExecution",      # If used as base data
+            ],
+            semantic_keywords=[
+                "base", "original", "training", "preprocessed",
+                "labeled", "ground_truth", "primary", "source"
+            ],
+            description="Base training dataset to augment with additional samples"
+        ),
+    },
+    
+    outputs={
+        "merged_training_data": OutputSpec(
+            logical_name="merged_training_data",
+            aliases=[
+                "combined_data",
+                "augmented_training_data",
+                "ssl_training_data",
+                "merged_data",
+                "input_path",
+                "input_data",
+                "processed_data",
+            ],
+            output_type=DependencyType.TRAINING_DATA,
+            data_type="S3Uri",
+            description="Combined training dataset (original + pseudo-labeled)"
+        )
+    },
+    
+    contract=PSEUDO_LABEL_MERGE_CONTRACT,
+    
+    description="""
+    Merges original labeled training data with pseudo-labeled or augmentation data for
+    semi-supervised learning. Handles symmetric inputs through semantic differentiation.
+    
+    Key Features:
+    - Symmetric merge operation (order-independent processing)
+    - Semantic dependency resolution via keywords and compatible sources
+    - Schema compatibility enforcement
+    - Data provenance tracking (original vs pseudo-labeled)
+    - Format preservation (CSV, TSV, Parquet)
+    
+    Dependency Resolution Strategy:
+    - Uses semantic differentiation to guide resolver towards natural pairings
+    - "augmentation_data" dependency favors inference/selection sources
+    - "base_training_data" dependency favors preprocessing sources
+    - Comprehensive compatible_sources enables cross-pattern flexibility
+    
+    Supported Pipeline Patterns:
+    
+    Pattern A: Bedrock + LabelRuleset
+      BedrockBatchInference -> LabelRulesetExecution -> PseudoLabelMerge
+                                                         ↑
+                               TabularPreprocessing ----+
+    
+    Pattern B: XGBoost + ActiveSampleSelection  
+      XGBoostInference -> ActiveSampleSelection -> PseudoLabelMerge
+                                                   ↑
+                          TabularPreprocessing ---+
+    
+    Pattern C: Direct Inference Merge
+      XGBoostInference -> PseudoLabelMerge
+                          ↑
+      TabularPreprocessing +
+    
+    Pattern D: Symmetric Preprocessing (Two datasets)
+      TabularPreprocessing_A -> PseudoLabelMerge
+                                ↑
+      TabularPreprocessing_B ---+
+    """,
+)
+```
+
 #### Configuration Class
 
 ```python
@@ -500,6 +638,11 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
     
     label_field: str = Field(
         description="Name of the label column in the data"
+    )
+    
+    id_field: str = Field(
+        default="id",
+        description="Name of the ID column for tracking sample provenance"
     )
     
     # ===== System Fields with Defaults (Tier 2) =====
@@ -524,6 +667,16 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
         description="Output format: 'csv', 'tsv', or 'parquet'"
     )
     
+    pseudo_label_column: str = Field(
+        default="pseudo_label",
+        description="Column name containing pseudo-labels in augmentation data"
+    )
+    
+    preserve_confidence: bool = Field(
+        default=True,
+        description="Preserve confidence scores from selection step in merged data"
+    )
+    
     # ===== Validators =====
     
     @field_validator("output_format")
@@ -533,6 +686,92 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
         if v not in allowed:
             raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
         return v
+```
+
+#### Provider Step Output Aliases
+
+For proper dependency resolution, provider steps must include appropriate aliases in their OutputSpec:
+
+**ActiveSampleSelection:**
+```python
+outputs = {
+    "selected_samples": OutputSpec(
+        logical_name="selected_samples",
+        aliases=["augmentation_data", "pseudo_labeled_data", "ssl_samples"],
+        output_type=DependencyType.PROCESSING_OUTPUT,
+    )
+}
+```
+
+**LabelRulesetExecution:**
+```python
+outputs = {
+    "labeled_data": OutputSpec(
+        logical_name="labeled_data",
+        aliases=["augmentation_data", "pseudo_labeled_data", "ruleset_output"],
+        output_type=DependencyType.PROCESSING_OUTPUT,
+    )
+}
+```
+
+**XGBoostModelInference:**
+```python
+outputs = {
+    "evaluation_data": OutputSpec(
+        logical_name="evaluation_data",
+        aliases=["augmentation_data", "predictions", "inference_output"],
+        output_type=DependencyType.PROCESSING_OUTPUT,
+    )
+}
+```
+
+**TabularPreprocessing:**
+```python
+outputs = {
+    "processed_data": OutputSpec(
+        logical_name="processed_data",
+        aliases=["base_training_data", "training_data", "preprocessed_data"],
+        output_type=DependencyType.PROCESSING_OUTPUT,
+    )
+}
+```
+
+#### Dependency Resolution Examples
+
+**Pattern B Resolution (XGBoost + ActiveSampleSelection):**
+```
+Available steps: [
+    "TabularPreprocessing_training",
+    "XGBoostTraining_pretrain",
+    "XGBoostModelInference_validation", 
+    "ActiveSampleSelection"
+]
+
+PseudoLabelMerge.augmentation_data:
+  Candidates:
+    - ActiveSampleSelection.selected_samples
+      * Alias match: "augmentation_data" in aliases ✓
+      * Compatible source: "ActiveSampleSelection" in list ✓
+      * Semantic: "selected" matches keywords ✓
+      * Score: 0.85
+    - TabularPreprocessing.processed_data
+      * Semantic: "processed" (lower match) 
+      * Score: 0.65
+  Winner: ActiveSampleSelection.selected_samples
+
+PseudoLabelMerge.base_training_data:
+  Candidates:
+    - TabularPreprocessing.processed_data
+      * Alias match: "base_training_data" in aliases ✓
+      * Compatible source: "TabularPreprocessing" in list ✓
+      * Semantic: "training" matches keywords ✓
+      * Score: 0.85
+    - ActiveSampleSelection.selected_samples
+      * Semantic: "selected" (not a strong match for "base")
+      * Score: 0.60
+  Winner: TabularPreprocessing.processed_data
+
+Result: Natural differentiation through semantic matching!
 ```
 
 ### 3. Reused Existing Steps

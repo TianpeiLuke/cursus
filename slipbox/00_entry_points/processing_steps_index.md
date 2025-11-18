@@ -475,6 +475,15 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - **Key Features:** Three sampling strategies (uncertainty/diversity/BADGE), model-agnostic design, works with XGBoost/LightGBM/PyTorch/Bedrock inference outputs, embedding support for enhanced diversity, configurable batch selection, Pydantic validation for strategy-use case compatibility
 - **Integration:** Used in semi-supervised learning pipelines between model inference and pseudo-label merging steps, automatic dependency resolution via specification-driven architecture
 
+**PseudoLabelMerge**
+- Description: Unified data combination engine that intelligently merges original labeled training data with pseudo-labeled or augmented samples for Semi-Supervised Learning (SSL) and Active Learning workflows
+- **Design Doc:** [Pseudo Label Merge Script Design](../1_design/pseudo_label_merge_script_design.md) - Complete script design with split-aware merge, auto-inferred ratios, format preservation, and schema alignment
+- Config: `PseudoLabelMergeConfig`
+- Builder: `PseudoLabelMergeStepBuilder`
+- **Key Features:** Split-aware merge for training jobs (maintains train/test/val boundaries), auto-inferred split ratios (adapts to base data proportions), simple merge for validation/testing jobs, data format preservation (CSV/TSV/Parquet), schema alignment and provenance tracking, symmetric input handling with semantic differentiation
+- **Integration:** Used in semi-supervised learning pipelines after active sample selection to combine base labeled data with pseudo-labeled samples, supports multiple upstream sources (ActiveSampleSelection, ModelInference, LabelRulesetExecution, BedrockBatchProcessing), feeds into training steps (XGBoostTraining, LightGBMTraining, PyTorchTraining)
+- **Pipeline Flow:** TabularPreprocessing → (XGBoostInference → ActiveSampleSelection) → PseudoLabelMerge → XGBoostTraining (fine-tune)
+
 ---
 
 ## 6. Integration & Usage

@@ -744,6 +744,7 @@ All XGBoost pipeline steps follow the three-tier configuration pattern:
 - [XGBoost Semi-Supervised Learning Pipeline Design](../1_design/xgboost_semi_supervised_learning_pipeline_design.md)
 - [XGBoost Semi-Supervised Learning Training Design](../1_design/xgboost_semi_supervised_learning_training_design.md)
 - [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md) - Complete step builder patterns for intelligent sample selection in semi-supervised and active learning pipelines with XGBoost
+- [Pseudo Label Merge Script Design](../1_design/pseudo_label_merge_script_design.md) - Unified data combination engine for merging labeled and pseudo-labeled data in SSL pipelines with split-aware merge, auto-inferred split ratios, and format preservation
 - [Simplified XGBoost Config Implementation Plan](../2_project_planning/2025-07-25_simplified_xgboost_config_implementation_plan.md)
 - [Specification-Driven XGBoost Pipeline Plan](../2_project_planning/2025-07-04_specification_driven_xgboost_pipeline_plan.md)
 
