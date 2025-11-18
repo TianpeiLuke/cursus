@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2025-11-17
+
+### Added
+- **Semi-Supervised Learning Framework** - Comprehensive support for semi-supervised learning workflows
+  - **Semi-Supervised Learning Training Steps** - New training steps for SSL workflows with labeled and unlabeled data
+  - **Active Sample Selection Step** - Complete step for active learning and sample selection strategies
+  - **Pseudo Label Merge Step** - New step for merging pseudo-labeled data with labeled datasets
+  - **Labeled Data Merger** - Enhanced data merger for combining labeled and pseudo-labeled datasets
+  - **SSL Training Pipelines** - Complete pipeline templates for semi-supervised learning workflows
+
+- **Active Learning Support** - Advanced active learning capabilities for model improvement
+  - **Active Sampling Steps** - New steps for active sampling strategies and data selection
+  - **Active Sample Selection Contract** - Enhanced contract definitions for active sampling workflows
+  - **Sample Selection Builder** - Complete builder for active sample selection step
+
+### Enhanced
+- **Dependency Management** - Updated dependencies for better compatibility
+  - **LightGBM Dependency** - Added LightGBM to core dependencies for extended ML framework support
+  - **Python 3.11+ Requirement** - Updated README to reflect Python 3.11+ requirement for modern features
+  - **PyProject Configuration** - Fixed pyproject.toml configuration for better package management
+
+- **Contract and Configuration Updates** - Improved contract definitions and configurations
+  - **SSL Contract Updates** - Enhanced contracts for semi-supervised learning workflows
+  - **Active Sampling Configuration** - Improved configuration handling for active sampling steps
+  - **Data Merger Contracts** - Enhanced contract definitions for data merging operations
+
+### Fixed
+- **PyProject Configuration** - Fixed issues in pyproject.toml affecting package installation and dependency resolution
+- **Contract Alignment** - Updated contracts to align with semi-supervised learning requirements
+- **Step Registration** - Added missing steps to __init__ for proper module discovery
+
+### Technical Details
+- **SSL Architecture** - Complete semi-supervised learning framework with training, active sampling, and pseudo-labeling
+- **Active Learning System** - Advanced active learning capabilities with sample selection and data merging
+- **Pipeline Integration** - Full integration of SSL workflows into pipeline catalog and execution system
+- **LightGBM Support** - Extended support for LightGBM in addition to existing XGBoost and PyTorch frameworks
+
+### Quality Assurance
+- **Workflow Testing** - Comprehensive testing of semi-supervised learning workflows
+- **Contract Validation** - Enhanced validation of SSL-related contracts and specifications
+- **Pipeline Validation** - Thorough validation of SSL pipeline templates and execution
+
+### Performance Improvements
+- **Data Merging Performance** - Optimized data merging operations for large-scale SSL workflows
+- **Sample Selection Efficiency** - Enhanced efficiency of active sample selection algorithms
+- **Pipeline Execution** - Improved execution performance for SSL training pipelines
+
 ## [1.4.3] - 2025-11-17
 
 ### Added
