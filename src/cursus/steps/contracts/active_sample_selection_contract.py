@@ -20,11 +20,14 @@ ACTIVE_SAMPLE_SELECTION_CONTRACT = ScriptContract(
     expected_arguments={
         # No expected arguments - job_type comes from config
     },
-    required_env_vars=["SELECTION_STRATEGY"],
+    required_env_vars=[
+        "SELECTION_STRATEGY",
+        "USE_CASE",
+        "ID_FIELD",
+        "LABEL_FIELD",
+    ],
     optional_env_vars={
-        "USE_CASE": "auto",
-        "ID_FIELD": "id",
-        "LABEL_FIELD": "",
+        "SCORE_FIELD": "",
         "OUTPUT_FORMAT": "csv",
         "CONFIDENCE_THRESHOLD": "0.9",
         "MAX_SAMPLES": "0",
@@ -33,7 +36,6 @@ ACTIVE_SAMPLE_SELECTION_CONTRACT = ScriptContract(
         "BATCH_SIZE": "32",
         "METRIC": "euclidean",
         "RANDOM_SEED": "42",
-        "SCORE_FIELD": "",
         "SCORE_FIELD_PREFIX": "prob_class_",
     },
     framework_requirements={
