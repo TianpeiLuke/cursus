@@ -120,6 +120,11 @@ This entry point document provides a comprehensive index of all step-related des
 - [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md) - Design for XGBoost model inference scripts
 - [XGBoost Semi-Supervised Learning Pipeline Design](../1_design/xgboost_semi_supervised_learning_pipeline_design.md) - Complete semi-supervised learning pipeline architecture with pseudo-labeling workflow for XGBoost
 - [XGBoost Semi-Supervised Learning Training Design](../1_design/xgboost_semi_supervised_learning_training_design.md) - Training step extension with job_type support for SSL pretraining and fine-tuning phases
+- [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md) - Complete step builder patterns with contract, spec, config, and builder implementations for intelligent sample selection in semi-supervised and active learning pipelines
+- [Active Sampling Script Design](../1_design/active_sampling_script_design.md) - Modular sample selection engine for semi-supervised and active learning pipelines with uncertainty, diversity, and BADGE strategies
+- [Active Sampling BADGE Design](../1_design/active_sampling_badge.md) - BADGE (Batch Active learning by Diverse Gradient Embeddings) algorithm design for combining uncertainty and diversity in sample selection
+- [Active Sampling Uncertainty Design](../1_design/active_sampling_uncertainty_margin_entropy.md) - Uncertainty-based sampling strategies including margin, entropy, and least confidence methods
+- [Active Sampling Core-Set Design](../1_design/active_sampling_core_set_leaf_core_set.md) - Diversity sampling with core-set and leaf core-set algorithms using k-center selection
 
 ### Step Testing and Validation
 

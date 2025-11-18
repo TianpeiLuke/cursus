@@ -54,17 +54,17 @@ The SSL pipeline consists of four sequential phases that transform small labeled
 graph TD
     subgraph "📊 Phase 1: Pretrain on Labeled Data"
         LabeledSmall["Small Labeled Dataset<br/>• Ground truth labels<br/>• Limited size (e.g., 1K samples)"]
-        LoadLabeled["CradleDataLoading_labeled_small"]
-        PreprocLabeled["TabularPreprocessing_labeled_small"]
+        LoadLabeled["CradleDataLoading_training"]
+        PreprocLabeled["TabularPreprocessing_training"]
         Pretrain["XGBoostTraining_pretrain<br/>job_type='pretrain'"]
         PretrainModel["Pretrained Model<br/>• Model artifacts<br/>• Preprocessing artifacts"]
     end
     
     subgraph "🎯 Phase 2: Inference on Unlabeled Data"
         UnlabeledLarge["Large Unlabeled Dataset<br/>• No labels<br/>• Abundant size (e.g., 100K samples)"]
-        LoadUnlabeled["CradleDataLoading_unlabeled"]
-        PreprocUnlabeled["TabularPreprocessing_unlabeled"]
-        Inference["XGBoostModelInference_unlabeled"]
+        LoadUnlabeled["CradleDataLoading_validation"]
+        PreprocUnlabeled["TabularPreprocessing_validation"]
+        Inference["XGBoostModelInference_validation"]
         Predictions["Predictions with Probabilities<br/>• prob_class_0, prob_class_1<br/>• Original features preserved"]
     end
     
@@ -81,9 +81,9 @@ graph TD
     end
     
     subgraph "✅ Phase 5: Evaluation (Optional)"
-        LoadTest["CradleDataLoading_test"]
-        PreprocTest["TabularPreprocessing_test"]
-        Eval["XGBoostModelEval"]
+        LoadTest["CradleDataLoading_calibration"]
+        PreprocTest["TabularPreprocessing_calibration"]
+        Eval["XGBoostModelEval_calibration"]
         Metrics["Model Metrics<br/>• Performance on test set<br/>• Comparison with baseline"]
     end
     
@@ -113,6 +113,71 @@ graph TD
     Eval --> Metrics
 ```
 
+## ⚠️ CRITICAL: Strategy Selection for SSL vs Active Learning
+
+**The XGBoost SSL Pipeline uses CONFIDENCE-BASED selection strategies ONLY.** Using uncertainty-based strategies will degrade model performance!
+
+### SSL (This Pipeline) vs Active Learning
+
+| Aspect | SSL (Semi-Supervised Learning) | Active Learning |
+|--------|-------------------------------|-----------------|
+| **Goal** | Automatic pseudo-labeling (no human) | Human labeling of selected samples |
+| **Selection** | HIGH confidence samples | HIGH uncertainty samples |
+| **Downstream** | Pseudo-labels assigned automatically | Human provides ground truth labels |
+| **Strategy** | confidence_threshold, top_k_per_class | uncertainty, diversity, BADGE |
+
+### Strategy Compatibility Table
+
+| Strategy | SSL ✓ | Active Learning ✓ | Why? |
+|----------|-------|-------------------|------|
+| **confidence_threshold** | ✅ YES | ❌ NO | Selects HIGH confidence → Safe for pseudo-labels |
+| **top_k_per_class** | ✅ YES | ❌ NO | Selects HIGH confidence per class → Balanced pseudo-labels |
+| **uncertainty** (margin/entropy) | ❌ NO | ✅ YES | Selects UNCERTAIN samples → Noisy pseudo-labels! |
+| **diversity** (core-set) | ⚠️ Rarely | ✅ YES | Selects diverse → Usually want confidence for SSL |
+| **BADGE** | ❌ NO | ✅ YES | Selects uncertain+diverse → Same issue as uncertainty |
+
+### ⚠️ Common Mistake to Avoid
+
+**WRONG - Using uncertainty for SSL:**
+```python
+# ❌ BAD: This will select UNCERTAIN samples
+# Results in noisy pseudo-labels that hurt model performance!
+selection_config = ActiveSampleSelectionConfig(
+    selection_strategy="uncertainty",  # ❌ WRONG for SSL!
+    uncertainty_mode="margin",
+)
+```
+
+**Explanation**: Uncertainty strategies select samples where `prob=[0.51, 0.49]` (uncertain) instead of `prob=[0.95, 0.05]` (confident). When these uncertain predictions are used as pseudo-labels, they add noise and degrade the model.
+
+**CORRECT - Using confidence for SSL:**
+```python
+# ✅ GOOD: This selects HIGH CONFIDENCE samples
+# Results in reliable pseudo-labels that improve model performance
+selection_config = ActiveSampleSelectionConfig(
+    selection_strategy="confidence_threshold",  # ✅ CORRECT for SSL!
+    confidence_threshold=0.9,
+)
+```
+
+### Optional Safety Validation
+
+The ActiveSampleSelection step supports optional `USE_CASE` validation to prevent strategy misuse:
+
+```python
+selection_config = ActiveSampleSelectionConfig(
+    selection_strategy="confidence_threshold",
+    use_case="ssl",  # ← Validates strategy is SSL-appropriate
+    confidence_threshold=0.9,
+)
+```
+
+With `use_case="ssl"`, the step will **reject** uncertainty/diversity/BADGE strategies and only allow confidence-based strategies.
+
+See [Active Sampling Script Design](active_sampling_script_design.md) for complete validation details and all strategy implementations.
+
+---
+
 ## Core Components
 
 ### 1. ActiveSampleSelection Step (NEW)
@@ -120,9 +185,13 @@ graph TD
 The ActiveSampleSelection step intelligently selects high-quality samples from model predictions for pseudo-labeling.
 
 #### Purpose
-Select samples from inference predictions where the model has high confidence, creating a reliable pseudo-labeled dataset that improves rather than degrades model performance.
+Select samples from inference predictions where the model has **high confidence**, creating a reliable pseudo-labeled dataset that improves rather than degrades model performance.
 
-#### Selection Strategies
+**Critical**: This step MUST use confidence-based strategies for SSL. Uncertainty-based strategies will degrade performance by selecting samples with noisy predictions.
+
+#### SSL-Appropriate Selection Strategies
+
+**Only use these strategies for SSL pipelines:**
 
 ##### Confidence Threshold Strategy
 Selects samples where the model's maximum probability exceeds a threshold:
@@ -229,6 +298,40 @@ selection_config = ActiveSampleSelectionConfig(
     k_per_class=500,  # 500 samples per class
 )
 ```
+
+##### Advanced Selection Strategies
+
+For production SSL pipelines, more sophisticated selection strategies are available that combine uncertainty and diversity:
+
+**Uncertainty Sampling Strategies:**
+- **Margin Sampling**: Selects samples where model is uncertain (small difference between top-2 probabilities)
+- **Entropy Sampling**: Selects samples with high prediction entropy (uniform distribution)
+- **Least Confidence**: Selects samples with low maximum probability
+
+See [Active Sampling Uncertainty Design](active_sampling_uncertainty_margin_entropy.md) for detailed algorithms and implementation.
+
+**Diversity Sampling Strategies:**
+- **Core-Set Selection**: K-center algorithm for diverse sample coverage in feature space
+- **Leaf Core-Set**: XGBoost-specific diversity using leaf embeddings
+
+See [Active Sampling Core-Set Design](active_sampling_core_set_leaf_core_set.md) for k-center algorithms and implementation.
+
+**Hybrid Sampling (BADGE):**
+- **BADGE (Batch Active learning by Diverse Gradient Embeddings)**: Combines uncertainty (gradient magnitude) with diversity (gradient embedding clustering)
+- Provides both informativeness and coverage
+- Suitable for deep learning and GBDT models
+
+See [Active Sampling BADGE Design](active_sampling_badge.md) for gradient embedding algorithms and pseudo-gradient approximations for XGBoost.
+
+**Complete Implementation:**
+See [Active Sampling Script Design](active_sampling_script_design.md) for unified implementation supporting all strategies (uncertainty, diversity, BADGE) with model-agnostic architecture.
+
+**When to Use Each Strategy:**
+- **Confidence Threshold**: Simple baseline, fast, good for initial experiments
+- **Top-K Per Class**: Balanced selection, prevents majority class dominance
+- **Uncertainty Sampling**: Focuses on decision boundary, efficient for active learning
+- **Diversity Sampling**: Ensures broad feature space coverage, reduces redundancy
+- **BADGE**: Best for complex tasks requiring both uncertainty and diversity
 
 #### Script Contract
 
@@ -469,14 +572,14 @@ def create_xgboost_ssl_dag() -> PipelineDAG:
     dag = PipelineDAG()
     
     # ===== Phase 1: Pretrain on Small Labeled Data =====
-    dag.add_node("CradleDataLoading_labeled_small")
-    dag.add_node("TabularPreprocessing_labeled_small")
+    dag.add_node("CradleDataLoading_training")
+    dag.add_node("TabularPreprocessing_training")
     dag.add_node("XGBoostTraining_pretrain")
     
     # ===== Phase 2: Inference on Unlabeled Data =====
-    dag.add_node("CradleDataLoading_unlabeled")
-    dag.add_node("TabularPreprocessing_unlabeled")
-    dag.add_node("XGBoostModelInference_unlabeled")
+    dag.add_node("CradleDataLoading_validation")
+    dag.add_node("TabularPreprocessing_validation")
+    dag.add_node("XGBoostModelInference_validation")
     
     # ===== Phase 3: Active Selection and Merge =====
     dag.add_node("ActiveSampleSelection")
@@ -486,35 +589,35 @@ def create_xgboost_ssl_dag() -> PipelineDAG:
     dag.add_node("XGBoostTraining_finetune")
     
     # ===== Phase 5: Evaluation (Optional) =====
-    dag.add_node("CradleDataLoading_test")
-    dag.add_node("TabularPreprocessing_test")
-    dag.add_node("XGBoostModelEval")
+    dag.add_node("CradleDataLoading_calibration")
+    dag.add_node("TabularPreprocessing_calibration")
+    dag.add_node("XGBoostModelEval_calibration")
     
     # ===== Define Dependencies =====
     
     # Pretrain phase dependencies
-    dag.add_edge("CradleDataLoading_labeled_small", "TabularPreprocessing_labeled_small")
-    dag.add_edge("TabularPreprocessing_labeled_small", "XGBoostTraining_pretrain")
+    dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
+    dag.add_edge("TabularPreprocessing_training", "XGBoostTraining_pretrain")
     
     # Inference phase dependencies
-    dag.add_edge("CradleDataLoading_unlabeled", "TabularPreprocessing_unlabeled")
-    dag.add_edge("TabularPreprocessing_unlabeled", "XGBoostModelInference_unlabeled")
-    dag.add_edge("XGBoostTraining_pretrain", "XGBoostModelInference_unlabeled")  # Model dependency
+    dag.add_edge("CradleDataLoading_validation", "TabularPreprocessing_validation")
+    dag.add_edge("TabularPreprocessing_validation", "XGBoostModelInference_validation")
+    dag.add_edge("XGBoostTraining_pretrain", "XGBoostModelInference_validation")  # Model dependency
     
     # Selection phase dependencies
-    dag.add_edge("XGBoostModelInference_unlabeled", "ActiveSampleSelection")
+    dag.add_edge("XGBoostModelInference_validation", "ActiveSampleSelection")
     
     # Merge phase dependencies
     dag.add_edge("ActiveSampleSelection", "PseudoLabelMerge")
-    dag.add_edge("TabularPreprocessing_labeled_small", "PseudoLabelMerge")  # Original labeled data
+    dag.add_edge("TabularPreprocessing_training", "PseudoLabelMerge")  # Original labeled data
     
     # Fine-tune phase dependencies
     dag.add_edge("PseudoLabelMerge", "XGBoostTraining_finetune")
     
     # Evaluation phase dependencies
-    dag.add_edge("CradleDataLoading_test", "TabularPreprocessing_test")
-    dag.add_edge("TabularPreprocessing_test", "XGBoostModelEval")
-    dag.add_edge("XGBoostTraining_finetune", "XGBoostModelEval")  # Use fine-tuned model
+    dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
+    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
+    dag.add_edge("XGBoostTraining_finetune", "XGBoostModelEval_calibration")  # Use fine-tuned model
     
     return dag
 ```
@@ -532,15 +635,15 @@ def create_ssl_pipeline_configs() -> Dict[str, BasePipelineConfig]:
     configs = {}
     
     # ===== Phase 1: Pretrain Configs =====
-    configs["CradleDataLoading_labeled_small"] = CradleDataLoadingConfig(
-        step_name="CradleDataLoading_labeled_small",
+    configs["CradleDataLoading_training"] = CradleDataLoadingConfig(
+        step_name="CradleDataLoading_training",
         job_type="training",
         table_name="labeled_training_data",
         # ... other config
     )
     
-    configs["TabularPreprocessing_labeled_small"] = TabularPreprocessingConfig(
-        step_name="TabularPreprocessing_labeled_small",
+    configs["TabularPreprocessing_training"] = TabularPreprocessingConfig(
+        step_name="TabularPreprocessing_training",
         job_type="training",
         label_name="label",
         # ... other config
@@ -560,23 +663,23 @@ def create_ssl_pipeline_configs() -> Dict[str, BasePipelineConfig]:
     )
     
     # ===== Phase 2: Inference Configs =====
-    configs["CradleDataLoading_unlabeled"] = CradleDataLoadingConfig(
-        step_name="CradleDataLoading_unlabeled",
-        job_type="calibration",  # No labels needed
+    configs["CradleDataLoading_validation"] = CradleDataLoadingConfig(
+        step_name="CradleDataLoading_validation",
+        job_type="validation",  # No labels needed
         table_name="unlabeled_pool_data",
         # ... other config
     )
     
-    configs["TabularPreprocessing_unlabeled"] = TabularPreprocessingConfig(
-        step_name="TabularPreprocessing_unlabeled",
-        job_type="calibration",  # No labels needed
+    configs["TabularPreprocessing_validation"] = TabularPreprocessingConfig(
+        step_name="TabularPreprocessing_validation",
+        job_type="validation",  # No labels needed
         label_name="",  # Empty for unlabeled data
         # ... other config
     )
     
-    configs["XGBoostModelInference_unlabeled"] = XGBoostModelInferenceConfig(
-        step_name="XGBoostModelInference_unlabeled",
-        job_type="calibration",
+    configs["XGBoostModelInference_validation"] = XGBoostModelInferenceConfig(
+        step_name="XGBoostModelInference_validation",
+        job_type="validation",
         # ... other config
     )
     
@@ -584,6 +687,7 @@ def create_ssl_pipeline_configs() -> Dict[str, BasePipelineConfig]:
     configs["ActiveSampleSelection"] = ActiveSampleSelectionConfig(
         step_name="ActiveSampleSelection",
         selection_strategy="confidence_threshold",
+        use_case="ssl",  # ← Validates strategy is SSL-appropriate
         confidence_threshold=0.9,
         max_samples=10000,
         # ... other config
@@ -611,22 +715,22 @@ def create_ssl_pipeline_configs() -> Dict[str, BasePipelineConfig]:
     )
     
     # ===== Phase 5: Evaluation Configs =====
-    configs["CradleDataLoading_test"] = CradleDataLoadingConfig(
-        step_name="CradleDataLoading_test",
-        job_type="testing",
+    configs["CradleDataLoading_calibration"] = CradleDataLoadingConfig(
+        step_name="CradleDataLoading_calibration",
+        job_type="calibration",
         table_name="test_data",
         # ... other config
     )
     
-    configs["TabularPreprocessing_test"] = TabularPreprocessingConfig(
-        step_name="TabularPreprocessing_test",
-        job_type="testing",
+    configs["TabularPreprocessing_calibration"] = TabularPreprocessingConfig(
+        step_name="TabularPreprocessing_calibration",
+        job_type="calibration",
         label_name="label",
         # ... other config
     )
     
-    configs["XGBoostModelEval"] = XGBoostModelEvalConfig(
-        step_name="XGBoostModelEval",
+    configs["XGBoostModelEval_calibration"] = XGBoostModelEvalConfig(
+        step_name="XGBoostModelEval_calibration",
         job_type="calibration",
         # ... other config
     )

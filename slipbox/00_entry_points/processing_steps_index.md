@@ -460,6 +460,21 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Builder: `DummyTrainingStepBuilder`
 - Note: Classified as Processing type despite training-related functionality
 
+### 5.8 Semi-Supervised Learning & Active Learning Steps
+
+**ActiveSampling**
+- Description: Modular sample selection engine for semi-supervised and active learning pipelines that intelligently selects high-value samples from unlabeled data pools
+- **Design Docs:**
+  - [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md) - Complete step builder patterns with contract, spec, config, and builder implementations
+  - [Active Sampling Script Design](../1_design/active_sampling_script_design.md) - Main script design with uncertainty, diversity, and BADGE strategies
+  - [Active Sampling BADGE Design](../1_design/active_sampling_badge.md) - BADGE (Batch Active learning by Diverse Gradient Embeddings) algorithm for hybrid sampling
+  - [Active Sampling Uncertainty Design](../1_design/active_sampling_uncertainty_margin_entropy.md) - Uncertainty-based strategies (margin, entropy, least confidence)
+  - [Active Sampling Core-Set Design](../1_design/active_sampling_core_set_leaf_core_set.md) - Diversity sampling with core-set and k-center algorithms
+- Config: `ActiveSamplingConfig`
+- Builder: `ActiveSamplingStepBuilder`
+- **Key Features:** Three sampling strategies (uncertainty/diversity/BADGE), model-agnostic design, works with XGBoost/LightGBM/PyTorch/Bedrock inference outputs, embedding support for enhanced diversity, configurable batch selection, Pydantic validation for strategy-use case compatibility
+- **Integration:** Used in semi-supervised learning pipelines between model inference and pseudo-label merging steps, automatic dependency resolution via specification-driven architecture
+
 ---
 
 ## 6. Integration & Usage
