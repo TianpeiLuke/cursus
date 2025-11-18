@@ -136,6 +136,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Active sample selection step that intelligently selects high-value samples from model predictions for Semi-Supervised Learning (SSL) or Active Learning workflows using confidence-based, uncertainty-based, diversity-based, or hybrid strategies",
     },
+    "PseudoLabelMerge": {
+        "config_class": "PseudoLabelMergeConfig",
+        "builder_step_name": "PseudoLabelMergeStepBuilder",
+        "spec_type": "PseudoLabelMerge",
+        "sagemaker_step_type": "Processing",
+        "description": "Pseudo label merge step that intelligently combines labeled base data with pseudo-labeled or augmented samples for Semi-Supervised Learning (SSL) and Active Learning workflows with split-aware merge, auto-inferred split ratios, and provenance tracking",
+    },
     # Training Steps
     "PyTorchTraining": {
         "config_class": "PyTorchTrainingConfig",

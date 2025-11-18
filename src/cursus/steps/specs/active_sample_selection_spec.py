@@ -88,6 +88,8 @@ ACTIVE_SAMPLE_SELECTION_SPEC = StepSpecification(
                 "input_path",  # Exact match for XGBoost/LightGBM/PyTorch Training input
                 "input_data",
                 "processed_data",
+                "eval_output",
+                "augmentation_data",
             ],
             description="Selected samples with confidence scores and metadata",
         ),
