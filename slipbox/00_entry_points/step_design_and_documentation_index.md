@@ -206,6 +206,12 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Training Step Builder (PyTorch)](pytorch_training_step.md) - PyTorch training step builder
 - [Dummy Training Documentation](../steps/scripts/dummy_training_doc.md) - Dummy training script
 
+**Training Script Documentation**
+- **[XGBoost Training Script](../scripts/xgboost_training_script.md)**: Single-task gradient boosting with dual PyPI support, format preservation, and comprehensive evaluation
+- **[LightGBM Training Script](../scripts/lightgbm_training_script.md)**: Single-task gradient boosting with preprocessing artifact reuse and inline/pre-computed artifact support
+- **[LightGBMMT Multi-Task Training Script](../scripts/lightgbmmt_training_script.md)**: Multi-task learning with adaptive task weighting, knowledge distillation, JS divergence similarity, and refactored architecture (67% code reduction, 91% quality score)
+- **[PyTorch Training Script](../scripts/pytorch_training_script.md)**: Deep learning training with flexible architecture, GPU support, and comprehensive checkpointing
+
 **Deep Learning Training**
 - [Temporal Self Attention Model Design](../1_design/temporal_self_attention_model_design.md) - Design for temporal self-attention model architecture and training scripts
 
@@ -251,6 +257,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [LightGBM Model Evaluation Script](../scripts/lightgbm_model_eval_script.md) - Script documentation for comprehensive model evaluation with comparison mode
 - [LightGBM Model Inference Script](../scripts/lightgbm_model_inference_script.md) - Script documentation for pure inference without metrics
 - [XGBoost Model Inference Script](../scripts/xgboost_model_inference_script.md) - Script documentation for pure inference with embedded preprocessing and multi-format output
+- [Model Metrics Computation Script](../scripts/model_metrics_computation_script.md) - Script documentation for comprehensive performance evaluation with standard ML metrics, domain-specific metrics, and A/B testing comparison mode
 - [Model Step Builder (PyTorch)](pytorch_model_step.md) - PyTorch model step builder
 - [Model Step Builder (XGBoost)](xgboost_model_step.md) - XGBoost model step builder
 
@@ -266,14 +273,16 @@ This index is organized to mirror the **actual pipeline execution order**, group
 
 | Step Name | Step Type | Description |
 |-----------|-----------|-------------|
-| ModelCalibration | Processing | Calibrates model prediction scores to accurate probabilities |
+| ModelCalibration | Processing | Calibrates model prediction scores to accurate probabilities using GAM, Isotonic Regression, or Platt Scaling methods |
 | PercentileModelCalibration | Processing | Creates percentile mapping from model scores using ROC curve analysis for consistent risk interpretation |
 
 **Model Calibration**
+- [Model Calibration Script](../scripts/model_calibration_script.md) - Complete script documentation for calibrating model prediction scores to accurate probabilities with three calibration methods (GAM, Isotonic Regression, Platt Scaling), binary and multi-class support, comprehensive metrics (ECE, MCE, Brier score), reliability diagrams, nested tarball extraction, and format preservation
+- [Percentile Model Calibration Script](../scripts/percentile_model_calibration_script.md) - Complete script documentation for ROC curve-based percentile mapping with 1000-point calibration dictionary, format preservation, intelligent file detection, and comprehensive data quality validation
 - [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md) - Design for percentile model calibration scripts
 
 **Implementation Documentation**
-- [Model Calibration Documentation](../steps/scripts/model_calibration_doc.md) - Model calibration script
+- [Model Calibration Documentation](../steps/scripts/model_calibration_doc.md) - Model calibration script (legacy documentation)
 
 ### Phase 7: Model Deployment & Serving
 
@@ -287,9 +296,9 @@ This index is organized to mirror the **actual pipeline execution order**, group
 | BatchTransform | Transform | Batch transform step |
 
 **Model Packaging & Registration**
-- [MIMS Packaging Step Builder](packaging_step.md) - MIMS packaging step builder
+- [MIMS Packaging Step Builder](../steps/scripts/packaging_step.md) - MIMS packaging step builder
 - [MIMS Package Documentation](../steps/scripts/mims_package_doc.md) - MIMS packaging script
-- [MIMS Payload Step Builder](payload_step.md) - MIMS payload step builder
+- [MIMS Payload Step Builder](../steps/scripts/payload_step.md) - MIMS payload step builder
 - [MIMS Payload Documentation](../steps/scripts/mims_payload_doc.md) - MIMS payload script
 - [MIMS Registration Step Builder](../steps/mims_registration_step.md) - MIMS registration step builder
 - [MODS MIMS Model Registration](../steps/scripts/MODS_MIMS_Model_Registration.md) - MODS MIMS registration

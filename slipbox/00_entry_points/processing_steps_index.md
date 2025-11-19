@@ -163,6 +163,30 @@ This section organizes all 28 registered processing steps by their position and 
 
 **Note:** DummyTraining is classified as Processing type but operates as a SOURCE node (reads from `/opt/ml/code/` rather than processing inputs).
 
+#### Training Scripts (Located in Project Directories)
+
+While training steps are typically registered as Training type (not Processing), the following training scripts are available in project subdirectories and integrate with the processing pipeline:
+
+**XGBoost Training**
+- **Script Documentation:** [XGBoost Training Script](../scripts/xgboost_training_script.md)
+- Location: `projects/atoz_xgboost/docker/xgboost_training.py`
+- **Key Features:** Single-task gradient boosting, dual PyPI support, format preservation, job type awareness, comprehensive evaluation
+
+**LightGBM Training**
+- **Script Documentation:** [LightGBM Training Script](../scripts/lightgbm_training_script.md)
+- Location: `projects/ab_lightgbm/docker/lightgbm_training.py`
+- **Key Features:** Single-task gradient boosting, preprocessing artifact reuse, format detection, inline/pre-computed artifact support
+
+**LightGBMMT Training**
+- **Script Documentation:** [LightGBMMT Multi-Task Training Script](../scripts/lightgbmmt_training_script.md)
+- Location: `projects/pfw_lightgbmmt_legacy/docker/lightgbmmt_training.py`
+- **Key Features:** Multi-task learning, adaptive task weighting, knowledge distillation, JS divergence similarity, weight evolution tracking, refactored architecture (67% code reduction, 91% quality score)
+
+**PyTorch Training**
+- **Script Documentation:** [PyTorch Training Script](../scripts/pytorch_training_script.md)
+- Location: `projects/rnr_pytorch_bedrock/docker/pytorch_training.py`
+- **Key Features:** Deep learning training, flexible architecture, GPU support, comprehensive checkpointing
+
 ### Phase 5: Model Inference & Evaluation
 
 #### Registered Processing Steps in This Phase
@@ -194,12 +218,16 @@ This section organizes all 28 registered processing steps by their position and 
 
 | Step Name | Description | Has Design Docs |
 |-----------|-------------|-----------------|
-| ModelCalibration | Calibrates model prediction scores to accurate probabilities | - |
+| ModelCalibration | Calibrates model prediction scores to accurate probabilities | ✓ |
 | PercentileModelCalibration | Creates percentile mapping using ROC curve analysis | ✓ |
 
 **Key Documentation:**
+- **Script Documentation:** [Model Calibration Script](../scripts/model_calibration_script.md)
+- **Script Documentation:** [Percentile Model Calibration Script](../scripts/percentile_model_calibration_script.md)
 - Builder: `src/cursus/steps/builders/builder_model_calibration_step.py`
 - Config: `src/cursus/steps/configs/config_model_calibration_step.py`
+- Script: `src/cursus/steps/scripts/model_calibration.py`
+- **Key Features:** Three calibration methods (GAM, Isotonic Regression, Platt Scaling), binary and multi-class support, comprehensive metrics (ECE, MCE, Brier score), reliability diagrams, nested tarball extraction, format preservation, dual PyPI support
 - [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md)
 
 ### Phase 7: Model Deployment & Serving
@@ -573,36 +601,51 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **ModelMetricsComputation**
 - Description: Model metrics computation step for comprehensive performance evaluation
+- **Script Documentation:** [Model Metrics Computation Script](../scripts/model_metrics_computation_script.md)
 - **Design Doc:** [Model Metrics Computation Design](../1_design/model_metrics_computation_design.md)
 - Config: `ModelMetricsComputationConfig`
 - Builder: `ModelMetricsComputationStepBuilder`
+- Script: `src/cursus/steps/scripts/model_metrics_computation.py`
+- **Key Features:** Standard ML metrics (AUC-ROC, F1, precision, recall), domain-specific metrics (dollar/count recall), comparison mode for A/B testing, comprehensive visualizations, statistical significance tests, format auto-detection (CSV/TSV/Parquet/JSON), detailed reporting with insights and recommendations
 
 **ModelWikiGenerator**
 - Description: Model wiki generator step for automated documentation creation
+- **Script Documentation:** [Model Wiki Generator Script](../scripts/model_wiki_generator_script.md)
 - **Design Doc:** [Model Wiki Generator Design](../1_design/model_wiki_generator_design.md)
 - Config: `ModelWikiGeneratorConfig`
 - Builder: `ModelWikiGeneratorStepBuilder`
+- Script: `src/cursus/steps/scripts/model_wiki_generator.py`
+- **Key Features:** Multi-format output (Wiki/HTML/Markdown), template-driven documentation, intelligent content generation, model comparison analysis, visualization integration, business impact reporting, automated documentation for model registries
 
 ### 6.5 Model Calibration Steps
 
 **ModelCalibration**
-- Description: Calibrates model prediction scores to accurate probabilities
+- Description: Calibrates model prediction scores to accurate probabilities using GAM, Isotonic Regression, or Platt Scaling methods
+- **Script Documentation:** [Model Calibration Script](../scripts/model_calibration_script.md)
 - Builder: `src/cursus/steps/builders/builder_model_calibration_step.py`
 - Config: `src/cursus/steps/configs/config_model_calibration_step.py`
+- Script: `src/cursus/steps/scripts/model_calibration.py`
+- **Key Features:** Three calibration methods (GAM, Isotonic Regression, Platt Scaling), binary and multi-class classification support, comprehensive calibration metrics (ECE, MCE, Brier score, AUC), reliability diagram visualization, nested tarball extraction for SageMaker outputs, format preservation (CSV/TSV/Parquet), dual PyPI support (public/secure CodeArtifact), job type awareness (training/calibration/validation/testing)
 - **Recent Enhancements:** Job type variant support added, alignment with other processing steps, improved dependency resolution
 
 **PercentileModelCalibration**
 - Description: Creates percentile mapping from model scores using ROC curve analysis for consistent risk interpretation
+- **Script Documentation:** [Percentile Model Calibration Script](../scripts/percentile_model_calibration_script.md)
 - **Design Doc:** [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md)
 - Config: `PercentileModelCalibrationConfig`
 - Builder: `PercentileModelCalibrationStepBuilder`
+- Script: `src/cursus/steps/scripts/percentile_model_calibration.py`
+- **Key Features:** ROC curve-based percentile mapping, 1000-point calibration dictionary (built-in default), format preservation (CSV/TSV/Parquet), intelligent file detection with priority ordering, linear interpolation for score mapping, comprehensive data quality validation, calibration artifact generation for deployment
 
 ### 6.6 Deployment & Testing Steps
 
 **Package**
-- Description: Model packaging step
+- Description: Model packaging step for MIMS deployment
+- **Script Documentation:** [Package Script](../scripts/package_script.md)
 - Builder: `src/cursus/steps/builders/builder_package_step.py`
 - Config: `src/cursus/steps/configs/config_package_step.py`
+- Script: `src/cursus/steps/scripts/package.py`
+- **Key Features:** MIMS-compliant packaging, dual input format support (tar.gz or loose files), optional calibration model integration, inference script bundling, comprehensive logging with verification, automatic directory structure creation, gzip compression with statistics
 
 **Registration**
 - Description: Model registration step
@@ -611,9 +654,12 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Note: Uses custom `sagemaker_step_type="MimsModelRegistrationProcessing"`
 
 **Payload**
-- Description: Payload testing step
-- Config: `src/cursus/steps/configs/config_payload_step.py`
+- Description: MIMS payload generation for endpoint testing
+- **Script Documentation:** [Payload Script](../scripts/payload_script.md)
 - Builder: `PayloadStepBuilder`
+- Config: `src/cursus/steps/configs/config_payload_step.py`
+- Script: `src/cursus/steps/scripts/payload.py`
+- **Key Features:** Hyperparameter-driven payload generation, multi-format support (JSON/CSV), special field templates with {timestamp} placeholder, 4-location fallback discovery, configurable default values, automated test payload creation, tar.gz archive output
 
 ### 6.7 Special Processing Steps
 

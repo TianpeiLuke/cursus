@@ -66,7 +66,7 @@ def create_xgboost_complete_e2e_with_percentile_calibration_dag() -> PipelineDAG
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
     dag.add_node(
-        "XGBoostModelEval_calibration"
+        "XGBoostModelInference_calibration"
     )  # Model evaluation step (calibration) - combines inference, metrics, and wiki
 
     # Add all nodes - Testing path (no calibration)
@@ -86,12 +86,12 @@ def create_xgboost_complete_e2e_with_percentile_calibration_dag() -> PipelineDAG
     dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
 
     # Evaluation flow (calibration path)
-    dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
+    dag.add_edge("XGBoostTraining", "XGBoostModelInference_calibration")
+    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelInference_calibration")
 
     # Percentile model calibration flow - depends on model evaluation
     dag.add_edge(
-        "XGBoostModelEval_calibration", "PercentileModelCalibration_calibration"
+        "XGBoostModelInference_calibration", "PercentileModelCalibration_calibration"
     )
 
     # Testing flow (similar to calibration but skips PercentileModelCalibration)
@@ -147,7 +147,7 @@ def get_dag_metadata() -> DAGMetadata:
             ],
             "exit_points": [
                 "Registration",
-                "XGBoostModelEval_calibration",
+                "XGBoostModelInference_calibration",
                 "ModelWikiGenerator",
             ],
             "required_configs": [
@@ -158,7 +158,7 @@ def get_dag_metadata() -> DAGMetadata:
                 "TabularPreprocessing_calibration",
                 "TabularPreprocessing_testing",
                 "XGBoostTraining",
-                "XGBoostModelEval_calibration",
+                "XGBoostModelInference_calibration",
                 "XGBoostModelInference_testing",
                 "ModelMetricsComputation_testing",
                 "ModelWikiGenerator",
