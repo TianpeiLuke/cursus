@@ -4,7 +4,7 @@ import traceback
 from io import StringIO, BytesIO
 from pathlib import Path
 import logging
-from typing import List, Union, Dict, Tuple, Optional
+from typing import List, Union, Dict, Tuple, Optional, Any
 
 import numpy as np
 import pandas as pd
@@ -23,8 +23,11 @@ from processing.text.dialogue_processor import (
     DialogueChunkerProcessor,
 )
 from processing.text.bert_tokenize_processor import BertTokenizeProcessor
-from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.numerical.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import build_collate_batch
 
@@ -163,6 +166,79 @@ class Config(BaseModel):
             )
 
 
+# =================== Preprocessing Artifact Loaders ================
+def load_risk_tables(model_dir: str) -> Dict[str, Any]:
+    """Load risk tables from pickle file."""
+    import pickle as pkl
+
+    risk_file = os.path.join(model_dir, "risk_table_map.pkl")
+    if not os.path.exists(risk_file):
+        logger.warning(f"Risk table file not found: {risk_file}")
+        return {}
+
+    try:
+        with open(risk_file, "rb") as f:
+            risk_tables = pkl.load(f)
+        logger.info(f"Loaded risk tables for {len(risk_tables)} features")
+        return risk_tables
+    except Exception as e:
+        logger.warning(f"Failed to load risk tables: {e}")
+        return {}
+
+
+def create_risk_processors(
+    risk_tables: Dict[str, Any],
+) -> Dict[str, RiskTableMappingProcessor]:
+    """Create risk table processors for each categorical feature."""
+    risk_processors = {}
+    for feature, risk_table in risk_tables.items():
+        processor = RiskTableMappingProcessor(
+            column_name=feature,
+            label_name="label",  # Not used during inference
+            risk_tables=risk_table,
+        )
+        risk_processors[feature] = processor
+    logger.info(f"Created {len(risk_processors)} risk table processors")
+    return risk_processors
+
+
+def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
+    """Load imputation dictionary from pickle file."""
+    import pickle as pkl
+
+    impute_file = os.path.join(model_dir, "impute_dict.pkl")
+    if not os.path.exists(impute_file):
+        logger.warning(f"Imputation file not found: {impute_file}")
+        return {}
+
+    try:
+        with open(impute_file, "rb") as f:
+            impute_dict = pkl.load(f)
+        logger.info(f"Loaded imputation values for {len(impute_dict)} features")
+        return impute_dict
+    except Exception as e:
+        logger.warning(f"Failed to load imputation dict: {e}")
+        return {}
+
+
+def create_numerical_processors(
+    impute_dict: Dict[str, Any],
+) -> Dict[str, NumericalVariableImputationProcessor]:
+    """
+    Create numerical imputation processors for each numerical feature.
+
+    Uses single-column architecture - one processor per column.
+    """
+    numerical_processors = {}
+    for feature, imputation_value in impute_dict.items():
+        processor = NumericalVariableImputationProcessor(
+            column_name=feature, imputation_value=imputation_value
+        )
+        numerical_processors[feature] = processor
+    logger.info(f"Created {len(numerical_processors)} numerical imputation processors")
+    return numerical_processors
+
+
 # =================== Helper Function ================
 def data_preprocess_pipeline(
     config: Config,
@@ -230,6 +306,18 @@ def model_fn(model_dir, context=None):
             )
             pipelines[config.label_name] = label_processor
 
+    # === Load preprocessing artifacts (numerical imputation + risk tables) ===
+    logger.info("Loading preprocessing artifacts...")
+    risk_tables = load_risk_tables(model_dir)
+    risk_processors = create_risk_processors(risk_tables)
+
+    impute_dict = load_imputation_dict(model_dir)
+    numerical_processors = create_numerical_processors(impute_dict)
+
+    logger.info(
+        f"Loaded {len(risk_processors)} risk processors and {len(numerical_processors)} numerical processors"
+    )
+
     return {
         "model": model,
         "config": config,
@@ -237,6 +325,8 @@ def model_fn(model_dir, context=None):
         "vocab": vocab,
         "model_class": model_class,
         "pipelines": pipelines,
+        "risk_processors": risk_processors,
+        "numerical_processors": numerical_processors,
     }
 
 
@@ -336,6 +426,8 @@ def predict_fn(input_object, model_data, context=None):
     model = model_data["model"]
     config = model_data["config"]
     pipelines = model_data["pipelines"]
+    risk_processors = model_data.get("risk_processors", {})
+    numerical_processors = model_data.get("numerical_processors", {})
 
     config_predict = config.model_dump()
     label_field = config_predict.get("label_name", None)
@@ -349,6 +441,27 @@ def predict_fn(input_object, model_data, context=None):
         ]
 
     dataset = BSMDataset(config_predict, dataframe=input_object)
+
+    # === Apply preprocessing artifacts (numerical imputation + risk tables) ===
+    logger.info("Applying preprocessing to inference data...")
+
+    # Apply numerical imputation processors
+    for feature, processor in numerical_processors.items():
+        if feature in dataset.DataReader.columns:
+            logger.debug(f"Applying numerical imputation for feature: {feature}")
+            dataset.add_pipeline(feature, processor)
+
+    # Apply risk table mapping processors
+    for feature, processor in risk_processors.items():
+        if feature in dataset.DataReader.columns:
+            logger.debug(f"Applying risk table mapping for feature: {feature}")
+            dataset.add_pipeline(feature, processor)
+
+    logger.info(
+        f"Applied {len(numerical_processors)} numerical processors and {len(risk_processors)} risk processors"
+    )
+
+    # Apply text and other pipelines
     for feature_name, pipeline in pipelines.items():
         dataset.add_pipeline(feature_name, pipeline)
 

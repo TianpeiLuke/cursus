@@ -1,33 +1,47 @@
 #!/usr/bin/env python
+"""
+PyTorch Model Evaluation Script
+
+Evaluates trained PyTorch Lightning models with GPU/CPU support.
+Follows the same contract and structure as xgboost_model_eval.py.
+
+Features:
+- GPU/CPU automatic detection and explicit control
+- Multi-modal model support (text, tabular, bimodal, trimodal)
+- Format preservation (CSV/TSV/Parquet)
+- Comprehensive metrics computation
+- ROC/PR curve generation
+- Comparison mode support
+"""
+
 import os
 import json
 import argparse
 import pandas as pd
 import numpy as np
-import pickle as pkl
 from pathlib import Path
-from sklearn.metrics import (
-    roc_auc_score,
-    average_precision_score,
-    precision_recall_curve,
-    roc_curve,
-    f1_score,
-)
-from scipy import stats
-from scipy.stats import pearsonr, spearmanr
-import matplotlib.pyplot as plt
-import time
-import sys
-from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
+import sys
+import tarfile
+import logging
+from datetime import datetime
+import time
 
 import torch
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer
-import lightning.pytorch as pl
+from torch import nn
+from torch.utils.tensorboard import SummaryWriter
 
-# Import PyTorch components
-from processing.processors import Processor
+from transformers import AutoTokenizer
+import warnings
+
+warnings.filterwarnings("ignore")
+
+# Import processing modules from bsm_pytorch
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "../../../projects/bsm_pytorch/docker")
+)
+
 from processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
@@ -36,8 +50,11 @@ from processing.text.dialogue_processor import (
     DialogueChunkerProcessor,
 )
 from processing.text.bert_tokenize_processor import BertTokenizeProcessor
-from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.numerical.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
@@ -46,16 +63,14 @@ from processing.dataloaders.bsm_dataloader import (
 
 from lightning_models.utils.pl_train import (
     model_inference,
-    model_online_inference,
     load_model,
     load_artifacts,
-    load_onnx_model,
 )
-from lightning_models.utils.pl_model_plots import compute_metrics
-from lightning_models.utils.dist_utils import get_rank, is_main_process
-from pydantic import BaseModel, Field, ValidationError
-
-import logging
+from lightning_models.utils.pl_model_plots import (
+    compute_metrics,
+    roc_metric_plot,
+    pr_metric_plot,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -71,565 +86,394 @@ CONTAINER_PATHS = {
     "OUTPUT_METRICS_DIR": "/opt/ml/processing/output/metrics",
 }
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ============================================================================
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# ============================================================================
 
 
-# Import TriModalHyperparameters for inference config
-try:
-    from hyperparams.hyperparameters_trimodal import TriModalHyperparameters
-
-    # Use TriModalHyperparameters as the Config class for full alignment
-    Config = TriModalHyperparameters
-except ImportError:
-    logger.warning(
-        "Could not import TriModalHyperparameters, falling back to basic Config"
-    )
-
-    # Fallback Config class if import fails
-    class Config(BaseModel):
-        id_name: str = "order_id"
-        text_name: str = "text"
-        label_name: str = "label"
-        batch_size: int = 32
-        full_field_list: List[str] = Field(default_factory=list)
-        cat_field_list: List[str] = Field(default_factory=list)
-        tab_field_list: List[str] = Field(default_factory=list)
-        categorical_features_to_encode: List[str] = Field(default_factory=list)
-        header: int = 0
-        max_sen_len: int = 512
-        chunk_trancate: bool = False
-        max_total_chunks: int = 5
-        kernel_size: List[int] = Field(default_factory=lambda: [3, 5, 7])
-        num_layers: int = 2
-        num_channels: List[int] = Field(default_factory=lambda: [100, 100])
-        hidden_common_dim: int = 100
-        input_tab_dim: int = 11
-        num_classes: int = 2
-        is_binary: bool = True
-        multiclass_categories: List[Union[int, str]] = Field(
-            default_factory=lambda: [0, 1]
-        )
-        max_epochs: int = 10
-        lr: float = 0.02
-        lr_decay: float = 0.05
-        momentum: float = 0.9
-        weight_decay: float = 0
-        class_weights: List[float] = Field(default_factory=lambda: [1.0, 10.0])
-        dropout_keep: float = 0.5
-        optimizer: str = "SGD"
-        fixed_tokenizer_length: bool = True
-        is_embeddings_trainable: bool = True
-        tokenizer: str = "bert-base-multilingual-cased"
-        metric_choices: List[str] = Field(default_factory=lambda: ["auroc", "f1_score"])
-        early_stop_metric: str = "val/f1_score"
-        early_stop_patience: int = 3
-        gradient_clip_val: float = 1.0
-        model_class: str = "multimodal_bert"
-        load_ckpt: bool = False
-        val_check_interval: float = 0.25
-        adam_epsilon: float = 1e-08
-        fp16: bool = False
-        run_scheduler: bool = True
-        reinit_pooler: bool = True
-        reinit_layers: int = 2
-        warmup_steps: int = 300
-        text_input_ids_key: str = "input_ids"
-        text_attention_mask_key: str = "attention_mask"
-        train_filename: Optional[str] = None
-        val_filename: Optional[str] = None
-        test_filename: Optional[str] = None
-        embed_size: Optional[int] = None
-        model_path: str = "/opt/ml/model"
-        categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = None
-        label_to_id: Optional[Dict[str, int]] = None
-        id_to_label: Optional[List[str]] = None
-
-        # === Trimodal Configuration Fields ===
-        primary_text_name: Optional[str] = None
-        secondary_text_name: Optional[str] = None
-        primary_tokenizer: Optional[str] = None
-        secondary_tokenizer: Optional[str] = None
-        primary_hidden_common_dim: Optional[int] = None
-        secondary_hidden_common_dim: Optional[int] = None
-        primary_text_input_ids_key: str = "input_ids"
-        primary_text_attention_mask_key: str = "attention_mask"
-        secondary_text_input_ids_key: str = "input_ids"
-        secondary_text_attention_mask_key: str = "attention_mask"
-        primary_text_processing_steps: Optional[List[str]] = None
-        secondary_text_processing_steps: Optional[List[str]] = None
-        fusion_hidden_dim: Optional[int] = None
-        fusion_dropout: float = 0.1
-        cross_attention_heads: int = 8
-        cross_attention_dropout: float = 0.1
-
-        # Additional fields that might be saved during training
-        primary_reinit_pooler: Optional[bool] = None
-        primary_reinit_layers: Optional[int] = None
-        secondary_reinit_pooler: Optional[bool] = None
-        secondary_reinit_layers: Optional[int] = None
-        is_embeddings_trainable: bool = True
-        num_workers: int = 0
-        categorical_label_features: Optional[List[str]] = None
-
-        def model_post_init(self, __context):
-            # Validate consistency between multiclass_categories and num_classes
-            if self.is_binary and self.num_classes != 2:
-                raise ValueError("For binary classification, num_classes must be 2.")
-            if not self.is_binary:
-                if self.num_classes < 2:
-                    raise ValueError(
-                        "For multiclass classification, num_classes must be >= 2."
-                    )
-                if not self.multiclass_categories:
-                    raise ValueError(
-                        "multiclass_categories must be provided for multiclass classification."
-                    )
-                if len(self.multiclass_categories) != self.num_classes:
-                    raise ValueError(
-                        f"num_classes={self.num_classes} does not match "
-                        f"len(multiclass_categories)={len(self.multiclass_categories)}"
-                    )
-                if len(set(self.multiclass_categories)) != len(
-                    self.multiclass_categories
-                ):
-                    raise ValueError(
-                        "multiclass_categories must contain unique values."
-                    )
-            else:
-                # Optional: Warn if multiclass_categories is defined when binary
-                if self.multiclass_categories and len(self.multiclass_categories) != 2:
-                    raise ValueError(
-                        "For binary classification, multiclass_categories must contain exactly 2 items."
-                    )
-
-            # New: validate class_weights length
-            if self.class_weights and len(self.class_weights) != self.num_classes:
-                raise ValueError(
-                    f"class_weights must have the same number of elements as num_classes "
-                    f"(expected {self.num_classes}, got {len(self.class_weights)})."
-                )
-
-
-def load_pytorch_model_artifacts(
-    model_dir: str,
-) -> Tuple[torch.nn.Module, Dict[str, Any], AutoTokenizer, Dict[str, Processor]]:
+def _detect_file_format(file_path: Path) -> str:
     """
-    Load the trained PyTorch model and all preprocessing artifacts from the specified directory.
-    Returns model, config, tokenizer, and preprocessing pipelines.
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: Path) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: Path, format_str: str
+) -> Path:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return file_path
+
+
+# ============================================================================
+# PREPROCESSING ARTIFACT LOADERS
+# ============================================================================
+
+
+def load_risk_tables(model_dir: str) -> Dict[str, Any]:
+    """Load risk tables from pickle file."""
+    import pickle as pkl
+
+    risk_file = os.path.join(model_dir, "risk_table_map.pkl")
+    if not os.path.exists(risk_file):
+        logger.warning(f"Risk table file not found: {risk_file}")
+        return {}
+
+    try:
+        with open(risk_file, "rb") as f:
+            risk_tables = pkl.load(f)
+        logger.info(f"Loaded risk tables for {len(risk_tables)} features")
+        return risk_tables
+    except Exception as e:
+        logger.warning(f"Failed to load risk tables: {e}")
+        return {}
+
+
+def create_risk_processors(
+    risk_tables: Dict[str, Any],
+) -> Dict[str, RiskTableMappingProcessor]:
+    """Create risk table processors for each categorical feature."""
+    risk_processors = {}
+    for feature, risk_table in risk_tables.items():
+        processor = RiskTableMappingProcessor(
+            column_name=feature,
+            label_name="label",  # Not used during inference
+            risk_tables=risk_table,
+        )
+        risk_processors[feature] = processor
+    logger.info(f"Created {len(risk_processors)} risk table processors")
+    return risk_processors
+
+
+def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
+    """Load imputation dictionary from pickle file."""
+    import pickle as pkl
+
+    impute_file = os.path.join(model_dir, "impute_dict.pkl")
+    if not os.path.exists(impute_file):
+        logger.warning(f"Imputation file not found: {impute_file}")
+        return {}
+
+    try:
+        with open(impute_file, "rb") as f:
+            impute_dict = pkl.load(f)
+        logger.info(f"Loaded imputation values for {len(impute_dict)} features")
+        return impute_dict
+    except Exception as e:
+        logger.warning(f"Failed to load imputation dict: {e}")
+        return {}
+
+
+def create_numerical_processors(
+    impute_dict: Dict[str, Any],
+) -> Dict[str, NumericalVariableImputationProcessor]:
+    """
+    Create numerical imputation processors for each numerical feature.
+
+    Uses single-column architecture - one processor per column.
+    """
+    numerical_processors = {}
+    for feature, imputation_value in impute_dict.items():
+        processor = NumericalVariableImputationProcessor(
+            column_name=feature, imputation_value=imputation_value
+        )
+        numerical_processors[feature] = processor
+    logger.info(f"Created {len(numerical_processors)} numerical imputation processors")
+    return numerical_processors
+
+
+# ============================================================================
+# MODEL ARTIFACT LOADING
+# ============================================================================
+
+
+def decompress_model_artifacts(model_dir: str):
+    """
+    Checks for a model.tar.gz file in the model directory and extracts it.
+    """
+    model_tar_path = Path(model_dir) / "model.tar.gz"
+    if model_tar_path.exists():
+        logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
+        with tarfile.open(model_tar_path, "r:gz") as tar:
+            tar.extractall(path=model_dir)
+        logger.info("Extraction complete.")
+    else:
+        logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
+
+
+def load_model_artifacts(
+    model_dir: str,
+) -> Tuple[nn.Module, Dict[str, Any], AutoTokenizer, Dict[str, Any]]:
+    """
+    Load trained PyTorch model and all preprocessing artifacts.
+
+    Returns:
+        - PyTorch Lightning model
+        - Model configuration dictionary
+        - Tokenizer for text processing
+        - Preprocessing processors (categorical, imputation)
     """
     logger.info(f"Loading PyTorch model artifacts from {model_dir}")
 
-    model_filename = "model.pth"
-    model_artifact_name = "model_artifacts.pth"
-    hyperparams_filename = "hyperparameters.json"
-    onnx_model_path = os.path.join(model_dir, "model.onnx")
+    # Decompress the model tarball if it exists
+    logger.info("Checking for model.tar.gz and decompressing if present")
+    decompress_model_artifacts(model_dir)
 
-    # Try to load hyperparameters from the saved hyperparameters.json first
-    hyperparams_path = os.path.join(model_dir, hyperparams_filename)
-    if os.path.exists(hyperparams_path):
-        logger.info(f"Loading hyperparameters from {hyperparams_path}")
-        with open(hyperparams_path, "r") as f:
-            load_config = json.load(f)
+    # Load hyperparameters
+    hyperparams_path = os.path.join(model_dir, "hyperparameters.json")
+    with open(hyperparams_path, "r") as f:
+        hyperparams = json.load(f)
+    logger.info("Loaded hyperparameters.json")
 
-        # Still need to load artifacts for embedding_mat, vocab, and model_class
-        _, embedding_mat, vocab, model_class = load_artifacts(
-            os.path.join(model_dir, model_artifact_name), device_l=device
-        )
-    else:
-        # Fallback to loading config from artifacts (backward compatibility)
-        logger.info(
-            "Hyperparameters.json not found, loading config from model artifacts"
-        )
-        load_config, embedding_mat, vocab, model_class = load_artifacts(
-            os.path.join(model_dir, model_artifact_name), device_l=device
-        )
+    # Load model artifacts (config, embeddings, vocab, processors)
+    artifact_path = os.path.join(model_dir, "model_artifacts.pth")
+    artifacts = load_artifacts(
+        artifact_path, model_class=hyperparams.get("model_class", "bimodal_bert")
+    )
+    logger.info("Loaded model_artifacts.pth")
 
-    config = Config(**load_config)
+    config = artifacts["config"]
+    embedding_mat = artifacts.get("embedding_mat")
+    vocab = artifacts.get("vocab")
 
-    # Load model based on file type
-    if os.path.exists(onnx_model_path):
-        logger.info("Detected ONNX model.")
-        model = load_onnx_model(onnx_model_path)
-    else:
-        logger.info("Detected PyTorch model.")
-        model = load_model(
-            os.path.join(model_dir, model_filename),
-            config.model_dump(),
-            embedding_mat,
-            model_class,
-            device_l=device,
-        )
-        model.eval()
+    # Reconstruct tokenizer
+    tokenizer_name = config.get("tokenizer", "bert-base-multilingual-cased")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    logger.info(f"Reconstructed tokenizer: {tokenizer_name}")
 
-    # Reconstruct preprocessing pipelines
-    tokenizers, pipelines = data_preprocess_pipeline(config)
+    # Load trained model
+    model_path = os.path.join(model_dir, "model.pth")
+    model = load_model(model_path, model_class=config["model_class"], device_l="cpu")
+    model.eval()  # Set to evaluation mode
+    logger.info("Loaded model.pth and set to evaluation mode")
 
-    # Add multiclass label processor if needed
-    if not config.is_binary and config.num_classes > 2:
-        if config.multiclass_categories:
-            label_processor = MultiClassLabelProcessor(
-                label_list=config.multiclass_categories, strict=True
-            )
-            pipelines[config.label_name] = label_processor
+    # Load preprocessing artifacts (numerical imputation + risk tables)
+    logger.info("Loading preprocessing artifacts...")
+    risk_tables = load_risk_tables(model_dir)
+    risk_processors = create_risk_processors(risk_tables)
 
-    return model, config.model_dump(), tokenizers, pipelines
+    impute_dict = load_imputation_dict(model_dir)
+    numerical_processors = create_numerical_processors(impute_dict)
 
+    logger.info(
+        f"Loaded {len(risk_processors)} risk processors and {len(numerical_processors)} numerical processors"
+    )
 
-def build_processing_pipeline(
-    processing_steps: List[str],
-    tokenizer: AutoTokenizer,
-    config: Dict[str, Any],
-    input_ids_key: str = "input_ids",
-    attention_mask_key: str = "attention_mask",
-) -> Processor:
-    """
-    Build a processing pipeline based on the specified steps.
-
-    Args:
-        processing_steps: List of processing step names
-        tokenizer: Tokenizer to use for tokenization step
-        config: Configuration dictionary
-        input_ids_key: Key name for input_ids in tokenized output
-        attention_mask_key: Key name for attention_mask in tokenized output
-
-    Returns:
-        Composed processor pipeline
-    """
-    # Map step names to processor classes
-    step_map = {
-        "dialogue_splitter": DialogueSplitterProcessor,
-        "html_normalizer": HTMLNormalizerProcessor,
-        "emoji_remover": EmojiRemoverProcessor,
-        "text_normalizer": TextNormalizationProcessor,
-        "dialogue_chunker": lambda: DialogueChunkerProcessor(
-            tokenizer=tokenizer,
-            max_tokens=config.get("max_sen_len", 512),
-            truncate=config.get("chunk_trancate", False),
-            max_total_chunks=config.get("max_total_chunks", 5),
-        ),
-        "tokenizer": lambda: BertTokenizeProcessor(
-            tokenizer,
-            add_special_tokens=True,
-            max_length=config.get("max_sen_len", 512),
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
-        ),
+    # Extract label mappings for multiclass
+    label_mappings = {
+        "label_to_id": config.get("label_to_id"),
+        "id_to_label": config.get("id_to_label"),
     }
 
-    # Build pipeline by chaining processors
-    pipeline = None
-    for step_name in processing_steps:
-        if step_name not in step_map:
-            logger.warning(f"Unknown processing step '{step_name}', skipping")
-            continue
+    processors = {
+        "label_mappings": label_mappings,
+        "risk_processors": risk_processors,
+        "numerical_processors": numerical_processors,
+        "embedding_mat": embedding_mat,
+        "vocab": vocab,
+    }
 
-        processor_class = step_map[step_name]
-        processor = (
-            processor_class() if not callable(processor_class) else processor_class()
-        )
-
-        if pipeline is None:
-            pipeline = processor
-        else:
-            pipeline = pipeline >> processor
-
-    if pipeline is None:
-        raise ValueError(f"No valid processing steps found in: {processing_steps}")
-
-    return pipeline
-
-
-def data_preprocess_pipeline(
-    config: Config,
-) -> Tuple[Dict[str, AutoTokenizer], Dict[str, Processor]]:
-    """
-    Create preprocessing pipelines for text modalities.
-    Supports both single text (bi-modal) and dual text (tri-modal) configurations
-    with configurable processing steps.
-    """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-multilingual-cased"
-
-    tokenizers = {}
-    pipelines = {}
-
-    # Check if this is tri-modal configuration
-    is_trimodal = config.primary_text_name and config.secondary_text_name
-
-    if is_trimodal:
-        logger.info("Setting up tri-modal text processing pipelines")
-
-        # Primary text pipeline (e.g., chat)
-        primary_tokenizer_name = config.primary_tokenizer or config.tokenizer
-        logger.info(f"Constructing primary tokenizer: {primary_tokenizer_name}")
-        primary_tokenizer = AutoTokenizer.from_pretrained(primary_tokenizer_name)
-
-        # Get processing steps from config
-        primary_steps = config.primary_text_processing_steps or [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-        logger.info(f"Primary text processing steps: {primary_steps}")
-
-        primary_pipeline = build_processing_pipeline(
-            primary_steps,
-            primary_tokenizer,
-            config.model_dump(),
-            input_ids_key=config.primary_text_input_ids_key,
-            attention_mask_key=config.primary_text_attention_mask_key,
-        )
-
-        # Secondary text pipeline (e.g., shiptrack)
-        secondary_tokenizer_name = config.secondary_tokenizer or config.tokenizer
-        logger.info(f"Constructing secondary tokenizer: {secondary_tokenizer_name}")
-        secondary_tokenizer = AutoTokenizer.from_pretrained(secondary_tokenizer_name)
-
-        # Get processing steps from config
-        secondary_steps = config.secondary_text_processing_steps or [
-            "dialogue_splitter",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-        logger.info(f"Secondary text processing steps: {secondary_steps}")
-
-        secondary_pipeline = build_processing_pipeline(
-            secondary_steps,
-            secondary_tokenizer,
-            config.model_dump(),
-            input_ids_key=config.secondary_text_input_ids_key,
-            attention_mask_key=config.secondary_text_attention_mask_key,
-        )
-
-        tokenizers = {"primary": primary_tokenizer, "secondary": secondary_tokenizer}
-
-        pipelines = {
-            config.primary_text_name: primary_pipeline,
-            config.secondary_text_name: secondary_pipeline,
-        }
-
-        logger.info(f"Primary text field: {config.primary_text_name}")
-        logger.info(f"Secondary text field: {config.secondary_text_name}")
-
-    else:
-        # Traditional bi-modal setup
-        logger.info("Setting up bi-modal text processing pipeline")
-        logger.info(f"Constructing tokenizer: {config.tokenizer}")
-        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-
-        # Use default processing steps for bi-modal
-        default_steps = [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-
-        dialogue_pipeline = build_processing_pipeline(
-            default_steps,
-            tokenizer,
-            config.model_dump(),
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-
-        tokenizers = {"main": tokenizer}
-        pipelines = {config.text_name: dialogue_pipeline}
-        logger.info(f"Text field: {config.text_name}")
-
-    return tokenizers, pipelines
-
-
-def preprocess_pytorch_eval_data(
-    df: pd.DataFrame, config: Dict[str, Any], pipelines: Dict[str, Processor]
-) -> pd.DataFrame:
-    """
-    Apply PyTorch preprocessing pipelines to the evaluation DataFrame.
-    Preserves any non-feature columns like id and label.
-    """
-    logger.info(f"Preprocessing evaluation data with shape: {df.shape}")
-
-    # Create BSMDataset for processing
-    dataset = BSMDataset(config, dataframe=df)
-
-    # Apply all preprocessing pipelines
-    for feature_name, pipeline in pipelines.items():
-        if feature_name in df.columns:
-            logger.info(f"Applying preprocessing pipeline for feature: {feature_name}")
-            dataset.add_pipeline(feature_name, pipeline)
-        else:
-            logger.warning(f"Feature {feature_name} not found in evaluation data")
-
-    logger.info(f"Preprocessing complete")
-    return dataset
-
-
-def load_eval_data(eval_data_dir: str) -> pd.DataFrame:
-    """
-    Load the first .csv or .parquet file found in the evaluation data directory.
-    Returns a pandas DataFrame.
-    """
-    logger.info(f"Loading eval data from {eval_data_dir}")
-    eval_files = sorted(
-        [
-            f
-            for f in Path(eval_data_dir).glob("**/*")
-            if f.suffix in [".csv", ".parquet"]
-        ]
+    logger.info(
+        f"Model artifacts loaded successfully. Model class: {config['model_class']}"
     )
-    if not eval_files:
-        logger.error("No eval data file found in eval_data input.")
-        raise RuntimeError("No eval data file found in eval_data input.")
-    eval_file = eval_files[0]
-    logger.info(f"Using eval data file: {eval_file}")
-    if eval_file.suffix == ".parquet":
-        df = pd.read_parquet(eval_file)
-    else:
-        df = pd.read_csv(eval_file)
-    logger.info(f"Loaded eval data shape: {df.shape}")
-    return df
+    return model, config, tokenizer, processors
 
 
-def get_id_label_columns(
-    df: pd.DataFrame, id_field: str, label_field: str
-) -> Tuple[str, str]:
+# ============================================================================
+# DATA PREPROCESSING
+# ============================================================================
+
+
+def create_bsm_dataset(
+    config: Dict[str, Any], eval_data_dir: str, filename: str
+) -> BSMDataset:
     """
-    Determine the ID and label columns in the DataFrame.
-    Falls back to the first and second columns if not found.
+    Create and initialize BSMDataset with missing value handling.
+
+    Args:
+        config: Model configuration
+        eval_data_dir: Directory containing evaluation data
+        filename: Name of evaluation data file
+
+    Returns:
+        Initialized BSMDataset
     """
-    id_col = id_field if id_field in df.columns else df.columns[0]
-    label_col = label_field if label_field in df.columns else df.columns[1]
-    logger.info(f"Using id_col: {id_col}, label_col: {label_col}")
-    return id_col, label_col
+    bsm_dataset = BSMDataset(config=config, file_dir=eval_data_dir, filename=filename)
+
+    # Fill missing values
+    bsm_dataset.fill_missing_value(
+        label_name=config["label_name"],
+        column_cat_name=config.get("cat_field_list", []),
+    )
+    logger.info("Created BSMDataset and filled missing values")
+
+    return bsm_dataset
 
 
-def save_predictions(
-    ids: np.ndarray,
-    y_true: np.ndarray,
-    y_prob: np.ndarray,
-    id_col: str,
-    label_col: str,
-    output_eval_dir: str,
+def build_text_pipeline(config: Dict[str, Any], tokenizer: AutoTokenizer):
+    """
+    Build text preprocessing pipeline with tokenization.
+
+    Args:
+        config: Model configuration
+        tokenizer: BERT tokenizer
+
+    Returns:
+        Text preprocessing pipeline
+    """
+    text_pipeline = (
+        DialogueSplitterProcessor()
+        >> HTMLNormalizerProcessor()
+        >> EmojiRemoverProcessor()
+        >> TextNormalizationProcessor()
+        >> DialogueChunkerProcessor(
+            tokenizer=tokenizer,
+            max_tokens=config["max_sen_len"],
+            truncate=config.get("chunk_trancate", False),
+            max_total_chunks=config.get("max_total_chunks", 5),
+        )
+        >> BertTokenizeProcessor(
+            tokenizer,
+            add_special_tokens=True,
+            max_length=config["max_sen_len"],
+            input_ids_key=config.get("text_input_ids_key", "input_ids"),
+            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+        )
+    )
+    logger.info("Built text preprocessing pipeline")
+    return text_pipeline
+
+
+def apply_preprocessing_artifacts(
+    bsm_dataset: BSMDataset, processors: Dict[str, Any]
 ) -> None:
     """
-    Save predictions to a CSV file, including id, true label, and class probabilities.
+    Apply numerical imputation and risk table mapping to dataset.
+
+    Args:
+        bsm_dataset: Dataset to apply preprocessing to
+        processors: Dictionary containing preprocessing processors
     """
-    logger.info(f"Saving predictions to {output_eval_dir}")
-    prob_cols = [f"prob_class_{i}" for i in range(y_prob.shape[1])]
-    out_df = pd.DataFrame({id_col: ids, label_col: y_true})
-    for i, col in enumerate(prob_cols):
-        out_df[col] = y_prob[:, i]
-    out_path = os.path.join(output_eval_dir, "eval_predictions.csv")
-    out_df.to_csv(out_path, index=False)
-    logger.info(f"Saved predictions to {out_path}")
+    logger.info("Applying preprocessing artifacts...")
+
+    # Apply numerical imputation processors
+    numerical_processors = processors.get("numerical_processors", {})
+    for feature, processor in numerical_processors.items():
+        if feature in bsm_dataset.DataReader.columns:
+            logger.debug(f"Applying numerical imputation for feature: {feature}")
+            bsm_dataset.add_pipeline(feature, processor)
+
+    # Apply risk table mapping processors
+    risk_processors = processors.get("risk_processors", {})
+    for feature, processor in risk_processors.items():
+        if feature in bsm_dataset.DataReader.columns:
+            logger.debug(f"Applying risk table mapping for feature: {feature}")
+            bsm_dataset.add_pipeline(feature, processor)
+
+    logger.info(
+        f"Applied {len(numerical_processors)} numerical processors and {len(risk_processors)} risk processors"
+    )
 
 
-def save_metrics(
-    metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str
+def add_label_processor(
+    bsm_dataset: BSMDataset, config: Dict[str, Any], processors: Dict[str, Any]
 ) -> None:
     """
-    Save computed metrics as a JSON file.
+    Add multiclass label processor if needed.
+
+    Args:
+        bsm_dataset: Dataset to add label processor to
+        config: Model configuration
+        processors: Dictionary containing label mappings
     """
-    out_path = os.path.join(output_metrics_dir, "metrics.json")
-    with open(out_path, "w") as f:
-        json.dump(metrics, f, indent=2)
-    logger.info(f"Saved metrics to {out_path}")
-
-    # Also create a plain text summary for easy viewing
-    summary_path = os.path.join(output_metrics_dir, "metrics_summary.txt")
-    with open(summary_path, "w") as f:
-        f.write("METRICS SUMMARY\n")
-        f.write("=" * 50 + "\n")
-
-        # Write key metrics at the top
-        if "auroc" in metrics:  # Binary classification
-            f.write(f"AUC-ROC:           {metrics['auroc']:.4f}\n")
-            if "average_precision" in metrics:
-                f.write(f"Average Precision: {metrics['average_precision']:.4f}\n")
-            if "f1_score" in metrics:
-                f.write(f"F1 Score:          {metrics['f1_score']:.4f}\n")
-        else:  # Multiclass classification
-            f.write(f"AUC-ROC (Macro):   {metrics.get('auroc_macro', 'N/A'):.4f}\n")
-            f.write(f"AUC-ROC (Micro):   {metrics.get('auroc_micro', 'N/A'):.4f}\n")
-            f.write(f"F1 Score (Macro):  {metrics.get('f1_score_macro', 'N/A'):.4f}\n")
-
-        f.write("=" * 50 + "\n\n")
-
-        # Write all metrics
-        f.write("ALL METRICS\n")
-        f.write("=" * 50 + "\n")
-        for name, value in sorted(metrics.items()):
-            if isinstance(value, (int, float)):
-                f.write(f"{name}: {value:.6f}\n")
-            else:
-                f.write(f"{name}: {value}\n")
-
-    logger.info(f"Saved metrics summary to {summary_path}")
+    if not config["is_binary"] and config["num_classes"] > 2:
+        label_mappings = processors["label_mappings"]
+        if label_mappings["label_to_id"]:
+            label_processor = MultiClassLabelProcessor(
+                label_to_id=label_mappings["label_to_id"],
+                id_to_label=label_mappings["id_to_label"],
+            )
+            bsm_dataset.add_pipeline(config["label_name"], label_processor)
+            logger.info("Added multiclass label processor")
 
 
-def plot_and_save_roc_curve(
-    y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = ""
-) -> None:
+def create_dataloader(bsm_dataset: BSMDataset, config: Dict[str, Any]) -> DataLoader:
     """
-    Plot ROC curve and save as JPG.
-    """
-    fpr, tpr, _ = roc_curve(y_true, y_score)
-    auc = roc_auc_score(y_true, y_score)
-    plt.figure()
-    plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.2f})")
-    plt.plot([0, 1], [0, 1], "k--", label="Random")
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title("ROC Curve")
-    plt.legend(loc="lower right")
-    out_path = os.path.join(output_dir, f"{prefix}roc_curve.jpg")
-    plt.savefig(out_path, format="jpg")
-    plt.close()
-    logger.info(f"Saved ROC curve to {out_path}")
+    Create DataLoader with appropriate collate function.
 
+    Determines whether to use trimodal or bimodal collate function
+    based on model configuration.
 
-def plot_and_save_pr_curve(
-    y_true: np.ndarray, y_score: np.ndarray, output_dir: str, prefix: str = ""
-) -> None:
-    """
-    Plot Precision-Recall curve and save as JPG.
-    """
-    precision, recall, _ = precision_recall_curve(y_true, y_score)
-    ap = average_precision_score(y_true, y_score)
-    plt.figure()
-    plt.plot(recall, precision, label=f"PR curve (AP = {ap:.2f})")
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.title("Precision-Recall Curve")
-    plt.legend(loc="lower left")
-    out_path = os.path.join(output_dir, f"{prefix}pr_curve.jpg")
-    plt.savefig(out_path, format="jpg")
-    plt.close()
-    logger.info(f"Saved PR curve to {out_path}")
+    Args:
+        bsm_dataset: Dataset to create DataLoader for
+        config: Model configuration
 
-
-def evaluate_pytorch_model(
-    model: torch.nn.Module,
-    dataset: BSMDataset,
-    config: Dict[str, Any],
-    id_col: str,
-    label_col: str,
-    output_eval_dir: str,
-    output_metrics_dir: str,
-) -> None:
+    Returns:
+        Configured DataLoader
     """
-    Run PyTorch model prediction and evaluation, then save predictions and metrics.
-    Also generate and save ROC and PR curves as JPG.
-    """
-    logger.info("Evaluating PyTorch model")
-
-    # Determine collate function based on model type and configuration
+    # Determine if this is a trimodal model
     is_trimodal_model = config.get("model_class", "") in [
         "trimodal_bert",
         "trimodal_cross_attn_bert",
@@ -640,7 +484,7 @@ def evaluate_pytorch_model(
     )
 
     if is_trimodal_model and has_dual_text_config:
-        # For tri-modal models, use the enhanced collate function that handles multiple text fields
+        # Use trimodal collate function for models with dual text modalities
         logger.info(
             f"Using trimodal collate function for {config.get('model_class')} model"
         )
@@ -657,121 +501,396 @@ def evaluate_pytorch_model(
             ),
         )
     else:
-        # For bi-modal models (including those with dual text config but non-trimodal model)
+        # Use standard bimodal collate function
         logger.info(
-            f"Using bi-modal collate function for {config.get('model_class')} model"
+            f"Using bimodal collate function for {config.get('model_class', 'bimodal')} model"
         )
-        # Use primary text keys if available, otherwise fall back to traditional text keys
-        if has_dual_text_config:
-            # Use primary text for bi-modal models with dual text config
-            input_ids_key = config.get("primary_text_input_ids_key", "input_ids")
-            attention_mask_key = config.get(
-                "primary_text_attention_mask_key", "attention_mask"
-            )
-        else:
-            # Traditional single text configuration
-            input_ids_key = config.get("text_input_ids_key", "input_ids")
-            attention_mask_key = config.get("text_attention_mask_key", "attention_mask")
-
         bsm_collate_batch = build_collate_batch(
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
+            input_ids_key=config.get("text_input_ids_key", "input_ids"),
+            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
         )
 
-    # Create DataLoader
     batch_size = config.get("batch_size", 32)
     dataloader = DataLoader(
-        dataset, collate_fn=bsm_collate_batch, batch_size=batch_size
+        bsm_dataset,
+        collate_fn=bsm_collate_batch,
+        batch_size=batch_size,
+        shuffle=False,
+    )
+    logger.info(f"Created DataLoader with batch_size={batch_size}")
+
+    return dataloader
+
+
+def preprocess_eval_data(
+    df: pd.DataFrame,
+    config: Dict[str, Any],
+    tokenizer: AutoTokenizer,
+    processors: Dict[str, Any],
+    eval_data_dir: str,
+    filename: str,
+) -> Tuple[BSMDataset, DataLoader]:
+    """
+    Apply complete preprocessing pipeline to evaluation data.
+    Orchestrates the creation of BSMDataset and DataLoader.
+
+    Args:
+        df: Input DataFrame
+        config: Model configuration
+        tokenizer: BERT tokenizer
+        processors: Preprocessing processors
+        eval_data_dir: Directory containing evaluation data
+        filename: Name of evaluation data file
+
+    Returns:
+        Tuple of (BSMDataset, DataLoader)
+    """
+    logger.info(f"Preprocessing evaluation data: {filename}")
+
+    # Step 1: Create and initialize dataset
+    bsm_dataset = create_bsm_dataset(config, eval_data_dir, filename)
+
+    # Step 2: Build and add text preprocessing pipeline
+    text_pipeline = build_text_pipeline(config, tokenizer)
+    bsm_dataset.add_pipeline(config["text_name"], text_pipeline)
+
+    # Step 3: Apply preprocessing artifacts (numerical + categorical)
+    apply_preprocessing_artifacts(bsm_dataset, processors)
+
+    # Step 4: Add label processor for multiclass if needed
+    add_label_processor(bsm_dataset, config, processors)
+
+    # Step 5: Create DataLoader with appropriate collate function
+    dataloader = create_dataloader(bsm_dataset, config)
+
+    return bsm_dataset, dataloader
+
+
+# ============================================================================
+# DEVICE SETUP
+# ============================================================================
+
+
+def setup_device_environment(device: str = "auto") -> Tuple[str, str]:
+    """
+    Set up device environment based on availability and config.
+
+    Args:
+        device: Device selection: "auto", "cuda", "cpu"
+
+    Returns:
+        Tuple of (device_string, accelerator_string)
+    """
+    if device == "auto":
+        device_str = "cuda" if torch.cuda.is_available() else "cpu"
+    else:
+        device_str = device
+
+    accelerator = "gpu" if device_str == "cuda" else "cpu"
+
+    logger.info(f"Using device: {device_str}, accelerator: {accelerator}")
+
+    if device_str == "cuda":
+        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+        logger.info(f"GPU Count: {torch.cuda.device_count()}")
+
+        # Enable optimizations
+        torch.backends.cudnn.benchmark = True
+
+        # Log memory info
+        logger.info(
+            f"GPU Memory Allocated: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB"
+        )
+        logger.info(
+            f"GPU Memory Reserved: {torch.cuda.memory_reserved(0) / 1e9:.2f} GB"
+        )
+
+    return device_str, accelerator
+
+
+# ============================================================================
+# PREDICTION GENERATION
+# ============================================================================
+
+
+def generate_predictions(
+    model: nn.Module,
+    dataloader: DataLoader,
+    device: str = "auto",
+    accelerator: str = "auto",
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate predictions using PyTorch Lightning inference.
+    Supports automatic GPU/CPU detection and batch processing.
+
+    Args:
+        model: PyTorch Lightning model
+        dataloader: DataLoader for evaluation data
+        device: Device to use for inference
+        accelerator: Accelerator type for Lightning
+
+    Returns:
+        Tuple of (y_pred probabilities, y_true labels)
+    """
+    logger.info(f"Running inference on device: {device}, accelerator: {accelerator}")
+
+    # Use Lightning's model_inference utility
+    y_pred, y_true = model_inference(
+        model,
+        dataloader,
+        accelerator=accelerator,
+        device=device,
+        model_log_path=None,  # No logging during evaluation
     )
 
-    # Run inference using existing PyTorch inference function
-    logger.info("Running model inference...")
-    y_prob = model_online_inference(model, dataloader)
-    logger.info(f"Model prediction shape: {y_prob.shape}")
+    logger.info(
+        f"Inference complete. Prediction shape: {y_pred.shape}, True labels shape: {y_true.shape}"
+    )
 
-    # Convert to proper probability format
-    if len(y_prob.shape) == 1:
-        y_prob = np.column_stack([1 - y_prob, y_prob])
-        logger.info("Converted binary prediction to two-column probabilities")
+    return y_pred, y_true
 
-    # Get true labels and IDs from the original dataframe
-    df = dataset.DataReader
-    y_true = df[label_col].values
-    ids = df[id_col].values
 
-    # Determine the classification type from the model's saved hyperparameters
-    is_binary_model = config.get("is_binary", True)
+# ============================================================================
+# METRICS COMPUTATION
+# ============================================================================
 
-    if is_binary_model:
-        logger.info(
-            "Detected binary classification task based on model hyperparameters."
-        )
-        # Ensure y_true is also binary (0 or 1) for consistent metric calculation
-        y_true = (y_true > 0).astype(int)
 
-        # Compute metrics using existing PyTorch function
-        task = "binary"
-        num_classes = 2
-        output_metrics = ["auroc", "average_precision", "f1_score"]
+def log_metrics_summary(
+    metrics: Dict[str, Union[int, float, str]], is_binary: bool = True
+) -> None:
+    """
+    Log a nicely formatted summary of metrics for easy visibility in logs.
 
-        # Convert to tensors for compute_metrics function
-        y_prob_tensor = torch.tensor(y_prob)
-        y_true_tensor = torch.tensor(y_true)
+    Args:
+        metrics: Dictionary of metrics to log
+        is_binary: Whether these are binary classification metrics
+    """
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("=" * 80)
+    logger.info(f"METRICS SUMMARY - {timestamp}")
+    logger.info("=" * 80)
 
-        metrics = compute_metrics(
-            y_prob_tensor[:, 1],  # Use positive class probabilities for binary
-            y_true_tensor,
-            output_metrics,
-            task=task,
-            num_classes=num_classes,
-            stage="test",
-        )
+    # Log each metric with a consistent format
+    for name, value in metrics.items():
+        # Format numeric values to 4 decimal places
+        if isinstance(value, (int, float)):
+            formatted_value = f"{value:.4f}"
+        else:
+            formatted_value = str(value)
 
-        # Convert tensor values to float for JSON serialization
-        metrics = {k: float(v) if torch.is_tensor(v) else v for k, v in metrics.items()}
+        # Add a special prefix for easy searching in logs
+        logger.info(f"METRIC: {name.ljust(25)} = {formatted_value}")
 
-        plot_and_save_roc_curve(y_true, y_prob[:, 1], output_metrics_dir)
-        plot_and_save_pr_curve(y_true, y_prob[:, 1], output_metrics_dir)
+    # Highlight key metrics based on task type
+    logger.info("=" * 80)
+    logger.info("KEY PERFORMANCE METRICS")
+    logger.info("=" * 80)
+
+    if is_binary:
+        auc = metrics.get("eval/auroc", "N/A")
+        ap = metrics.get("eval/average_precision", "N/A")
+        f1 = metrics.get("eval/f1_score", "N/A")
+        if isinstance(auc, (int, float)):
+            logger.info(f"METRIC_KEY: AUC-ROC               = {auc:.4f}")
+        if isinstance(ap, (int, float)):
+            logger.info(f"METRIC_KEY: Average Precision     = {ap:.4f}")
+        if isinstance(f1, (int, float)):
+            logger.info(f"METRIC_KEY: F1 Score              = {f1:.4f}")
     else:
-        n_classes = y_prob.shape[1]
-        logger.info(
-            f"Detected multiclass classification task with {n_classes} classes."
-        )
+        auc_macro = metrics.get("eval/auroc_macro", "N/A")
+        auc_micro = metrics.get("eval/auroc_micro", "N/A")
+        if isinstance(auc_macro, (int, float)):
+            logger.info(f"METRIC_KEY: Macro AUC-ROC         = {auc_macro:.4f}")
+        if isinstance(auc_micro, (int, float)):
+            logger.info(f"METRIC_KEY: Micro AUC-ROC         = {auc_micro:.4f}")
 
-        # Compute metrics using existing PyTorch function
-        task = "multiclass"
-        num_classes = n_classes
-        output_metrics = ["auroc", "average_precision", "f1_score"]
+    logger.info("=" * 80)
 
-        # Convert to tensors for compute_metrics function
-        y_prob_tensor = torch.tensor(y_prob)
-        y_true_tensor = torch.tensor(y_true)
 
-        metrics = compute_metrics(
-            y_prob_tensor,
-            y_true_tensor,
-            output_metrics,
-            task=task,
-            num_classes=num_classes,
-            stage="test",
-        )
+def compute_evaluation_metrics(
+    y_true: np.ndarray, y_prob: np.ndarray, config: Dict[str, Any]
+) -> Dict[str, float]:
+    """
+    Compute comprehensive evaluation metrics.
+    Uses Lightning's compute_metrics utility for consistency.
 
-        # Convert tensor values to float for JSON serialization
-        metrics = {k: float(v) if torch.is_tensor(v) else v for k, v in metrics.items()}
+    Args:
+        y_true: True labels
+        y_prob: Predicted probabilities
+        config: Model configuration
 
-        for i in range(n_classes):
-            y_true_bin = (y_true == i).astype(int)
-            if len(np.unique(y_true_bin)) > 1:
-                plot_and_save_roc_curve(
-                    y_true_bin, y_prob[:, i], output_metrics_dir, prefix=f"class_{i}_"
-                )
-                plot_and_save_pr_curve(
-                    y_true_bin, y_prob[:, i], output_metrics_dir, prefix=f"class_{i}_"
-                )
+    Returns:
+        Dictionary of metrics
+    """
+    logger.info("Computing evaluation metrics")
 
-    save_predictions(ids, y_true, y_prob, id_col, label_col, output_eval_dir)
-    save_metrics(metrics, output_metrics_dir)
-    logger.info("Evaluation complete")
+    task = "binary" if config["is_binary"] else "multiclass"
+    num_classes = config["num_classes"]
+
+    # Define metrics to compute
+    output_metrics = ["auroc", "average_precision", "f1_score"]
+
+    # Compute metrics using Lightning utility
+    metrics = compute_metrics(
+        y_prob, y_true, output_metrics, task=task, num_classes=num_classes, stage="eval"
+    )
+
+    logger.info(f"Computed {len(metrics)} metrics using Lightning utilities")
+
+    # Log formatted metrics summary
+    log_metrics_summary(metrics, is_binary=config["is_binary"])
+
+    return metrics
+
+
+# ============================================================================
+# VISUALIZATION
+# ============================================================================
+
+
+def generate_evaluation_plots(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    config: Dict[str, Any],
+    output_dir: str,
+) -> Dict[str, str]:
+    """
+    Generate ROC and PR curve plots using Lightning utilities.
+    Returns dictionary of plot file paths.
+
+    Args:
+        y_true: True labels
+        y_prob: Predicted probabilities
+        config: Model configuration
+        output_dir: Directory to save plots
+
+    Returns:
+        Dictionary mapping plot names to file paths
+    """
+    logger.info("Generating evaluation plots")
+
+    plot_paths = {}
+    task = "binary" if config["is_binary"] else "multiclass"
+    num_classes = config["num_classes"]
+
+    # Create TensorBoard writer for plot generation
+    writer = SummaryWriter(log_dir=os.path.join(output_dir, "tensorboard_eval"))
+
+    # Generate ROC curves
+    roc_metric_plot(
+        y_pred=y_prob,
+        y_true=y_true,
+        y_val_pred=y_prob,  # Use same data for validation in eval
+        y_val_true=y_true,
+        path=output_dir,
+        task=task,
+        num_classes=num_classes,
+        writer=writer,
+        global_step=0,
+    )
+    plot_paths["roc_curve"] = os.path.join(output_dir, "roc_curve.jpg")
+    logger.info(f"Generated ROC curve: {plot_paths['roc_curve']}")
+
+    # Generate PR curves
+    pr_metric_plot(
+        y_pred=y_prob,
+        y_true=y_true,
+        y_val_pred=y_prob,  # Use same data for validation in eval
+        y_val_true=y_true,
+        path=output_dir,
+        task=task,
+        num_classes=num_classes,
+        writer=writer,
+        global_step=0,
+    )
+    plot_paths["pr_curve"] = os.path.join(output_dir, "pr_curve.jpg")
+    logger.info(f"Generated PR curve: {plot_paths['pr_curve']}")
+
+    writer.close()
+
+    return plot_paths
+
+
+# ============================================================================
+# OUTPUT MANAGEMENT
+# ============================================================================
+
+
+def save_predictions(
+    ids: np.ndarray,
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    id_col: str,
+    label_col: str,
+    output_eval_dir: str,
+    input_format: str = "csv",
+) -> None:
+    """
+    Save predictions preserving input format, including id, true label, and class probabilities.
+
+    Args:
+        ids: Sample IDs
+        y_true: True labels
+        y_prob: Predicted probabilities
+        id_col: Name of ID column
+        label_col: Name of label column
+        output_eval_dir: Directory to save predictions
+        input_format: Format to save in ('csv', 'tsv', or 'parquet')
+    """
+    logger.info(f"Saving predictions to {output_eval_dir} in {input_format} format")
+
+    prob_cols = [f"prob_class_{i}" for i in range(y_prob.shape[1])]
+    out_df = pd.DataFrame({id_col: ids, label_col: y_true})
+
+    for i, col in enumerate(prob_cols):
+        out_df[col] = y_prob[:, i]
+
+    output_base = Path(output_eval_dir) / "eval_predictions"
+    output_path = save_dataframe_with_format(out_df, output_base, input_format)
+    logger.info(f"Saved predictions (format={input_format}): {output_path}")
+
+
+def save_metrics(
+    metrics: Dict[str, Union[int, float, str]], output_metrics_dir: str
+) -> None:
+    """
+    Save computed metrics as JSON and text summary.
+
+    Args:
+        metrics: Dictionary of metrics
+        output_metrics_dir: Directory to save metrics
+    """
+    # Save JSON
+    json_path = os.path.join(output_metrics_dir, "metrics.json")
+    with open(json_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+    logger.info(f"Saved metrics to {json_path}")
+
+    # Save text summary
+    summary_path = os.path.join(output_metrics_dir, "metrics_summary.txt")
+    with open(summary_path, "w") as f:
+        f.write("PYTORCH MODEL EVALUATION METRICS\n")
+        f.write("=" * 50 + "\n\n")
+
+        # Key metrics
+        if "eval/auroc" in metrics:
+            f.write(f"AUC-ROC:           {metrics['eval/auroc']:.4f}\n")
+        if "eval/average_precision" in metrics:
+            f.write(f"Average Precision: {metrics['eval/average_precision']:.4f}\n")
+        if "eval/f1_score" in metrics:
+            f.write(f"F1 Score:          {metrics['eval/f1_score']:.4f}\n")
+
+        f.write("\n" + "=" * 50 + "\n\n")
+        f.write("ALL METRICS\n")
+        f.write("=" * 50 + "\n")
+
+        for name, value in sorted(metrics.items()):
+            if isinstance(value, (int, float)):
+                f.write(f"{name}: {value:.6f}\n")
+            else:
+                f.write(f"{name}: {value}\n")
+
+    logger.info(f"Saved metrics summary to {summary_path}")
 
 
 def create_health_check_file(output_path: str) -> str:
@@ -780,6 +899,123 @@ def create_health_check_file(output_path: str) -> str:
     with open(health_path, "w") as f:
         f.write(f"healthy: {datetime.now().isoformat()}")
     return health_path
+
+
+# ============================================================================
+# MAIN EVALUATION FUNCTION
+# ============================================================================
+
+
+def load_eval_data(eval_data_dir: str) -> Tuple[pd.DataFrame, str, str]:
+    """
+    Load the first data file found in the evaluation data directory.
+    Returns a pandas DataFrame, the detected format, and the filename.
+    """
+    logger.info(f"Loading eval data from {eval_data_dir}")
+    eval_files = sorted(
+        [
+            f
+            for f in Path(eval_data_dir).glob("**/*")
+            if f.suffix in [".csv", ".tsv", ".parquet"]
+        ]
+    )
+    if not eval_files:
+        logger.error("No eval data file found in eval_data input.")
+        raise RuntimeError("No eval data file found in eval_data input.")
+
+    eval_file = eval_files[0]
+    logger.info(f"Using eval data file: {eval_file}")
+
+    df, input_format = load_dataframe_with_format(eval_file)
+    filename = eval_file.name
+    logger.info(
+        f"Loaded eval data shape: {df.shape}, format: {input_format}, filename: {filename}"
+    )
+    return df, input_format, filename
+
+
+def get_id_label_columns(
+    df: pd.DataFrame, id_field: str, label_field: str
+) -> Tuple[str, str]:
+    """
+    Determine the ID and label columns in the DataFrame.
+    Falls back to the first and second columns if not found.
+    """
+    id_col = id_field if id_field in df.columns else df.columns[0]
+    label_col = label_field if label_field in df.columns else df.columns[1]
+    logger.info(f"Using id_col: {id_col}, label_col: {label_col}")
+    return id_col, label_col
+
+
+def evaluate_model(
+    model: nn.Module,
+    df: pd.DataFrame,
+    config: Dict[str, Any],
+    tokenizer: AutoTokenizer,
+    processors: Dict[str, Any],
+    eval_data_dir: str,
+    filename: str,
+    id_col: str,
+    label_col: str,
+    output_eval_dir: str,
+    output_metrics_dir: str,
+    input_format: str = "csv",
+    device: str = "auto",
+) -> None:
+    """
+    Run model prediction and evaluation, then save predictions and metrics.
+
+    Args:
+        model: PyTorch Lightning model
+        df: Evaluation DataFrame
+        config: Model configuration
+        tokenizer: BERT tokenizer
+        processors: Preprocessing processors
+        eval_data_dir: Directory containing evaluation data
+        filename: Name of evaluation data file
+        id_col: Name of ID column
+        label_col: Name of label column
+        output_eval_dir: Directory to save evaluation results
+        output_metrics_dir: Directory to save metrics
+        input_format: Input data format
+        device: Device to use for inference
+    """
+    logger.info("Starting model evaluation")
+
+    # Store IDs before preprocessing
+    ids = df[id_col].values
+
+    # Preprocess data and create DataLoader
+    bsm_dataset, dataloader = preprocess_eval_data(
+        df, config, tokenizer, processors, eval_data_dir, filename
+    )
+
+    # Setup device environment
+    device_str, accelerator = setup_device_environment(device)
+
+    # Generate predictions
+    y_prob, y_true = generate_predictions(model, dataloader, device_str, accelerator)
+
+    # Compute metrics
+    metrics = compute_evaluation_metrics(y_true, y_prob, config)
+
+    # Generate plots
+    plot_paths = generate_evaluation_plots(y_true, y_prob, config, output_metrics_dir)
+
+    # Save predictions
+    save_predictions(
+        ids, y_true, y_prob, id_col, label_col, output_eval_dir, input_format
+    )
+
+    # Save metrics
+    save_metrics(metrics, output_metrics_dir)
+
+    logger.info("Model evaluation complete")
+
+
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
 
 
 def main(
@@ -793,10 +1029,10 @@ def main(
     Loads model and data, runs evaluation, and saves results.
 
     Args:
-        input_paths (Dict[str, str]): Dictionary of input paths
-        output_paths (Dict[str, str]): Dictionary of output paths
-        environ_vars (Dict[str, str]): Dictionary of environment variables
-        job_args (argparse.Namespace): Command line arguments
+        input_paths: Dictionary of input paths
+        output_paths: Dictionary of output paths
+        environ_vars: Dictionary of environment variables
+        job_args: Command line arguments
     """
     # Extract paths from parameters - using contract-defined logical names
     model_dir = input_paths.get("model_input", input_paths.get("model_dir"))
@@ -809,12 +1045,14 @@ def main(
     )
 
     # Extract environment variables
-    id_field = environ_vars.get("ID_FIELD", "id")
+    id_field = environ_vars.get("ID_FIELD", "order_id")
     label_field = environ_vars.get("LABEL_FIELD", "label")
+    device = environ_vars.get("DEVICE", "auto")
 
     # Log job info
     job_type = job_args.job_type
     logger.info(f"Running PyTorch model evaluation with job_type: {job_type}")
+    logger.info(f"Device setting: {device}")
 
     # Ensure output directories exist
     os.makedirs(output_eval_dir, exist_ok=True)
@@ -823,28 +1061,29 @@ def main(
     logger.info("Starting PyTorch model evaluation script")
 
     # Load model artifacts
-    model, config, tokenizers, pipelines = load_pytorch_model_artifacts(model_dir)
+    model, config, tokenizer, processors = load_model_artifacts(model_dir)
 
-    # Load and preprocess data
-    df = load_eval_data(eval_data_dir)
+    # Load evaluation data with format detection
+    df, input_format, filename = load_eval_data(eval_data_dir)
 
-    # Get ID and label columns before preprocessing
+    # Get ID and label columns
     id_col, label_col = get_id_label_columns(df, id_field, label_field)
 
-    # Process the data using PyTorch preprocessing pipelines
-    dataset = preprocess_pytorch_eval_data(df, config, pipelines)
-
-    logger.info(f"Final evaluation dataset ready for inference")
-
-    # Evaluate model using the processed dataset
-    evaluate_pytorch_model(
+    # Evaluate model
+    evaluate_model(
         model,
-        dataset,
+        df,
         config,
+        tokenizer,
+        processors,
+        eval_data_dir,
+        filename,
         id_col,
         label_col,
         output_eval_dir,
         output_metrics_dir,
+        input_format,
+        device,
     )
 
     logger.info("PyTorch model evaluation script complete")
@@ -866,14 +1105,26 @@ if __name__ == "__main__":
         "metrics_output": CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
     }
 
-    # Collect environment variables - ID_FIELD and LABEL_FIELD are required per contract
+    # Collect environment variables - aligned with contract
     environ_vars = {
-        "ID_FIELD": os.environ.get("ID_FIELD", "id"),  # Fallback for testing
-        "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),  # Fallback for testing
+        # Required environment variables
+        "ID_FIELD": os.environ.get("ID_FIELD", "order_id"),
+        "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),
+        # Optional environment variables (from contract)
+        "COMPARISON_MODE": os.environ.get("COMPARISON_MODE", "false"),
+        "PREVIOUS_SCORE_FIELD": os.environ.get("PREVIOUS_SCORE_FIELD", ""),
+        "COMPARISON_METRICS": os.environ.get("COMPARISON_METRICS", "all"),
+        "STATISTICAL_TESTS": os.environ.get("STATISTICAL_TESTS", "true"),
+        "COMPARISON_PLOTS": os.environ.get("COMPARISON_PLOTS", "true"),
+        # Additional optional variables for device/performance tuning
+        "DEVICE": os.environ.get("DEVICE", "auto"),
+        "ACCELERATOR": os.environ.get("ACCELERATOR", "auto"),
+        "BATCH_SIZE": os.environ.get("BATCH_SIZE", "32"),
+        "NUM_WORKERS": os.environ.get("NUM_WORKERS", "0"),
     }
 
     try:
-        # Call main function with testability parameters
+        # Call main function
         main(input_paths, output_paths, environ_vars, args)
 
         # Signal success

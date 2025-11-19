@@ -45,18 +45,32 @@ from ...processing.categorical.categorical_label_processor import (
 from ...processing.categorical.multiclass_label_processor import (
     MultiClassLabelProcessor,
 )
+from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from ...processing.numerical.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
+from ...processing.validation import (
+    validate_categorical_fields,
+    validate_numerical_fields,
+)
 from ...processing.datasets.bsm_datasets import BSMDataset
-from ...processing.dataloaders.bsm_dataloader import build_collate_batch
-from lightning_models.pl_tab_ae import TabAE
-from lightning_models.pl_text_cnn import TextCNN
-from lightning_models.pl_multimodal_cnn import MultimodalCNN
-from lightning_models.pl_multimodal_bert import MultimodalBert
-from lightning_models.pl_multimodal_moe import MultimodalBertMoE
-from lightning_models.pl_multimodal_gate_fusion import MultimodalBertGateFusion
-from lightning_models.pl_multimodal_cross_attn import MultimodalBertCrossAttn
-from lightning_models.pl_bert_classification import TextBertClassification
-from lightning_models.pl_lstm import TextLSTM
-from lightning_models.pl_train import (
+from ...processing.dataloaders.bsm_dataloader import (
+    build_collate_batch,
+    build_trimodal_collate_batch,
+)
+from lightning_models.tabular.pl_tab_ae import TabAE
+from lightning_models.text.pl_text_cnn import TextCNN
+from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
+from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
+from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
+from lightning_models.bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
+from lightning_models.bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
+from lightning_models.trimodal.pl_trimodal_bert import TrimodalBert
+from lightning_models.trimodal.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
+from lightning_models.trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
+from lightning_models.text.pl_bert_classification import TextBertClassification
+from lightning_models.text.pl_lstm import TextLSTM
+from lightning_models.utils.pl_train import (
     model_train,
     model_inference,
     predict_stack_transform,
@@ -67,12 +81,12 @@ from lightning_models.pl_train import (
     load_artifacts,
     load_checkpoint,
 )
-from lightning_models.pl_model_plots import (
+from lightning_models.utils.pl_model_plots import (
     compute_metrics,
     roc_metric_plot,
     pr_metric_plot,
 )
-from lightning_models.dist_utils import get_rank, is_main_process
+from lightning_models.utils.dist_utils import get_rank, is_main_process
 from pydantic import (
     BaseModel,
     Field,
@@ -86,7 +100,7 @@ prefix = "/opt/ml/"
 input_path = os.path.join(prefix, "input/data")
 output_path = os.path.join(prefix, "output/data")
 model_path = os.path.join(prefix, "model")
-hparam_path = os.path.join(prefix, "code/hyperparams/hyperparameters.json")
+hparam_path = os.path.join(prefix, "input/config/hyperparameters.json")
 checkpoint_path = os.environ.get("SM_CHECKPOINT_DIR", "/opt/ml/checkpoints")
 train_channel = "train"
 train_path = os.path.join(input_path, train_channel)
@@ -111,6 +125,90 @@ if is_main_process():
 def log_once(logger, message, level=logging.INFO):
     if is_main_process():
         logger.log(level, message)
+
+
+# -------------------------------------------------------------------------
+# FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
+# -------------------------------------------------------------------------
+def _detect_file_format(file_path: str) -> str:
+    """
+    Detect the format of a data file based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+    """
+    from pathlib import Path
+
+    suffix = Path(file_path).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet":
+        return "parquet"
+    else:
+        raise RuntimeError(f"Unsupported file format: {suffix}")
+
+
+def load_dataframe_with_format(file_path: str) -> Tuple[pd.DataFrame, str]:
+    """
+    Load DataFrame and detect its format.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Tuple of (DataFrame, format_string)
+    """
+    detected_format = _detect_file_format(file_path)
+
+    if detected_format == "csv":
+        df = pd.read_csv(file_path)
+    elif detected_format == "tsv":
+        df = pd.read_csv(file_path, sep="\t")
+    elif detected_format == "parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        raise RuntimeError(f"Unsupported format: {detected_format}")
+
+    return df, detected_format
+
+
+def save_dataframe_with_format(
+    df: pd.DataFrame, output_path: str, format_str: str
+) -> str:
+    """
+    Save DataFrame in specified format.
+
+    Args:
+        df: DataFrame to save
+        output_path: Base output path (without extension)
+        format_str: Format to save in ('csv', 'tsv', or 'parquet')
+
+    Returns:
+        Path to saved file
+    """
+    from pathlib import Path
+
+    output_path = Path(output_path)
+
+    if format_str == "csv":
+        file_path = output_path.with_suffix(".csv")
+        df.to_csv(file_path, index=False)
+    elif format_str == "tsv":
+        file_path = output_path.with_suffix(".tsv")
+        df.to_csv(file_path, sep="\t", index=False)
+    elif format_str == "parquet":
+        file_path = output_path.with_suffix(".parquet")
+        df.to_parquet(file_path, index=False)
+    else:
+        raise RuntimeError(f"Unsupported output format: {format_str}")
+
+    return str(file_path)
 
 
 # ================================================================================
@@ -161,6 +259,22 @@ class Config(BaseModel):
     warmup_steps: int = 300
     text_input_ids_key: str = "input_ids"  # Configurable text input key
     text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
+    primary_text_name: Optional[str] = (
+        None  # Primary text field for trimodal (e.g., "chat")
+    )
+    secondary_text_name: Optional[str] = (
+        None  # Secondary text field for trimodal (e.g., "shiptrack")
+    )
+    primary_input_ids_key: str = "input_ids"  # Primary text input_ids key for trimodal
+    primary_attention_mask_key: str = (
+        "attention_mask"  # Primary text attention_mask key for trimodal
+    )
+    secondary_input_ids_key: str = (
+        "input_ids"  # Secondary text input_ids key for trimodal
+    )
+    secondary_attention_mask_key: str = (
+        "attention_mask"  # Secondary text attention_mask key for trimodal
+    )
     train_filename: Optional[str] = None
     val_filename: Optional[str] = None
     test_filename: Optional[str] = None
@@ -171,6 +285,11 @@ class Config(BaseModel):
     )
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
+    _input_format: Optional[str] = None  # Added: input data format for preservation
+    smooth_factor: float = 0.0  # Risk table smoothing factor
+    count_threshold: int = 0  # Risk table count threshold
+    imputation_dict: Optional[Dict[str, float]] = None  # Imputation values
+    risk_tables: Optional[Dict[str, Dict]] = None  # Risk table mappings
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -323,6 +442,83 @@ def find_first_data_file(
     )
 
 
+# ----------------- Artifact Loading/Saving Helpers -------------------------
+def load_imputation_artifacts(artifacts_dir: str) -> Dict[str, float]:
+    """Load pre-computed imputation dictionary from artifacts directory."""
+    import pickle as pkl
+
+    impute_file = os.path.join(artifacts_dir, "impute_dict.pkl")
+    if not os.path.exists(impute_file):
+        raise FileNotFoundError(f"Imputation artifacts not found: {impute_file}")
+
+    with open(impute_file, "rb") as f:
+        impute_dict = pkl.load(f)
+
+    log_once(logger, f"Loaded imputation dict with {len(impute_dict)} fields")
+    return impute_dict
+
+
+def load_risk_table_artifacts(artifacts_dir: str) -> Dict[str, Dict]:
+    """Load pre-computed risk tables from artifacts directory."""
+    import pickle as pkl
+
+    risk_file = os.path.join(artifacts_dir, "risk_table_map.pkl")
+    if not os.path.exists(risk_file):
+        raise FileNotFoundError(f"Risk table artifacts not found: {risk_file}")
+
+    with open(risk_file, "rb") as f:
+        risk_tables = pkl.load(f)
+
+    log_once(logger, f"Loaded risk tables for {len(risk_tables)} fields")
+    return risk_tables
+
+
+def save_imputation_artifacts(
+    imputation_dict: Dict[str, float], output_dir: str
+) -> None:
+    """Save imputation dictionary to model directory."""
+    import pickle as pkl
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save pickle format
+    impute_file = os.path.join(output_dir, "impute_dict.pkl")
+    with open(impute_file, "wb") as f:
+        pkl.dump(imputation_dict, f)
+
+    # Save JSON format for readability
+    impute_json = os.path.join(output_dir, "impute_dict.json")
+    with open(impute_json, "w") as f:
+        json.dump(imputation_dict, f, indent=2)
+
+    log_once(logger, f"Saved imputation artifacts to {output_dir}")
+
+
+def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> None:
+    """Save risk tables to model directory."""
+    import pickle as pkl
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save pickle format
+    risk_file = os.path.join(output_dir, "risk_table_map.pkl")
+    with open(risk_file, "wb") as f:
+        pkl.dump(risk_tables, f)
+
+    # Save JSON format for readability
+    risk_json = os.path.join(output_dir, "risk_table_map.json")
+    json_tables = {}
+    for field, tables in risk_tables.items():
+        json_tables[field] = {
+            "bins": {str(k): float(v) for k, v in tables.get("bins", {}).items()},
+            "default_bin": float(tables.get("default_bin", 0.0)),
+        }
+    with open(risk_json, "w") as f:
+        json.dump(json_tables, f, indent=2)
+
+    log_once(logger, f"Saved risk table artifacts to {output_dir}")
+
+
 # ----------------- Dataset Loading -------------------------
 def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
     log_once(logger, f"Loading BSM dataset from {filename} in folder {file_dir}")
@@ -367,46 +563,166 @@ def data_preprocess_pipeline(
     return tokenizer, pipelines
 
 
-# ----------------- Updated Categorical Label Pipeline ------------------
-def build_categorical_label_pipelines(
-    config: Config, datasets: List[BSMDataset]
-) -> Dict[str, CategoricalLabelProcessor]:
-    cat_fields = config.categorical_features_to_encode
-    if not cat_fields:
-        return {}
-    field_to_processor = {}
-    for field in cat_fields:
-        all_values = []
-        for dataset in datasets:
-            if field in dataset.DataReader.columns:
-                values = dataset.DataReader[field].dropna().astype(str).tolist()
-                all_values.extend(values)
-        unique_values = sorted(set(all_values))
-        processor = CategoricalLabelProcessor(initial_categories=unique_values)
-        field_to_processor[field] = processor
-    return field_to_processor
+# ----------------- Preprocessing Pipeline Builder (Imputation + Risk Tables) ------------------
+def build_preprocessing_pipelines(
+    config: Config,
+    datasets: List[BSMDataset],
+    model_artifacts_dir: Optional[str] = None,
+    use_precomputed_imputation: bool = False,
+    use_precomputed_risk_tables: bool = False,
+) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
+    """
+    Build preprocessing pipelines for numerical imputation and risk table mapping.
+
+    Args:
+        config: Configuration object
+        datasets: List of [train, val, test] datasets
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
+
+    Returns:
+        Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
+    """
+    pipelines = {}
+    imputation_dict = {}
+    risk_tables = {}
+
+    train_dataset = datasets[0]
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "PREPROCESSING PIPELINE BUILDER")
+    log_once(logger, "=" * 70)
+    log_once(logger, f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
+    log_once(logger, f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
+    log_once(logger, f"Model artifacts directory: {model_artifacts_dir}")
+    log_once(logger, "=" * 70)
+
+    # === FIELD TYPE VALIDATION ===
+    if not use_precomputed_imputation and config.tab_field_list:
+        log_once(logger, "Validating numerical field types before imputation...")
+        validate_numerical_fields(
+            train_dataset.DataReader, config.tab_field_list, "train"
+        )
+        log_once(logger, "✓ Numerical field type validation passed")
+
+    if not use_precomputed_risk_tables and config.cat_field_list:
+        log_once(
+            logger, "Validating categorical field types before risk table mapping..."
+        )
+        validate_categorical_fields(
+            train_dataset.DataReader, config.cat_field_list, "train"
+        )
+        log_once(logger, "✓ Categorical field type validation passed")
+
+    # === 1. NUMERICAL IMPUTATION ===
+    if config.tab_field_list:
+        if use_precomputed_imputation and model_artifacts_dir:
+            # Load pre-computed imputation
+            log_once(logger, "Loading pre-computed imputation artifacts...")
+            imputation_dict = load_imputation_artifacts(model_artifacts_dir)
+            for field, value in imputation_dict.items():
+                proc = NumericalVariableImputationProcessor(
+                    column_name=field, imputation_value=value
+                )
+                pipelines[field] = proc
+            log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
+        else:
+            # Fit inline
+            log_once(logger, "Fitting numerical imputation inline...")
+            for field in config.tab_field_list:
+                proc = NumericalVariableImputationProcessor(
+                    column_name=field, strategy="mean"
+                )
+                proc.fit(train_dataset.DataReader[field])
+                pipelines[field] = proc
+                imputation_dict[field] = proc.get_imputation_value()
+            log_once(
+                logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields"
+            )
+
+    # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
+    if config.cat_field_list:
+        if use_precomputed_risk_tables and model_artifacts_dir:
+            # Load pre-computed risk tables
+            log_once(logger, "Loading pre-computed risk table artifacts...")
+            risk_tables = load_risk_table_artifacts(model_artifacts_dir)
+            for field, tables in risk_tables.items():
+                proc = RiskTableMappingProcessor(
+                    column_name=field, label_name=config.label_name, risk_tables=tables
+                )
+                pipelines[field] = proc
+            log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+        else:
+            # Fit inline
+            log_once(logger, "Fitting risk tables inline...")
+            for field in config.cat_field_list:
+                proc = RiskTableMappingProcessor(
+                    column_name=field,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                )
+                proc.fit(train_dataset.DataReader)
+                pipelines[field] = proc
+                risk_tables[field] = proc.get_risk_tables()
+            log_once(
+                logger, f"✓ Fitted risk tables for {len(config.cat_field_list)} fields"
+            )
+
+    log_once(logger, "=" * 70)
+    log_once(logger, f"Total preprocessing pipelines created: {len(pipelines)}")
+    log_once(logger, "=" * 70)
+
+    return pipelines, imputation_dict, risk_tables
 
 
 # ----------------- Model Selection -----------------------
 def model_select(
     model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
-    if model_class == "multimodal_cnn":
-        return MultimodalCNN(config.model_dump(), vocab_size, embedding_mat)
-    elif model_class == "bert":
-        return TextBertClassification(config.model_dump())
-    elif model_class == "lstm":
-        return TextLSTM(config.model_dump(), vocab_size, embedding_mat)
-    elif model_class == "multimodal_bert":
-        return MultimodalBert(config.model_dump())
-    elif model_class == "multimodal_moe":
-        return MultimodalBertMoE(config.model_dump())
-    elif model_class == "multimodal_gate_fusion":
-        return MultimodalBertGateFusion(config.model_dump())
-    elif model_class == "multimodal_cross_attn":
-        return MultimodalBertCrossAttn(config.model_dump())
-    else:
-        return TextBertClassification(config.model_dump())
+    """
+    Select and instantiate a model based on model_class string.
+
+    Supports:
+    - General categories: "bimodal", "trimodal"
+    - Specific bimodal models: "bimodal_bert", "bimodal_cnn", etc.
+    - Specific trimodal models: "trimodal_bert", etc.
+    - Text-only models: "bert", "lstm"
+    - Backward compatibility: "multimodal_*" maps to "bimodal_*"
+    """
+    model_map = {
+        # General categories (default to bert variants)
+        "bimodal": lambda: BimodalBert(config.model_dump()),
+        "trimodal": lambda: TrimodalBert(config.model_dump()),
+        # Specific bimodal models
+        "bimodal_cnn": lambda: BimodalCNN(
+            config.model_dump(), vocab_size, embedding_mat
+        ),
+        "bimodal_bert": lambda: BimodalBert(config.model_dump()),
+        "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
+        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
+        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        # Specific trimodal models
+        "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
+        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
+        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config.model_dump()),
+        # Text-only models
+        "bert": lambda: TextBertClassification(config.model_dump()),
+        "lstm": lambda: TextLSTM(config.model_dump(), vocab_size, embedding_mat),
+        # Backward compatibility (multimodal -> bimodal)
+        "multimodal_cnn": lambda: BimodalCNN(
+            config.model_dump(), vocab_size, embedding_mat
+        ),
+        "multimodal_bert": lambda: BimodalBert(config.model_dump()),
+        "multimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
+        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
+        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+    }
+
+    return model_map.get(
+        model_class, lambda: TextBertClassification(config.model_dump())
+    )()
 
 
 # ----------------- Training Setup -----------------------
@@ -423,9 +739,18 @@ def setup_training_environment(config: Config) -> torch.device:
 # ----------------- Data Loading and Preprocessing ------------------
 def load_and_preprocess_data(
     config: Config,
+    model_artifacts_dir: Optional[str] = None,
+    use_precomputed_imputation: bool = False,
+    use_precomputed_risk_tables: bool = False,
 ) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:
     """
     Loads and preprocesses the train/val/test datasets according to the provided config.
+
+    Args:
+        config: Configuration object
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
 
     Returns:
         Tuple of ([train_dataset, val_dataset, test_dataset], tokenizer, config)
@@ -442,6 +767,14 @@ def load_and_preprocess_data(
         print(f"Creating checkpoint folder {checkpoint_path}")
         os.makedirs(checkpoint_path)
 
+    # Detect input format from training data file
+    train_file_path = os.path.join(train_path, train_filename)
+    detected_format = _detect_file_format(train_file_path)
+    log_once(logger, f"Detected input data format: {detected_format}")
+
+    # Store format in config for output preservation
+    config._input_format = detected_format
+
     # === Load raw datasets ===
     train_bsm_dataset = load_data_module(train_path, train_filename, config)
     val_bsm_dataset = load_data_module(val_path, val_filename, config)
@@ -453,10 +786,26 @@ def load_and_preprocess_data(
     val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
     test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
 
-    # === Build categorical feature encoders (tabular side) ===
-    categorical_processors = build_categorical_label_pipelines(
-        config, [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset]
+    # === Build preprocessing pipelines (numerical imputation + risk tables) ===
+    preprocessing_pipelines, imputation_dict, risk_tables = (
+        build_preprocessing_pipelines(
+            config,
+            [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset],
+            model_artifacts_dir=model_artifacts_dir,
+            use_precomputed_imputation=use_precomputed_imputation,
+            use_precomputed_risk_tables=use_precomputed_risk_tables,
+        )
     )
+
+    # Add preprocessing pipelines to all datasets
+    for field, processor in preprocessing_pipelines.items():
+        train_bsm_dataset.add_pipeline(field, processor)
+        val_bsm_dataset.add_pipeline(field, processor)
+        test_bsm_dataset.add_pipeline(field, processor)
+
+    # Store artifacts in config for saving
+    config.imputation_dict = imputation_dict
+    config.risk_tables = risk_tables
 
     # === Add multiclass label processor if needed ===
     if not config.is_binary and config.num_classes > 2:
@@ -479,13 +828,6 @@ def load_and_preprocess_data(
         config.label_to_id = None
         config.id_to_label = None
 
-    for field, processor in categorical_processors.items():
-        train_bsm_dataset.add_pipeline(field, processor)
-        val_bsm_dataset.add_pipeline(field, processor)
-        test_bsm_dataset.add_pipeline(field, processor)
-    config.categorical_processor_mappings = {
-        field: proc.category_to_label for field, proc in categorical_processors.items()
-    }
     return [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset], tokenizer, config
 
 
@@ -493,10 +835,23 @@ def load_and_preprocess_data(
 def build_model_and_optimizer(
     config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    bsm_collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
-    )  # Pass key names
+    # Select appropriate collate function based on model type
+    if config.model_class.startswith("trimodal"):
+        log_once(
+            logger, f"Using trimodal collate batch for model: {config.model_class}"
+        )
+        bsm_collate_batch = build_trimodal_collate_batch(
+            primary_input_ids_key=config.primary_input_ids_key,
+            primary_attention_mask_key=config.primary_attention_mask_key,
+            secondary_input_ids_key=config.secondary_input_ids_key,
+            secondary_attention_mask_key=config.secondary_attention_mask_key,
+        )
+    else:
+        log_once(logger, f"Using bimodal collate batch for model: {config.model_class}")
+        bsm_collate_batch = build_collate_batch(
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
 
@@ -580,12 +935,60 @@ def export_model_to_onnx(
 
 
 # ----------------- Evaluation and Logging -----------------------
+def save_predictions_as_dataframe(
+    predictions: np.ndarray,
+    true_labels: np.ndarray,
+    ids: np.ndarray,
+    output_dir: str,
+    split_name: str,
+    id_col: str,
+    label_col: str,
+    output_format: str = "csv",
+) -> None:
+    """
+    Save predictions as DataFrame with format preservation.
+
+    Args:
+        predictions: Prediction probabilities of shape (N, num_classes)
+        true_labels: True labels of shape (N,)
+        ids: Sample IDs of shape (N,)
+        output_dir: Directory to save predictions
+        split_name: Name of split (e.g., 'val', 'test')
+        id_col: Name of ID column
+        label_col: Name of label column
+        output_format: Format to save in ('csv', 'tsv', or 'parquet')
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create DataFrame with ID and label columns
+    df = pd.DataFrame({id_col: ids, label_col: true_labels})
+
+    # Add probability columns for each class
+    num_classes = predictions.shape[1] if len(predictions.shape) > 1 else 1
+    if num_classes == 1:
+        # Binary with single probability
+        df["prob_class_0"] = 1 - predictions.squeeze()
+        df["prob_class_1"] = predictions.squeeze()
+    else:
+        for i in range(num_classes):
+            df[f"prob_class_{i}"] = predictions[:, i]
+
+    # Save with format preservation
+    output_base = os.path.join(output_dir, f"{split_name}_predictions")
+    saved_path = save_dataframe_with_format(df, output_base, output_format)
+    log_once(
+        logger, f"Saved {split_name} predictions (format={output_format}): {saved_path}"
+    )
+
+
 def evaluate_and_log_results(
     model: nn.Module,
     val_dataloader: DataLoader,
     test_dataloader: DataLoader,
     config: Config,
     trainer: pl.Trainer,
+    val_dataset: BSMDataset,
+    test_dataset: BSMDataset,
 ) -> None:
     log_once(logger, "Inference Starts ...")
     val_predict_labels, val_true_labels = model_inference(
@@ -653,9 +1056,53 @@ def evaluate_and_log_results(
             global_step=trainer.global_step,
         )
         writer.close()
+
+        # Save legacy tensor format for backward compatibility
         prediction_filename = os.path.join(output_path, "predict_results.pth")
         log_once(logger, f"Saving prediction result to {prediction_filename}")
         save_prediction(prediction_filename, test_true_labels, test_predict_labels)
+
+        # NEW: Save predictions as DataFrames with format preservation
+        log_once(logger, "Saving predictions as DataFrames with format preservation...")
+        output_format = config._input_format or "csv"
+
+        # Get IDs from datasets
+        val_ids = (
+            val_dataset.DataReader[config.id_name].values
+            if config.id_name in val_dataset.DataReader.columns
+            else np.arange(len(val_true_labels))
+        )
+        test_ids = (
+            test_dataset.DataReader[config.id_name].values
+            if config.id_name in test_dataset.DataReader.columns
+            else np.arange(len(test_true_labels))
+        )
+
+        # Save validation predictions
+        save_predictions_as_dataframe(
+            predictions=val_predict_labels,
+            true_labels=val_true_labels,
+            ids=val_ids,
+            output_dir=output_path,
+            split_name="val",
+            id_col=config.id_name,
+            label_col=config.label_name,
+            output_format=output_format,
+        )
+
+        # Save test predictions
+        save_predictions_as_dataframe(
+            predictions=test_predict_labels,
+            true_labels=test_true_labels,
+            ids=test_ids,
+            output_dir=output_path,
+            split_name="test",
+            id_col=config.id_name,
+            label_col=config.label_name,
+            output_format=output_format,
+        )
+
+        log_once(logger, "Prediction DataFrames saved successfully")
 
 
 # ----------------- Main Function ---------------------------
@@ -702,7 +1149,19 @@ def main(
     log_once(logger, "Starting the training process.")
 
     device = setup_training_environment(config)
-    datasets, tokenizer, config = load_and_preprocess_data(config)
+
+    # Pass environment variables for preprocessing artifact control
+    datasets, tokenizer, config = load_and_preprocess_data(
+        config,
+        model_artifacts_dir=input_paths.get("model_artifacts_input"),
+        use_precomputed_imputation=environ_vars.get(
+            "USE_PRECOMPUTED_IMPUTATION", False
+        ),
+        use_precomputed_risk_tables=environ_vars.get(
+            "USE_PRECOMPUTED_RISK_TABLES", False
+        ),
+    )
+
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
         build_model_and_optimizer(config, tokenizer, datasets)
     )
@@ -745,7 +1204,26 @@ def main(
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
-    evaluate_and_log_results(model, val_dataloader, test_dataloader, config, trainer)
+        # ------------------ Save Preprocessing Artifacts ------------------
+        if config.imputation_dict:
+            logger.info("Saving numerical imputation artifacts...")
+            save_imputation_artifacts(config.imputation_dict, model_path)
+
+        if config.risk_tables:
+            logger.info("Saving risk table artifacts...")
+            save_risk_table_artifacts(config.risk_tables, model_path)
+
+    # Extract datasets for evaluation
+    train_dataset, val_dataset, test_dataset = datasets
+    evaluate_and_log_results(
+        model,
+        val_dataloader,
+        test_dataloader,
+        config,
+        trainer,
+        val_dataset,
+        test_dataset,
+    )
 
 
 # ----------------- Entrypoint ---------------------------
@@ -757,7 +1235,8 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path
+        "CONFIG_DIR": "/opt/ml/input/config/hyperparameters.json",  # Source directory path (matches XGBoost)
+        "MODEL_ARTIFACTS_INPUT": "/opt/ml/input/data/model_artifacts_input",  # Optional pre-computed artifacts
     }
 
     # Define input and output paths using contract logical names
@@ -767,15 +1246,28 @@ if __name__ == "__main__":
         "hyperparameters_s3_uri": CONTAINER_PATHS["CONFIG_DIR"],
     }
 
+    # Add model_artifacts_input only if the directory exists (optional)
+    if os.path.exists(CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]):
+        input_paths["model_artifacts_input"] = CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]
+        logger.info(
+            f"Found model artifacts input directory: {CONTAINER_PATHS['MODEL_ARTIFACTS_INPUT']}"
+        )
+
     output_paths = {
         "model_output": CONTAINER_PATHS["MODEL_DIR"],
         "evaluation_output": CONTAINER_PATHS["OUTPUT_DATA"],
     }
 
-    # Collect environment variables (none currently used, but following the pattern)
+    # Collect environment variables for preprocessing artifact control
     environ_vars = {
-        # Add any environment variables the script needs here
-        # Example: "LOG_LEVEL": os.environ.get("LOG_LEVEL", "INFO")
+        "USE_PRECOMPUTED_IMPUTATION": os.environ.get(
+            "USE_PRECOMPUTED_IMPUTATION", "false"
+        ).lower()
+        == "true",
+        "USE_PRECOMPUTED_RISK_TABLES": os.environ.get(
+            "USE_PRECOMPUTED_RISK_TABLES", "false"
+        ).lower()
+        == "true",
     }
 
     # Create empty args namespace to maintain function signature

@@ -22,6 +22,7 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple, Union
 import sys
+import tarfile
 import logging
 from datetime import datetime
 import time
@@ -49,8 +50,11 @@ from processing.text.dialogue_processor import (
     DialogueChunkerProcessor,
 )
 from processing.text.bert_tokenize_processor import BertTokenizeProcessor
-from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.numerical.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
@@ -164,8 +168,99 @@ def save_dataframe_with_format(
 
 
 # ============================================================================
+# PREPROCESSING ARTIFACT LOADERS
+# ============================================================================
+
+
+def load_risk_tables(model_dir: str) -> Dict[str, Any]:
+    """Load risk tables from pickle file."""
+    import pickle as pkl
+
+    risk_file = os.path.join(model_dir, "risk_table_map.pkl")
+    if not os.path.exists(risk_file):
+        logger.warning(f"Risk table file not found: {risk_file}")
+        return {}
+
+    try:
+        with open(risk_file, "rb") as f:
+            risk_tables = pkl.load(f)
+        logger.info(f"Loaded risk tables for {len(risk_tables)} features")
+        return risk_tables
+    except Exception as e:
+        logger.warning(f"Failed to load risk tables: {e}")
+        return {}
+
+
+def create_risk_processors(
+    risk_tables: Dict[str, Any],
+) -> Dict[str, RiskTableMappingProcessor]:
+    """Create risk table processors for each categorical feature."""
+    risk_processors = {}
+    for feature, risk_table in risk_tables.items():
+        processor = RiskTableMappingProcessor(
+            column_name=feature,
+            label_name="label",  # Not used during inference
+            risk_tables=risk_table,
+        )
+        risk_processors[feature] = processor
+    logger.info(f"Created {len(risk_processors)} risk table processors")
+    return risk_processors
+
+
+def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
+    """Load imputation dictionary from pickle file."""
+    import pickle as pkl
+
+    impute_file = os.path.join(model_dir, "impute_dict.pkl")
+    if not os.path.exists(impute_file):
+        logger.warning(f"Imputation file not found: {impute_file}")
+        return {}
+
+    try:
+        with open(impute_file, "rb") as f:
+            impute_dict = pkl.load(f)
+        logger.info(f"Loaded imputation values for {len(impute_dict)} features")
+        return impute_dict
+    except Exception as e:
+        logger.warning(f"Failed to load imputation dict: {e}")
+        return {}
+
+
+def create_numerical_processors(
+    impute_dict: Dict[str, Any],
+) -> Dict[str, NumericalVariableImputationProcessor]:
+    """
+    Create numerical imputation processors for each numerical feature.
+
+    Uses single-column architecture - one processor per column.
+    """
+    numerical_processors = {}
+    for feature, imputation_value in impute_dict.items():
+        processor = NumericalVariableImputationProcessor(
+            column_name=feature, imputation_value=imputation_value
+        )
+        numerical_processors[feature] = processor
+    logger.info(f"Created {len(numerical_processors)} numerical imputation processors")
+    return numerical_processors
+
+
+# ============================================================================
 # MODEL ARTIFACT LOADING
 # ============================================================================
+
+
+def decompress_model_artifacts(model_dir: str):
+    """
+    Checks for a model.tar.gz file in the model directory and extracts it.
+    """
+    model_tar_path = Path(model_dir) / "model.tar.gz"
+    if model_tar_path.exists():
+        logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
+        with tarfile.open(model_tar_path, "r:gz") as tar:
+            tar.extractall(path=model_dir)
+        logger.info("Extraction complete.")
+    else:
+        logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
 
 
 def load_model_artifacts(
@@ -181,6 +276,10 @@ def load_model_artifacts(
         - Preprocessing processors (categorical, imputation)
     """
     logger.info(f"Loading PyTorch model artifacts from {model_dir}")
+
+    # Decompress the model tarball if it exists
+    logger.info("Checking for model.tar.gz and decompressing if present")
+    decompress_model_artifacts(model_dir)
 
     # Load hyperparameters
     hyperparams_path = os.path.join(model_dir, "hyperparameters.json")
@@ -210,16 +309,28 @@ def load_model_artifacts(
     model.eval()  # Set to evaluation mode
     logger.info("Loaded model.pth and set to evaluation mode")
 
-    # Extract preprocessing processors
-    categorical_processors = config.get("categorical_processor_mappings", {})
+    # Load preprocessing artifacts (numerical imputation + risk tables)
+    logger.info("Loading preprocessing artifacts...")
+    risk_tables = load_risk_tables(model_dir)
+    risk_processors = create_risk_processors(risk_tables)
+
+    impute_dict = load_imputation_dict(model_dir)
+    numerical_processors = create_numerical_processors(impute_dict)
+
+    logger.info(
+        f"Loaded {len(risk_processors)} risk processors and {len(numerical_processors)} numerical processors"
+    )
+
+    # Extract label mappings for multiclass
     label_mappings = {
         "label_to_id": config.get("label_to_id"),
         "id_to_label": config.get("id_to_label"),
     }
 
     processors = {
-        "categorical_processors": categorical_processors,
         "label_mappings": label_mappings,
+        "risk_processors": risk_processors,
+        "numerical_processors": numerical_processors,
         "embedding_mat": embedding_mat,
         "vocab": vocab,
     }
@@ -235,32 +346,20 @@ def load_model_artifacts(
 # ============================================================================
 
 
-def preprocess_eval_data(
-    df: pd.DataFrame,
-    config: Dict[str, Any],
-    tokenizer: AutoTokenizer,
-    processors: Dict[str, Any],
-    eval_data_dir: str,
-    filename: str,
-) -> Tuple[BSMDataset, DataLoader]:
+def create_bsm_dataset(
+    config: Dict[str, Any], eval_data_dir: str, filename: str
+) -> BSMDataset:
     """
-    Apply complete preprocessing pipeline to evaluation data.
-    Creates BSMDataset and DataLoader for inference.
+    Create and initialize BSMDataset with missing value handling.
 
     Args:
-        df: Input DataFrame
         config: Model configuration
-        tokenizer: BERT tokenizer
-        processors: Preprocessing processors
         eval_data_dir: Directory containing evaluation data
         filename: Name of evaluation data file
 
     Returns:
-        Tuple of (BSMDataset, DataLoader)
+        Initialized BSMDataset
     """
-    logger.info(f"Preprocessing evaluation data: {filename}")
-
-    # Create BSMDataset
     bsm_dataset = BSMDataset(config=config, file_dir=eval_data_dir, filename=filename)
 
     # Fill missing values
@@ -268,9 +367,22 @@ def preprocess_eval_data(
         label_name=config["label_name"],
         column_cat_name=config.get("cat_field_list", []),
     )
-    logger.info("Filled missing values")
+    logger.info("Created BSMDataset and filled missing values")
 
-    # Build text preprocessing pipeline
+    return bsm_dataset
+
+
+def build_text_pipeline(config: Dict[str, Any], tokenizer: AutoTokenizer):
+    """
+    Build text preprocessing pipeline with tokenization.
+
+    Args:
+        config: Model configuration
+        tokenizer: BERT tokenizer
+
+    Returns:
+        Text preprocessing pipeline
+    """
     text_pipeline = (
         DialogueSplitterProcessor()
         >> HTMLNormalizerProcessor()
@@ -290,20 +402,52 @@ def preprocess_eval_data(
             attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
         )
     )
+    logger.info("Built text preprocessing pipeline")
+    return text_pipeline
 
-    # Add text pipeline
-    bsm_dataset.add_pipeline(config["text_name"], text_pipeline)
-    logger.info("Added text preprocessing pipeline")
 
-    # Add categorical processors
-    categorical_processors = processors["categorical_processors"]
-    for field, mapping in categorical_processors.items():
-        if field in bsm_dataset.DataReader.columns:
-            processor = CategoricalLabelProcessor(category_to_label=mapping)
-            bsm_dataset.add_pipeline(field, processor)
-    logger.info(f"Added {len(categorical_processors)} categorical processors")
+def apply_preprocessing_artifacts(
+    bsm_dataset: BSMDataset, processors: Dict[str, Any]
+) -> None:
+    """
+    Apply numerical imputation and risk table mapping to dataset.
 
-    # Add label processor for multiclass
+    Args:
+        bsm_dataset: Dataset to apply preprocessing to
+        processors: Dictionary containing preprocessing processors
+    """
+    logger.info("Applying preprocessing artifacts...")
+
+    # Apply numerical imputation processors
+    numerical_processors = processors.get("numerical_processors", {})
+    for feature, processor in numerical_processors.items():
+        if feature in bsm_dataset.DataReader.columns:
+            logger.debug(f"Applying numerical imputation for feature: {feature}")
+            bsm_dataset.add_pipeline(feature, processor)
+
+    # Apply risk table mapping processors
+    risk_processors = processors.get("risk_processors", {})
+    for feature, processor in risk_processors.items():
+        if feature in bsm_dataset.DataReader.columns:
+            logger.debug(f"Applying risk table mapping for feature: {feature}")
+            bsm_dataset.add_pipeline(feature, processor)
+
+    logger.info(
+        f"Applied {len(numerical_processors)} numerical processors and {len(risk_processors)} risk processors"
+    )
+
+
+def add_label_processor(
+    bsm_dataset: BSMDataset, config: Dict[str, Any], processors: Dict[str, Any]
+) -> None:
+    """
+    Add multiclass label processor if needed.
+
+    Args:
+        bsm_dataset: Dataset to add label processor to
+        config: Model configuration
+        processors: Dictionary containing label mappings
+    """
     if not config["is_binary"] and config["num_classes"] > 2:
         label_mappings = processors["label_mappings"]
         if label_mappings["label_to_id"]:
@@ -314,7 +458,22 @@ def preprocess_eval_data(
             bsm_dataset.add_pipeline(config["label_name"], label_processor)
             logger.info("Added multiclass label processor")
 
-    # Determine if this is a trimodal model and select appropriate collate function
+
+def create_dataloader(bsm_dataset: BSMDataset, config: Dict[str, Any]) -> DataLoader:
+    """
+    Create DataLoader with appropriate collate function.
+
+    Determines whether to use trimodal or bimodal collate function
+    based on model configuration.
+
+    Args:
+        bsm_dataset: Dataset to create DataLoader for
+        config: Model configuration
+
+    Returns:
+        Configured DataLoader
+    """
+    # Determine if this is a trimodal model
     is_trimodal_model = config.get("model_class", "") in [
         "trimodal_bert",
         "trimodal_cross_attn_bert",
@@ -359,6 +518,50 @@ def preprocess_eval_data(
         shuffle=False,
     )
     logger.info(f"Created DataLoader with batch_size={batch_size}")
+
+    return dataloader
+
+
+def preprocess_eval_data(
+    df: pd.DataFrame,
+    config: Dict[str, Any],
+    tokenizer: AutoTokenizer,
+    processors: Dict[str, Any],
+    eval_data_dir: str,
+    filename: str,
+) -> Tuple[BSMDataset, DataLoader]:
+    """
+    Apply complete preprocessing pipeline to evaluation data.
+    Orchestrates the creation of BSMDataset and DataLoader.
+
+    Args:
+        df: Input DataFrame
+        config: Model configuration
+        tokenizer: BERT tokenizer
+        processors: Preprocessing processors
+        eval_data_dir: Directory containing evaluation data
+        filename: Name of evaluation data file
+
+    Returns:
+        Tuple of (BSMDataset, DataLoader)
+    """
+    logger.info(f"Preprocessing evaluation data: {filename}")
+
+    # Step 1: Create and initialize dataset
+    bsm_dataset = create_bsm_dataset(config, eval_data_dir, filename)
+
+    # Step 2: Build and add text preprocessing pipeline
+    text_pipeline = build_text_pipeline(config, tokenizer)
+    bsm_dataset.add_pipeline(config["text_name"], text_pipeline)
+
+    # Step 3: Apply preprocessing artifacts (numerical + categorical)
+    apply_preprocessing_artifacts(bsm_dataset, processors)
+
+    # Step 4: Add label processor for multiclass if needed
+    add_label_processor(bsm_dataset, config, processors)
+
+    # Step 5: Create DataLoader with appropriate collate function
+    dataloader = create_dataloader(bsm_dataset, config)
 
     return bsm_dataset, dataloader
 

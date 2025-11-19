@@ -41,8 +41,16 @@ from processing.text.dialogue_processor import (
 from processing.text.bert_tokenize_processor import BertTokenizeProcessor
 from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.numerical.numerical_imputation_processor import (
+    NumericalVariableImputationProcessor,
+)
+from processing.validation import validate_categorical_fields, validate_numerical_fields
 from processing.datasets.bsm_datasets import BSMDataset
-from processing.dataloaders.bsm_dataloader import build_collate_batch
+from processing.dataloaders.bsm_dataloader import (
+    build_collate_batch,
+    build_trimodal_collate_batch,
+)
 from lightning_models.tabular.pl_tab_ae import TabAE
 from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
@@ -244,6 +252,22 @@ class Config(BaseModel):
     warmup_steps: int = 300
     text_input_ids_key: str = "input_ids"  # Configurable text input key
     text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
+    primary_text_name: Optional[str] = (
+        None  # Primary text field for trimodal (e.g., "chat")
+    )
+    secondary_text_name: Optional[str] = (
+        None  # Secondary text field for trimodal (e.g., "shiptrack")
+    )
+    primary_input_ids_key: str = "input_ids"  # Primary text input_ids key for trimodal
+    primary_attention_mask_key: str = (
+        "attention_mask"  # Primary text attention_mask key for trimodal
+    )
+    secondary_input_ids_key: str = (
+        "input_ids"  # Secondary text input_ids key for trimodal
+    )
+    secondary_attention_mask_key: str = (
+        "attention_mask"  # Secondary text attention_mask key for trimodal
+    )
     train_filename: Optional[str] = None
     val_filename: Optional[str] = None
     test_filename: Optional[str] = None
@@ -255,6 +279,10 @@ class Config(BaseModel):
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
     _input_format: Optional[str] = None  # Added: input data format for preservation
+    smooth_factor: float = 0.0  # Risk table smoothing factor
+    count_threshold: int = 0  # Risk table count threshold
+    imputation_dict: Optional[Dict[str, float]] = None  # Imputation values
+    risk_tables: Optional[Dict[str, Dict]] = None  # Risk table mappings
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -407,6 +435,83 @@ def find_first_data_file(
     )
 
 
+# ----------------- Artifact Loading/Saving Helpers -------------------------
+def load_imputation_artifacts(artifacts_dir: str) -> Dict[str, float]:
+    """Load pre-computed imputation dictionary from artifacts directory."""
+    import pickle as pkl
+
+    impute_file = os.path.join(artifacts_dir, "impute_dict.pkl")
+    if not os.path.exists(impute_file):
+        raise FileNotFoundError(f"Imputation artifacts not found: {impute_file}")
+
+    with open(impute_file, "rb") as f:
+        impute_dict = pkl.load(f)
+
+    log_once(logger, f"Loaded imputation dict with {len(impute_dict)} fields")
+    return impute_dict
+
+
+def load_risk_table_artifacts(artifacts_dir: str) -> Dict[str, Dict]:
+    """Load pre-computed risk tables from artifacts directory."""
+    import pickle as pkl
+
+    risk_file = os.path.join(artifacts_dir, "risk_table_map.pkl")
+    if not os.path.exists(risk_file):
+        raise FileNotFoundError(f"Risk table artifacts not found: {risk_file}")
+
+    with open(risk_file, "rb") as f:
+        risk_tables = pkl.load(f)
+
+    log_once(logger, f"Loaded risk tables for {len(risk_tables)} fields")
+    return risk_tables
+
+
+def save_imputation_artifacts(
+    imputation_dict: Dict[str, float], output_dir: str
+) -> None:
+    """Save imputation dictionary to model directory."""
+    import pickle as pkl
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save pickle format
+    impute_file = os.path.join(output_dir, "impute_dict.pkl")
+    with open(impute_file, "wb") as f:
+        pkl.dump(imputation_dict, f)
+
+    # Save JSON format for readability
+    impute_json = os.path.join(output_dir, "impute_dict.json")
+    with open(impute_json, "w") as f:
+        json.dump(imputation_dict, f, indent=2)
+
+    log_once(logger, f"Saved imputation artifacts to {output_dir}")
+
+
+def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> None:
+    """Save risk tables to model directory."""
+    import pickle as pkl
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save pickle format
+    risk_file = os.path.join(output_dir, "risk_table_map.pkl")
+    with open(risk_file, "wb") as f:
+        pkl.dump(risk_tables, f)
+
+    # Save JSON format for readability
+    risk_json = os.path.join(output_dir, "risk_table_map.json")
+    json_tables = {}
+    for field, tables in risk_tables.items():
+        json_tables[field] = {
+            "bins": {str(k): float(v) for k, v in tables.get("bins", {}).items()},
+            "default_bin": float(tables.get("default_bin", 0.0)),
+        }
+    with open(risk_json, "w") as f:
+        json.dump(json_tables, f, indent=2)
+
+    log_once(logger, f"Saved risk table artifacts to {output_dir}")
+
+
 # ----------------- Dataset Loading -------------------------
 def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
     log_once(logger, f"Loading BSM dataset from {filename} in folder {file_dir}")
@@ -451,24 +556,118 @@ def data_preprocess_pipeline(
     return tokenizer, pipelines
 
 
-# ----------------- Updated Categorical Label Pipeline ------------------
-def build_categorical_label_pipelines(
-    config: Config, datasets: List[BSMDataset]
-) -> Dict[str, CategoricalLabelProcessor]:
-    cat_fields = config.categorical_features_to_encode
-    if not cat_fields:
-        return {}
-    field_to_processor = {}
-    for field in cat_fields:
-        all_values = []
-        for dataset in datasets:
-            if field in dataset.DataReader.columns:
-                values = dataset.DataReader[field].dropna().astype(str).tolist()
-                all_values.extend(values)
-        unique_values = sorted(set(all_values))
-        processor = CategoricalLabelProcessor(initial_categories=unique_values)
-        field_to_processor[field] = processor
-    return field_to_processor
+# ----------------- Preprocessing Pipeline Builder (Imputation + Risk Tables) ------------------
+def build_preprocessing_pipelines(
+    config: Config,
+    datasets: List[BSMDataset],
+    model_artifacts_dir: Optional[str] = None,
+    use_precomputed_imputation: bool = False,
+    use_precomputed_risk_tables: bool = False,
+) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
+    """
+    Build preprocessing pipelines for numerical imputation and risk table mapping.
+
+    Args:
+        config: Configuration object
+        datasets: List of [train, val, test] datasets
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
+
+    Returns:
+        Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
+    """
+    pipelines = {}
+    imputation_dict = {}
+    risk_tables = {}
+
+    train_dataset = datasets[0]
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "PREPROCESSING PIPELINE BUILDER")
+    log_once(logger, "=" * 70)
+    log_once(logger, f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
+    log_once(logger, f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
+    log_once(logger, f"Model artifacts directory: {model_artifacts_dir}")
+    log_once(logger, "=" * 70)
+
+    # === FIELD TYPE VALIDATION ===
+    if not use_precomputed_imputation and config.tab_field_list:
+        log_once(logger, "Validating numerical field types before imputation...")
+        validate_numerical_fields(
+            train_dataset.DataReader, config.tab_field_list, "train"
+        )
+        log_once(logger, "✓ Numerical field type validation passed")
+
+    if not use_precomputed_risk_tables and config.cat_field_list:
+        log_once(
+            logger, "Validating categorical field types before risk table mapping..."
+        )
+        validate_categorical_fields(
+            train_dataset.DataReader, config.cat_field_list, "train"
+        )
+        log_once(logger, "✓ Categorical field type validation passed")
+
+    # === 1. NUMERICAL IMPUTATION ===
+    if config.tab_field_list:
+        if use_precomputed_imputation and model_artifacts_dir:
+            # Load pre-computed imputation
+            log_once(logger, "Loading pre-computed imputation artifacts...")
+            imputation_dict = load_imputation_artifacts(model_artifacts_dir)
+            for field, value in imputation_dict.items():
+                proc = NumericalVariableImputationProcessor(
+                    column_name=field, imputation_value=value
+                )
+                pipelines[field] = proc
+            log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
+        else:
+            # Fit inline
+            log_once(logger, "Fitting numerical imputation inline...")
+            for field in config.tab_field_list:
+                proc = NumericalVariableImputationProcessor(
+                    column_name=field, strategy="mean"
+                )
+                proc.fit(train_dataset.DataReader[field])
+                pipelines[field] = proc
+                imputation_dict[field] = proc.get_imputation_value()
+            log_once(
+                logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields"
+            )
+
+    # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
+    if config.cat_field_list:
+        if use_precomputed_risk_tables and model_artifacts_dir:
+            # Load pre-computed risk tables
+            log_once(logger, "Loading pre-computed risk table artifacts...")
+            risk_tables = load_risk_table_artifacts(model_artifacts_dir)
+            for field, tables in risk_tables.items():
+                proc = RiskTableMappingProcessor(
+                    column_name=field, label_name=config.label_name, risk_tables=tables
+                )
+                pipelines[field] = proc
+            log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+        else:
+            # Fit inline
+            log_once(logger, "Fitting risk tables inline...")
+            for field in config.cat_field_list:
+                proc = RiskTableMappingProcessor(
+                    column_name=field,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                )
+                proc.fit(train_dataset.DataReader)
+                pipelines[field] = proc
+                risk_tables[field] = proc.get_risk_tables()
+            log_once(
+                logger, f"✓ Fitted risk tables for {len(config.cat_field_list)} fields"
+            )
+
+    log_once(logger, "=" * 70)
+    log_once(logger, f"Total preprocessing pipelines created: {len(pipelines)}")
+    log_once(logger, "=" * 70)
+
+    return pipelines, imputation_dict, risk_tables
 
 
 # ----------------- Model Selection -----------------------
@@ -533,9 +732,18 @@ def setup_training_environment(config: Config) -> torch.device:
 # ----------------- Data Loading and Preprocessing ------------------
 def load_and_preprocess_data(
     config: Config,
+    model_artifacts_dir: Optional[str] = None,
+    use_precomputed_imputation: bool = False,
+    use_precomputed_risk_tables: bool = False,
 ) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:
     """
     Loads and preprocesses the train/val/test datasets according to the provided config.
+
+    Args:
+        config: Configuration object
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
 
     Returns:
         Tuple of ([train_dataset, val_dataset, test_dataset], tokenizer, config)
@@ -571,10 +779,26 @@ def load_and_preprocess_data(
     val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
     test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
 
-    # === Build categorical feature encoders (tabular side) ===
-    categorical_processors = build_categorical_label_pipelines(
-        config, [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset]
+    # === Build preprocessing pipelines (numerical imputation + risk tables) ===
+    preprocessing_pipelines, imputation_dict, risk_tables = (
+        build_preprocessing_pipelines(
+            config,
+            [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset],
+            model_artifacts_dir=model_artifacts_dir,
+            use_precomputed_imputation=use_precomputed_imputation,
+            use_precomputed_risk_tables=use_precomputed_risk_tables,
+        )
     )
+
+    # Add preprocessing pipelines to all datasets
+    for field, processor in preprocessing_pipelines.items():
+        train_bsm_dataset.add_pipeline(field, processor)
+        val_bsm_dataset.add_pipeline(field, processor)
+        test_bsm_dataset.add_pipeline(field, processor)
+
+    # Store artifacts in config for saving
+    config.imputation_dict = imputation_dict
+    config.risk_tables = risk_tables
 
     # === Add multiclass label processor if needed ===
     if not config.is_binary and config.num_classes > 2:
@@ -597,13 +821,6 @@ def load_and_preprocess_data(
         config.label_to_id = None
         config.id_to_label = None
 
-    for field, processor in categorical_processors.items():
-        train_bsm_dataset.add_pipeline(field, processor)
-        val_bsm_dataset.add_pipeline(field, processor)
-        test_bsm_dataset.add_pipeline(field, processor)
-    config.categorical_processor_mappings = {
-        field: proc.category_to_label for field, proc in categorical_processors.items()
-    }
     return [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset], tokenizer, config
 
 
@@ -611,10 +828,23 @@ def load_and_preprocess_data(
 def build_model_and_optimizer(
     config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    bsm_collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
-    )  # Pass key names
+    # Select appropriate collate function based on model type
+    if config.model_class.startswith("trimodal"):
+        log_once(
+            logger, f"Using trimodal collate batch for model: {config.model_class}"
+        )
+        bsm_collate_batch = build_trimodal_collate_batch(
+            primary_input_ids_key=config.primary_input_ids_key,
+            primary_attention_mask_key=config.primary_attention_mask_key,
+            secondary_input_ids_key=config.secondary_input_ids_key,
+            secondary_attention_mask_key=config.secondary_attention_mask_key,
+        )
+    else:
+        log_once(logger, f"Using bimodal collate batch for model: {config.model_class}")
+        bsm_collate_batch = build_collate_batch(
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
 
@@ -912,7 +1142,19 @@ def main(
     log_once(logger, "Starting the training process.")
 
     device = setup_training_environment(config)
-    datasets, tokenizer, config = load_and_preprocess_data(config)
+
+    # Pass environment variables for preprocessing artifact control
+    datasets, tokenizer, config = load_and_preprocess_data(
+        config,
+        model_artifacts_dir=input_paths.get("model_artifacts_input"),
+        use_precomputed_imputation=environ_vars.get(
+            "USE_PRECOMPUTED_IMPUTATION", False
+        ),
+        use_precomputed_risk_tables=environ_vars.get(
+            "USE_PRECOMPUTED_RISK_TABLES", False
+        ),
+    )
+
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
         build_model_and_optimizer(config, tokenizer, datasets)
     )
@@ -955,6 +1197,15 @@ def main(
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
+        # ------------------ Save Preprocessing Artifacts ------------------
+        if config.imputation_dict:
+            logger.info("Saving numerical imputation artifacts...")
+            save_imputation_artifacts(config.imputation_dict, model_path)
+
+        if config.risk_tables:
+            logger.info("Saving risk table artifacts...")
+            save_risk_table_artifacts(config.risk_tables, model_path)
+
     # Extract datasets for evaluation
     train_dataset, val_dataset, test_dataset = datasets
     evaluate_and_log_results(
@@ -977,7 +1228,8 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path (matches XGBoost)
+        "CONFIG_DIR": "/opt/ml/input/config/hyperparameters.json",  # Source directory path (matches XGBoost)
+        "MODEL_ARTIFACTS_INPUT": "/opt/ml/input/data/model_artifacts_input",  # Optional pre-computed artifacts
     }
 
     # Define input and output paths using contract logical names
@@ -987,15 +1239,28 @@ if __name__ == "__main__":
         "hyperparameters_s3_uri": CONTAINER_PATHS["CONFIG_DIR"],
     }
 
+    # Add model_artifacts_input only if the directory exists (optional)
+    if os.path.exists(CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]):
+        input_paths["model_artifacts_input"] = CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]
+        logger.info(
+            f"Found model artifacts input directory: {CONTAINER_PATHS['MODEL_ARTIFACTS_INPUT']}"
+        )
+
     output_paths = {
         "model_output": CONTAINER_PATHS["MODEL_DIR"],
         "evaluation_output": CONTAINER_PATHS["OUTPUT_DATA"],
     }
 
-    # Collect environment variables (none currently used, but following the pattern)
+    # Collect environment variables for preprocessing artifact control
     environ_vars = {
-        # Add any environment variables the script needs here
-        # Example: "LOG_LEVEL": os.environ.get("LOG_LEVEL", "INFO")
+        "USE_PRECOMPUTED_IMPUTATION": os.environ.get(
+            "USE_PRECOMPUTED_IMPUTATION", "false"
+        ).lower()
+        == "true",
+        "USE_PRECOMPUTED_RISK_TABLES": os.environ.get(
+            "USE_PRECOMPUTED_RISK_TABLES", "false"
+        ).lower()
+        == "true",
     }
 
     # Create empty args namespace to maintain function signature
