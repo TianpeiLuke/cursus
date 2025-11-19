@@ -41,6 +41,64 @@ class TriModalHyperparameters(ModelHyperparameters):
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
+    # Training and Optimization parameters
+    lr_decay: float = Field(default=0.05, description="Learning rate decay")
+
+    momentum: float = Field(
+        default=0.9, description="Momentum for SGD optimizer (if SGD is chosen)"
+    )
+
+    weight_decay: float = Field(
+        default=0.0, description="Weight decay for optimizer (L2 penalty)"
+    )
+
+    adam_epsilon: float = Field(default=1e-08, description="Epsilon for Adam optimizer")
+
+    warmup_steps: int = Field(
+        default=300,
+        gt=0,
+        le=1000,
+        description="Warmup steps for learning rate scheduler",
+    )
+
+    run_scheduler: bool = Field(
+        default=True, description="Run learning rate scheduler flag"
+    )
+
+    val_check_interval: float = Field(
+        default=0.25,
+        description="Validation check interval during training (float for fraction of epoch, int for steps)",
+    )
+
+    early_stop_metric: str = Field(
+        default="val_loss", description="Metric for early stopping"
+    )
+
+    early_stop_patience: int = Field(
+        default=3, gt=0, le=10, description="Patience for early stopping"
+    )
+
+    load_ckpt: bool = Field(default=False, description="Load checkpoint flag")
+
+    gradient_clip_val: float = Field(
+        default=1.0,
+        description="Value for gradient clipping to prevent exploding gradients",
+    )
+
+    fp16: bool = Field(
+        default=False,
+        description="Enable 16-bit mixed precision training (requires compatible hardware)",
+    )
+
+    # Preprocessing parameters
+    smooth_factor: float = Field(
+        default=0.0, description="Risk table smoothing factor for categorical encoding"
+    )
+
+    count_threshold: int = Field(
+        default=0, description="Risk table count threshold for categorical encoding"
+    )
+
     # BERT/Text specific fields
     tokenizer: str = Field(
         default="bert-base-cased",

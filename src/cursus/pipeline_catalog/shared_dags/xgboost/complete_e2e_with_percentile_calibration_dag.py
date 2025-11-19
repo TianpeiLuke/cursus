@@ -67,7 +67,7 @@ def create_xgboost_complete_e2e_with_percentile_calibration_dag() -> PipelineDAG
     )  # Tabular preprocessing for calibration
     dag.add_node(
         "XGBoostModelInference_calibration"
-    )  # Model evaluation step (calibration) - combines inference, metrics, and wiki
+    )  # Model inference step (calibration)
 
     # Add all nodes - Testing path (no calibration)
     dag.add_node("CradleDataLoading_testing")  # Data load for testing

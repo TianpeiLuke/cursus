@@ -46,13 +46,12 @@ from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 from processing.validation import validate_categorical_fields, validate_numerical_fields
+from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
-from lightning_models.tabular.pl_tab_ae import TabAE
-from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
 from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
 from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
@@ -87,20 +86,6 @@ from pydantic import (
     field_validator,
 )  # For Config Validation
 
-
-# ================== Model, Data and Hyperparameter Folder =================
-prefix = "/opt/ml/"
-input_path = os.path.join(prefix, "input/data")
-output_path = os.path.join(prefix, "output/data")
-model_path = os.path.join(prefix, "model")
-hparam_path = os.path.join(prefix, "input/config/hyperparameters.json")
-checkpoint_path = os.environ.get("SM_CHECKPOINT_DIR", "/opt/ml/checkpoints")
-train_channel = "train"
-train_path = os.path.join(input_path, train_channel)
-val_channel = "val"
-val_path = os.path.join(input_path, val_channel)
-test_channel = "test"
-test_path = os.path.join(input_path, test_channel)
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
@@ -213,8 +198,6 @@ class Config(BaseModel):
     full_field_list: List[str] = Field(default_factory=list)
     cat_field_list: List[str] = Field(default_factory=list)
     tab_field_list: List[str] = Field(default_factory=list)
-    categorical_features_to_encode: List[str] = Field(default_factory=list)
-    header: int = 0
     max_sen_len: int = 512
     chunk_trancate: bool = False
     max_total_chunks: int = 5
@@ -268,14 +251,7 @@ class Config(BaseModel):
     secondary_attention_mask_key: str = (
         "attention_mask"  # Secondary text attention_mask key for trimodal
     )
-    train_filename: Optional[str] = None
-    val_filename: Optional[str] = None
-    test_filename: Optional[str] = None
     embed_size: Optional[int] = None  # Added for type consistency
-    model_path: str = "/opt/ml/model"  # Add model_path with a default value
-    categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = (
-        None  # Add this line
-    )
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
     _input_format: Optional[str] = None  # Added: input data format for preservation
@@ -283,6 +259,16 @@ class Config(BaseModel):
     count_threshold: int = 0  # Risk table count threshold
     imputation_dict: Optional[Dict[str, float]] = None  # Imputation values
     risk_tables: Optional[Dict[str, Dict]] = None  # Risk table mappings
+    # Text processing pipeline steps (optional, uses defaults if not provided)
+    text_processing_steps: Optional[List[str]] = (
+        None  # Processing steps for bimodal text
+    )
+    primary_text_processing_steps: Optional[List[str]] = (
+        None  # Processing steps for primary text (trimodal)
+    )
+    secondary_text_processing_steps: Optional[List[str]] = (
+        None  # Processing steps for secondary text (trimodal)
+    )
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -395,9 +381,6 @@ def load_parse_hyperparameters(hparam_path: str) -> Dict:
         "reinit_layers": safe_cast,
         "warmup_steps": safe_cast,
         "adam_epsilon": safe_cast,
-        "train_filename": safe_cast,
-        "val_filename": safe_cast,
-        "test_filename": safe_cast,
         "text_input_ids_key": safe_cast,  # Added
         "text_attention_mask_key": safe_cast,  # Added
     }
@@ -529,30 +512,105 @@ def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
 def data_preprocess_pipeline(
     config: Config,
 ) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    """
+    Build text preprocessing pipelines based on config.
+
+    For bimodal: Uses text_name with default or configured steps
+    For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
+    """
     if not config.tokenizer:
         config.tokenizer = "bert-base-multilingual-cased"
+
     log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
     tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-    dialogue_pipeline = (
-        DialogueSplitterProcessor()
-        >> HTMLNormalizerProcessor()
-        >> EmojiRemoverProcessor()
-        >> TextNormalizationProcessor()
-        >> DialogueChunkerProcessor(
-            tokenizer=tokenizer,
-            max_tokens=config.max_sen_len,
-            truncate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
+    pipelines = {}
+
+    # BIMODAL: Single text pipeline
+    if not config.primary_text_name:
+        # Use configured steps or fallback to default
+        steps = getattr(
+            config,
+            "text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
         )
-        >> BertTokenizeProcessor(
-            tokenizer,
-            add_special_tokens=True,
-            max_length=config.max_sen_len,
-            input_ids_key=config.text_input_ids_key,  # Pass key names
+
+        pipelines[config.text_name] = build_text_pipeline_from_steps(
+            processing_steps=steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
             attention_mask_key=config.text_attention_mask_key,
         )
-    )
-    pipelines = {config.text_name: dialogue_pipeline}
+        log_once(
+            logger,
+            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}",
+        )
+
+    # TRIMODAL: Dual text pipelines
+    else:
+        # Primary text pipeline (e.g., chat - full cleaning)
+        primary_steps = getattr(
+            config,
+            "primary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[config.primary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=primary_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.primary_input_ids_key,
+            attention_mask_key=config.primary_attention_mask_key,
+        )
+        log_once(
+            logger,
+            f"Built primary pipeline for '{config.primary_text_name}' with steps: {primary_steps}",
+        )
+
+        # Secondary text pipeline (e.g., events - minimal cleaning)
+        secondary_steps = getattr(
+            config,
+            "secondary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[config.secondary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=secondary_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.secondary_input_ids_key,
+            attention_mask_key=config.secondary_attention_mask_key,
+        )
+        log_once(
+            logger,
+            f"Built secondary pipeline for '{config.secondary_text_name}' with steps: {secondary_steps}",
+        )
+
     return tokenizer, pipelines
 
 
@@ -732,6 +790,7 @@ def setup_training_environment(config: Config) -> torch.device:
 # ----------------- Data Loading and Preprocessing ------------------
 def load_and_preprocess_data(
     config: Config,
+    paths: Dict[str, str],
     model_artifacts_dir: Optional[str] = None,
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
@@ -741,6 +800,7 @@ def load_and_preprocess_data(
 
     Args:
         config: Configuration object
+        paths: Dictionary of paths (train, val, test, checkpoint)
         model_artifacts_dir: Optional directory with pre-computed artifacts
         use_precomputed_imputation: Whether to use pre-computed imputation
         use_precomputed_risk_tables: Whether to use pre-computed risk tables
@@ -748,20 +808,20 @@ def load_and_preprocess_data(
     Returns:
         Tuple of ([train_dataset, val_dataset, test_dataset], tokenizer, config)
     """
-    train_filename = config.train_filename or find_first_data_file(train_path)
-    val_filename = config.val_filename or find_first_data_file(val_path)
-    test_filename = config.test_filename or find_first_data_file(test_path)
+    train_filename = find_first_data_file(paths["train"])
+    val_filename = find_first_data_file(paths["val"])
+    test_filename = find_first_data_file(paths["test"])
     log_once(logger, "================================================")
-    log_once(logger, f"Train folder: {train_path} | File: {train_filename}")
-    log_once(logger, f"Validation folder: {val_path} | File: {val_filename}")
-    log_once(logger, f"Test folder: {test_path} | File: {test_filename}")
+    log_once(logger, f"Train folder: {paths['train']} | File: {train_filename}")
+    log_once(logger, f"Validation folder: {paths['val']} | File: {val_filename}")
+    log_once(logger, f"Test folder: {paths['test']} | File: {test_filename}")
     log_once(logger, "================================================")
-    if not os.path.exists(checkpoint_path):
-        print(f"Creating checkpoint folder {checkpoint_path}")
-        os.makedirs(checkpoint_path)
+    if not os.path.exists(paths["checkpoint"]):
+        print(f"Creating checkpoint folder {paths['checkpoint']}")
+        os.makedirs(paths["checkpoint"])
 
     # Detect input format from training data file
-    train_file_path = os.path.join(train_path, train_filename)
+    train_file_path = os.path.join(paths["train"], train_filename)
     detected_format = _detect_file_format(train_file_path)
     log_once(logger, f"Detected input data format: {detected_format}")
 
@@ -769,9 +829,9 @@ def load_and_preprocess_data(
     config._input_format = detected_format
 
     # === Load raw datasets ===
-    train_bsm_dataset = load_data_module(train_path, train_filename, config)
-    val_bsm_dataset = load_data_module(val_path, val_filename, config)
-    test_bsm_dataset = load_data_module(test_path, test_filename, config)
+    train_bsm_dataset = load_data_module(paths["train"], train_filename, config)
+    val_bsm_dataset = load_data_module(paths["val"], val_filename, config)
+    test_bsm_dataset = load_data_module(paths["test"], test_filename, config)
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(config)
@@ -982,6 +1042,7 @@ def evaluate_and_log_results(
     trainer: pl.Trainer,
     val_dataset: BSMDataset,
     test_dataset: BSMDataset,
+    paths: Dict[str, str],
 ) -> None:
     log_once(logger, "Inference Starts ...")
     val_predict_labels, val_true_labels = model_inference(
@@ -989,14 +1050,14 @@ def evaluate_and_log_results(
         val_dataloader,
         accelerator="gpu",
         device="auto",
-        model_log_path=checkpoint_path,
+        model_log_path=paths["checkpoint"],
     )
     test_predict_labels, test_true_labels = model_inference(
         model,
         test_dataloader,
         accelerator="gpu",
         device="auto",
-        model_log_path=checkpoint_path,
+        model_log_path=paths["checkpoint"],
     )
     log_once(logger, "Inference Complete.")
     if is_main_process():
@@ -1025,13 +1086,15 @@ def evaluate_and_log_results(
         for key, value in metric_test.items():
             log_once(logger, f"{key} = {value:.4f}")
         log_once(logger, "Saving metric plots...")
-        writer = SummaryWriter(log_dir=os.path.join(output_path, "tensorboard_eval"))
+        writer = SummaryWriter(
+            log_dir=os.path.join(paths["output"], "tensorboard_eval")
+        )
         roc_metric_plot(
             y_pred=test_predict_labels,
             y_true=test_true_labels,
             y_val_pred=val_predict_labels,
             y_val_true=val_true_labels,
-            path=output_path,
+            path=paths["output"],
             task=task,
             num_classes=num_classes,
             writer=writer,
@@ -1042,7 +1105,7 @@ def evaluate_and_log_results(
             y_true=test_true_labels,
             y_val_pred=val_predict_labels,
             y_val_true=val_true_labels,
-            path=output_path,
+            path=paths["output"],
             task=task,
             num_classes=num_classes,
             writer=writer,
@@ -1051,7 +1114,7 @@ def evaluate_and_log_results(
         writer.close()
 
         # Save legacy tensor format for backward compatibility
-        prediction_filename = os.path.join(output_path, "predict_results.pth")
+        prediction_filename = os.path.join(paths["output"], "predict_results.pth")
         log_once(logger, f"Saving prediction result to {prediction_filename}")
         save_prediction(prediction_filename, test_true_labels, test_predict_labels)
 
@@ -1076,7 +1139,7 @@ def evaluate_and_log_results(
             predictions=val_predict_labels,
             true_labels=val_true_labels,
             ids=val_ids,
-            output_dir=output_path,
+            output_dir=paths["output"],
             split_name="val",
             id_col=config.id_name,
             label_col=config.label_name,
@@ -1088,7 +1151,7 @@ def evaluate_and_log_results(
             predictions=test_predict_labels,
             true_labels=test_true_labels,
             ids=test_ids,
-            output_dir=output_path,
+            output_dir=paths["output"],
             split_name="test",
             id_col=config.id_name,
             label_col=config.label_name,
@@ -1114,8 +1177,8 @@ def main(
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments
     """
-    # Load hyperparameters from the standardized path structure
-    hparam_file = input_paths.get("hyperparameters_s3_uri", hparam_path)
+    # Load hyperparameters
+    hparam_file = input_paths.get("hyperparameters_s3_uri")
     if not hparam_file.endswith("hyperparameters.json"):
         hparam_file = os.path.join(hparam_file, "hyperparameters.json")
 
@@ -1128,13 +1191,17 @@ def main(
         logger.error(f"Configuration Error: {e}")
         raise
 
-    # Update paths from input parameters
-    global model_path, output_path
-    if "model_output" in output_paths:
-        model_path = output_paths["model_output"]
-        config.model_path = model_path
-    if "evaluation_output" in output_paths:
-        output_path = output_paths["evaluation_output"]
+    # Build paths dictionary from input/output paths
+    paths = {
+        "train": os.path.join(input_paths["input_path"], "train"),
+        "val": os.path.join(input_paths["input_path"], "val"),
+        "test": os.path.join(input_paths["input_path"], "test"),
+        "model": output_paths.get("model_output", "/opt/ml/model"),
+        "output": output_paths.get("evaluation_output", "/opt/ml/output/data"),
+        "checkpoint": os.path.join(
+            output_paths.get("evaluation_output", "/opt/ml/output/data"), "checkpoints"
+        ),
+    }
 
     log_once(logger, "Final Hyperparameters:")
     log_once(logger, json.dumps(config.model_dump(), indent=4))
@@ -1146,6 +1213,7 @@ def main(
     # Pass environment variables for preprocessing artifact control
     datasets, tokenizer, config = load_and_preprocess_data(
         config,
+        paths,
         model_artifacts_dir=input_paths.get("model_artifacts_input"),
         use_precomputed_imputation=environ_vars.get(
             "USE_PRECOMPUTED_IMPUTATION", False
@@ -1167,7 +1235,7 @@ def main(
         train_dataloader,
         val_dataloader,
         device="auto",
-        model_log_path=checkpoint_path,
+        model_log_path=paths["checkpoint"],
         early_stop_metric=config.early_stop_metric,
     )
     log_once(logger, "Training Complete.")
@@ -1179,10 +1247,10 @@ def main(
             best_model_path, model_class=config.model_class, device_l="cpu"
         )
     if is_main_process():
-        model_filename = os.path.join(model_path, "model.pth")
+        model_filename = os.path.join(paths["model"], "model.pth")
         logger.info(f"Saving model to {model_filename}")
         save_model(model_filename, model)
-        artifact_filename = os.path.join(model_path, "model_artifacts.pth")
+        artifact_filename = os.path.join(paths["model"], "model_artifacts.pth")
         logger.info(f"Saving model artifacts to {artifact_filename}")
         save_artifacts(
             artifact_filename,
@@ -1193,18 +1261,18 @@ def main(
         )
 
         # ------------------ ONNX Export ------------------
-        onnx_path = os.path.join(model_path, "model.onnx")
+        onnx_path = os.path.join(paths["model"], "model.onnx")
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
         # ------------------ Save Preprocessing Artifacts ------------------
         if config.imputation_dict:
             logger.info("Saving numerical imputation artifacts...")
-            save_imputation_artifacts(config.imputation_dict, model_path)
+            save_imputation_artifacts(config.imputation_dict, paths["model"])
 
         if config.risk_tables:
             logger.info("Saving risk table artifacts...")
-            save_risk_table_artifacts(config.risk_tables, model_path)
+            save_risk_table_artifacts(config.risk_tables, paths["model"])
 
     # Extract datasets for evaluation
     train_dataset, val_dataset, test_dataset = datasets
@@ -1216,6 +1284,7 @@ def main(
         trainer,
         val_dataset,
         test_dataset,
+        paths,
     )
 
 
