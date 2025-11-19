@@ -7,6 +7,10 @@ creating a specific type of step (processing, training, etc.) and integrates
 with step specifications and script contracts.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from ...core.base.builder_base import StepBuilderBase
 from .builder_active_sample_selection_step import ActiveSampleSelectionStepBuilder
 from .builder_batch_transform_step import BatchTransformStepBuilder
@@ -15,7 +19,21 @@ from .builder_bedrock_processing_step import BedrockProcessingStepBuilder
 from .builder_bedrock_prompt_template_generation_step import (
     BedrockPromptTemplateGenerationStepBuilder,
 )
-from .builder_cradle_data_loading_step import CradleDataLoadingStepBuilder
+
+# Import CradleDataLoadingStepBuilder with exception handling
+# This builder depends on secure_ai_sandbox_workflow_python_sdk which may not be available
+try:
+    from .builder_cradle_data_loading_step import CradleDataLoadingStepBuilder
+    CRADLE_DATA_LOADING_AVAILABLE = True
+except ImportError as e:
+    logger.warning(
+        "CradleDataLoadingStepBuilder not available. "
+        "This requires secure_ai_sandbox_workflow_python_sdk package. "
+        f"Import error: {e}"
+    )
+    CradleDataLoadingStepBuilder = None
+    CRADLE_DATA_LOADING_AVAILABLE = False
+
 from .builder_currency_conversion_step import CurrencyConversionStepBuilder
 from .builder_dummy_data_loading_step import DummyDataLoadingStepBuilder
 from .builder_dummy_training_step import DummyTrainingStepBuilder
@@ -41,7 +59,21 @@ from .builder_pytorch_model_step import PyTorchModelStepBuilder
 from .builder_xgboost_model_step import XGBoostModelStepBuilder
 from .builder_package_step import PackageStepBuilder
 from .builder_payload_step import PayloadStepBuilder
-from .builder_registration_step import RegistrationStepBuilder
+
+# Import RegistrationStepBuilder with exception handling
+# This builder depends on secure_ai_sandbox_workflow_python_sdk which may not be available
+try:
+    from .builder_registration_step import RegistrationStepBuilder
+    REGISTRATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning(
+        "RegistrationStepBuilder not available. "
+        "This requires secure_ai_sandbox_workflow_python_sdk package. "
+        f"Import error: {e}"
+    )
+    RegistrationStepBuilder = None
+    REGISTRATION_AVAILABLE = False
+
 from .builder_risk_table_mapping_step import RiskTableMappingStepBuilder
 from .builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
 from .builder_temporal_sequence_normalization_step import (
@@ -54,6 +86,7 @@ from .builder_pytorch_training_step import PyTorchTrainingStepBuilder
 from .builder_xgboost_training_step import XGBoostTrainingStepBuilder
 from .s3_utils import S3PathHandler
 
+# Build __all__ list dynamically based on available imports
 __all__ = [
     # Base class
     "StepBuilderBase",
@@ -63,7 +96,6 @@ __all__ = [
     "BedrockBatchProcessingStepBuilder",
     "BedrockProcessingStepBuilder",
     "BedrockPromptTemplateGenerationStepBuilder",
-    "CradleDataLoadingStepBuilder",
     "CurrencyConversionStepBuilder",
     "DummyDataLoadingStepBuilder",
     "DummyTrainingStepBuilder",
@@ -87,7 +119,6 @@ __all__ = [
     "XGBoostModelStepBuilder",
     "PackageStepBuilder",
     "PayloadStepBuilder",
-    "RegistrationStepBuilder",
     "RiskTableMappingStepBuilder",
     "TabularPreprocessingStepBuilder",
     "TemporalSequenceNormalizationStepBuilder",
@@ -97,3 +128,10 @@ __all__ = [
     # Utilities
     "S3PathHandler",
 ]
+
+# Add optional builders to __all__ if available
+if CRADLE_DATA_LOADING_AVAILABLE:
+    __all__.append("CradleDataLoadingStepBuilder")
+
+if REGISTRATION_AVAILABLE:
+    __all__.append("RegistrationStepBuilder")
