@@ -212,21 +212,21 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
         """Validate field names are non-empty and don't contain special characters."""
         if not v or not v.strip():
             raise ValueError("Field name cannot be empty")
-        
+
         # Check for problematic characters
         if any(char in v for char in [" ", "\t", "\n", "\r", ",", ";"]):
             raise ValueError(
                 f"Field name '{v}' contains invalid characters. "
                 f"Avoid spaces, tabs, newlines, commas, and semicolons."
             )
-        
+
         return v.strip()
 
     @model_validator(mode="after")
     def validate_manual_ratios(self) -> "PseudoLabelMergeConfig":
         """
         Validate manual split ratios when auto-inference is disabled.
-        
+
         Ensures train_ratio and test_val_ratio are provided when needed.
         """
         if not self.use_auto_split_ratios:
@@ -238,25 +238,25 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
                         "and job_type='training'. Either enable auto-inference "
                         "(recommended) or provide train_ratio."
                     )
-                
+
                 if self.test_val_ratio is None:
                     raise ValueError(
                         "test_val_ratio is required when use_auto_split_ratios=False "
                         "and job_type='training'. Either enable auto-inference "
                         "(recommended) or provide test_val_ratio."
                     )
-                
+
                 # Validate ratio values
                 if not (0.1 <= self.train_ratio <= 0.9):
                     raise ValueError(
                         f"train_ratio must be between 0.1 and 0.9, got {self.train_ratio}"
                     )
-                
+
                 if not (0.1 <= self.test_val_ratio <= 0.9):
                     raise ValueError(
                         f"test_val_ratio must be between 0.1 and 0.9, got {self.test_val_ratio}"
                     )
-                
+
                 logger.info(
                     f"Using manual split ratios: train={self.train_ratio}, "
                     f"test_val={self.test_val_ratio}"
@@ -275,7 +275,7 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
                     "train_ratio and test_val_ratio are ignored when "
                     "use_auto_split_ratios=True (auto-inference is enabled)"
                 )
-        
+
         return self
 
     @model_validator(mode="after")

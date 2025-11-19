@@ -473,7 +473,9 @@ def load_model_artifacts(
     else:
         # List available files for debugging
         available_files = os.listdir(model_dir) if os.path.exists(model_dir) else []
-        logger.error(f"Neither model.tar.gz nor lightgbm_model.txt found in {model_dir}")
+        logger.error(
+            f"Neither model.tar.gz nor lightgbm_model.txt found in {model_dir}"
+        )
         logger.error(f"Available files: {available_files}")
         raise FileNotFoundError(
             f"Model artifacts not found in {model_dir}. "

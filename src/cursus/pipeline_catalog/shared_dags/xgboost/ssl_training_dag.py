@@ -127,9 +127,15 @@ def create_xgboost_ssl_training_dag() -> PipelineDAG:
     dag.add_edge("XGBoostModelEval_calibration", "ModelCalibration_calibration")
 
     # Phase 7: Model packaging and registration flow
-    dag.add_edge("ModelCalibration_calibration", "Package")  # Calibrated model to package
-    dag.add_edge("XGBoostTraining_finetune", "Package")  # Raw fine-tuned model to package
-    dag.add_edge("XGBoostTraining_finetune", "Payload")  # Fine-tuned model for payload testing
+    dag.add_edge(
+        "ModelCalibration_calibration", "Package"
+    )  # Calibrated model to package
+    dag.add_edge(
+        "XGBoostTraining_finetune", "Package"
+    )  # Raw fine-tuned model to package
+    dag.add_edge(
+        "XGBoostTraining_finetune", "Payload"
+    )  # Fine-tuned model for payload testing
     dag.add_edge("Package", "Registration")  # Packaged model to registration
     dag.add_edge("Payload", "Registration")  # Payload to registration
 

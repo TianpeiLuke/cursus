@@ -49,8 +49,8 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
     # ===== System Fields with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
-    label_name: str = Field(
-        default="",
+    label_name: Optional[str] = Field(
+        default=None,
         description="Label field name for the target variable. Optional for calibration job types.",
     )
 

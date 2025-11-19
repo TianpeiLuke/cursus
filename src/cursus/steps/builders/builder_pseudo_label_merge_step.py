@@ -311,7 +311,8 @@ class PseudoLabelMergeStepBuilder(StepBuilderBase):
 
                 base_output_path = self._get_base_output_path()
                 destination = Join(
-                    on="/", values=[base_output_path, "pseudo_label_merge", logical_name]
+                    on="/",
+                    values=[base_output_path, "pseudo_label_merge", logical_name],
                 )
                 self.log_info(
                     "Using generated destination for '%s': %s",

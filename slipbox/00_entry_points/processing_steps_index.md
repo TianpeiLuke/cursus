@@ -143,6 +143,8 @@ This section organizes all 28 registered processing steps by their position and 
 - [Bedrock Prompt Template Generation Step Patterns](../1_design/bedrock_prompt_template_generation_step_patterns.md)
 - [Bedrock Processing Step Builder Patterns](../1_design/bedrock_processing_step_builder_patterns.md)
 - [Bedrock Batch Processing Step Builder Patterns](../1_design/bedrock_batch_processing_step_builder_patterns.md)
+- [Label Ruleset Generation Script](../scripts/label_ruleset_generation_script.md)
+- [Label Ruleset Execution Script](../scripts/label_ruleset_execution_script.md)
 - [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md)
 - [Pseudo Label Merge Script Design](../1_design/pseudo_label_merge_script_design.md)
 
@@ -152,9 +154,14 @@ This section organizes all 28 registered processing steps by their position and 
 
 | Step Name | Description | Has Design Docs |
 |-----------|-------------|-----------------|
-| DummyTraining | Training step that uses a pretrained model | - |
+| DummyTraining | SOURCE node that packages pretrained models with hyperparameters | ✓ |
 
-**Note:** DummyTraining is classified as Processing type despite training-related functionality.
+**Key Documentation:**
+- **Script Documentation:** [Dummy Training Script](../scripts/dummy_training_script.md)
+- Script: `src/cursus/steps/scripts/dummy_training.py`
+- **Key Features:** Multi-path file discovery, model.tar.gz repacking, hyperparameters.json injection, temporary directory processing, automatic cleanup, detailed logging with compression ratios
+
+**Note:** DummyTraining is classified as Processing type but operates as a SOURCE node (reads from `/opt/ml/code/` rather than processing inputs).
 
 ### Phase 5: Model Inference & Evaluation
 
@@ -163,6 +170,7 @@ This section organizes all 28 registered processing steps by their position and 
 | Step Name | Description | Has Design Docs |
 |-----------|-------------|-----------------|
 | XGBoostModelEval | XGBoost model evaluation with job type support | - |
+| LightGBMModelEval | LightGBM model evaluation with comparison mode | ✓ |
 | XGBoostModelInference | XGBoost model inference for prediction generation | ✓ |
 | LightGBMMTModelInference | LightGBMMT multi-task model inference | ✓ |
 | PyTorchModelEval | PyTorch model evaluation step | - |
@@ -173,6 +181,7 @@ This section organizes all 28 registered processing steps by their position and 
 **Key Documentation:**
 - Builder: `src/cursus/steps/builders/builder_xgboost_model_eval_step.py`
 - Config: `src/cursus/steps/configs/config_xgboost_model_eval_step.py`
+- **[LightGBM Model Evaluation Script](../scripts/lightgbm_model_eval_script.md)** - Comprehensive model evaluation with comparison mode
 - [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md)
 - [LightGBMMT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
 - [PyTorch Model Inference Design](../1_design/pytorch_model_inference_design.md)
@@ -416,9 +425,12 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 ### 6.1 Data Loading Steps
 
 **DummyDataLoading**
-- Description: Dummy data loading step that processes user-provided data instead of calling Cradle services
+- Description: Drop-in replacement for CradleDataLoadingStep with auto-format detection and dual-mode output
+- **Script Documentation:** [Dummy Data Loading Script](../scripts/dummy_data_loading_script.md)
 - Config: `DummyDataLoadingConfig`
 - Builder: `DummyDataLoadingStepBuilder`
+- Script: `src/cursus/steps/scripts/dummy_data_loading.py`
+- **Key Features:** Multi-format support (CSV/Parquet/JSON), auto-detection, schema signature generation, metadata with statistics, dual-mode output (legacy/enhanced sharding), format preservation
 
 **CradleDataLoading** (Note: Uses custom sagemaker_step_type)
 - Description: Cradle data loading step
@@ -439,33 +451,43 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **TemporalSequenceNormalization**
 - Description: Temporal sequence normalization step for machine learning models with configurable sequence operations
+- **Script Documentation:** [Temporal Sequence Normalization Script](../scripts/temporal_sequence_normalization_script.md)
 - **Design Doc:** [Temporal Sequence Normalization Design](../1_design/temporal_sequence_normalization_design.md)
 - Config: `TemporalSequenceNormalizationConfig`
 - Builder: `TemporalSequenceNormalizationStepBuilder`
 
 **TemporalFeatureEngineering**
 - Description: Temporal feature engineering step that extracts comprehensive temporal features from normalized sequences for machine learning models
+- **Script Documentation:** [Temporal Feature Engineering Script](../scripts/temporal_feature_engineering_script.md)
 - **Design Doc:** [Temporal Feature Engineering Design](../1_design/temporal_feature_engineering_design.md)
 - Config: `TemporalFeatureEngineeringConfig`
 - Builder: `TemporalFeatureEngineeringStepBuilder`
 
 **StratifiedSampling**
 - Description: Stratified sampling step with multiple allocation strategies for class imbalance, causal analysis, and variance optimization
+- **Script Documentation:** [Stratified Sampling Script](../scripts/stratified_sampling_script.md)
 - Builder: `src/cursus/steps/builders/builder_stratified_sampling_step.py`
 - Config: `src/cursus/steps/configs/config_stratified_sampling_step.py`
+- Script: `src/cursus/steps/scripts/stratified_sampling.py`
+- **Key Features:** Three allocation strategies (balanced, proportional with minimum, optimal Neyman), class imbalance handling, causal analysis support, variance optimization, format preservation, job-type awareness, test set protection
 
 **RiskTableMapping**
 - Description: Risk table mapping step for categorical features
 - **Documentation:** [Risk Table Mapping Step Guide](../steps/risk_table_map_step.md)
+- **Script Documentation:** [Risk Table Mapping Script](../scripts/risk_table_mapping_script.md)
 - Builder: `src/cursus/steps/builders/builder_risk_table_mapping_step.py`
 - Config: `src/cursus/steps/configs/config_risk_table_mapping_step.py`
-- **Key Features:** Risk score mapping, job type variants, custom transformation logic
+- Script: `src/cursus/steps/scripts/risk_table_mapping.py`
+- **Key Features:** Risk score mapping, weight-of-evidence encoding, Laplace smoothing, parameter accumulator pattern, job type variants, format preservation, custom transformation logic
 
 **MissingValueImputation**
 - Description: Missing value imputation step using statistical methods (mean, median, mode, constant) with pandas-safe values
+- **Script Documentation:** [Missing Value Imputation Script](../scripts/missing_value_imputation_script.md)
 - **Design Doc:** [Missing Value Imputation Design](../1_design/missing_value_imputation_design.md)
 - Config: `MissingValueImputationConfig`
 - Builder: `MissingValueImputationStepBuilder`
+- Script: `src/cursus/steps/scripts/missing_value_imputation.py`
+- **Key Features:** Multi-type imputation (numerical/categorical/text), pandas-safe validation, auto-detection of column types, training/inference modes, parameter accumulator pattern, format preservation, comprehensive reporting
 
 **FeatureSelection**
 - Description: Feature selection step using multiple statistical and ML-based methods with ensemble combination strategies
@@ -474,9 +496,12 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 - Builder: `FeatureSelectionStepBuilder`
 
 **CurrencyConversion**
-- Description: Currency conversion processing step
+- Description: Currency conversion processing step with dual lookup methods and parallel processing
+- **Script Documentation:** [Currency Conversion Script](../scripts/currency_conversion_script.md)
 - Builder: `src/cursus/steps/builders/builder_currency_conversion_step.py`
 - Config: `src/cursus/steps/configs/config_currency_conversion_step.py`
+- Script: `src/cursus/steps/scripts/currency_conversion.py`
+- **Key Features:** Dual currency lookup (direct codes + marketplace ID), parallel processing with multiprocessing, format preservation (CSV/TSV/Parquet), exchange rate conversion, job type support
 
 ### 6.3 Bedrock Processing Steps
 
@@ -515,9 +540,18 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **XGBoostModelInference**
 - Description: XGBoost model inference step for prediction generation without metrics
+- **Script Documentation:** [XGBoost Model Inference Script](../scripts/xgboost_model_inference_script.md)
 - **Design Doc:** [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md)
 - Config: `XGBoostModelInferenceConfig`
 - Builder: `XGBoostModelInferenceStepBuilder`
+
+**LightGBMModelInference**
+- Description: LightGBM model inference for prediction generation with multi-format output
+- **Script Documentation:** [LightGBM Model Inference Script](../scripts/lightgbm_model_inference_script.md)
+- Config: `LightGBMModelInferenceConfig`
+- Builder: `LightGBMModelInferenceStepBuilder`
+- Script: `src/cursus/steps/scripts/lightgbm_model_inference.py`
+- **Key Features:** Pure inference without metrics, multi-format output (CSV/TSV/Parquet/JSON), modular design for caching, lightweight (~600 lines), automatic tar.gz extraction, format preservation, graceful feature handling
 
 **LightGBMMT Model Inference**
 - Description: LightGBMMT multi-task model inference step for generating N independent binary task predictions
@@ -584,14 +618,17 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 ### 6.7 Special Processing Steps
 
 **DummyTraining**
-- Description: Training step that uses a pretrained model
+- Description: SOURCE node that packages pretrained models by injecting hyperparameters into model archives
+- **Script Documentation:** [Dummy Training Script](../scripts/dummy_training_script.md)
 - Config: `DummyTrainingConfig`
 - Builder: `DummyTrainingStepBuilder`
-- Note: Classified as Processing type despite training-related functionality
+- Script: `src/cursus/steps/scripts/dummy_training.py`
+- **Key Features:** Multi-path file discovery (3 fallback locations), model.tar.gz repacking, hyperparameters.json injection, temporary directory processing with automatic cleanup, detailed logging with compression ratios, format validation
+- Note: Classified as Processing type but operates as SOURCE node (reads from `/opt/ml/code/` instead of processing inputs)
 
 ### 6.8 Semi-Supervised Learning & Active Learning Steps
 
-**ActiveSampling**
+**ActiveSampleSelection**
 - Description: Modular sample selection engine for semi-supervised and active learning pipelines that intelligently selects high-value samples from unlabeled data pools
 - **Script Documentation:** [Active Sample Selection Script](../scripts/active_sample_selection_script.md)
 - **Design Docs:**
@@ -607,6 +644,7 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 
 **PseudoLabelMerge**
 - Description: Unified data combination engine that intelligently merges original labeled training data with pseudo-labeled or augmented samples for Semi-Supervised Learning (SSL) and Active Learning workflows
+- **Script Documentation:** [Pseudo Label Merge Script](../scripts/pseudo_label_merge_script.md) - Complete script documentation with algorithms, data structures, and integration patterns
 - **Design Doc:** [Pseudo Label Merge Script Design](../1_design/pseudo_label_merge_script_design.md) - Complete script design with split-aware merge, auto-inferred ratios, format preservation, and schema alignment
 - Config: `PseudoLabelMergeConfig`
 - Builder: `PseudoLabelMergeStepBuilder`

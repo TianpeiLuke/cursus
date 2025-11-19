@@ -190,7 +190,6 @@ from io import StringIO, BytesIO
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from flask import Response
 
 # Local imports
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
@@ -198,8 +197,6 @@ from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 
-# Constants
-__version__ = "1.0.0"
 
 # File names
 MODEL_FILE = "xgboost_model.bst"
@@ -220,16 +217,6 @@ CALIBRATION_MODELS_DIR = "calibration_models"  # For multiclass calibration mode
 CONTENT_TYPE_CSV = "text/csv"
 CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_PARQUET = "application/x-parquet"
-
-
-# Simple Response class for type hints
-class InferenceResponse:
-    """Simple response class for type hints."""
-
-    def __init__(self, response: str, status: int = 200, mimetype: str = "text/plain"):
-        self.response = response
-        self.status = status
-        self.mimetype = mimetype
 
 
 # Setup logging
@@ -707,7 +694,7 @@ def input_fn(
     request_body: Union[str, bytes],
     request_content_type: str,
     context: Optional[Any] = None,
-) -> Union[pd.DataFrame, InferenceResponse]:
+) -> pd.DataFrame:
     """
     Deserialize the Invoke request body into an object we can perform prediction on.
 
@@ -717,7 +704,10 @@ def input_fn(
         context: Additional context (optional)
 
     Returns:
-        Union[pd.DataFrame, Response]: Parsed DataFrame or error Response
+        pd.DataFrame: Parsed DataFrame
+
+    Raises:
+        ValueError: If content type is unsupported or data cannot be parsed
     """
     logger.info(f"Received request with Content-Type: {request_content_type}")
     try:
@@ -787,21 +777,16 @@ def input_fn(
             return df
 
         else:
-            logger.warning(f"Unsupported content type: {request_content_type}")
-            return Response(
-                response=f"This predictor only supports CSV, JSON, or Parquet data. Received: {request_content_type}",
-                status=415,
-                mimetype="text/plain",
-            )
+            error_msg = f"This predictor only supports CSV, JSON, or Parquet data. Received: {request_content_type}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+    except ValueError:
+        # Re-raise ValueError as-is (includes our unsupported content type error)
+        raise
     except Exception as e:
-        logger.error(
-            f"Failed to parse input ({request_content_type}). Error: {e}", exc_info=True
-        )
-        return Response(
-            response=f"Invalid input format or corrupted data. Error during parsing: {e}",
-            status=400,
-            mimetype="text/plain",
-        )
+        error_msg = f"Invalid input format or corrupted data. Error during parsing: {e}"
+        logger.error(error_msg, exc_info=True)
+        raise ValueError(error_msg)
 
 
 # --------------------------------------------------------------------------------

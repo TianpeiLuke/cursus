@@ -92,6 +92,8 @@ This index is organized to mirror the **actual pipeline execution order**, group
 
 **Implementation Documentation**
 - [Data Load Step Builder (Cradle)](cradle_data_loading_step.md) - Step builder implementation
+- [Dummy Data Loading Script](../scripts/dummy_data_loading_script.md) - Script documentation for user-provided data processing with auto-format detection
+- [Dummy Training Script](../scripts/dummy_training_script.md) - Script documentation for SOURCE node pretrained model packaging with hyperparameters injection
 - [Data Loading Training Spec](../steps/specs/data_loading_training_spec.md) - Step specification
 
 **Data Format & Quality**
@@ -115,23 +117,28 @@ This index is organized to mirror the **actual pipeline execution order**, group
 **Core Preprocessing**
 - [Multi Sequence Preprocessing Design](../1_design/multi_sequence_preprocessing_design.md) - Design for multi-sequence preprocessing scripts
 - [Temporal Sequence Normalization Design](../1_design/temporal_sequence_normalization_design.md) - Design for temporal sequence normalization scripts
+- [Temporal Sequence Normalization Script](../scripts/temporal_sequence_normalization_script.md) - Script documentation for fixed-length sequence normalization with attention masks
 - [Temporal Self Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Detailed analysis of TSA scripts and preprocessing requirements
 
 **Implementation Documentation**
 - [Tabular Preprocessing Step Builder](../steps/tabular_preprocessing_step.md) - Step builder implementation
 - [Tabular Preprocess Documentation](../steps/scripts/tabular_preprocess_doc.md) - Script documentation
 - [Risk Table Map Step Builder](../steps/risk_table_map_step.md) - Risk table mapping step builder
-- [Risk Table Mapping Documentation](../steps/scripts/risk_table_mapping_doc.md) - Risk table mapping script
+- [Risk Table Mapping Script](../scripts/risk_table_mapping_script.md) - Script documentation for risk score mapping with parameter accumulator pattern
 - [Currency Conversion Step Builder](../steps/currency_conversion_step.md) - Currency conversion step builder
-- [Currency Conversion Documentation](../steps/scripts/currency_conversion_doc.md) - Currency conversion script
+- [Currency Conversion Script](../scripts/currency_conversion_script.md) - Script documentation for dual currency lookup with parallel processing
+- [Stratified Sampling Script](../scripts/stratified_sampling_script.md) - Script documentation for balanced, proportional, and optimal Neyman allocation strategies
+- [Missing Value Imputation Script](../scripts/missing_value_imputation_script.md) - Script documentation for multi-type imputation with pandas-safe validation
 
 **Feature Engineering & Selection**
 - [Multi Sequence Feature Engineering Design](../1_design/multi_sequence_feature_engineering_design.md) - Design for multi-sequence feature engineering scripts
 - [Temporal Feature Engineering Design](../1_design/temporal_feature_engineering_design.md) - Design for temporal feature engineering scripts
+- [Temporal Feature Engineering Script](../scripts/temporal_feature_engineering_script.md) - Script documentation for comprehensive temporal feature extraction with quality control
 - [Feature Selection Script Design](../1_design/feature_selection_script_design.md) - Design for feature selection scripts
 
 **Data Quality & Transformation**
 - [Missing Value Imputation Design](../1_design/missing_value_imputation_design.md) - Design for missing value imputation scripts
+- [Missing Value Imputation Script](../scripts/missing_value_imputation_script.md) - Script documentation for statistical imputation with numerical, categorical, and text support
 
 **Sampling & Balancing**
 - [Active Sampling Step Builder Patterns](../1_design/active_sampling_step_patterns.md) - Complete step builder patterns for intelligent sample selection in semi-supervised and active learning pipelines
@@ -168,6 +175,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 
 **Label Ruleset System**
 - [Label Ruleset Generation Step Patterns](../1_design/label_ruleset_generation_step_patterns.md) - Patterns for generating and validating label rulesets within pipeline steps
+- [Label Ruleset Generation Script](../scripts/label_ruleset_generation_script.md) - Script documentation for rule validation, optimization, and field inference with multilabel support
 - [Label Ruleset Execution Step Patterns](../1_design/ruleset_execution_step_patterns.md) - Design patterns for executing label rulesets in pipeline steps
 - [Label Ruleset Optimization Patterns](../1_design/label_ruleset_optimization_patterns.md) - Optimization strategies for label ruleset performance
 - [Label Ruleset Generation Configuration Examples](../1_design/label_ruleset_generation_configuration_examples.md) - Complete working examples for binary, multiclass, and multilabel classification
@@ -240,6 +248,9 @@ This index is organized to mirror the **actual pipeline execution order**, group
 **Implementation Documentation**
 - [Model Evaluation Step Builder (XGBoost)](xgboost_model_eval_step.md) - XGBoost evaluation step builder
 - [Model Evaluation XGBoost Documentation](../steps/scripts/model_evaluation_xgb_doc.md) - XGBoost evaluation script
+- [LightGBM Model Evaluation Script](../scripts/lightgbm_model_eval_script.md) - Script documentation for comprehensive model evaluation with comparison mode
+- [LightGBM Model Inference Script](../scripts/lightgbm_model_inference_script.md) - Script documentation for pure inference without metrics
+- [XGBoost Model Inference Script](../scripts/xgboost_model_inference_script.md) - Script documentation for pure inference with embedded preprocessing and multi-format output
 - [Model Step Builder (PyTorch)](pytorch_model_step.md) - PyTorch model step builder
 - [Model Step Builder (XGBoost)](xgboost_model_step.md) - XGBoost model step builder
 
@@ -328,8 +339,8 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Contract Utils Documentation](../scripts/contract_utils_doc.md)
 - [Currency Conversion Documentation](../scripts/currency_conversion_script.md)
 - [Dummy Training Documentation](../scripts/dummy_training_script.md)
-- [MIMS Package Documentation](../scripts/package_doc.md)
-- [MIMS Payload Documentation](../scripts/payload_doc.md)
+- [MIMS Package Documentation](package_script.md)
+- [MIMS Payload Documentation](payload_script.md)
 - [Model Calibration Documentation](../scripts/model_calibration_script.md)
 - [Model Evaluation XGBoost Documentation](../scripts/xgboost_model_eval_script.md)
 - [MIMS Registration Documentation](../scripts/mims_registration_script.md)

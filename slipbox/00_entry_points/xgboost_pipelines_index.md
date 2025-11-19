@@ -496,8 +496,8 @@ graph TB
 - **XGBoostTraining**: [XGBoost Training Step](../steps/builders/training_step_xgboost.md)
 - **XGBoostModelEval_calibration**: [XGBoost Model Eval Step](../steps/builders/model_eval_step_xgboost.md)
 - **ModelCalibration_calibration**: Model calibration step | Script: [Model Calibration](model_calibration_script.md)
-- **Package**: [MIMS Packaging Step](../steps/builders/mims_packaging_step.md) | Contract: [MIMS Package](../steps/contracts/mims_package_contract.md) | Script: [MIMS Package](package_doc.md)
-- **Payload**: [MIMS Payload Step](../steps/builders/mims_payload_step.md) | Contract: [MIMS Payload](../steps/contracts/mims_payload_contract.md) | Script: [MIMS Payload](payload_doc.md)
+- **Package**: [MIMS Packaging Step](../steps/builders/mims_packaging_step.md) | Contract: [MIMS Package](../steps/contracts/mims_package_contract.md) | Script: [MIMS Package](package_script.md)
+- **Payload**: [MIMS Payload Step](../steps/builders/mims_payload_step.md) | Contract: [MIMS Payload](../steps/contracts/mims_payload_contract.md) | Script: [MIMS Payload](payload_script.md)
 - **Registration**: [MIMS Registration Step](../steps/builders/mims_registration_step.md) | Contract: [MIMS Registration](../steps/contracts/mims_registration_contract.md) | Script: [MODS MIMS Registration](mims_registration_script.md)
 
 **Code References**:
