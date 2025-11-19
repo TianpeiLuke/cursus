@@ -257,6 +257,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [LightGBM Model Evaluation Script](../scripts/lightgbm_model_eval_script.md) - Script documentation for comprehensive model evaluation with comparison mode
 - [LightGBM Model Inference Script](../scripts/lightgbm_model_inference_script.md) - Script documentation for pure inference without metrics
 - [XGBoost Model Inference Script](../scripts/xgboost_model_inference_script.md) - Script documentation for pure inference with embedded preprocessing and multi-format output
+- [PyTorch Model Evaluation Script](../scripts/pytorch_model_eval_script.md) - Script documentation for PyTorch Lightning model evaluation with GPU/CPU support, multi-modal architectures, and comprehensive metrics
 - [Model Metrics Computation Script](../scripts/model_metrics_computation_script.md) - Script documentation for comprehensive performance evaluation with standard ML metrics, domain-specific metrics, and A/B testing comparison mode
 - [Model Step Builder (PyTorch)](pytorch_model_step.md) - PyTorch model step builder
 - [Model Step Builder (XGBoost)](xgboost_model_step.md) - XGBoost model step builder

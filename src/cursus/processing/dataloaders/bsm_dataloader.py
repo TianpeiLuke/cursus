@@ -5,6 +5,133 @@ from torch.utils.data._utils.collate import default_collate
 from torch.nn.utils.rnn import pad_sequence
 
 
+def build_trimodal_collate_batch(
+    primary_input_ids_key: str = "input_ids",
+    primary_attention_mask_key: str = "attention_mask",
+    secondary_input_ids_key: str = "input_ids",
+    secondary_attention_mask_key: str = "attention_mask",
+):
+    """
+    Build a collate function for trimodal models with two text modalities.
+
+    Handles:
+    - Primary text modality (e.g., chat) with its own tokenization keys
+    - Secondary text modality (e.g., shiptrack) with its own tokenization keys
+    - Tabular features
+    - Labels
+
+    Args:
+        primary_input_ids_key: Key name for primary text input_ids
+        primary_attention_mask_key: Key name for primary text attention_mask
+        secondary_input_ids_key: Key name for secondary text input_ids
+        secondary_attention_mask_key: Key name for secondary text attention_mask
+
+    Returns:
+        Collate function for DataLoader
+    """
+
+    def collate_batch(batch):
+        if not isinstance(batch[0], dict):
+            raise TypeError("Batch must contain dictionaries.")
+
+        output = {}
+
+        for key in batch[0]:
+            # Check if this is a text field (primary modality)
+            if all(
+                isinstance(item[key], list)
+                and isinstance(item[key][0], dict)
+                and primary_input_ids_key in item[key][0]
+                for item in batch
+            ):
+                all_input_ids = []
+                all_attention_masks = []
+
+                for item in batch:
+                    input_chunks = [
+                        torch.tensor(chunk[primary_input_ids_key], dtype=torch.long)
+                        for chunk in item[key]
+                    ]
+                    mask_chunks = [
+                        torch.tensor(
+                            chunk[primary_attention_mask_key], dtype=torch.long
+                        )
+                        for chunk in item[key]
+                    ]
+                    all_input_ids.append(pad_sequence(input_chunks, batch_first=True))
+                    all_attention_masks.append(
+                        pad_sequence(mask_chunks, batch_first=True)
+                    )
+
+                def pad_nested(tensors):
+                    max_chunks = max(t.size(0) for t in tensors)
+                    max_len = max(t.size(1) for t in tensors)
+                    padded = []
+                    for t in tensors:
+                        pad_chunk = max_chunks - t.size(0)
+                        pad_len = max_len - t.size(1)
+                        padded.append(
+                            torch.nn.functional.pad(t, (0, pad_len, 0, pad_chunk))
+                        )
+                    return torch.stack(padded)
+
+                output[key + "_" + primary_input_ids_key] = pad_nested(all_input_ids)
+                output[key + "_" + primary_attention_mask_key] = pad_nested(
+                    all_attention_masks
+                )
+
+            # Check if this is a text field (secondary modality)
+            elif all(
+                isinstance(item[key], list)
+                and isinstance(item[key][0], dict)
+                and secondary_input_ids_key in item[key][0]
+                for item in batch
+            ):
+                all_input_ids = []
+                all_attention_masks = []
+
+                for item in batch:
+                    input_chunks = [
+                        torch.tensor(chunk[secondary_input_ids_key], dtype=torch.long)
+                        for chunk in item[key]
+                    ]
+                    mask_chunks = [
+                        torch.tensor(
+                            chunk[secondary_attention_mask_key], dtype=torch.long
+                        )
+                        for chunk in item[key]
+                    ]
+                    all_input_ids.append(pad_sequence(input_chunks, batch_first=True))
+                    all_attention_masks.append(
+                        pad_sequence(mask_chunks, batch_first=True)
+                    )
+
+                def pad_nested(tensors):
+                    max_chunks = max(t.size(0) for t in tensors)
+                    max_len = max(t.size(1) for t in tensors)
+                    padded = []
+                    for t in tensors:
+                        pad_chunk = max_chunks - t.size(0)
+                        pad_len = max_len - t.size(1)
+                        padded.append(
+                            torch.nn.functional.pad(t, (0, pad_len, 0, pad_chunk))
+                        )
+                    return torch.stack(padded)
+
+                output[key + "_" + secondary_input_ids_key] = pad_nested(all_input_ids)
+                output[key + "_" + secondary_attention_mask_key] = pad_nested(
+                    all_attention_masks
+                )
+
+            # Handle tabular features and labels
+            else:
+                output[key] = [item[key] for item in batch]
+
+        return output
+
+    return collate_batch
+
+
 def build_collate_batch(
     input_ids_key: str = "input_ids", attention_mask_key: str = "attention_mask"
 ):

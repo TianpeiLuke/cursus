@@ -28,28 +28,31 @@ import lightning.pytorch as pl
 
 # Import PyTorch components
 from processing.processors import Processor
-from processing.bsm_processor import (
+from processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.bert_tokenize_processor import TokenizationProcessor
-from processing.categorical_label_processor import CategoricalLabelProcessor
-from processing.multiclass_label_processor import MultiClassLabelProcessor
-from processing.bsm_datasets import BSMDataset
-from processing.bsm_dataloader import build_collate_batch, build_trimodal_collate_batch
+from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
+from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.datasets.bsm_datasets import BSMDataset
+from processing.dataloaders.bsm_dataloader import (
+    build_collate_batch,
+    build_trimodal_collate_batch,
+)
 
-from lightning_models.pl_train import (
+from lightning_models.utils.pl_train import (
     model_inference,
     model_online_inference,
     load_model,
     load_artifacts,
     load_onnx_model,
 )
-from lightning_models.pl_model_plots import compute_metrics
-from lightning_models.dist_utils import get_rank, is_main_process
+from lightning_models.utils.pl_model_plots import compute_metrics
+from lightning_models.utils.dist_utils import get_rank, is_main_process
 from pydantic import BaseModel, Field, ValidationError
 
 import logging
@@ -304,7 +307,7 @@ def build_processing_pipeline(
             truncate=config.get("chunk_trancate", False),
             max_total_chunks=config.get("max_total_chunks", 5),
         ),
-        "tokenizer": lambda: TokenizationProcessor(
+        "tokenizer": lambda: BertTokenizeProcessor(
             tokenizer,
             add_special_tokens=True,
             max_length=config.get("max_sen_len", 512),
@@ -639,9 +642,20 @@ def evaluate_pytorch_model(
     if is_trimodal_model and has_dual_text_config:
         # For tri-modal models, use the enhanced collate function that handles multiple text fields
         logger.info(
-            f"Using tri-modal collate function for {config.get('model_class')} model"
+            f"Using trimodal collate function for {config.get('model_class')} model"
         )
-        bsm_collate_batch = build_trimodal_collate_batch()
+        bsm_collate_batch = build_trimodal_collate_batch(
+            primary_input_ids_key=config.get("primary_text_input_ids_key", "input_ids"),
+            primary_attention_mask_key=config.get(
+                "primary_text_attention_mask_key", "attention_mask"
+            ),
+            secondary_input_ids_key=config.get(
+                "secondary_text_input_ids_key", "input_ids"
+            ),
+            secondary_attention_mask_key=config.get(
+                "secondary_text_attention_mask_key", "attention_mask"
+            ),
+        )
     else:
         # For bi-modal models (including those with dual text config but non-trimodal model)
         logger.info(
