@@ -29,6 +29,7 @@ FEATURE_SELECTION_CONTRACT = ScriptContract(
         "VARIANCE_THRESHOLD": "0.01",
         "RANDOM_STATE": "42",
         "COMBINATION_STRATEGY": "voting",
+        "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
         "pandas": ">=1.3.0",

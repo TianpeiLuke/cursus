@@ -247,6 +247,10 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
         if hasattr(self.config, "env") and self.config.env:
             env_vars.update(self.config.env)
 
+        # Explicitly add USE_SECURE_PYPI from base config if available
+        if hasattr(self.config, "use_secure_pypi"):
+            env_vars["USE_SECURE_PYPI"] = str(self.config.use_secure_pypi).lower()
+
         self.log_info("Processing environment variables: %s", env_vars)
         return env_vars
 

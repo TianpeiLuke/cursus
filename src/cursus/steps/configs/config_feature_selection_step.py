@@ -121,6 +121,7 @@ class FeatureSelectionConfig(ProcessingStepConfigBase):
                 "VARIANCE_THRESHOLD": str(self.variance_threshold),
                 "RANDOM_STATE": str(self.random_state),
                 "COMBINATION_STRATEGY": self.combination_strategy,
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
 
             self._environment_variables = env_vars

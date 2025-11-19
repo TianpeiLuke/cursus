@@ -87,7 +87,9 @@ def create_xgboost_complete_e2e_with_percentile_calibration_dag() -> PipelineDAG
 
     # Evaluation flow (calibration path)
     dag.add_edge("XGBoostTraining", "XGBoostModelInference_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelInference_calibration")
+    dag.add_edge(
+        "TabularPreprocessing_calibration", "XGBoostModelInference_calibration"
+    )
 
     # Percentile model calibration flow - depends on model evaluation
     dag.add_edge(
