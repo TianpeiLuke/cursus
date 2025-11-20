@@ -336,7 +336,7 @@ class LabelRulesetExecutionStepBuilder(StepBuilderBase):
                 extracted_inputs = self.extract_inputs_from_dependencies(dependencies)
                 inputs.update(extracted_inputs)
                 self.log_info(
-                    "Extracted %d inputs from dependencies", len(extracted_inputs)
+                    "Extracted %d inputs from dependencies", int(len(extracted_inputs))
                 )
             except Exception as e:
                 self.log_warning("Failed to extract inputs from dependencies: %s", e)
