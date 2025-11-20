@@ -176,9 +176,19 @@ def generate_metadata(df: pd.DataFrame) -> Dict[str, Any]:
         col_info = {
             "data_type": str(df[column].dtype),
             "null_count": int(df[column].isnull().sum()),
-            "unique_count": int(df[column].nunique()),
             "memory_usage": int(df[column].memory_usage(deep=True)),
         }
+
+        # Safe unique count - handle unhashable types (lists, dicts, etc.)
+        try:
+            col_info["unique_count"] = int(df[column].nunique())
+        except TypeError:
+            # Column contains unhashable types (lists, dicts from Parquet)
+            logger.warning(
+                f"Column '{column}' contains unhashable types, skipping unique count"
+            )
+            col_info["unique_count"] = None
+            col_info["contains_complex_types"] = True
 
         # Add basic statistics for numeric columns
         if pd.api.types.is_numeric_dtype(df[column]):
