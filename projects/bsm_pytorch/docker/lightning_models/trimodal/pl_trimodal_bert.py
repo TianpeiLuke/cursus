@@ -144,7 +144,12 @@ class TrimodalBert(pl.LightningModule):
         self.register_buffer("class_weights_tensor", weights_tensor)
         self.loss_op = nn.CrossEntropyLoss(weight=self.class_weights_tensor)
 
-        self.save_hyperparameters()
+        # Filter config to exclude large objects (like embedding matrices) before saving
+        filtered_config = {
+            k: v for k, v in config.items() 
+            if not isinstance(v, torch.Tensor)  # Exclude all tensors
+        }
+        self.save_hyperparameters(filtered_config)
 
     def _create_text_config(self, config: Dict, text_type: str) -> Dict:
         """Create configuration for text subnetworks (primary or secondary)"""

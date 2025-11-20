@@ -136,7 +136,12 @@ class BimodalBertMoE(pl.LightningModule):
         self.register_buffer("class_weights_tensor", wt)
         self.loss_op = nn.CrossEntropyLoss(weight=self.class_weights_tensor)
 
-        self.save_hyperparameters()
+        # Filter config to exclude large objects (like embedding matrices) before saving
+        filtered_config = {
+            k: v for k, v in config.items() 
+            if not isinstance(v, torch.Tensor)  # Exclude all tensors
+        }
+        self.save_hyperparameters(filtered_config)
 
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         # prepare tabular data if present
