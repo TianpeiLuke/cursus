@@ -192,7 +192,7 @@ def save_dataframe_with_format(
 # ================================================================================
 class Config(BaseModel):
     id_name: str = "order_id"
-    text_name: str = "text"
+    text_name: Optional[str] = None  # Optional for trimodal (uses primary/secondary instead)
     label_name: str = "label"
     batch_size: int = 32
     full_field_list: List[str] = Field(default_factory=list)
@@ -825,9 +825,12 @@ def load_and_preprocess_data(
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(config)
-    train_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
-    val_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
-    test_bsm_dataset.add_pipeline(config.text_name, pipelines[config.text_name])
+    
+    # Add pipelines for each text field
+    for field_name, pipeline in pipelines.items():
+        train_bsm_dataset.add_pipeline(field_name, pipeline)
+        val_bsm_dataset.add_pipeline(field_name, pipeline)
+        test_bsm_dataset.add_pipeline(field_name, pipeline)
 
     # === Build preprocessing pipelines (numerical imputation + risk tables) ===
     preprocessing_pipelines, imputation_dict, risk_tables = (
