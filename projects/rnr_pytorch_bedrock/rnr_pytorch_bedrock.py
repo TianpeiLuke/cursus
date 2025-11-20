@@ -85,6 +85,7 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
     dag.add_node(
         "LabelRulesetExecution_training"
     )  # Label ruleset execution for training data
+    dag.add_node("PyTorchTraining")  # PyTorch training step
 
     # Training flow with Bedrock batch processing and label ruleset integration
     dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
@@ -104,6 +105,9 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
     dag.add_edge(
         "LabelRulesetGeneration", "LabelRulesetExecution_training"
     )  # Ruleset input
+
+    # Labeled data flows to PyTorch training
+    dag.add_edge("LabelRulesetExecution_training", "PyTorchTraining")
 
     logger.info(
         f"Created Bedrock Batch data processing DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
