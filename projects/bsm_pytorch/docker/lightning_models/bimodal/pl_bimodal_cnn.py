@@ -15,6 +15,7 @@ from ..tabular.pl_tab_ae import TabAE
 from ..text.pl_text_cnn import TextCNN
 from ..utils.dist_utils import all_gather
 from ..utils.pl_model_plots import compute_metrics
+from ..utils.config_constants import filter_config_for_tensorboard
 
 
 class BimodalCNN(pl.LightningModule):
@@ -75,11 +76,9 @@ class BimodalCNN(pl.LightningModule):
         )
         self.loss_op = nn.CrossEntropyLoss(weight=self.class_weights_tensor)
 
-        # Filter config to exclude large objects (like embedding matrices) before saving
-        filtered_config = {
-            k: v for k, v in config.items() 
-            if not isinstance(v, torch.Tensor)  # Exclude all tensors
-        }
+        # Filter config to only save essential hyperparameters to TensorBoard
+        # Excludes runtime artifacts (risk_tables, imputation_dict, etc.)
+        filtered_config = filter_config_for_tensorboard(config)
         self.save_hyperparameters(filtered_config)
 
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:

@@ -24,6 +24,7 @@ from ..utils.dist_utils import all_gather, get_rank
 from ..tabular.pl_tab_ae import TabAE  # Or TabularEmbeddingModule
 from ..text.pl_bert import TextBertBase
 from ..utils.pl_model_plots import compute_metrics
+from ..utils.config_constants import filter_config_for_tensorboard
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
@@ -302,11 +303,9 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         # Store attention weights for logging/analysis
         self.last_attention_weights = None
 
-        # Filter config to exclude large objects (like embedding matrices) before saving
-        filtered_config = {
-            k: v for k, v in config.items() 
-            if not isinstance(v, torch.Tensor)  # Exclude all tensors
-        }
+        # Filter config to only save essential hyperparameters to TensorBoard
+        # Excludes runtime artifacts (risk_tables, imputation_dict, etc.)
+        filtered_config = filter_config_for_tensorboard(config)
         self.save_hyperparameters(filtered_config)
 
     def _create_text_config(self, config: Dict, text_type: str) -> Dict:
