@@ -182,21 +182,15 @@ class TrimodalGateFusionBert(pl.LightningModule):
 
         # Primary text configuration (e.g., chat/dialogue)
         # Use unified naming: field_name + "_" + key (no "_processed_" suffix)
-        self.primary_text_input_ids_key = config.get(
-            "text_input_ids_key", "input_ids"
-        )
+        self.primary_text_input_ids_key = config.get("text_input_ids_key", "input_ids")
         self.primary_text_attention_mask_key = config.get(
             "text_attention_mask_key", "attention_mask"
         )
         self.primary_text_name = (
-            config["primary_text_name"]
-            + "_"
-            + self.primary_text_input_ids_key
+            config["primary_text_name"] + "_" + self.primary_text_input_ids_key
         )
         self.primary_text_attention_mask = (
-            config["primary_text_name"]
-            + "_"
-            + self.primary_text_attention_mask_key
+            config["primary_text_name"] + "_" + self.primary_text_attention_mask_key
         )
 
         # Secondary text configuration (e.g., shiptrack)
@@ -208,14 +202,10 @@ class TrimodalGateFusionBert(pl.LightningModule):
             "text_attention_mask_key", "attention_mask"
         )
         self.secondary_text_name = (
-            config["secondary_text_name"]
-            + "_"
-            + self.secondary_text_input_ids_key
+            config["secondary_text_name"] + "_" + self.secondary_text_input_ids_key
         )
         self.secondary_text_attention_mask = (
-            config["secondary_text_name"]
-            + "_"
-            + self.secondary_text_attention_mask_key
+            config["secondary_text_name"] + "_" + self.secondary_text_attention_mask_key
         )
 
         # Tabular configuration
