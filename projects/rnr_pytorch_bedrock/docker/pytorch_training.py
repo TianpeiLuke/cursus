@@ -569,20 +569,44 @@ def build_preprocessing_pipelines(
 
     # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
     if config.cat_field_list:
+        # Filter out text fields from categorical processing to prevent overwriting tokenized text
+        text_fields = set()
+        if config.text_name:
+            text_fields.add(config.text_name)
+        if config.primary_text_name:
+            text_fields.add(config.primary_text_name)
+        if config.secondary_text_name:
+            text_fields.add(config.secondary_text_name)
+
+        # Filter categorical fields to exclude text fields
+        actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
+
+        if text_fields:
+            log_once(
+                logger,
+                f"ℹ️  Excluding text fields from risk table mapping: {text_fields}",
+            )
+        log_once(
+            logger, f"ℹ️  Actual categorical fields for risk table: {actual_cat_fields}"
+        )
+
         if use_precomputed_risk_tables and model_artifacts_dir:
             # Load pre-computed risk tables
             log_once(logger, "Loading pre-computed risk table artifacts...")
             risk_tables = load_risk_table_artifacts(model_artifacts_dir)
             for field, tables in risk_tables.items():
-                proc = RiskTableMappingProcessor(
-                    column_name=field, label_name=config.label_name, risk_tables=tables
-                )
-                pipelines[field] = proc
-            log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+                if field in actual_cat_fields:  # Only process filtered fields
+                    proc = RiskTableMappingProcessor(
+                        column_name=field,
+                        label_name=config.label_name,
+                        risk_tables=tables,
+                    )
+                    pipelines[field] = proc
+            log_once(logger, f"✓ Loaded risk tables for {len(pipelines)} fields")
         else:
             # Fit inline
             log_once(logger, "Fitting risk tables inline...")
-            for field in config.cat_field_list:
+            for field in actual_cat_fields:  # Use filtered list
                 proc = RiskTableMappingProcessor(
                     column_name=field,
                     label_name=config.label_name,
@@ -593,7 +617,7 @@ def build_preprocessing_pipelines(
                 pipelines[field] = proc
                 risk_tables[field] = proc.get_risk_tables()
             log_once(
-                logger, f"✓ Fitted risk tables for {len(config.cat_field_list)} fields"
+                logger, f"✓ Fitted risk tables for {len(actual_cat_fields)} fields"
             )
 
     log_once(logger, "=" * 70)
@@ -831,10 +855,17 @@ def load_and_preprocess_data(
     tokenizer, pipelines = data_preprocess_pipeline(config)
 
     # Add pipelines for each text field
+    log_once(logger, "=" * 70)
+    log_once(logger, "REGISTERING TEXT PROCESSING PIPELINES:")
     for field_name, pipeline in pipelines.items():
+        log_once(
+            logger, f"  Field: '{field_name}' -> Pipeline: {type(pipeline).__name__}"
+        )
         train_bsm_dataset.add_pipeline(field_name, pipeline)
         val_bsm_dataset.add_pipeline(field_name, pipeline)
         test_bsm_dataset.add_pipeline(field_name, pipeline)
+    log_once(logger, f"✅ Registered {len(pipelines)} text processing pipelines")
+    log_once(logger, "=" * 70)
 
     # === Build preprocessing pipelines (numerical imputation + risk tables) ===
     preprocessing_pipelines, imputation_dict, risk_tables = (
@@ -848,10 +879,17 @@ def load_and_preprocess_data(
     )
 
     # Add preprocessing pipelines to all datasets
+    log_once(logger, "=" * 70)
+    log_once(logger, "REGISTERING NUMERICAL/CATEGORICAL PREPROCESSING PIPELINES:")
     for field, processor in preprocessing_pipelines.items():
+        log_once(logger, f"  Field: '{field}' -> Processor: {type(processor).__name__}")
         train_bsm_dataset.add_pipeline(field, processor)
         val_bsm_dataset.add_pipeline(field, processor)
         test_bsm_dataset.add_pipeline(field, processor)
+    log_once(
+        logger, f"✅ Registered {len(preprocessing_pipelines)} preprocessing pipelines"
+    )
+    log_once(logger, "=" * 70)
 
     # Store artifacts in config for saving
     config.imputation_dict = imputation_dict
@@ -886,12 +924,14 @@ def build_model_and_optimizer(
     config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
-    log_once(logger, f"Using collate batch for model: {config.model_class}")
+    logger.info(
+        f"Using collate batch for model: {config.get('model_class', 'bimodal')}"
+    )
 
-    # Use unified keys for both bimodal and trimodal (single tokenizer design)
+    # Use unified keys for all models (single tokenizer design)
     bsm_collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
+        input_ids_key=config.get("text_input_ids_key", "input_ids"),
+        attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
     )
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets

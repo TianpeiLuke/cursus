@@ -199,7 +199,9 @@ def save_dataframe_with_format(
 # ================================================================================
 class Config(BaseModel):
     id_name: str = "order_id"
-    text_name: Optional[str] = None  # Optional for trimodal (uses primary/secondary instead)
+    text_name: Optional[str] = (
+        None  # Optional for trimodal (uses primary/secondary instead)
+    )
     label_name: str = "label"
     batch_size: int = 32
     full_field_list: List[str] = Field(default_factory=list)
@@ -691,20 +693,44 @@ def build_preprocessing_pipelines(
 
     # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
     if config.cat_field_list:
+        # Filter out text fields from categorical processing to prevent overwriting tokenized text
+        text_fields = set()
+        if config.text_name:
+            text_fields.add(config.text_name)
+        if config.primary_text_name:
+            text_fields.add(config.primary_text_name)
+        if config.secondary_text_name:
+            text_fields.add(config.secondary_text_name)
+
+        # Filter categorical fields to exclude text fields
+        actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
+
+        if text_fields:
+            log_once(
+                logger,
+                f"ℹ️  Excluding text fields from risk table mapping: {text_fields}",
+            )
+        log_once(
+            logger, f"ℹ️  Actual categorical fields for risk table: {actual_cat_fields}"
+        )
+
         if use_precomputed_risk_tables and model_artifacts_dir:
             # Load pre-computed risk tables
             log_once(logger, "Loading pre-computed risk table artifacts...")
             risk_tables = load_risk_table_artifacts(model_artifacts_dir)
             for field, tables in risk_tables.items():
-                proc = RiskTableMappingProcessor(
-                    column_name=field, label_name=config.label_name, risk_tables=tables
-                )
-                pipelines[field] = proc
-            log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+                if field in actual_cat_fields:  # Only process filtered fields
+                    proc = RiskTableMappingProcessor(
+                        column_name=field,
+                        label_name=config.label_name,
+                        risk_tables=tables,
+                    )
+                    pipelines[field] = proc
+            log_once(logger, f"✓ Loaded risk tables for {len(pipelines)} fields")
         else:
             # Fit inline
             log_once(logger, "Fitting risk tables inline...")
-            for field in config.cat_field_list:
+            for field in actual_cat_fields:  # Use filtered list
                 proc = RiskTableMappingProcessor(
                     column_name=field,
                     label_name=config.label_name,
@@ -715,7 +741,7 @@ def build_preprocessing_pipelines(
                 pipelines[field] = proc
                 risk_tables[field] = proc.get_risk_tables()
             log_once(
-                logger, f"✓ Fitted risk tables for {len(config.cat_field_list)} fields"
+                logger, f"✓ Fitted risk tables for {len(actual_cat_fields)} fields"
             )
 
     log_once(logger, "=" * 70)
@@ -832,7 +858,7 @@ def load_and_preprocess_data(
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(config)
-    
+
     # Add pipelines for each text field
     for field_name, pipeline in pipelines.items():
         train_bsm_dataset.add_pipeline(field_name, pipeline)

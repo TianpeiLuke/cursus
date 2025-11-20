@@ -407,14 +407,16 @@ def build_text_pipeline(config: Dict[str, Any], tokenizer: AutoTokenizer):
 
 
 def apply_preprocessing_artifacts(
-    bsm_dataset: BSMDataset, processors: Dict[str, Any]
+    bsm_dataset: BSMDataset, processors: Dict[str, Any], config: Dict[str, Any]
 ) -> None:
     """
     Apply numerical imputation and risk table mapping to dataset.
+    Excludes text fields from risk table mapping to prevent overwriting tokenized text.
 
     Args:
         bsm_dataset: Dataset to apply preprocessing to
         processors: Dictionary containing preprocessing processors
+        config: Model configuration to identify text fields
     """
     logger.info("Applying preprocessing artifacts...")
 
@@ -425,15 +427,37 @@ def apply_preprocessing_artifacts(
             logger.debug(f"Applying numerical imputation for feature: {feature}")
             bsm_dataset.add_pipeline(feature, processor)
 
-    # Apply risk table mapping processors
+    # Filter out text fields from risk table mapping
+    text_fields = set()
+    if config.get("text_name"):
+        text_fields.add(config["text_name"])
+    if config.get("primary_text_name"):
+        text_fields.add(config["primary_text_name"])
+    if config.get("secondary_text_name"):
+        text_fields.add(config["secondary_text_name"])
+
+    # Apply risk table mapping processors (excluding text fields)
     risk_processors = processors.get("risk_processors", {})
+    excluded_count = 0
+    applied_count = 0
+
     for feature, processor in risk_processors.items():
+        if feature in text_fields:
+            logger.debug(f"Skipping risk table for text field: {feature}")
+            excluded_count += 1
+            continue
         if feature in bsm_dataset.DataReader.columns:
             logger.debug(f"Applying risk table mapping for feature: {feature}")
             bsm_dataset.add_pipeline(feature, processor)
+            applied_count += 1
+
+    if excluded_count > 0:
+        logger.info(
+            f"ℹ️  Excluded {excluded_count} text fields from risk table mapping: {text_fields}"
+        )
 
     logger.info(
-        f"Applied {len(numerical_processors)} numerical processors and {len(risk_processors)} risk processors"
+        f"Applied {len(numerical_processors)} numerical processors and {applied_count} risk processors"
     )
 
 
@@ -528,7 +552,7 @@ def preprocess_eval_data(
     bsm_dataset.add_pipeline(config["text_name"], text_pipeline)
 
     # Step 3: Apply preprocessing artifacts (numerical + categorical)
-    apply_preprocessing_artifacts(bsm_dataset, processors)
+    apply_preprocessing_artifacts(bsm_dataset, processors, config)
 
     # Step 4: Add label processor for multiclass if needed
     add_label_processor(bsm_dataset, config, processors)

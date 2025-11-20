@@ -192,18 +192,37 @@ def load_risk_tables(model_dir: str) -> Dict[str, Any]:
 
 
 def create_risk_processors(
-    risk_tables: Dict[str, Any],
+    risk_tables: Dict[str, Any], config: Dict[str, Any]
 ) -> Dict[str, RiskTableMappingProcessor]:
-    """Create risk table processors for each categorical feature."""
+    """Create risk table processors for each categorical feature, excluding text fields."""
+    # Identify text fields to exclude
+    text_fields = set()
+    if config.get("text_name"):
+        text_fields.add(config["text_name"])
+    if config.get("primary_text_name"):
+        text_fields.add(config["primary_text_name"])
+    if config.get("secondary_text_name"):
+        text_fields.add(config["secondary_text_name"])
+
+    if text_fields:
+        logger.info(f"Excluding text fields from risk table processing: {text_fields}")
+
     risk_processors = {}
     for feature, risk_table in risk_tables.items():
+        # Skip text fields
+        if feature in text_fields:
+            logger.debug(f"Skipping risk table processor for text field: {feature}")
+            continue
+
         processor = RiskTableMappingProcessor(
             column_name=feature,
             label_name="label",  # Not used during inference
             risk_tables=risk_table,
         )
         risk_processors[feature] = processor
-    logger.info(f"Created {len(risk_processors)} risk table processors")
+    logger.info(
+        f"Created {len(risk_processors)} risk table processors (excluded {len(text_fields)} text fields)"
+    )
     return risk_processors
 
 
@@ -312,7 +331,7 @@ def load_model_artifacts(
     # Load preprocessing artifacts (numerical imputation + risk tables)
     logger.info("Loading preprocessing artifacts...")
     risk_tables = load_risk_tables(model_dir)
-    risk_processors = create_risk_processors(risk_tables)
+    risk_processors = create_risk_processors(risk_tables, config)
 
     impute_dict = load_imputation_dict(model_dir)
     numerical_processors = create_numerical_processors(impute_dict)
