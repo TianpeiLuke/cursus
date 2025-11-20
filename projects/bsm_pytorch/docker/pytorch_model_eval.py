@@ -463,8 +463,7 @@ def create_dataloader(bsm_dataset: BSMDataset, config: Dict[str, Any]) -> DataLo
     """
     Create DataLoader with appropriate collate function.
 
-    Determines whether to use trimodal or bimodal collate function
-    based on model configuration.
+    Uses unified collate function for all model types.
 
     Args:
         bsm_dataset: Dataset to create DataLoader for
@@ -473,42 +472,16 @@ def create_dataloader(bsm_dataset: BSMDataset, config: Dict[str, Any]) -> DataLo
     Returns:
         Configured DataLoader
     """
-    # Determine if this is a trimodal model
-    is_trimodal_model = config.get("model_class", "") in [
-        "trimodal_bert",
-        "trimodal_cross_attn_bert",
-        "trimodal_gate_fusion_bert",
-    ]
-    has_dual_text_config = config.get("primary_text_name") and config.get(
-        "secondary_text_name"
+    # Use unified collate function for all model types
+    logger.info(
+        f"Using collate batch for model: {config.get('model_class', 'bimodal')}"
     )
 
-    if is_trimodal_model and has_dual_text_config:
-        # Use trimodal collate function for models with dual text modalities
-        logger.info(
-            f"Using trimodal collate function for {config.get('model_class')} model"
-        )
-        bsm_collate_batch = build_trimodal_collate_batch(
-            primary_input_ids_key=config.get("primary_text_input_ids_key", "input_ids"),
-            primary_attention_mask_key=config.get(
-                "primary_text_attention_mask_key", "attention_mask"
-            ),
-            secondary_input_ids_key=config.get(
-                "secondary_text_input_ids_key", "input_ids"
-            ),
-            secondary_attention_mask_key=config.get(
-                "secondary_text_attention_mask_key", "attention_mask"
-            ),
-        )
-    else:
-        # Use standard bimodal collate function
-        logger.info(
-            f"Using bimodal collate function for {config.get('model_class', 'bimodal')} model"
-        )
-        bsm_collate_batch = build_collate_batch(
-            input_ids_key=config.get("text_input_ids_key", "input_ids"),
-            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
-        )
+    # Use unified keys for all models (single tokenizer design)
+    bsm_collate_batch = build_collate_batch(
+        input_ids_key=config.get("text_input_ids_key", "input_ids"),
+        attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+    )
 
     batch_size = config.get("batch_size", 32)
     dataloader = DataLoader(

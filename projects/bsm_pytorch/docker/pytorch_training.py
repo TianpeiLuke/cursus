@@ -241,16 +241,6 @@ class Config(BaseModel):
     secondary_text_name: Optional[str] = (
         None  # Secondary text field for trimodal (e.g., "shiptrack")
     )
-    primary_input_ids_key: str = "input_ids"  # Primary text input_ids key for trimodal
-    primary_attention_mask_key: str = (
-        "attention_mask"  # Primary text attention_mask key for trimodal
-    )
-    secondary_input_ids_key: str = (
-        "input_ids"  # Secondary text input_ids key for trimodal
-    )
-    secondary_attention_mask_key: str = (
-        "attention_mask"  # Secondary text attention_mask key for trimodal
-    )
     embed_size: Optional[int] = None  # Added for type consistency
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
@@ -577,8 +567,8 @@ def data_preprocess_pipeline(
             max_sen_len=config.max_sen_len,
             chunk_trancate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.primary_input_ids_key,
-            attention_mask_key=config.primary_attention_mask_key,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
         )
         log_once(
             logger,
@@ -603,8 +593,8 @@ def data_preprocess_pipeline(
             max_sen_len=config.max_sen_len,
             chunk_trancate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.secondary_input_ids_key,
-            attention_mask_key=config.secondary_attention_mask_key,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
         )
         log_once(
             logger,
@@ -888,23 +878,14 @@ def load_and_preprocess_data(
 def build_model_and_optimizer(
     config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    # Select appropriate collate function based on model type
-    if config.model_class.startswith("trimodal"):
-        log_once(
-            logger, f"Using trimodal collate batch for model: {config.model_class}"
-        )
-        bsm_collate_batch = build_trimodal_collate_batch(
-            primary_input_ids_key=config.primary_input_ids_key,
-            primary_attention_mask_key=config.primary_attention_mask_key,
-            secondary_input_ids_key=config.secondary_input_ids_key,
-            secondary_attention_mask_key=config.secondary_attention_mask_key,
-        )
-    else:
-        log_once(logger, f"Using bimodal collate batch for model: {config.model_class}")
-        bsm_collate_batch = build_collate_batch(
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
+    # Use unified collate function for all model types
+    log_once(logger, f"Using collate batch for model: {config.model_class}")
+
+    # Use unified keys for both bimodal and trimodal (single tokenizer design)
+    bsm_collate_batch = build_collate_batch(
+        input_ids_key=config.text_input_ids_key,
+        attention_mask_key=config.text_attention_mask_key,
+    )
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
 

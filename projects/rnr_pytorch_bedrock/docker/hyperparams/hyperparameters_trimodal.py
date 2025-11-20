@@ -134,6 +134,16 @@ class TriModalHyperparameters(ModelHyperparameters):
         default=3, description="Maximum total chunks for processing long texts"
     )
 
+    # Tokenizer output keys (unified for both text modalities with single tokenizer)
+    text_input_ids_key: str = Field(
+        default="input_ids", description="Key name for input_ids from tokenizer output"
+    )
+
+    text_attention_mask_key: str = Field(
+        default="attention_mask",
+        description="Key name for attention_mask from tokenizer output",
+    )
+
     # Processing pipeline configuration
     primary_text_processing_steps: List[str] = Field(
         default=[
@@ -157,17 +167,6 @@ class TriModalHyperparameters(ModelHyperparameters):
         description="Processing steps for secondary text (e.g., structured shiptrack events)",
     )
 
-    # Optional separate tokenizers (fallback to main tokenizer)
-    primary_tokenizer: Optional[str] = Field(
-        default=None,
-        description="Tokenizer for primary text (falls back to main tokenizer if None)",
-    )
-
-    secondary_tokenizer: Optional[str] = Field(
-        default=None,
-        description="Tokenizer for secondary text (falls back to main tokenizer if None)",
-    )
-
     # Optional separate hidden dimensions (fallback to main hidden_common_dim)
     primary_hidden_common_dim: Optional[int] = Field(
         default=None,
@@ -177,24 +176,6 @@ class TriModalHyperparameters(ModelHyperparameters):
     secondary_hidden_common_dim: Optional[int] = Field(
         default=None,
         description="Hidden dimension for secondary text encoder (falls back to hidden_common_dim if None)",
-    )
-
-    # Separate input keys for each text modality
-    primary_text_input_ids_key: str = Field(
-        default="input_ids", description="Key name for primary text input_ids"
-    )
-
-    primary_text_attention_mask_key: str = Field(
-        default="attention_mask", description="Key name for primary text attention_mask"
-    )
-
-    secondary_text_input_ids_key: str = Field(
-        default="input_ids", description="Key name for secondary text input_ids"
-    )
-
-    secondary_text_attention_mask_key: str = Field(
-        default="attention_mask",
-        description="Key name for secondary text attention_mask",
     )
 
     # Fusion network configuration
@@ -231,8 +212,6 @@ class TriModalHyperparameters(ModelHyperparameters):
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
 
-    _primary_tokenizer_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _secondary_tokenizer_config: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     _trimodal_model_config_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
 
     # Explicitly define the model_config
@@ -242,34 +221,6 @@ class TriModalHyperparameters(ModelHyperparameters):
         extra="forbid",
         protected_namespaces=(),
     )
-
-    @property
-    def primary_tokenizer_config(self) -> Dict[str, Any]:
-        """Get primary text tokenizer configuration dictionary."""
-        if self._primary_tokenizer_config is None:
-            self._primary_tokenizer_config = {
-                "name": self.primary_tokenizer or self.tokenizer,
-                "max_length": self.max_sen_len,
-                "fixed_length": self.fixed_tokenizer_length,
-                "text_field": self.primary_text_name,
-                "input_ids_key": self.primary_text_input_ids_key,
-                "attention_mask_key": self.primary_text_attention_mask_key,
-            }
-        return self._primary_tokenizer_config
-
-    @property
-    def secondary_tokenizer_config(self) -> Dict[str, Any]:
-        """Get secondary text tokenizer configuration dictionary."""
-        if self._secondary_tokenizer_config is None:
-            self._secondary_tokenizer_config = {
-                "name": self.secondary_tokenizer or self.tokenizer,
-                "max_length": self.max_sen_len,
-                "fixed_length": self.fixed_tokenizer_length,
-                "text_field": self.secondary_text_name,
-                "input_ids_key": self.secondary_text_input_ids_key,
-                "attention_mask_key": self.secondary_text_attention_mask_key,
-            }
-        return self._secondary_tokenizer_config
 
     @property
     def trimodal_model_config_dict(self) -> Dict[str, Any]:
@@ -282,16 +233,17 @@ class TriModalHyperparameters(ModelHyperparameters):
                 # Tri-modal specific configuration
                 "chat_text_name": self.primary_text_name,
                 "shiptrack_text_name": self.secondary_text_name,
-                "chat_tokenizer": self.primary_tokenizer or self.tokenizer,
-                "shiptrack_tokenizer": self.secondary_tokenizer or self.tokenizer,
+                "chat_tokenizer": self.tokenizer,
+                "shiptrack_tokenizer": self.tokenizer,
                 "chat_hidden_common_dim": self.primary_hidden_common_dim
                 or self.hidden_common_dim,
                 "shiptrack_hidden_common_dim": self.secondary_hidden_common_dim
                 or self.hidden_common_dim,
-                "chat_text_input_ids_key": self.primary_text_input_ids_key,
-                "chat_text_attention_mask_key": self.primary_text_attention_mask_key,
-                "shiptrack_text_input_ids_key": self.secondary_text_input_ids_key,
-                "shiptrack_text_attention_mask_key": self.secondary_text_attention_mask_key,
+                # Single tokenizer means unified output keys for both text modalities (inherited from BSMModelHyperparameters)
+                "chat_text_input_ids_key": self.text_input_ids_key,
+                "chat_text_attention_mask_key": self.text_attention_mask_key,
+                "shiptrack_text_input_ids_key": self.text_input_ids_key,
+                "shiptrack_text_attention_mask_key": self.text_attention_mask_key,
                 "fusion_hidden_dim": self.fusion_hidden_dim,
                 "fusion_dropout": self.fusion_dropout,
                 "chat_reinit_pooler": self.primary_reinit_pooler
@@ -326,8 +278,6 @@ class TriModalHyperparameters(ModelHyperparameters):
             )
 
         # Initialize derived fields
-        self._primary_tokenizer_config = None
-        self._secondary_tokenizer_config = None
         self._trimodal_model_config_dict = None
 
         return self
@@ -342,8 +292,6 @@ class TriModalHyperparameters(ModelHyperparameters):
 
         # Add tri-modal derived fields that should be exposed
         derived_fields = {
-            "primary_tokenizer_config": self.primary_tokenizer_config,
-            "secondary_tokenizer_config": self.secondary_tokenizer_config,
             "trimodal_model_config_dict": self.trimodal_model_config_dict,
         }
 
