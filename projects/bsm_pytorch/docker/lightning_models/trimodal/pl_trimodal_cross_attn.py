@@ -167,38 +167,40 @@ class TrimodalCrossAttentionBert(pl.LightningModule):
         self.label_name = config["label_name"]
 
         # Primary text configuration (e.g., chat/dialogue)
+        # Use unified naming: field_name + "_" + key (no "_processed_" suffix)
         self.primary_text_input_ids_key = config.get(
-            "primary_text_input_ids_key", "input_ids"
+            "text_input_ids_key", "input_ids"
         )
         self.primary_text_attention_mask_key = config.get(
-            "primary_text_attention_mask_key", "attention_mask"
+            "text_attention_mask_key", "attention_mask"
         )
         self.primary_text_name = (
             config["primary_text_name"]
-            + "_processed_"
+            + "_"
             + self.primary_text_input_ids_key
         )
         self.primary_text_attention_mask = (
             config["primary_text_name"]
-            + "_processed_"
+            + "_"
             + self.primary_text_attention_mask_key
         )
 
         # Secondary text configuration (e.g., shiptrack)
+        # Use unified naming: field_name + "_" + key (no "_processed_" suffix)
         self.secondary_text_input_ids_key = config.get(
-            "secondary_text_input_ids_key", "input_ids"
+            "text_input_ids_key", "input_ids"
         )
         self.secondary_text_attention_mask_key = config.get(
-            "secondary_text_attention_mask_key", "attention_mask"
+            "text_attention_mask_key", "attention_mask"
         )
         self.secondary_text_name = (
             config["secondary_text_name"]
-            + "_processed_"
+            + "_"
             + self.secondary_text_input_ids_key
         )
         self.secondary_text_attention_mask = (
             config["secondary_text_name"]
-            + "_processed_"
+            + "_"
             + self.secondary_text_attention_mask_key
         )
 

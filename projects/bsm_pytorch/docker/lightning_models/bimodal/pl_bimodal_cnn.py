@@ -31,8 +31,9 @@ class BimodalCNN(pl.LightningModule):
         # === Core configuration ===
         self.id_name = config.get("id_name", None)
         self.label_name = config["label_name"]
+        # Use unified naming: field_name + "_" + key (no "_processed_" suffix)
         self.text_input_ids_key = config.get("text_input_ids_key", "input_ids")
-        self.text_name = config["text_name"] + "_processed_" + self.text_input_ids_key
+        self.text_name = config["text_name"] + "_" + self.text_input_ids_key
         self.tab_field_list = config.get("tab_field_list", None)
 
         self.is_binary = config.get("is_binary", True)
