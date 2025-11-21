@@ -72,8 +72,9 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
         DependencySpec(
             logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=False,  # Optional - used for pre-computed preprocessing artifacts
+            required=False,  # Optional - used for pre-computed preprocessing artifacts or pretrained models
             compatible_sources=[
+                "XGBoostTraining",
                 "MissingValueImputation",
                 "RiskTableMapping",
                 "FeatureSelection",
@@ -87,6 +88,8 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
                 "features",
                 "parameters",
                 "model_artifacts_output",
+                "pretrain",
+                "pretrained",
             ],
             data_type="S3Uri",
             description="Optional pre-computed preprocessing artifacts (impute_dict.pkl, risk_table_map.pkl, selected_features.json). When provided with USE_PRECOMPUTED_* environment variables, skips inline computation and uses pre-computed artifacts.",
@@ -105,6 +108,7 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
                 "model_data",
                 "output_path",
                 "model_input",
+                "model_artifacts_input",
             ],
         ),
         OutputSpec(

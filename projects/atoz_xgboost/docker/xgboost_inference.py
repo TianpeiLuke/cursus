@@ -1341,7 +1341,5 @@ def output_fn(
 
     except Exception as e:
         logger.error(f"Error during output formatting: {e}", exc_info=True)
-        error_response = json.dumps(
-            {"error": f"Failed to format output: {e}"}
-        )
+        error_response = json.dumps({"error": f"Failed to format output: {e}"})
         return error_response, CONTENT_TYPE_JSON

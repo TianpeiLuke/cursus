@@ -924,9 +924,7 @@ def build_model_and_optimizer(
     config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
-    logger.info(
-        f"Using collate batch for model: {config.model_class}"
-    )
+    logger.info(f"Using collate batch for model: {config.model_class}")
 
     # Use unified keys for all models (single tokenizer design)
     bsm_collate_batch = build_collate_batch(

@@ -68,6 +68,31 @@ LIGHTGBMMT_TRAINING_SPEC = StepSpecification(
             data_type="S3Uri",
             description="S3 URI containing hyperparameters configuration file (optional - falls back to source directory)",
         ),
+        DependencySpec(
+            logical_name="model_artifacts_input",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,  # Optional - used for pre-computed preprocessing artifacts or pretrained models
+            compatible_sources=[
+                "LightGBMMTTraining",
+                "MissingValueImputation",
+                "RiskTableMapping",
+                "FeatureSelection",
+            ],
+            semantic_keywords=[
+                "artifacts",
+                "model_artifacts",
+                "preprocessing",
+                "imputation",
+                "risk_tables",
+                "features",
+                "parameters",
+                "model_artifacts_output",
+                "pretrain",
+                "pretrained",
+            ],
+            data_type="S3Uri",
+            description="Optional pre-computed preprocessing artifacts (impute_dict.pkl, risk_table_map.pkl, selected_features.json). When provided with USE_PRECOMPUTED_* environment variables, skips inline computation and uses pre-computed artifacts.",
+        ),
     ],
     outputs=[
         OutputSpec(
@@ -82,6 +107,7 @@ LIGHTGBMMT_TRAINING_SPEC = StepSpecification(
                 "model_data",
                 "output_path",
                 "model_input",
+                "model_artifacts_input",
                 "lightgbmmt_model",
                 "multi_task_model",
                 "mtgbm_model",

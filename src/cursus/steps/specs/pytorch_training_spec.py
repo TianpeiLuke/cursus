@@ -72,8 +72,9 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
         DependencySpec(
             logical_name="model_artifacts_input",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=False,  # Optional - used for pre-computed preprocessing artifacts
+            required=False,  # Optional - used for pre-computed preprocessing artifacts or pretrained models
             compatible_sources=[
+                "PyTorchTraining",
                 "MissingValueImputation",
                 "RiskTableMapping",
                 "FeatureSelection",
@@ -87,6 +88,8 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
                 "features",
                 "parameters",
                 "model_artifacts_output",
+                "pretrain",
+                "pretrained",
             ],
             data_type="S3Uri",
             description="Optional pre-computed preprocessing artifacts (impute_dict.pkl, risk_table_map.pkl, selected_features.json). When provided with USE_PRECOMPUTED_* environment variables, skips inline computation and uses pre-computed artifacts.",
@@ -99,7 +102,13 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
             property_path="properties.ModelArtifacts.S3ModelArtifacts",
             data_type="S3Uri",
             description="Trained PyTorch model artifacts",
-            aliases=["ModelArtifacts", "model_data", "output_path", "model_input"],
+            aliases=[
+                "ModelArtifacts",
+                "model_data",
+                "output_path",
+                "model_input",
+                "model_artifacts_input",
+            ],
         ),
         OutputSpec(
             logical_name="evaluation_output",
