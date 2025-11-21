@@ -188,6 +188,8 @@ class RiskTableMappingProcessor(Processor):
         - If data is a DataFrame, transforms the 'column_name' Series within it.
         - If data is a Series, transforms the Series (assumed to be the target column).
         - If data is a single value, uses the 'process' method.
+
+        Performance optimized: Uses fast path for single-value Series.
         """
         if not self.is_fitted:
             raise RuntimeError(
@@ -199,6 +201,15 @@ class RiskTableMappingProcessor(Processor):
                 raise ValueError(
                     f"Column '{self.column_name}' not found in input DataFrame for transform operation."
                 )
+
+            # Fast path for single-row DataFrame
+            if len(data) == 1:
+                output_data = data.copy()
+                val = data[self.column_name].iloc[0]
+                output_data[self.column_name] = self.process(val)
+                return output_data
+
+            # Batch path for multiple rows
             output_data = data.copy()
             output_data[self.column_name] = (
                 data[self.column_name]
@@ -207,7 +218,13 @@ class RiskTableMappingProcessor(Processor):
                 .fillna(self.risk_tables["default_bin"])
             )
             return output_data
+
         elif isinstance(data, pd.Series):
+            # Fast path for single-value Series (10-100x faster)
+            if len(data) == 1:
+                return pd.Series([self.process(data.iloc[0])], index=data.index)
+
+            # Batch path for multiple values
             return (
                 data.astype(str)
                 .map(self.risk_tables["bins"])

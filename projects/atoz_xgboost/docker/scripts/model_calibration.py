@@ -483,6 +483,59 @@ def log_section(title: str) -> None:
     logger.info(delimiter)
 
 
+def _model_to_lookup_table(
+    model, method: str, config: Optional["CalibrationConfig"] = None
+) -> List[Tuple[float, float]]:
+    """Convert trained calibration model to lookup table format.
+
+    This function samples the trained model at discrete points and creates
+    a lookup table in the same format as percentile calibration, enabling
+    unified inference code without model object dependencies.
+
+    Args:
+        model: Trained calibration model (GAM, IsotonicRegression, or LogisticRegression)
+        method: Calibration method name ("gam", "isotonic", or "platt")
+        config: Configuration object (optional, created from environment if not provided)
+
+    Returns:
+        List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
+            Same format as percentile calibration for unified inference.
+    """
+    config = config or CalibrationConfig.from_env()
+
+    # Get number of sample points from environment or use default
+    sample_points = int(os.environ.get("CALIBRATION_SAMPLE_POINTS", "1000"))
+
+    # Generate sample points uniformly distributed from 0 to 1
+    score_range = np.linspace(0, 1, sample_points)
+
+    # Sample calibrated values from model
+    if method == "gam":
+        # GAM requires 2D input
+        calibrated_values = model.predict_proba(score_range.reshape(-1, 1))
+    elif method == "isotonic":
+        # Isotonic regression can handle 1D input
+        calibrated_values = model.transform(score_range)
+    elif method == "platt":
+        # Logistic regression requires 2D input, returns probabilities for class 1
+        calibrated_values = model.predict_proba(score_range.reshape(-1, 1))[:, 1]
+    else:
+        raise ValueError(f"Unknown calibration method: {method}")
+
+    # Create lookup table in percentile calibration format
+    lookup_table = list(zip(score_range, calibrated_values))
+
+    logger.info(
+        f"Generated lookup table with {len(lookup_table)} points from {method} model"
+    )
+    logger.info(f"Score range: [{score_range[0]:.6f}, {score_range[-1]:.6f}]")
+    logger.info(
+        f"Calibrated range: [{calibrated_values[0]:.6f}, {calibrated_values[-1]:.6f}]"
+    )
+
+    return lookup_table
+
+
 def extract_and_load_nested_tarball_data(
     config: Optional["CalibrationConfig"] = None,
 ) -> pd.DataFrame:
@@ -782,7 +835,7 @@ def load_and_prepare_data(
 def train_gam_calibration(
     scores: np.ndarray, labels: np.ndarray, config: Optional["CalibrationConfig"] = None
 ):
-    """Train a GAM calibration model with optional monotonicity constraints.
+    """Train a GAM calibration model and convert to lookup table.
 
     Args:
         scores: Raw prediction scores to calibrate
@@ -790,7 +843,8 @@ def train_gam_calibration(
         config: Configuration object (optional, created from environment if not provided)
 
     Returns:
-        LogisticGAM: Trained GAM calibration model
+        List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
+            Same format as percentile calibration for unified inference code.
 
     Raises:
         ImportError: If pygam is not installed
@@ -820,13 +874,18 @@ def train_gam_calibration(
 
     gam.fit(scores, labels)
     logger.info(f"GAM training complete, deviance: {gam.statistics_['deviance']}")
-    return gam
+
+    # Convert GAM model to lookup table
+    lookup_table = _model_to_lookup_table(gam, method="gam", config=config)
+    logger.info(f"Converted GAM to lookup table with {len(lookup_table)} points")
+
+    return lookup_table
 
 
 def train_isotonic_calibration(
     scores: np.ndarray, labels: np.ndarray, config: Optional["CalibrationConfig"] = None
-) -> IsotonicRegression:
-    """Train an isotonic regression calibration model.
+):
+    """Train an isotonic regression calibration model and convert to lookup table.
 
     Args:
         scores: Raw prediction scores to calibrate
@@ -834,19 +893,29 @@ def train_isotonic_calibration(
         config: Configuration object (optional)
 
     Returns:
-        IsotonicRegression: Trained isotonic regression model
+        List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
+            Same format as percentile calibration for unified inference code.
     """
+    config = config or CalibrationConfig.from_env()
+
     logger.info("Training isotonic regression calibration model")
     ir = IsotonicRegression(out_of_bounds="clip")
     ir.fit(scores, labels)
     logger.info("Isotonic regression training complete")
-    return ir
+
+    # Convert isotonic model to lookup table
+    lookup_table = _model_to_lookup_table(ir, method="isotonic", config=config)
+    logger.info(
+        f"Converted isotonic regression to lookup table with {len(lookup_table)} points"
+    )
+
+    return lookup_table
 
 
 def train_platt_scaling(
     scores: np.ndarray, labels: np.ndarray, config: Optional["CalibrationConfig"] = None
-) -> LogisticRegression:
-    """Train a Platt scaling (logistic regression) calibration model.
+):
+    """Train a Platt scaling (logistic regression) calibration model and convert to lookup table.
 
     Args:
         scores: Raw prediction scores to calibrate
@@ -854,14 +923,24 @@ def train_platt_scaling(
         config: Configuration object (optional)
 
     Returns:
-        LogisticRegression: Trained logistic regression model
+        List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
+            Same format as percentile calibration for unified inference code.
     """
+    config = config or CalibrationConfig.from_env()
+
     logger.info("Training Platt scaling (logistic regression) calibration model")
     scores = scores.reshape(-1, 1)  # Reshape for LogisticRegression
     lr = LogisticRegression(C=1e5)  # High C for minimal regularization
     lr.fit(scores, labels)
     logger.info("Platt scaling training complete")
-    return lr
+
+    # Convert Platt scaling model to lookup table
+    lookup_table = _model_to_lookup_table(lr, method="platt", config=config)
+    logger.info(
+        f"Converted Platt scaling to lookup table with {len(lookup_table)} points"
+    )
+
+    return lookup_table
 
 
 def train_multiclass_calibration(
@@ -932,7 +1011,7 @@ def apply_multiclass_calibration(
 
     Args:
         y_prob_matrix: Matrix of uncalibrated probabilities (samples × classes)
-        calibrators: List of calibration models, one for each class
+        calibrators: List of calibration models or lookup tables, one for each class
         config: Configuration object (optional, created from environment if not provided)
 
     Returns:
@@ -948,13 +1027,21 @@ def apply_multiclass_calibration(
         class_name = config.multiclass_categories[i]
         logger.info(f"Applying calibration for class {class_name}")
 
-        if isinstance(calibrators[i], IsotonicRegression):
+        # Check if calibrator is lookup table (list of tuples) or model object
+        if isinstance(calibrators[i], list):
+            # Lookup table format: List[Tuple[float, float]]
+            # Use linear interpolation for each sample
+            for j in range(n_samples):
+                calibrated_probs[j, i] = _interpolate_score(
+                    y_prob_matrix[j, i], calibrators[i]
+                )
+        elif isinstance(calibrators[i], IsotonicRegression):
             calibrated_probs[:, i] = calibrators[i].transform(y_prob_matrix[:, i])
         elif isinstance(calibrators[i], LogisticRegression):
             calibrated_probs[:, i] = calibrators[i].predict_proba(
                 y_prob_matrix[:, i].reshape(-1, 1)
             )[:, 1]
-        else:  # GAM
+        else:  # GAM (backward compatibility)
             calibrated_probs[:, i] = calibrators[i].predict_proba(
                 y_prob_matrix[:, i].reshape(-1, 1)
             )
@@ -964,6 +1051,40 @@ def apply_multiclass_calibration(
     calibrated_probs = calibrated_probs / row_sums[:, np.newaxis]
 
     return calibrated_probs
+
+
+def _interpolate_score(
+    raw_score: float, lookup_table: List[Tuple[float, float]]
+) -> float:
+    """Interpolate calibrated score from lookup table.
+
+    This is the same interpolation logic used in percentile calibration
+    in the inference handler (xgboost_inference.py lines 313-324).
+
+    Args:
+        raw_score: Raw model score (0-1)
+        lookup_table: List of (raw_score, calibrated_score) tuples
+
+    Returns:
+        Interpolated calibrated score
+    """
+    # Boundary cases
+    if raw_score <= lookup_table[0][0]:
+        return lookup_table[0][1]
+    if raw_score >= lookup_table[-1][0]:
+        return lookup_table[-1][1]
+
+    # Find bracketing points and perform linear interpolation
+    for i in range(len(lookup_table) - 1):
+        if lookup_table[i][0] <= raw_score <= lookup_table[i + 1][0]:
+            x1, y1 = lookup_table[i]
+            x2, y2 = lookup_table[i + 1]
+            if x2 == x1:
+                return y1
+            # Linear interpolation formula
+            return y1 + (y2 - y1) * (raw_score - x1) / (x2 - x1)
+
+    return lookup_table[-1][1]
 
 
 def compute_calibration_metrics(
@@ -1392,13 +1513,25 @@ def main(
                 )
 
             # Apply calibration to get calibrated probabilities
-            if isinstance(calibrator, IsotonicRegression):
+            if isinstance(calibrator, list):
+                # Lookup table format: List[Tuple[float, float]]
+                # Use linear interpolation for each sample
+                y_prob_calibrated = np.array(
+                    [
+                        _interpolate_score(score, calibrator)
+                        for score in y_prob_uncalibrated
+                    ]
+                )
+            elif isinstance(calibrator, IsotonicRegression):
+                # Backward compatibility with old isotonic models
                 y_prob_calibrated = calibrator.transform(y_prob_uncalibrated)
             elif isinstance(calibrator, LogisticRegression):
+                # Backward compatibility with old Platt scaling models
                 y_prob_calibrated = calibrator.predict_proba(
                     y_prob_uncalibrated.reshape(-1, 1)
                 )[:, 1]
-            else:  # GAM
+            else:
+                # Backward compatibility with old GAM models
                 y_prob_calibrated = calibrator.predict_proba(
                     y_prob_uncalibrated.reshape(-1, 1)
                 )
