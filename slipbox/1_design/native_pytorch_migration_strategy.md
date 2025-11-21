@@ -256,25 +256,316 @@ TP splits individual layers (e.g., matrix multiplications) across GPUs. For a li
 *   Trade-off: High communication overhead (all-gather/all-reduce per layer).
 *   Best combined with other strategies (e.g., TP + FSDP).
 
-## 4. Hybrid Strategies for 2-4 GPUs
+## 4. Hybrid Parallelism: Combining Strategies
+
+### 4.1 Overview
+
+**Hybrid Parallelism** combines multiple parallelism strategies to leverage their complementary strengths. This approach is essential for scaling to very large models and GPU clusters.
+
+**Key Insight**: Different parallelism dimensions address different bottlenecks:
+- **Data Parallelism (DP/DDP)**: Scales throughput via batch distribution
+- **Model Parallelism (PP/TP/FSDP)**: Scales model capacity when memory-constrained
+- **Hybrid**: Combines both for optimal resource utilization
+
+### 4.2 Common Hybrid Patterns
+
+#### 4.2.1 Pipeline + Data Parallel (PP + DP)
+
+**Configuration**: 2D partitioning across pipeline stages and data replicas.
+
+```text
+Example: 8 GPUs with 2 pipeline stages
+┌─────────────────────┬─────────────────────┐
+│  Stage 0 Replicas   │  Stage 1 Replicas   │
+├─────────────────────┼─────────────────────┤
+│ GPU 0: Stage0 Rep0  │ GPU 4: Stage1 Rep0  │
+│ GPU 1: Stage0 Rep1  │ GPU 5: Stage1 Rep1  │
+│ GPU 2: Stage0 Rep2  │ GPU 6: Stage1 Rep2  │
+│ GPU 3: Stage0 Rep3  │ GPU 7: Stage1 Rep3  │
+└─────────────────────┴─────────────────────┘
+```
+
+**Mechanism**:
+1. Model is split into pipeline stages (e.g., 2 stages).
+2. Each stage is replicated across multiple GPUs (e.g., 4 replicas).
+3. **Within stage**: DDP synchronizes gradients across replicas.
+4. **Across stages**: Pipeline communication for activations/gradients.
+
+**Process Groups**:
+- **DP Group**: All GPUs with same pipeline stage (e.g., `[0,1,2,3]` for Stage 0).
+- **PP Group**: GPUs with same replica ID across stages (e.g., `[0,4]` for Replica 0).
+
+**Benefits**:
+- Scales throughput by N_replicas × batch_size.
+- Each pipeline stage can handle larger intermediate activations.
+- Efficient for models with modest depth but large batch requirements.
+
+**Trade-offs**:
+- Pipeline bubbles still exist (reduced by more microbatches).
+- Memory per GPU: Full stage + optimizer state.
+- Communication: All-reduce within DP group + P2P between stages.
+
+#### 4.2.2 Tensor + Data Parallel (TP + DP)
+
+**Configuration**: Layers split via TP, model replicated via DP.
+
+```text
+Example: 8 GPUs with TP=2, DP=4
+┌──────────────────────────────────────┐
+│        DP Replica 0                  │
+│  ┌──────────────┬──────────────┐     │
+│  │ GPU 0: TP 0  │ GPU 1: TP 1  │     │
+│  └──────────────┴──────────────┘     │
+├──────────────────────────────────────┤
+│        DP Replica 1                  │
+│  ┌──────────────┬──────────────┐     │
+│  │ GPU 2: TP 0  │ GPU 3: TP 1  │     │
+│  └──────────────┴──────────────┘     │
+├──────────────────────────────────────┤
+│  (Replicas 2 and 3 similarly)        │
+└──────────────────────────────────────┘
+```
+
+**Mechanism**:
+1. Large layers (e.g., attention, FFN) split column/row-wise via TP.
+2. Entire model+TP group replicated via DP.
+3. **Within TP group**: All-reduce/all-gather for tensor ops.
+4. **Across DP replicas**: All-reduce for gradient synchronization.
+
+**Benefits**:
+- Handles extremely wide layers (e.g., 8192-dim embeddings).
+- Scales throughput via DP dimension.
+- Memory per GPU: `Model_size / TP_size`.
+
+**Trade-offs**:
+- High communication within TP group (every layer).
+- Requires fast inter-GPU communication (NVLink preferred).
+- Complex to implement and debug.
+
+#### 4.2.3 FSDP + Pipeline Parallel (FSDP + PP)
+
+**Configuration**: Parameter sharding within each pipeline stage.
+
+```text
+Example: 4 GPUs with 2 pipeline stages, FSDP within each
+┌────────────────────┬────────────────────┐
+│  Stage 0 (FSDP)    │  Stage 1 (FSDP)    │
+├────────────────────┼────────────────────┤
+│ GPU 0: Shard 0/2   │ GPU 2: Shard 0/2   │
+│ GPU 1: Shard 1/2   │ GPU 3: Shard 1/2   │
+└────────────────────┴────────────────────┘
+```
+
+**Mechanism**:
+1. Model split into pipeline stages.
+2. Each stage's parameters sharded via FSDP across assigned GPUs.
+3. **Within stage**: FSDP all-gather/reduce-scatter.
+4. **Across stages**: Pipeline communication.
+
+**Benefits**:
+- Extreme memory efficiency: `Model_size / (PP_size × FSDP_size)`.
+- Can train very deep models with limited memory.
+
+**Trade-offs**:
+- Complex communication patterns.
+- Pipeline bubbles + FSDP communication overhead.
+- Requires careful tuning of both PP and FSDP configurations.
+
+#### 4.2.4 3D Parallelism (DP + TP + PP)
+
+**Configuration**: Partitioning across all three dimensions (used for 100B+ models).
+
+```text
+Example: 64 GPUs = 4 PP × 4 TP × 4 DP
+┌─────────────────────────────────────────────┐
+│ Pipeline Stage 0 (GPUs 0-15)                │
+│  ┌────────────────────────────────────────┐ │
+│  │ DP Replica 0 (GPUs 0-3):   TP 0-3     │ │
+│  │ DP Replica 1 (GPUs 4-7):   TP 0-3     │ │
+│  │ DP Replica 2 (GPUs 8-11):  TP 0-3     │ │
+│  │ DP Replica 3 (GPUs 12-15): TP 0-3     │ │
+│  └────────────────────────────────────────┘ │
+├─────────────────────────────────────────────┤
+│ (Stages 1-3 similarly structured)           │
+└─────────────────────────────────────────────┘
+```
+
+**Mechanism**:
+1. **PP**: Split model depth-wise into stages.
+2. **TP**: Split large layers within each stage.
+3. **DP**: Replicate across DP dimension for throughput.
+
+**Benefits**:
+- Maximum scalability for extremely large models (GPT-3, LLaMA-2).
+- Flexible tuning of each dimension based on bottleneck.
+
+**Trade-offs**:
+- Most complex to implement and tune.
+- Requires sophisticated communication optimization.
+- Best suited for models >10B parameters.
+
+### 4.3 Hybrid Strategy Selection
+
+#### 4.3.1 Decision Factors
+
+| Factor | Consideration |
+|--------|---------------|
+| **Model Size** | >10GB single GPU → Consider model parallelism |
+| **Layer Width** | Very wide layers (>4096) → TP helpful |
+| **Model Depth** | Very deep (>48 layers) → PP helpful |
+| **GPU Count** | 2-4 GPUs → Simple hybrid; 8+ → Complex hybrid |
+| **Memory/GPU** | Limited → FSDP or PP; Ample → DDP or TP+DP |
+| **Throughput Goal** | High → Maximize DP dimension |
+| **Network** | Fast (NVLink) → TP feasible; Slow → Prefer DP/PP |
+
+#### 4.3.2 Recommended Configurations by GPU Count
+
+**8 GPUs**:
+- **Small Models** (<500M params): `DP=8` (pure DDP)
+- **Medium Models** (500M-2B): `PP=2 × DP=4` or `TP=2 × DP=4`
+- **Large Models** (2B-10B): `FSDP=8` or `PP=2 × FSDP=4`
+
+**16 GPUs**:
+- **Medium Models**: `PP=2 × DP=8` or `TP=2 × DP=8`
+- **Large Models**: `PP=4 × DP=4` or `FSDP=16` with subgroups
+- **Very Large**: `PP=4 × TP=2 × DP=2`
+
+**32+ GPUs**:
+- **Large Models** (10B-50B): `PP=4 × TP=2 × DP=4`
+- **Extreme Models** (50B+): `PP=8 × TP=4 × DP=1-2` with FSDP
+
+### 4.4 Hybrid Strategies for Trimodal BERT
+
+#### 4.4.1 Standard Configuration (bert-base-cased, ~220M params)
+
+**2 GPUs**:
+- **Recommended**: Pure DDP
+- **Alternative**: PP=2 (only if memory-constrained)
+
+**4 GPUs**:
+- **Recommended**: Pure DDP
+- **Alternative**: PP=2 × DP=2 for 2× throughput
+
+**8 GPUs**:
+- **Recommended**: Pure DDP (8× throughput)
+- **Alternative**: PP=2 × DP=4 if testing pipeline infrastructure
+
+#### 4.4.2 Large Variant (bert-large, ~680M params)
+
+**8 GPUs**:
+- **Recommended**: `PP=2 × DP=4`
+  - Stage 0 (4 GPUs): Primary BERT-large
+  - Stage 1 (4 GPUs): Secondary BERT-large + Fusion
+  - Each stage uses DDP across 4 replicas
+  - Achieves 4× throughput with good memory efficiency
+
+**16 GPUs**:
+- **Recommended**: `PP=2 × DP=8`
+  - 8× throughput with pipeline stages
+- **Alternative**: `TP=2 × DP=8` 
+  - Split attention/FFN layers, replicate across 8 groups
+
+#### 4.4.3 Extreme Variant (roberta-large + custom layers, >1B params)
+
+**8 GPUs**:
+- **Recommended**: `PP=2 × FSDP=4`
+  - Stage 0 (4 GPUs): Primary encoder with FSDP sharding
+  - Stage 1 (4 GPUs): Secondary encoder + fusion with FSDP
+
+**16 GPUs**:
+- **Recommended**: `PP=4 × FSDP=4`
+  - 4 pipeline stages, each using FSDP across 4 GPUs
+  - Maximum memory efficiency
+
+### 4.5 Implementation Considerations
+
+#### 4.5.1 Process Group Management
+
+For hybrid parallelism, must create separate process groups:
+
+```python
+import torch.distributed as dist
+
+def setup_hybrid_groups(world_size, pp_size, tp_size):
+    """
+    Setup process groups for 3D parallelism.
+    
+    world_size = pp_size × tp_size × dp_size
+    """
+    rank = dist.get_rank()
+    
+    # Calculate position in 3D grid
+    pp_rank = rank // (world_size // pp_size)
+    tp_rank = (rank // (world_size // (pp_size * tp_size))) % tp_size
+    dp_rank = rank % (world_size // (pp_size * tp_size))
+    
+    # Create DP groups (all ranks with same pp_rank and tp_rank)
+    dp_groups = create_dp_groups(world_size, pp_size, tp_size)
+    
+    # Create TP groups (all ranks with same pp_rank and dp_rank)
+    tp_groups = create_tp_groups(world_size, pp_size, tp_size)
+    
+    # Create PP groups (all ranks with same tp_rank and dp_rank)
+    pp_groups = create_pp_groups(world_size, pp_size, tp_size)
+    
+    return dp_groups[dp_rank], tp_groups[tp_rank], pp_groups[pp_rank]
+```
+
+#### 4.5.2 Memory-Communication Trade-off
+
+| Strategy | Memory/GPU | Communication | Throughput | Complexity |
+|----------|------------|---------------|------------|------------|
+| Pure DP | Highest | Lowest | Highest | Lowest |
+| DP + PP | Medium-High | Medium | High | Medium |
+| DP + TP | Medium | High | Medium-High | High |
+| DP + FSDP | Low | Medium | Medium | Medium |
+| 3D (DP+TP+PP) | Lowest | Highest | Medium | Highest |
+
+#### 4.5.3 Debugging and Profiling
+
+Hybrid strategies require careful profiling:
+- **Pipeline bubbles**: Monitor GPU utilization across stages
+- **Communication overhead**: Profile all-reduce, all-gather times
+- **Load balancing**: Ensure stages have similar compute time
+- **Memory usage**: Track peak memory per GPU
+
+Tools:
+- `torch.profiler` with distributed support
+- NVIDIA Nsight Systems for GPU traces
+- Custom logging of communication volume per group
+
+## 5. Hybrid Strategies for 2-4 GPUs (Simplified)
 
 For the Trimodal BERT model on 2-4 GPUs, we recommend:
 
-### 4.1 Small-Medium Models (<1B params)
+### 5.1 Small-Medium Models (<1B params)
 
-*   **2 GPUs**: DDP (simple, efficient).
-*   **4 GPUs**: DDP or FSDP (if memory-constrained).
+*   **2 GPUs**: Pure DDP (simple, efficient).
+*   **4 GPUs**: Pure DDP for maximum throughput.
+*   **Alternative**: PP=2 × DP=2 for testing hybrid setup.
 
-### 4.2 Large Models (>1B params)
+### 5.2 Large Models (>1B params)
 
 *   **2 GPUs**: FSDP with aggressive sharding.
-*   **4 GPUs**: FSDP + Gradient Checkpointing.
+*   **4 GPUs**: PP=2 × DP=2 (balanced hybrid) or FSDP + Gradient Checkpointing.
 
-### 4.3 Experimental (Deep Pipelines)
+### 5.3 Experimental (Deep Pipelines)
 
 *   **2-4 GPUs**: Pipeline Parallelism with 1F1B schedule.
 *   Suitable for models with sequential depth (e.g., 48-layer transformers).
 
-## 5. Implementation Reference
+### 5.4 Recommendation Matrix
 
-For detailed code examples and step-by-step implementation, see [Native PyTorch Implementation Plan](./native_pytorch_implementation_plan.md).
+| Model Size | 2 GPUs | 4 GPUs | 8 GPUs |
+|------------|--------|--------|--------|
+| <500M (bert-base) | DDP | DDP | DDP |
+| 500M-1B (bert-large) | DDP or FSDP | PP=2×DP=2 | PP=2×DP=4 |
+| 1B-5B | FSDP | PP=2×FSDP=2 | PP=2×FSDP=4 |
+| 5B+ | FSDP + CPU offload | PP=2×FSDP=2 | PP=4×FSDP=2 or 3D |
+
+## 6. Implementation References
+
+For detailed code examples and step-by-step implementation:
+
+- [Native PyTorch Implementation Plan](./native_pytorch_implementation_plan.md) - Base implementations (DDP, FSDP, Pipeline Parallelism)
+- [Native PyTorch Hybrid Parallelism Implementation](./native_pytorch_hybrid_parallelism_implementation.md) - Advanced hybrid strategies (PP+DP, FSDP+PP, 3D parallelism)

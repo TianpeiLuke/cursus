@@ -30,6 +30,7 @@ This document provides the technical implementation details for the strategy out
 
 **Related Documents**:
 - [Native PyTorch Migration Strategy](./native_pytorch_migration_strategy.md) - Theoretical foundations and distributed training mechanisms
+- [Native PyTorch Hybrid Parallelism Implementation](./native_pytorch_hybrid_parallelism_implementation.md) - Advanced hybrid strategies (PP+DP, FSDP+PP, 3D parallelism)
 
 ## 2. Directory Structure
 
