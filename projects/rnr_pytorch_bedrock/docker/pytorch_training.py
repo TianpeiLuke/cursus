@@ -925,13 +925,13 @@ def build_model_and_optimizer(
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
     logger.info(
-        f"Using collate batch for model: {config.get('model_class', 'bimodal')}"
+        f"Using collate batch for model: {config.model_class}"
     )
 
     # Use unified keys for all models (single tokenizer design)
     bsm_collate_batch = build_collate_batch(
-        input_ids_key=config.get("text_input_ids_key", "input_ids"),
-        attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+        input_ids_key=config.text_input_ids_key,
+        attention_mask_key=config.text_attention_mask_key,
     )
 
     train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets

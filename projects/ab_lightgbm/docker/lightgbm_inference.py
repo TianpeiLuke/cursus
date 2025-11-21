@@ -129,9 +129,6 @@ from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 
-# Constants
-__version__ = "1.0.0"
-
 # File names
 MODEL_FILE = "xgboost_model.bst"
 RISK_TABLE_FILE = "risk_table_map.pkl"
@@ -644,7 +641,6 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
             "numerical_processors": numerical_processors,
             "feature_importance": feature_importance,
             "config": config,
-            "version": __version__,
             "calibrator": calibrator,
         }
 
@@ -1447,6 +1443,6 @@ def output_fn(
     except Exception as e:
         logger.error(f"Error during output formatting: {e}", exc_info=True)
         error_response = json.dumps(
-            {"error": f"Failed to format output: {e}", "version": __version__}
+            {"error": f"Failed to format output: {e}"}
         )
         return error_response, CONTENT_TYPE_JSON

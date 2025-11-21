@@ -540,7 +540,6 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
             "numerical_processors": numerical_processors,
             "feature_importance": feature_importance,
             "config": config,
-            "version": __version__,
             "calibrator": calibrator,
         }
 
@@ -1343,6 +1342,6 @@ def output_fn(
     except Exception as e:
         logger.error(f"Error during output formatting: {e}", exc_info=True)
         error_response = json.dumps(
-            {"error": f"Failed to format output: {e}", "version": __version__}
+            {"error": f"Failed to format output: {e}"}
         )
         return error_response, CONTENT_TYPE_JSON
