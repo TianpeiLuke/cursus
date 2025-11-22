@@ -28,6 +28,7 @@ from datetime import datetime
 import time
 
 import torch
+import torch.distributed as dist
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
@@ -55,6 +56,8 @@ from processing.categorical.risk_table_processor import RiskTableMappingProcesso
 from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
+from processing.validation import validate_categorical_fields, validate_numerical_fields
+from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
@@ -65,6 +68,7 @@ from lightning_models.utils.pl_train import (
     model_inference,
     load_model,
     load_artifacts,
+    is_main_process,
 )
 from lightning_models.utils.pl_model_plots import (
     compute_metrics,
@@ -192,37 +196,18 @@ def load_risk_tables(model_dir: str) -> Dict[str, Any]:
 
 
 def create_risk_processors(
-    risk_tables: Dict[str, Any], config: Dict[str, Any]
+    risk_tables: Dict[str, Any],
 ) -> Dict[str, RiskTableMappingProcessor]:
-    """Create risk table processors for each categorical feature, excluding text fields."""
-    # Identify text fields to exclude
-    text_fields = set()
-    if config.get("text_name"):
-        text_fields.add(config["text_name"])
-    if config.get("primary_text_name"):
-        text_fields.add(config["primary_text_name"])
-    if config.get("secondary_text_name"):
-        text_fields.add(config["secondary_text_name"])
-
-    if text_fields:
-        logger.info(f"Excluding text fields from risk table processing: {text_fields}")
-
+    """Create risk table processors for each categorical feature."""
     risk_processors = {}
     for feature, risk_table in risk_tables.items():
-        # Skip text fields
-        if feature in text_fields:
-            logger.debug(f"Skipping risk table processor for text field: {feature}")
-            continue
-
         processor = RiskTableMappingProcessor(
             column_name=feature,
             label_name="label",  # Not used during inference
             risk_tables=risk_table,
         )
         risk_processors[feature] = processor
-    logger.info(
-        f"Created {len(risk_processors)} risk table processors (excluded {len(text_fields)} text fields)"
-    )
+    logger.info(f"Created {len(risk_processors)} risk table processors")
     return risk_processors
 
 
@@ -331,7 +316,7 @@ def load_model_artifacts(
     # Load preprocessing artifacts (numerical imputation + risk tables)
     logger.info("Loading preprocessing artifacts...")
     risk_tables = load_risk_tables(model_dir)
-    risk_processors = create_risk_processors(risk_tables, config)
+    risk_processors = create_risk_processors(risk_tables)
 
     impute_dict = load_imputation_dict(model_dir)
     numerical_processors = create_numerical_processors(impute_dict)
@@ -391,69 +376,202 @@ def create_bsm_dataset(
     return bsm_dataset
 
 
-def build_text_pipeline(config: Dict[str, Any], tokenizer: AutoTokenizer):
+def data_preprocess_pipeline(
+    config: Dict[str, Any], tokenizer: AutoTokenizer
+) -> Tuple[AutoTokenizer, Dict[str, Any]]:
     """
-    Build text preprocessing pipeline with tokenization.
+    Build text preprocessing pipelines based on config.
+
+    For bimodal: Uses text_name with default or configured steps
+    For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
 
     Args:
         config: Model configuration
         tokenizer: BERT tokenizer
 
     Returns:
-        Text preprocessing pipeline
+        Tuple of (tokenizer, pipelines_dict)
     """
-    text_pipeline = (
-        DialogueSplitterProcessor()
-        >> HTMLNormalizerProcessor()
-        >> EmojiRemoverProcessor()
-        >> TextNormalizationProcessor()
-        >> DialogueChunkerProcessor(
-            tokenizer=tokenizer,
-            max_tokens=config["max_sen_len"],
-            truncate=config.get("chunk_trancate", False),
-            max_total_chunks=config.get("max_total_chunks", 5),
+    pipelines = {}
+
+    logger.info("=" * 70)
+    logger.info("BUILDING TEXT PREPROCESSING PIPELINES")
+    logger.info("=" * 70)
+
+    # BIMODAL: Single text pipeline
+    if not config.get("primary_text_name"):
+        text_name = config.get("text_name")
+        if not text_name:
+            raise ValueError(
+                "Config must have either 'text_name' or 'primary_text_name'"
+            )
+
+        # Use configured steps or fallback to default
+        steps = config.get(
+            "text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
         )
-        >> BertTokenizeProcessor(
-            tokenizer,
-            add_special_tokens=True,
-            max_length=config["max_sen_len"],
+
+        pipelines[text_name] = build_text_pipeline_from_steps(
+            processing_steps=steps,
+            tokenizer=tokenizer,
+            max_sen_len=config["max_sen_len"],
+            chunk_trancate=config.get("chunk_trancate", False),
+            max_total_chunks=config.get("max_total_chunks", 5),
             input_ids_key=config.get("text_input_ids_key", "input_ids"),
             attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
         )
-    )
-    logger.info("Built text preprocessing pipeline")
-    return text_pipeline
+        logger.info(f"✓ Built bimodal pipeline for '{text_name}' with steps: {steps}")
+
+    # TRIMODAL: Dual text pipelines
+    else:
+        # Primary text pipeline (e.g., chat - full cleaning)
+        primary_name = config["primary_text_name"]
+        primary_steps = config.get(
+            "primary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[primary_name] = build_text_pipeline_from_steps(
+            processing_steps=primary_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config["max_sen_len"],
+            chunk_trancate=config.get("chunk_trancate", False),
+            max_total_chunks=config.get("max_total_chunks", 5),
+            input_ids_key=config.get("text_input_ids_key", "input_ids"),
+            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+        )
+        logger.info(
+            f"✓ Built primary pipeline for '{primary_name}' with steps: {primary_steps}"
+        )
+
+        # Secondary text pipeline (e.g., events - minimal cleaning)
+        secondary_name = config["secondary_text_name"]
+        secondary_steps = config.get(
+            "secondary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[secondary_name] = build_text_pipeline_from_steps(
+            processing_steps=secondary_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config["max_sen_len"],
+            chunk_trancate=config.get("chunk_trancate", False),
+            max_total_chunks=config.get("max_total_chunks", 5),
+            input_ids_key=config.get("text_input_ids_key", "input_ids"),
+            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+        )
+        logger.info(
+            f"✓ Built secondary pipeline for '{secondary_name}' with steps: {secondary_steps}"
+        )
+
+    logger.info(f"✅ Created {len(pipelines)} text preprocessing pipelines")
+    logger.info("=" * 70)
+
+    return tokenizer, pipelines
 
 
 def apply_preprocessing_artifacts(
-    bsm_dataset: BSMDataset, processors: Dict[str, Any]
+    bsm_dataset: BSMDataset, processors: Dict[str, Any], config: Dict[str, Any]
 ) -> None:
     """
     Apply numerical imputation and risk table mapping to dataset.
+    Excludes text fields from risk table mapping to prevent overwriting tokenized text.
 
     Args:
         bsm_dataset: Dataset to apply preprocessing to
         processors: Dictionary containing preprocessing processors
+        config: Model configuration to identify text fields
     """
-    logger.info("Applying preprocessing artifacts...")
+    logger.info("=" * 70)
+    logger.info("APPLYING PREPROCESSING ARTIFACTS")
+    logger.info("=" * 70)
 
-    # Apply numerical imputation processors
+    # === FIELD TYPE VALIDATION ===
+    numerical_fields = config.get("tab_field_list", [])
+    categorical_fields = config.get("cat_field_list", [])
+
+    if numerical_fields:
+        logger.info("Validating numerical field types...")
+        try:
+            validate_numerical_fields(bsm_dataset.DataReader, numerical_fields, "eval")
+            logger.info("✓ Numerical field type validation passed")
+        except Exception as e:
+            logger.warning(f"Numerical field validation failed: {e}")
+
+    if categorical_fields:
+        logger.info("Validating categorical field types...")
+        try:
+            validate_categorical_fields(
+                bsm_dataset.DataReader, categorical_fields, "eval"
+            )
+            logger.info("✓ Categorical field type validation passed")
+        except Exception as e:
+            logger.warning(f"Categorical field validation failed: {e}")
+
+    # === NUMERICAL IMPUTATION ===
     numerical_processors = processors.get("numerical_processors", {})
-    for feature, processor in numerical_processors.items():
-        if feature in bsm_dataset.DataReader.columns:
-            logger.debug(f"Applying numerical imputation for feature: {feature}")
-            bsm_dataset.add_pipeline(feature, processor)
+    if numerical_processors:
+        logger.info(
+            f"Applying {len(numerical_processors)} numerical imputation processors..."
+        )
+        for feature, processor in numerical_processors.items():
+            if feature in bsm_dataset.DataReader.columns:
+                bsm_dataset.add_pipeline(feature, processor)
+        logger.info(f"✓ Applied {len(numerical_processors)} numerical processors")
 
-    # Apply risk table mapping processors
+    # === RISK TABLE MAPPING ===
+    # Filter out text fields from risk table mapping
+    text_fields = set()
+    if config.get("text_name"):
+        text_fields.add(config["text_name"])
+    if config.get("primary_text_name"):
+        text_fields.add(config["primary_text_name"])
+    if config.get("secondary_text_name"):
+        text_fields.add(config["secondary_text_name"])
+
+    if text_fields:
+        logger.info(f"ℹ️  Text fields to exclude from risk tables: {text_fields}")
+
+    # Apply risk table mapping processors (excluding text fields)
     risk_processors = processors.get("risk_processors", {})
-    for feature, processor in risk_processors.items():
-        if feature in bsm_dataset.DataReader.columns:
-            logger.debug(f"Applying risk table mapping for feature: {feature}")
-            bsm_dataset.add_pipeline(feature, processor)
+    if risk_processors:
+        logger.info(f"Applying risk table mapping to categorical features...")
+        excluded_count = 0
+        applied_count = 0
 
-    logger.info(
-        f"Applied {len(numerical_processors)} numerical processors and {len(risk_processors)} risk processors"
-    )
+        for feature, processor in risk_processors.items():
+            if feature in text_fields:
+                excluded_count += 1
+                continue
+            if feature in bsm_dataset.DataReader.columns:
+                bsm_dataset.add_pipeline(feature, processor)
+                applied_count += 1
+
+        logger.info(f"✓ Applied {applied_count} risk table processors")
+        if excluded_count > 0:
+            logger.info(f"  Excluded {excluded_count} text fields from risk mapping")
+
+    logger.info("=" * 70)
 
 
 def add_label_processor(
@@ -537,23 +655,34 @@ def preprocess_eval_data(
     Returns:
         Tuple of (BSMDataset, DataLoader)
     """
-    logger.info(f"Preprocessing evaluation data: {filename}")
+    logger.info("=" * 70)
+    logger.info(f"PREPROCESSING EVALUATION DATA: {filename}")
+    logger.info("=" * 70)
 
     # Step 1: Create and initialize dataset
     bsm_dataset = create_bsm_dataset(config, eval_data_dir, filename)
 
-    # Step 2: Build and add text preprocessing pipeline
-    text_pipeline = build_text_pipeline(config, tokenizer)
-    bsm_dataset.add_pipeline(config["text_name"], text_pipeline)
+    # Step 2: Build and add text preprocessing pipelines (bimodal or trimodal)
+    tokenizer, text_pipelines = data_preprocess_pipeline(config, tokenizer)
+
+    logger.info("Registering text processing pipelines...")
+    for field_name, pipeline in text_pipelines.items():
+        logger.info(f"  Field: '{field_name}' -> Pipeline registered")
+        bsm_dataset.add_pipeline(field_name, pipeline)
+    logger.info(f"✅ Registered {len(text_pipelines)} text processing pipelines")
 
     # Step 3: Apply preprocessing artifacts (numerical + categorical)
-    apply_preprocessing_artifacts(bsm_dataset, processors)
+    apply_preprocessing_artifacts(bsm_dataset, processors, config)
 
     # Step 4: Add label processor for multiclass if needed
     add_label_processor(bsm_dataset, config, processors)
 
     # Step 5: Create DataLoader with appropriate collate function
     dataloader = create_dataloader(bsm_dataset, config)
+
+    logger.info("=" * 70)
+    logger.info("PREPROCESSING COMPLETE")
+    logger.info("=" * 70)
 
     return bsm_dataset, dataloader
 
@@ -563,41 +692,83 @@ def preprocess_eval_data(
 # ============================================================================
 
 
-def setup_device_environment(device: str = "auto") -> Tuple[str, str]:
+def setup_device_environment(
+    device: Union[str, int, List[int]] = "auto",
+) -> Tuple[Union[str, int, List[int]], str]:
     """
     Set up device environment based on availability and config.
+    Supports single GPU, multi-GPU, CPU, or automatic detection.
 
     Args:
-        device: Device selection: "auto", "cuda", "cpu"
+        device: Device selection:
+            - "auto": Use all available GPUs or CPU
+            - "cpu": Force CPU usage
+            - int: Use specific number of GPUs (e.g., 1, 2, 4)
+            - List[int]: Use specific GPU IDs (e.g., [0, 1, 2, 3])
+            - "cuda" or "gpu": Use single GPU (GPU 0)
 
     Returns:
-        Tuple of (device_string, accelerator_string)
+        Tuple of (device_setting, accelerator_string)
+        - device_setting can be: "cpu", int (GPU count), or List[int] (GPU IDs)
+        - accelerator_string: "cpu" or "gpu"
     """
     if device == "auto":
-        device_str = "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            gpu_count = torch.cuda.device_count()
+            device_setting = gpu_count  # Use all available GPUs
+            accelerator = "gpu"
+            logger.info(f"Auto-detected {gpu_count} GPU(s) - using all for evaluation")
+        else:
+            device_setting = "cpu"
+            accelerator = "cpu"
+            logger.info("No GPU detected - using CPU for evaluation")
+    elif device in ["cpu"]:
+        device_setting = "cpu"
+        accelerator = "cpu"
+        logger.info("Forced CPU usage for evaluation")
+    elif device in ["cuda", "gpu"]:
+        device_setting = 1  # Single GPU
+        accelerator = "gpu"
+        logger.info("Using single GPU (GPU 0) for evaluation")
+    elif isinstance(device, int):
+        device_setting = device
+        accelerator = "gpu"
+        logger.info(f"Using {device} GPU(s) for evaluation")
+    elif isinstance(device, list):
+        device_setting = device
+        accelerator = "gpu"
+        logger.info(f"Using specific GPUs {device} for evaluation")
     else:
-        device_str = device
+        # Fallback to auto
+        logger.warning(f"Unknown device setting '{device}', falling back to 'auto'")
+        return setup_device_environment("auto")
 
-    accelerator = "gpu" if device_str == "cuda" else "cpu"
+    # Log GPU information if using GPU
+    if accelerator == "gpu":
+        gpu_count = (
+            len(device_setting) if isinstance(device_setting, list) else device_setting
+        )
+        logger.info(f"GPU Configuration:")
 
-    logger.info(f"Using device: {device_str}, accelerator: {accelerator}")
-
-    if device_str == "cuda":
-        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
-        logger.info(f"GPU Count: {torch.cuda.device_count()}")
+        if isinstance(device_setting, list):
+            for gpu_id in device_setting:
+                logger.info(f"  GPU {gpu_id}: {torch.cuda.get_device_name(gpu_id)}")
+        else:
+            for i in range(min(gpu_count, torch.cuda.device_count())):
+                logger.info(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
 
         # Enable optimizations
         torch.backends.cudnn.benchmark = True
 
-        # Log memory info
+        # Log memory info for first GPU
         logger.info(
-            f"GPU Memory Allocated: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB"
+            f"GPU 0 Memory Allocated: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB"
         )
         logger.info(
-            f"GPU Memory Reserved: {torch.cuda.memory_reserved(0) / 1e9:.2f} GB"
+            f"GPU 0 Memory Reserved: {torch.cuda.memory_reserved(0) / 1e9:.2f} GB"
         )
 
-    return device_str, accelerator
+    return device_setting, accelerator
 
 
 # ============================================================================
@@ -608,23 +779,36 @@ def setup_device_environment(device: str = "auto") -> Tuple[str, str]:
 def generate_predictions(
     model: nn.Module,
     dataloader: DataLoader,
-    device: str = "auto",
+    device: Union[str, int, List[int]] = "auto",
     accelerator: str = "auto",
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate predictions using PyTorch Lightning inference.
-    Supports automatic GPU/CPU detection and batch processing.
+    Supports single-GPU, multi-GPU, CPU, and automatic detection.
 
     Args:
         model: PyTorch Lightning model
         dataloader: DataLoader for evaluation data
-        device: Device to use for inference
+        device: Device setting (can be int, list, or string)
         accelerator: Accelerator type for Lightning
 
     Returns:
         Tuple of (y_pred probabilities, y_true labels)
     """
-    logger.info(f"Running inference on device: {device}, accelerator: {accelerator}")
+    # Determine if multi-GPU inference
+    is_multi_gpu = False
+    if isinstance(device, int) and device > 1:
+        is_multi_gpu = True
+    elif isinstance(device, list) and len(device) > 1:
+        is_multi_gpu = True
+
+    logger.info("=" * 70)
+    logger.info("RUNNING MODEL INFERENCE")
+    logger.info("=" * 70)
+    logger.info(f"Device setting: {device}")
+    logger.info(f"Accelerator: {accelerator}")
+    logger.info(f"Multi-GPU inference: {'Yes' if is_multi_gpu else 'No'}")
+    logger.info("=" * 70)
 
     # Use Lightning's model_inference utility
     y_pred, y_true = model_inference(
@@ -635,9 +819,12 @@ def generate_predictions(
         model_log_path=None,  # No logging during evaluation
     )
 
-    logger.info(
-        f"Inference complete. Prediction shape: {y_pred.shape}, True labels shape: {y_true.shape}"
-    )
+    logger.info("=" * 70)
+    logger.info("INFERENCE COMPLETE")
+    logger.info("=" * 70)
+    logger.info(f"Prediction shape: {y_pred.shape}")
+    logger.info(f"True labels shape: {y_true.shape}")
+    logger.info("=" * 70)
 
     return y_pred, y_true
 
@@ -952,10 +1139,14 @@ def evaluate_model(
     output_eval_dir: str,
     output_metrics_dir: str,
     input_format: str = "csv",
-    device: str = "auto",
+    device: Union[str, int, List[int]] = "auto",
 ) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
+
+    For multi-GPU inference, only the main process performs post-processing
+    (metrics computation, plotting, saving) to avoid race conditions and
+    file corruption. All processes synchronize via barrier.
 
     Args:
         model: PyTorch Lightning model
@@ -985,22 +1176,52 @@ def evaluate_model(
     # Setup device environment
     device_str, accelerator = setup_device_environment(device)
 
-    # Generate predictions
+    # Generate predictions (all ranks participate in DDP)
     y_prob, y_true = generate_predictions(model, dataloader, device_str, accelerator)
 
-    # Compute metrics
-    metrics = compute_evaluation_metrics(y_true, y_prob, config)
+    # ===================================================================
+    # CRITICAL: Only main process performs post-processing
+    # This prevents race conditions when multiple GPUs try to write
+    # to the same files simultaneously
+    # ===================================================================
+    if is_main_process():
+        logger.info("=" * 70)
+        logger.info("POST-PROCESSING (MAIN PROCESS ONLY)")
+        logger.info("=" * 70)
 
-    # Generate plots
-    plot_paths = generate_evaluation_plots(y_true, y_prob, config, output_metrics_dir)
+        # Compute metrics
+        metrics = compute_evaluation_metrics(y_true, y_prob, config)
 
-    # Save predictions
-    save_predictions(
-        ids, y_true, y_prob, id_col, label_col, output_eval_dir, input_format
-    )
+        # Generate plots
+        plot_paths = generate_evaluation_plots(
+            y_true, y_prob, config, output_metrics_dir
+        )
 
-    # Save metrics
-    save_metrics(metrics, output_metrics_dir)
+        # Save predictions
+        save_predictions(
+            ids, y_true, y_prob, id_col, label_col, output_eval_dir, input_format
+        )
+
+        # Save metrics
+        save_metrics(metrics, output_metrics_dir)
+
+        logger.info("=" * 70)
+        logger.info("POST-PROCESSING COMPLETE")
+        logger.info("=" * 70)
+    else:
+        logger.info(
+            f"Rank {dist.get_rank() if dist.is_initialized() else 'N/A'}: Skipping post-processing (not main process)"
+        )
+
+    # ===================================================================
+    # CRITICAL: Synchronization barrier
+    # Ensure all ranks wait until main process completes post-processing
+    # before proceeding (e.g., before script exit)
+    # ===================================================================
+    if dist.is_initialized():
+        logger.info("Waiting at synchronization barrier...")
+        dist.barrier()
+        logger.info("All ranks synchronized - evaluation complete")
 
     logger.info("Model evaluation complete")
 
@@ -1039,7 +1260,22 @@ def main(
     # Extract environment variables
     id_field = environ_vars.get("ID_FIELD", "order_id")
     label_field = environ_vars.get("LABEL_FIELD", "label")
-    device = environ_vars.get("DEVICE", "auto")
+
+    # Parse device setting - support multiple formats
+    device_str = environ_vars.get("DEVICE", "auto")
+    try:
+        # Try to parse as JSON for list format: "[0,1,2,3]"
+        if device_str.startswith("[") and device_str.endswith("]"):
+            device = json.loads(device_str)
+        # Try to parse as int for GPU count: "4"
+        elif device_str.isdigit():
+            device = int(device_str)
+        # Use as string for: "auto", "cpu", "cuda", "gpu"
+        else:
+            device = device_str
+    except (json.JSONDecodeError, ValueError):
+        logger.warning(f"Failed to parse DEVICE='{device_str}', using 'auto'")
+        device = "auto"
 
     # Log job info
     job_type = job_args.job_type
