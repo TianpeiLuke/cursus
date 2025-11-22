@@ -9,13 +9,13 @@ The DAG includes:
 1) Data Loading (training)
 2) Preprocessing (training)
 3) XGBoost Model Training
-4) Model Calibration
+4) Percentile Model Calibration
 5) Package Model
 6) Payload Generation
 7) Model Registration
 8) Data Loading (calibration)
 9) Preprocessing (calibration)
-10) Model Evaluation (calibration)
+10) Model Inference (calibration)
 11) Data Loading (testing)
 12) Preprocessing (testing)
 13) Model Inference (testing)
@@ -23,8 +23,8 @@ The DAG includes:
 15) Model Wiki Generation
 
 Key features:
-- Calibration path: Same as complete_e2e_with_wiki_dag (includes ModelCalibration)
-- Testing path: Skips ModelCalibration entirely for faster evaluation
+- Calibration path: Includes PercentileModelCalibration for percentile-based score mapping
+- Testing path: Skips PercentileModelCalibration entirely for faster evaluation
 """
 
 import logging
@@ -41,7 +41,7 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     Create a DAG for complete XGBoost E2E pipeline with both calibration and testing paths.
 
     This DAG represents a complete end-to-end workflow including training,
-    calibration path (with ModelCalibration), testing path (without ModelCalibration),
+    calibration path (with PercentileModelCalibration), testing path (without PercentileModelCalibration),
     packaging, registration, evaluation with inference, metrics computation, and wiki generation.
 
     Returns:
@@ -54,10 +54,10 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
     dag.add_node("XGBoostTraining")  # XGBoost training step
 
-    # Add all nodes - Calibration path (simplified with XGBoostModelEval)
+    # Add all nodes - Calibration path (using XGBoostModelInference)
     dag.add_node(
-        "ModelCalibration_calibration"
-    )  # Model calibration step with calibration variant
+        "PercentileModelCalibration_calibration"
+    )  # Percentile model calibration step with calibration variant
     dag.add_node("Package")  # Package step
     dag.add_node("Registration")  # MIMS registration step
     dag.add_node("Payload")  # Payload step
@@ -66,8 +66,8 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
         "TabularPreprocessing_calibration"
     )  # Tabular preprocessing for calibration
     dag.add_node(
-        "XGBoostModelEval_calibration"
-    )  # Model evaluation step (calibration) - combines inference, metrics, and wiki
+        "XGBoostModelInference_calibration"
+    )  # Model inference step (calibration)
 
     # Add all nodes - Testing path (no calibration)
     dag.add_node("CradleDataLoading_testing")  # Data load for testing
@@ -86,13 +86,13 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
 
     # Evaluation flow (calibration path)
-    dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
+    dag.add_edge("XGBoostTraining", "XGBoostModelInference_calibration")
+    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelInference_calibration")
 
-    # Model calibration flow - depends on model evaluation
-    dag.add_edge("XGBoostModelEval_calibration", "ModelCalibration_calibration")
+    # Model calibration flow - depends on model inference
+    dag.add_edge("XGBoostModelInference_calibration", "PercentileModelCalibration_calibration")
 
-    # Testing flow (similar to calibration but skips ModelCalibration)
+    # Testing flow (similar to calibration but skips PercentileModelCalibration)
     dag.add_edge("CradleDataLoading_testing", "TabularPreprocessing_testing")
     dag.add_edge("XGBoostTraining", "XGBoostModelInference_testing")
     dag.add_edge("TabularPreprocessing_testing", "XGBoostModelInference_testing")
@@ -100,7 +100,7 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
     dag.add_edge("ModelMetricsComputation_testing", "ModelWikiGenerator")
 
     # Output flow (same as original complete_e2e_with_wiki_dag)
-    dag.add_edge("ModelCalibration_calibration", "Package")
+    dag.add_edge("PercentileModelCalibration_calibration", "Package")
     dag.add_edge("XGBoostTraining", "Package")  # Raw model is also input to packaging
     dag.add_edge("XGBoostTraining", "Payload")  # Payload test uses the raw model
     dag.add_edge("Package", "Registration")
@@ -133,7 +133,7 @@ def get_dag_metadata() -> DAGMetadata:
             "wiki_generation",
         ],
         framework="xgboost",
-        node_count=14,
+        node_count=15,
         edge_count=16,
         extra_metadata={
             "name": "xgboost_complete_e2e_with_calibration_and_testing",
@@ -145,8 +145,7 @@ def get_dag_metadata() -> DAGMetadata:
             ],
             "exit_points": [
                 "Registration",
-                "XGBoostModelEval_calibration",
-                "ModelWikiGenerator_testing",
+                "ModelWikiGenerator",
             ],
             "required_configs": [
                 "CradleDataLoading_training",
@@ -156,11 +155,11 @@ def get_dag_metadata() -> DAGMetadata:
                 "TabularPreprocessing_calibration",
                 "TabularPreprocessing_testing",
                 "XGBoostTraining",
-                "XGBoostModelEval_calibration",
+                "XGBoostModelInference_calibration",
                 "XGBoostModelInference_testing",
                 "ModelMetricsComputation_testing",
                 "ModelWikiGenerator",
-                "ModelCalibration_calibration",
+                "PercentileModelCalibration_calibration",
                 "Package",
                 "Payload",
                 "Registration",
