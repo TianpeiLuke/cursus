@@ -1,6 +1,6 @@
 {
   "adam_epsilon": 1e-08,
-  "batch_size": 4,
+  "batch_size": 2,
   "cat_field_list": [
     "dialogue",
     "shiptrack_event_history_by_order"
