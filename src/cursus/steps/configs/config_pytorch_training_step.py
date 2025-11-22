@@ -66,8 +66,6 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     def _validate_sagemaker_training_instance_type(cls, v: str) -> str:
         valid_instances = [
             "ml.g4dn.16xlarge",
-            "ml.g5.48xlarge",
-            "ml.g5.24xlarge",
             "ml.g5.12xlarge",
             "ml.g5.16xlarge",
             "ml.p3.8xlarge",
