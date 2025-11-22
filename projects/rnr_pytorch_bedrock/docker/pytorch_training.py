@@ -233,6 +233,7 @@ class Config(BaseModel):
     val_check_interval: float = 0.25
     adam_epsilon: float = 1e-08
     fp16: bool = False
+    use_gradient_checkpointing: bool = False
     run_scheduler: bool = True
     reinit_pooler: bool = True
     reinit_layers: int = 2

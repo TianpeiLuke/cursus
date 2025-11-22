@@ -73,6 +73,11 @@ class BSMModelHyperparameters(ModelHyperparameters):
         description="Enable 16-bit mixed precision training (requires compatible hardware)",
     )
 
+    use_gradient_checkpointing: bool = Field(
+        default=False,
+        description="Enable gradient checkpointing to reduce memory usage at the cost of ~20% slower training",
+    )
+
     # Early stopping and Checkpointing parameters
     early_stop_metric: str = Field(
         default="val_loss", description="Metric for early stopping"

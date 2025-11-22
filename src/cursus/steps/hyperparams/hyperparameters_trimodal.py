@@ -90,6 +90,11 @@ class TriModalHyperparameters(ModelHyperparameters):
         description="Enable 16-bit mixed precision training (requires compatible hardware)",
     )
 
+    use_gradient_checkpointing: bool = Field(
+        default=False,
+        description="Enable gradient checkpointing to reduce memory usage at the cost of ~20% slower training",
+    )
+
     # Preprocessing parameters
     smooth_factor: float = Field(
         default=0.0, description="Risk table smoothing factor for categorical encoding"
