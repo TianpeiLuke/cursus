@@ -142,6 +142,7 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             sagemaker_session=self.session,
             output_path=output_path,  # Use provided output_path directly
             environment=self._get_environment_variables(),
+            max_run=self.config.max_runtime_seconds,  # Maximum runtime in seconds
         )
 
     def _get_environment_variables(self) -> Dict[str, str]:

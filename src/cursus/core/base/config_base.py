@@ -105,6 +105,13 @@ class BasePipelineConfig(BaseModel, ABC):
         description="Use secure CodeArtifact PyPI instead of public PyPI for package installation in processing scripts.",
     )
 
+    max_runtime_seconds: int = Field(
+        default=172800,  # 2 days in seconds (2 * 24 * 60 * 60)
+        ge=60,  # Minimum 60 seconds
+        le=432000,  # Maximum 5 days (SageMaker limit: 5 * 24 * 60 * 60)
+        description="Maximum runtime for jobs in seconds. Default: 2 days (172800 seconds).",
+    )
+
     # ===== Tier 1 Hybrid Resolution Fields =====
     # These fields are required for the hybrid path resolution system
 

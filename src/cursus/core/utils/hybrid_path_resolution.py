@@ -27,6 +27,8 @@ class HybridResolutionMetrics:
     def __init__(self):
         self.strategy_1_success_count = 0
         self.strategy_2_success_count = 0
+        self.strategy_3_success_count = 0
+        self.strategy_4_success_count = 0
         self.total_resolution_attempts = 0
         self.resolution_times = []
         self.failure_count = 0
@@ -40,6 +42,18 @@ class HybridResolutionMetrics:
     def record_strategy_2_success(self, resolution_time: float):
         """Record successful Working Directory Discovery."""
         self.strategy_2_success_count += 1
+        self.total_resolution_attempts += 1
+        self.resolution_times.append(resolution_time)
+
+    def record_strategy_3_success(self, resolution_time: float):
+        """Record successful Generic Path Discovery."""
+        self.strategy_3_success_count += 1
+        self.total_resolution_attempts += 1
+        self.resolution_times.append(resolution_time)
+
+    def record_strategy_4_success(self, resolution_time: float):
+        """Record successful Default Scripts Discovery."""
+        self.strategy_4_success_count += 1
         self.total_resolution_attempts += 1
         self.resolution_times.append(resolution_time)
 
@@ -58,6 +72,10 @@ class HybridResolutionMetrics:
             "strategy_1_success_rate": self.strategy_1_success_count
             / self.total_resolution_attempts,
             "strategy_2_fallback_rate": self.strategy_2_success_count
+            / self.total_resolution_attempts,
+            "strategy_3_success_rate": self.strategy_3_success_count
+            / self.total_resolution_attempts,
+            "strategy_4_success_rate": self.strategy_4_success_count
             / self.total_resolution_attempts,
             "failure_rate": self.failure_count / self.total_resolution_attempts,
             "average_resolution_time": sum(self.resolution_times)
@@ -156,7 +174,7 @@ class HybridPathResolver:
             resolved = self._generic_path_discovery(project_root_folder, relative_path)
             if resolved:
                 resolution_time = time.time() - start_time
-                _hybrid_resolution_metrics.record_strategy_2_success(resolution_time)
+                _hybrid_resolution_metrics.record_strategy_3_success(resolution_time)
                 logger.info(
                     f"Hybrid resolution completed successfully via Generic Path Discovery: {resolved}"
                 )
@@ -167,7 +185,7 @@ class HybridPathResolver:
             resolved = self._default_scripts_discovery(relative_path)
             if resolved:
                 resolution_time = time.time() - start_time
-                _hybrid_resolution_metrics.record_strategy_2_success(resolution_time)
+                _hybrid_resolution_metrics.record_strategy_4_success(resolution_time)
                 logger.info(
                     f"Hybrid resolution completed successfully via Default Scripts Discovery: {resolved}"
                 )
