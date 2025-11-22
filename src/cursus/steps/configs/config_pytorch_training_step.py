@@ -65,14 +65,16 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     @classmethod
     def _validate_sagemaker_training_instance_type(cls, v: str) -> str:
         valid_instances = [
+            "ml.m5.4xlarge",
+            "ml.m5.8xlarge",
+            "ml.m5.12xlarge",
+            "ml.m5.24xlarge",
             "ml.g4dn.16xlarge",
-            "ml.g5.24xlarge",
-            "ml.g5.48xlarge",
             "ml.g5.12xlarge",
             "ml.g5.16xlarge",
             "ml.p3.8xlarge",
-            "ml.m5.12xlarge",
             "ml.p3.16xlarge",
+            "ml.p4d.24xlarge",
         ]
         if v not in valid_instances:
             raise ValueError(
