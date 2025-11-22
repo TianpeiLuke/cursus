@@ -174,6 +174,11 @@ Model Architecture Designs
 **Related Design Docs:**
 - [PyTorch Model Evaluation Design](../1_design/pytorch_model_eval_design.md)
 
+**Model Documentation:**
+- [Trimodal BERT Model](../models/lightning_models/pl_trimodal_bert.md) - BERT + BERT + tabular concatenation fusion (baseline)
+- [Trimodal Cross-Attention Model](../models/lightning_models/pl_trimodal_cross_attn.md) - Bidirectional cross-attention between text modalities
+- [Trimodal Gate Fusion Model](../models/lightning_models/pl_trimodal_gate_fusion.md) - Learnable gating for adaptive modality weighting
+
 **Key Features:**
 - Three-modal input processing
 - Complex fusion strategies
