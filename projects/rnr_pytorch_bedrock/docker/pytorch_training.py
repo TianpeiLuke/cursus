@@ -1302,16 +1302,31 @@ def main(
 
     # Extract datasets for evaluation
     train_dataset, val_dataset, test_dataset = datasets
-    evaluate_and_log_results(
-        model,
-        val_dataloader,
-        test_dataloader,
-        config,
-        trainer,
-        val_dataset,
-        test_dataset,
-        paths,
-    )
+    
+    # CRITICAL FIX: Ensure all ranks finish training before evaluation
+    # This prevents race conditions in distributed training where ranks might
+    # try to read each other's test result files before they're fully written
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+        log_once(logger, "All ranks synchronized after training - proceeding to evaluation")
+    
+    # Only main process runs evaluation and saves predictions
+    # This prevents the array length mismatch error where each rank has partial data
+    if is_main_process():
+        log_once(logger, "Main process starting evaluation and prediction saving...")
+        evaluate_and_log_results(
+            model,
+            val_dataloader,
+            test_dataloader,
+            config,
+            trainer,
+            val_dataset,
+            test_dataset,
+            paths,
+        )
+        log_once(logger, "Evaluation and prediction saving complete")
+    else:
+        log_once(logger, f"Rank {get_rank()} skipping evaluation (main process only)")
 
 
 # ----------------- Entrypoint ---------------------------
