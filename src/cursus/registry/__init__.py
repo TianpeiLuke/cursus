@@ -64,15 +64,6 @@ from .step_names import (
     has_workspace_conflicts,
 )
 
-from .hyperparameter_registry import (
-    HYPERPARAMETER_REGISTRY,
-    get_all_hyperparameter_classes,
-    get_hyperparameter_class_by_model_type,
-    get_module_path,
-    get_all_hyperparameter_info,
-    validate_hyperparameter_class,
-)
-
 # NEW: Hybrid registry components (optional import)
 try:
     from .hybrid.manager import UnifiedRegistryManager
@@ -150,13 +141,6 @@ __all__ = [
     "list_available_workspaces",
     "get_workspace_step_count",
     "has_workspace_conflicts",
-    # Hyperparameter registry
-    "HYPERPARAMETER_REGISTRY",
-    "get_all_hyperparameter_classes",
-    "get_hyperparameter_class_by_model_type",
-    "get_module_path",
-    "get_all_hyperparameter_info",
-    "validate_hyperparameter_class",
 ] + _HYBRID_EXPORTS
 
 

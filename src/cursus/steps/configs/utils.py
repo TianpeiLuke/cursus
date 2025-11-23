@@ -585,7 +585,7 @@ def _legacy_build_complete_config_classes() -> Dict[str, Type[BaseModel]]:
     """
     logger.warning("Using legacy implementation with known 83% failure rate")
 
-    from ..registry import STEP_NAMES, HYPERPARAMETER_REGISTRY
+    from ..registry import STEP_NAMES
 
     # Initialize an empty dictionary to store the classes
     config_classes = {}
@@ -633,18 +633,6 @@ def _legacy_build_complete_config_classes() -> Dict[str, Type[BaseModel]]:
                     logger.debug(f"Could not import {class_name} from any location")
         except Exception as e:
             logger.debug(f"Error importing {class_name}: {str(e)}")
-
-    # Import hyperparameter classes from registry
-    for class_name, info in HYPERPARAMETER_REGISTRY.items():
-        try:
-            module_path = info["module_path"]
-            module_parts = module_path.split(".")
-            module = __import__(module_path, fromlist=[class_name])
-            if hasattr(module, class_name):
-                config_classes[class_name] = getattr(module, class_name)
-                logger.debug(f"Registered hyperparameter class {class_name}")
-        except (ImportError, AttributeError) as e:
-            logger.debug(f"Could not import {class_name}: {str(e)}")
 
     # Basic fallback for core classes in case the dynamic imports failed
     try:

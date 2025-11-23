@@ -244,7 +244,7 @@ class TriModalHyperparameters(ModelHyperparameters):
                 or self.hidden_common_dim,
                 "shiptrack_hidden_common_dim": self.secondary_hidden_common_dim
                 or self.hidden_common_dim,
-                # Single tokenizer means unified output keys for both text modalities (inherited from BSMModelHyperparameters)
+                # Single tokenizer means unified output keys for both text modalities (inherited from BimodalModelHyperparameters)
                 "chat_text_input_ids_key": self.text_input_ids_key,
                 "chat_text_attention_mask_key": self.text_attention_mask_key,
                 "shiptrack_text_input_ids_key": self.text_input_ids_key,

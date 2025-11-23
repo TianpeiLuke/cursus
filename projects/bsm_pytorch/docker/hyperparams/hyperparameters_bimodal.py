@@ -4,9 +4,9 @@ from typing import List, Dict, Any, Optional, Union
 from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
-class BSMModelHyperparameters(ModelHyperparameters):
+class BimodalModelHyperparameters(ModelHyperparameters):
     """
-    Hyperparameters for the BSM (Buyer Seller Messaging) model training,
+    Hyperparameters for bimodal model training (text + tabular),
     extending the base ModelHyperparameters.
 
     Fields are organized into three tiers:
@@ -229,8 +229,8 @@ class BSMModelHyperparameters(ModelHyperparameters):
         return self._tokenizer_config
 
     @model_validator(mode="after")
-    def validate_bsm_hyperparameters(self) -> "BSMModelHyperparameters":
-        """Validate BSM model-specific hyperparameters and initialize derived fields."""
+    def validate_bimodal_hyperparameters(self) -> "BimodalModelHyperparameters":
+        """Validate bimodal model-specific hyperparameters and initialize derived fields."""
         # Call the base model validator first to initialize its derived fields
         super().validate_dimensions()
 
@@ -238,7 +238,7 @@ class BSMModelHyperparameters(ModelHyperparameters):
         self._model_config_dict = None
         self._tokenizer_config = None
 
-        # Perform BSM-specific validations
+        # Perform bimodal-specific validations
         if len(self.num_channels) != self.num_layers:
             raise ValueError(
                 f"Length of num_channels ({len(self.num_channels)}) must match num_layers ({self.num_layers})"
@@ -248,7 +248,7 @@ class BSMModelHyperparameters(ModelHyperparameters):
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """
-        Override get_public_init_fields to include BSM-specific derived fields.
+        Override get_public_init_fields to include bimodal-specific derived fields.
         Gets a dictionary of public fields suitable for initializing a child config.
         """
         # Get fields from parent class
