@@ -185,21 +185,35 @@ Model Architecture Designs
 - Hierarchical attention
 - Multi-level feature extraction
 
-### 2.4 PyTorch Lightning Training Utilities
+### 2.4 PyTorch Training & Inference
 
-**Code Locations:**
+**Training Code Locations:**
+- `projects/rnr_pytorch_bedrock/docker/pytorch_training.py` - RNR training implementation
+- `projects/bsm_pytorch/docker/pytorch_training.py` - BSM training implementation
+- `src/cursus/steps/scripts/pytorch_training.py` - Template training script
 - `projects/rnr_pytorch_bedrock/docker/lightning_models/utils/pl_train.py` - Training utilities
 - `projects/rnr_pytorch_bedrock/docker/lightning_models/utils/config_constants.py` - Configuration
 - `src/cursus/steps/specs/pytorch_training_spec.py` - Training specification
+
+**Inference Code Locations:**
+- `projects/rnr_pytorch_bedrock/docker/pytorch_model_inference.py` - RNR inference implementation
+- `src/cursus/steps/scripts/pytorch_model_inference.py` - Template inference script
+
+**Related Script Documentation:**
+- [PyTorch Training Script](../scripts/pytorch_training_script.md) - **PRIMARY** - Comprehensive training implementation guide with distributed training patterns
+- [PyTorch Model Inference Script](../scripts/pytorch_model_inference_script.md) - Model inference implementation guide
 
 **Related Design Docs:**
 - [PyTorch Lightning Temporal Self-Attention Design](../1_design/pytorch_lightning_temporal_self_attention_design.md)
 
 **Key Features:**
-- Distributed training support
+- Distributed training support (DDP, FSDP)
 - Automatic mixed precision
 - Model checkpointing
 - TensorBoard integration
+- Barrier synchronization for multi-GPU training
+- ONNX model export
+- Format-preserving predictions
 
 ---
 

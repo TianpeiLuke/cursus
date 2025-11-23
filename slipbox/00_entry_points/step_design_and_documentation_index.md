@@ -210,7 +210,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - **[XGBoost Training Script](../scripts/xgboost_training_script.md)**: Single-task gradient boosting with dual PyPI support, format preservation, and comprehensive evaluation
 - **[LightGBM Training Script](../scripts/lightgbm_training_script.md)**: Single-task gradient boosting with preprocessing artifact reuse and inline/pre-computed artifact support
 - **[LightGBMMT Multi-Task Training Script](../scripts/lightgbmmt_training_script.md)**: Multi-task learning with adaptive task weighting, knowledge distillation, JS divergence similarity, and refactored architecture (67% code reduction, 91% quality score)
-- **[PyTorch Training Script](../scripts/pytorch_training_script.md)**: Deep learning training with flexible architecture, GPU support, and comprehensive checkpointing
+- **[PyTorch Training Script](../scripts/pytorch_training_script.md)**: **PRIMARY** - Deep learning training with distributed training patterns (DDP, FSDP), barrier synchronization, automatic mixed precision, format-preserving predictions, ONNX export, and comprehensive distributed training troubleshooting guide
 
 **Deep Learning Training**
 - [Temporal Self Attention Model Design](../1_design/temporal_self_attention_model_design.md) - Design for temporal self-attention model architecture and training scripts
@@ -258,6 +258,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [LightGBM Model Inference Script](../scripts/lightgbm_model_inference_script.md) - Script documentation for pure inference without metrics
 - [XGBoost Model Inference Script](../scripts/xgboost_model_inference_script.md) - Script documentation for pure inference with embedded preprocessing and multi-format output
 - [PyTorch Model Evaluation Script](../scripts/pytorch_model_eval_script.md) - Script documentation for PyTorch Lightning model evaluation with GPU/CPU support, multi-modal architectures, and comprehensive metrics
+- [PyTorch Model Inference Script](../scripts/pytorch_model_inference_script.md) - Script documentation for PyTorch model inference with ONNX support, multi-modal architectures, and format-preserving predictions
 - [Model Metrics Computation Script](../scripts/model_metrics_computation_script.md) - Script documentation for comprehensive performance evaluation with standard ML metrics, domain-specific metrics, and A/B testing comparison mode
 - [Model Step Builder (PyTorch)](pytorch_model_step.md) - PyTorch model step builder
 - [Model Step Builder (XGBoost)](xgboost_model_step.md) - XGBoost model step builder

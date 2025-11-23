@@ -33,7 +33,15 @@ The `pytorch_training.py` script implements a comprehensive PyTorch Lightning-ba
 
 The script provides a production-ready training pipeline with support for multiple model architectures (BERT, CNN, LSTM, and various multimodal fusion strategies), distributed training with FSDP, automatic mixed precision, early stopping, checkpointing, and model export to multiple formats. It handles the complete workflow from data loading and preprocessing through model training, evaluation, and artifact generation.
 
-Key capabilities include intelligent data preprocessing pipelines with dialogue chunking and BERT tokenization, flexible categorical feature encoding, support for both binary and multiclass classification, comprehensive metric computation and visualization, and automated model export to PyTorch and ONNX formats for deployment.
+Key capabilities include:
+- **Bimodal and Trimodal Support**: Single text field (bimodal) or dual text fields with independent processing pipelines (trimodal)
+- **Risk-Based Categorical Encoding**: Risk table mapping for categorical features instead of simple label encoding
+- **Numerical Imputation**: Single-column architecture for numerical feature imputation with artifact saving
+- **Format Preservation**: Automatic detection and preservation of input data format (CSV/TSV/Parquet) for predictions
+- **Pre-computed Artifact Support**: Optional loading of pre-computed imputation and risk tables from upstream steps
+- **Comprehensive Model Export**: PyTorch (.pth), ONNX (.onnx), and preprocessing artifacts (.pkl) for deployment
+- **Distributed Training**: FSDP and DDP support with synchronization barriers for multi-GPU training
+- **Flexible Text Processing**: Configurable processing steps per text field for bimodal and trimodal architectures
 
 ## Purpose and Major Tasks
 
@@ -88,6 +96,10 @@ pytorch_training.py
 - `model.pth`: Trained PyTorch model (state dict)
 - `model_artifacts.pth`: Model artifacts (config, embeddings, vocabulary)
 - `model.onnx`: ONNX exported model for deployment
+- `impute_dict.pkl`: Numerical imputation parameters (for inference)
+- `impute_dict.json`: Human-readable imputation parameters
+- `risk_table_map.pkl`: Risk table mappings (for inference)
+- `risk_table_map.json`: Human-readable risk tables
 
 **Evaluation Output Contents**:
 - `predict_results.pth`: Prediction results (true labels, predicted probabilities)
@@ -100,22 +112,13 @@ None strictly required - all configuration via hyperparameters.json
 
 ### Optional Environment Variables
 
-#### Training Configuration
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SM_CHECKPOINT_DIR` | `/opt/ml/checkpoints` | SageMaker checkpoint directory for training |
-
-#### Package Installation Control
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_SECURE_PYPI` | `"true"` | Controls PyPI source (true=CodeArtifact, false=public PyPI) |
-
 #### Preprocessing Artifact Control
 | Variable | Default | Description | Use Case |
 |----------|---------|-------------|----------|
-| `USE_PRECOMPUTED_IMPUTATION` | `"false"` | Use pre-computed imputation artifacts | When data already imputed upstream |
-| `USE_PRECOMPUTED_RISK_TABLES` | `"false"` | Use pre-computed risk table artifacts | When risk mapping done upstream |
-| `USE_PRECOMPUTED_FEATURES` | `"false"` | Use pre-computed feature selection | When features already selected upstream |
+| `USE_PRECOMPUTED_IMPUTATION` | `"false"` | Use pre-computed imputation artifacts from model_artifacts_input | When numerical imputation done upstream (e.g., in separate imputation step) |
+| `USE_PRECOMPUTED_RISK_TABLES` | `"false"` | Use pre-computed risk table artifacts from model_artifacts_input | When risk table mapping done upstream (e.g., in separate risk table step) |
+
+**Note**: When these flags are true, the script loads pre-computed artifacts from `/opt/ml/input/data/model_artifacts_input/` instead of fitting them inline during training. This enables decoupled preprocessing workflows.
 
 ### Job Arguments
 
@@ -127,15 +130,21 @@ None strictly required - all configuration via hyperparameters.json
 | Parameter | Type | Required | Description | Example |
 |-----------|------|----------|-------------|---------|
 | `id_name` | `str` | Yes | Column name for record IDs | `"order_id"` |
-| `text_name` | `str` | Yes | Column name for text/dialogue data | `"text"` |
+| `text_name` | `str` | Conditional | Column name for text data (bimodal only, mutually exclusive with primary/secondary_text_name) | `"text"` |
+| `primary_text_name` | `str` | Conditional | Primary text field name (trimodal only, e.g., chat messages) | `"chat"` |
+| `secondary_text_name` | `str` | Conditional | Secondary text field name (trimodal only, e.g., event logs) | `"shiptrack"` |
 | `label_name` | `str` | Yes | Column name for classification labels | `"label"` |
 | `full_field_list` | `List[str]` | Yes | Complete list of all data fields | `["order_id", "text", "label", ...]` |
-| `cat_field_list` | `List[str]` | Yes | Categorical feature column names | `["marketplace", "category"]` |
-| `tab_field_list` | `List[str]` | Yes | Tabular feature column names | `["price", "quantity", "rating"]` |
-| `categorical_features_to_encode` | `List[str]` | No | Features requiring label encoding | `["marketplace", "category"]` |
+| `cat_field_list` | `List[str]` | Yes | Categorical feature column names (risk table mapping applied) | `["marketplace", "category"]` |
+| `tab_field_list` | `List[str]` | Yes | Numerical feature column names (imputation applied) | `["price", "quantity", "rating"]` |
 | `train_filename` | `str` | No | Explicit train file name (auto-detected if omitted) | `"train.csv"` |
 | `val_filename` | `str` | No | Explicit validation file name | `"val.csv"` |
 | `test_filename` | `str` | No | Explicit test file name | `"test.csv"` |
+
+**Note on Text Field Configuration**:
+- **Bimodal**: Use `text_name` only (single text field)
+- **Trimodal**: Use `primary_text_name` AND `secondary_text_name` (dual text fields with independent processing)
+- These are mutually exclusive - use one approach or the other
 
 #### Model Architecture
 | Parameter | Type | Required | Description | Options |
@@ -157,6 +166,36 @@ None strictly required - all configuration via hyperparameters.json
 | `fixed_tokenizer_length` | `bool` | No | Use fixed tokenization length | Default: `true` |
 | `text_input_ids_key` | `str` | No | Key name for input IDs in batch | Default: `"input_ids"` |
 | `text_attention_mask_key` | `str` | No | Key name for attention mask | Default: `"attention_mask"` |
+
+#### Text Processing Pipeline Configuration (Optional - Advanced)
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `text_processing_steps` | `List[str]` | No | Processing steps for bimodal text field | `["dialogue_splitter", "html_normalizer", "emoji_remover", "text_normalizer", "dialogue_chunker", "tokenizer"]` |
+| `primary_text_processing_steps` | `List[str]` | No | Processing steps for primary text (trimodal) | `["dialogue_splitter", "html_normalizer", "emoji_remover", "text_normalizer", "dialogue_chunker", "tokenizer"]` |
+| `secondary_text_processing_steps` | `List[str]` | No | Processing steps for secondary text (trimodal) | `["dialogue_splitter", "text_normalizer", "dialogue_chunker", "tokenizer"]` |
+
+**Available Processing Steps**:
+- `dialogue_splitter`: Split multi-turn dialogues into individual messages
+- `html_normalizer`: Clean HTML tags and entities
+- `emoji_remover`: Remove emoji characters
+- `text_normalizer`: Normalize whitespace and special characters
+- `dialogue_chunker`: Chunk text by token limits
+- `tokenizer`: BERT tokenization (always last step)
+
+**Default Pipelines**:
+- **Bimodal** (text_name): Full cleaning pipeline with all steps
+- **Trimodal Primary** (e.g., chat): Full cleaning pipeline (HTML, emoji, normalization)
+- **Trimodal Secondary** (e.g., events): Minimal pipeline (no HTML/emoji removal)
+
+#### Preprocessing Artifact Configuration (Optional - Advanced)
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `smooth_factor` | `float` | No | Risk table smoothing factor for categorical encoding | Default: `0.0` |
+| `count_threshold` | `int` | No | Minimum count threshold for risk table mapping | Default: `0` |
+| `imputation_dict` | `Dict[str, float]` | No | Pre-computed imputation values (loaded from artifacts) | Auto-computed or loaded |
+| `risk_tables` | `Dict[str, Dict]` | No | Pre-computed risk tables (loaded from artifacts) | Auto-computed or loaded |
+
+**Note**: These are automatically populated during training or loaded from pre-computed artifacts
 
 #### Training Hyperparameters
 | Parameter | Type | Required | Description | Range/Default |
@@ -923,6 +962,567 @@ export_model_to_onnx(
 **Returns**: None (exits with code 0 on success, 1 on failure)
 
 ## Algorithms and Data Structures
+
+### Distributed Training Patterns
+
+PyTorch distributed training introduces complexities around process synchronization, data distribution, and resource management. This section documents key patterns and best practices for robust multi-GPU training.
+
+#### 1. Barrier Synchronization Pattern
+
+**Problem**: In multi-GPU distributed training, non-main ranks may exit prematurely before the main process completes evaluation and file writing, causing:
+- Incomplete prediction files
+- Missing evaluation metrics
+- Array length mismatches
+- Training reported as "complete" when evaluation hasn't finished
+
+**Solution Strategy**:
+1. Add barrier after training before evaluation starts
+2. Only main process runs evaluation and saves files
+3. Add final barrier before script exit to ensure main process completes
+
+**Algorithm**:
+```python
+# After training completes
+if torch.distributed.is_initialized():
+    torch.distributed.barrier()
+    log_once(logger, "All ranks synchronized after training - proceeding to evaluation")
+
+# Only main process runs evaluation
+if is_main_process():
+    log_once(logger, "Main process starting evaluation and prediction saving...")
+    evaluate_and_log_results(
+        model, val_dataloader, test_dataloader, config, trainer,
+        val_dataset, test_dataset, paths
+    )
+    log_once(logger, "Evaluation and prediction saving complete")
+else:
+    log_once(logger, f"Rank {get_rank()} skipping evaluation (main process only)")
+
+# CRITICAL: Final barrier ensures main process completes before any rank exits
+if torch.distributed.is_initialized():
+    torch.distributed.barrier()
+    log_once(logger, "All ranks synchronized after evaluation - ready to exit")
+```
+
+**Complexity**: O(1) - barrier synchronization
+
+**Key Features**:
+- Prevents race conditions in distributed training
+- Ensures file writes complete before process exit
+- No performance impact (barriers at end of training)
+- Compatible with both DDP and FSDP strategies
+
+**When This Matters**:
+- Multi-GPU training (2+ GPUs)
+- Distributed training with DDP or FSDP
+- Long-running evaluation steps
+- Large prediction file writes
+
+#### 2. Rank-Aware Execution Pattern
+
+**Problem**: In distributed training, certain operations should only execute once (e.g., saving models, logging metrics, creating directories) to avoid:
+- Duplicate file writes and race conditions
+- Excessive logging cluttering output
+- Wasted compute on redundant operations
+
+**Solution Strategy**:
+1. Define helper functions to check rank status
+2. Guard single-execution operations with rank checks
+3. Use log_once for rank-aware logging
+
+**Algorithm**:
+```python
+def get_rank():
+    """Get current process rank in distributed training."""
+    if torch.distributed.is_initialized():
+        return torch.distributed.get_rank()
+    return 0
+
+def is_main_process():
+    """Check if current process is the main process (rank 0)."""
+    return get_rank() == 0
+
+def log_once(logger, message, level=logging.INFO):
+    """Log message only from main process."""
+    if is_main_process():
+        logger.log(level, message)
+
+# Usage examples
+if is_main_process():
+    # Only main process saves model
+    save_model(model_path, model)
+    
+    # Only main process creates directories
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Only main process logs metrics
+    log_once(logger, f"Training complete. Final loss: {loss}")
+```
+
+**Complexity**: O(1) - simple rank check
+
+**Key Features**:
+- Prevents duplicate operations across ranks
+- Reduces I/O contention
+- Cleaner log output
+- Saves compute resources
+
+**Common Use Cases**:
+- Model checkpoint saving
+- Final metrics computation and logging
+- Directory creation
+- File writing operations
+- Visualization generation
+
+#### 3. Data Distribution Pattern
+
+**Problem**: In distributed training, data must be properly distributed across GPUs to ensure:
+- Each rank processes unique data samples (no duplication)
+- All data is processed exactly once per epoch
+- Balanced load across all GPUs
+
+**Solution Strategy**:
+1. Use DistributedSampler for automatic data sharding
+2. Ensure consistent batch sizes across ranks
+3. Handle edge cases (dataset size not divisible by world size)
+
+**Algorithm**:
+```python
+from torch.utils.data.distributed import DistributedSampler
+
+# During DataLoader creation
+if torch.distributed.is_initialized():
+    sampler = DistributedSampler(
+        dataset,
+        num_replicas=torch.distributed.get_world_size(),
+        rank=torch.distributed.get_rank(),
+        shuffle=True,  # For training data
+        drop_last=False  # Keep all samples
+    )
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        sampler=sampler,  # Use distributed sampler
+        shuffle=False,  # Shuffle handled by sampler
+        num_workers=4,
+        pin_memory=True
+    )
+else:
+    # Single GPU/CPU training
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True
+    )
+
+# Set epoch for sampler (important for proper shuffling)
+if hasattr(dataloader.sampler, 'set_epoch'):
+    dataloader.sampler.set_epoch(epoch)
+```
+
+**Complexity**: O(1) per sample - efficient sharding
+
+**Key Features**:
+- Automatic data partitioning across ranks
+- Consistent shuffling with different random seed per epoch
+- Handles uneven data splits gracefully
+- No manual data distribution needed
+
+**Best Practices**:
+- Always call `sampler.set_epoch(epoch)` before each epoch
+- Use `drop_last=False` to avoid losing tail samples
+- Ensure batch size is reasonable for each rank
+- Consider gradient accumulation for effective larger batch sizes
+
+#### 4. Gradient Synchronization Pattern (DDP)
+
+**Problem**: In DistributedDataParallel (DDP), gradients must be synchronized across ranks to ensure consistent model updates.
+
+**Solution Strategy**:
+1. DDP automatically handles gradient synchronization during backward pass
+2. Use gradient accumulation for larger effective batch sizes
+3. Proper gradient clipping before optimizer step
+
+**Algorithm**:
+```python
+# DDP wrapping (handled by Lightning, but shown for understanding)
+if torch.distributed.is_initialized():
+    model = DistributedDataParallel(
+        model,
+        device_ids=[local_rank],
+        find_unused_parameters=False  # Set True if dynamic computation graph
+    )
+
+# Training loop with gradient accumulation
+accumulation_steps = 4
+optimizer.zero_grad()
+
+for i, batch in enumerate(dataloader):
+    # Forward pass
+    outputs = model(batch)
+    loss = criterion(outputs, targets)
+    
+    # Scale loss for gradient accumulation
+    loss = loss / accumulation_steps
+    
+    # Backward pass (gradients accumulated locally)
+    loss.backward()
+    
+    # Update weights every accumulation_steps
+    if (i + 1) % accumulation_steps == 0:
+        # Clip gradients (happens after DDP gradient sync)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
+        # Optimizer step
+        optimizer.step()
+        optimizer.zero_grad()
+```
+
+**Complexity**: 
+- Gradient synchronization: O(model_size) per backward pass
+- All-reduce operation across GPUs
+
+**Key Features**:
+- Automatic gradient averaging across ranks
+- Synchronization happens during backward pass
+- Supports gradient accumulation transparently
+- Efficient ring all-reduce communication
+
+**When to Use**:
+- Standard distributed training (< 1B parameters)
+- When model fits in single GPU memory
+- Need deterministic gradient synchronization
+
+#### 5. FSDP Memory Optimization Pattern
+
+**Problem**: Fully Sharded Data Parallel (FSDP) enables training very large models by sharding model parameters, gradients, and optimizer states across GPUs.
+
+**Solution Strategy**:
+1. Use FSDP for models that don't fit in single GPU
+2. Configure sharding strategy based on model size
+3. Handle state dict saving/loading correctly
+
+**Algorithm**:
+```python
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import ShardingStrategy
+
+# FSDP configuration (handled by Lightning, shown for understanding)
+fsdp_config = {
+    "sharding_strategy": ShardingStrategy.FULL_SHARD,  # Shard params, grads, optimizer
+    "cpu_offload": False,  # Set True for very large models
+    "mixed_precision": True,  # Enable automatic mixed precision
+}
+
+# Wrap model with FSDP
+if torch.distributed.is_initialized():
+    model = FSDP(
+        model,
+        sharding_strategy=ShardingStrategy.FULL_SHARD,
+        device_id=local_rank,
+        mixed_precision=mixed_precision_policy,
+    )
+
+# Saving checkpoint (only main rank)
+if is_main_process():
+    # For FSDP, need to gather full state dict
+    with FSDP.state_dict_type(
+        model,
+        StateDictType.FULL_STATE_DICT,
+        FullStateDictConfig(offload_to_cpu=True, rank0_only=True),
+    ):
+        state_dict = model.state_dict()
+        torch.save(state_dict, checkpoint_path)
+```
+
+**Complexity**: 
+- Memory: O(model_size / world_size) per rank
+- Communication: O(model_size) for state dict gathering
+
+**Key Features**:
+- Shard model parameters across GPUs
+- Reduced per-GPU memory footprint
+- Supports models up to 100B+ parameters
+- Automatic sharding and gathering
+
+**When to Use**:
+- Large models (> 1B parameters)
+- Memory-constrained training
+- Need to maximize model size on available GPUs
+
+**Sharding Strategies**:
+- `FULL_SHARD`: Maximum memory savings (shard everything)
+- `SHARD_GRAD_OP`: Shard gradients and optimizer states only
+- `NO_SHARD`: DDP equivalent (no sharding)
+
+#### 6. Checkpoint Saving Pattern
+
+**Problem**: In distributed training, checkpoints should be saved only once to avoid:
+- Duplicate checkpoint files from each rank
+- Race conditions during file writes
+- Wasted I/O bandwidth
+
+**Solution Strategy**:
+1. Only main rank saves checkpoints
+2. Add barrier before save to ensure all ranks ready
+3. Add barrier after save to ensure file complete
+
+**Algorithm**:
+```python
+def save_checkpoint(model, optimizer, epoch, checkpoint_path):
+    """Save checkpoint in distributed training."""
+    # Barrier before save: ensure all ranks ready
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+    
+    # Only main rank saves
+    if is_main_process():
+        checkpoint = {
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        }
+        torch.save(checkpoint, checkpoint_path)
+        log_once(logger, f"Checkpoint saved: {checkpoint_path}")
+    
+    # Barrier after save: ensure file complete before proceeding
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+
+def load_checkpoint(model, optimizer, checkpoint_path):
+    """Load checkpoint in distributed training."""
+    # Load on all ranks (model parameters synced by DDP/FSDP)
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    
+    # Barrier to ensure all ranks loaded
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+    
+    return checkpoint['epoch']
+```
+
+**Complexity**: O(model_size) for I/O on main rank
+
+**Key Features**:
+- Single checkpoint file (not per-rank files)
+- Synchronized checkpoint saving
+- Safe for concurrent access
+
+**Best Practices**:
+- Save to fast storage (local SSD > network storage)
+- Use atomic writes (write to temp file, then rename)
+- Include optimizer state for resuming training
+- Keep multiple checkpoints for safety
+
+#### 7. Error Handling Pattern
+
+**Problem**: In distributed training, an error in one rank can hang other ranks waiting at barriers or cause cascading failures.
+
+**Solution Strategy**:
+1. Wrap training loop in try-except
+2. Propagate errors to all ranks
+3. Clean up distributed processes properly
+
+**Algorithm**:
+```python
+def distributed_training_with_error_handling():
+    """Training with proper error handling for distributed setup."""
+    try:
+        # Setup distributed training
+        if torch.distributed.is_initialized():
+            rank = torch.distributed.get_rank()
+            world_size = torch.distributed.get_world_size()
+        
+        # Main training loop
+        for epoch in range(max_epochs):
+            train_one_epoch(model, dataloader, optimizer)
+            
+            # Barrier after each epoch
+            if torch.distributed.is_initialized():
+                torch.distributed.barrier()
+        
+        # Final barrier before cleanup
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+        
+        return True
+        
+    except Exception as e:
+        # Log error with rank information
+        if torch.distributed.is_initialized():
+            logger.error(f"Rank {torch.distributed.get_rank()} encountered error: {str(e)}")
+        else:
+            logger.error(f"Training error: {str(e)}")
+        
+        # Print full traceback
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        # Clean up distributed resources
+        if torch.distributed.is_initialized():
+            try:
+                torch.distributed.destroy_process_group()
+            except:
+                pass
+        
+        # Re-raise or exit
+        raise
+        
+    finally:
+        # Cleanup code runs regardless of success/failure
+        if torch.distributed.is_initialized():
+            try:
+                torch.distributed.destroy_process_group()
+            except:
+                pass
+```
+
+**Complexity**: O(1) - error handling overhead
+
+**Key Features**:
+- Graceful error handling across ranks
+- Proper resource cleanup
+- Detailed error logging with rank info
+- Prevents hanging processes
+
+**Common Errors**:
+- NCCL communication failures: Check network, GPU connectivity
+- CUDA out of memory: Reduce batch size or model size
+- Timeout errors: Increase timeout in init_process_group
+- Deadlock at barrier: Check for rank-specific code paths
+
+#### 8. Logging Pattern
+
+**Problem**: With multiple ranks, logging can be overwhelming with duplicate messages from each rank.
+
+**Solution Strategy**:
+1. Implement rank-aware logging function
+2. Log only from main rank by default
+3. Include rank info for debugging
+
+**Algorithm**:
+```python
+import logging
+
+# Setup logger with rank-aware configuration
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Only add handler on main process
+if is_main_process():
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.propagate = False
+
+def log_once(logger, message, level=logging.INFO):
+    """Log only from main process."""
+    if is_main_process():
+        logger.log(level, message)
+
+def log_all_ranks(logger, message, level=logging.INFO):
+    """Log from all ranks with rank prefix."""
+    rank = get_rank() if torch.distributed.is_initialized() else 0
+    logger.log(level, f"[Rank {rank}] {message}")
+
+# Usage examples
+log_once(logger, "Training starting...")  # Only main rank logs
+log_once(logger, f"Epoch {epoch} completed")
+
+# For debugging, log from all ranks
+log_all_ranks(logger, f"GPU memory: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
+```
+
+**Complexity**: O(1) - simple rank check
+
+**Key Features**:
+- Clean log output without duplication
+- Optional per-rank logging for debugging
+- Consistent logging across distributed code
+
+**Best Practices**:
+- Use log_once for high-level progress messages
+- Use log_all_ranks for debugging memory/performance issues
+- Include rank in error messages
+- Log before and after barriers for debugging deadlocks
+
+#### 9. Memory Management Pattern
+
+**Problem**: CUDA memory fragmentation in distributed training can cause out-of-memory errors even when sufficient memory exists.
+
+**Solution Strategy**:
+1. Monitor memory usage per rank
+2. Empty cache at strategic points
+3. Use gradient checkpointing for large models
+
+**Algorithm**:
+```python
+import torch
+
+def log_memory_stats(logger, stage=""):
+    """Log CUDA memory statistics for debugging."""
+    if torch.cuda.is_available():
+        rank = get_rank() if torch.distributed.is_initialized() else 0
+        allocated = torch.cuda.memory_allocated() / 1e9
+        reserved = torch.cuda.memory_reserved() / 1e9
+        max_allocated = torch.cuda.max_memory_allocated() / 1e9
+        
+        logger.info(
+            f"[Rank {rank}] {stage} - "
+            f"Allocated: {allocated:.2f}GB, "
+            f"Reserved: {reserved:.2f}GB, "
+            f"Peak: {max_allocated:.2f}GB"
+        )
+
+# Training loop with memory management
+for epoch in range(max_epochs):
+    # Log memory at epoch start
+    log_memory_stats(logger, f"Epoch {epoch} start")
+    
+    for batch_idx, batch in enumerate(dataloader):
+        # Training step
+        loss = training_step(model, batch)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        
+        # Periodic memory cleanup
+        if batch_idx % 100 == 0:
+            torch.cuda.empty_cache()
+            
+    # Barrier and memory cleanup after epoch
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+    
+    torch.cuda.empty_cache()
+    log_memory_stats(logger, f"Epoch {epoch} end")
+
+# Enable gradient checkpointing for large models
+if hasattr(model, 'gradient_checkpointing_enable'):
+    model.gradient_checkpointing_enable()
+```
+
+**Complexity**: 
+- empty_cache(): O(1) - fast cache cleanup
+- gradient checkpointing: Trade compute for memory
+
+**Key Features**:
+- Monitor memory usage per rank
+- Strategic cache cleanup
+- Gradient checkpointing for memory savings
+- Debug memory leaks and fragmentation
+
+**Best Practices**:
+- Call empty_cache() between epochs, not during training
+- Use gradient checkpointing for models > 1B parameters
+- Monitor peak memory usage to optimize batch size
+- Set PYTORCH_CUDA_ALLOC_CONF for better memory management
 
 ### Pydantic Configuration Validation
 
