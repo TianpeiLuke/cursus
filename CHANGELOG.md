@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] - 2025-11-22
+
+### Added
+- **Multi-GPU Training Support** - Enhanced PyTorch training with multi-GPU capabilities
+  - **Gradient Checkpointing** - Enabled gradient checkpointing for memory-efficient training
+  - **Multi-GPU Synchronization** - Fixed synchronization issues for distributed training
+  - **Multi-GPU Model Evaluation** - Updated model evaluation to support multi-GPU configurations
+  - **PyTorch Training Instances** - Added new instance configurations for PyTorch training
+
+- **Model Parallelism Design** - Comprehensive design for model parallelism implementation
+  - **Model Parallelism Architecture** - Detailed design documentation for model parallelism
+  - **Model Design Index** - Created model design index for better organization and reference
+
+- **Training Configuration Enhancements** - Improved training configuration and management
+  - **Max Run Time Configuration** - Added maximum run time configuration with default of 2 days
+  - **Instance Type Updates** - Updated training instance types for better performance
+  - **Training Pipeline Updates** - Enhanced pipeline configurations for testing scenarios
+
+### Enhanced
+- **Inference System Improvements** - Major improvements to inference performance and reliability
+  - **Version Removal** - Removed __version__ from inference scripts for cleaner deployments
+  - **Model Calibration** - Converted model calibration results to dictionary format for better handling
+  - **Latency Reduction** - Reduced inference latency through optimization
+
+- **Data Processing Enhancements** - Improved data handling and processing capabilities
+  - **Text Field Handling** - Enhanced text field handling with optional text names
+  - **Text Truncation** - Added text truncation for better memory management
+  - **Field Name Cleanup** - Removed redundant suffixes in field names for cleaner data structures
+  - **Field Filtering** - Enhanced field filtering in TensorBoard for better visualization
+
+- **Model Artifact Support** - Extended support for pretrained models
+  - **Pretrained Model Input** - Updated specifications to allow pretrained models as model artifact input
+  - **Model Artifact Integration** - Enhanced integration of model artifacts in pipeline workflows
+
+### Fixed
+- **Multi-GPU Synchronization Issues** - Comprehensive fixes for distributed training
+  - **Sync Issue Resolution** - Fixed synchronization issues affecting multi-GPU training
+  - **Anti-Deadlock Mechanism** - Implemented anti-deadlock measures for distributed training
+  - **Dataset Synchronization** - Fixed dataset synchronization across multiple GPUs
+
+- **Data Processing Fixes** - Critical fixes for data handling and processing
+  - **Chunker Bug Fix** - Fixed bug in data chunking functionality
+  - **Attention Mask Alignment** - Fixed errors due to attention mask and input ID mismatch
+  - **Text Field Overwriting** - Fixed text field overwriting issues in dataset processing
+
+- **Field Mapping Improvements** - Enhanced field mapping and risk table handling
+  - **Risk Table Mapping** - Avoided risk table mapping on text fields for better accuracy
+  - **Field Name Redundancy** - Removed redundant suffixes and improved field naming consistency
+
+- **TensorBoard Optimization** - Improved TensorBoard logging and visualization
+  - **Excessive Logging Prevention** - Avoided saving too much data in TensorFlow for better performance
+  - **Field Filtering** - Enhanced field filtering to reduce TensorBoard clutter
+
+- **Configuration Management** - Improved configuration handling and management
+  - **Gitignore Updates** - Updated .gitignore file for better version control
+  - **Hyperparameter Registry Cleanup** - Removed hyperparameter registry for cleaner architecture
+  - **BSM Hyperparameter Updates** - Updated BSM hyperparameter naming conventions
+
+### Technical Details
+- **Multi-GPU Architecture** - Complete multi-GPU training support with gradient checkpointing and synchronization
+- **Model Parallelism** - Comprehensive model parallelism design with detailed documentation
+- **Inference Optimization** - Reduced inference latency and removed version dependencies
+- **Training Configuration** - Enhanced training configuration with max run time and instance type updates
+- **Data Processing** - Improved text field handling, truncation, and field mapping
+
+### Quality Assurance
+- **Distributed Training Validation** - Comprehensive validation of multi-GPU training functionality
+- **Synchronization Testing** - Thorough testing of synchronization mechanisms and anti-deadlock measures
+- **Performance Testing** - Validation of inference latency improvements and TensorBoard optimizations
+- **Integration Testing** - End-to-end testing of pretrained model artifact integration
+
+### Performance Improvements
+- **Multi-GPU Training Performance** - Optimized multi-GPU training with gradient checkpointing and synchronization
+- **Inference Latency** - Reduced inference latency through optimization and cleanup
+- **Memory Efficiency** - Improved memory efficiency with text truncation and gradient checkpointing
+- **TensorBoard Performance** - Enhanced TensorBoard performance by reducing excessive logging
+
 ## [1.4.4] - 2025-11-17
 
 ### Added
