@@ -28,27 +28,34 @@ from transformers import AutoTokenizer, AutoModel
 import warnings
 
 warnings.filterwarnings("ignore")
-from processing.processors import (
+from ...processing.processors import (
     Processor,
 )
-from processing.text.dialogue_processor import (
+from ...processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.text.bert_tokenize_processor import BertTokenizeProcessor
-from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
-from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
-from processing.categorical.risk_table_processor import RiskTableMappingProcessor
-from processing.numerical.numerical_imputation_processor import (
+from ...processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from ...processing.categorical.categorical_label_processor import (
+    CategoricalLabelProcessor,
+)
+from ...processing.categorical.multiclass_label_processor import (
+    MultiClassLabelProcessor,
+)
+from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from ...processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
-from processing.validation import validate_categorical_fields, validate_numerical_fields
-from processing.processor_registry import build_text_pipeline_from_steps
-from processing.datasets.bsm_datasets import BSMDataset
-from processing.dataloaders.bsm_dataloader import (
+from ...processing.validation import (
+    validate_categorical_fields,
+    validate_numerical_fields,
+)
+from ...processing.processor_registry import build_text_pipeline_from_steps
+from ...processing.datasets.bsm_datasets import BSMDataset
+from ...processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
@@ -1314,7 +1321,7 @@ def main(
         )
 
     # Only main process runs evaluation and saves predictions
-    # This prevents the array length mismatch error where each rank has partial data
+    # Non-main ranks will wait at the final barrier before script exit
     if is_main_process():
         log_once(logger, "Main process starting evaluation and prediction saving...")
         evaluate_and_log_results(
@@ -1330,6 +1337,12 @@ def main(
         log_once(logger, "Evaluation and prediction saving complete")
     else:
         log_once(logger, f"Rank {get_rank()} skipping evaluation (main process only)")
+
+    # CRITICAL FIX: Final barrier to ensure main process completes before any rank exits
+    # This prevents premature termination where non-main ranks exit before main finishes
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+        log_once(logger, "All ranks synchronized after evaluation - ready to exit")
 
 
 # ----------------- Entrypoint ---------------------------

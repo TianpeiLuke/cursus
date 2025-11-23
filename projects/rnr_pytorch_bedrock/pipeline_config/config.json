@@ -3,9 +3,10 @@
     "shared": {
       "author": "lukexie",
       "bucket": "buyer-seller-messaging-reversal",
-      "current_date": "2025-11-20",
+      "current_date": "2025-11-22",
       "enable_caching": false,
       "framework_version": "2.1.0",
+      "max_runtime_seconds": 172800,
       "model_class": "pytorch",
       "pipeline_version": "0.0.1",
       "project_root_folder": "rnr_pytorch_bedrock",
@@ -1107,7 +1108,7 @@
       "PyTorchTraining": "PyTorchTrainingConfig",
       "TabularPreprocessing_training": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-20T01:53:20.803351",
+    "created_at": "2025-11-22T19:59:47.870327",
     "field_sources": {
       "author": [
         "BedrockPromptTemplateGeneration",
@@ -1333,6 +1334,15 @@
       ],
       "max_file_size_mb": [
         "DummyDataLoading_training"
+      ],
+      "max_runtime_seconds": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "PyTorchTraining",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
       ],
       "model_class": [
         "BedrockPromptTemplateGeneration",

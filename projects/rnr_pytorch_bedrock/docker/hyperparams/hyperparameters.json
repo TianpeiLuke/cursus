@@ -16,7 +16,7 @@
   "early_stop_metric": "val_loss",
   "early_stop_patience": 3,
   "fixed_tokenizer_length": true,
-  "fp16": false,
+  "fp16": true,
   "full_field_list": [
     "net_conc_amt",
     "ttm_conc_amt",
@@ -144,6 +144,7 @@
   "text_input_ids_key": "input_ids",
   "text_name": null,
   "tokenizer": "bert-base-multilingual-uncased",
+  "use_gradient_checkpointing": false,
   "val_check_interval": 0.25,
   "warmup_steps": 300,
   "weight_decay": 0.0
