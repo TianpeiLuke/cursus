@@ -221,3 +221,4 @@ __marimo__/
 
 # Internal development files - never publish
 .internal/
+.claude/
