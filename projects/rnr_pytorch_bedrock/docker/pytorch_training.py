@@ -1313,26 +1313,22 @@ def main(
             logger, "All ranks synchronized after training - proceeding to evaluation"
         )
 
-    # Only main process runs evaluation and saves predictions
-    # Non-main ranks will wait at the final barrier before script exit
-    if is_main_process():
-        log_once(logger, "Main process starting evaluation and prediction saving...")
-        evaluate_and_log_results(
-            model,
-            val_dataloader,
-            test_dataloader,
-            config,
-            trainer,
-            val_dataset,
-            test_dataset,
-            paths,
-        )
-        log_once(logger, "Evaluation and prediction saving complete")
-    else:
-        log_once(logger, f"Rank {get_rank()} skipping evaluation (main process only)")
+    # CRITICAL FIX: All ranks must participate in evaluation for distributed inference
+    # PyTorch Lightning's test() method requires all ranks to participate in collective operations
+    log_once(logger, f"Rank {get_rank()} starting evaluation...")
+    evaluate_and_log_results(
+        model,
+        val_dataloader,
+        test_dataloader,
+        config,
+        trainer,
+        val_dataset,
+        test_dataset,
+        paths,
+    )
 
-    # CRITICAL FIX: Final barrier to ensure main process completes before any rank exits
-    # This prevents premature termination where non-main ranks exit before main finishes
+    # CRITICAL FIX: Final barrier to ensure all ranks complete evaluation together
+    # This prevents premature termination and ensures proper cleanup
     if torch.distributed.is_initialized():
         torch.distributed.barrier()
         log_once(logger, "All ranks synchronized after evaluation - ready to exit")
