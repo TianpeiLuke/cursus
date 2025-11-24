@@ -351,9 +351,15 @@ def main(
     )  # Optional for optimal strategy
     random_state = int(environ_vars.get("RANDOM_STATE", 42))
 
-    # Extract paths
-    input_data_dir = input_paths.get("input_data", "/opt/ml/processing/input/data")
-    output_dir = output_paths.get("processed_data", "/opt/ml/processing/output")
+    # Extract paths - no defaults, require explicit paths
+    input_data_dir = input_paths.get("input_data")
+    output_dir = output_paths.get("processed_data")
+
+    # Validate required paths
+    if not input_data_dir:
+        raise ValueError("input_paths must contain 'input_data' key")
+    if not output_dir:
+        raise ValueError("output_paths must contain 'processed_data' key")
 
     # Use print function if no logger is provided
     log = logger or print

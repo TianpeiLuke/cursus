@@ -999,47 +999,41 @@ def export_model_to_onnx(
 
 
 # ----------------- Evaluation and Logging -----------------------
-def save_predictions_as_dataframe(
+def save_predictions_with_dataframe(
+    df: pd.DataFrame,
     predictions: np.ndarray,
-    true_labels: np.ndarray,
-    ids: np.ndarray,
     output_dir: str,
     split_name: str,
-    id_col: str,
-    label_col: str,
     output_format: str = "csv",
 ) -> None:
     """
-    Save predictions as DataFrame with format preservation.
+    Save predictions by adding probability columns to existing dataframe.
 
     Args:
+        df: Dataframe with IDs, labels, and other metadata from inference
         predictions: Prediction probabilities of shape (N, num_classes)
-        true_labels: True labels of shape (N,)
-        ids: Sample IDs of shape (N,)
         output_dir: Directory to save predictions
         split_name: Name of split (e.g., 'val', 'test')
-        id_col: Name of ID column
-        label_col: Name of label column
         output_format: Format to save in ('csv', 'tsv', or 'parquet')
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create DataFrame with ID and label columns
-    df = pd.DataFrame({id_col: ids, label_col: true_labels})
+    # Make a copy to avoid modifying the original
+    df_output = df.copy()
 
     # Add probability columns for each class
     num_classes = predictions.shape[1] if len(predictions.shape) > 1 else 1
     if num_classes == 1:
         # Binary with single probability
-        df["prob_class_0"] = 1 - predictions.squeeze()
-        df["prob_class_1"] = predictions.squeeze()
+        df_output["prob_class_0"] = 1 - predictions.squeeze()
+        df_output["prob_class_1"] = predictions.squeeze()
     else:
         for i in range(num_classes):
-            df[f"prob_class_{i}"] = predictions[:, i]
+            df_output[f"prob_class_{i}"] = predictions[:, i]
 
     # Save with format preservation
     output_base = os.path.join(output_dir, f"{split_name}_predictions")
-    saved_path = save_dataframe_with_format(df, output_base, output_format)
+    saved_path = save_dataframe_with_format(df_output, output_base, output_format)
     log_once(
         logger, f"Saved {split_name} predictions (format={output_format}): {saved_path}"
     )
@@ -1056,19 +1050,22 @@ def evaluate_and_log_results(
     paths: Dict[str, str],
 ) -> None:
     log_once(logger, "Inference Starts ...")
-    val_predict_labels, val_true_labels = model_inference(
+    # Request dataframe to extract IDs from inference results
+    val_predict_labels, val_true_labels, val_df = model_inference(
         model,
         val_dataloader,
         accelerator="gpu",
         device="auto",
         model_log_path=paths["checkpoint"],
+        return_dataframe=True,
     )
-    test_predict_labels, test_true_labels = model_inference(
+    test_predict_labels, test_true_labels, test_df = model_inference(
         model,
         test_dataloader,
         accelerator="gpu",
         device="auto",
         model_log_path=paths["checkpoint"],
+        return_dataframe=True,
     )
     log_once(logger, "Inference Complete.")
     if is_main_process():
@@ -1133,39 +1130,21 @@ def evaluate_and_log_results(
         log_once(logger, "Saving predictions as DataFrames with format preservation...")
         output_format = config._input_format or "csv"
 
-        # Get IDs from datasets
-        val_ids = (
-            val_dataset.DataReader[config.id_name].values
-            if config.id_name in val_dataset.DataReader.columns
-            else np.arange(len(val_true_labels))
-        )
-        test_ids = (
-            test_dataset.DataReader[config.id_name].values
-            if config.id_name in test_dataset.DataReader.columns
-            else np.arange(len(test_true_labels))
-        )
-
-        # Save validation predictions
-        save_predictions_as_dataframe(
+        # Save validation predictions (df already has IDs and labels from inference)
+        save_predictions_with_dataframe(
+            df=val_df,
             predictions=val_predict_labels,
-            true_labels=val_true_labels,
-            ids=val_ids,
             output_dir=paths["output"],
             split_name="val",
-            id_col=config.id_name,
-            label_col=config.label_name,
             output_format=output_format,
         )
 
-        # Save test predictions
-        save_predictions_as_dataframe(
+        # Save test predictions (df already has IDs and labels from inference)
+        save_predictions_with_dataframe(
+            df=test_df,
             predictions=test_predict_labels,
-            true_labels=test_true_labels,
-            ids=test_ids,
             output_dir=paths["output"],
             split_name="test",
-            id_col=config.id_name,
-            label_col=config.label_name,
             output_format=output_format,
         )
 
