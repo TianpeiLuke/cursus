@@ -781,7 +781,7 @@ def generate_predictions(
     dataloader: DataLoader,
     device: Union[str, int, List[int]] = "auto",
     accelerator: str = "auto",
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """
     Generate predictions using PyTorch Lightning inference.
     Supports single-GPU, multi-GPU, CPU, and automatic detection.
@@ -793,7 +793,7 @@ def generate_predictions(
         accelerator: Accelerator type for Lightning
 
     Returns:
-        Tuple of (y_pred probabilities, y_true labels)
+        Tuple of (y_pred probabilities, y_true labels, dataframe_with_ids)
     """
     # Determine if multi-GPU inference
     is_multi_gpu = False
@@ -810,13 +810,14 @@ def generate_predictions(
     logger.info(f"Multi-GPU inference: {'Yes' if is_multi_gpu else 'No'}")
     logger.info("=" * 70)
 
-    # Use Lightning's model_inference utility
-    y_pred, y_true = model_inference(
+    # Use Lightning's model_inference utility with dataframe return
+    y_pred, y_true, df = model_inference(
         model,
         dataloader,
         accelerator=accelerator,
         device=device,
         model_log_path=None,  # No logging during evaluation
+        return_dataframe=True,  # Get dataframe with IDs and labels
     )
 
     logger.info("=" * 70)
@@ -824,9 +825,10 @@ def generate_predictions(
     logger.info("=" * 70)
     logger.info(f"Prediction shape: {y_pred.shape}")
     logger.info(f"True labels shape: {y_true.shape}")
+    logger.info(f"DataFrame shape: {df.shape}")
     logger.info("=" * 70)
 
-    return y_pred, y_true
+    return y_pred, y_true, df
 
 
 # ============================================================================
@@ -995,34 +997,36 @@ def generate_evaluation_plots(
 # ============================================================================
 
 
-def save_predictions(
-    ids: np.ndarray,
-    y_true: np.ndarray,
+def save_predictions_with_dataframe(
+    df: pd.DataFrame,
     y_prob: np.ndarray,
-    id_col: str,
-    label_col: str,
     output_eval_dir: str,
     input_format: str = "csv",
 ) -> None:
     """
-    Save predictions preserving input format, including id, true label, and class probabilities.
+    Save predictions by adding probability columns to existing dataframe.
+    Includes id, true label, and class probabilities.
 
     Args:
-        ids: Sample IDs
-        y_true: True labels
+        df: Dataframe with IDs and labels from inference (already aligned)
         y_prob: Predicted probabilities
-        id_col: Name of ID column
-        label_col: Name of label column
         output_eval_dir: Directory to save predictions
         input_format: Format to save in ('csv', 'tsv', or 'parquet')
     """
     logger.info(f"Saving predictions to {output_eval_dir} in {input_format} format")
 
-    prob_cols = [f"prob_class_{i}" for i in range(y_prob.shape[1])]
-    out_df = pd.DataFrame({id_col: ids, label_col: y_true})
+    # Make a copy to avoid modifying original
+    out_df = df.copy()
 
-    for i, col in enumerate(prob_cols):
-        out_df[col] = y_prob[:, i]
+    # Add probability columns
+    num_classes = y_prob.shape[1] if len(y_prob.shape) > 1 else 1
+    if num_classes == 1:
+        # Binary with single probability
+        out_df["prob_class_0"] = 1 - y_prob.squeeze()
+        out_df["prob_class_1"] = y_prob.squeeze()
+    else:
+        for i in range(num_classes):
+            out_df[f"prob_class_{i}"] = y_prob[:, i]
 
     output_base = Path(output_eval_dir) / "eval_predictions"
     output_path = save_dataframe_with_format(out_df, output_base, input_format)
@@ -1165,9 +1169,6 @@ def evaluate_model(
     """
     logger.info("Starting model evaluation")
 
-    # Store IDs before preprocessing
-    ids = df[id_col].values
-
     # Preprocess data and create DataLoader
     bsm_dataset, dataloader = preprocess_eval_data(
         df, config, tokenizer, processors, eval_data_dir, filename
@@ -1176,8 +1177,10 @@ def evaluate_model(
     # Setup device environment
     device_str, accelerator = setup_device_environment(device)
 
-    # Generate predictions (all ranks participate in DDP)
-    y_prob, y_true = generate_predictions(model, dataloader, device_str, accelerator)
+    # Generate predictions with dataframe (all ranks participate in DDP)
+    y_prob, y_true, eval_df = generate_predictions(
+        model, dataloader, device_str, accelerator
+    )
 
     # ===================================================================
     # CRITICAL: Only main process performs post-processing
@@ -1197,10 +1200,8 @@ def evaluate_model(
             y_true, y_prob, config, output_metrics_dir
         )
 
-        # Save predictions
-        save_predictions(
-            ids, y_true, y_prob, id_col, label_col, output_eval_dir, input_format
-        )
+        # Save predictions with aligned dataframe
+        save_predictions_with_dataframe(eval_df, y_prob, output_eval_dir, input_format)
 
         # Save metrics
         save_metrics(metrics, output_metrics_dir)

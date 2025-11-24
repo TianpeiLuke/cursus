@@ -750,7 +750,7 @@ def generate_predictions(
     dataloader: DataLoader,
     device: Union[str, int, List[int]] = "auto",
     accelerator: str = "auto",
-) -> np.ndarray:
+) -> Tuple[np.ndarray, pd.DataFrame]:
     """
     Generate predictions using PyTorch Lightning inference.
     Supports single-GPU, multi-GPU, CPU, and automatic detection.
@@ -763,7 +763,7 @@ def generate_predictions(
         accelerator: Accelerator type for Lightning
 
     Returns:
-        Prediction probabilities (N x num_classes)
+        Tuple of (predictions, dataframe_with_ids)
     """
     # Determine if multi-GPU inference
     is_multi_gpu = False
@@ -780,22 +780,24 @@ def generate_predictions(
     logger.info(f"Multi-GPU inference: {'Yes' if is_multi_gpu else 'No'}")
     logger.info("=" * 70)
 
-    # Use Lightning's model_inference utility (no labels)
-    y_pred, _ = model_inference(
+    # Use Lightning's model_inference utility with dataframe return
+    y_pred, _, df = model_inference(
         model,
         dataloader,
         accelerator=accelerator,
         device=device,
         model_log_path=None,  # No logging during inference
+        return_dataframe=True,  # Get dataframe with IDs
     )
 
     logger.info("=" * 70)
     logger.info("INFERENCE COMPLETE")
     logger.info("=" * 70)
     logger.info(f"Prediction shape: {y_pred.shape}")
+    logger.info(f"DataFrame shape: {df.shape}")
     logger.info("=" * 70)
 
-    return y_pred
+    return y_pred, df
 
 
 # ============================================================================
@@ -803,31 +805,36 @@ def generate_predictions(
 # ============================================================================
 
 
-def save_predictions(
-    ids: np.ndarray,
+def save_predictions_with_dataframe(
+    df: pd.DataFrame,
     y_prob: np.ndarray,
-    id_col: str,
     output_dir: str,
     input_format: str = "csv",
 ) -> None:
     """
-    Save predictions preserving input format.
+    Save predictions by adding probability columns to existing dataframe.
     ONLY includes id and class probabilities (NO true labels).
 
     Args:
-        ids: Sample IDs
+        df: Dataframe with IDs from inference (already aligned)
         y_prob: Predicted probabilities
-        id_col: Name of ID column
         output_dir: Directory to save predictions
         input_format: Format to save in ('csv', 'tsv', or 'parquet')
     """
     logger.info(f"Saving predictions to {output_dir} in {input_format} format")
 
-    prob_cols = [f"prob_class_{i}" for i in range(y_prob.shape[1])]
-    out_df = pd.DataFrame({id_col: ids})
+    # Make a copy to avoid modifying original
+    out_df = df.copy()
 
-    for i, col in enumerate(prob_cols):
-        out_df[col] = y_prob[:, i]
+    # Add probability columns
+    num_classes = y_prob.shape[1] if len(y_prob.shape) > 1 else 1
+    if num_classes == 1:
+        # Binary with single probability
+        out_df["prob_class_0"] = 1 - y_prob.squeeze()
+        out_df["prob_class_1"] = y_prob.squeeze()
+    else:
+        for i in range(num_classes):
+            out_df[f"prob_class_{i}"] = y_prob[:, i]
 
     output_base = Path(output_dir) / "inference_predictions"
     output_path = save_dataframe_with_format(out_df, output_base, input_format)
@@ -910,15 +917,12 @@ def run_batch_inference(
         processors: Preprocessing processors
         inference_data_dir: Directory containing inference data
         filename: Name of inference data file
-        id_col: Name of ID column
+        id_col: Name of ID column (not used in refactored approach)
         output_dir: Directory to save predictions
         input_format: Input data format
         device: Device to use for inference
     """
     logger.info("Starting batch inference")
-
-    # Store IDs before preprocessing
-    ids = df[id_col].values
 
     # Preprocess data and create DataLoader
     bsm_dataset, dataloader = preprocess_inference_data(
@@ -928,8 +932,8 @@ def run_batch_inference(
     # Setup device environment
     device_str, accelerator = setup_device_environment(device)
 
-    # Generate predictions (all ranks participate in DDP)
-    y_prob = generate_predictions(model, dataloader, device_str, accelerator)
+    # Generate predictions with dataframe (all ranks participate in DDP)
+    y_prob, inf_df = generate_predictions(model, dataloader, device_str, accelerator)
 
     # ===================================================================
     # CRITICAL: Only main process performs post-processing
@@ -941,8 +945,8 @@ def run_batch_inference(
         logger.info("POST-PROCESSING (MAIN PROCESS ONLY)")
         logger.info("=" * 70)
 
-        # Save predictions
-        save_predictions(ids, y_prob, id_col, output_dir, input_format)
+        # Save predictions with aligned dataframe
+        save_predictions_with_dataframe(inf_df, y_prob, output_dir, input_format)
 
         logger.info("=" * 70)
         logger.info("POST-PROCESSING COMPLETE")
