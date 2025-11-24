@@ -713,6 +713,11 @@ def process_data(
         # Transform all splits
         transformed_data = {}
         for split_name, df in data_dict.items():
+            # Skip the format metadata key
+            if split_name == "_format":
+                transformed_data[split_name] = df  # Preserve the format key
+                continue
+
             df_imputed = imputation_engine.transform(df)
             transformed_data[split_name] = df_imputed
             logger.info(f"Imputed {split_name} data, shape: {df_imputed.shape}")
@@ -731,6 +736,11 @@ def process_data(
         # Transform the data using simple fillna with the imputation dict
         transformed_data = {}
         for split_name, df in data_dict.items():
+            # Skip the format metadata key
+            if split_name == "_format":
+                transformed_data[split_name] = df  # Preserve the format key
+                continue
+
             df_imputed = df.copy()
             for column, impute_value in imputation_parameters.items():
                 if column in df_imputed.columns:

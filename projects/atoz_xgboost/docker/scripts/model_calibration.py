@@ -324,6 +324,7 @@ class CalibrationConfig:
         num_classes: int = 2,
         score_field_prefix: str = "prob_class_",
         multiclass_categories: Optional[List[str]] = None,
+        calibration_sample_points: int = 1000,
     ):
         """Initialize configuration with paths and parameters."""
         # I/O Paths
@@ -340,6 +341,7 @@ class CalibrationConfig:
         self.monotonic_constraint = monotonic_constraint
         self.gam_splines = gam_splines
         self.error_threshold = error_threshold
+        self.calibration_sample_points = calibration_sample_points
 
         # Multi-class parameters
         self.num_classes = num_classes
@@ -382,25 +384,27 @@ class CalibrationConfig:
             num_classes=int(os.environ.get("NUM_CLASSES", "2")),
             score_field_prefix=os.environ.get("SCORE_FIELD_PREFIX", "prob_class_"),
             multiclass_categories=multiclass_categories,
+            calibration_sample_points=int(
+                os.environ.get("CALIBRATION_SAMPLE_POINTS", "1000")
+            ),
         )
 
 
-def create_directories(config: Optional["CalibrationConfig"] = None) -> None:
+def create_directories(config: "CalibrationConfig") -> None:
     """Create output directories if they don't exist."""
-    config = config or CalibrationConfig.from_env()
     os.makedirs(config.output_calibration_path, exist_ok=True)
     os.makedirs(config.output_metrics_path, exist_ok=True)
     os.makedirs(config.output_calibrated_data_path, exist_ok=True)
 
 
 def find_first_data_file(
-    data_dir: Optional[str] = None, config: Optional["CalibrationConfig"] = None
+    data_dir: Optional[str] = None, config: "CalibrationConfig" = None
 ) -> str:
     """Find the first supported data file in directory.
 
     Args:
         data_dir: Directory to search for data files (defaults to config input_data_path)
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         str: Path to the first supported data file found
@@ -408,7 +412,6 @@ def find_first_data_file(
     Raises:
         FileNotFoundError: If no supported data file is found
     """
-    config = config or CalibrationConfig.from_env()
     data_dir = data_dir or config.input_data_path
 
     if not os.path.isdir(data_dir):
@@ -423,11 +426,11 @@ def find_first_data_file(
     )
 
 
-def load_data(config: Optional["CalibrationConfig"] = None) -> Tuple[pd.DataFrame, str]:
+def load_data(config: "CalibrationConfig") -> Tuple[pd.DataFrame, str]:
     """Load evaluation data with predictions using format preservation.
 
     Args:
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         Tuple[pd.DataFrame, str]: Loaded evaluation data and detected format
@@ -436,7 +439,6 @@ def load_data(config: Optional["CalibrationConfig"] = None) -> Tuple[pd.DataFram
         FileNotFoundError: If no data file is found
         ValueError: If required columns are missing
     """
-    config = config or CalibrationConfig.from_env()
     data_file = find_first_data_file(config.input_data_path, config)
 
     logger.info(f"Loading data from {data_file}")
@@ -484,7 +486,7 @@ def log_section(title: str) -> None:
 
 
 def _model_to_lookup_table(
-    model, method: str, config: Optional["CalibrationConfig"] = None
+    model, method: str, config: "CalibrationConfig"
 ) -> List[Tuple[float, float]]:
     """Convert trained calibration model to lookup table format.
 
@@ -495,16 +497,14 @@ def _model_to_lookup_table(
     Args:
         model: Trained calibration model (GAM, IsotonicRegression, or LogisticRegression)
         method: Calibration method name ("gam", "isotonic", or "platt")
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
             Same format as percentile calibration for unified inference.
     """
-    config = config or CalibrationConfig.from_env()
-
-    # Get number of sample points from environment or use default
-    sample_points = int(os.environ.get("CALIBRATION_SAMPLE_POINTS", "1000"))
+    # Get number of sample points from config
+    sample_points = config.calibration_sample_points
 
     # Generate sample points uniformly distributed from 0 to 1
     score_range = np.linspace(0, 1, sample_points)
@@ -537,7 +537,7 @@ def _model_to_lookup_table(
 
 
 def extract_and_load_nested_tarball_data(
-    config: Optional["CalibrationConfig"] = None,
+    config: "CalibrationConfig",
 ) -> pd.DataFrame:
     """Extract and load data from nested tar.gz files in SageMaker output structure.
 
@@ -556,7 +556,7 @@ def extract_and_load_nested_tarball_data(
     - Path to a parent directory with job subdirectories
 
     Args:
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         pd.DataFrame: Combined dataset with predictions from extracted tar.gz files
@@ -568,7 +568,6 @@ def extract_and_load_nested_tarball_data(
     import tempfile
     import shutil
 
-    config = config or CalibrationConfig.from_env()
     input_dir = config.input_data_path
     log_section("NESTED TARBALL EXTRACTION")
     logger.info(f"Looking for SageMaker output archive in {input_dir}")
@@ -754,12 +753,12 @@ def extract_and_load_nested_tarball_data(
 
 
 def load_and_prepare_data(
-    config: Optional["CalibrationConfig"] = None, job_type: str = "calibration"
+    config: "CalibrationConfig", job_type: str = "calibration"
 ) -> Tuple[pd.DataFrame, np.ndarray, Optional[np.ndarray], Optional[np.ndarray]]:
     """Load evaluation data and prepare it for calibration based on classification type.
 
     Args:
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
         job_type: The job type to determine how to load data
 
     Returns:
@@ -771,8 +770,6 @@ def load_and_prepare_data(
         FileNotFoundError: If no data file is found
         ValueError: If required columns are missing
     """
-    config = config or CalibrationConfig.from_env()
-
     log_section("DATA PREPARATION")
 
     # Load data differently based on job_type
@@ -833,14 +830,14 @@ def load_and_prepare_data(
 
 
 def train_gam_calibration(
-    scores: np.ndarray, labels: np.ndarray, config: Optional["CalibrationConfig"] = None
+    scores: np.ndarray, labels: np.ndarray, config: "CalibrationConfig"
 ):
     """Train a GAM calibration model and convert to lookup table.
 
     Args:
         scores: Raw prediction scores to calibrate
         labels: Ground truth binary labels (0/1)
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
@@ -849,7 +846,6 @@ def train_gam_calibration(
     Raises:
         ImportError: If pygam is not installed
     """
-    config = config or CalibrationConfig.from_env()
 
     if not HAS_PYGAM:
         raise ImportError(
@@ -883,20 +879,19 @@ def train_gam_calibration(
 
 
 def train_isotonic_calibration(
-    scores: np.ndarray, labels: np.ndarray, config: Optional["CalibrationConfig"] = None
+    scores: np.ndarray, labels: np.ndarray, config: "CalibrationConfig"
 ):
     """Train an isotonic regression calibration model and convert to lookup table.
 
     Args:
         scores: Raw prediction scores to calibrate
         labels: Ground truth binary labels (0/1)
-        config: Configuration object (optional)
+        config: Configuration object (required)
 
     Returns:
         List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
             Same format as percentile calibration for unified inference code.
     """
-    config = config or CalibrationConfig.from_env()
 
     logger.info("Training isotonic regression calibration model")
     ir = IsotonicRegression(out_of_bounds="clip")
@@ -913,20 +908,19 @@ def train_isotonic_calibration(
 
 
 def train_platt_scaling(
-    scores: np.ndarray, labels: np.ndarray, config: Optional["CalibrationConfig"] = None
+    scores: np.ndarray, labels: np.ndarray, config: "CalibrationConfig"
 ):
     """Train a Platt scaling (logistic regression) calibration model and convert to lookup table.
 
     Args:
         scores: Raw prediction scores to calibrate
         labels: Ground truth binary labels (0/1)
-        config: Configuration object (optional)
+        config: Configuration object (required)
 
     Returns:
         List[Tuple[float, float]]: Lookup table as [(raw_score, calibrated_score), ...]
             Same format as percentile calibration for unified inference code.
     """
-    config = config or CalibrationConfig.from_env()
 
     logger.info("Training Platt scaling (logistic regression) calibration model")
     scores = scores.reshape(-1, 1)  # Reshape for LogisticRegression
@@ -947,7 +941,7 @@ def train_multiclass_calibration(
     y_prob_matrix: np.ndarray,
     y_true: np.ndarray,
     method: str = "isotonic",
-    config: Optional["CalibrationConfig"] = None,
+    config: "CalibrationConfig" = None,
 ) -> List[Any]:
     """Train calibration models for each class in one-vs-rest fashion.
 
@@ -955,12 +949,11 @@ def train_multiclass_calibration(
         y_prob_matrix: Matrix of prediction probabilities (samples × classes)
         y_true: Ground truth class labels
         method: Calibration method to use ("gam", "isotonic", "platt")
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         list: List of calibration models, one for each class
     """
-    config = config or CalibrationConfig.from_env()
     calibrators = []
     n_classes = y_prob_matrix.shape[1]
 
@@ -1005,19 +998,18 @@ def train_multiclass_calibration(
 def apply_multiclass_calibration(
     y_prob_matrix: np.ndarray,
     calibrators: List[Any],
-    config: Optional["CalibrationConfig"] = None,
+    config: "CalibrationConfig",
 ) -> np.ndarray:
     """Apply calibration to each class probability and normalize.
 
     Args:
         y_prob_matrix: Matrix of uncalibrated probabilities (samples × classes)
         calibrators: List of calibration models or lookup tables, one for each class
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         np.ndarray: Matrix of calibrated probabilities (samples × classes)
     """
-    config = config or CalibrationConfig.from_env()
     n_samples = y_prob_matrix.shape[0]
     n_classes = y_prob_matrix.shape[1]
     calibrated_probs = np.zeros((n_samples, n_classes))
@@ -1185,7 +1177,7 @@ def compute_multiclass_calibration_metrics(
     y_true: np.ndarray,
     y_prob_matrix: np.ndarray,
     n_bins: int = 10,
-    config: Optional["CalibrationConfig"] = None,
+    config: "CalibrationConfig" = None,
 ) -> Dict[str, Any]:
     """Compute calibration metrics for multi-class scenario.
 
@@ -1193,12 +1185,11 @@ def compute_multiclass_calibration_metrics(
         y_true: Ground truth class labels
         y_prob_matrix: Matrix of prediction probabilities (samples × classes)
         n_bins: Number of bins for calibration curve
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         dict: Dictionary containing calibration metrics
     """
-    config = config or CalibrationConfig.from_env()
     n_classes = y_prob_matrix.shape[1]
 
     # Convert y_true to one-hot encoding
@@ -1260,7 +1251,7 @@ def plot_reliability_diagram(
     y_prob_uncalibrated: np.ndarray,
     y_prob_calibrated: np.ndarray,
     n_bins: int = 10,
-    config=None,
+    config: "CalibrationConfig" = None,
 ) -> str:
     """Create reliability diagram comparing uncalibrated and calibrated probabilities.
 
@@ -1269,12 +1260,11 @@ def plot_reliability_diagram(
         y_prob_uncalibrated: Uncalibrated prediction probabilities
         y_prob_calibrated: Calibrated prediction probabilities
         n_bins: Number of bins for calibration curve
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         str: Path to the saved figure
     """
-    config = config or CalibrationConfig.from_env()
     fig = plt.figure(figsize=(10, 8))
 
     # Plot calibration curves
@@ -1333,7 +1323,11 @@ def plot_reliability_diagram(
 
 
 def plot_multiclass_reliability_diagram(
-    y_true, y_prob_uncalibrated, y_prob_calibrated, n_bins=10, config=None
+    y_true,
+    y_prob_uncalibrated,
+    y_prob_calibrated,
+    n_bins=10,
+    config: "CalibrationConfig" = None,
 ):
     """Create reliability diagrams for multi-class case, one plot per class.
 
@@ -1342,12 +1336,11 @@ def plot_multiclass_reliability_diagram(
         y_prob_uncalibrated: Matrix of uncalibrated probabilities (samples × classes)
         y_prob_calibrated: Matrix of calibrated probabilities (samples × classes)
         n_bins: Number of bins for calibration curve
-        config: Configuration object (optional, created from environment if not provided)
+        config: Configuration object (required)
 
     Returns:
         str: Path to the saved figure
     """
-    config = config or CalibrationConfig.from_env()
     n_classes = y_prob_uncalibrated.shape[1]
 
     # Create a plot grid based on number of classes
@@ -1467,6 +1460,9 @@ def main(
             num_classes=int(environ_vars.get("NUM_CLASSES", "2")),
             score_field_prefix=environ_vars.get("SCORE_FIELD_PREFIX", "prob_class_"),
             multiclass_categories=multiclass_categories,
+            calibration_sample_points=int(
+                environ_vars.get("CALIBRATION_SAMPLE_POINTS", "1000")
+            ),
         )
 
         logger.info("Starting model calibration")
@@ -1839,6 +1835,9 @@ if __name__ == "__main__":
         "NUM_CLASSES": os.environ.get("NUM_CLASSES", "2"),
         "SCORE_FIELD_PREFIX": os.environ.get("SCORE_FIELD_PREFIX", "prob_class_"),
         "MULTICLASS_CATEGORIES": os.environ.get("MULTICLASS_CATEGORIES"),
+        "CALIBRATION_SAMPLE_POINTS": os.environ.get(
+            "CALIBRATION_SAMPLE_POINTS", "1000"
+        ),
     }
 
     # Set up input and output paths

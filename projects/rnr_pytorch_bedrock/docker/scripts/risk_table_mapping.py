@@ -408,6 +408,11 @@ def process_data(
             # Transform all splits
             transformed_data = {}
             for split_name, df in data_dict.items():
+                # Skip the format metadata key
+                if split_name == "_format":
+                    transformed_data[split_name] = df  # Preserve the format key
+                    continue
+
                 df_transformed = binner.transform(df)
                 transformed_data[split_name] = df_transformed
                 logger.info(
@@ -436,6 +441,11 @@ def process_data(
         # Transform the data
         transformed_data = {}
         for split_name, df in data_dict.items():
+            # Skip the format metadata key
+            if split_name == "_format":
+                transformed_data[split_name] = df  # Preserve the format key
+                continue
+
             df_transformed = binner.transform(df)
             transformed_data[split_name] = df_transformed
             logger.info(f"Transformed {split_name} data, shape: {df_transformed.shape}")

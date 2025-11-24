@@ -344,6 +344,11 @@ def process_data(
     # Process all splits
     converted_data = {}
     for split_name, df in data_dict.items():
+        # Skip the format metadata key
+        if split_name == "_format":
+            converted_data[split_name] = df  # Preserve the format key
+            continue
+
         logger.info(f"Processing {split_name} split with {len(df)} rows")
         df_converted = process_currency_conversion(
             df=df,

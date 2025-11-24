@@ -966,7 +966,7 @@
         "aws_region": "us-east-1",
         "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/mods_pipeline_adapter/dockers/xgboost_atoz",
         "framework": "xgboost",
-        "inference_entry_point": "xgboost_inference.py",
+        "inference_entry_point": "xgboost_inference_handler.py",
         "inference_instance_type": "ml.m5.large",
         "model_domain": "AtoZ",
         "model_objective": "AtoZ_Claims_SM_Model_NA",

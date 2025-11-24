@@ -1122,7 +1122,7 @@
         "model_registration_region": "NA",
         "source_model_environment_variable_map": {
           "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
-          "SAGEMAKER_PROGRAM": "xgboost_inference.py",
+          "SAGEMAKER_PROGRAM": "xgboost_inference_handler.py",
           "SAGEMAKER_REGION": "us-east-1",
           "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code"
         },
