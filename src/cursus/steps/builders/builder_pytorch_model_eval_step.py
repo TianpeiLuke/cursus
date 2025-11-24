@@ -354,12 +354,22 @@ class PyTorchModelEvalStepBuilder(StepBuilderBase):
 
         # Use FrameworkProcessor with source_dir parameter for PyTorch model evaluation
         # This supports source_dir parameter which is needed for PyTorch scripts
-        entry_point = self.config.processing_entry_point  # Just the filename
-        source_dir = (
-            self.config.effective_source_dir
-        )  # Use modernized effective_source_dir
+
+        # Get fully resolved script path using hybrid resolution
+        # This ensures we get an absolute path even in Lambda where directories may not exist
+        script_path = self.config.get_script_path()
+        self.log_info("Using resolved script path: %s", script_path)
+
+        # Split the resolved script path into source_dir and entry_point
+        # This provides both the absolute directory path and the script filename
+        from pathlib import Path
+
+        script_path_obj = Path(script_path)
+        source_dir = str(script_path_obj.parent)  # Absolute directory path
+        entry_point = script_path_obj.name  # Just the filename
+
         self.log_info("Using entry point: %s", entry_point)
-        self.log_info("Using resolved source directory: %s", source_dir)
+        self.log_info("Using source directory: %s", source_dir)
 
         # Create step arguments using FrameworkProcessor.run() with source_dir
         step_args = processor.run(
