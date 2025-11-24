@@ -34,20 +34,20 @@ class TestOfflineBinning:
         )
         target_field = "target"
         binner = OfflineBinning(cat_field_list, target_field)
-        
+
         return {
-            'cat_field_list': cat_field_list,
-            'df': df,
-            'target_field': target_field,
-            'binner': binner
+            "cat_field_list": cat_field_list,
+            "df": df,
+            "target_field": target_field,
+            "binner": binner,
         }
 
     def test_fit_creates_risk_tables(self, setup_data):
         """Test that fitting creates the expected risk table structure."""
         data = setup_data
-        binner = data['binner']
-        df = data['df']
-        
+        binner = data["binner"]
+        df = data["df"]
+
         binner.fit(df)
         assert "cat_var1" in binner.risk_tables
         assert "cat_var2" in binner.risk_tables
@@ -62,9 +62,9 @@ class TestOfflineBinning:
     def test_transform_maps_values(self, setup_data):
         """Test that transform correctly maps categorical values to risk scores."""
         data = setup_data
-        binner = data['binner']
-        df = data['df']
-        
+        binner = data["binner"]
+        df = data["df"]
+
         binner.fit(df)
         transformed_df = binner.transform(df)
 
@@ -101,21 +101,21 @@ class TestMainRiskTableFlow:
         }
 
         yield {
-            'temp_dir': temp_dir,
-            'input_dir': input_dir,
-            'output_dir': output_dir,
-            'hyperparams': hyperparams
+            "temp_dir": temp_dir,
+            "input_dir": input_dir,
+            "output_dir": output_dir,
+            "hyperparams": hyperparams,
         }
-        
+
         shutil.rmtree(temp_dir)
 
     def test_main_training_mode(self, setup_dirs):
         """Test the main logic in 'training' mode."""
         dirs = setup_dirs
-        temp_dir = dirs['temp_dir']
-        input_dir = dirs['input_dir']
-        output_dir = dirs['output_dir']
-        hyperparams = dirs['hyperparams']
+        temp_dir = dirs["temp_dir"]
+        input_dir = dirs["input_dir"]
+        output_dir = dirs["output_dir"]
+        hyperparams = dirs["hyperparams"]
 
         # Create split data files as expected by the new API
         for split in ["train", "test", "val"]:
@@ -144,12 +144,15 @@ class TestMainRiskTableFlow:
 
         job_args = Namespace(job_type="training")
 
-        # Set up input and output paths
+        # Set up input and output paths - use correct key names
         input_paths = {
-            "data_input": input_dir, 
-            "hyperparameters_s3_uri": hyperparams_path
+            "input_data": input_dir,
+            "hyperparameters_s3_uri": hyperparams_path,
         }
-        output_paths = {"data_output": output_dir}
+        output_paths = {
+            "processed_data": output_dir,
+            "model_artifacts_output": os.path.join(output_dir, "model_artifacts"),
+        }
         environ_vars = {}
 
         # Run main function
@@ -165,22 +168,25 @@ class TestMainRiskTableFlow:
         assert os.path.exists(test_path)
         assert os.path.exists(val_path)
 
-        # Check that artifacts were saved
-        assert os.path.exists(os.path.join(output_dir, "bin_mapping.pkl"))
-        assert os.path.exists(os.path.join(output_dir, "hyperparameters.json"))
+        # Check that artifacts were saved in model_artifacts subdirectory
+        artifacts_dir = os.path.join(output_dir, "model_artifacts")
+        assert os.path.exists(os.path.join(artifacts_dir, "risk_table_map.pkl"))
+        assert os.path.exists(os.path.join(artifacts_dir, "hyperparameters.json"))
 
         # Check content of transformed data
         train_df = pd.read_csv(train_path)
         assert "cat_var" in train_df.columns
-        assert pd.api.types.is_numeric_dtype(train_df["cat_var"])  # Should be numeric after risk mapping
+        assert pd.api.types.is_numeric_dtype(
+            train_df["cat_var"]
+        )  # Should be numeric after risk mapping
 
     def test_main_inference_mode(self, setup_dirs):
         """Test the main logic in a non-training ('validation') mode."""
         dirs = setup_dirs
-        temp_dir = dirs['temp_dir']
-        input_dir = dirs['input_dir']
-        output_dir = dirs['output_dir']
-        hyperparams = dirs['hyperparams']
+        temp_dir = dirs["temp_dir"]
+        input_dir = dirs["input_dir"]
+        output_dir = dirs["output_dir"]
+        hyperparams = dirs["hyperparams"]
 
         # First, create training data and run training to generate risk tables
         # Need to create all required splits for training mode
@@ -209,6 +215,7 @@ class TestMainRiskTableFlow:
             input_dir=input_dir,
             output_dir=risk_table_dir,
             hyperparams=hyperparams,
+            model_artifacts_output_dir=os.path.join(risk_table_dir, "model_artifacts"),
         )
 
         # Now create validation data
@@ -226,13 +233,13 @@ class TestMainRiskTableFlow:
 
         job_args = Namespace(job_type="validation")
 
-        # Set up input and output paths for validation
+        # Set up input and output paths for validation - use correct key names
         input_paths = {
-            "data_input": val_input_dir,
+            "input_data": val_input_dir,
             "hyperparameters_s3_uri": hyperparams_path,
-            "risk_table_input": risk_table_dir,
+            "model_artifacts_input": os.path.join(risk_table_dir, "model_artifacts"),
         }
-        output_paths = {"data_output": output_dir}
+        output_paths = {"processed_data": output_dir}
         environ_vars = {}
 
         # Run main function in validation mode
@@ -247,7 +254,8 @@ class TestMainRiskTableFlow:
         assert os.path.exists(val_output_path)
 
         # Check that the validation data was transformed based on the train data
-        with open(os.path.join(risk_table_dir, "bin_mapping.pkl"), "rb") as f:
+        artifacts_dir = os.path.join(risk_table_dir, "model_artifacts")
+        with open(os.path.join(artifacts_dir, "risk_table_map.pkl"), "rb") as f:
             bins = pkl.load(f)
 
         # Check if validation data was transformed using the risk tables

@@ -625,7 +625,13 @@ def save_imputation_artifacts(
         # Get the imputation value from the sklearn SimpleImputer
         if hasattr(imputer, "statistics_") and imputer.statistics_ is not None:
             # For mean/median/mode strategies, use statistics_
-            impute_dict[column] = float(imputer.statistics_[0])
+            value = imputer.statistics_[0]
+            # Try to convert to float for numeric values, keep as-is for strings
+            try:
+                impute_dict[column] = float(value)
+            except (ValueError, TypeError):
+                # Keep string values as-is (e.g., categorical mode results)
+                impute_dict[column] = value
         elif hasattr(imputer, "fill_value"):
             # For constant strategy, use fill_value
             impute_dict[column] = imputer.fill_value
