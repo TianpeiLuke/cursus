@@ -285,31 +285,19 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         # Call parent validator first
         super().initialize_derived_fields()
 
-        # Initialize processing-specific derived fields
-        # Priority 1: Processing source dir (fallback)
-        if self.processing_source_dir is not None:
-            self._effective_source_dir = self.processing_source_dir
-        # Priority 2: Base source dir (final fallback)
-        else:
-            self._effective_source_dir = self.source_dir
+        # DO NOT initialize _effective_source_dir here - let the property handle it
+        # This allows hybrid resolution to run when the property is accessed
+        # The property's hybrid resolution logic will handle both development and Lambda correctly
 
+        # Only initialize non-path derived fields
         self._effective_instance_type = (
             self.processing_instance_type_large
             if self.use_large_processing_instance
             else self.processing_instance_type_small
         )
 
-        # Initialize script path if entry point is provided
-        if (
-            self.processing_entry_point is not None
-            and self._effective_source_dir is not None
-        ):
-            if self._effective_source_dir.startswith("s3://"):
-                self._script_path = f"{self._effective_source_dir.rstrip('/')}/{self.processing_entry_point}"
-            else:
-                self._script_path = str(
-                    Path(self._effective_source_dir) / self.processing_entry_point
-                )
+        # DO NOT initialize _script_path here either - let the property handle it
+        # The script_path property will use effective_source_dir which now has proper hybrid resolution
 
         return self
 
