@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 
 from sagemaker.workflow.steps import TrainingStep, Step
 from sagemaker.inputs import TrainingInput
-from sagemaker.sklearn import SKLearn
+from sagemaker.pytorch import PyTorch
 from sagemaker.s3 import S3Uploader
 from sagemaker.workflow.functions import Join
 
@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 class LightGBMTrainingStepBuilder(StepBuilderBase):
     """
-    Builder for a LightGBM Training Step using SageMaker Scikit-Learn container.
-    This class creates a SageMaker TrainingStep using the SKLearn framework estimator,
-    with LightGBM installed via the training script (similar to XGBoost pattern).
+    Builder for a LightGBM Training Step using SageMaker PyTorch container.
+    This class creates a SageMaker TrainingStep using the PyTorch framework estimator,
+    with LightGBM installed via the training script.
     """
 
     def __init__(
@@ -97,6 +97,8 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
             "training_volume_size",
             "training_entry_point",
             "source_dir",
+            "framework_version",
+            "py_version",
         ]
 
         for attr in required_attrs:
@@ -113,13 +115,13 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
 
         self.log_info("LightGBMTrainingConfig validation succeeded.")
 
-    def _create_estimator(self, output_path=None) -> SKLearn:
+    def _create_estimator(self, output_path=None) -> PyTorch:
         """
-        Creates and configures the LightGBM estimator using Scikit-Learn framework container.
+        Creates and configures the LightGBM estimator using PyTorch framework container.
         This defines the execution environment for the training job, including the instance
         type, framework version, and environment variables.
 
-        LightGBM will be installed dynamically by the training script (similar to XGBoost pattern),
+        LightGBM will be installed dynamically by the training script,
         allowing full control over the LightGBM version and dependencies.
 
         Args:
@@ -127,30 +129,26 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
                          instead of generating a default path.
 
         Returns:
-            An instance of sagemaker.sklearn.SKLearn configured for LightGBM training.
+            An instance of sagemaker.pytorch.PyTorch configured for LightGBM training.
         """
         # Use modernized effective_source_dir with comprehensive hybrid resolution
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
 
-        # Get framework version from config or use default
-        framework_version = getattr(self.config, "framework_version", "1.2-1")
-        py_version = getattr(self.config, "py_version", "py3")
-
-        self.log_info("Using Scikit-Learn framework version: %s", framework_version)
-        self.log_info("Using Python version: %s", py_version)
+        self.log_info("Using PyTorch framework version: %s", self.config.framework_version)
+        self.log_info("Using Python version: %s", self.config.py_version)
         self.log_info("LightGBM will be installed by training script")
 
-        return SKLearn(
+        return PyTorch(
             entry_point=self.config.training_entry_point,
             source_dir=source_dir,
-            framework_version=framework_version,
-            py_version=py_version,
+            framework_version=self.config.framework_version,
+            py_version=self.config.py_version,
             role=self.role,
             instance_type=self.config.training_instance_type,
             instance_count=self.config.training_instance_count,
             volume_size=self.config.training_volume_size,
-            max_run=86400,  # 24 hours default
+            max_run=self.config.max_runtime_seconds,
             output_path=output_path,  # Use provided output_path directly
             base_job_name=self._generate_job_name(),  # Use standardized method with auto-detection
             sagemaker_session=self.session,

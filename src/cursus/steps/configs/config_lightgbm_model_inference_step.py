@@ -80,9 +80,14 @@ class LightGBMModelInferenceConfig(ProcessingStepConfigBase):
     )
 
     # LightGBM specific fields
-    lightgbm_framework_version: str = Field(
-        default="1.2-1",
-        description="SKLearn framework version for processing (LightGBM installed via pip)",
+    framework_version: str = Field(
+        default="2.1.2",
+        description="PyTorch framework version for processing (LightGBM installed via pip)",
+    )
+
+    py_version: str = Field(
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
     )
 
     # For inference jobs, we typically use smaller instances than evaluation
@@ -219,7 +224,7 @@ class LightGBMModelInferenceConfig(ProcessingStepConfigBase):
             "job_type": self.job_type,
             "output_format": self.output_format,
             "json_orient": self.json_orient,
-            "lightgbm_framework_version": self.lightgbm_framework_version,
+            "framework_version": self.framework_version,
             "use_large_processing_instance": self.use_large_processing_instance,
         }
 

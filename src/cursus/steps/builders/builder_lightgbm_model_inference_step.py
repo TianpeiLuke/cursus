@@ -3,8 +3,8 @@ from pathlib import Path
 import logging
 
 from sagemaker.workflow.steps import ProcessingStep, Step
-from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.sklearn import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
+from sagemaker.pytorch import PyTorch
 
 from ..configs.config_lightgbm_model_inference_step import LightGBMModelInferenceConfig
 from ...core.base.builder_base import StepBuilderBase
@@ -29,7 +29,7 @@ class LightGBMModelInferenceStepBuilder(StepBuilderBase):
 
     This implementation uses the specification-driven approach where dependencies, outputs,
     and script contract are defined in the model inference specification.
-    Uses SKLearnProcessor with LightGBM installed via pip.
+    Uses FrameworkProcessor with PyTorch container and LightGBM installed via pip.
     """
 
     def __init__(
@@ -88,7 +88,7 @@ class LightGBMModelInferenceStepBuilder(StepBuilderBase):
             "job_type",
             "id_name",
             "label_name",
-            "lightgbm_framework_version",
+            "framework_version",
         ]
 
         for attr in required_attrs:
@@ -116,16 +116,17 @@ class LightGBMModelInferenceStepBuilder(StepBuilderBase):
 
         self.log_info("LightGBMModelInferenceConfig validation succeeded.")
 
-    def _create_processor(self) -> SKLearnProcessor:
+    def _create_processor(self) -> FrameworkProcessor:
         """
-        Creates and configures the SKLearnProcessor for the SageMaker Processing Job.
+        Creates and configures the FrameworkProcessor for the SageMaker Processing Job.
         This defines the execution environment for the script, including the instance
         type, framework version, and environment variables.
 
-        LightGBM is installed via pip in the processing script, using SKLearn container as base.
+        Uses FrameworkProcessor with PyTorch estimator to provide a PyTorch environment
+        where LightGBM is installed via pip in the processing script.
 
         Returns:
-            An instance of sagemaker.sklearn.SKLearnProcessor.
+            An instance of sagemaker.processing.FrameworkProcessor.
         """
         # Get the appropriate instance type based on use_large_processing_instance
         instance_type = (
@@ -134,8 +135,9 @@ class LightGBMModelInferenceStepBuilder(StepBuilderBase):
             else self.config.processing_instance_type_small
         )
 
-        return SKLearnProcessor(
-            framework_version=self.config.lightgbm_framework_version,
+        return FrameworkProcessor(
+            estimator_cls=PyTorch,
+            framework_version=self.config.framework_version,
             role=self.role,
             instance_type=instance_type,
             instance_count=self.config.processing_instance_count,

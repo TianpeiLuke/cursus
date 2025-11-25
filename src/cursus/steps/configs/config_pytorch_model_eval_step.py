@@ -76,6 +76,11 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
         default="2.1.2", description="PyTorch framework version for processing"
     )
 
+    py_version: str = Field(
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
+    )
+
     # For most processing jobs, we want to use a larger instance
     use_large_processing_instance: bool = Field(
         default=True, description="Whether to use large instance type for processing"

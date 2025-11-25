@@ -53,15 +53,15 @@ class LightGBMTrainingConfig(BasePipelineConfig):
         default=30, ge=1, description="Volume size (GB) for training instances."
     )
 
-    # Framework versions for SageMaker Scikit-Learn container (used for LightGBM)
+    # Framework versions for SageMaker PyTorch container (used for LightGBM)
     framework_version: str = Field(
-        default="1.2-1",
-        description="SageMaker Scikit-Learn framework version for LightGBM container.",
+        default="2.1.2",
+        description="SageMaker PyTorch framework version for LightGBM container.",
     )
 
     py_version: str = Field(
-        default="py3",
-        description="Python version for the SageMaker Scikit-Learn container.",
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
     )
 
     # Override model_class to match hyperparameters

@@ -72,9 +72,14 @@ class LightGBMModelEvalConfig(ProcessingStepConfigBase):
     )
 
     # LightGBM specific fields
-    lightgbm_framework_version: str = Field(
-        default="1.2-1",
-        description="SKLearn framework version for processing (LightGBM installed via pip)",
+    framework_version: str = Field(
+        default="2.1.2",
+        description="PyTorch framework version for processing (LightGBM installed via pip)",
+    )
+
+    py_version: str = Field(
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
     )
 
     # For most processing jobs, we want to use a larger instance
@@ -254,7 +259,7 @@ class LightGBMModelEvalConfig(ProcessingStepConfigBase):
             # Tier 2 - System Inputs with Defaults
             "processing_entry_point": self.processing_entry_point,
             "job_type": self.job_type,
-            "lightgbm_framework_version": self.lightgbm_framework_version,
+            "framework_version": self.framework_version,
             "use_large_processing_instance": self.use_large_processing_instance,
             # Tier 2 - Comparison mode fields (only include if non-default)
             "comparison_mode": self.comparison_mode,

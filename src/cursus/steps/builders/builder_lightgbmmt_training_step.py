@@ -10,7 +10,7 @@ import logging
 
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.inputs import TrainingInput
-from sagemaker.sklearn import SKLearn
+from sagemaker.pytorch import PyTorch
 from sagemaker.workflow.functions import Join
 
 from ..configs.config_lightgbmmt_training_step import LightGBMMTTrainingConfig
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class LightGBMMTTrainingStepBuilder(StepBuilderBase):
     """
-    Builder for a LightGBMMT Training Step using SageMaker Scikit-Learn container.
+    Builder for a LightGBMMT Training Step using SageMaker PyTorch container.
 
     Uses custom LightGBMMT framework with refactored loss functions and model architecture.
     LightGBM library will be installed dynamically by the training script, while multi-task
@@ -106,6 +106,8 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
             "training_volume_size",
             "training_entry_point",
             "source_dir",
+            "framework_version",
+            "py_version",
         ]
 
         for attr in required_attrs:
@@ -122,13 +124,13 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
 
         self.log_info("LightGBMMTTrainingConfig validation succeeded.")
 
-    def _create_estimator(self, output_path=None) -> SKLearn:
+    def _create_estimator(self, output_path=None) -> PyTorch:
         """
-        Creates and configures the LightGBMMT estimator using Scikit-Learn framework container.
+        Creates and configures the LightGBMMT estimator using PyTorch framework container.
         This defines the execution environment for the training job, including the instance
         type, framework version, and environment variables.
 
-        LightGBMMT will be installed dynamically by the training script (similar to LightGBM pattern),
+        LightGBMMT will be installed dynamically by the training script,
         allowing full control over the LightGBMMT version and dependencies.
 
         Args:
@@ -136,25 +138,21 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
                          instead of generating a default path.
 
         Returns:
-            An instance of sagemaker.sklearn.SKLearn configured for LightGBMMT training.
+            An instance of sagemaker.pytorch.PyTorch configured for LightGBMMT training.
         """
         # Use modernized effective_source_dir with comprehensive hybrid resolution
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
 
-        # Get framework version from config or use default
-        framework_version = getattr(self.config, "framework_version", "1.2-1")
-        py_version = getattr(self.config, "py_version", "py3")
-
-        self.log_info("Using Scikit-Learn framework version: %s", framework_version)
-        self.log_info("Using Python version: %s", py_version)
+        self.log_info("Using PyTorch framework version: %s", self.config.framework_version)
+        self.log_info("Using Python version: %s", self.config.py_version)
         self.log_info("LightGBMMT will be installed by training script")
 
-        return SKLearn(
+        return PyTorch(
             entry_point=self.config.training_entry_point,
             source_dir=source_dir,
-            framework_version=framework_version,
-            py_version=py_version,
+            framework_version=self.config.framework_version,
+            py_version=self.config.py_version,
             role=self.role,
             instance_type=self.config.training_instance_type,
             instance_count=self.config.training_instance_count,

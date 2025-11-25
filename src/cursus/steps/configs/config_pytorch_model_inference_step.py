@@ -84,6 +84,11 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
         default="2.1.2", description="PyTorch framework version for processing"
     )
 
+    py_version: str = Field(
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
+    )
+
     # For inference jobs, we typically use smaller instances than evaluation
     use_large_processing_instance: bool = Field(
         default=False,

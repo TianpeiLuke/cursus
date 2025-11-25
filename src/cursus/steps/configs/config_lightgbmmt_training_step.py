@@ -58,6 +58,17 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         default=30, ge=1, description="Volume size (GB) for training instances."
     )
 
+    # Framework versions for SageMaker PyTorch container (used for LightGBMMT)
+    framework_version: str = Field(
+        default="2.1.2",
+        description="SageMaker PyTorch framework version for LightGBMMT container.",
+    )
+
+    py_version: str = Field(
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
+    )
+
     # Model configuration
     model_class: str = Field(
         default="lightgbmmt",
@@ -191,6 +202,8 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
             "training_instance_type": self.training_instance_type,
             "training_instance_count": self.training_instance_count,
             "training_volume_size": self.training_volume_size,
+            "framework_version": self.framework_version,
+            "py_version": self.py_version,
             "model_class": self.model_class,
             "max_run_seconds": self.max_run_seconds,
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,

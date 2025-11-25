@@ -25,10 +25,10 @@ class PyTorchModelStepConfig(
 
     # Framework versions for SageMaker PyTorch container
     framework_version: str = Field(
-        default="1.12.0", description="SageMaker PyTorch framework version."
+        default="2.1.2", description="SageMaker PyTorch framework version."
     )
     py_version: str = Field(
-        default="py38",
+        default="py310",
         description="Python version for the SageMaker PyTorch container.",
     )
 
