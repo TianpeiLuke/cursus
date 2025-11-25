@@ -114,9 +114,11 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # INSTALL REQUIRED PACKAGES
 # ============================================================================
 
+# Note: SageMaker PyTorch 2.1.2 containers pre-install: scikit-learn, pandas, numpy, matplotlib, seaborn
+# matplotlib is pre-installed but we include it here to ensure the correct version
 required_packages = [
-    "lightgbm>=3.3.0,<4.0.0",
-    "matplotlib>=3.3.0,<3.7.0",
+    "lightgbm>=3.3.0,<4.0.0",  # LightGBM - NOT pre-installed
+    "matplotlib>=3.3.0,<3.7.0",  # Plotting - pre-installed but version may differ
 ]
 
 install_packages(required_packages)

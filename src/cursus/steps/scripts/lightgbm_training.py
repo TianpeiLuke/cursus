@@ -170,8 +170,8 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # Including them here is safe (pip will skip if already satisfied)
 required_packages = [
     "lightgbm>=3.3.0,<4.0.0",  # LightGBM - NOT pre-installed
-    "beautifulsoup4>=4.9.3",   # HTML parsing - NOT pre-installed
-    "pyarrow>=4.0.0,<6.0.0",   # Parquet support - NOT pre-installed
+    "beautifulsoup4>=4.9.3",  # HTML parsing - NOT pre-installed
+    "pyarrow>=4.0.0,<6.0.0",  # Parquet support - NOT pre-installed
     "pydantic>=2.0.0,<3.0.0",  # Config validation - NOT pre-installed
     "matplotlib>=3.3.0,<3.7.0",  # Plotting - pre-installed but version may differ
     "typing-extensions>=4.2.0",  # Type hints - pre-installed but safe to include

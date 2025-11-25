@@ -135,7 +135,9 @@ class LightGBMTrainingStepBuilder(StepBuilderBase):
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
 
-        self.log_info("Using PyTorch framework version: %s", self.config.framework_version)
+        self.log_info(
+            "Using PyTorch framework version: %s", self.config.framework_version
+        )
         self.log_info("Using Python version: %s", self.config.py_version)
         self.log_info("LightGBM will be installed by training script")
 

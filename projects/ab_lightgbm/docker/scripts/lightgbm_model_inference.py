@@ -96,6 +96,8 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 
 
 # Install required packages
+# Note: SageMaker PyTorch 2.1.2 containers pre-install: scikit-learn, pandas, numpy, matplotlib
+# Only LightGBM needs to be installed explicitly
 required_packages = ["lightgbm>=3.3.0,<4.0.0"]
 install_packages(required_packages)
 

@@ -45,6 +45,11 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         description="Python version for the SageMaker PyTorch container.",
     )
 
+    ca_repository_arn: str = Field(
+        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        description="CodeArtifact repository ARN for secure PyPI access. Only used when use_secure_pypi=True.",
+    )
+
     # Hyperparameters handling configuration
     skip_hyperparameters_s3_uri: bool = Field(
         default=True,
