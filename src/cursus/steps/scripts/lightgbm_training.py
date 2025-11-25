@@ -166,15 +166,15 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # ============================================================================
 
 # Define required packages for this script
+# Note: SageMaker PyTorch 2.1.2 containers pre-install: scikit-learn, pandas, matplotlib, seaborn
+# Including them here is safe (pip will skip if already satisfied)
 required_packages = [
-    "lightgbm>=3.3.0,<4.0.0",  # LightGBM package
-    # Note: scikit-learn is pre-installed in SKLearn container (version 1.2.x)
-    # Removed constraint to avoid version conflicts with pre-installed sklearn
-    "beautifulsoup4>=4.9.3",
-    "pyarrow>=4.0.0,<6.0.0",
-    "pydantic>=2.0.0,<3.0.0",
-    "matplotlib>=3.3.0,<3.7.0",
-    "typing-extensions>=4.2.0",
+    "lightgbm>=3.3.0,<4.0.0",  # LightGBM - NOT pre-installed
+    "beautifulsoup4>=4.9.3",   # HTML parsing - NOT pre-installed
+    "pyarrow>=4.0.0,<6.0.0",   # Parquet support - NOT pre-installed
+    "pydantic>=2.0.0,<3.0.0",  # Config validation - NOT pre-installed
+    "matplotlib>=3.3.0,<3.7.0",  # Plotting - pre-installed but version may differ
+    "typing-extensions>=4.2.0",  # Type hints - pre-installed but safe to include
 ]
 
 # Install packages using unified installation function
