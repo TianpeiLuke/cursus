@@ -87,3 +87,36 @@ class PyTorchTrainingConfig(BasePipelineConfig):
                 f"Must be one of: {', '.join(valid_instances)}"
             )
         return v
+
+    def get_public_init_fields(self) -> Dict[str, Any]:
+        """
+        Override get_public_init_fields to include PyTorch training-specific fields.
+        Gets a dictionary of public fields suitable for initializing a child config.
+        Includes both base fields (from parent) and PyTorch training-specific fields.
+
+        Returns:
+            Dict[str, Any]: Dictionary of field names to values for child initialization
+        """
+        # Get fields from parent class (BasePipelineConfig)
+        base_fields = super().get_public_init_fields()
+
+        # Add PyTorch training-specific fields (Tier 1 and Tier 2)
+        training_fields = {
+            "training_entry_point": self.training_entry_point,
+            "training_instance_type": self.training_instance_type,
+            "training_instance_count": self.training_instance_count,
+            "training_volume_size": self.training_volume_size,
+            "framework_version": self.framework_version,
+            "py_version": self.py_version,
+            "ca_repository_arn": self.ca_repository_arn,
+            "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
+        }
+
+        # Add hyperparameters if present (use model_dump for Pydantic models)
+        if self.hyperparameters is not None:
+            training_fields["hyperparameters"] = self.hyperparameters.model_dump()
+
+        # Combine base fields and training fields (training fields take precedence if overlap)
+        init_fields = {**base_fields, **training_fields}
+
+        return init_fields

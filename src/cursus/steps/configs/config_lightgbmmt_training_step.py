@@ -69,6 +69,11 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         description="Python version for the SageMaker PyTorch container.",
     )
 
+    ca_repository_arn: str = Field(
+        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        description="CodeArtifact repository ARN for secure PyPI access. Only used when use_secure_pypi=True.",
+    )
+
     # Model configuration
     model_class: str = Field(
         default="lightgbmmt",
@@ -204,6 +209,7 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
             "training_volume_size": self.training_volume_size,
             "framework_version": self.framework_version,
             "py_version": self.py_version,
+            "ca_repository_arn": self.ca_repository_arn,
             "model_class": self.model_class,
             "max_run_seconds": self.max_run_seconds,
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,

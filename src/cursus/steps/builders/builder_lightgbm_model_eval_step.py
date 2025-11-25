@@ -138,6 +138,7 @@ class LightGBMModelEvalStepBuilder(StepBuilderBase):
         return FrameworkProcessor(
             estimator_cls=PyTorch,
             framework_version=self.config.framework_version,
+            py_version=self.config.py_version,
             role=self.role,
             instance_type=instance_type,
             instance_count=self.config.processing_instance_count,
@@ -158,6 +159,13 @@ class LightGBMModelEvalStepBuilder(StepBuilderBase):
         """
         # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
+
+        # Add CA_REPOSITORY_ARN if use_secure_pypi is enabled (inherited from base config)
+        if hasattr(self.config, "use_secure_pypi") and self.config.use_secure_pypi:
+            env_vars["CA_REPOSITORY_ARN"] = self.config.ca_repository_arn
+            self.log_info(
+                "Added CA_REPOSITORY_ARN to environment variables for secure PyPI"
+            )
 
         # Add evaluation-specific environment variables
         if hasattr(self.config, "id_name"):
