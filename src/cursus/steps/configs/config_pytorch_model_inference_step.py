@@ -229,6 +229,7 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
             "output_format": self.output_format,
             "json_orient": self.json_orient,
             "framework_version": self.framework_version,
+            "py_version": self.py_version,
             "use_large_processing_instance": self.use_large_processing_instance,
         }
 

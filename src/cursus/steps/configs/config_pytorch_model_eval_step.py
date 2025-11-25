@@ -264,6 +264,7 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
             "processing_entry_point": self.processing_entry_point,
             "job_type": self.job_type,
             "framework_version": self.framework_version,
+            "py_version": self.py_version,
             "use_large_processing_instance": self.use_large_processing_instance,
             # Tier 2 - Comparison mode fields (only include if non-default)
             "comparison_mode": self.comparison_mode,

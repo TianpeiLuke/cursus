@@ -138,6 +138,7 @@ class PyTorchModelEvalStepBuilder(StepBuilderBase):
         return FrameworkProcessor(
             estimator_cls=PyTorch,
             framework_version=self.config.framework_version,
+            py_version=self.config.py_version,
             role=self.role,
             instance_type=instance_type,
             instance_count=self.config.processing_instance_count,
