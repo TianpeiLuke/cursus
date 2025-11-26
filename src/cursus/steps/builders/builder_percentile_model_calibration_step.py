@@ -44,11 +44,30 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
     - Produces: Percentile score mapping, calibration metrics, calibrated predictions
 
     Example:
+        Single-task mode:
         ```python
         config = PercentileModelCalibrationConfig(
             score_field="prediction_score",
-            n_bins=100,
-            accuracy=0.01
+            n_bins=1000,
+            accuracy=0.001
+        )
+        builder = PercentileModelCalibrationStepBuilder(config)
+        step = builder.create_step(
+            inputs={"evaluation_data": "s3://bucket/eval-data/"},
+            outputs={
+                "calibration_output": "s3://bucket/calibration/",
+                "metrics_output": "s3://bucket/metrics/",
+                "calibrated_data": "s3://bucket/calibrated/"
+            }
+        )
+        ```
+
+        Multi-task mode:
+        ```python
+        config = PercentileModelCalibrationConfig(
+            score_fields=["task_0_prob", "task_1_prob", "task_2_prob"],
+            n_bins=1000,
+            accuracy=0.001
         )
         builder = PercentileModelCalibrationStepBuilder(config)
         step = builder.create_step(
@@ -105,19 +124,19 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
 
         This method performs comprehensive validation of all configuration parameters,
         ensuring they meet the requirements for the percentile calibration step.
+        Supports both single-task (score_field) and multi-task (score_fields) modes.
 
         Raises:
             ValueError: If any configuration validation fails
         """
         self.log_info("Validating PercentileModelCalibrationConfig...")
 
-        # Validate required attributes
+        # Validate required attributes (excluding score_field/score_fields - handled separately)
         required_attrs = [
             "processing_entry_point",
             "processing_source_dir",
             "processing_instance_count",
             "processing_volume_size",
-            "score_field",
             "job_type",
         ]
 
@@ -129,6 +148,21 @@ class PercentileModelCalibrationStepBuilder(StepBuilderBase):
                 raise ValueError(
                     f"PercentileModelCalibrationConfig missing required attribute: {attr}"
                 )
+
+        # Validate that at least one of score_field or score_fields is provided
+        if not self.config.score_field and not self.config.score_fields:
+            raise ValueError(
+                "Either 'score_field' (single-task) or 'score_fields' (multi-task) must be provided"
+            )
+
+        # Validate score_fields if provided
+        if self.config.score_fields:
+            if not isinstance(self.config.score_fields, list):
+                raise ValueError("score_fields must be a list of strings")
+            if len(self.config.score_fields) == 0:
+                raise ValueError("score_fields cannot be an empty list")
+            if not all(isinstance(field, str) for field in self.config.score_fields):
+                raise ValueError("All elements in score_fields must be strings")
 
         # Validate job_type
         valid_job_types = {"training", "calibration", "validation", "testing"}

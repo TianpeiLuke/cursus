@@ -29,7 +29,9 @@ date of note: 2025-11-18
 
 The `percentile_model_calibration.py` script performs percentile score mapping calibration to convert raw model prediction scores to calibrated percentile values using ROC (Receiver Operating Characteristic) curve analysis. This script provides an alternative calibration approach to traditional probability calibration methods by mapping scores to percentiles based on empirical data distribution.
 
-The script supports automatic data format detection and preservation (CSV/TSV/Parquet), flexible calibration dictionary configuration, and comprehensive quality metrics. It integrates seamlessly with upstream model evaluation/inference steps (XGBoost, LightGBM, PyTorch) and provides standardized calibrated outputs for downstream deployment workflows.
+The script supports **both single-task and multi-task calibration**, allowing you to calibrate one score field (backward compatible) or multiple score fields independently (multi-task learning models). Each task is calibrated separately using the same calibration dictionary, producing per-task artifacts while maintaining full backward compatibility.
+
+The script also supports automatic data format detection and preservation (CSV/TSV/Parquet), flexible calibration dictionary configuration, and comprehensive quality metrics. It integrates seamlessly with upstream model evaluation/inference steps (XGBoost, LightGBM, LightGBM Multi-Task, PyTorch) and provides standardized calibrated outputs for downstream deployment workflows.
 
 The percentile mapping approach is particularly useful for creating consistent risk interpretation across different models and time periods, as percentiles provide a stable reference frame for comparing scores even when underlying score distributions shift.
 
@@ -84,15 +86,18 @@ percentile_model_calibration.py
 | `metrics_output` | `/opt/ml/processing/output/metrics` | Calibration quality metrics in `calibration_metrics.json` |
 | `calibrated_data` | `/opt/ml/processing/output/calibrated_data` | Dataset with calibrated percentile scores in original format |
 
-### Required Environment Variables
+### Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SCORE_FIELD` | Name of the prediction score column to calibrate | `"prob_class_1"` |
+**Note**: Either `SCORE_FIELD` (single-task) or `SCORE_FIELDS` (multi-task) must be provided. If both are set, `SCORE_FIELDS` takes precedence.
 
-### Optional Environment Variables
+#### Score Field Configuration (Required - at least one)
 
-#### Core Calibration Parameters
+| Variable | Mode | Description | Example |
+|----------|------|-------------|---------|
+| `SCORE_FIELD` | Single-task | Name of the prediction score column to calibrate (backward compatible) | `"prob_class_1"` |
+| `SCORE_FIELDS` | Multi-task | Comma-separated list of score columns to calibrate independently | `"task_0_prob,task_1_prob,task_2_prob"` |
+
+#### Core Calibration Parameters (Optional)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -171,6 +176,7 @@ Optional external calibration dictionary in JSON format:
 
 ### Output Directory Structure
 
+**Single-Task Mode:**
 ```
 calibration_output/
 └── percentile_score.pkl              # Pickled percentile score mapping
@@ -180,6 +186,21 @@ metrics_output/
 
 calibrated_data/
 └── calibrated_data.{csv|tsv|parquet} # Dataset with calibrated scores
+```
+
+**Multi-Task Mode:**
+```
+calibration_output/
+├── percentile_score.pkl              # First task mapping (backward compatible)
+├── percentile_score_task_0_prob.pkl  # Task 0 mapping
+├── percentile_score_task_1_prob.pkl  # Task 1 mapping
+└── percentile_score_task_2_prob.pkl  # Task 2 mapping
+
+metrics_output/
+└── calibration_metrics.json          # Per-task + aggregate metrics
+
+calibrated_data/
+└── calibrated_data.{csv|tsv|parquet} # Dataset with all task percentiles
 ```
 
 ### Calibrated Data Output
@@ -947,6 +968,24 @@ export ACCURACY="1e-7"
 ```
 
 **Use Case**: Applications requiring very fine-grained percentile distinctions (e.g., credit risk scoring). Increased accuracy parameter ensures precise interpolation.
+
+### Multi-Task Learning Model
+
+```bash
+export SCORE_FIELDS="task_0_prob,task_1_prob,task_2_prob"
+export N_BINS="1000"
+export ACCURACY="1e-5"
+```
+
+**Use Case**: Multi-task learning models (e.g., LightGBM Multi-Task) that output multiple task predictions. Each task is calibrated independently using the same calibration dictionary, producing per-task artifacts while maintaining backward compatibility.
+
+**Output Artifacts**:
+- `percentile_score.pkl` (first task - backward compatible)
+- `percentile_score_task_0_prob.pkl` (task 0)
+- `percentile_score_task_1_prob.pkl` (task 1)
+- `percentile_score_task_2_prob.pkl` (task 2)
+- `calibration_metrics.json` (per-task + aggregate metrics)
+- `calibrated_data.{format}` (with task_0_prob_percentile, task_1_prob_percentile, task_2_prob_percentile columns)
 
 ## Integration Patterns
 

@@ -86,7 +86,7 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
         """
         self.log_info("Validating ModelCalibrationConfig...")
 
-        # Validate required attributes
+        # Validate required attributes (excluding score_field which is now optional)
         required_attrs = [
             "processing_entry_point",
             "processing_source_dir",
@@ -94,9 +94,8 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             "processing_volume_size",
             "calibration_method",
             "label_field",
-            "score_field",
-            "is_binary",  # Add required is_binary field
-            "job_type",  # Add job_type to required attributes
+            "is_binary",
+            "job_type",
         ]
 
         for attr in required_attrs:
@@ -107,6 +106,21 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
                 raise ValueError(
                     f"ModelCalibrationConfig missing required attribute: {attr}"
                 )
+
+        # Validate that at least one of score_field or score_fields is provided
+        if not self.config.score_field and not self.config.score_fields:
+            raise ValueError(
+                "At least one of 'score_field' (single-task) or 'score_fields' (multi-task) must be provided"
+            )
+
+        # Validate score_fields if provided
+        if self.config.score_fields:
+            if not isinstance(self.config.score_fields, list):
+                raise ValueError("score_fields must be a list of strings")
+            if len(self.config.score_fields) == 0:
+                raise ValueError("score_fields cannot be an empty list")
+            if not all(isinstance(field, str) for field in self.config.score_fields):
+                raise ValueError("All elements in score_fields must be strings")
 
         # Validate calibration method
         valid_methods = ["gam", "isotonic", "platt"]
@@ -186,39 +200,18 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables for the processor.
 
-        This method creates a dictionary of environment variables needed by the
-        calibration script, combining base variables with calibration-specific ones.
+        This method delegates to the config's get_environment_variables() method,
+        which handles all calibration-specific variables including score_field/score_fields.
 
         Returns:
             Dict[str, str]: Environment variables dictionary
         """
-        env_vars = super()._get_environment_variables()
+        # Delegate to config's method which handles score_field/score_fields properly
+        if hasattr(self.config, "get_environment_variables"):
+            return self.config.get_environment_variables()
 
-        # Add calibration-specific environment variables
-        env_vars.update(
-            {
-                "CALIBRATION_METHOD": self.config.calibration_method.lower(),
-                "LABEL_FIELD": self.config.label_field,
-                "SCORE_FIELD": self.config.score_field,
-                "MONOTONIC_CONSTRAINT": str(self.config.monotonic_constraint).lower(),
-                "GAM_SPLINES": str(self.config.gam_splines),
-                "ERROR_THRESHOLD": str(self.config.error_threshold),
-                # Add multi-class parameters
-                "IS_BINARY": str(self.config.is_binary).lower(),
-                "NUM_CLASSES": str(self.config.num_classes),
-                "SCORE_FIELD_PREFIX": self.config.score_field_prefix,
-            }
-        )
-
-        # Add multiclass categories if available
-        if not self.config.is_binary and self.config.multiclass_categories:
-            import json
-
-            env_vars["MULTICLASS_CATEGORIES"] = json.dumps(
-                self.config.multiclass_categories
-            )
-
-        return env_vars
+        # Fallback to parent implementation if config doesn't have the method
+        return super()._get_environment_variables()
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """Get inputs for the processor using the specification and contract.

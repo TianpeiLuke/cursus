@@ -35,8 +35,21 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
+    # At least one of score_field or score_fields must be provided
 
-    score_field: str = Field(description="Name of the score column to calibrate")
+    score_field: Optional[str] = Field(
+        default=None,
+        description="Name of the score column to calibrate (single-task mode). "
+        "Use this for backward compatibility or when calibrating a single score field.",
+    )
+
+    score_fields: Optional[List[str]] = Field(
+        default=None,
+        description="List of score column names to calibrate (multi-task mode). "
+        "Use this when calibrating multiple score fields independently. "
+        "Example: ['task_0_prob', 'task_1_prob', 'task_2_prob']. "
+        "If both score_field and score_fields are provided, score_fields takes precedence.",
+    )
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
@@ -140,6 +153,21 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
         if self.accuracy >= 1.0:
             raise ValueError(f"accuracy ({self.accuracy}) must be less than 1.0")
 
+        # Validate that at least one of score_field or score_fields is provided
+        if not self.score_field and not self.score_fields:
+            raise ValueError(
+                "At least one of 'score_field' (single-task) or 'score_fields' (multi-task) must be provided"
+            )
+
+        # Validate score_fields if provided
+        if self.score_fields:
+            if not isinstance(self.score_fields, list):
+                raise ValueError("score_fields must be a list of strings")
+            if len(self.score_fields) == 0:
+                raise ValueError("score_fields cannot be an empty list")
+            if not all(isinstance(field, str) for field in self.score_fields):
+                raise ValueError("All elements in score_fields must be strings")
+
         return self
 
     def get_script_contract(self):
@@ -167,14 +195,23 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
         )
 
         # Add percentile calibration-specific environment variables
-        env.update(
-            {
-                "SCORE_FIELD": self.score_field,
-                "N_BINS": str(self.n_bins),
-                "ACCURACY": str(self.accuracy),
-            }
-        )
+        env_updates = {
+            "N_BINS": str(self.n_bins),
+            "ACCURACY": str(self.accuracy),
+        }
 
+        # Handle score field(s) - priority to score_fields (multi-task)
+        if self.score_fields:
+            # Multi-task mode: pass as comma-separated string
+            env_updates["SCORE_FIELDS"] = ",".join(self.score_fields)
+            # Also pass empty SCORE_FIELD to avoid confusion
+            env_updates["SCORE_FIELD"] = ""
+        elif self.score_field:
+            # Single-task mode: pass score_field
+            env_updates["SCORE_FIELD"] = self.score_field
+            env_updates["SCORE_FIELDS"] = ""
+
+        env.update(env_updates)
         return env
 
     def get_public_init_fields(self) -> Dict[str, Any]:
@@ -193,6 +230,7 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
         calibration_fields = {
             # Tier 1 - Essential User Inputs
             "score_field": self.score_field,
+            "score_fields": self.score_fields,
             # Tier 2 - System Inputs with Defaults
             "n_bins": self.n_bins,
             "accuracy": self.accuracy,

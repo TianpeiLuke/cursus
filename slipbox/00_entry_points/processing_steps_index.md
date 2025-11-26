@@ -631,7 +631,9 @@ This section lists ALL processing steps registered in `src/cursus/registry/step_
 **PercentileModelCalibration**
 - Description: Creates percentile mapping from model scores using ROC curve analysis for consistent risk interpretation
 - **Script Documentation:** [Percentile Model Calibration Script](../scripts/percentile_model_calibration_script.md)
-- **Design Doc:** [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md)
+- **Design Docs:** 
+  - [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md) - Single-task calibration design
+  - [Multi-Task Percentile Model Calibration Design](../1_design/multitask_percentile_model_calibration_design.md) - Multi-task/multi-label extension with shared calibration dictionary and per-task mappings
 - Config: `PercentileModelCalibrationConfig`
 - Builder: `PercentileModelCalibrationStepBuilder`
 - Script: `src/cursus/steps/scripts/percentile_model_calibration.py`

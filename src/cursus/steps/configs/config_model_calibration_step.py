@@ -35,8 +35,22 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
+    # At least one of score_field or score_fields must be provided
 
     label_field: str = Field(description="Name of the label column")
+
+    score_field: Optional[str] = Field(
+        default=None,
+        description="Name of the score column to calibrate (single-task mode). "
+        "Use this for backward compatibility or when calibrating a single score field.",
+    )
+
+    score_fields: Optional[List[str]] = Field(
+        default=None,
+        description="List of score column names to calibrate (multi-task mode). "
+        "Use this when calibrating multiple score fields independently. "
+        "If both score_field and score_fields are provided, score_fields takes precedence.",
+    )
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
@@ -69,14 +83,15 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
         default=2, gt=0, description="Number of classes for classification"
     )
 
-    score_field: str = Field(
-        default="prob_class_1",
-        description="Name of the score column to calibrate (for binary classification)",
-    )
-
     score_field_prefix: str = Field(
         default="prob_class_",
         description="Prefix for probability columns in multi-class scenario",
+    )
+
+    calibration_sample_points: int = Field(
+        default=1000,
+        gt=0,
+        description="Number of sample points for lookup table generation",
     )
 
     multiclass_categories: List[Union[str, int]] = Field(
@@ -170,6 +185,21 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             raise ValueError(
                 f"job_type must be one of {valid_job_types}, got '{self.job_type}'"
             )
+
+        # Validate that at least one of score_field or score_fields is provided
+        if not self.score_field and not self.score_fields:
+            raise ValueError(
+                "At least one of 'score_field' (single-task) or 'score_fields' (multi-task) must be provided"
+            )
+
+        # Validate score_fields if provided
+        if self.score_fields:
+            if not isinstance(self.score_fields, list):
+                raise ValueError("score_fields must be a list of strings")
+            if len(self.score_fields) == 0:
+                raise ValueError("score_fields cannot be an empty list")
+            if not all(isinstance(field, str) for field in self.score_fields):
+                raise ValueError("All elements in score_fields must be strings")
 
         # Validate multi-class parameters
         if self.is_binary and self.num_classes != 2:
@@ -276,6 +306,7 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
                 "MONOTONIC_CONSTRAINT": str(self.monotonic_constraint).lower(),
                 "GAM_SPLINES": str(self.gam_splines),
                 "ERROR_THRESHOLD": str(self.error_threshold),
+                "CALIBRATION_SAMPLE_POINTS": str(self.calibration_sample_points),
                 "LABEL_FIELD": self.label_field,
                 "SCORE_FIELD": self.score_field,
                 "IS_BINARY": str(self.is_binary).lower(),
@@ -284,6 +315,10 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
                 "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
         )
+
+        # Add SCORE_FIELDS for multi-task mode (takes precedence over SCORE_FIELD)
+        if self.score_fields:
+            env["SCORE_FIELDS"] = ",".join(self.score_fields)
 
         # Add multiclass categories if available and not binary
         if not self.is_binary and self.multiclass_categories:
@@ -312,12 +347,17 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             "monotonic_constraint": self.monotonic_constraint,
             "gam_splines": self.gam_splines,
             "error_threshold": self.error_threshold,
+            "calibration_sample_points": self.calibration_sample_points,
             "is_binary": self.is_binary,
             "num_classes": self.num_classes,
             "score_field": self.score_field,
             "score_field_prefix": self.score_field_prefix,
             "job_type": self.job_type,
         }
+
+        # Add score_fields if set (multi-task mode)
+        if self.score_fields is not None:
+            calibration_fields["score_fields"] = self.score_fields
 
         # Add multiclass_categories if set to non-default value
         if self.multiclass_categories != [0, 1]:

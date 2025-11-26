@@ -282,6 +282,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Model Calibration Script](../scripts/model_calibration_script.md) - Complete script documentation for calibrating model prediction scores to accurate probabilities with three calibration methods (GAM, Isotonic Regression, Platt Scaling), binary and multi-class support, comprehensive metrics (ECE, MCE, Brier score), reliability diagrams, nested tarball extraction, and format preservation
 - [Percentile Model Calibration Script](../scripts/percentile_model_calibration_script.md) - Complete script documentation for ROC curve-based percentile mapping with 1000-point calibration dictionary, format preservation, intelligent file detection, and comprehensive data quality validation
 - [Percentile Model Calibration Design](../1_design/percentile_model_calibration_design.md) - Design for percentile model calibration scripts
+- [Multi-Task Percentile Model Calibration Design](../1_design/multitask_percentile_model_calibration_design.md) - Extension design for multi-task/multi-label percentile calibration with shared calibration dictionary, per-task mappings, and backward compatibility
 
 **Implementation Documentation**
 - [Model Calibration Documentation](../steps/scripts/model_calibration_doc.md) - Model calibration script (legacy documentation)

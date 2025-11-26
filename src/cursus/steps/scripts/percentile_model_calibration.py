@@ -113,6 +113,79 @@ def save_dataframe_with_format(
     return str(file_path)
 
 
+def parse_score_fields(environ_vars: Dict[str, str]) -> List[str]:
+    """
+    Parse score fields from environment variables with backward compatibility.
+
+    Priority:
+    1. SCORE_FIELDS (multi-task) - comma-separated list
+    2. SCORE_FIELD (single-task) - single field fallback
+
+    Args:
+        environ_vars: Dictionary of environment variables
+
+    Returns:
+        List of score field names to calibrate
+
+    Examples:
+        >>> parse_score_fields({"SCORE_FIELDS": "task_0_prob,task_1_prob"})
+        ["task_0_prob", "task_1_prob"]
+
+        >>> parse_score_fields({"SCORE_FIELD": "prob_class_1"})
+        ["prob_class_1"]
+    """
+    # Priority 1: Check for multi-task SCORE_FIELDS
+    score_fields = environ_vars.get("SCORE_FIELDS", "").strip()
+
+    if score_fields:
+        # Parse comma-separated list
+        field_list = [f.strip() for f in score_fields.split(",") if f.strip()]
+        if field_list:
+            logger.info(
+                f"Multi-task mode: Parsed {len(field_list)} score fields from SCORE_FIELDS"
+            )
+            logger.info(f"Score fields: {field_list}")
+            return field_list
+
+    # Priority 2: Fallback to single-task SCORE_FIELD
+    single_field = environ_vars.get("SCORE_FIELD", "prob_class_1")
+    logger.info(f"Single-task mode: Using SCORE_FIELD={single_field}")
+    return [single_field]
+
+
+def validate_score_fields(
+    df: pd.DataFrame, score_fields: List[str]
+) -> Tuple[List[str], List[str]]:
+    """
+    Validate that score fields exist in dataframe.
+
+    Args:
+        df: Input dataframe
+        score_fields: List of score field names to validate
+
+    Returns:
+        Tuple of (valid_fields, missing_fields)
+    """
+    available_columns = set(df.columns)
+    valid_fields = []
+    missing_fields = []
+
+    for field in score_fields:
+        if field in available_columns:
+            valid_fields.append(field)
+        else:
+            missing_fields.append(field)
+
+    if missing_fields:
+        logger.warning(f"Score fields not found in data: {missing_fields}")
+        logger.warning(f"Available columns: {list(df.columns)}")
+
+    if valid_fields:
+        logger.info(f"Valid score fields: {valid_fields}")
+
+    return valid_fields, missing_fields
+
+
 def get_calibrated_score_map(
     df: pd.DataFrame,
     score_field: str,
@@ -1319,11 +1392,17 @@ def main(
 
         # Parse environment variables
         n_bins = int(environ_vars.get("N_BINS", "1000"))
-        score_field = environ_vars.get("SCORE_FIELD", "prob_class_1")
         accuracy = float(environ_vars.get("ACCURACY", "1e-5"))
 
+        # Parse score fields (multi-task support with backward compatibility)
+        score_fields = parse_score_fields(environ_vars)
+        is_multitask = len(score_fields) > 1
+
         logger.info(
-            f"Configuration: n_bins={n_bins}, score_field={score_field}, accuracy={accuracy}, job_type={job_type}"
+            f"Configuration: n_bins={n_bins}, accuracy={accuracy}, job_type={job_type}"
+        )
+        logger.info(
+            f"Mode: {'Multi-task' if is_multitask else 'Single-task'} with {len(score_fields)} score field(s)"
         )
 
         # Create output directories
@@ -1373,130 +1452,25 @@ def main(
             f"Loaded dataframe with shape {df_calibration_scores.shape} and columns: {list(df_calibration_scores.columns)}"
         )
 
-        # Extract scores from specified field with validation
-        if score_field not in df_calibration_scores.columns:
+        # Validate score fields exist in dataframe
+        valid_fields, missing_fields = validate_score_fields(
+            df_calibration_scores, score_fields
+        )
+
+        if missing_fields:
             raise ValueError(
-                f"Score field '{score_field}' not found in data columns: {list(df_calibration_scores.columns)}"
+                f"Score fields not found in data: {missing_fields}. "
+                f"Available columns: {list(df_calibration_scores.columns)}"
             )
 
-        # Extract and validate scores
-        raw_scores = df_calibration_scores[score_field].values
-
-        # Handle missing values
-        missing_count = pd.isna(raw_scores).sum()
-        if missing_count > 0:
-            logger.warning(
-                f"Found {missing_count} missing values in score field '{score_field}', removing them"
-            )
-            valid_mask = ~pd.isna(raw_scores)
-            df_calibration_scores = df_calibration_scores[valid_mask].copy()
-            raw_scores = raw_scores[valid_mask]
-
-        calibration_scores = raw_scores.reshape(-1)
-
-        # Basic data quality checks
-        min_score = np.min(calibration_scores)
-        max_score = np.max(calibration_scores)
-        mean_score = np.mean(calibration_scores)
-        std_score = np.std(calibration_scores)
-        unique_scores = len(np.unique(calibration_scores))
+        if not valid_fields:
+            raise ValueError("No valid score fields found for calibration")
 
         logger.info(
-            f"Score statistics: min={min_score:.6f}, max={max_score:.6f}, mean={mean_score:.6f}, std={std_score:.6f}"
-        )
-        logger.info(
-            f"Loaded {len(calibration_scores)} calibration scores with {unique_scores} unique values from field '{score_field}'"
+            f"Will calibrate {len(valid_fields)} score field(s): {valid_fields}"
         )
 
-        # Validate score range (should be probabilities between 0 and 1)
-        if min_score < 0 or max_score > 1:
-            logger.warning(
-                f"Scores outside [0,1] range: min={min_score:.6f}, max={max_score:.6f}"
-            )
-            if min_score < -0.1 or max_score > 1.1:
-                raise ValueError(
-                    f"Scores significantly outside probability range [0,1]: min={min_score:.6f}, max={max_score:.6f}"
-                )
-
-            # Clip to valid range
-            calibration_scores = np.clip(calibration_scores, 0.0, 1.0)
-            logger.info("Clipped scores to [0,1] range")
-
-        # Check for constant scores (would break ROC curve calculation)
-        if std_score < 1e-10:
-            raise ValueError(
-                f"All scores are essentially constant (std={std_score:.2e}), cannot perform calibration"
-            )
-
-        # Warn about low diversity
-        if unique_scores < 10:
-            logger.warning(
-                f"Only {unique_scores} unique score values found, calibration may be less effective"
-            )
-
-        # Create dataframe for calibration
-        raw_score_df = pd.DataFrame(
-            {
-                "raw_scores": calibration_scores,
-            }
-        )
-
-        # Perform calibration
-        logger.info("Performing percentile score mapping calibration")
-        calibrated_score_map = get_calibrated_score_map(
-            df=raw_score_df,
-            score_field="raw_scores",
-            calibration_dictionary=standard_calibration_dict,
-            weight_field=None,
-        )
-
-        logger.info(
-            f"Generated calibrated score map with {len(calibrated_score_map)} entries"
-        )
-
-        # Save calibration output (percentile score mapping)
-        percentile_score_path = os.path.join(
-            calibration_output_dir, "percentile_score.pkl"
-        )
-        with open(percentile_score_path, "wb") as f:
-            pkl.dump(calibrated_score_map, f)
-
-        logger.info(f"Saved percentile score mapping to {percentile_score_path}")
-
-        # Generate and save metrics output
-        metrics = {
-            "calibration_method": "percentile_score_mapping",
-            "num_calibration_points": len(calibrated_score_map),
-            "num_input_scores": len(calibration_scores),
-            "score_statistics": {
-                "min_score": float(np.min(calibration_scores)),
-                "max_score": float(np.max(calibration_scores)),
-                "mean_score": float(np.mean(calibration_scores)),
-                "std_score": float(np.std(calibration_scores)),
-            },
-            "calibration_range": {
-                "min_percentile": min(calibrated_score_map, key=lambda x: x[1])[1],
-                "max_percentile": max(calibrated_score_map, key=lambda x: x[1])[1],
-                "min_score_threshold": min(calibrated_score_map, key=lambda x: x[0])[0],
-                "max_score_threshold": max(calibrated_score_map, key=lambda x: x[0])[0],
-            },
-            "config": {
-                "n_bins": n_bins,
-                "score_field": score_field,
-                "accuracy": accuracy,
-                "calibration_dict_size": len(standard_calibration_dict),
-                "job_type": job_type,
-            },
-        }
-
-        metrics_path = os.path.join(metrics_output_dir, "calibration_metrics.json")
-        with open(metrics_path, "w") as f:
-            json.dump(metrics, f, indent=2)
-
-        logger.info(f"Saved calibration metrics to {metrics_path}")
-
-        # Generate and save calibrated data output
-        # Apply percentile mapping to the original scores
+        # Helper function to apply percentile mapping
         def apply_percentile_mapping(score, score_map):
             """Apply percentile mapping to a single score."""
             if score <= score_map[0][0]:
@@ -1516,15 +1490,193 @@ def main(
 
             return score_map[-1][1]  # fallback
 
-        # Apply calibration to all scores
-        calibrated_scores = [
-            apply_percentile_mapping(score, calibrated_score_map)
-            for score in calibration_scores
-        ]
-
-        # Create calibrated dataset
+        # Calibrate each task
+        task_calibrations = {}
+        task_metrics = {}
         df_calibrated = df_calibration_scores.copy()
-        df_calibrated[f"{score_field}_percentile"] = calibrated_scores
+
+        for score_field in valid_fields:
+            logger.info(f"\n{'=' * 60}")
+            logger.info(f"Calibrating score field: {score_field}")
+            logger.info(f"{'=' * 60}")
+
+            # Extract and validate scores for this task
+            raw_scores = df_calibration_scores[score_field].values
+
+            # Handle missing values
+            missing_count = pd.isna(raw_scores).sum()
+            if missing_count > 0:
+                logger.warning(
+                    f"Found {missing_count} missing values in '{score_field}', they will be excluded from calibration"
+                )
+
+            # Get valid scores (non-NaN)
+            valid_mask = ~pd.isna(raw_scores)
+            calibration_scores = raw_scores[valid_mask].reshape(-1)
+
+            if len(calibration_scores) == 0:
+                logger.error(f"No valid scores for field '{score_field}', skipping")
+                continue
+
+            # Basic data quality checks
+            min_score = float(np.min(calibration_scores))
+            max_score = float(np.max(calibration_scores))
+            mean_score = float(np.mean(calibration_scores))
+            std_score = float(np.std(calibration_scores))
+            unique_scores = len(np.unique(calibration_scores))
+
+            logger.info(
+                f"Score statistics for '{score_field}': "
+                f"min={min_score:.6f}, max={max_score:.6f}, "
+                f"mean={mean_score:.6f}, std={std_score:.6f}"
+            )
+            logger.info(
+                f"Loaded {len(calibration_scores)} calibration scores "
+                f"with {unique_scores} unique values"
+            )
+
+            # Validate score range (should be probabilities between 0 and 1)
+            if min_score < 0 or max_score > 1:
+                logger.warning(
+                    f"Scores outside [0,1] range for '{score_field}': "
+                    f"min={min_score:.6f}, max={max_score:.6f}"
+                )
+                if min_score < -0.1 or max_score > 1.1:
+                    logger.error(
+                        f"Scores significantly outside [0,1] range for '{score_field}', skipping"
+                    )
+                    continue
+
+                # Clip to valid range
+                calibration_scores = np.clip(calibration_scores, 0.0, 1.0)
+                logger.info(f"Clipped scores for '{score_field}' to [0,1] range")
+
+            # Check for constant scores
+            if std_score < 1e-10:
+                logger.error(
+                    f"All scores are constant (std={std_score:.2e}) for '{score_field}', skipping"
+                )
+                continue
+
+            # Warn about low diversity
+            if unique_scores < 10:
+                logger.warning(
+                    f"Only {unique_scores} unique score values for '{score_field}', "
+                    f"calibration may be less effective"
+                )
+
+            # Create dataframe for calibration
+            raw_score_df = pd.DataFrame({"raw_scores": calibration_scores})
+
+            # Perform calibration
+            logger.info(
+                f"Performing percentile score mapping calibration for '{score_field}'"
+            )
+            calibrated_score_map = get_calibrated_score_map(
+                df=raw_score_df,
+                score_field="raw_scores",
+                calibration_dictionary=standard_calibration_dict,
+                weight_field=None,
+            )
+
+            logger.info(
+                f"Generated calibrated score map for '{score_field}' "
+                f"with {len(calibrated_score_map)} entries"
+            )
+
+            # Store calibration map
+            task_calibrations[score_field] = calibrated_score_map
+
+            # Save per-task calibration output
+            task_percentile_filename = f"percentile_score_{score_field}.pkl"
+            task_percentile_path = os.path.join(
+                calibration_output_dir, task_percentile_filename
+            )
+            with open(task_percentile_path, "wb") as f:
+                pkl.dump(calibrated_score_map, f)
+
+            logger.info(
+                f"Saved percentile score mapping for '{score_field}' to {task_percentile_path}"
+            )
+
+            # Store task metrics
+            task_metrics[score_field] = {
+                "num_calibration_points": len(calibrated_score_map),
+                "num_input_scores": len(calibration_scores),
+                "score_statistics": {
+                    "min_score": min_score,
+                    "max_score": max_score,
+                    "mean_score": mean_score,
+                    "std_score": std_score,
+                    "unique_scores": unique_scores,
+                },
+                "calibration_range": {
+                    "min_percentile": min(calibrated_score_map, key=lambda x: x[1])[1],
+                    "max_percentile": max(calibrated_score_map, key=lambda x: x[1])[1],
+                    "min_score_threshold": min(
+                        calibrated_score_map, key=lambda x: x[0]
+                    )[0],
+                    "max_score_threshold": max(
+                        calibrated_score_map, key=lambda x: x[0]
+                    )[0],
+                },
+            }
+
+            # Apply calibration to all scores (including NaN)
+            calibrated_field_values = []
+            for score in raw_scores:
+                if pd.isna(score):
+                    calibrated_field_values.append(np.nan)
+                else:
+                    calibrated_field_values.append(
+                        apply_percentile_mapping(score, calibrated_score_map)
+                    )
+
+            # Add calibrated column to output dataframe
+            df_calibrated[f"{score_field}_percentile"] = calibrated_field_values
+
+        logger.info(f"\n{'=' * 60}")
+        logger.info(f"Calibration complete for all tasks")
+        logger.info(f"{'=' * 60}\n")
+
+        # Save aggregated metrics
+        metrics = {
+            "calibration_method": "percentile_score_mapping",
+            "mode": "multi-task" if is_multitask else "single-task",
+            "num_tasks": len(task_calibrations),
+            "score_fields": list(task_calibrations.keys()),
+            "per_task_metrics": task_metrics,
+            "config": {
+                "n_bins": n_bins,
+                "accuracy": accuracy,
+                "calibration_dict_size": len(standard_calibration_dict),
+                "job_type": job_type,
+            },
+        }
+
+        # Add aggregate statistics if multi-task
+        if is_multitask and task_metrics:
+            aggregate_stats = {
+                "total_calibration_points": sum(
+                    m["num_calibration_points"] for m in task_metrics.values()
+                ),
+                "total_input_scores": sum(
+                    m["num_input_scores"] for m in task_metrics.values()
+                ),
+                "avg_unique_scores": np.mean(
+                    [
+                        m["score_statistics"]["unique_scores"]
+                        for m in task_metrics.values()
+                    ]
+                ),
+            }
+            metrics["aggregate_statistics"] = aggregate_stats
+
+        metrics_path = os.path.join(metrics_output_dir, "calibration_metrics.json")
+        with open(metrics_path, "w") as f:
+            json.dump(metrics, f, indent=2)
+
+        logger.info(f"Saved calibration metrics to {metrics_path}")
 
         # Save calibrated data with format preservation
         from pathlib import Path
@@ -1538,20 +1690,41 @@ def main(
             f"Saved calibrated data (format={input_format}): {calibrated_data_path}"
         )
 
+        # Build output files dict
+        output_files = {
+            "metrics": metrics_path,
+            "calibrated_data": calibrated_data_path,
+        }
+
+        # Add per-task percentile score files
+        for score_field in task_calibrations.keys():
+            output_files[f"percentile_score_{score_field}"] = os.path.join(
+                calibration_output_dir, f"percentile_score_{score_field}.pkl"
+            )
+
+        # Backward compatibility: save first task as default percentile_score.pkl
+        if task_calibrations:
+            first_field = list(task_calibrations.keys())[0]
+            default_percentile_path = os.path.join(
+                calibration_output_dir, "percentile_score.pkl"
+            )
+            with open(default_percentile_path, "wb") as f:
+                pkl.dump(task_calibrations[first_field], f)
+            output_files["percentile_score"] = default_percentile_path
+            logger.info(
+                f"Saved default percentile_score.pkl (from '{first_field}') for backward compatibility"
+            )
+
         # Return results
         results = {
             "status": "success",
             "calibration_method": "percentile_score_mapping",
-            "num_calibration_points": len(calibrated_score_map),
-            "num_input_scores": len(calibration_scores),
-            "output_files": {
-                "percentile_score": percentile_score_path,
-                "metrics": metrics_path,
-                "calibrated_data": calibrated_data_path,
-            },
+            "mode": "multi-task" if is_multitask else "single-task",
+            "num_tasks": len(task_calibrations),
+            "score_fields": list(task_calibrations.keys()),
+            "output_files": output_files,
             "config": {
                 "n_bins": n_bins,
-                "score_field": score_field,
                 "accuracy": accuracy,
                 "calibration_dict_size": len(standard_calibration_dict),
                 "job_type": job_type,
@@ -1595,10 +1768,15 @@ if __name__ == "__main__":
     OUTPUT_METRICS_PATH = "/opt/ml/processing/output/metrics"
     OUTPUT_CALIBRATED_DATA_PATH = "/opt/ml/processing/output/calibrated_data"
 
-    # Parse environment variables
+    # Parse environment variables (multi-task support via SCORE_FIELDS)
     environ_vars = {
         "N_BINS": os.environ.get("N_BINS", "1000"),
-        "SCORE_FIELD": os.environ.get("SCORE_FIELD", "prob_class_1"),
+        "SCORE_FIELD": os.environ.get(
+            "SCORE_FIELD", "prob_class_1"
+        ),  # Single-task fallback
+        "SCORE_FIELDS": os.environ.get(
+            "SCORE_FIELDS", ""
+        ),  # Multi-task: comma-separated list
         "ACCURACY": os.environ.get("ACCURACY", "1e-5"),
     }
 

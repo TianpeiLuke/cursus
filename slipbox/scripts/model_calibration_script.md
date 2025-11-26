@@ -27,7 +27,7 @@ date of note: 2025-11-18
 
 ## Overview
 
-The `model_calibration.py` script calibrates model prediction scores to accurate probabilities, transforming raw model outputs into reliable probability estimates essential for risk-based decision-making and threshold setting. The script implements three calibration methods (GAM, Isotonic Regression, Platt Scaling) and supports both binary and multi-class classification scenarios.
+The `model_calibration.py` script calibrates model prediction scores to accurate probabilities, transforming raw model outputs into reliable probability estimates essential for risk-based decision-making and threshold setting. The script implements three calibration methods (GAM, Isotonic Regression, Platt Scaling) and supports binary classification, multi-class classification, and multi-task/multi-label scenarios where multiple independent binary classifiers are calibrated with a shared calibration approach.
 
 Well-calibrated probabilities ensure that predicted probabilities match true frequencies - for example, among all predictions with 70% confidence, approximately 70% should be correct. This is crucial for applications requiring trustworthy confidence scores, such as fraud detection, credit risk assessment, and medical diagnosis systems where decisions are based on probability thresholds.
 
@@ -83,8 +83,11 @@ model_calibration.py
 |----------|-------------|--------------|
 | `CALIBRATION_METHOD` | Calibration method to use | `"gam"`, `"isotonic"`, `"platt"` |
 | `LABEL_FIELD` | Name of ground truth label column | Any string (e.g., `"label"`, `"ground_truth"`) |
-| `SCORE_FIELD` | Name of prediction score column (binary only) | Any string (e.g., `"prob_class_1"`, `"score"`) |
 | `IS_BINARY` | Whether this is binary classification | `"True"` or `"False"` (case-insensitive) |
+
+**Note**: At least one of `SCORE_FIELD` or `SCORE_FIELDS` must be provided:
+- **Single-Task Mode**: Use `SCORE_FIELD` for calibrating a single binary classifier
+- **Multi-Task Mode**: Use `SCORE_FIELDS` for calibrating multiple independent binary classifiers with shared calibration method
 
 ### Optional Environment Variables
 
@@ -94,6 +97,24 @@ model_calibration.py
 |----------|---------|-------------|
 | `USE_SECURE_PYPI` | `"false"` | Use secure CodeArtifact PyPI (`"true"`) or public PyPI (`"false"`) |
 
+#### Single-Task / Multi-Task Mode Selection
+
+| Variable | Default | Description | Notes |
+|----------|---------|-------------|-------|
+| `SCORE_FIELD` | `None` | Name of single score column | For single-task binary classification |
+| `SCORE_FIELDS` | `None` | Comma-separated list of score columns | For multi-task binary classification (takes precedence) |
+
+**Mode Determination**:
+- If `SCORE_FIELDS` is provided: Multi-task mode (calibrates each score field independently)
+- Else if `SCORE_FIELD` is provided: Single-task mode (calibrates one score field)
+- If neither provided: Error (at least one required)
+
+**Multi-Task Example**:
+```bash
+export SCORE_FIELDS="task_0_prob,task_1_prob,task_2_prob"
+# Results in 3 independent calibrators, one per task
+```
+
 #### Binary Calibration Parameters
 
 | Variable | Default | Description | Notes |
@@ -101,6 +122,7 @@ model_calibration.py
 | `MONOTONIC_CONSTRAINT` | `"True"` | Enforce monotonicity in GAM calibration | Only applies to GAM method |
 | `GAM_SPLINES` | `"10"` | Number of splines for GAM | Only applies to GAM method, range: 5-25 |
 | `ERROR_THRESHOLD` | `"0.05"` | Acceptable calibration error threshold | Used for warnings, range: 0.0-1.0 |
+| `CALIBRATION_SAMPLE_POINTS` | `"1000"` | Number of sample points for lookup table | Used in percentile calibration |
 
 #### Multi-Class Calibration Parameters
 
@@ -153,7 +175,7 @@ The script accepts evaluation data in multiple formats and packaging structures:
 
 ### Required Columns
 
-**Binary Classification:**
+**Single-Task Binary Classification:**
 - **Label Column**: Configured via `LABEL_FIELD` (default: `"label"`)
   - Type: Integer (0 or 1) or Float
   - Contains ground truth binary labels
@@ -161,6 +183,16 @@ The script accepts evaluation data in multiple formats and packaging structures:
 - **Score Column**: Configured via `SCORE_FIELD` (default: `"prob_class_1"`)
   - Type: Float in range [0.0, 1.0]
   - Contains model prediction probabilities for positive class
+
+**Multi-Task Binary Classification:**
+- **Label Column**: Configured via `LABEL_FIELD` (default: `"label"`)
+  - Type: Integer (0 or 1) or Float
+  - Contains ground truth binary labels (shared across all tasks)
+
+- **Score Columns**: Configured via `SCORE_FIELDS` (comma-separated list)
+  - Examples: `"task_0_prob,task_1_prob,task_2_prob"`
+  - Type: Float in range [0.0, 1.0] for each column
+  - Each column represents predictions for an independent binary task
 
 **Multi-Class Classification:**
 - **Label Column**: Configured via `LABEL_FIELD` (default: `"label"`)
@@ -1259,6 +1291,41 @@ python model_calibration.py --job_type training
 ```
 
 **Output**: Combined calibration from both val and test sets with dataset_origin column
+
+### Multi-Task Binary Calibration
+
+```bash
+export CALIBRATION_METHOD="gam"
+export LABEL_FIELD="label"
+export SCORE_FIELDS="task_0_prob,task_1_prob,task_2_prob"
+export IS_BINARY="True"
+export MONOTONIC_CONSTRAINT="True"
+export GAM_SPLINES="10"
+
+python model_calibration.py
+```
+
+**Use Case**: Multi-task learning with multiple independent binary classifiers that need calibration
+
+**Input Data**:
+- Single label column (shared across all tasks)
+- Multiple score columns (one per task)
+
+**Generated Files**:
+- calibration_models/calibration_model_task_0_prob.pkl
+- calibration_models/calibration_model_task_1_prob.pkl
+- calibration_models/calibration_model_task_2_prob.pkl
+- Separate metrics and diagrams for each task
+
+**Columns Added**:
+- calibrated_task_0_prob
+- calibrated_task_1_prob
+- calibrated_task_2_prob
+
+**Key Features**:
+- Independent calibration per task
+- Same calibration method applied to all
+- Shared labels across tasks
 
 ### Secure PyPI Installation
 
