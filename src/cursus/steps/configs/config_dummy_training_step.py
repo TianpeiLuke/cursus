@@ -7,7 +7,8 @@ or fall back to reading from the source directory.
 """
 
 from pydantic import Field, model_validator, field_validator
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
+from pathlib import Path
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -113,8 +114,8 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
 
-    pretrained_model_path: Optional[str] = Field(
-        default=None,
+    pretrained_model_path: Optional[Union[str, Path]] = Field(
+        ...,
         description="Path to pretrained model.tar.gz file or directory containing it. "
         "Supports S3 URI (s3://...), local directory path, or None. "
         "If None, assumes model.tar.gz is located at source_dir/models/model.tar.gz",
@@ -140,15 +141,19 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
 
     @field_validator("pretrained_model_path")
     @classmethod
-    def validate_pretrained_model_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_pretrained_model_path(
+        cls, v: Optional[Union[str, Path]]
+    ) -> Optional[str]:
         """
         Validate pretrained_model_path is None, S3 URI, or local directory path.
 
+        Converts Path objects to strings for consistent handling.
+
         Args:
-            v: Path value to validate
+            v: Path value to validate (str, Path, or None)
 
         Returns:
-            Validated path or None
+            Validated path as string or None
 
         Raises:
             ValueError: If path format is invalid
@@ -156,6 +161,10 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
         # None is valid - means use SOURCE fallback (source_dir/models/model.tar.gz)
         if v is None:
             return v
+
+        # Convert Path to string for consistent handling
+        if isinstance(v, Path):
+            v = str(v)
 
         # Empty string not allowed
         if not v:
