@@ -1,9 +1,17 @@
 """
-MIMS DummyTraining Step Builder.
+MIMS DummyTraining Step Builder with Flexible Input Modes.
 
 This module defines the builder that creates SageMaker processing steps
-for the DummyTraining component, which processes a pretrained model with
-hyperparameters to make it available for downstream packaging and payload steps.
+for the DummyTraining component. This step can operate in two modes:
+
+1. INTERNAL mode: Accepts optional inputs from previous steps
+   - model_artifacts_input: Model from training steps
+   - hyperparameters_s3_uri: Hyperparameters from input channel
+
+2. SOURCE mode (fallback): Reads from source directory when inputs not provided
+
+The step processes the model by adding hyperparameters.json to model.tar.gz for
+downstream packaging and payload steps.
 """
 
 import logging
@@ -71,28 +79,38 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         """
         Validate the provided configuration.
 
-        For SOURCE nodes, we rely on the base class validation which already
-        handles source directory validation and other required attributes.
+        For INTERNAL nodes with optional dependencies, we validate:
+        - Required processing configuration attributes
+        - Entry point is specified
+        - pretrained_model_path format (if provided)
+        - Source directory exists (for SOURCE fallback when pretrained_model_path=None)
         """
-        self.log_info("Validating DummyTraining SOURCE configuration...")
+        self.log_info("Validating DummyTraining INTERNAL configuration...")
 
         # The base class (ProcessingStepConfigBase) already validates:
         # - processing_framework_version
         # - processing_instance_count
         # - processing_volume_size
         # - processing_entry_point (if provided)
-        # - effective_source_dir existence
+        # - effective_source_dir existence (for SOURCE fallback mode)
 
-        # For SOURCE nodes, we just need to ensure we have an entry point
+        # Validate entry point is specified
         if not self.config.processing_entry_point:
-            raise ValueError(
-                "DummyTraining SOURCE node requires processing_entry_point"
+            raise ValueError("DummyTraining step requires processing_entry_point")
+
+        # Validate pretrained_model_path (Tier 1 Essential Field)
+        # Note: The config validator already handles format validation (None/S3/local)
+        # Here we just log what mode will be used
+        if self.config.pretrained_model_path is not None:
+            self.log_info(
+                f"Model artifacts will be sourced from config field: {self.config.pretrained_model_path}"
+            )
+        else:
+            self.log_info(
+                "pretrained_model_path is None - will check dependency injection or use SOURCE fallback"
             )
 
-        self.log_info("DummyTraining SOURCE configuration validation succeeded.")
-
-    # Removed _upload_model_to_s3 and _prepare_hyperparameters_file methods
-    # SOURCE node gets model and hyperparameters from source directory
+        self.log_info("DummyTraining INTERNAL configuration validation succeeded.")
 
     def _get_processor(self):
         """
@@ -129,15 +147,88 @@ class DummyTrainingStepBuilder(StepBuilderBase):
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """
-        Get inputs for the processor.
+        Get inputs for the processor with 3-tier priority resolution for model artifacts.
 
-        For SOURCE nodes, return empty list since all data comes from source directory.
+        Model Priority Resolution (3-tier system):
+        1. Tier 1 (Highest): Config field pretrained_model_path
+        2. Tier 2: Dependency injection via model_artifacts_input channel
+        3. Tier 3 (Fallback): SOURCE mode - source_dir/models/model.tar.gz
+
+        Hyperparameters Priority (unchanged):
+        - Dependency injection via hyperparameters_s3_uri channel
+        - Falls back to SOURCE mode if not provided
+
+        Args:
+            inputs: Dictionary of input sources keyed by logical name
 
         Returns:
-            Empty list - SOURCE node has no external inputs
+            List of ProcessingInput objects (may be empty for SOURCE mode)
         """
-        self.log_info("DummyTraining is a SOURCE node - no external inputs required")
-        return []
+        processing_inputs = []
+
+        # === MODEL ARTIFACTS: 3-Tier Priority Resolution ===
+
+        # Tier 1 (Highest): Config field pretrained_model_path
+        if self.config.pretrained_model_path:
+            model_source = self.config.pretrained_model_path
+            model_dest = self.contract.expected_input_paths.get("model_artifacts_input")
+            if model_dest:
+                self.log_info(
+                    f"[Tier 1 - Config] Using pretrained_model_path: {model_source}"
+                )
+                processing_inputs.append(
+                    ProcessingInput(
+                        input_name="model_artifacts_input",
+                        source=model_source,
+                        destination=model_dest,
+                    )
+                )
+        # Tier 2: Dependency injection via model_artifacts_input channel
+        elif "model_artifacts_input" in inputs and inputs["model_artifacts_input"]:
+            model_source = inputs["model_artifacts_input"]
+            model_dest = self.contract.expected_input_paths.get("model_artifacts_input")
+            if model_dest:
+                self.log_info(
+                    f"[Tier 2 - Dependency Injection] Using model_artifacts_input channel: {model_source}"
+                )
+                processing_inputs.append(
+                    ProcessingInput(
+                        input_name="model_artifacts_input",
+                        source=model_source,
+                        destination=model_dest,
+                    )
+                )
+        else:
+            # Tier 3 (Fallback): SOURCE mode - handled by script
+            self.log_info(
+                "[Tier 3 - SOURCE Fallback] No model input provided - using source_dir/models/model.tar.gz"
+            )
+
+        # === HYPERPARAMETERS: Optional Dependency Injection ===
+
+        # Optional: hyperparameters_s3_uri (for INTERNAL mode)
+        if "hyperparameters_s3_uri" in inputs and inputs["hyperparameters_s3_uri"]:
+            hparam_source = inputs["hyperparameters_s3_uri"]
+            hparam_dest = self.contract.expected_input_paths.get(
+                "hyperparameters_s3_uri"
+            )
+            if hparam_dest:
+                self.log_info(
+                    f"[Dependency Injection] Adding hyperparameters_s3_uri: {hparam_source}"
+                )
+                processing_inputs.append(
+                    ProcessingInput(
+                        input_name="hyperparameters_s3_uri",
+                        source=hparam_source,
+                        destination=hparam_dest,
+                    )
+                )
+        else:
+            self.log_info(
+                "[SOURCE Fallback] No hyperparameters input - using code directory or source_dir/hyperparams/"
+            )
+
+        return processing_inputs
 
     def _get_outputs(self, outputs: Dict[str, Any]) -> List[ProcessingOutput]:
         """
@@ -158,14 +249,18 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         if not self.contract:
             raise ValueError("Script contract is required for output mapping")
 
-        # Use the pipeline S3 location to construct output path using base output path and Join for parameter compatibility
+        # Use the pipeline S3 location to construct output path
         from sagemaker.workflow.functions import Join
 
         base_output_path = self._get_base_output_path()
         default_output_path = Join(
             on="/", values=[base_output_path, "dummy_training", "output"]
         )
-        output_path = outputs.get("model_input", default_output_path)
+
+        # Support both old and new logical names for backward compatibility
+        output_path = outputs.get(
+            "model_output", outputs.get("model_input", default_output_path)
+        )
 
         # Handle PipelineVariable objects in output_path
         if hasattr(output_path, "expr"):
@@ -173,16 +268,16 @@ class DummyTrainingStepBuilder(StepBuilderBase):
                 "Processing PipelineVariable for output_path: %s", output_path.expr
             )
 
-        # Get source path from contract
-        source_path = self.contract.expected_output_paths.get("model_input")
+        # Get source path from contract (updated logical name)
+        source_path = self.contract.expected_output_paths.get("model_output")
         if not source_path:
             raise ValueError(
-                "Script contract missing required output path: model_input"
+                "Script contract missing required output path: model_output"
             )
 
         return [
             ProcessingOutput(
-                output_name="model_input",  # Using consistent name matching specification
+                output_name="model_output",  # Updated to match contract
                 source=source_path,
                 destination=output_path,
             )
