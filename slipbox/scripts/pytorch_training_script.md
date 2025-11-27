@@ -96,6 +96,8 @@ pytorch_training.py
 - `model.pth`: Trained PyTorch model (state dict)
 - `model_artifacts.pth`: Model artifacts (config, embeddings, vocabulary)
 - `model.onnx`: ONNX exported model for deployment
+- `hyperparameters.json`: Complete model configuration (enables reproducibility)
+- `feature_columns.txt`: Ordered feature column names with indices
 - `impute_dict.pkl`: Numerical imputation parameters (for inference)
 - `impute_dict.json`: Human-readable imputation parameters
 - `risk_table_map.pkl`: Risk table mappings (for inference)
@@ -317,7 +319,13 @@ None strictly required - all configuration via hyperparameters.json
 /opt/ml/model/
 ├── model.pth                # Trained PyTorch model (state dict)
 ├── model_artifacts.pth      # Model artifacts bundle
-└── model.onnx              # ONNX exported model
+├── model.onnx               # ONNX exported model
+├── hyperparameters.json     # Complete hyperparameter configuration
+├── feature_columns.txt      # Ordered feature column names with indices
+├── impute_dict.pkl          # Numerical imputation parameters (binary)
+├── impute_dict.json         # Numerical imputation parameters (human-readable)
+├── risk_table_map.pkl       # Risk table mappings (binary)
+└── risk_table_map.json      # Risk table mappings (human-readable)
 ```
 
 **model.pth Contents**:
@@ -342,6 +350,25 @@ None strictly required - all configuration via hyperparameters.json
 - ONNX format for cross-platform deployment
 - Compatible with ONNX Runtime
 - Preserves model architecture and weights
+
+**hyperparameters.json**:
+- Complete hyperparameter configuration used for training
+- Enables model reproducibility
+- Required for inference and downstream steps
+- Saved explicitly (in addition to SageMaker's automatic inclusion)
+
+**impute_dict.pkl / impute_dict.json**:
+- Numerical imputation values computed during training
+- Maps feature names to imputation values (mean, median, etc.)
+- Required for inference-time feature preprocessing
+- Saved in both binary (pkl) and human-readable (json) formats
+
+**risk_table_map.pkl / risk_table_map.json**:
+- Risk table mappings for categorical feature encoding
+- Maps categorical values to risk scores
+- Computed from training data label correlations
+- Required for inference-time categorical feature preprocessing
+- Saved in both binary (pkl) and human-readable (json) formats
 
 ### Evaluation Output Directory Structure
 

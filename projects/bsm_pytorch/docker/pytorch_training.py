@@ -1255,6 +1255,27 @@ def main(
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
 
+        # ------------------ Save Hyperparameters Configuration ------------------
+        hyperparameters_file = os.path.join(paths["model"], "hyperparameters.json")
+        logger.info(f"Saving hyperparameters configuration to {hyperparameters_file}")
+        with open(hyperparameters_file, "w") as f:
+            json.dump(config.model_dump(), f, indent=2, sort_keys=True)
+        logger.info(f"✓ Saved hyperparameters configuration to {hyperparameters_file}")
+
+        # ------------------ Save Feature Columns ------------------
+        feature_columns_file = os.path.join(paths["model"], "feature_columns.txt")
+        logger.info(f"Saving feature column names to {feature_columns_file}")
+        feature_columns = config.tab_field_list + config.cat_field_list
+        with open(feature_columns_file, "w") as f:
+            f.write("# Feature columns in exact order required for model inference\n")
+            f.write("# DO NOT MODIFY THE ORDER OF THESE COLUMNS\n")
+            f.write("# Each line contains: <column_index>,<column_name>\n")
+            for idx, col_name in enumerate(feature_columns):
+                f.write(f"{idx},{col_name}\n")
+        logger.info(
+            f"✓ Saved {len(feature_columns)} feature columns to {feature_columns_file}"
+        )
+
         # ------------------ Save Preprocessing Artifacts ------------------
         if config.imputation_dict:
             logger.info("Saving numerical imputation artifacts...")
