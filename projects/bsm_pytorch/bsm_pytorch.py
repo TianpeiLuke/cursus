@@ -46,14 +46,16 @@ DEFAULT_SERVICE_NAME = "BuyerAbuseRnR"
 # Define constants
 AUTHOR = "lukexie"
 PIPELINE_VERSION = "0.0.1"
-PIPELINE_DESCRIPTION = "Bedrock Processing Pipeline for Classification"
+PIPELINE_DESCRIPTION = (
+    "Fine-tuned Multi-modal BERT Classification Pipeline based on BSM"
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
+def create_pytorch_training_dag() -> PipelineDAG:
     """
     Create a DAG for Bedrock Batch data processing pipeline.
 
@@ -67,44 +69,29 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
     """
     dag = PipelineDAG()
 
-    # Add all nodes - incorporating Bedrock batch processing and label ruleset steps
-    dag.add_node("DummyDataLoading_training")  # Dummy data load for training
-    dag.add_node("TabularPreprocessing_training")  # Tabular preprocessing for training
-    dag.add_node(
-        "BedrockPromptTemplateGeneration"
-    )  # Bedrock prompt template generation (shared)
-    dag.add_node(
-        "BedrockBatchProcessing_training"
-    )  # Bedrock batch processing step for training
-    dag.add_node(
-        "LabelRulesetGeneration"
-    )  # Label ruleset generation (shared for training and calibration)
-    dag.add_node(
-        "LabelRulesetExecution_training"
-    )  # Label ruleset execution for training data
-    dag.add_node("PyTorchTraining")  # PyTorch training step
+    # Add all nodes - matching the structure from demo_config.ipynb
+    dag.add_node("DummyDataLoading_training")  # Training data loading
+    dag.add_node("TabularPreprocessing_training")  # Training data preprocessing
+    dag.add_node("PyTorchTraining")  # XGBoost model training
 
-    # Training flow with Bedrock batch processing and label ruleset integration
+    dag.add_node("DummyDataLoading_calibration")  # Dummy data load for calibration
+    dag.add_node(
+        "TabularPreprocessing_calibration"
+    )  # Tabular preprocessing for calibration
+    dag.add_node("PyTorchModelEval_calibration")  # Model evaluation step
+
+    # Define dependencies - training flow
     dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
+    dag.add_edge("TabularPreprocessing_training", "PyTorchTraining")
 
-    # Bedrock batch processing flow for training - two inputs to BedrockBatchProcessing_training
-    dag.add_edge(
-        "TabularPreprocessing_training", "BedrockBatchProcessing_training"
-    )  # Data input
-    dag.add_edge(
-        "BedrockPromptTemplateGeneration", "BedrockBatchProcessing_training"
-    )  # Template input
+    # Calibration flow
+    dag.add_edge("DummyDataLoading_calibration", "TabularPreprocessing_calibration")
 
-    # Label ruleset execution for training - two inputs to LabelRulesetExecution_training
+    # Evaluation flow
+    dag.add_edge("PyTorchTraining", "PyTorchModelEval_calibration")
     dag.add_edge(
-        "BedrockBatchProcessing_training", "LabelRulesetExecution_training"
-    )  # Data input
-    dag.add_edge(
-        "LabelRulesetGeneration", "LabelRulesetExecution_training"
-    )  # Ruleset input
-
-    # Labeled data flows to PyTorch training
-    dag.add_edge("LabelRulesetExecution_training", "PyTorchTraining")
+        "TabularPreprocessing_calibration", "PyTorchModelEval_calibration"
+    )  # Use labeled calibration data
 
     logger.info(
         f"Created Bedrock Batch data processing DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
@@ -113,7 +100,7 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
 
 
 @MODSTemplate(author=AUTHOR, description=PIPELINE_DESCRIPTION, version=PIPELINE_VERSION)
-class RnRPytorchBedRockPipeline:
+class BSMPytorchPipeline:
     """
     Simple Pipline class that bridges between Cursus DAG-based pipeline architecture and MODS Template structure.
 
@@ -160,7 +147,7 @@ class RnRPytorchBedRockPipeline:
         self.pipeline_description = pipeline_description
 
         # Create XGBoost DAG
-        self.dag = create_bedrock_batch_data_processing_dag()
+        self.dag = create_pytorch_training_dag()
         logger.info(
             f"Created XGBoost DAG with {len(self.dag.nodes)} nodes and {len(self.dag.edges)} edges"
         )
