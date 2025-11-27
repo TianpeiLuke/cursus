@@ -68,8 +68,8 @@ from lightning_models.utils.pl_train import (
     model_inference,
     load_model,
     load_artifacts,
-    is_main_process,
 )
+from lightning_models.utils.dist_utils import is_main_process
 from lightning_models.utils.pl_model_plots import (
     compute_metrics,
     roc_metric_plot,
