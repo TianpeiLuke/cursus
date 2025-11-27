@@ -22,8 +22,8 @@ import shutil
 from pathlib import Path
 from typing import Dict, Optional, Any, List
 
-from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.sklearn import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
+from sagemaker.sklearn import SKLearn
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.workflow.functions import Join
 from sagemaker.s3 import S3Uploader
@@ -116,10 +116,14 @@ class DummyTrainingStepBuilder(StepBuilderBase):
         """
         Get the processor for the step.
 
+        Uses FrameworkProcessor with SKLearn estimator to support source_dir parameter
+        while providing a Python environment suitable for dummy training processing.
+
         Returns:
-            SKLearnProcessor: Configured processor for running the step
+            FrameworkProcessor: Configured processor for running the step
         """
-        return SKLearnProcessor(
+        return FrameworkProcessor(
+            estimator_cls=SKLearn,
             framework_version=self.config.processing_framework_version,
             role=self.role,
             instance_type=self.config.get_instance_type(),
