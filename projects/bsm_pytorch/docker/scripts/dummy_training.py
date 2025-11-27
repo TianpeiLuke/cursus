@@ -2,9 +2,23 @@
 """
 DummyTraining Processing Script
 
-This script validates, unpacks a pretrained model.tar.gz file, adds a hyperparameters.json file
-inside it, then repacks it and outputs to the destination. It serves as a dummy training step
-that skips actual training and integrates with downstream MIMS packaging and payload steps.
+This script validates, unpacks a pretrained model.tar.gz file, conditionally adds a
+hyperparameters.json file inside it, then repacks it and outputs to the destination.
+It serves as a dummy training step that skips actual training and integrates with
+downstream MIMS packaging and payload steps.
+
+Hyperparameters Handling:
+    - If model.tar.gz already contains hyperparameters.json (e.g., from PyTorch/XGBoost training):
+      * Keeps the original hyperparameters from the model
+      * Ignores any hyperparameters provided via input channel
+
+    - If model.tar.gz does NOT contain hyperparameters.json:
+      * Requires hyperparameters.json from input channel
+      * Injects it into the model archive
+
+    - Fails only if BOTH conditions are true:
+      * Model archive doesn't contain hyperparameters.json
+      * No hyperparameters.json provided via input channel
 """
 
 import argparse
@@ -26,13 +40,6 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-
-# Source directory paths with fallback support
-# These paths align with SOURCE node approach where model and hyperparameters
-# are embedded in the source directory structure
-MODEL_SOURCE_PATH = "/opt/ml/code/models/model.tar.gz"
-HYPERPARAMS_SOURCE_PATH = "/opt/ml/code/hyperparams/hyperparameters.json"
-MODEL_OUTPUT_DIR = "/opt/ml/processing/output/model"
 
 
 def validate_model(input_path: Path) -> bool:
@@ -164,21 +171,25 @@ def copy_file(src: Path, dst: Path) -> None:
 
 
 def process_model_with_hyperparameters(
-    model_path: Path, hyperparams_path: Path, output_dir: Path
+    model_path: Path, hyperparams_path: Optional[Path], output_dir: Path
 ) -> Path:
     """
-    Process the model.tar.gz by unpacking it, adding hyperparameters.json, and repacking it.
+    Process the model.tar.gz by unpacking it and conditionally adding hyperparameters.json.
+
+    The hyperparameters.json file is only added if:
+    1. It doesn't already exist in the model archive
+    2. An input hyperparameters_path is provided
 
     Args:
         model_path: Path to the input model.tar.gz file
-        hyperparams_path: Path to the hyperparameters.json file
+        hyperparams_path: Optional path to the hyperparameters.json file (None if not provided)
         output_dir: Directory to save the processed model
 
     Returns:
         Path to the processed model.tar.gz
 
     Raises:
-        FileNotFoundError: If input files don't exist
+        FileNotFoundError: If model doesn't exist, or if hyperparameters are missing from both model and input
         Exception: For processing errors
     """
     logger.info(f"Processing model with hyperparameters")
@@ -190,9 +201,6 @@ def process_model_with_hyperparameters(
     if not model_path.exists():
         raise FileNotFoundError(f"Model file not found: {model_path}")
 
-    if not hyperparams_path.exists():
-        raise FileNotFoundError(f"Hyperparameters file not found: {hyperparams_path}")
-
     # Create a temporary working directory
     with tempfile.TemporaryDirectory() as temp_dir:
         working_dir = Path(temp_dir)
@@ -201,9 +209,48 @@ def process_model_with_hyperparameters(
         # Extract the model.tar.gz
         extract_tarfile(model_path, working_dir)
 
-        # Copy hyperparameters.json to the working directory
+        # Check if hyperparameters.json already exists in the extracted model
         hyperparams_dest = working_dir / "hyperparameters.json"
-        copy_file(hyperparams_path, hyperparams_dest)
+
+        if hyperparams_dest.exists():
+            logger.info("=" * 70)
+            logger.info("HYPERPARAMETERS ALREADY IN MODEL")
+            logger.info("=" * 70)
+            logger.info(
+                f"hyperparameters.json found in model archive at: {hyperparams_dest}"
+            )
+
+            if hyperparams_path:
+                logger.info("Input hyperparameters provided but will be IGNORED")
+                logger.info(f"  Input path: {hyperparams_path}")
+                logger.info(
+                    "  Reason: Model archive already contains hyperparameters.json"
+                )
+                logger.info("  Action: Keeping original hyperparameters from model")
+            else:
+                logger.info("No input hyperparameters provided (not needed)")
+
+            logger.info("=" * 70)
+        else:
+            logger.info("=" * 70)
+            logger.info("HYPERPARAMETERS NOT IN MODEL")
+            logger.info("=" * 70)
+            logger.info("hyperparameters.json NOT found in model archive")
+
+            if hyperparams_path:
+                logger.info(f"Injecting hyperparameters from input: {hyperparams_path}")
+                copy_file(hyperparams_path, hyperparams_dest)
+                logger.info("✓ Hyperparameters successfully added to model")
+            else:
+                logger.error(
+                    "ERROR: No hyperparameters found in model AND no input provided"
+                )
+                raise FileNotFoundError(
+                    "hyperparameters.json not found in model.tar.gz and no input hyperparameters provided. "
+                    "Either the model must contain hyperparameters.json or it must be provided via input channel."
+                )
+
+            logger.info("=" * 70)
 
         # Ensure output directory exists
         ensure_directory(output_dir)
@@ -216,44 +263,71 @@ def process_model_with_hyperparameters(
         return output_path
 
 
-def find_model_file(base_paths: list[str]) -> Optional[Path]:
+def find_model_file(input_paths: Dict[str, str]) -> Optional[Path]:
     """
-    Find model.tar.gz file in multiple possible locations.
+    Find model.tar.gz file with fallback search.
+
+    Priority:
+    1. Pre-configured path from input_paths (either input channel or /opt/ml/code/models)
+    2. Final fallback: model.tar.gz relative to script location
 
     Args:
-        base_paths: List of base paths to search
+        input_paths: Dictionary of input paths from container
 
     Returns:
         Path to model file if found, None otherwise
     """
-    for base_path in base_paths:
-        model_path = Path(base_path) / "model.tar.gz"
+    # Priority 1: Pre-configured path
+    if "model_artifacts_input" in input_paths and input_paths["model_artifacts_input"]:
+        model_path = Path(input_paths["model_artifacts_input"]) / "model.tar.gz"
         if model_path.exists():
-            logger.info(f"Found model file at: {model_path}")
+            logger.info(f"Found model file: {model_path}")
             return model_path
+        else:
+            logger.warning(f"model.tar.gz not found at: {model_path}")
+
+    # Priority 2: Final fallback - relative to script location
+    script_dir = Path(__file__).parent
+    code_fallback_path = script_dir / "model.tar.gz"
+    if code_fallback_path.exists():
+        logger.info(f"Found model file relative to script: {code_fallback_path}")
+        return code_fallback_path
+
     return None
 
 
-def find_hyperparams_file(base_paths: list[str]) -> Optional[Path]:
+def find_hyperparams_file(input_paths: Dict[str, str]) -> Optional[Path]:
     """
-    Find hyperparameters.json file in multiple possible locations.
+    Find hyperparameters.json file at the specified path.
+
+    The input_paths["hyperparameters_s3_uri"] is pre-configured in __main__ to point to either:
+    - /opt/ml/processing/input/hyperparameters_s3_uri (if dependency injection provided)
+    - /opt/ml/code/hyperparams/ (SOURCE fallback)
 
     Args:
-        base_paths: List of base paths to search
+        input_paths: Dictionary of input paths from container
 
     Returns:
         Path to hyperparameters file if found, None otherwise
     """
-    for base_path in base_paths:
-        hyperparams_path = Path(base_path) / "hyperparameters.json"
-        if hyperparams_path.exists():
-            logger.info(f"Found hyperparameters file at: {hyperparams_path}")
-            return hyperparams_path
+    if (
+        "hyperparameters_s3_uri" in input_paths
+        and input_paths["hyperparameters_s3_uri"]
+    ):
+        hparam_path = (
+            Path(input_paths["hyperparameters_s3_uri"]) / "hyperparameters.json"
+        )
+        if hparam_path.exists():
+            logger.info(f"Found hyperparameters file: {hparam_path}")
+            return hparam_path
+        else:
+            logger.warning(f"hyperparameters.json not found at: {hparam_path}")
+
     return None
 
 
 def main(
-    input_paths: Dict[str, str],  # Will be empty dict for SOURCE node
+    input_paths: Dict[str, str],
     output_paths: Dict[str, str],
     environ_vars: Dict[str, str],
     job_args: Optional[argparse.Namespace] = None,
@@ -261,11 +335,16 @@ def main(
     """
     Main entry point for the DummyTraining script.
 
-    Reads model and hyperparameters from source directory with fallback mechanisms.
+    Reads model and hyperparameters with flexible input modes:
+    - Mode 1 (INTERNAL): From input channels (model_artifacts_input, hyperparameters_s3_uri)
+    - Mode 2 (SOURCE): From source directory (fallback)
 
     Args:
-        input_paths: Dictionary of input paths with logical names (empty for SOURCE node)
+        input_paths: Dictionary of input paths with logical names
+            - "model_artifacts_input": Optional path to model.tar.gz
+            - "hyperparameters_s3_uri": Optional path to hyperparameters.json
         output_paths: Dictionary of output paths with logical names
+            - "model_output": Output directory for processed model
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments (optional)
 
@@ -273,43 +352,44 @@ def main(
         Path to the processed model.tar.gz output
     """
     try:
-        # Define fallback search paths for model file
-        model_search_paths = [
-            "/opt/ml/code/models",  # Primary: source directory models folder
-            "/opt/ml/code",  # Fallback: source directory root
-            "/opt/ml/processing/input/model",  # Legacy: processing input (if somehow provided)
-        ]
+        logger.info("=" * 70)
+        logger.info("DUMMY TRAINING - FLEXIBLE INPUT MODE")
+        logger.info("=" * 70)
+        logger.info(f"Input paths provided: {list(input_paths.keys())}")
+        logger.info(f"Output paths: {list(output_paths.keys())}")
+        logger.info("=" * 70)
 
-        # Define fallback search paths for hyperparameters file
-        hyperparams_search_paths = [
-            "/opt/ml/code/hyperparams",  # Primary: source directory hyperparams folder
-            "/opt/ml/code",  # Fallback: source directory root
-            "/opt/ml/processing/input/config",  # Legacy: processing input (if somehow provided)
-        ]
-
-        # Find model file with fallback
-        model_path = find_model_file(model_search_paths)
+        # Find model file (REQUIRED)
+        model_path = find_model_file(input_paths)
         if not model_path:
             raise FileNotFoundError(
-                f"Model file (model.tar.gz) not found in any of these locations: {model_search_paths}"
+                f"Model file (model.tar.gz) not found at: "
+                f"{input_paths.get('model_artifacts_input', 'No path provided')}/model.tar.gz"
             )
 
-        # Find hyperparameters file with fallback
-        hyperparams_path = find_hyperparams_file(hyperparams_search_paths)
+        # Find hyperparameters file (OPTIONAL - may be in model.tar.gz)
+        hyperparams_path = find_hyperparams_file(input_paths)
         if not hyperparams_path:
-            raise FileNotFoundError(
-                f"Hyperparameters file (hyperparameters.json) not found in any of these locations: {hyperparams_search_paths}"
-            )
+            logger.info("=" * 70)
+            logger.info("HYPERPARAMETERS INPUT NOT PROVIDED")
+            logger.info("=" * 70)
+            logger.info("hyperparameters.json not found in input paths")
+            logger.info("Will check if hyperparameters.json exists in model.tar.gz")
+            logger.info("=" * 70)
 
         # Get output directory
         output_dir = Path(output_paths["model_output"])
 
-        logger.info(f"Using paths:")
+        logger.info("=" * 70)
+        logger.info("RESOLVED PATHS:")
         logger.info(f"  Model: {model_path}")
-        logger.info(f"  Hyperparameters: {hyperparams_path}")
+        logger.info(
+            f"  Hyperparameters: {hyperparams_path if hyperparams_path else 'None (will check in model)'}"
+        )
         logger.info(f"  Output: {output_dir}")
+        logger.info("=" * 70)
 
-        # Process model with hyperparameters from source directory
+        # Process model with hyperparameters
         output_path = process_model_with_hyperparameters(
             model_path, hyperparams_path, output_dir
         )
@@ -325,16 +405,56 @@ def main(
 
 if __name__ == "__main__":
     try:
-        # Empty input paths - consistent with SOURCE node contract
+        # Container path constants
+        CONTAINER_PATHS = {
+            "MODEL_OUTPUT": "/opt/ml/processing/output/model",
+            "MODEL_ARTIFACTS_INPUT": "/opt/ml/processing/input/model_artifacts_input",
+            "HYPERPARAMETERS_INPUT": "/opt/ml/processing/input/hyperparameters_s3_uri",
+        }
+
+        # Define input paths - always provide paths (either input channel or code directory)
         input_paths = {}
 
-        output_paths = {"model_output": MODEL_OUTPUT_DIR}
+        # Model artifacts path: Always provided (either input channel or code directory)
+        if os.path.exists(CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]):
+            input_paths["model_artifacts_input"] = CONTAINER_PATHS[
+                "MODEL_ARTIFACTS_INPUT"
+            ]
+            logger.info(
+                f"[Input Channel] Using model artifacts from: {CONTAINER_PATHS['MODEL_ARTIFACTS_INPUT']}"
+            )
+        else:
+            input_paths["model_artifacts_input"] = "/opt/ml/code/models"
+            logger.info(
+                f"[SOURCE Fallback] Using model artifacts from: /opt/ml/code/models"
+            )
 
-        # Environment variables dictionary
+        # Hyperparameters path: Always provided (either input channel or code directory)
+        if os.path.exists(CONTAINER_PATHS["HYPERPARAMETERS_INPUT"]):
+            input_paths["hyperparameters_s3_uri"] = CONTAINER_PATHS[
+                "HYPERPARAMETERS_INPUT"
+            ]
+            logger.info(
+                f"[Input Channel] Using hyperparameters from: {CONTAINER_PATHS['HYPERPARAMETERS_INPUT']}"
+            )
+        else:
+            input_paths["hyperparameters_s3_uri"] = "/opt/ml/code/hyperparams"
+            logger.info(
+                f"[SOURCE Fallback] Using hyperparameters from: /opt/ml/code/hyperparams"
+            )
+
+        # Define output paths
+        output_paths = {"model_output": CONTAINER_PATHS["MODEL_OUTPUT"]}
+
+        # Environment variables dictionary (currently unused but kept for consistency)
         environ_vars = {}
 
         # No command line arguments needed for this script
         args = None
+
+        logger.info(
+            f"Starting dummy training with input mode: {'INTERNAL' if input_paths else 'SOURCE'}"
+        )
 
         # Execute the main function
         result = main(input_paths, output_paths, environ_vars, args)

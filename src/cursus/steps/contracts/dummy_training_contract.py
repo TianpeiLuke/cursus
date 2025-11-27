@@ -21,8 +21,8 @@ from ...core.base.contract_base import ScriptContract
 DUMMY_TRAINING_CONTRACT = ScriptContract(
     entry_point="dummy_training.py",
     expected_input_paths={
-        "model_artifacts_input": "/opt/ml/input/data/model_artifacts_input",  # OPTIONAL - for flexible model input
-        "hyperparameters_s3_uri": "/opt/ml/input/data/hyperparameters_s3_uri",  # OPTIONAL - for flexible hyperparameters input
+        "model_artifacts_input": "/opt/ml/processing/input/model_artifacts_input",  # OPTIONAL - for flexible model input
+        "hyperparameters_s3_uri": "/opt/ml/processing/input/hyperparameters_s3_uri",  # OPTIONAL - for flexible hyperparameters input
     },
     expected_output_paths={
         "model_output": "/opt/ml/processing/output/model"  # Renamed from model_input for consistency

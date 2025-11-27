@@ -301,7 +301,7 @@ def find_hyperparams_file(input_paths: Dict[str, str]) -> Optional[Path]:
     Find hyperparameters.json file at the specified path.
 
     The input_paths["hyperparameters_s3_uri"] is pre-configured in __main__ to point to either:
-    - /opt/ml/input/data/hyperparameters_s3_uri (if dependency injection provided)
+    - /opt/ml/processing/input/hyperparameters_s3_uri (if dependency injection provided)
     - /opt/ml/code/hyperparams/ (SOURCE fallback)
 
     Args:
@@ -408,8 +408,8 @@ if __name__ == "__main__":
         # Container path constants
         CONTAINER_PATHS = {
             "MODEL_OUTPUT": "/opt/ml/processing/output/model",
-            "MODEL_ARTIFACTS_INPUT": "/opt/ml/input/data/model_artifacts_input",
-            "HYPERPARAMETERS_INPUT": "/opt/ml/input/data/hyperparameters_s3_uri",
+            "MODEL_ARTIFACTS_INPUT": "/opt/ml/processing/input/model_artifacts_input",
+            "HYPERPARAMETERS_INPUT": "/opt/ml/processing/input/hyperparameters_s3_uri",
         }
 
         # Define input paths - always provide paths (either input channel or code directory)
