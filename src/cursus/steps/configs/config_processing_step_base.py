@@ -69,8 +69,14 @@ class ProcessingStepConfigBase(BasePipelineConfig):
 
     # Framework version
     processing_framework_version: str = Field(
-        default="1.2-1",  # Using 1.2-1 (Python 3.8) as default
-        description="Version of the scikit-learn framework to use in SageMaker Processing. Format: '<sklearn-version>-<build-number>'",
+        default="1.2-1",  # Using 1.2-1 (Python 3.8) as default for sklearn
+        description=(
+            "Framework version for processing container. "
+            "Format depends on framework: "
+            "sklearn uses '<version>-<build>' (e.g., '1.2-1'), "
+            "pytorch uses '<version>' (e.g., '2.6.0'). "
+            "No validation performed - version is passed directly to SageMaker."
+        ),
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -215,67 +221,6 @@ class ProcessingStepConfigBase(BasePipelineConfig):
                 raise ValueError(
                     f"processing_entry_point ('{v}') must be a relative path within source directory."
                 )
-        return v
-
-    @field_validator("processing_framework_version")
-    @classmethod
-    def validate_framework_version(cls, v: str) -> str:
-        """
-        Validate processing framework version matches SageMaker SKLearn versions.
-        Reference: https://sagemaker.readthedocs.io/en/stable/frameworks/sklearn/sagemaker.sklearn.html
-        """
-        # Define versions by Python compatibility
-        py37_versions = [
-            "0.20.0-1",
-            "0.23-1",  # Supports scikit-learn 0.23.2
-            "0.23-2",  # Supports scikit-learn 0.23.2
-        ]
-
-        py38_versions = [
-            "0.23-3",  # Supports scikit-learn 0.23.2
-            "0.23-4",  # Supports scikit-learn 0.23.2
-            "0.24-0",  # Supports scikit-learn 0.24.x
-            "0.24-1",  # Supports scikit-learn 0.24.x
-            "1.0-1",  # Supports scikit-learn 1.0.2
-            "1.2-1",  # Supports scikit-learn 1.2.2
-        ]
-
-        py39_versions = [
-            "1.3-1",  # Supports scikit-learn 1.3.x
-            "1.4-1",  # Supports scikit-learn 1.4.x
-            "1.5-1",  # Supports scikit-learn 1.5.x
-            "2.0-1",  # Supports scikit-learn 2.0.x
-        ]
-
-        # Combined list of all valid versions
-        valid_versions = py37_versions + py38_versions + py39_versions
-
-        # Check if version is valid
-        if v not in valid_versions:
-            # Prepare a more informative error message
-            py_compatibility = "\nPython version compatibility:\n"
-            py_compatibility += (
-                "- Python 3.7 (NOT RECOMMENDED): " + ", ".join(py37_versions) + "\n"
-            )
-            py_compatibility += "- Python 3.8: " + ", ".join(py38_versions) + "\n"
-            py_compatibility += (
-                "- Python 3.9 and newer: " + ", ".join(py39_versions) + "\n"
-            )
-
-            raise ValueError(
-                f"Invalid processing framework version: {v}.\n"
-                f"Must be one of the valid SageMaker SKLearn processing container versions.\n"
-                f"{py_compatibility}"
-                f"\nRecommendation: Use 1.4-1 or newer for best compatibility."
-            )
-
-        # Add warning for Python 3.7 versions
-        if v in py37_versions:
-            logger.warning(
-                f"Warning: Framework version {v} uses Python 3.7, which is no longer supported. "
-                f"Consider upgrading to a version that supports Python 3.8 or 3.9."
-            )
-
         return v
 
     # Initialize derived fields at creation time to avoid potential validation loops
