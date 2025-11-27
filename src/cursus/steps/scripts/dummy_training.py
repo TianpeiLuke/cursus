@@ -2,9 +2,23 @@
 """
 DummyTraining Processing Script
 
-This script validates, unpacks a pretrained model.tar.gz file, adds a hyperparameters.json file
-inside it, then repacks it and outputs to the destination. It serves as a dummy training step
-that skips actual training and integrates with downstream MIMS packaging and payload steps.
+This script validates, unpacks a pretrained model.tar.gz file, conditionally adds a
+hyperparameters.json file inside it, then repacks it and outputs to the destination.
+It serves as a dummy training step that skips actual training and integrates with
+downstream MIMS packaging and payload steps.
+
+Hyperparameters Handling:
+    - If model.tar.gz already contains hyperparameters.json (e.g., from PyTorch/XGBoost training):
+      * Keeps the original hyperparameters from the model
+      * Ignores any hyperparameters provided via input channel
+
+    - If model.tar.gz does NOT contain hyperparameters.json:
+      * Requires hyperparameters.json from input channel
+      * Injects it into the model archive
+
+    - Fails only if BOTH conditions are true:
+      * Model archive doesn't contain hyperparameters.json
+      * No hyperparameters.json provided via input channel
 """
 
 import argparse
@@ -157,21 +171,25 @@ def copy_file(src: Path, dst: Path) -> None:
 
 
 def process_model_with_hyperparameters(
-    model_path: Path, hyperparams_path: Path, output_dir: Path
+    model_path: Path, hyperparams_path: Optional[Path], output_dir: Path
 ) -> Path:
     """
-    Process the model.tar.gz by unpacking it, adding hyperparameters.json, and repacking it.
+    Process the model.tar.gz by unpacking it and conditionally adding hyperparameters.json.
+
+    The hyperparameters.json file is only added if:
+    1. It doesn't already exist in the model archive
+    2. An input hyperparameters_path is provided
 
     Args:
         model_path: Path to the input model.tar.gz file
-        hyperparams_path: Path to the hyperparameters.json file
+        hyperparams_path: Optional path to the hyperparameters.json file (None if not provided)
         output_dir: Directory to save the processed model
 
     Returns:
         Path to the processed model.tar.gz
 
     Raises:
-        FileNotFoundError: If input files don't exist
+        FileNotFoundError: If model doesn't exist, or if hyperparameters are missing from both model and input
         Exception: For processing errors
     """
     logger.info(f"Processing model with hyperparameters")
@@ -183,9 +201,6 @@ def process_model_with_hyperparameters(
     if not model_path.exists():
         raise FileNotFoundError(f"Model file not found: {model_path}")
 
-    if not hyperparams_path.exists():
-        raise FileNotFoundError(f"Hyperparameters file not found: {hyperparams_path}")
-
     # Create a temporary working directory
     with tempfile.TemporaryDirectory() as temp_dir:
         working_dir = Path(temp_dir)
@@ -194,9 +209,48 @@ def process_model_with_hyperparameters(
         # Extract the model.tar.gz
         extract_tarfile(model_path, working_dir)
 
-        # Copy hyperparameters.json to the working directory
+        # Check if hyperparameters.json already exists in the extracted model
         hyperparams_dest = working_dir / "hyperparameters.json"
-        copy_file(hyperparams_path, hyperparams_dest)
+
+        if hyperparams_dest.exists():
+            logger.info("=" * 70)
+            logger.info("HYPERPARAMETERS ALREADY IN MODEL")
+            logger.info("=" * 70)
+            logger.info(
+                f"hyperparameters.json found in model archive at: {hyperparams_dest}"
+            )
+
+            if hyperparams_path:
+                logger.info("Input hyperparameters provided but will be IGNORED")
+                logger.info(f"  Input path: {hyperparams_path}")
+                logger.info(
+                    "  Reason: Model archive already contains hyperparameters.json"
+                )
+                logger.info("  Action: Keeping original hyperparameters from model")
+            else:
+                logger.info("No input hyperparameters provided (not needed)")
+
+            logger.info("=" * 70)
+        else:
+            logger.info("=" * 70)
+            logger.info("HYPERPARAMETERS NOT IN MODEL")
+            logger.info("=" * 70)
+            logger.info("hyperparameters.json NOT found in model archive")
+
+            if hyperparams_path:
+                logger.info(f"Injecting hyperparameters from input: {hyperparams_path}")
+                copy_file(hyperparams_path, hyperparams_dest)
+                logger.info("✓ Hyperparameters successfully added to model")
+            else:
+                logger.error(
+                    "ERROR: No hyperparameters found in model AND no input provided"
+                )
+                raise FileNotFoundError(
+                    "hyperparameters.json not found in model.tar.gz and no input hyperparameters provided. "
+                    "Either the model must contain hyperparameters.json or it must be provided via input channel."
+                )
+
+            logger.info("=" * 70)
 
         # Ensure output directory exists
         ensure_directory(output_dir)
@@ -305,7 +359,7 @@ def main(
         logger.info(f"Output paths: {list(output_paths.keys())}")
         logger.info("=" * 70)
 
-        # Find model file
+        # Find model file (REQUIRED)
         model_path = find_model_file(input_paths)
         if not model_path:
             raise FileNotFoundError(
@@ -313,13 +367,15 @@ def main(
                 f"{input_paths.get('model_artifacts_input', 'No path provided')}/model.tar.gz"
             )
 
-        # Find hyperparameters file
+        # Find hyperparameters file (OPTIONAL - may be in model.tar.gz)
         hyperparams_path = find_hyperparams_file(input_paths)
         if not hyperparams_path:
-            raise FileNotFoundError(
-                f"Hyperparameters file (hyperparameters.json) not found at: "
-                f"{input_paths.get('hyperparameters_s3_uri', 'No path provided')}/hyperparameters.json"
-            )
+            logger.info("=" * 70)
+            logger.info("HYPERPARAMETERS INPUT NOT PROVIDED")
+            logger.info("=" * 70)
+            logger.info("hyperparameters.json not found in input paths")
+            logger.info("Will check if hyperparameters.json exists in model.tar.gz")
+            logger.info("=" * 70)
 
         # Get output directory
         output_dir = Path(output_paths["model_output"])
@@ -327,7 +383,9 @@ def main(
         logger.info("=" * 70)
         logger.info("RESOLVED PATHS:")
         logger.info(f"  Model: {model_path}")
-        logger.info(f"  Hyperparameters: {hyperparams_path}")
+        logger.info(
+            f"  Hyperparameters: {hyperparams_path if hyperparams_path else 'None (will check in model)'}"
+        )
         logger.info(f"  Output: {output_dir}")
         logger.info("=" * 70)
 

@@ -24,28 +24,37 @@ date of note: 2025-11-18
 
 ## Overview
 
-The `dummy_training.py` script serves as a specialized SOURCE node processing step that packages a pretrained model by unpacking `model.tar.gz`, adding `hyperparameters.json` inside it, then repacking it for downstream consumption. It bypasses actual training while maintaining full integration with MIMS packaging and payload steps, enabling the use of externally trained or pretrained models in the pipeline framework.
+The `dummy_training.py` script serves as a specialized INTERNAL node processing step with flexible input modes that packages a pretrained model by unpacking `model.tar.gz`, adding `hyperparameters.json` inside it, then repacking it for downstream consumption. It bypasses actual training while maintaining full integration with MIMS packaging and payload steps, enabling the use of externally trained or pretrained models in the pipeline framework.
 
-The script implements robust file discovery with multi-path fallback mechanisms, comprehensive validation, and detailed logging throughout the model processing workflow. A key distinguishing feature is its SOURCE node design pattern - it reads files from the source directory (`/opt/ml/code/`) rather than processing inputs, making it suitable for scenarios where models and hyperparameters are embedded in the deployment package.
+The script implements a unified path assignment strategy in `__main__` that supports both dependency injection (INTERNAL mode) and SOURCE fallback. Paths are pre-configured based on whether input channels exist, simplifying the find functions to simple existence checks with a final relative path fallback. This design provides robust file discovery with comprehensive validation and detailed logging throughout the model processing workflow.
 
-This approach is particularly valuable for transfer learning scenarios, model serving pipelines, and situations where training has already been completed externally.
+This approach is particularly valuable for transfer learning scenarios, model serving pipelines, and situations where training has already been completed externally. The flexible input modes allow the step to work as either an INTERNAL node (receiving inputs from previous training steps) or a SOURCE node (reading from embedded deployment package files).
 
 ## Purpose and Major Tasks
 
 ### Primary Purpose
-Process pretrained models by injecting hyperparameters into the model archive, enabling seamless integration with downstream MIMS packaging and payload steps without performing actual training.
+Process pretrained models by conditionally injecting hyperparameters into the model archive, enabling seamless integration with downstream MIMS packaging and payload steps without performing actual training.
+
+**Conditional Injection Logic**:
+- If model.tar.gz already contains hyperparameters.json (e.g., from PyTorch/XGBoost training), the original hyperparameters are preserved
+- If model.tar.gz does NOT contain hyperparameters.json, the script requires and injects hyperparameters from the input channel
+- The script only fails if BOTH the model lacks hyperparameters AND no input hyperparameters are provided
 
 ### Major Tasks
 1. **Model Discovery**: Search multiple fallback locations for `model.tar.gz` file
-2. **Hyperparameters Discovery**: Search multiple fallback locations for `hyperparameters.json`  
+2. **Hyperparameters Discovery**: Search multiple fallback locations for `hyperparameters.json` (optional)
 3. **Model Validation**: Verify tar.gz format and archive integrity
 4. **Archive Extraction**: Unpack model archive to temporary working directory
-5. **Hyperparameters Injection**: Copy hyperparameters.json into extracted model contents
-6. **Archive Creation**: Repack model with hyperparameters into new tar.gz
-7. **Output Management**: Write processed model to output directory
-8. **Logging**: Provide detailed logs including file sizes, compression ratios, and operation status
-9. **Error Handling**: Gracefully handle missing files, invalid formats, and processing errors
-10. **Cleanup**: Automatically clean temporary directories regardless of success/failure
+5. **Hyperparameters Check**: Verify if hyperparameters.json exists in extracted model
+6. **Conditional Hyperparameters Injection**: 
+   - If hyperparameters.json found in model → Keep original, skip injection
+   - If hyperparameters.json NOT in model + input provided → Inject from input
+   - If hyperparameters.json NOT in model + no input → Fail with clear error
+7. **Archive Creation**: Repack model (with hyperparameters if injected) into new tar.gz
+8. **Output Management**: Write processed model to output directory
+9. **Logging**: Provide detailed logs including file sizes, compression ratios, and conditional logic decisions
+10. **Error Handling**: Gracefully handle missing files, invalid formats, and processing errors
+11. **Cleanup**: Automatically clean temporary directories regardless of success/failure
 
 ## Script Contract
 
@@ -55,19 +64,18 @@ dummy_training.py
 ```
 
 ### Input Paths
-**None** - This is a SOURCE node that reads from source directory
+**None** - This is an INTERNAL node with flexible input modes supporting both dependency injection and SOURCE fallback
 
-The script searches for files in these locations with fallback:
+The script uses a unified path assignment strategy in `__main__`:
 
-**Model Search Paths** (in priority order):
-1. `/opt/ml/code/models/model.tar.gz` (Primary: source directory models folder)
-2. `/opt/ml/code/model.tar.gz` (Fallback: source directory root)
-3. `/opt/ml/processing/input/model/model.tar.gz` (Legacy: processing input if somehow provided)
+**Model Artifacts Path Assignment**:
+1. **Input Channel** (if exists): `/opt/ml/input/data/model_artifacts_input/` (from dependency injection)
+2. **SOURCE Fallback**: `/opt/ml/code/models/` (embedded in deployment package)
+3. **Final Fallback**: Relative to script location (`Path(__file__).parent`)
 
-**Hyperparameters Search Paths** (in priority order):
-1. `/opt/ml/code/hyperparams/hyperparameters.json` (Primary: source directory hyperparams folder)
-2. `/opt/ml/code/hyperparameters.json` (Fallback: source directory root)
-3. `/opt/ml/processing/input/config/hyperparameters.json` (Legacy: processing input if somehow provided)
+**Hyperparameters Path Assignment**:
+1. **Input Channel** (if exists): `/opt/ml/input/data/hyperparameters_s3_uri/` (from dependency injection)
+2. **SOURCE Fallback**: `/opt/ml/code/hyperparams/` (embedded in deployment package)
 
 ### Output Paths
 | Path | Location | Description |
@@ -213,30 +221,25 @@ Total size in tar: 126.19MB
 
 **Algorithm**:
 ```python
-1. Define model search paths (priority order):
-   - /opt/ml/code/models/model.tar.gz
-   - /opt/ml/code/model.tar.gz  
-   - /opt/ml/processing/input/model/model.tar.gz
-2. Define hyperparams search paths (priority order):
-   - /opt/ml/code/hyperparams/hyperparameters.json
-   - /opt/ml/code/hyperparameters.json
-   - /opt/ml/processing/input/config/hyperparameters.json
-3. Search for model file:
-   - Call find_model_file(model_search_paths)
-   - If not found: raise FileNotFoundError with search locations
-4. Search for hyperparameters file:
-   - Call find_hyperparams_file(hyperparams_search_paths)
-   - If not found: raise FileNotFoundError with search locations
-5. Get output directory from output_paths
-6. Log all resolved paths
-7. Process model:
+1. Log processing mode and input paths
+2. Search for model file:
+   - Call find_model_file(input_paths)
+   - If not found: raise FileNotFoundError with assigned path
+3. Search for hyperparameters file:
+   - Call find_hyperparams_file(input_paths)
+   - If not found: raise FileNotFoundError with assigned path
+4. Get output directory from output_paths
+5. Log all resolved paths
+6. Process model:
    - Call process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)
-8. Return processed model path
-9. Handle exceptions with logging
+7. Return processed model path
+8. Handle exceptions with logging
 ```
 
 **Parameters**:
-- `input_paths` (dict): Empty dict for SOURCE node
+- `input_paths` (dict): Pre-configured paths from __main__ with keys:
+  - "model_artifacts_input": Path to directory containing model.tar.gz
+  - "hyperparameters_s3_uri": Path to directory containing hyperparameters.json
 - `output_paths` (dict): Output directory paths
 - `environ_vars` (dict): Environment variables (unused)
 - `job_args` (Namespace | None): Command-line arguments (unused)
@@ -245,49 +248,59 @@ Total size in tar: 126.19MB
 
 **Raises**: `FileNotFoundError` if required files not found, `Exception` for processing errors
 
+**Note**: Paths in input_paths are pre-resolved in __main__ to point to either input channels or SOURCE fallback directories
+
 ### File Discovery Components
 
-#### `find_model_file(base_paths)`
-**Purpose**: Search multiple locations for model.tar.gz with fallback
+#### `find_model_file(input_paths)`
+**Purpose**: Check for model.tar.gz at pre-configured path with relative fallback
 
 **Algorithm**:
 ```python
-1. For each base_path in base_paths:
-   a. Construct full path: model_path = Path(base_path) / "model.tar.gz"
-   b. Check if file exists:
-      - If exists: log found location, return model_path
-2. If loop completes without finding:
-   - Return None
+1. Get pre-configured path from input_paths["model_artifacts_input"]
+2. Construct full path: model_path = Path(model_artifacts_input) / "model.tar.gz"
+3. Check if file exists:
+   - If exists: log found location, return model_path
+   - If not: log warning
+4. Final fallback - relative to script location:
+   a. script_dir = Path(__file__).parent
+   b. code_fallback_path = script_dir / "model.tar.gz"
+   c. If exists: log found location, return code_fallback_path
+5. Return None if not found in any location
 ```
 
 **Parameters**:
-- `base_paths` (list[str]): List of base directories to search
+- `input_paths` (dict): Dictionary with pre-configured paths from __main__
+  - "model_artifacts_input": Path to directory (input channel or SOURCE fallback)
 
 **Returns**: `Optional[Path]` - Path to model file or None
 
-**Complexity**: O(n) where n = number of search paths
+**Complexity**: O(1) - checks exactly 2 locations (pre-configured + relative fallback)
 
-**Note**: Checks paths in order, returns first match
+**Note**: Path is pre-resolved in __main__ to point to input channel or /opt/ml/code/models/
 
-#### `find_hyperparams_file(base_paths)`
-**Purpose**: Search multiple locations for hyperparameters.json with fallback
+#### `find_hyperparams_file(input_paths)`
+**Purpose**: Check for hyperparameters.json at pre-configured path
 
 **Algorithm**:
 ```python
-1. For each base_path in base_paths:
-   a. Construct full path: hyperparams_path = Path(base_path) / "hyperparameters.json"
-   b. Check if file exists:
-      - If exists: log found location, return hyperparams_path
-2. If loop completes without finding:
-   - Return None
+1. Get pre-configured path from input_paths["hyperparameters_s3_uri"]
+2. Construct full path: hparam_path = Path(hyperparameters_s3_uri) / "hyperparameters.json"
+3. Check if file exists:
+   - If exists: log found location, return hparam_path
+   - If not: log warning
+4. Return None if not found
 ```
 
 **Parameters**:
-- `base_paths` (list[str]): List of base directories to search
+- `input_paths` (dict): Dictionary with pre-configured paths from __main__
+  - "hyperparameters_s3_uri": Path to directory (input channel or SOURCE fallback)
 
 **Returns**: `Optional[Path]` - Path to hyperparameters file or None
 
-**Complexity**: O(n) where n = number of search paths
+**Complexity**: O(1) - checks exactly 1 location (pre-configured path)
+
+**Note**: Path is pre-resolved in __main__ to point to input channel or /opt/ml/code/hyperparams/
 
 ### Validation Component
 
@@ -396,21 +409,34 @@ Total size in tar: 126.19MB
 **Complexity**: O(n × m) where n = number of files, m = average file size
 
 #### `process_model_with_hyperparameters(model_path, hyperparams_path, output_dir)`
-**Purpose**: Main processing function - unpack, add hyperparameters, repack
+**Purpose**: Main processing function - unpack, conditionally add hyperparameters, repack
 
 **Algorithm**:
 ```python
 1. Log processing start with all paths
-2. Validate inputs:
+2. Validate model input:
    a. If model_path not exists: raise FileNotFoundError
-   b. If hyperparams_path not exists: raise FileNotFoundError
 3. Create temporary working directory:
    - with tempfile.TemporaryDirectory() as temp_dir:
 4. Extract model archive:
    - extract_tarfile(model_path, working_dir)
-5. Copy hyperparameters to working directory:
+5. Check for existing hyperparameters in model:
    - hyperparams_dest = working_dir / "hyperparameters.json"
-   - copy_file(hyperparams_path, hyperparams_dest)
+   - If hyperparams_dest.exists():
+     a. Log "HYPERPARAMETERS ALREADY IN MODEL"
+     b. If hyperparams_path provided:
+        - Log warning that input will be IGNORED
+        - Log reason: model already contains hyperparameters
+     c. Else: Log that no input needed
+   - Else (hyperparameters NOT in model):
+     a. Log "HYPERPARAMETERS NOT IN MODEL"
+     b. If hyperparams_path provided:
+        - Log injection from input
+        - copy_file(hyperparams_path, hyperparams_dest)
+        - Log success
+     c. Else (no input provided):
+        - Log error
+        - Raise FileNotFoundError with clear message
 6. Ensure output directory exists
 7. Create output archive:
    - output_path = output_dir / "model.tar.gz"
@@ -422,14 +448,21 @@ Total size in tar: 126.19MB
 
 **Parameters**:
 - `model_path` (Path): Input model.tar.gz path
-- `hyperparams_path` (Path): Hyperparameters.json path
+- `hyperparams_path` (Optional[Path]): Optional hyperparameters.json path (None if not provided)
 - `output_dir` (Path): Output directory for processed model
 
 **Returns**: `Path` - Path to processed model.tar.gz
 
-**Raises**: `FileNotFoundError` if inputs missing, `Exception` for processing errors
+**Raises**: 
+- `FileNotFoundError` if model doesn't exist, or if hyperparameters missing from both model and input
+- `Exception` for other processing errors
 
 **Complexity**: O(n × m) where n = number of files, m = average file size
+
+**Conditional Behavior**:
+- Model contains hyperparameters.json → Preserves original (injection skipped)
+- Model missing hyperparameters.json + input provided → Injects from input
+- Model missing hyperparameters.json + no input → Fails with clear error
 
 ### Utility Components
 
@@ -483,33 +516,42 @@ Total size in tar: 126.19MB
 
 ## Algorithms and Data Structures
 
-### Multi-Path Fallback Search Algorithm
-**Problem**: Locate required files across multiple potential locations with graceful fallback
+### Unified Path Assignment Strategy
+**Problem**: Support both dependency injection (INTERNAL mode) and SOURCE fallback seamlessly
 
 **Solution Strategy**:
-1. Define priority-ordered search paths
-2. Iterate paths in order
-3. Return first match found
-4. Return None if no match (caller handles error)
+1. Path resolution happens in `__main__` before calling main()
+2. Check if input channels exist (dependency injection)
+3. If not, assign SOURCE fallback paths
+4. Pass pre-configured paths to main() via input_paths dict
+5. Find functions simply check existence at pre-configured path
 
 **Algorithm**:
 ```python
-def find_file(base_paths, filename):
-    for base_path in base_paths:
-        file_path = Path(base_path) / filename
-        if file_path.exists():
-            log(f"Found {filename} at: {file_path}")
-            return file_path
-    return None
+# In __main__
+if os.path.exists(CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]):
+    input_paths["model_artifacts_input"] = CONTAINER_PATHS["MODEL_ARTIFACTS_INPUT"]
+    logger.info("[Input Channel] Using model artifacts from: ...")
+else:
+    input_paths["model_artifacts_input"] = "/opt/ml/code/models"
+    logger.info("[SOURCE Fallback] Using model artifacts from: ...")
+
+# In find_model_file()
+model_path = Path(input_paths["model_artifacts_input"]) / "model.tar.gz"
+if model_path.exists():
+    return model_path
+# Final fallback: relative to script
+return Path(__file__).parent / "model.tar.gz" if exists else None
 ```
 
-**Complexity**: O(n) where n = number of search paths
+**Complexity**: O(1) - path assignment is constant time, existence check is O(1)
 
 **Key Features**:
-- Priority-based search (checks paths in order)
-- Early termination on first match
-- Graceful failure (returns None, not exception)
-- Detailed logging for debugging
+- Centralized path resolution in `__main__`
+- Clear [Input Channel] vs [SOURCE Fallback] logging
+- Simplified find functions (just existence checks)
+- Relative path fallback for model (script-location independent)
+- No iteration over multiple paths - pre-resolved
 
 ### Temporary Directory Pattern
 **Problem**: Safely manipulate archive contents without affecting original files or leaving artifacts
