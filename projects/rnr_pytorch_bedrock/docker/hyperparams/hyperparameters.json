@@ -16,7 +16,7 @@
   "early_stop_metric": "val_loss",
   "early_stop_patience": 3,
   "fixed_tokenizer_length": true,
-  "fp16": true,
+  "fp16": false,
   "full_field_list": [
     "net_conc_amt",
     "ttm_conc_amt",

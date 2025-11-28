@@ -250,12 +250,6 @@ class TrimodalGateFusionBert(pl.LightningModule):
         self.secondary_text_subnetwork = TextBertBase(secondary_config)
         secondary_text_dim = self.secondary_text_subnetwork.output_text_dim
 
-        # === Enable gradient checkpointing if configured ===
-        if config.get("use_gradient_checkpointing", False):
-            logger.info("Enabling gradient checkpointing for memory optimization")
-            self.primary_text_subnetwork.bert.gradient_checkpointing_enable()
-            self.secondary_text_subnetwork.bert.gradient_checkpointing_enable()
-
         # === Gated Fusion Layer ===
         fusion_dim = config.get("fusion_dim", max(primary_text_dim, secondary_text_dim))
 
@@ -527,7 +521,7 @@ class TrimodalGateFusionBert(pl.LightningModule):
             ]  # convert the [num_class] list into a string
 
         if self.test_has_label:
-            results["label"] = self.label_lst
+            results[self.label_name] = self.label_lst
         if self.id_name:
             results[self.id_name] = self.id_lst
 

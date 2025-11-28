@@ -225,7 +225,7 @@ class TextCNN(pl.LightningModule):
             results["prob"] = [json.dumps(p) for p in self.pred_lst]
 
         if self.test_has_label:
-            results["label"] = self.label_lst
+            results[self.label_name] = self.label_lst
         if self.id_name:
             results[self.id_name] = self.id_lst
 

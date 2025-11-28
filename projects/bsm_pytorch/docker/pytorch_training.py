@@ -1058,6 +1058,7 @@ def evaluate_and_log_results(
         device="auto",
         model_log_path=paths["checkpoint"],
         return_dataframe=True,
+        label_col=config.label_name,
     )
     test_predict_labels, test_true_labels, test_df = model_inference(
         model,
@@ -1066,6 +1067,7 @@ def evaluate_and_log_results(
         device="auto",
         model_log_path=paths["checkpoint"],
         return_dataframe=True,
+        label_col=config.label_name,
     )
     log_once(logger, "Inference Complete.")
     if is_main_process():

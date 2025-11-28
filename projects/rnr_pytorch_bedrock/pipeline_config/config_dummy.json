@@ -1,0 +1,508 @@
+{
+  "configuration": {
+    "shared": {
+      "author": "lukexie",
+      "bucket": "buyer-seller-messaging-reversal",
+      "current_date": "2025-11-28",
+      "enable_caching": false,
+      "framework_version": "2.1.0",
+      "max_runtime_seconds": 172800,
+      "model_class": "pytorch",
+      "pipeline_version": "0.0.2",
+      "processing_framework_version": "1.2-1",
+      "processing_instance_count": 1,
+      "processing_instance_type_small": "ml.m5.4xlarge",
+      "processing_volume_size": 500,
+      "project_root_folder": "rnr_pytorch_bedrock",
+      "py_version": "py310",
+      "region": "NA",
+      "role": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+      "service_name": "BuyerAbuseRnR",
+      "source_dir": "docker",
+      "use_secure_pypi": false
+    },
+    "specific": {
+      "DummyDataLoading_calibration": {
+        "__model_type__": "DummyDataLoadingConfig",
+        "aws_region": "us-east-1",
+        "data_source": "s3://buyer-seller-messaging-reversal/pipeline/lukexie-BuyerAbuseRnR-pytorch-NA/20251111035543/labelrulesetexecution/processed_data/test",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "job_type": "calibration",
+        "max_file_size_mb": 1000,
+        "output_format": "PARQUET",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "dummy_data_loading.py",
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_source_dir": "docker/scripts",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/dummy_data_loading.py",
+        "shard_size": 10000,
+        "supported_formats": [
+          "csv",
+          "parquet",
+          "json",
+          "jsonl"
+        ],
+        "use_large_processing_instance": true,
+        "write_data_shards": true
+      },
+      "DummyTraining": {
+        "__model_type__": "DummyTrainingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pretrained_model_path": "s3://buyer-seller-messaging-reversal/pipeline/lukexie-BuyerAbuseRnR-pytorch-NA/20251127060644/pytorch_training/pipelines-2x77ph4km9d6-PyTorchTraining-eLa7mE7jJT/output/model.tar.gz",
+        "processing_entry_point": "dummy_training.py",
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_source_dir": "docker/scripts",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/dummy_training.py",
+        "use_large_processing_instance": true
+      },
+      "ModelCalibration_calibration": {
+        "__model_type__": "ModelCalibrationConfig",
+        "aws_region": "us-east-1",
+        "calibration_method": "gam",
+        "calibration_sample_points": 1000,
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "error_threshold": 0.05,
+        "gam_splines": 10,
+        "is_binary": true,
+        "job_type": "calibration",
+        "label_field": "llm_reversal_flag",
+        "monotonic_constraint": true,
+        "multiclass_categories": [
+          0,
+          1
+        ],
+        "num_classes": 2,
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "model_calibration.py",
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_source_dir": "docker/scripts",
+        "score_field": "prob_class_1",
+        "score_field_prefix": "prob_class_",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/model_calibration.py",
+        "use_large_processing_instance": false
+      },
+      "Package": {
+        "__model_type__": "PackageConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "package.py",
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_source_dir": "docker/scripts",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/package.py",
+        "use_large_processing_instance": false
+      },
+      "PyTorchModelEval_calibration": {
+        "__model_type__": "PyTorchModelEvalConfig",
+        "aws_region": "us-east-1",
+        "ca_repository_arn": "arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        "comparison_metrics": "all",
+        "comparison_mode": false,
+        "comparison_plots": true,
+        "effective_instance_type": "ml.g5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker",
+        "eval_metric_choices": [
+          "auroc",
+          "average_precision",
+          "f1_score"
+        ],
+        "id_name": "order_id",
+        "job_type": "calibration",
+        "label_name": "llm_reversal_flag",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "previous_score_field": "",
+        "processing_entry_point": "pytorch_model_eval.py",
+        "processing_instance_type_large": "ml.g5.12xlarge",
+        "processing_source_dir": "docker",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/pytorch_model_eval.py",
+        "statistical_tests": true,
+        "use_large_processing_instance": true
+      },
+      "TabularPreprocessing_calibration": {
+        "__model_type__": "TabularPreprocessingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "job_type": "calibration",
+        "output_format": "Parquet",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "tabular_preprocessing.py",
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_source_dir": "docker/scripts",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      }
+    }
+  },
+  "metadata": {
+    "config_types": {
+      "DummyDataLoading_calibration": "DummyDataLoadingConfig",
+      "DummyTraining": "DummyTrainingConfig",
+      "ModelCalibration_calibration": "ModelCalibrationConfig",
+      "Package": "PackageConfig",
+      "PyTorchModelEval_calibration": "PyTorchModelEvalConfig",
+      "TabularPreprocessing_calibration": "TabularPreprocessingConfig"
+    },
+    "created_at": "2025-11-28T03:14:36.355216",
+    "field_sources": {
+      "author": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "aws_region": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "bucket": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "ca_repository_arn": [
+        "PyTorchModelEval_calibration"
+      ],
+      "calibration_method": [
+        "ModelCalibration_calibration"
+      ],
+      "calibration_sample_points": [
+        "ModelCalibration_calibration"
+      ],
+      "comparison_metrics": [
+        "PyTorchModelEval_calibration"
+      ],
+      "comparison_mode": [
+        "PyTorchModelEval_calibration"
+      ],
+      "comparison_plots": [
+        "PyTorchModelEval_calibration"
+      ],
+      "current_date": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "data_source": [
+        "DummyDataLoading_calibration"
+      ],
+      "effective_instance_type": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "effective_source_dir": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "enable_caching": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "error_threshold": [
+        "ModelCalibration_calibration"
+      ],
+      "eval_metric_choices": [
+        "PyTorchModelEval_calibration"
+      ],
+      "framework_version": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "full_script_path": [
+        "TabularPreprocessing_calibration"
+      ],
+      "gam_splines": [
+        "ModelCalibration_calibration"
+      ],
+      "id_name": [
+        "PyTorchModelEval_calibration"
+      ],
+      "is_binary": [
+        "ModelCalibration_calibration"
+      ],
+      "job_type": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      "label_field": [
+        "ModelCalibration_calibration"
+      ],
+      "label_name": [
+        "PyTorchModelEval_calibration"
+      ],
+      "max_file_size_mb": [
+        "DummyDataLoading_calibration"
+      ],
+      "max_runtime_seconds": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "model_class": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "monotonic_constraint": [
+        "ModelCalibration_calibration"
+      ],
+      "multiclass_categories": [
+        "ModelCalibration_calibration"
+      ],
+      "num_classes": [
+        "ModelCalibration_calibration"
+      ],
+      "output_format": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      "pipeline_description": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "pipeline_name": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "pipeline_s3_loc": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "pipeline_version": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "pretrained_model_path": [
+        "DummyTraining"
+      ],
+      "previous_score_field": [
+        "PyTorchModelEval_calibration"
+      ],
+      "processing_entry_point": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "processing_framework_version": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "processing_instance_count": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "processing_instance_type_large": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "processing_instance_type_small": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "processing_source_dir": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "processing_volume_size": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "project_root_folder": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "py_version": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "region": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "role": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "score_field": [
+        "ModelCalibration_calibration"
+      ],
+      "score_field_prefix": [
+        "ModelCalibration_calibration"
+      ],
+      "script_path": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "service_name": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "shard_size": [
+        "DummyDataLoading_calibration"
+      ],
+      "source_dir": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "statistical_tests": [
+        "PyTorchModelEval_calibration"
+      ],
+      "supported_formats": [
+        "DummyDataLoading_calibration"
+      ],
+      "test_val_ratio": [
+        "TabularPreprocessing_calibration"
+      ],
+      "train_ratio": [
+        "TabularPreprocessing_calibration"
+      ],
+      "use_large_processing_instance": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "use_secure_pypi": [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration",
+        "DummyTraining",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      "write_data_shards": [
+        "DummyDataLoading_calibration"
+      ]
+    }
+  }
+}

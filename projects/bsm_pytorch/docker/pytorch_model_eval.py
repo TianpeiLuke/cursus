@@ -811,6 +811,7 @@ def generate_predictions(
     logger.info("=" * 70)
 
     # Use Lightning's model_inference utility with dataframe return
+    label_name = config.get("label_name", "label")
     y_pred, y_true, df = model_inference(
         model,
         dataloader,
@@ -818,6 +819,7 @@ def generate_predictions(
         device=device,
         model_log_path=None,  # No logging during evaluation
         return_dataframe=True,  # Get dataframe with IDs and labels
+        label_col=label_name,  # Pass label column name
     )
 
     logger.info("=" * 70)

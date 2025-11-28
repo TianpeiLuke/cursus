@@ -381,7 +381,7 @@ class TrimodalBert(pl.LightningModule):
             ]  # convert the [num_class] list into a string
 
         if self.test_has_label:
-            results["label"] = self.label_lst
+            results[self.label_name] = self.label_lst
         if self.id_name:
             results[self.id_name] = self.id_lst
 

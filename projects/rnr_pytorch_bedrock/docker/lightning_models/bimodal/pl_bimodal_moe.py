@@ -308,7 +308,7 @@ class BimodalBertMoE(pl.LightningModule):
 
         # results = {"prob": self.pred_lst}
         if self.test_has_label:
-            results["label"] = self.label_lst
+            results[self.label_name] = self.label_lst
         if self.id_name:
             results[self.id_name] = self.id_lst
 

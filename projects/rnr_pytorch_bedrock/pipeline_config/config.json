@@ -3,12 +3,12 @@
     "shared": {
       "author": "lukexie",
       "bucket": "buyer-seller-messaging-reversal",
-      "current_date": "2025-11-22",
+      "current_date": "2025-11-28",
       "enable_caching": false,
       "framework_version": "2.1.0",
       "max_runtime_seconds": 172800,
       "model_class": "pytorch",
-      "pipeline_version": "0.0.1",
+      "pipeline_version": "0.0.2",
       "project_root_folder": "rnr_pytorch_bedrock",
       "py_version": "py310",
       "region": "NA",
@@ -18,6 +18,127 @@
       "use_secure_pypi": false
     },
     "specific": {
+      "BedrockBatchProcessing_calibration": {
+        "__model_type__": "BedrockBatchProcessingConfig",
+        "aws_region": "us-east-1",
+        "batch_configuration": {
+          "auto_selection_enabled": true,
+          "cost_optimization_enabled": true,
+          "fallback_to_realtime": true,
+          "forced_batch_mode": false,
+          "forced_realtime_mode": false,
+          "mode": "auto",
+          "role_arn": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+          "threshold": 1000,
+          "timeout_hours": 24
+        },
+        "bedrock_batch_mode": "auto",
+        "bedrock_batch_role_arn": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+        "bedrock_batch_size": 10,
+        "bedrock_batch_threshold": 1000,
+        "bedrock_batch_timeout_hours": 24,
+        "bedrock_concurrency_mode": "sequential",
+        "bedrock_environment_variables": {
+          "AWS_DEFAULT_REGION": "us-east-1",
+          "BEDROCK_BATCH_INPUT_S3_PATH": "",
+          "BEDROCK_BATCH_MODE": "auto",
+          "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
+          "BEDROCK_BATCH_ROLE_ARN": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+          "BEDROCK_BATCH_SIZE": "10",
+          "BEDROCK_BATCH_THRESHOLD": "1000",
+          "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+          "BEDROCK_CONCURRENCY_MODE": "sequential",
+          "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
+          "BEDROCK_LOG_TRUNCATIONS": "true",
+          "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
+          "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
+          "BEDROCK_MAX_INPUT_FIELD_LENGTH": "400000",
+          "BEDROCK_MAX_RECORDS_PER_JOB": "45000",
+          "BEDROCK_MAX_RETRIES": "3",
+          "BEDROCK_MAX_TOKENS": "32768",
+          "BEDROCK_OUTPUT_COLUMN_PREFIX": "llm_",
+          "BEDROCK_PRIMARY_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
+          "BEDROCK_SKIP_ERROR_RECORDS": "false",
+          "BEDROCK_TEMPERATURE": "1.0",
+          "BEDROCK_TOP_P": "0.999",
+          "BEDROCK_TRUNCATION_ENABLED": "true",
+          "USE_SECURE_PYPI": "false"
+        },
+        "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "bedrock_log_truncations": true,
+        "bedrock_max_concurrent_batch_jobs": 20,
+        "bedrock_max_concurrent_workers": 5,
+        "bedrock_max_input_field_length": 400000,
+        "bedrock_max_records_per_job": 45000,
+        "bedrock_max_retries": 3,
+        "bedrock_max_tokens": 32768,
+        "bedrock_output_column_prefix": "llm_",
+        "bedrock_primary_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock_rate_limit_per_second": 10,
+        "bedrock_skip_error_records": false,
+        "bedrock_temperature": 1.0,
+        "bedrock_top_p": 0.999,
+        "bedrock_truncation_enabled": true,
+        "cost_optimization_info": {
+          "automatic_fallback": true,
+          "batch_mode": "auto",
+          "cost_efficient_for_large_datasets": true,
+          "estimated_savings": "Up to 50% for datasets >= 1000 records",
+          "optimization_strategy": "Automatic selection based on data size",
+          "production_ready": true,
+          "threshold": 1000
+        },
+        "effective_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "job_type": "calibration",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "bedrock_batch_processing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "batch_mode": "auto",
+          "batch_role_arn": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+          "batch_size": 10,
+          "batch_threshold": 1000,
+          "batch_timeout_hours": 24,
+          "concurrency_mode": "sequential",
+          "fallback_model": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "inference_profile_required_models": [
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "anthropic.claude-sonnet-4-20250514-v1:0",
+            "anthropic.claude-opus-4-1-20250805-v1:0"
+          ],
+          "max_tokens": 32768,
+          "output_column_prefix": "llm_",
+          "primary_model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "step_type": "bedrock_batch_processing",
+          "temperature": 1.0,
+          "top_p": 0.999,
+          "uses_inference_profile": true
+        },
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/bedrock_batch_processing.py",
+        "use_large_processing_instance": false
+      },
       "BedrockBatchProcessing_training": {
         "__model_type__": "BedrockBatchProcessingConfig",
         "aws_region": "us-east-1",
@@ -103,11 +224,11 @@
           "anthropic.claude-opus-4-1-20250805-v1:0"
         ],
         "effective_instance_type": "ml.m5.4xlarge",
-        "effective_source_dir": "docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
         "job_type": "training",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "bedrock_batch_processing.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -136,7 +257,7 @@
         },
         "processing_source_dir": "docker/scripts",
         "processing_volume_size": 500,
-        "script_path": "docker/scripts/bedrock_batch_processing.py",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/bedrock_batch_processing.py",
         "use_large_processing_instance": false
       },
       "BedrockPromptTemplateGeneration": {
@@ -454,7 +575,7 @@
             "Reasoning arrays must NOT appear at top level of JSON"
           ]
         },
-        "effective_source_dir": "docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
         "effective_system_prompt_config": {
           "behavioral_guidelines": [
             "be precise in classification decisions",
@@ -810,7 +931,7 @@
         "output_format_type": "structured_json",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "bedrock_prompt_template_generation.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -825,8 +946,8 @@
           "Key Evidence",
           "Reasoning"
         ],
-        "resolved_prompt_configs_path": "docker/scripts/prompt_configs",
-        "script_path": "docker/scripts/bedrock_prompt_template_generation.py",
+        "resolved_prompt_configs_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/prompt_configs",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/bedrock_prompt_template_generation.py",
         "system_prompt_settings": {
           "__model_type__": "SystemPromptConfig",
           "behavioral_guidelines": [
@@ -878,18 +999,18 @@
         "use_large_processing_instance": false,
         "validation_level": "comprehensive"
       },
-      "DummyDataLoading_training": {
+      "DummyDataLoading_calibration": {
         "__model_type__": "DummyDataLoadingConfig",
         "aws_region": "us-east-1",
-        "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03",
+        "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03/",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "docker/scripts",
-        "job_type": "training",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "job_type": "calibration",
         "max_file_size_mb": 1000,
         "output_format": "PARQUET",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "dummy_data_loading.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -897,7 +1018,7 @@
         "processing_instance_type_small": "ml.m5.4xlarge",
         "processing_source_dir": "docker/scripts",
         "processing_volume_size": 500,
-        "script_path": "docker/scripts/dummy_data_loading.py",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/dummy_data_loading.py",
         "shard_size": 10000,
         "supported_formats": [
           "csv",
@@ -908,11 +1029,92 @@
         "use_large_processing_instance": true,
         "write_data_shards": true
       },
+      "DummyDataLoading_training": {
+        "__model_type__": "DummyDataLoadingConfig",
+        "aws_region": "us-east-1",
+        "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "job_type": "training",
+        "max_file_size_mb": 1000,
+        "output_format": "PARQUET",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "dummy_data_loading.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/dummy_data_loading.py",
+        "shard_size": 10000,
+        "supported_formats": [
+          "csv",
+          "parquet",
+          "json",
+          "jsonl"
+        ],
+        "use_large_processing_instance": true,
+        "write_data_shards": true
+      },
+      "LabelRulesetExecution_calibration": {
+        "__model_type__": "LabelRulesetExecutionConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "enable_progress_logging": true,
+        "enable_rule_match_tracking": true,
+        "execution_configuration": {
+          "fail_on_missing_fields": true,
+          "graceful_degradation": false,
+          "job_type": "calibration",
+          "performance_optimized": false,
+          "progress_logging": true,
+          "rule_match_tracking": true
+        },
+        "execution_environment_variables": {
+          "ENABLE_PROGRESS_LOGGING": "true",
+          "ENABLE_RULE_MATCH_TRACKING": "true",
+          "FAIL_ON_MISSING_FIELDS": "true",
+          "PREFERRED_INPUT_FORMAT": "parquet",
+          "USE_SECURE_PYPI": "false"
+        },
+        "fail_on_missing_fields": true,
+        "job_type": "calibration",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "preferred_input_format": "Parquet",
+        "processing_entry_point": "label_ruleset_execution.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "fail_on_missing_fields": true,
+          "job_type": "calibration",
+          "multi_format_support": [
+            "csv",
+            "tsv",
+            "parquet"
+          ],
+          "progress_logging_enabled": true,
+          "rule_match_tracking_enabled": true,
+          "step_type": "label_ruleset_execution",
+          "supports_stacked_preprocessing": true
+        },
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/label_ruleset_execution.py",
+        "use_large_processing_instance": true
+      },
       "LabelRulesetExecution_training": {
         "__model_type__": "LabelRulesetExecutionConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
         "enable_progress_logging": true,
         "enable_rule_match_tracking": true,
         "execution_configuration": {
@@ -934,7 +1136,7 @@
         "job_type": "training",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "preferred_input_format": "Parquet",
         "processing_entry_point": "label_ruleset_execution.py",
         "processing_framework_version": "1.2-1",
@@ -956,14 +1158,14 @@
         },
         "processing_source_dir": "docker/scripts",
         "processing_volume_size": 500,
-        "script_path": "docker/scripts/label_ruleset_execution.py",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/label_ruleset_execution.py",
         "use_large_processing_instance": true
       },
       "LabelRulesetGeneration": {
         "__model_type__": "LabelRulesetGenerationConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.4xlarge",
-        "effective_source_dir": "docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
         "enable_field_validation": true,
         "enable_label_validation": true,
         "enable_logic_validation": true,
@@ -992,7 +1194,7 @@
         },
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "label_ruleset_generation.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -1000,7 +1202,7 @@
         "processing_instance_type_small": "ml.m5.4xlarge",
         "processing_source_dir": "docker/scripts",
         "processing_volume_size": 500,
-        "resolved_ruleset_configs_path": "docker/scripts/ruleset_configs",
+        "resolved_ruleset_configs_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/ruleset_configs",
         "rule_definitions": {
           "__model_type__": "RulesetDefinitionList",
           "rules": [
@@ -1057,33 +1259,146 @@
           ]
         },
         "ruleset_configs_path": "ruleset_configs",
-        "script_path": "docker/scripts/label_ruleset_generation.py",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/label_ruleset_generation.py",
         "use_large_processing_instance": false
+      },
+      "ModelCalibration_calibration": {
+        "__model_type__": "ModelCalibrationConfig",
+        "aws_region": "us-east-1",
+        "calibration_method": "gam",
+        "calibration_sample_points": 1000,
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "error_threshold": 0.05,
+        "gam_splines": 10,
+        "is_binary": true,
+        "job_type": "calibration",
+        "label_field": "llm_reversal_flag",
+        "monotonic_constraint": true,
+        "multiclass_categories": [
+          0,
+          1
+        ],
+        "num_classes": 2,
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "model_calibration.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "score_field": "prob_class_1",
+        "score_field_prefix": "prob_class_",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/model_calibration.py",
+        "use_large_processing_instance": false
+      },
+      "Package": {
+        "__model_type__": "PackageConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "package.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/package.py",
+        "use_large_processing_instance": false
+      },
+      "Payload": {
+        "__model_type__": "PayloadConfig",
+        "aws_region": "us-east-1",
+        "default_numeric_value": 0.0,
+        "default_text_value": "DEFAULT_TEXT",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "expected_tps": 10,
+        "max_acceptable_error_rate": 0.2,
+        "max_latency_in_millisecond": 800,
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "payload.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/payload.py",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "use_large_processing_instance": false
+      },
+      "PyTorchModelEval_calibration": {
+        "__model_type__": "PyTorchModelEvalConfig",
+        "aws_region": "us-east-1",
+        "ca_repository_arn": "arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        "comparison_metrics": "all",
+        "comparison_mode": false,
+        "comparison_plots": true,
+        "effective_instance_type": "ml.g5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker",
+        "eval_metric_choices": [
+          "auroc",
+          "average_precision",
+          "f1_score"
+        ],
+        "id_name": "order_id",
+        "job_type": "calibration",
+        "label_name": "llm_reversal_flag",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "previous_score_field": "",
+        "processing_entry_point": "pytorch_model_eval.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.g5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "docker",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/pytorch_model_eval.py",
+        "statistical_tests": true,
+        "use_large_processing_instance": true
       },
       "PyTorchTraining": {
         "__model_type__": "PyTorchTrainingConfig",
         "aws_region": "us-east-1",
+        "ca_repository_arn": "arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
         "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "skip_hyperparameters_s3_uri": true,
         "training_entry_point": "pytorch_training.py",
         "training_instance_count": 1,
-        "training_instance_type": "ml.g5.16xlarge",
+        "training_instance_type": "ml.p3.16xlarge",
         "training_volume_size": 800
       },
-      "TabularPreprocessing_training": {
+      "TabularPreprocessing_calibration": {
         "__model_type__": "TabularPreprocessingConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "docker/scripts",
-        "full_script_path": "docker/scripts/tabular_preprocessing.py",
-        "job_type": "training",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "job_type": "calibration",
         "output_format": "Parquet",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.1",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "tabular_preprocessing.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -1091,7 +1406,30 @@
         "processing_instance_type_small": "ml.m5.4xlarge",
         "processing_source_dir": "docker/scripts",
         "processing_volume_size": 500,
-        "script_path": "docker/scripts/tabular_preprocessing.py",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      },
+      "TabularPreprocessing_training": {
+        "__model_type__": "TabularPreprocessingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "job_type": "training",
+        "output_format": "Parquet",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "tabular_preprocessing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "docker/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
         "test_val_ratio": 0.5,
         "train_ratio": 0.7,
         "use_large_processing_instance": true
@@ -1100,146 +1438,247 @@
   },
   "metadata": {
     "config_types": {
+      "BedrockBatchProcessing_calibration": "BedrockBatchProcessingConfig",
       "BedrockBatchProcessing_training": "BedrockBatchProcessingConfig",
       "BedrockPromptTemplateGeneration": "BedrockPromptTemplateGenerationConfig",
+      "DummyDataLoading_calibration": "DummyDataLoadingConfig",
       "DummyDataLoading_training": "DummyDataLoadingConfig",
+      "LabelRulesetExecution_calibration": "LabelRulesetExecutionConfig",
       "LabelRulesetExecution_training": "LabelRulesetExecutionConfig",
       "LabelRulesetGeneration": "LabelRulesetGenerationConfig",
+      "ModelCalibration_calibration": "ModelCalibrationConfig",
+      "Package": "PackageConfig",
+      "Payload": "PayloadConfig",
+      "PyTorchModelEval_calibration": "PyTorchModelEvalConfig",
       "PyTorchTraining": "PyTorchTrainingConfig",
+      "TabularPreprocessing_calibration": "TabularPreprocessingConfig",
       "TabularPreprocessing_training": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-22T19:59:47.870327",
+    "created_at": "2025-11-28T03:08:36.620646",
     "field_sources": {
       "author": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "aws_region": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "batch_configuration": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_batch_mode": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_batch_role_arn": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_batch_size": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_batch_threshold": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_batch_timeout_hours": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_concurrency_mode": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_environment_variables": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_fallback_model_id": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_inference_profile_arn": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_inference_profile_required_models": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_log_truncations": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_max_concurrent_batch_jobs": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_max_concurrent_workers": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_max_input_field_length": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_max_records_per_job": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_max_retries": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_max_tokens": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_output_column_prefix": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_primary_model_id": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_rate_limit_per_second": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_skip_error_records": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_temperature": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_top_p": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bedrock_truncation_enabled": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "bucket": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "ca_repository_arn": [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      "calibration_method": [
+        "ModelCalibration_calibration"
+      ],
+      "calibration_sample_points": [
+        "ModelCalibration_calibration"
+      ],
+      "comparison_metrics": [
+        "PyTorchModelEval_calibration"
+      ],
+      "comparison_mode": [
+        "PyTorchModelEval_calibration"
+      ],
+      "comparison_plots": [
+        "PyTorchModelEval_calibration"
       ],
       "cost_optimization_info": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "current_date": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "data_source": [
-        "DummyDataLoading_training"
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "default_numeric_value": [
+        "Payload"
+      ],
+      "default_text_value": [
+        "Payload"
       ],
       "effective_categories": [
         "BedrockPromptTemplateGeneration"
       ],
       "effective_inference_profile_required_models": [
-        "BedrockBatchProcessing_training"
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
       ],
       "effective_instance_type": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "effective_instruction_config": [
         "BedrockPromptTemplateGeneration"
@@ -1250,11 +1689,19 @@
       "effective_source_dir": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "effective_system_prompt_config": [
         "BedrockPromptTemplateGeneration"
@@ -1262,11 +1709,19 @@
       "enable_caching": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "enable_field_validation": [
         "LabelRulesetGeneration"
@@ -1278,10 +1733,12 @@
         "LabelRulesetGeneration"
       ],
       "enable_progress_logging": [
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
       ],
       "enable_rule_match_tracking": [
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
       ],
       "enable_rule_optimization": [
         "LabelRulesetGeneration"
@@ -1290,29 +1747,56 @@
         "BedrockPromptTemplateGeneration",
         "LabelRulesetGeneration"
       ],
+      "error_threshold": [
+        "ModelCalibration_calibration"
+      ],
+      "eval_metric_choices": [
+        "PyTorchModelEval_calibration"
+      ],
       "execution_configuration": [
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
       ],
       "execution_environment_variables": [
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "expected_tps": [
+        "Payload"
       ],
       "fail_on_missing_fields": [
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
       ],
       "framework_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "full_script_path": [
-        "TabularPreprocessing_training"
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "gam_splines": [
+        "ModelCalibration_calibration"
       ],
       "generate_validation_schema": [
         "BedrockPromptTemplateGeneration"
+      ],
+      "id_name": [
+        "PyTorchModelEval_calibration"
       ],
       "include_examples": [
         "BedrockPromptTemplateGeneration"
@@ -1323,39 +1807,88 @@
       "instruction_settings": [
         "BedrockPromptTemplateGeneration"
       ],
+      "is_binary": [
+        "ModelCalibration_calibration"
+      ],
       "job_type": [
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
-        "LabelRulesetExecution_training"
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
       ],
       "label_config": [
         "LabelRulesetGeneration"
       ],
+      "label_field": [
+        "ModelCalibration_calibration"
+      ],
+      "label_name": [
+        "PyTorchModelEval_calibration"
+      ],
+      "max_acceptable_error_rate": [
+        "Payload"
+      ],
       "max_file_size_mb": [
-        "DummyDataLoading_training"
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "max_latency_in_millisecond": [
+        "Payload"
       ],
       "max_runtime_seconds": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "model_class": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "monotonic_constraint": [
+        "ModelCalibration_calibration"
+      ],
+      "multiclass_categories": [
+        "ModelCalibration_calibration"
+      ],
+      "num_classes": [
+        "ModelCalibration_calibration"
       ],
       "output_format": [
         "DummyDataLoading_training",
-        "TabularPreprocessing_training"
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
       ],
       "output_format_settings": [
         "BedrockPromptTemplateGeneration"
@@ -1366,110 +1899,212 @@
       "pipeline_description": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "pipeline_name": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "pipeline_s3_loc": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "pipeline_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "preferred_input_format": [
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "previous_score_field": [
+        "PyTorchModelEval_calibration"
       ],
       "processing_entry_point": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "processing_framework_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "processing_instance_count": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "processing_instance_type_large": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "processing_instance_type_small": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "processing_metadata": [
         "BedrockBatchProcessing_training",
-        "LabelRulesetExecution_training"
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
       ],
       "processing_source_dir": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "processing_volume_size": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "project_root_folder": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "prompt_configs_path": [
         "BedrockPromptTemplateGeneration"
@@ -1477,20 +2112,36 @@
       "py_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "region": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "required_output_fields": [
         "BedrockPromptTemplateGeneration"
@@ -1504,11 +2155,19 @@
       "role": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "rule_definitions": [
         "LabelRulesetGeneration"
@@ -1516,25 +2175,48 @@
       "ruleset_configs_path": [
         "LabelRulesetGeneration"
       ],
+      "score_field": [
+        "ModelCalibration_calibration"
+      ],
+      "score_field_prefix": [
+        "ModelCalibration_calibration"
+      ],
       "script_path": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "service_name": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "shard_size": [
-        "DummyDataLoading_training"
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
       ],
       "skip_hyperparameters_s3_uri": [
         "PyTorchTraining"
@@ -1542,14 +2224,32 @@
       "source_dir": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "source_model_inference_content_types": [
+        "Payload"
+      ],
+      "source_model_inference_response_types": [
+        "Payload"
+      ],
+      "statistical_tests": [
+        "PyTorchModelEval_calibration"
       ],
       "supported_formats": [
-        "DummyDataLoading_training"
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
       ],
       "system_prompt_settings": [
         "BedrockPromptTemplateGeneration"
@@ -1567,10 +2267,12 @@
         "BedrockPromptTemplateGeneration"
       ],
       "test_val_ratio": [
-        "TabularPreprocessing_training"
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
       ],
       "train_ratio": [
-        "TabularPreprocessing_training"
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
       ],
       "training_entry_point": [
         "PyTorchTraining"
@@ -1587,25 +2289,42 @@
       "use_large_processing_instance": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "use_secure_pypi": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
         "PyTorchTraining",
         "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
         "LabelRulesetGeneration",
-        "LabelRulesetExecution_training"
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
       ],
       "validation_level": [
         "BedrockPromptTemplateGeneration"
       ],
       "write_data_shards": [
-        "DummyDataLoading_training"
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
       ]
     }
   }
