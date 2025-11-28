@@ -291,16 +291,10 @@ def load_model_artifacts(
         hyperparams = json.load(f)
     logger.info("Loaded hyperparameters.json")
 
-    # Load model artifacts (config, embeddings, vocab, processors)
+    # Load model artifacts (config, embeddings, vocab, model_class)
     artifact_path = os.path.join(model_dir, "model_artifacts.pth")
-    artifacts = load_artifacts(
-        artifact_path, model_class=hyperparams.get("model_class", "bimodal_bert")
-    )
+    config, embedding_mat, vocab, model_class = load_artifacts(artifact_path)
     logger.info("Loaded model_artifacts.pth")
-
-    config = artifacts["config"]
-    embedding_mat = artifacts.get("embedding_mat")
-    vocab = artifacts.get("vocab")
 
     # Reconstruct tokenizer
     tokenizer_name = config.get("tokenizer", "bert-base-multilingual-cased")
@@ -309,7 +303,13 @@ def load_model_artifacts(
 
     # Load trained model
     model_path = os.path.join(model_dir, "model.pth")
-    model = load_model(model_path, model_class=config["model_class"], device_l="cpu")
+    model = load_model(
+        model_path,
+        config=config,
+        embedding_mat=embedding_mat,
+        model_class=model_class,
+        device_l="cpu",
+    )
     model.eval()  # Set to evaluation mode
     logger.info("Loaded model.pth and set to evaluation mode")
 
@@ -868,9 +868,9 @@ def log_metrics_summary(
     logger.info("=" * 80)
 
     if is_binary:
-        auc = metrics.get("eval/auroc", "N/A")
-        ap = metrics.get("eval/average_precision", "N/A")
-        f1 = metrics.get("eval/f1_score", "N/A")
+        auc = metrics.get("auc_roc", "N/A")
+        ap = metrics.get("average_precision", "N/A")
+        f1 = metrics.get("f1_score", "N/A")
         if isinstance(auc, (int, float)):
             logger.info(f"METRIC_KEY: AUC-ROC               = {auc:.4f}")
         if isinstance(ap, (int, float)):
@@ -878,8 +878,8 @@ def log_metrics_summary(
         if isinstance(f1, (int, float)):
             logger.info(f"METRIC_KEY: F1 Score              = {f1:.4f}")
     else:
-        auc_macro = metrics.get("eval/auroc_macro", "N/A")
-        auc_micro = metrics.get("eval/auroc_micro", "N/A")
+        auc_macro = metrics.get("auc_roc_macro", "N/A")
+        auc_micro = metrics.get("auc_roc_micro", "N/A")
         if isinstance(auc_macro, (int, float)):
             logger.info(f"METRIC_KEY: Macro AUC-ROC         = {auc_macro:.4f}")
         if isinstance(auc_micro, (int, float)):
@@ -901,7 +901,7 @@ def compute_evaluation_metrics(
         config: Model configuration
 
     Returns:
-        Dictionary of metrics
+        Dictionary of metrics with XGBoost-compatible naming
     """
     logger.info("Computing evaluation metrics")
 
@@ -912,9 +912,18 @@ def compute_evaluation_metrics(
     output_metrics = ["auroc", "average_precision", "f1_score"]
 
     # Compute metrics using Lightning utility
-    metrics = compute_metrics(
+    raw_metrics = compute_metrics(
         y_prob, y_true, output_metrics, task=task, num_classes=num_classes, stage="eval"
     )
+
+    # Convert metric names to XGBoost format (remove 'eval/' prefix, rename 'auroc' to 'auc_roc')
+    metrics = {}
+    for key, value in raw_metrics.items():
+        # Remove 'eval/' prefix
+        new_key = key.replace("eval/", "")
+        # Rename 'auroc' to 'auc_roc' for XGBoost compatibility
+        new_key = new_key.replace("auroc", "auc_roc")
+        metrics[new_key] = value
 
     logger.info(f"Computed {len(metrics)} metrics using Lightning utilities")
 
@@ -1043,10 +1052,20 @@ def save_metrics(
         metrics: Dictionary of metrics
         output_metrics_dir: Directory to save metrics
     """
+    # Convert tensors to Python scalars for JSON serialization
+    metrics_serializable = {}
+    for key, value in metrics.items():
+        if isinstance(value, torch.Tensor):
+            metrics_serializable[key] = (
+                value.item() if value.numel() == 1 else value.tolist()
+            )
+        else:
+            metrics_serializable[key] = value
+
     # Save JSON
     json_path = os.path.join(output_metrics_dir, "metrics.json")
     with open(json_path, "w") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(metrics_serializable, f, indent=2)
     logger.info(f"Saved metrics to {json_path}")
 
     # Save text summary
@@ -1055,13 +1074,13 @@ def save_metrics(
         f.write("PYTORCH MODEL EVALUATION METRICS\n")
         f.write("=" * 50 + "\n\n")
 
-        # Key metrics
-        if "eval/auroc" in metrics:
-            f.write(f"AUC-ROC:           {metrics['eval/auroc']:.4f}\n")
-        if "eval/average_precision" in metrics:
-            f.write(f"Average Precision: {metrics['eval/average_precision']:.4f}\n")
-        if "eval/f1_score" in metrics:
-            f.write(f"F1 Score:          {metrics['eval/f1_score']:.4f}\n")
+        # Key metrics (using XGBoost-compatible naming)
+        if "auc_roc" in metrics:
+            f.write(f"AUC-ROC:           {metrics['auc_roc']:.4f}\n")
+        if "average_precision" in metrics:
+            f.write(f"Average Precision: {metrics['average_precision']:.4f}\n")
+        if "f1_score" in metrics:
+            f.write(f"F1 Score:          {metrics['f1_score']:.4f}\n")
 
         f.write("\n" + "=" * 50 + "\n\n")
         f.write("ALL METRICS\n")
@@ -1110,7 +1129,7 @@ def load_eval_data(eval_data_dir: str) -> Tuple[pd.DataFrame, str, str]:
     logger.info(f"Using eval data file: {eval_file}")
 
     df, input_format = load_dataframe_with_format(eval_file)
-    filename = eval_file.name
+    filename = str(eval_file.relative_to(eval_data_dir))
     logger.info(
         f"Loaded eval data shape: {df.shape}, format: {input_format}, filename: {filename}"
     )
