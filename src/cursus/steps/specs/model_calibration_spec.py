@@ -43,6 +43,7 @@ MODEL_CALIBRATION_SPEC = StepSpecification(
                 "LightGBMModelEval",
                 "LightGBMModelInference",
                 "LightGBMMTTraining",
+                "LightGBMMTModelEval",
                 "PyTorchTraining",
                 "PyTorchModelEval",
                 "PyTorchModelInference",

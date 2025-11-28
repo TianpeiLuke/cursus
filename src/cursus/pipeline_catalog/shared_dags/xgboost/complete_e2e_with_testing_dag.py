@@ -87,10 +87,14 @@ def create_xgboost_complete_e2e_with_testing_dag() -> PipelineDAG:
 
     # Evaluation flow (calibration path)
     dag.add_edge("XGBoostTraining", "XGBoostModelInference_calibration")
-    dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelInference_calibration")
+    dag.add_edge(
+        "TabularPreprocessing_calibration", "XGBoostModelInference_calibration"
+    )
 
     # Model calibration flow - depends on model inference
-    dag.add_edge("XGBoostModelInference_calibration", "PercentileModelCalibration_calibration")
+    dag.add_edge(
+        "XGBoostModelInference_calibration", "PercentileModelCalibration_calibration"
+    )
 
     # Testing flow (similar to calibration but skips PercentileModelCalibration)
     dag.add_edge("CradleDataLoading_testing", "TabularPreprocessing_testing")
