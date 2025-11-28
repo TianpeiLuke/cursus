@@ -208,6 +208,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "LightGBM model inference step for prediction generation without metrics",
     },
+    "LightGBMMTModelEval": {
+        "config_class": "LightGBMMTModelEvalConfig",
+        "builder_step_name": "LightGBMMTModelEvalStepBuilder",
+        "spec_type": "LightGBMMTModelEval",
+        "sagemaker_step_type": "Processing",
+        "description": "LightGBM multi-task model evaluation step",
+    },
     "PyTorchModelEval": {
         "config_class": "PyTorchModelEvalConfig",
         "builder_step_name": "PyTorchModelEvalStepBuilder",
