@@ -9,17 +9,13 @@ The DAG includes:
 1) Data Preprocessing (training - small labeled dataset with multiple task labels)
 2) LightGBMMT Pretraining (on small labeled multi-task data)
 3) Data Preprocessing (testing - large unlabeled dataset)
-4) Model Inference (generate multi-task predictions on unlabeled data)
+4) LightGBMMT Model Inference (generate multi-task predictions on unlabeled data)
 5) Active Sample Selection (select high-confidence pseudo-labels across tasks)
 6) Pseudo Label Merge (combine labeled + pseudo-labeled multi-task data)
 7) LightGBMMT Fine-tuning (on combined dataset with all task labels)
 8) Data Preprocessing (calibration)
-9) Model Evaluation (on calibration data with multi-task metrics)
+9) LightGBMMT Model Evaluation (on calibration data with multi-task metrics)
 10) Model Calibration
-
-⚠️ IMPORTANT: This DAG includes a placeholder step 'LightGBMMTModelInference_testing'
-that will be implemented later. The step is included here to establish the complete
-SSL workflow structure for multi-task learning.
 """
 
 import logging
@@ -49,10 +45,6 @@ def create_lightgbmmt_ssl_training_dag() -> PipelineDAG:
     - Split-aware merge maintaining train/test/val boundaries for all tasks
     - Auto-inferred split ratios for optimal data distribution
 
-    ⚠️ Note: LightGBMMTModelInference_testing step is a placeholder and will be
-    implemented later. The inference step is critical for generating multi-task
-    predictions on unlabeled data during the pseudo-labeling phase.
-
     Returns:
         PipelineDAG: The directed acyclic graph for the multi-task SSL pipeline
     """
@@ -77,7 +69,7 @@ def create_lightgbmmt_ssl_training_dag() -> PipelineDAG:
     # Phase 3: Pseudo-labeling (on unlabeled data - generates predictions for all tasks)
     dag.add_node(
         "LightGBMMTModelInference_testing"
-    )  # ⚠️ PLACEHOLDER - Generate multi-task predictions on unlabeled data
+    )  # Generate multi-task predictions on unlabeled data
     dag.add_node(
         "ActiveSampleSelection"
     )  # Select high-confidence pseudo-labeled samples (multi-task aware)
@@ -214,9 +206,6 @@ def get_dag_metadata() -> DAGMetadata:
                 "PseudoLabelMerge_training",
                 "LightGBMMTTraining_finetune",
             ],
-            "placeholder_steps": [
-                "LightGBMMTModelInference_testing"
-            ],  # To be implemented
             "required_configs": [
                 "CradleDataLoading_training",
                 "CradleDataLoading_testing",
