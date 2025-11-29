@@ -781,6 +781,7 @@ def generate_predictions(
     dataloader: DataLoader,
     device: Union[str, int, List[int]] = "auto",
     accelerator: str = "auto",
+    label_col: str = "label",
 ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """
     Generate predictions using PyTorch Lightning inference.
@@ -791,6 +792,7 @@ def generate_predictions(
         dataloader: DataLoader for evaluation data
         device: Device setting (can be int, list, or string)
         accelerator: Accelerator type for Lightning
+        label_col: Name of the label column in the dataframe
 
     Returns:
         Tuple of (y_pred probabilities, y_true labels, dataframe_with_ids)
@@ -811,7 +813,6 @@ def generate_predictions(
     logger.info("=" * 70)
 
     # Use Lightning's model_inference utility with dataframe return
-    label_name = config.get("label_name", "label")
     y_pred, y_true, df = model_inference(
         model,
         dataloader,
@@ -819,7 +820,7 @@ def generate_predictions(
         device=device,
         model_log_path=None,  # No logging during evaluation
         return_dataframe=True,  # Get dataframe with IDs and labels
-        label_col=label_name,  # Pass label column name
+        label_col=label_col,  # Pass label column name
     )
 
     logger.info("=" * 70)
@@ -1199,8 +1200,9 @@ def evaluate_model(
     device_str, accelerator = setup_device_environment(device)
 
     # Generate predictions with dataframe (all ranks participate in DDP)
+    label_name = config.get("label_name", "label")
     y_prob, y_true, eval_df = generate_predictions(
-        model, dataloader, device_str, accelerator
+        model, dataloader, device_str, accelerator, label_name
     )
 
     # ===================================================================

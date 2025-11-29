@@ -427,6 +427,26 @@ This alternative design approach focuses on minimizing user input by providing o
 - **Benefits**: Robust property management for complex pipeline scenarios
 - **Strategic Value**: Foundation for sophisticated pipeline property handling
 
+### 🚀 Real-Time Inference & Model Serving
+
+#### **[PyTorch Inference Handler](../scripts/pytorch_inference_handler_script.md)** - PyTorch Real-Time Endpoint Serving
+- **Purpose**: SageMaker inference handler for deploying PyTorch Lightning models as real-time prediction endpoints
+- **Key Features**: Hyperparameter-driven text pipelines, multi-modal support (bimodal/trimodal), calibration integration, dual output (raw + calibrated)
+- **Benefits**: Complete preprocessing pipeline reconstruction, embedded artifacts, multiple input/output formats
+- **Strategic Value**: Production-ready serving for multi-modal PyTorch models with calibrated probability estimates
+
+#### **[XGBoost Inference Handler](../scripts/xgboost_inference_handler_script.md)** - XGBoost Real-Time Endpoint Serving
+- **Purpose**: SageMaker inference handler for deploying XGBoost models as real-time prediction endpoints with optimized performance
+- **Key Features**: Single-record fast path (50-100x speedup), risk table mapping, numerical imputation, calibration integration
+- **Benefits**: Minimal latency (2-10ms), high throughput, embedded preprocessing, strict feature alignment
+- **Strategic Value**: Production-ready serving for tabular XGBoost models with optimized single-record performance
+
+#### **[PyTorch Inference Calibration Integration](pytorch_inference_calibration_integration.md)** - Calibration Architecture Design
+- **Purpose**: Design for integrating probability calibration into PyTorch inference pipelines
+- **Key Features**: Calibration model loading, application strategies, percentile/regular calibration
+- **Benefits**: Improved probability quality, consistent calibration architecture across frameworks
+- **Strategic Value**: Foundation for calibrated predictions in production endpoints
+
 ### 🏗️ Implementation & Integration
 
 #### **[Adaptive Fluent Proxy Integration](adaptive_fluent_proxy_integration.md)** - Advanced Integration

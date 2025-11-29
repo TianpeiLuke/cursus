@@ -1,24 +1,3 @@
----
-tags:
-  - entry_point
-  - documentation
-  - overview
-  - hub
-  - navigation
-keywords:
-  - cursus documentation
-  - documentation hub
-  - system overview
-  - developer guide
-  - architecture
-topics:
-  - documentation structure
-  - system architecture
-  - development resources
-language: python
-date of note: 2025-10-24
----
-
 # Cursus Documentation Hub
 
 Welcome to the comprehensive documentation for Cursus - an intelligent SageMaker pipeline generation system. This directory contains all the technical documentation, design specifications, examples, and development resources organized into logical sections.

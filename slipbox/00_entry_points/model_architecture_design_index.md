@@ -64,8 +64,12 @@ Model Architecture Designs
 **Code Locations:**
 - `projects/atoz_xgboost/docker/xgboost_training.py` - Main training implementation
 - `projects/atoz_xgboost/docker/xgboost_inference.py` - Inference implementation
+- `projects/atoz_xgboost/docker/xgboost_inference_handler.py` - Real-time endpoint handler
 - `src/cursus/steps/specs/xgboost_training_spec.py` - Training specification
 - `src/cursus/steps/builders/builder_xgboost_training_step.py` - Step builder
+
+**Related Script Documentation:**
+- [XGBoost Inference Handler Script](../scripts/xgboost_inference_handler_script.md) - **NEW** - Real-time endpoint handler with fast path optimization
 
 **Related Design Docs:**
 - [XGBoost Model Inference Design](../1_design/xgboost_model_inference_design.md)
@@ -197,13 +201,17 @@ Model Architecture Designs
 
 **Inference Code Locations:**
 - `projects/rnr_pytorch_bedrock/docker/pytorch_model_inference.py` - RNR inference implementation
+- `projects/rnr_pytorch_bedrock/docker/pytorch_inference_handler.py` - RNR inference handler
+- `projects/bsm_pytorch/docker/pytorch_inference_handler.py` - BSM inference handler
 - `src/cursus/steps/scripts/pytorch_model_inference.py` - Template inference script
 
 **Related Script Documentation:**
 - [PyTorch Training Script](../scripts/pytorch_training_script.md) - **PRIMARY** - Comprehensive training implementation guide with distributed training patterns
 - [PyTorch Model Inference Script](../scripts/pytorch_model_inference_script.md) - Model inference implementation guide
+- [PyTorch Inference Handler Script](../scripts/pytorch_inference_handler_script.md) - **NEW** - Real-time endpoint handler with calibration support
 
 **Related Design Docs:**
+- [PyTorch Inference Handler Calibration Integration Design](../1_design/pytorch_inference_calibration_integration.md) - **NEW** - Calibration support for PyTorch inference handlers
 - [PyTorch Lightning Temporal Self-Attention Design](../1_design/pytorch_lightning_temporal_self_attention_design.md)
 
 **Key Features:**

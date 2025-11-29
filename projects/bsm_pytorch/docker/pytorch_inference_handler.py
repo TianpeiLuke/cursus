@@ -5,6 +5,7 @@ from io import StringIO, BytesIO
 from pathlib import Path
 import logging
 from typing import List, Union, Dict, Tuple, Optional, Any
+import pickle as pkl
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,7 @@ from processing.categorical.risk_table_processor import RiskTableMappingProcesso
 from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
+from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.bsm_datasets import BSMDataset
 from processing.dataloaders.bsm_dataloader import build_collate_batch
 
@@ -166,6 +168,79 @@ class Config(BaseModel):
             )
 
 
+# =================== Helper Functions ================
+def read_feature_columns(model_dir: str) -> Optional[List[str]]:
+    """
+    Read feature columns in correct order from feature_columns.txt
+
+    Args:
+        model_dir: Directory containing model artifacts
+
+    Returns:
+        List[str]: Ordered list of feature column names, or None if file doesn't exist
+
+    Raises:
+        ValueError: If file format is invalid
+    """
+    feature_file = os.path.join(model_dir, "feature_columns.txt")
+
+    if not os.path.exists(feature_file):
+        logger.warning(f"feature_columns.txt not found in {model_dir}")
+        return None
+
+    ordered_features = []
+
+    try:
+        with open(feature_file, "r") as f:
+            for line in f:
+                # Skip comments
+                if line.startswith("#"):
+                    continue
+                # Parse "<index>,<column_name>" format
+                try:
+                    idx, column = line.strip().split(",")
+                    ordered_features.append(column)
+                except ValueError:
+                    continue
+
+        if not ordered_features:
+            raise ValueError(f"No valid feature columns found in {feature_file}")
+
+        logger.info(
+            f"Loaded {len(ordered_features)} ordered feature columns from feature_columns.txt"
+        )
+        return ordered_features
+    except Exception as e:
+        logger.error(f"Error reading feature columns file: {e}", exc_info=True)
+        raise
+
+
+def load_hyperparameters(model_dir: str) -> Dict[str, Any]:
+    """
+    Load hyperparameters from hyperparameters.json file.
+
+    Args:
+        model_dir: Directory containing model artifacts
+
+    Returns:
+        Dict[str, Any]: Hyperparameters dictionary, empty dict if file doesn't exist
+    """
+    hyperparams_file = os.path.join(model_dir, "hyperparameters.json")
+
+    if not os.path.exists(hyperparams_file):
+        logger.warning(f"hyperparameters.json not found in {model_dir}")
+        return {}
+
+    try:
+        with open(hyperparams_file, "r") as f:
+            hyperparams = json.load(f)
+        logger.info(f"Loaded hyperparameters from hyperparameters.json")
+        return hyperparams
+    except Exception as e:
+        logger.warning(f"Could not load hyperparameters.json: {e}")
+        return {}
+
+
 # =================== Preprocessing Artifact Loaders ================
 def load_risk_tables(model_dir: str) -> Dict[str, Any]:
     """Load risk tables from pickle file."""
@@ -239,32 +314,339 @@ def create_numerical_processors(
     return numerical_processors
 
 
-# =================== Helper Function ================
+# =================== Calibration Functions ================
+def load_calibration_model(model_dir: str) -> Optional[Dict]:
+    """
+    Load calibration model if it exists. Supports both regular calibration models
+    (calibration_model.pkl) and percentile calibration (percentile_score.pkl).
+
+    Args:
+        model_dir: Directory containing model artifacts
+
+    Returns:
+        Calibration model if found, None otherwise. Returns a dictionary with
+        'type' and 'data' keys.
+    """
+    # Define calibration file constants
+    CALIBRATION_DIR = "calibration"
+    CALIBRATION_MODEL_FILE = "calibration_model.pkl"
+    PERCENTILE_SCORE_FILE = "percentile_score.pkl"
+    CALIBRATION_MODELS_DIR = "calibration_models"
+
+    # Check for percentile calibration first
+    percentile_path = os.path.join(model_dir, CALIBRATION_DIR, PERCENTILE_SCORE_FILE)
+    if os.path.exists(percentile_path):
+        logger.info(f"Loading percentile calibration from {percentile_path}")
+        try:
+            with open(percentile_path, "rb") as f:
+                percentile_mapping = pkl.load(f)
+                return {"type": "percentile", "data": percentile_mapping}
+        except Exception as e:
+            logger.warning(f"Failed to load percentile calibration: {e}")
+
+    # Check for binary calibration model
+    calibration_path = os.path.join(model_dir, CALIBRATION_DIR, CALIBRATION_MODEL_FILE)
+    if os.path.exists(calibration_path):
+        logger.info(f"Loading binary calibration model from {calibration_path}")
+        try:
+            with open(calibration_path, "rb") as f:
+                return {"type": "regular", "data": pkl.load(f)}
+        except Exception as e:
+            logger.warning(f"Failed to load binary calibration model: {e}")
+
+    # Check for multiclass calibration models
+    multiclass_dir = os.path.join(model_dir, CALIBRATION_DIR, CALIBRATION_MODELS_DIR)
+    if os.path.exists(multiclass_dir) and os.path.isdir(multiclass_dir):
+        logger.info(f"Loading multiclass calibration models from {multiclass_dir}")
+        try:
+            calibrators = {}
+            for file in os.listdir(multiclass_dir):
+                if file.endswith(".pkl"):
+                    class_name = file.replace("calibration_model_class_", "").replace(
+                        ".pkl", ""
+                    )
+                    with open(os.path.join(multiclass_dir, file), "rb") as f:
+                        calibrators[class_name] = pkl.load(f)
+            if calibrators:
+                return {"type": "regular_multiclass", "data": calibrators}
+        except Exception as e:
+            logger.warning(f"Failed to load multiclass calibration models: {e}")
+
+    logger.info("No calibration model found")
+    return None
+
+
+def _interpolate_score(
+    raw_score: float, lookup_table: List[Tuple[float, float]]
+) -> float:
+    """
+    Interpolate calibrated score from lookup table.
+
+    Args:
+        raw_score: Raw model score (0-1)
+        lookup_table: List of (raw_score, calibrated_score) tuples
+
+    Returns:
+        Interpolated calibrated score
+    """
+    # Boundary cases
+    if raw_score <= lookup_table[0][0]:
+        return lookup_table[0][1]
+    if raw_score >= lookup_table[-1][0]:
+        return lookup_table[-1][1]
+
+    # Find bracketing points and perform linear interpolation
+    for i in range(len(lookup_table) - 1):
+        if lookup_table[i][0] <= raw_score <= lookup_table[i + 1][0]:
+            x1, y1 = lookup_table[i]
+            x2, y2 = lookup_table[i + 1]
+            if x2 == x1:
+                return y1
+            return y1 + (y2 - y1) * (raw_score - x1) / (x2 - x1)
+
+    return lookup_table[-1][1]
+
+
+def apply_percentile_calibration(
+    scores: np.ndarray, percentile_mapping: List[Tuple[float, float]]
+) -> np.ndarray:
+    """
+    Apply percentile score mapping to raw scores.
+
+    Args:
+        scores: Raw model prediction scores (N x 2 for binary classification)
+        percentile_mapping: List of (raw_score, percentile) tuples
+
+    Returns:
+        Calibrated scores with same shape as input
+    """
+    # Apply percentile calibration to class-1 probabilities
+    calibrated = np.zeros_like(scores)
+    for i in range(scores.shape[0]):
+        raw_class1_prob = scores[i, 1]
+        calibrated_class1_prob = _interpolate_score(raw_class1_prob, percentile_mapping)
+        calibrated[i, 1] = calibrated_class1_prob
+        calibrated[i, 0] = 1 - calibrated_class1_prob
+
+    return calibrated
+
+
+def apply_regular_binary_calibration(
+    scores: np.ndarray, calibrator: List[Tuple[float, float]]
+) -> np.ndarray:
+    """
+    Apply regular calibration to binary classification scores using lookup table.
+
+    Args:
+        scores: Raw model prediction scores (N x 2)
+        calibrator: Lookup table List[Tuple[float, float]]
+
+    Returns:
+        Calibrated scores with same shape as input
+    """
+    calibrated = np.zeros_like(scores)
+
+    # Apply lookup table calibration
+    for i in range(scores.shape[0]):
+        calibrated[i, 1] = _interpolate_score(scores[i, 1], calibrator)
+        calibrated[i, 0] = 1 - calibrated[i, 1]
+
+    return calibrated
+
+
+def apply_regular_multiclass_calibration(
+    scores: np.ndarray, calibrators: Dict[str, List[Tuple[float, float]]]
+) -> np.ndarray:
+    """
+    Apply regular calibration to multiclass scores.
+
+    Args:
+        scores: Raw model prediction scores (N x num_classes)
+        calibrators: Dictionary of calibration lookup tables, one per class
+
+    Returns:
+        Calibrated and normalized scores with same shape as input
+    """
+    calibrated = np.zeros_like(scores)
+
+    # Apply calibration to each class
+    for i in range(scores.shape[1]):
+        class_name = str(i)
+        if class_name in calibrators:
+            for j in range(scores.shape[0]):
+                calibrated[j, i] = _interpolate_score(
+                    scores[j, i], calibrators[class_name]
+                )
+        else:
+            calibrated[:, i] = scores[:, i]  # No calibrator for this class
+
+    # Normalize probabilities to sum to 1
+    row_sums = calibrated.sum(axis=1)
+    calibrated = calibrated / row_sums[:, np.newaxis]
+
+    return calibrated
+
+
+def apply_calibration(
+    scores: np.ndarray, calibrator: Dict[str, Any], is_multiclass: bool
+) -> np.ndarray:
+    """
+    Apply calibration to raw model scores. Supports both regular calibration models
+    and percentile calibration.
+
+    Args:
+        scores: Raw model prediction scores
+        calibrator: Loaded calibration model(s) or percentile mapping
+        is_multiclass: Whether this is a multiclass model
+
+    Returns:
+        Calibrated scores
+    """
+    if calibrator is None:
+        return scores
+
+    try:
+        # Handle percentile calibration
+        if calibrator.get("type") == "percentile":
+            if is_multiclass:
+                logger.warning(
+                    "Percentile calibration not supported for multiclass, using raw scores"
+                )
+                return scores
+            else:
+                logger.info("Applying percentile calibration")
+                return apply_percentile_calibration(scores, calibrator["data"])
+
+        # Handle regular calibration models
+        elif calibrator.get("type") in ["regular", "regular_multiclass"]:
+            actual_calibrator = calibrator["data"]
+
+            if calibrator.get("type") == "regular_multiclass" or is_multiclass:
+                logger.info("Applying regular multiclass calibration")
+                return apply_regular_multiclass_calibration(scores, actual_calibrator)
+            else:
+                logger.info("Applying regular binary calibration")
+                return apply_regular_binary_calibration(scores, actual_calibrator)
+
+        else:
+            logger.warning(f"Unknown calibrator type: {calibrator.get('type')}")
+            return scores
+
+    except Exception as e:
+        logger.error(f"Error applying calibration: {str(e)}", exc_info=True)
+        return scores
+
+
+# =================== Text Preprocessing Pipeline ================
 def data_preprocess_pipeline(
     config: Config,
+    hyperparameters: Optional[Dict[str, Any]] = None,
 ) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    """
+    Build text preprocessing pipelines based on config and hyperparameters.
+
+    For bimodal: Uses text_name with configured or default steps
+    For trimodal: Uses primary_text_name and secondary_text_name with separate steps
+
+    Args:
+        config: Configuration object
+        hyperparameters: Optional hyperparameters dict loaded from hyperparameters.json
+
+    Returns:
+        Tuple of (tokenizer, pipelines_dict)
+    """
+    if not config.tokenizer:
+        config.tokenizer = "bert-base-multilingual-cased"
+
     logger.info(f"Constructing tokenizer: {config.tokenizer}")
     tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-    dialogue_pipeline = (
-        DialogueSplitterProcessor()
-        >> HTMLNormalizerProcessor()
-        >> EmojiRemoverProcessor()
-        >> TextNormalizationProcessor()
-        >> DialogueChunkerProcessor(
+    pipelines = {}
+
+    # Extract processing steps from hyperparameters if available
+    text_steps = None
+    primary_steps = None
+    secondary_steps = None
+    primary_text_name = None
+    secondary_text_name = None
+
+    if hyperparameters:
+        text_steps = hyperparameters.get("text_processing_steps")
+        primary_steps = hyperparameters.get("primary_text_processing_steps")
+        secondary_steps = hyperparameters.get("secondary_text_processing_steps")
+        primary_text_name = hyperparameters.get("primary_text_name")
+        secondary_text_name = hyperparameters.get("secondary_text_name")
+
+    # BIMODAL: Single text pipeline
+    if not primary_text_name:
+        # Use configured steps from hyperparameters or fallback to default
+        steps = text_steps or [
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ]
+
+        pipelines[config.text_name] = build_text_pipeline_from_steps(
+            processing_steps=steps,
             tokenizer=tokenizer,
-            max_tokens=config.max_sen_len,
-            truncate=config.chunk_trancate,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
             max_total_chunks=config.max_total_chunks,
-        )
-        >> BertTokenizeProcessor(
-            tokenizer,
-            add_special_tokens=True,
-            max_length=config.max_sen_len,
-            input_ids_key=config.text_input_ids_key,  # Pass key names
+            input_ids_key=config.text_input_ids_key,
             attention_mask_key=config.text_attention_mask_key,
         )
-    )
-    pipelines = {config.text_name: dialogue_pipeline}
+        logger.info(
+            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}"
+        )
+
+    # TRIMODAL: Dual text pipelines
+    else:
+        # Primary text pipeline (e.g., chat - full cleaning)
+        primary_pipeline_steps = primary_steps or [
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ]
+
+        pipelines[primary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=primary_pipeline_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(
+            f"Built primary pipeline for '{primary_text_name}' with steps: {primary_pipeline_steps}"
+        )
+
+        # Secondary text pipeline (e.g., events - minimal cleaning)
+        secondary_pipeline_steps = secondary_steps or [
+            "dialogue_splitter",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ]
+
+        pipelines[secondary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=secondary_pipeline_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(
+            f"Built secondary pipeline for '{secondary_text_name}' with steps: {secondary_pipeline_steps}"
+        )
+
     return tokenizer, pipelines
 
 
@@ -295,8 +677,11 @@ def model_fn(model_dir, context=None):
         )
         model.eval()
 
-    ## reconstruct pipelines
-    tokenizer, pipelines = data_preprocess_pipeline(config)
+    # Load hyperparameters if available
+    hyperparameters = load_hyperparameters(model_dir)
+
+    ## reconstruct pipelines with hyperparameter-driven steps
+    tokenizer, pipelines = data_preprocess_pipeline(config, hyperparameters)
 
     # === Add multiclass label processor if needed ===
     if not config.is_binary and config.num_classes > 2:
@@ -318,6 +703,14 @@ def model_fn(model_dir, context=None):
         f"Loaded {len(risk_processors)} risk processors and {len(numerical_processors)} numerical processors"
     )
 
+    # Load feature columns if available (for alignment with XGBoost pattern)
+    feature_columns = read_feature_columns(model_dir)
+
+    # Load calibration model if available
+    calibrator = load_calibration_model(model_dir)
+    if calibrator:
+        logger.info("Calibration model loaded successfully")
+
     return {
         "model": model,
         "config": config,
@@ -325,6 +718,9 @@ def model_fn(model_dir, context=None):
         "vocab": vocab,
         "model_class": model_class,
         "pipelines": pipelines,
+        "calibrator": calibrator,
+        "feature_columns": feature_columns,
+        "hyperparameters": hyperparameters,
         "risk_processors": risk_processors,
         "numerical_processors": numerical_processors,
     }
@@ -426,6 +822,7 @@ def predict_fn(input_object, model_data, context=None):
     model = model_data["model"]
     config = model_data["config"]
     pipelines = model_data["pipelines"]
+    calibrator = model_data.get("calibrator")
     risk_processors = model_data.get("risk_processors", {})
     numerical_processors = model_data.get("numerical_processors", {})
 
@@ -477,7 +874,27 @@ def predict_fn(input_object, model_data, context=None):
 
     try:
         logger.info("Model prediction...")
-        return model_online_inference(model, predict_dataloader)
+        raw_probs = model_online_inference(model, predict_dataloader)
+
+        # Apply calibration if available
+        if calibrator:
+            try:
+                is_multiclass = not config.is_binary
+                calibrated_probs = apply_calibration(
+                    raw_probs, calibrator, is_multiclass
+                )
+                logger.info("Applied calibration to predictions")
+            except Exception as e:
+                logger.warning(f"Failed to apply calibration: {e}")
+                calibrated_probs = raw_probs.copy()
+        else:
+            logger.info("No calibration model available, using raw predictions")
+            calibrated_probs = raw_probs.copy()
+
+        return {
+            "raw_predictions": raw_probs,
+            "calibrated_predictions": calibrated_probs,
+        }
     except Exception:
         logger.error("Model scoring error:\n" + traceback.format_exc())
         return [-4]
@@ -486,11 +903,11 @@ def predict_fn(input_object, model_data, context=None):
 # ================== Output Function ================================
 def output_fn(prediction_output, accept="application/json"):
     """
-    Serializes the multi-class prediction output.
+    Serializes the multi-class prediction output with both raw and calibrated scores.
 
     Args:
-        prediction_output: The output from predict_fn, expected to be a
-                           numpy array of shape (N, num_classes) or list of lists.
+        prediction_output: Dict with "raw_predictions" and "calibrated_predictions"
+                          from predict_fn, or legacy numpy array/list format
         accept: The requested response MIME type (e.g., 'application/json').
 
     Returns:
@@ -500,78 +917,90 @@ def output_fn(prediction_output, accept="application/json"):
         f"Received prediction output of type: {type(prediction_output)} for accept type: {accept}"
     )
 
-    scores_list = None
-
-    # Step 1: Normalize input format into a list of lists
-    if isinstance(prediction_output, np.ndarray):
-        logger.info(f"Prediction output numpy array shape: {prediction_output.shape}")
-        scores_list = prediction_output.tolist()
-    elif isinstance(prediction_output, list):
-        scores_list = prediction_output
+    # Step 1: Extract raw and calibrated predictions
+    if isinstance(prediction_output, dict):
+        raw_predictions = prediction_output.get("raw_predictions")
+        calibrated_predictions = prediction_output.get("calibrated_predictions")
     else:
-        msg = f"Unsupported prediction output type: {type(prediction_output)}"
-        logger.error(msg)
-        raise ValueError(msg)
+        # Backward compatibility: treat as raw predictions
+        raw_predictions = prediction_output
+        calibrated_predictions = prediction_output
+
+    # Step 2: Convert to list format
+    raw_scores_list = (
+        raw_predictions.tolist()
+        if isinstance(raw_predictions, np.ndarray)
+        else raw_predictions
+    )
+    calibrated_scores_list = (
+        calibrated_predictions.tolist()
+        if isinstance(calibrated_predictions, np.ndarray)
+        else calibrated_predictions
+    )
+
+    # Ensure list of lists format
+    if not isinstance(raw_scores_list[0], list):
+        raw_scores_list = [[score] for score in raw_scores_list]
+        calibrated_scores_list = [[score] for score in calibrated_scores_list]
 
     try:
-        is_multiclass = isinstance(scores_list[0], list)
+        is_multiclass = len(raw_scores_list[0]) > 2
 
-        # Step 2: JSON output formatting
-        # {
-        #  "prob_01": ...
-        #  "prob_02": ...
-        # ...
-        #  "prob_0k": ...
-        #  "output-label"": ...
-        # }
+        # Step 3: JSON output formatting
         if accept.lower() == "application/json":
             output_records = []
-            for probs in scores_list:
-                probs = probs if isinstance(probs, list) else [probs]
-                max_idx = probs.index(max(probs)) if probs else -1
+            for raw_probs, cal_probs in zip(raw_scores_list, calibrated_scores_list):
+                max_idx = raw_probs.index(max(raw_probs)) if raw_probs else -1
 
-                # record = {
-                #    **{f"prob_{str(i+1).zfill(2)}": p for i, p in enumerate(probs)},
-                #    "output-label": f"class-{max_idx}" if max_idx >= 0 else "unknown"
-                # }
-
-                # Create the base record with legacy-score for the first probability
-                # NOTE: output probability in string
-                record = (
-                    {"legacy-score": str(probs[0])} if probs else {"legacy-score": None}
-                )
-
-                # Add the rest of the probabilities starting from prob_02
-                record.update(
-                    {
-                        f"prob_{str(i + 1).zfill(2)}": str(p)
-                        for i, p in enumerate(probs[1:])
+                if not is_multiclass:
+                    # Binary classification
+                    record = {
+                        "legacy-score": str(
+                            raw_probs[1] if len(raw_probs) > 1 else raw_probs[0]
+                        ),  # Raw class-1
+                        "calibrated-score": str(
+                            cal_probs[1] if len(cal_probs) > 1 else cal_probs[0]
+                        ),  # Calibrated class-1
+                        "output-label": f"class-{max_idx}"
+                        if max_idx >= 0
+                        else "unknown",
                     }
-                )
-
-                # Add the output label
-                record["output-label"] = (
-                    f"class-{max_idx}" if max_idx >= 0 else "unknown"
-                )
+                else:
+                    # Multiclass
+                    record = {}
+                    for i in range(len(raw_probs)):
+                        record[f"prob_{str(i + 1).zfill(2)}"] = str(raw_probs[i])
+                        record[f"calibrated_prob_{str(i + 1).zfill(2)}"] = str(
+                            cal_probs[i]
+                        )
+                    record["output-label"] = (
+                        f"class-{max_idx}" if max_idx >= 0 else "unknown"
+                    )
 
                 output_records.append(record)
 
             response = json.dumps({"predictions": output_records})
             return response, "application/json"
 
-        # Step 3: CSV output formatting
+        # Step 4: CSV output formatting
         elif accept.lower() == "text/csv":
             csv_lines = []
-            for probs in scores_list:
-                probs = probs if isinstance(probs, list) else [probs]
-                max_idx = probs.index(max(probs)) if probs else -1
-                formatted_probs = [
-                    round(float(p), 4) for p in probs
-                ]  # Output as numerical floats
-                # Format list string without brackets and parentheses
-                list_str = ",".join(f"{p:.4f}" for p in formatted_probs)
+            for raw_probs, cal_probs in zip(raw_scores_list, calibrated_scores_list):
+                max_idx = raw_probs.index(max(raw_probs)) if raw_probs else -1
 
-                line = [list_str] + [f"class-{max_idx}" if max_idx >= 0 else "unknown"]
+                # Format raw probabilities
+                raw_formatted = [round(float(p), 4) for p in raw_probs]
+                raw_str = ",".join(f"{p:.4f}" for p in raw_formatted)
+
+                # Format calibrated probabilities
+                cal_formatted = [round(float(p), 4) for p in cal_probs]
+                cal_str = ",".join(f"{p:.4f}" for p in cal_formatted)
+
+                line = [
+                    raw_str,
+                    cal_str,
+                    f"class-{max_idx}" if max_idx >= 0 else "unknown",
+                ]
                 csv_lines.append(",".join(map(str, line)))
 
             response_body = "\n".join(csv_lines) + "\n"

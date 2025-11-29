@@ -692,6 +692,7 @@ All XGBoost pipelines use a common set of core components. Below are the key ste
 **Model Evaluation**
 - [XGBoostModelEval](../steps/builders/model_eval_step_xgboost.md) - Combined inference and metrics
 - [XGBoostModelInference](../1_design/xgboost_model_inference_design.md) - Standalone inference
+- [XGBoostInferenceHandler](../scripts/xgboost_inference_handler_script.md) - **NEW** - Real-time endpoint handler with fast path optimization
 - [ModelMetricsComputation](../1_design/model_metrics_computation_design.md) - Comprehensive metrics calculation
 
 **Model Calibration**

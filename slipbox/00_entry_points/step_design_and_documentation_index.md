@@ -307,6 +307,11 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [MODS MIMS Model Registration](../steps/scripts/MODS_MIMS_Model_Registration.md) - MODS MIMS registration
 - [Batch Transform Step Builder](../steps/batch_transform_step.md) - Batch transform step builder
 
+**Real-Time Inference & Model Serving**
+- [Inference Handler Spec Design](../1_design/inference_handler_spec_design.md) - Design for inference handler specifications
+- [PyTorch Inference Handler Script](../scripts/pytorch_inference_handler_script.md) - Complete SageMaker handler for PyTorch Lightning models with hyperparameter-driven text pipelines, multi-modal support (bimodal/trimodal), calibration integration, and dual output (raw + calibrated predictions)
+- [XGBoost Inference Handler Script](../scripts/xgboost_inference_handler_script.md) - Complete SageMaker handler for XGBoost models with single-record fast path optimization (50-100x speedup, 2-10ms latency), risk table mapping, numerical imputation, and calibration integration
+
 ### Phase 8: Utilities & Cross-Cutting Concerns
 
 #### Registered Steps in This Phase
