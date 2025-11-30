@@ -1322,8 +1322,8 @@
         "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
         "expected_tps": 10,
         "field_defaults": {
-          "dialogue": "[bom] [Arrival Time]: 2025-06-11 [BUYER]: I need my refund. [eom]",
-          "shiptrack_event_history_by_order": "[bom] [Shipment ID]: [eom] [bom] [Ship Track Event Code]: EVENT_503 [Ship Track Event]: Pickup scheduled with Carrier. [eom]"
+          "dialogue": "[bom] [Arrival Time]: 2025-06-11 19:33:22 [BUYER]: I need my refund. [eom]",
+          "shiptrack_event_history_by_order": "[bom] [Shipment ID]: 361267822901815 [eom] [bom] [Event Time]: 2025-06-09T03:26:55.852Z [Tracking ID]: TBR188938092 [Sender ID]: TSS [Supplement Code]: [Ship Track Event Code]: EVENT_503 [Ship Track Event]: Pickup scheduled with Carrier. [eom]"
         },
         "max_acceptable_error_rate": 0.2,
         "max_latency_in_millisecond": 800,
@@ -1392,6 +1392,148 @@
         "training_instance_type": "ml.p3.16xlarge",
         "training_volume_size": 800
       },
+      "Registration": {
+        "__model_type__": "RegistrationConfig",
+        "aws_region": "us-east-1",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker",
+        "framework": "pytorch",
+        "inference_entry_point": "pytorch_inference_handler.py",
+        "inference_instance_type": "ml.m5.large",
+        "model_domain": "BuyerSellerMessaging",
+        "model_objective": "RnR_BSM_Model_NA",
+        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_input_variable_list": [
+          [
+            "net_conc_amt",
+            "NUMERIC"
+          ],
+          [
+            "ttm_conc_amt",
+            "NUMERIC"
+          ],
+          [
+            "ttm_conc_count",
+            "NUMERIC"
+          ],
+          [
+            "concsi",
+            "NUMERIC"
+          ],
+          [
+            "deliverable_flag",
+            "NUMERIC"
+          ],
+          [
+            "undeliverable_flag",
+            "NUMERIC"
+          ],
+          [
+            "unique_message_count",
+            "NUMERIC"
+          ],
+          [
+            "total_ship_track_events_by_order",
+            "NUMERIC"
+          ],
+          [
+            "total_unique_ship_track_events_by_order",
+            "NUMERIC"
+          ],
+          [
+            "dialogue",
+            "TEXT"
+          ],
+          [
+            "shiptrack_event_history_by_order",
+            "TEXT"
+          ]
+        ],
+        "source_model_inference_output_variable_list": {
+          "calibrated-score": "NUMERIC",
+          "custom-output-label": "TEXT",
+          "legacy-score": "NUMERIC",
+          "score-percentile": "NUMERIC"
+        },
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "variable_schema": {
+          "input": {
+            "variables": [
+              {
+                "name": "net_conc_amt",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "ttm_conc_amt",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "ttm_conc_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "concsi",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "deliverable_flag",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "undeliverable_flag",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "unique_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "total_ship_track_events_by_order",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "total_unique_ship_track_events_by_order",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "dialogue",
+                "type": "TEXT"
+              },
+              {
+                "name": "shiptrack_event_history_by_order",
+                "type": "TEXT"
+              }
+            ]
+          },
+          "output": {
+            "variables": [
+              {
+                "name": "legacy-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "score-percentile",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "calibrated-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "custom-output-label",
+                "type": "TEXT"
+              }
+            ]
+          }
+        }
+      },
       "TabularPreprocessing_calibration": {
         "__model_type__": "TabularPreprocessingConfig",
         "aws_region": "us-east-1",
@@ -1455,16 +1597,18 @@
       "Payload": "PayloadConfig",
       "PyTorchModelEval_calibration": "PyTorchModelEvalConfig",
       "PyTorchTraining": "PyTorchTrainingConfig",
+      "Registration": "RegistrationConfig",
       "TabularPreprocessing_calibration": "TabularPreprocessingConfig",
       "TabularPreprocessing_training": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-30T06:24:40.772623",
+    "created_at": "2025-11-30T07:25:12.393670",
     "field_sources": {
       "author": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1482,6 +1626,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1599,6 +1744,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1639,6 +1785,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1695,6 +1842,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1715,6 +1863,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1775,11 +1924,15 @@
       "field_defaults": [
         "Payload"
       ],
+      "framework": [
+        "Registration"
+      ],
       "framework_version": [
         "BedrockPromptTemplateGeneration",
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1807,6 +1960,12 @@
       ],
       "include_examples": [
         "BedrockPromptTemplateGeneration"
+      ],
+      "inference_entry_point": [
+        "Registration"
+      ],
+      "inference_instance_type": [
+        "Registration"
       ],
       "input_placeholders": [
         "BedrockPromptTemplateGeneration"
@@ -1853,6 +2012,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1870,6 +2030,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1881,6 +2042,15 @@
         "ModelCalibration_calibration",
         "Payload",
         "Package"
+      ],
+      "model_domain": [
+        "Registration"
+      ],
+      "model_objective": [
+        "Registration"
+      ],
+      "model_owner": [
+        "Registration"
       ],
       "monotonic_constraint": [
         "ModelCalibration_calibration"
@@ -1908,6 +2078,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1925,6 +2096,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1942,6 +2114,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -1959,6 +2132,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2101,6 +2275,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2121,6 +2296,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2138,6 +2314,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2164,6 +2341,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2209,6 +2387,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2233,6 +2412,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2246,9 +2426,17 @@
         "Package"
       ],
       "source_model_inference_content_types": [
+        "Registration",
         "Payload"
       ],
+      "source_model_inference_input_variable_list": [
+        "Registration"
+      ],
+      "source_model_inference_output_variable_list": [
+        "Registration"
+      ],
       "source_model_inference_response_types": [
+        "Registration",
         "Payload"
       ],
       "statistical_tests": [
@@ -2314,6 +2502,7 @@
         "DummyDataLoading_training",
         "DummyDataLoading_calibration",
         "PyTorchTraining",
+        "Registration",
         "TabularPreprocessing_training",
         "TabularPreprocessing_calibration",
         "BedrockBatchProcessing_training",
@@ -2328,6 +2517,9 @@
       ],
       "validation_level": [
         "BedrockPromptTemplateGeneration"
+      ],
+      "variable_schema": [
+        "Registration"
       ],
       "write_data_shards": [
         "DummyDataLoading_training",
