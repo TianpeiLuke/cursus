@@ -90,7 +90,7 @@ def create_bedrock_batch_pytorch_with_label_ruleset_e2e_dag() -> PipelineDAG:
         "ModelCalibration_calibration"
     )  # Model calibration step with calibration variant
     dag.add_node("Package")  # Package step
-    # dag.add_node("Registration")  # MIMS registration step
+    dag.add_node("Registration")  # MIMS registration step
     dag.add_node("Payload")  # Payload step
     dag.add_node("DummyDataLoading_calibration")  # Dummy data load for calibration
     dag.add_node(
@@ -158,8 +158,8 @@ def create_bedrock_batch_pytorch_with_label_ruleset_e2e_dag() -> PipelineDAG:
     dag.add_edge("ModelCalibration_calibration", "Package")
     dag.add_edge("PyTorchTraining", "Package")  # Raw model is also input to packaging
     dag.add_edge("PyTorchTraining", "Payload")  # Payload test uses the raw model
-    # dag.add_edge("Package", "Registration")
-    # dag.add_edge("Payload", "Registration")
+    dag.add_edge("Package", "Registration")
+    dag.add_edge("Payload", "Registration")
 
     logger.info(
         f"Created Bedrock Batch-PyTorch with Label Ruleset E2E DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
