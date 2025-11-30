@@ -38,6 +38,7 @@ PAYLOAD_SPEC = StepSpecification(
                 "LightGBMTraining",
                 "LightGBMMTTraining",
                 "PyTorchTraining",
+                "DummyTraining",
                 "TrainingStep",
                 "ModelStep",
             ],
