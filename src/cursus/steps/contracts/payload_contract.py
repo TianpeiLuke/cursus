@@ -9,7 +9,10 @@ from ...core.base.contract_base import ScriptContract
 
 PAYLOAD_CONTRACT = ScriptContract(
     entry_point="payload.py",
-    expected_input_paths={"model_input": "/opt/ml/processing/input/model"},
+    expected_input_paths={
+        "model_input": "/opt/ml/processing/input/model",
+        "custom_payload_input": "/opt/ml/processing/input/custom_payload",  # Optional
+    },
     expected_output_paths={"payload_sample": "/opt/ml/processing/output"},
     expected_arguments={
         # No expected arguments - using standard paths from contract
@@ -22,6 +25,10 @@ PAYLOAD_CONTRACT = ScriptContract(
         "CONTENT_TYPES": "application/json",
         "DEFAULT_NUMERIC_VALUE": "0.0",
         "DEFAULT_TEXT_VALUE": "DEFAULT_TEXT",
+        # NEW: Unified field defaults (replaces SPECIAL_FIELD_* pattern)
+        "FIELD_DEFAULTS": "{}",  # JSON dict format: {"field_name": "field_value"}
+        # DEPRECATED: SPECIAL_FIELD_* pattern (kept for backward compatibility)
+        # Use FIELD_DEFAULTS instead
         # Special field environment variables follow pattern SPECIAL_FIELD_<fieldname>
     },
     framework_requirements={
@@ -31,9 +38,10 @@ PAYLOAD_CONTRACT = ScriptContract(
     description="""
     MIMS payload generation script that:
     1. Extracts hyperparameters from model artifacts (model.tar.gz or directory)
-    2. Creates model variable list from field information
-    3. Generates sample payloads in multiple formats (JSON, CSV)
-    4. Archives payload files for deployment
+    2. Detects model type (tabular/bimodal/trimodal) from model_class
+    3. Generates sample payloads with text field support for multi-modal models
+    4. Optionally uses user-provided custom payload samples
+    5. Archives payload files for deployment
     
     Note: This script extracts pipeline name, version, and model objective from hyperparameters,
     not from environment variables. It does not use PIPELINE_NAME, REGION, PAYLOAD_S3_KEY, or 
@@ -41,6 +49,7 @@ PAYLOAD_CONTRACT = ScriptContract(
     
     Input Structure:
     - /opt/ml/processing/input/model: Model artifacts containing hyperparameters.json
+    - /opt/ml/processing/input/custom_payload: (Optional) User-provided payload samples
     
     Output Structure:
     - /tmp/mims_payload_work/payload_sample/: Sample payload files (temporary)
@@ -50,7 +59,8 @@ PAYLOAD_CONTRACT = ScriptContract(
     - CONTENT_TYPES: Comma-separated list of content types (default: "application/json")
     - DEFAULT_NUMERIC_VALUE: Default value for numeric fields (default: "0.0")
     - DEFAULT_TEXT_VALUE: Default value for text fields (default: "DEFAULT_TEXT")
-    - SPECIAL_FIELD_<fieldname>: Custom values for specific fields
+    - FIELD_DEFAULTS: JSON dict of field-specific values (default: "{}")
+    - SPECIAL_FIELD_<fieldname>: Per-field override with template support (deprecated, use FIELD_DEFAULTS)
     
     Arguments:
     - mode: Operating mode for the script (default: "standard")

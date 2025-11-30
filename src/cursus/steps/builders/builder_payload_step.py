@@ -165,21 +165,22 @@ class PayloadStepBuilder(StepBuilderBase):
         if hasattr(self.config, "default_text_value"):
             env_vars["DEFAULT_TEXT_VALUE"] = str(self.config.default_text_value)
 
-        # Add special field values if defined in config - this is a special case
-        # that follows the SPECIAL_FIELD_ prefix pattern defined in the script
-        if (
-            hasattr(self.config, "special_field_values")
-            and self.config.special_field_values
-        ):
-            for field_name, template in self.config.special_field_values.items():
-                env_vars[f"SPECIAL_FIELD_{field_name}"] = template
+        # NEW: Unified FIELD_DEFAULTS as JSON string
+        if hasattr(self.config, "field_defaults") and self.config.field_defaults:
+            import json
 
-        self.log_info("Payload environment variables: %s", env_vars)
+            env_vars["FIELD_DEFAULTS"] = json.dumps(self.config.field_defaults)
+            self.log_info(
+                "Added FIELD_DEFAULTS for %d fields", len(self.config.field_defaults)
+            )
+
+        self.log_info("Payload environment variables configured")
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """
         Get inputs for the step using specification and contract.
+        Adds support for custom_payload_path from config.
 
         This method creates ProcessingInput objects for each dependency defined in the specification.
 
@@ -192,6 +193,18 @@ class PayloadStepBuilder(StepBuilderBase):
         Raises:
             ValueError: If no specification or contract is available
         """
+        # NEW: Check if user provided custom payload path in config
+        # If so, add it to inputs dict before processing (supports S3 or local paths)
+        if (
+            hasattr(self.config, "custom_payload_path")
+            and self.config.custom_payload_path
+        ):
+            # Add custom_payload_input to inputs dict
+            inputs["custom_payload_input"] = self.config.custom_payload_path
+            self.log_info(
+                "Using custom payload from config: %s", self.config.custom_payload_path
+            )
+
         if not self.spec:
             raise ValueError("Step specification is required")
 

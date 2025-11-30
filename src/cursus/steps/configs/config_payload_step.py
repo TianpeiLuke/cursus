@@ -82,10 +82,35 @@ class PayloadConfig(ProcessingStepConfigBase):
         default="DEFAULT_TEXT", description="Default value for text fields"
     )
 
-    # Special field values dictionary
-    special_field_values: Optional[Dict[str, str]] = Field(
+    # NEW: Unified field defaults for multi-modal support
+    field_defaults: Optional[Dict[str, str]] = Field(
         default=None,
-        description="Optional dictionary of special TEXT fields and their template values",
+        description="""
+        Optional dictionary mapping field names to sample values for payload generation.
+        Works for all field types: text fields, numeric fields, categorical fields, etc.
+        Supports template expansion (e.g., {timestamp} → actual timestamp).
+        
+        Examples:
+        - Text fields: {"chat": "Hello, I need help", "shiptrack": "Shipped|In Transit"}
+        - ID fields: {"order_id": "ORDER_{timestamp}"}
+        - Numeric fields: {"price": "99.99", "quantity": "5"}
+        - Any field: Maps directly to payload value
+        """,
+    )
+
+    # NEW: Custom payload path (S3 or local)
+    custom_payload_path: Optional[str] = Field(
+        default=None,
+        description="""
+        Optional path to user-provided custom payload sample file (JSON/CSV) or directory.
+        Supports both S3 paths and local file paths.
+        When provided, the script will use this instead of auto-generating payloads.
+        
+        Examples:
+        - S3: "s3://my-bucket/custom_payload_samples/sample.json"
+        - Local: "/opt/ml/input/data/custom_payload/sample.json"
+        - Local: "file:///path/to/payload.json"
+        """,
     )
 
     # Performance thresholds

@@ -28,11 +28,19 @@ PAYLOAD_SPEC = StepSpecification(
     node_type=NodeType.INTERNAL,
     script_contract=_get_payload_contract(),
     dependencies=[
+        # Required: Model artifacts input
         DependencySpec(
             logical_name="model_input",
             dependency_type=DependencyType.MODEL_ARTIFACTS,
             required=True,
-            compatible_sources=["XGBoostTraining", "TrainingStep", "ModelStep"],
+            compatible_sources=[
+                "XGBoostTraining",
+                "LightGBMTraining",
+                "LightGBMMTTraining",
+                "PyTorchTraining",
+                "TrainingStep",
+                "ModelStep",
+            ],
             semantic_keywords=[
                 "model",
                 "artifacts",
@@ -42,7 +50,27 @@ PAYLOAD_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Trained model artifacts for payload generation",
-        )
+        ),
+        # NEW: Optional custom payload input
+        DependencySpec(
+            logical_name="custom_payload_input",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,  # OPTIONAL
+            compatible_sources=[
+                "ProcessingStep",
+                "S3Source",
+                "UserProvided",
+            ],
+            semantic_keywords=[
+                "payload",
+                "sample",
+                "custom",
+                "user_provided",
+                "inference_sample",
+            ],
+            data_type="S3Uri",
+            description="Optional user-provided custom payload samples (JSON/CSV file or directory)",
+        ),
     ],
     outputs=[
         OutputSpec(
