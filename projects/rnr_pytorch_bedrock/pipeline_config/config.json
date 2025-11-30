@@ -3,7 +3,7 @@
     "shared": {
       "author": "lukexie",
       "bucket": "buyer-seller-messaging-reversal",
-      "current_date": "2025-11-28",
+      "current_date": "2025-11-30",
       "enable_caching": false,
       "framework_version": "2.1.0",
       "max_runtime_seconds": 172800,
@@ -1321,6 +1321,10 @@
         "effective_instance_type": "ml.m5.4xlarge",
         "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
         "expected_tps": 10,
+        "field_defaults": {
+          "dialogue": "[bom] [Arrival Time]: 2025-06-11 [BUYER]: I need my refund. [eom]",
+          "shiptrack_event_history_by_order": "[bom] [Shipment ID]: [eom] [bom] [Ship Track Event Code]: EVENT_503 [Ship Track Event]: Pickup scheduled with Carrier. [eom]"
+        },
         "max_acceptable_error_rate": 0.2,
         "max_latency_in_millisecond": 800,
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
@@ -1454,7 +1458,7 @@
       "TabularPreprocessing_calibration": "TabularPreprocessingConfig",
       "TabularPreprocessing_training": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-28T03:08:36.620646",
+    "created_at": "2025-11-30T06:24:40.772623",
     "field_sources": {
       "author": [
         "BedrockPromptTemplateGeneration",
@@ -1767,6 +1771,9 @@
       "fail_on_missing_fields": [
         "LabelRulesetExecution_training",
         "LabelRulesetExecution_calibration"
+      ],
+      "field_defaults": [
+        "Payload"
       ],
       "framework_version": [
         "BedrockPromptTemplateGeneration",

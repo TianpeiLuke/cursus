@@ -3,7 +3,7 @@
     "shared": {
       "author": "lukexie",
       "bucket": "buyer-seller-messaging-reversal",
-      "current_date": "2025-11-28",
+      "current_date": "2025-11-30",
       "enable_caching": false,
       "framework_version": "2.1.0",
       "max_runtime_seconds": 172800,
@@ -56,7 +56,7 @@
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
         "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
-        "pretrained_model_path": "s3://buyer-seller-messaging-reversal/pipeline/lukexie-BuyerAbuseRnR-pytorch-NA/20251127060644/pytorch_training/pipelines-2x77ph4km9d6-PyTorchTraining-eLa7mE7jJT/output/model.tar.gz",
+        "pretrained_model_path": "s3://buyer-seller-messaging-reversal/pipeline/lukexie-BuyerAbuseRnR-pytorch-NA/20251128070034/pytorch_training/pipelines-stiuq2fnydgp-PyTorchTraining-xXHG9pkuK0/output/model.tar.gz",
         "processing_entry_point": "dummy_training.py",
         "processing_instance_type_large": "ml.m5.12xlarge",
         "processing_source_dir": "docker/scripts",
@@ -104,6 +104,35 @@
         "processing_instance_type_large": "ml.m5.12xlarge",
         "processing_source_dir": "docker/scripts",
         "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/package.py",
+        "use_large_processing_instance": false
+      },
+      "Payload": {
+        "__model_type__": "PayloadConfig",
+        "aws_region": "us-east-1",
+        "default_numeric_value": 0.0,
+        "default_text_value": "DEFAULT_TEXT",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "expected_tps": 10,
+        "field_defaults": {
+          "dialogue": "[bom] [Arrival Time]: 2025-06-11 [BUYER]: I need my refund. [eom]",
+          "shiptrack_event_history_by_order": "[bom] [Shipment ID]: [eom] [bom] [Ship Track Event Code]: EVENT_503 [Ship Track Event]: Pickup scheduled with Carrier. [eom]"
+        },
+        "max_acceptable_error_rate": 0.2,
+        "max_latency_in_millisecond": 800,
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "processing_entry_point": "payload.py",
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_source_dir": "docker/scripts",
+        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/payload.py",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
         "use_large_processing_instance": false
       },
       "PyTorchModelEval_calibration": {
@@ -161,10 +190,11 @@
       "DummyTraining": "DummyTrainingConfig",
       "ModelCalibration_calibration": "ModelCalibrationConfig",
       "Package": "PackageConfig",
+      "Payload": "PayloadConfig",
       "PyTorchModelEval_calibration": "PyTorchModelEvalConfig",
       "TabularPreprocessing_calibration": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-28T03:14:36.355216",
+    "created_at": "2025-11-30T06:33:11.176112",
     "field_sources": {
       "author": [
         "DummyDataLoading_calibration",
@@ -172,6 +202,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "aws_region": [
@@ -180,6 +211,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "bucket": [
@@ -188,6 +220,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "ca_repository_arn": [
@@ -214,10 +247,17 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "data_source": [
         "DummyDataLoading_calibration"
+      ],
+      "default_numeric_value": [
+        "Payload"
+      ],
+      "default_text_value": [
+        "Payload"
       ],
       "effective_instance_type": [
         "DummyDataLoading_calibration",
@@ -225,6 +265,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "effective_source_dir": [
@@ -233,6 +274,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "enable_caching": [
@@ -241,6 +283,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "error_threshold": [
@@ -249,12 +292,19 @@
       "eval_metric_choices": [
         "PyTorchModelEval_calibration"
       ],
+      "expected_tps": [
+        "Payload"
+      ],
+      "field_defaults": [
+        "Payload"
+      ],
       "framework_version": [
         "DummyDataLoading_calibration",
         "TabularPreprocessing_calibration",
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "full_script_path": [
@@ -281,8 +331,14 @@
       "label_name": [
         "PyTorchModelEval_calibration"
       ],
+      "max_acceptable_error_rate": [
+        "Payload"
+      ],
       "max_file_size_mb": [
         "DummyDataLoading_calibration"
+      ],
+      "max_latency_in_millisecond": [
+        "Payload"
       ],
       "max_runtime_seconds": [
         "DummyDataLoading_calibration",
@@ -290,6 +346,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "model_class": [
@@ -298,6 +355,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "monotonic_constraint": [
@@ -319,6 +377,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "pipeline_name": [
@@ -327,6 +386,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "pipeline_s3_loc": [
@@ -335,6 +395,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "pipeline_version": [
@@ -343,6 +404,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "pretrained_model_path": [
@@ -357,6 +419,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "processing_framework_version": [
@@ -365,6 +428,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "processing_instance_count": [
@@ -373,6 +437,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "processing_instance_type_large": [
@@ -381,6 +446,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "processing_instance_type_small": [
@@ -389,6 +455,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "processing_source_dir": [
@@ -397,6 +464,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "processing_volume_size": [
@@ -405,6 +473,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "project_root_folder": [
@@ -413,6 +482,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "py_version": [
@@ -421,6 +491,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "region": [
@@ -429,6 +500,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "role": [
@@ -437,6 +509,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "score_field": [
@@ -451,6 +524,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "service_name": [
@@ -459,6 +533,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "shard_size": [
@@ -470,7 +545,14 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
+      ],
+      "source_model_inference_content_types": [
+        "Payload"
+      ],
+      "source_model_inference_response_types": [
+        "Payload"
       ],
       "statistical_tests": [
         "PyTorchModelEval_calibration"
@@ -490,6 +572,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "use_secure_pypi": [
@@ -498,6 +581,7 @@
         "DummyTraining",
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
+        "Payload",
         "Package"
       ],
       "write_data_shards": [

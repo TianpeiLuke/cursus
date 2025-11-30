@@ -53,14 +53,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
+def create_bedrock_batch_pytorch_with_label_ruleset_e2e_dag() -> PipelineDAG:
     """
-    Create a DAG for Bedrock Batch data processing pipeline.
+    Create a DAG for Bedrock Batch-enhanced PyTorch E2E pipeline with Label Ruleset steps.
 
-    This DAG represents the simplest possible workflow that includes
-    cost-efficient Bedrock batch LLM enhancement for pure data processing
-    without any training, calibration, packaging, registration, or evaluation steps.
-    Perfect for data enhancement and annotation workflows.
+    This DAG represents a complete end-to-end workflow that uses:
+    1. Bedrock prompt template generation and batch processing for LLM-enhanced data
+    2. Label ruleset generation and execution for transparent label transformation
+    3. PyTorch training, followed by calibration, packaging, and registration
+
+    The label ruleset steps sit between Bedrock processing and training/evaluation,
+    providing transparent, rule-based label transformation that's easy to modify.
 
     Returns:
         PipelineDAG: The directed acyclic graph for the pipeline
@@ -83,6 +86,23 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
         "LabelRulesetExecution_training"
     )  # Label ruleset execution for training data
     dag.add_node("PyTorchTraining")  # PyTorch training step
+    dag.add_node(
+        "ModelCalibration_calibration"
+    )  # Model calibration step with calibration variant
+    dag.add_node("Package")  # Package step
+    # dag.add_node("Registration")  # MIMS registration step
+    dag.add_node("Payload")  # Payload step
+    dag.add_node("DummyDataLoading_calibration")  # Dummy data load for calibration
+    dag.add_node(
+        "TabularPreprocessing_calibration"
+    )  # Tabular preprocessing for calibration
+    dag.add_node(
+        "BedrockBatchProcessing_calibration"
+    )  # Bedrock batch processing step for calibration
+    dag.add_node(
+        "LabelRulesetExecution_calibration"
+    )  # Label ruleset execution for calibration data
+    dag.add_node("PyTorchModelEval_calibration")  # Model evaluation step
 
     # Training flow with Bedrock batch processing and label ruleset integration
     dag.add_edge("DummyDataLoading_training", "TabularPreprocessing_training")
@@ -106,8 +126,43 @@ def create_bedrock_batch_data_processing_dag() -> PipelineDAG:
     # Labeled data flows to PyTorch training
     dag.add_edge("LabelRulesetExecution_training", "PyTorchTraining")
 
+    # Calibration flow with Bedrock batch processing and label ruleset integration
+    dag.add_edge("DummyDataLoading_calibration", "TabularPreprocessing_calibration")
+
+    # Bedrock batch processing flow for calibration - two inputs to BedrockBatchProcessing_calibration
+    dag.add_edge(
+        "TabularPreprocessing_calibration", "BedrockBatchProcessing_calibration"
+    )  # Data input
+    dag.add_edge(
+        "BedrockPromptTemplateGeneration", "BedrockBatchProcessing_calibration"
+    )  # Template input
+
+    # Label ruleset execution for calibration - two inputs to LabelRulesetExecution_calibration
+    dag.add_edge(
+        "BedrockBatchProcessing_calibration", "LabelRulesetExecution_calibration"
+    )  # Data input
+    dag.add_edge(
+        "LabelRulesetGeneration", "LabelRulesetExecution_calibration"
+    )  # Ruleset input
+
+    # Evaluation flow
+    dag.add_edge("PyTorchTraining", "PyTorchModelEval_calibration")
+    dag.add_edge(
+        "LabelRulesetExecution_calibration", "PyTorchModelEval_calibration"
+    )  # Use labeled calibration data
+
+    # Model calibration flow - depends on model evaluation
+    dag.add_edge("PyTorchModelEval_calibration", "ModelCalibration_calibration")
+
+    # Output flow
+    dag.add_edge("ModelCalibration_calibration", "Package")
+    dag.add_edge("PyTorchTraining", "Package")  # Raw model is also input to packaging
+    dag.add_edge("PyTorchTraining", "Payload")  # Payload test uses the raw model
+    # dag.add_edge("Package", "Registration")
+    # dag.add_edge("Payload", "Registration")
+
     logger.info(
-        f"Created Bedrock Batch data processing DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
+        f"Created Bedrock Batch-PyTorch with Label Ruleset E2E DAG with {len(dag.nodes)} nodes and {len(dag.edges)} edges"
     )
     return dag
 
@@ -160,7 +215,7 @@ class RnRPytorchBedRockPipeline:
         self.pipeline_description = pipeline_description
 
         # Create XGBoost DAG
-        self.dag = create_bedrock_batch_data_processing_dag()
+        self.dag = create_bedrock_batch_pytorch_with_label_ruleset_e2e_dag()
         logger.info(
             f"Created XGBoost DAG with {len(self.dag.nodes)} nodes and {len(self.dag.edges)} edges"
         )
