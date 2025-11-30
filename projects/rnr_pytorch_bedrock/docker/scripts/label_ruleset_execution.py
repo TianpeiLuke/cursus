@@ -236,8 +236,14 @@ class RuleEngine:
                         if col not in result:
                             continue
 
+                        # Get per-column default for comparison
+                        if isinstance(self.default_label, dict):
+                            col_default = self.default_label.get(col)
+                        else:
+                            col_default = self.default_label
+
                         # Only set if not already set (priority order)
-                        if pd.isna(result[col]) or result[col] == self.default_label:
+                        if pd.isna(result[col]) or result[col] == col_default:
                             result[col] = value
                             self.rule_match_counts[col][rule["rule_id"]] += 1
 
