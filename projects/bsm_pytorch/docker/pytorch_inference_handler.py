@@ -31,7 +31,7 @@ from processing.numerical.numerical_imputation_processor import (
 )
 from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.pipeline_datasets import PipelineDataset
-from processing.dataloaders.bsm_dataloader import build_collate_batch
+from processing.dataloaders.pipeline_dataloader import build_collate_batch
 
 from lightning_models.utils.pl_train import (
     model_inference,

@@ -80,7 +80,7 @@ except ImportError:
 
 # Import data loading utilities (with optional dependency handling)
 try:
-    from .dataloaders.bsm_dataloader import build_collate_batch
+    from .dataloaders.pipeline_dataloader import build_collate_batch
 except ImportError:
     build_collate_batch = None
 
