@@ -31,9 +31,96 @@ from cursus.steps.scripts.missing_value_imputation import (
     calculate_imputation_quality_metrics,
     generate_imputation_recommendations,
     generate_imputation_text_summary,
+    copy_existing_artifacts,
+    _detect_file_format,
     IMPUTATION_PARAMS_FILENAME,
     IMPUTATION_SUMMARY_FILENAME,
 )
+
+
+class TestDetectFileFormat:
+    """Tests for _detect_file_format function."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    def test_detect_csv_format(self, temp_dir):
+        """Test detecting CSV format."""
+        split_dir = temp_dir / "train"
+        split_dir.mkdir()
+
+        # Create CSV file
+        data = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+        csv_file = split_dir / "train_processed_data.csv"
+        data.to_csv(csv_file, index=False)
+
+        file_path, fmt = _detect_file_format(split_dir, "train")
+
+        assert file_path == csv_file
+        assert fmt == "csv"
+
+    def test_detect_tsv_format(self, temp_dir):
+        """Test detecting TSV format."""
+        split_dir = temp_dir / "train"
+        split_dir.mkdir()
+
+        # Create TSV file
+        data = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+        tsv_file = split_dir / "train_processed_data.tsv"
+        data.to_csv(tsv_file, sep="\t", index=False)
+
+        file_path, fmt = _detect_file_format(split_dir, "train")
+
+        assert file_path == tsv_file
+        assert fmt == "tsv"
+
+    def test_detect_parquet_format(self, temp_dir):
+        """Test detecting Parquet format."""
+        split_dir = temp_dir / "train"
+        split_dir.mkdir()
+
+        # Create Parquet file
+        data = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+        parquet_file = split_dir / "train_processed_data.parquet"
+        data.to_parquet(parquet_file, index=False)
+
+        file_path, fmt = _detect_file_format(split_dir, "train")
+
+        assert file_path == parquet_file
+        assert fmt == "parquet"
+
+    def test_detect_format_preference_order(self, temp_dir):
+        """Test format detection prefers CSV > TSV > Parquet."""
+        split_dir = temp_dir / "train"
+        split_dir.mkdir()
+
+        data = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+
+        # Create all three formats
+        csv_file = split_dir / "train_processed_data.csv"
+        tsv_file = split_dir / "train_processed_data.tsv"
+        parquet_file = split_dir / "train_processed_data.parquet"
+
+        data.to_csv(csv_file, index=False)
+        data.to_csv(tsv_file, sep="\t", index=False)
+        data.to_parquet(parquet_file, index=False)
+
+        file_path, fmt = _detect_file_format(split_dir, "train")
+
+        # Should prefer CSV
+        assert file_path == csv_file
+        assert fmt == "csv"
+
+    def test_detect_format_file_not_found(self, temp_dir):
+        """Test error when no format file is found."""
+        split_dir = temp_dir / "train"
+        split_dir.mkdir()
+
+        with pytest.raises(RuntimeError, match="No processed data file found"):
+            _detect_file_format(split_dir, "train")
 
 
 class TestLoadSplitData:
@@ -45,7 +132,7 @@ class TestLoadSplitData:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield Path(temp_dir)
 
-    def setup_training_data(self, temp_dir):
+    def setup_training_data(self, temp_dir, file_format="csv"):
         """Helper to set up training data structure."""
         input_dir = temp_dir / "input"
 
@@ -63,8 +150,15 @@ class TestLoadSplitData:
                 }
             )
 
-            data_file = split_dir / f"{split}_processed_data.csv"
-            data.to_csv(data_file, index=False)
+            if file_format == "csv":
+                data_file = split_dir / f"{split}_processed_data.csv"
+                data.to_csv(data_file, index=False)
+            elif file_format == "tsv":
+                data_file = split_dir / f"{split}_processed_data.tsv"
+                data.to_csv(data_file, sep="\t", index=False)
+            elif file_format == "parquet":
+                data_file = split_dir / f"{split}_processed_data.parquet"
+                data.to_parquet(data_file, index=False)
 
         return input_dir
 
@@ -88,6 +182,26 @@ class TestLoadSplitData:
             assert isinstance(df, pd.DataFrame)
             assert len(df) == 5
             assert list(df.columns) == ["feature1", "feature2", "target"]
+
+    def test_load_split_data_tsv_format(self, temp_dir):
+        """Test loading TSV format data."""
+        input_dir = self.setup_training_data(temp_dir, file_format="tsv")
+
+        result = load_split_data("training", str(input_dir))
+
+        assert result["_format"] == "tsv"
+        assert isinstance(result["train"], pd.DataFrame)
+        assert len(result["train"]) == 5
+
+    def test_load_split_data_parquet_format(self, temp_dir):
+        """Test loading Parquet format data."""
+        input_dir = self.setup_training_data(temp_dir, file_format="parquet")
+
+        result = load_split_data("training", str(input_dir))
+
+        assert result["_format"] == "parquet"
+        assert isinstance(result["train"], pd.DataFrame)
+        assert len(result["train"]) == 5
 
     def test_load_split_data_validation_job_type(self, temp_dir):
         """Test loading data for validation job type."""
@@ -138,20 +252,21 @@ class TestSaveOutputData:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield Path(temp_dir)
 
-    def test_save_output_data_training(self, temp_dir):
-        """Test saving data for training job type."""
+    def test_save_output_data_training_csv(self, temp_dir):
+        """Test saving data for training job type in CSV format."""
         output_dir = temp_dir / "output"
 
-        # Create test data
+        # Create test data with format metadata
         data_dict = {
             "train": pd.DataFrame({"feature1": [1, 2, 3], "target": [0, 1, 0]}),
             "test": pd.DataFrame({"feature1": [4, 5, 6], "target": [1, 0, 1]}),
             "val": pd.DataFrame({"feature1": [7, 8, 9], "target": [0, 1, 0]}),
+            "_format": "csv",
         }
 
         save_output_data("training", str(output_dir), data_dict)
 
-        # Check that all files were created
+        # Check that all files were created in CSV format
         for split_name in ["train", "test", "val"]:
             expected_file = output_dir / split_name / f"{split_name}_processed_data.csv"
             assert expected_file.exists()
@@ -160,12 +275,49 @@ class TestSaveOutputData:
             saved_data = pd.read_csv(expected_file)
             pd.testing.assert_frame_equal(saved_data, data_dict[split_name])
 
+    def test_save_output_data_training_tsv(self, temp_dir):
+        """Test saving data in TSV format."""
+        output_dir = temp_dir / "output"
+
+        data_dict = {
+            "train": pd.DataFrame({"feature1": [1, 2, 3], "target": [0, 1, 0]}),
+            "_format": "tsv",
+        }
+
+        save_output_data("training", str(output_dir), data_dict)
+
+        expected_file = output_dir / "train" / "train_processed_data.tsv"
+        assert expected_file.exists()
+
+        # Verify TSV format
+        saved_data = pd.read_csv(expected_file, sep="\t")
+        pd.testing.assert_frame_equal(saved_data, data_dict["train"])
+
+    def test_save_output_data_training_parquet(self, temp_dir):
+        """Test saving data in Parquet format."""
+        output_dir = temp_dir / "output"
+
+        data_dict = {
+            "train": pd.DataFrame({"feature1": [1, 2, 3], "target": [0, 1, 0]}),
+            "_format": "parquet",
+        }
+
+        save_output_data("training", str(output_dir), data_dict)
+
+        expected_file = output_dir / "train" / "train_processed_data.parquet"
+        assert expected_file.exists()
+
+        # Verify Parquet format
+        saved_data = pd.read_parquet(expected_file)
+        pd.testing.assert_frame_equal(saved_data, data_dict["train"])
+
     def test_save_output_data_validation(self, temp_dir):
         """Test saving data for validation job type."""
         output_dir = temp_dir / "output"
 
         data_dict = {
-            "validation": pd.DataFrame({"feature1": [1, 2, 3], "target": [0, 1, 0]})
+            "validation": pd.DataFrame({"feature1": [1, 2, 3], "target": [0, 1, 0]}),
+            "_format": "csv",
         }
 
         save_output_data("validation", str(output_dir), data_dict)
@@ -175,6 +327,102 @@ class TestSaveOutputData:
 
         saved_data = pd.read_csv(expected_file)
         pd.testing.assert_frame_equal(saved_data, data_dict["validation"])
+
+    def test_save_output_data_unsupported_format(self, temp_dir):
+        """Test error with unsupported format."""
+        output_dir = temp_dir / "output"
+
+        data_dict = {
+            "train": pd.DataFrame({"feature1": [1, 2, 3], "target": [0, 1, 0]}),
+            "_format": "json",  # Unsupported format
+        }
+
+        with pytest.raises(RuntimeError, match="Unsupported output format"):
+            save_output_data("training", str(output_dir), data_dict)
+
+
+class TestCopyExistingArtifacts:
+    """Tests for copy_existing_artifacts function."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    def test_copy_existing_artifacts_success(self, temp_dir):
+        """Test copying existing artifacts successfully."""
+        src_dir = temp_dir / "src"
+        dst_dir = temp_dir / "dst"
+        src_dir.mkdir()
+
+        # Create some artifact files
+        (src_dir / "artifact1.pkl").write_text("artifact1")
+        (src_dir / "artifact2.json").write_text('{"key": "value"}')
+        (src_dir / "artifact3.txt").write_text("text artifact")
+
+        copy_existing_artifacts(str(src_dir), str(dst_dir))
+
+        # Check that files were copied
+        assert (dst_dir / "artifact1.pkl").exists()
+        assert (dst_dir / "artifact2.json").exists()
+        assert (dst_dir / "artifact3.txt").exists()
+
+        # Verify content
+        assert (dst_dir / "artifact1.pkl").read_text() == "artifact1"
+        assert (dst_dir / "artifact2.json").read_text() == '{"key": "value"}'
+        assert (dst_dir / "artifact3.txt").read_text() == "text artifact"
+
+    def test_copy_existing_artifacts_empty_source(self, temp_dir):
+        """Test copying when source directory is empty."""
+        src_dir = temp_dir / "src"
+        dst_dir = temp_dir / "dst"
+        src_dir.mkdir()
+
+        copy_existing_artifacts(str(src_dir), str(dst_dir))
+
+        # Destination should be created but empty
+        assert dst_dir.exists()
+        assert len(list(dst_dir.iterdir())) == 0
+
+    def test_copy_existing_artifacts_source_not_exists(self, temp_dir):
+        """Test copying when source directory doesn't exist."""
+        src_dir = temp_dir / "nonexistent"
+        dst_dir = temp_dir / "dst"
+
+        # Should not raise error, just log and return
+        copy_existing_artifacts(str(src_dir), str(dst_dir))
+
+        # Destination should not be created
+        assert not dst_dir.exists()
+
+    def test_copy_existing_artifacts_none_source(self, temp_dir):
+        """Test copying when source is None."""
+        dst_dir = temp_dir / "dst"
+
+        # Should not raise error
+        copy_existing_artifacts(None, str(dst_dir))
+
+        # Destination should not be created
+        assert not dst_dir.exists()
+
+    def test_copy_existing_artifacts_skip_subdirectories(self, temp_dir):
+        """Test that subdirectories are not copied."""
+        src_dir = temp_dir / "src"
+        dst_dir = temp_dir / "dst"
+        src_dir.mkdir()
+
+        # Create files and subdirectory
+        (src_dir / "file1.txt").write_text("file1")
+        subdir = src_dir / "subdir"
+        subdir.mkdir()
+        (subdir / "file2.txt").write_text("file2")
+
+        copy_existing_artifacts(str(src_dir), str(dst_dir))
+
+        # Only top-level files should be copied
+        assert (dst_dir / "file1.txt").exists()
+        assert not (dst_dir / "subdir").exists()
 
 
 class TestAnalyzeMissingValues:
@@ -241,6 +489,21 @@ class TestAnalyzeMissingValues:
         # This should raise ValueError as per the actual implementation
         with pytest.raises(ValueError, match="cannot convert float NaN to integer"):
             analyze_missing_values(df)
+
+    def test_analyze_missing_values_skewed_distribution(self):
+        """Test recommendation for skewed distribution."""
+        # Create skewed numerical data
+        df = pd.DataFrame(
+            {
+                "skewed_col": [1, 1, 1, 1, 1, 2, 3, 4, 100, np.nan],
+                "target": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+            }
+        )
+
+        result = analyze_missing_values(df)
+
+        # Should recommend median for skewed data
+        assert result["imputation_recommendations"]["skewed_col"] == "median"
 
 
 class TestValidateImputationData:
@@ -652,8 +915,6 @@ class TestSimpleImputationEngine:
 
         # Check that missing values were imputed
         assert result["numeric_col"].isnull().sum() == 0
-        # Note: text_col may still have None values that aren't detected as null by pandas
-        # This is a known behavior with SimpleImputer and object columns
         assert result["complete_col"].isnull().sum() == 0  # Was already complete
 
         # Check that transformation log was created
@@ -668,8 +929,6 @@ class TestSimpleImputationEngine:
         # Should have both fitted imputers and transformed data
         assert len(engine.fitted_imputers) > 0
         assert result["numeric_col"].isnull().sum() == 0
-        # Note: text_col may still have None values that aren't detected as null by pandas
-        # This is a known behavior with SimpleImputer and object columns
 
     def test_transform_without_fit(self, engine, sample_data):
         """Test transforming without fitting first."""
@@ -952,7 +1211,6 @@ class TestMainFunction:
             if split_name == "_format":
                 continue
             assert df["feature1"].isnull().sum() == 0
-            # Note: text_col may still have None values in some cases
 
         # Check that artifacts were saved in model_artifacts subdirectory
         artifacts_dir = output_dir / "model_artifacts"
@@ -1020,6 +1278,12 @@ class TestReportGeneration:
     """Tests for report generation functions."""
 
     @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    @pytest.fixture
     def sample_imputation_summary(self):
         """Create sample imputation summary."""
         return {
@@ -1050,6 +1314,28 @@ class TestReportGeneration:
                 "records_with_no_missing": 60,
             },
         }
+
+    @pytest.fixture
+    def sample_engine(self):
+        """Create sample imputation engine for testing."""
+        config = {"default_numerical_strategy": "mean", "exclude_columns": []}
+        strategy_manager = ImputationStrategyManager(config)
+        engine = SimpleImputationEngine(strategy_manager, "target")
+
+        # Add fitted imputers
+        imputer = SimpleImputer(strategy="mean")
+        imputer.statistics_ = np.array([2.5])
+        engine.fitted_imputers = {"col1": imputer}
+
+        engine.imputation_statistics = {
+            "col1": {
+                "strategy": "mean",
+                "missing_percentage_training": 25.0,
+                "data_type": "float64",
+            }
+        }
+
+        return engine
 
     def test_calculate_imputation_quality_metrics(self, sample_imputation_summary):
         """Test calculating imputation quality metrics."""
@@ -1104,3 +1390,265 @@ class TestReportGeneration:
         assert "Total Records: 100" in result
         assert "Columns Imputed: 1" in result
         assert "Test recommendation" in result
+
+    def test_generate_imputation_report_full_workflow(
+        self, temp_dir, sample_engine, sample_missing_analysis
+    ):
+        """Test full report generation workflow."""
+        validation_report = {
+            "is_valid": True,
+            "errors": [],
+            "warnings": [],
+            "imputable_columns": ["col1"],
+            "excluded_columns": ["target"],
+        }
+
+        result = generate_imputation_report(
+            sample_engine, sample_missing_analysis, validation_report, str(temp_dir)
+        )
+
+        # Check that files were created
+        assert "json_report" in result
+        assert "text_summary" in result
+        assert Path(result["json_report"]).exists()
+        assert Path(result["text_summary"]).exists()
+
+        # Verify JSON report content
+        with open(result["json_report"], "r") as f:
+            report = json.load(f)
+
+        assert "timestamp" in report
+        assert "missing_value_analysis" in report
+        assert "validation_report" in report
+        assert "imputation_summary" in report
+        assert "quality_metrics" in report
+        assert "recommendations" in report
+
+
+class TestInternalMain:
+    """Tests for internal_main function with dependency injection."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    @pytest.fixture
+    def sample_data_dict(self):
+        """Create sample data dictionary."""
+        return {
+            "train": pd.DataFrame(
+                {
+                    "feature1": [1.0, 2.0, np.nan, 4.0],
+                    "feature2": ["A", "B", None, "D"],
+                    "target": [0, 1, 0, 1],
+                }
+            ),
+            "test": pd.DataFrame(
+                {
+                    "feature1": [5.0, np.nan, 7.0],
+                    "feature2": ["E", None, "G"],
+                    "target": [1, 0, 1],
+                }
+            ),
+            "val": pd.DataFrame(
+                {
+                    "feature1": [8.0, 9.0, np.nan],
+                    "feature2": ["H", "I", None],
+                    "target": [0, 1, 0],
+                }
+            ),
+            "_format": "csv",
+        }
+
+    @pytest.fixture
+    def config(self):
+        """Create test configuration."""
+        return {
+            "default_numerical_strategy": "mean",
+            "default_categorical_strategy": "mode",
+            "exclude_columns": [],
+        }
+
+    def test_internal_main_training_mode(self, temp_dir, sample_data_dict, config):
+        """Test internal_main in training mode with dependency injection."""
+        input_dir = temp_dir / "input"
+        output_dir = temp_dir / "output"
+
+        # Mock load and save functions
+        mock_load = Mock(return_value=sample_data_dict)
+        mock_save = Mock()
+
+        result, engine = internal_main(
+            job_type="training",
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            imputation_config=config,
+            label_field="target",
+            load_data_func=mock_load,
+            save_data_func=mock_save,
+        )
+
+        # Verify load was called
+        mock_load.assert_called_once_with("training", str(input_dir))
+
+        # Verify save was called
+        mock_save.assert_called_once()
+        save_call_args = mock_save.call_args
+        assert save_call_args[0][0] == "training"  # job_type
+        assert save_call_args[0][1] == str(output_dir)  # output_dir
+
+        # Verify engine was fitted
+        assert len(engine.fitted_imputers) > 0
+
+        # Verify artifacts were saved
+        artifacts_dir = output_dir / "model_artifacts"
+        assert (artifacts_dir / IMPUTATION_PARAMS_FILENAME).exists()
+        assert (artifacts_dir / IMPUTATION_SUMMARY_FILENAME).exists()
+
+    def test_internal_main_with_artifacts_copy(
+        self, temp_dir, sample_data_dict, config
+    ):
+        """Test that internal_main copies existing artifacts."""
+        input_dir = temp_dir / "input"
+        output_dir = temp_dir / "output"
+        artifacts_input_dir = temp_dir / "artifacts_input"
+        artifacts_input_dir.mkdir()
+
+        # Create some existing artifacts
+        (artifacts_input_dir / "existing_artifact.pkl").write_text("existing")
+
+        mock_load = Mock(return_value=sample_data_dict)
+        mock_save = Mock()
+
+        result, engine = internal_main(
+            job_type="training",
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            imputation_config=config,
+            label_field="target",
+            model_artifacts_input_dir=str(artifacts_input_dir),
+            load_data_func=mock_load,
+            save_data_func=mock_save,
+        )
+
+        # Verify existing artifact was copied
+        artifacts_output_dir = output_dir / "model_artifacts"
+        assert (artifacts_output_dir / "existing_artifact.pkl").exists()
+        assert (
+            artifacts_output_dir / "existing_artifact.pkl"
+        ).read_text() == "existing"
+
+    @patch("cursus.steps.scripts.missing_value_imputation.generate_imputation_report")
+    def test_internal_main_inference_mode(self, mock_report, temp_dir, config):
+        """Test internal_main in inference mode."""
+        input_dir = temp_dir / "input"
+        output_dir = temp_dir / "output"
+        artifacts_input_dir = temp_dir / "artifacts_input"
+        artifacts_input_dir.mkdir()
+
+        # Create imputation parameters file
+        impute_dict = {"feature1": 2.5, "feature2": "B"}
+        params_file = artifacts_input_dir / IMPUTATION_PARAMS_FILENAME
+        with open(params_file, "wb") as f:
+            pkl.dump(impute_dict, f)
+
+        # Validation data with missing values to test imputation
+        val_data = {
+            "validation": pd.DataFrame(
+                {
+                    "feature1": [1.0, np.nan, 3.0],
+                    "feature2": ["A", None, "C"],
+                    "target": [0, 1, 0],
+                }
+            ),
+            "_format": "csv",
+        }
+
+        mock_load = Mock(return_value=val_data)
+        mock_save = Mock()
+        mock_report.return_value = {
+            "json_report": "report.json",
+            "text_summary": "summary.txt",
+        }
+
+        result, engine = internal_main(
+            job_type="validation",
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            imputation_config=config,
+            label_field="target",
+            model_artifacts_input_dir=str(artifacts_input_dir),
+            load_data_func=mock_load,
+            save_data_func=mock_save,
+        )
+
+        # Verify functions were called correctly
+        mock_load.assert_called_once_with("validation", str(input_dir))
+        mock_save.assert_called_once()
+
+        # Verify data was imputed using loaded parameters
+        saved_data = mock_save.call_args[0][2]  # data_dict argument
+        assert saved_data["validation"]["feature1"].isnull().sum() == 0
+        assert saved_data["validation"]["feature2"].isnull().sum() == 0
+
+        # Verify engine has imputation statistics from loaded parameters
+        assert "feature1" in engine.imputation_statistics
+        assert "feature2" in engine.imputation_statistics
+
+    def test_internal_main_custom_artifacts_output_dir(
+        self, temp_dir, sample_data_dict, config
+    ):
+        """Test internal_main with custom model artifacts output directory."""
+        input_dir = temp_dir / "input"
+        output_dir = temp_dir / "output"
+        custom_artifacts_dir = temp_dir / "custom_artifacts"
+
+        mock_load = Mock(return_value=sample_data_dict)
+        mock_save = Mock()
+
+        result, engine = internal_main(
+            job_type="training",
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            imputation_config=config,
+            label_field="target",
+            model_artifacts_output_dir=str(custom_artifacts_dir),
+            load_data_func=mock_load,
+            save_data_func=mock_save,
+        )
+
+        # Verify artifacts were saved to custom directory
+        assert (custom_artifacts_dir / IMPUTATION_PARAMS_FILENAME).exists()
+        assert (custom_artifacts_dir / IMPUTATION_SUMMARY_FILENAME).exists()
+
+    def test_internal_main_generates_reports(self, temp_dir, sample_data_dict, config):
+        """Test that internal_main generates comprehensive reports."""
+        input_dir = temp_dir / "input"
+        output_dir = temp_dir / "output"
+
+        mock_load = Mock(return_value=sample_data_dict)
+        mock_save = Mock()
+
+        result, engine = internal_main(
+            job_type="training",
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            imputation_config=config,
+            label_field="target",
+            load_data_func=mock_load,
+            save_data_func=mock_save,
+        )
+
+        # Verify reports were generated
+        assert (output_dir / "imputation_report.json").exists()
+        assert (output_dir / "imputation_summary.txt").exists()
+
+        # Verify report content
+        with open(output_dir / "imputation_report.json", "r") as f:
+            report = json.load(f)
+
+        assert "timestamp" in report
+        assert "missing_value_analysis" in report
+        assert "imputation_summary" in report
