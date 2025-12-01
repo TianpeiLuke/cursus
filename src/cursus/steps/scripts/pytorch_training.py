@@ -54,7 +54,7 @@ from ...processing.validation import (
     validate_numerical_fields,
 )
 from ...processing.processor_registry import build_text_pipeline_from_steps
-from ...processing.datasets.bsm_datasets import BSMDataset
+from ...processing.datasets.pipeline_datasets import PipelineDataset
 from ...processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
@@ -500,7 +500,7 @@ def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> 
 # ----------------- Preprocessing Pipeline Builder (Imputation + Risk Tables) ------------------
 def build_preprocessing_pipelines(
     config: Config,
-    datasets: List[BSMDataset],
+    datasets: List[PipelineDataset],
     model_artifacts_dir: Optional[str] = None,
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
@@ -636,16 +636,16 @@ def build_preprocessing_pipelines(
 
 
 # ----------------- Dataset Loading -------------------------
-def load_data_module(file_dir, filename, config: Config) -> BSMDataset:
-    log_once(logger, f"Loading BSM dataset from {filename} in folder {file_dir}")
-    bsm_dataset = BSMDataset(
+def load_data_module(file_dir, filename, config: Config) -> PipelineDataset:
+    log_once(logger, f"Loading pipeline dataset from {filename} in folder {file_dir}")
+    pipeline_dataset = PipelineDataset(
         config=config.model_dump(), file_dir=file_dir, filename=filename
     )  # Pass as dict
     log_once(logger, f"Filling missing values in dataset {filename}")
-    bsm_dataset.fill_missing_value(
+    pipeline_dataset.fill_missing_value(
         label_name=config.label_name, column_cat_name=config.cat_field_list
     )
-    return bsm_dataset
+    return pipeline_dataset
 
 
 # ----------------- Updated Data Preprocessing Pipeline ------------------
@@ -820,7 +820,7 @@ def load_and_preprocess_data(
     model_artifacts_dir: Optional[str] = None,
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
-) -> Tuple[List[BSMDataset], AutoTokenizer, Dict]:
+) -> Tuple[List[PipelineDataset], AutoTokenizer, Dict]:
     """
     Loads and preprocesses the train/val/test datasets according to the provided config.
 
@@ -855,9 +855,9 @@ def load_and_preprocess_data(
     config._input_format = detected_format
 
     # === Load raw datasets ===
-    train_bsm_dataset = load_data_module(paths["train"], train_filename, config)
-    val_bsm_dataset = load_data_module(paths["val"], val_filename, config)
-    test_bsm_dataset = load_data_module(paths["test"], test_filename, config)
+    train_pipeline_dataset = load_data_module(paths["train"], train_filename, config)
+    val_pipeline_dataset = load_data_module(paths["val"], val_filename, config)
+    test_pipeline_dataset = load_data_module(paths["test"], test_filename, config)
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(config)
@@ -869,9 +869,9 @@ def load_and_preprocess_data(
         log_once(
             logger, f"  Field: '{field_name}' -> Pipeline: {type(pipeline).__name__}"
         )
-        train_bsm_dataset.add_pipeline(field_name, pipeline)
-        val_bsm_dataset.add_pipeline(field_name, pipeline)
-        test_bsm_dataset.add_pipeline(field_name, pipeline)
+        train_pipeline_dataset.add_pipeline(field_name, pipeline)
+        val_pipeline_dataset.add_pipeline(field_name, pipeline)
+        test_pipeline_dataset.add_pipeline(field_name, pipeline)
     log_once(logger, f"✅ Registered {len(pipelines)} text processing pipelines")
     log_once(logger, "=" * 70)
 
@@ -879,7 +879,7 @@ def load_and_preprocess_data(
     preprocessing_pipelines, imputation_dict, risk_tables = (
         build_preprocessing_pipelines(
             config,
-            [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset],
+            [train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset],
             model_artifacts_dir=model_artifacts_dir,
             use_precomputed_imputation=use_precomputed_imputation,
             use_precomputed_risk_tables=use_precomputed_risk_tables,
@@ -891,9 +891,9 @@ def load_and_preprocess_data(
     log_once(logger, "REGISTERING NUMERICAL/CATEGORICAL PREPROCESSING PIPELINES:")
     for field, processor in preprocessing_pipelines.items():
         log_once(logger, f"  Field: '{field}' -> Processor: {type(processor).__name__}")
-        train_bsm_dataset.add_pipeline(field, processor)
-        val_bsm_dataset.add_pipeline(field, processor)
-        test_bsm_dataset.add_pipeline(field, processor)
+        train_pipeline_dataset.add_pipeline(field, processor)
+        val_pipeline_dataset.add_pipeline(field, processor)
+        test_pipeline_dataset.add_pipeline(field, processor)
     log_once(
         logger, f"✅ Registered {len(preprocessing_pipelines)} preprocessing pipelines"
     )
@@ -911,9 +911,9 @@ def load_and_preprocess_data(
             )
         else:
             label_processor = MultiClassLabelProcessor()
-        train_bsm_dataset.add_pipeline(config.label_name, label_processor)
-        val_bsm_dataset.add_pipeline(config.label_name, label_processor)
-        test_bsm_dataset.add_pipeline(config.label_name, label_processor)
+        train_pipeline_dataset.add_pipeline(config.label_name, label_processor)
+        val_pipeline_dataset.add_pipeline(config.label_name, label_processor)
+        test_pipeline_dataset.add_pipeline(config.label_name, label_processor)
 
         # Save mappings into config for use in inference/export
         config.label_to_id = label_processor.label_to_id
@@ -924,35 +924,41 @@ def load_and_preprocess_data(
         config.label_to_id = None
         config.id_to_label = None
 
-    return [train_bsm_dataset, val_bsm_dataset, test_bsm_dataset], tokenizer, config
+    return (
+        [train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset],
+        tokenizer,
+        config,
+    )
 
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, tokenizer: AutoTokenizer, datasets: List[BSMDataset]
+    config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
     logger.info(f"Using collate batch for model: {config.model_class}")
 
     # Use unified keys for all models (single tokenizer design)
-    bsm_collate_batch = build_collate_batch(
+    collate_batch = build_collate_batch(
         input_ids_key=config.text_input_ids_key,
         attention_mask_key=config.text_attention_mask_key,
     )
 
-    train_bsm_dataset, val_bsm_dataset, test_bsm_dataset = datasets
+    train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
 
     train_dataloader = DataLoader(
-        train_bsm_dataset,
-        collate_fn=bsm_collate_batch,
+        train_pipeline_dataset,
+        collate_fn=collate_batch,
         batch_size=config.batch_size,
         shuffle=True,
     )
     val_dataloader = DataLoader(
-        val_bsm_dataset, collate_fn=bsm_collate_batch, batch_size=config.batch_size
+        val_pipeline_dataset, collate_fn=collate_batch, batch_size=config.batch_size
     )
     test_dataloader = DataLoader(
-        test_bsm_dataset, collate_fn=bsm_collate_batch, batch_size=config.batch_size
+        test_pipeline_dataset,
+        collate_fn=collate_batch,
+        batch_size=config.batch_size,
     )
 
     log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
@@ -1068,8 +1074,8 @@ def evaluate_and_log_results(
     test_dataloader: DataLoader,
     config: Config,
     trainer: pl.Trainer,
-    val_dataset: BSMDataset,
-    test_dataset: BSMDataset,
+    val_dataset: PipelineDataset,
+    test_dataset: PipelineDataset,
     paths: Dict[str, str],
 ) -> None:
     log_once(logger, "Inference Starts ...")

@@ -85,9 +85,9 @@ except ImportError:
     build_collate_batch = None
 
 try:
-    from .datasets.bsm_datasets import BSMDataset
+    from .datasets.pipeline_datasets import PipelineDataset
 except ImportError:
-    BSMDataset = None
+    PipelineDataset = None
 
 # Export all available processors
 __all__ = [
@@ -127,7 +127,7 @@ _optional_processors = [
     ("CSAdapter", CSAdapter),
     ("RiskTableMappingProcessor", RiskTableMappingProcessor),
     ("build_collate_batch", build_collate_batch),
-    ("BSMDataset", BSMDataset),
+    ("PipelineDataset", PipelineDataset),
 ]
 
 for name, processor_class in _optional_processors:

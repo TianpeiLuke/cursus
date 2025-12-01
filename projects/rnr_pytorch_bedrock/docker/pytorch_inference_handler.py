@@ -27,7 +27,7 @@ from processing.text.bert_tokenize_processor import BertTokenizeProcessor
 from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
 from processing.processor_registry import build_text_pipeline_from_steps
-from processing.datasets.bsm_datasets import BSMDataset
+from processing.datasets.pipeline_datasets import PipelineDataset
 from processing.dataloaders.bsm_dataloader import build_collate_batch
 
 from lightning_models.utils.pl_train import (
@@ -743,18 +743,18 @@ def predict_fn(input_object, model_data, context=None):
             col for col in config_predict["cat_field_list"] if col != label_field
         ]
 
-    dataset = BSMDataset(config_predict, dataframe=input_object)
+    dataset = PipelineDataset(config_predict, dataframe=input_object)
     for feature_name, pipeline in pipelines.items():
         dataset.add_pipeline(feature_name, pipeline)
 
-    bsm_collate_batch = build_collate_batch(
+    collate_batch = build_collate_batch(
         input_ids_key=config.text_input_ids_key,
         attention_mask_key=config.text_attention_mask_key,
     )
 
     batch_size = len(input_object)
     predict_dataloader = DataLoader(
-        dataset, collate_fn=bsm_collate_batch, batch_size=batch_size
+        dataset, collate_fn=collate_batch, batch_size=batch_size
     )
 
     try:

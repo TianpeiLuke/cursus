@@ -58,7 +58,7 @@ from processing.numerical.numerical_imputation_processor import (
 )
 from processing.validation import validate_categorical_fields, validate_numerical_fields
 from processing.processor_registry import build_text_pipeline_from_steps
-from processing.datasets.bsm_datasets import BSMDataset
+from processing.datasets.pipeline_datasets import PipelineDataset
 from processing.dataloaders.bsm_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
@@ -350,11 +350,11 @@ def load_model_artifacts(
 # ============================================================================
 
 
-def create_bsm_dataset(
+def create_pipeline_dataset(
     config: Dict[str, Any], eval_data_dir: str, filename: str
-) -> BSMDataset:
+) -> PipelineDataset:
     """
-    Create and initialize BSMDataset with missing value handling.
+    Create and initialize PipelineDataset with missing value handling.
 
     Args:
         config: Model configuration
@@ -362,18 +362,20 @@ def create_bsm_dataset(
         filename: Name of evaluation data file
 
     Returns:
-        Initialized BSMDataset
+        Initialized PipelineDataset
     """
-    bsm_dataset = BSMDataset(config=config, file_dir=eval_data_dir, filename=filename)
+    pipeline_dataset = PipelineDataset(
+        config=config, file_dir=eval_data_dir, filename=filename
+    )
 
     # Fill missing values
-    bsm_dataset.fill_missing_value(
+    pipeline_dataset.fill_missing_value(
         label_name=config["label_name"],
         column_cat_name=config.get("cat_field_list", []),
     )
-    logger.info("Created BSMDataset and filled missing values")
+    logger.info("Created PipelineDataset and filled missing values")
 
-    return bsm_dataset
+    return pipeline_dataset
 
 
 def data_preprocess_pipeline(
@@ -491,14 +493,16 @@ def data_preprocess_pipeline(
 
 
 def apply_preprocessing_artifacts(
-    bsm_dataset: BSMDataset, processors: Dict[str, Any], config: Dict[str, Any]
+    pipeline_dataset: PipelineDataset,
+    processors: Dict[str, Any],
+    config: Dict[str, Any],
 ) -> None:
     """
     Apply numerical imputation and risk table mapping to dataset.
     Excludes text fields from risk table mapping to prevent overwriting tokenized text.
 
     Args:
-        bsm_dataset: Dataset to apply preprocessing to
+        pipeline_dataset: Dataset to apply preprocessing to
         processors: Dictionary containing preprocessing processors
         config: Model configuration to identify text fields
     """
@@ -513,7 +517,9 @@ def apply_preprocessing_artifacts(
     if numerical_fields:
         logger.info("Validating numerical field types...")
         try:
-            validate_numerical_fields(bsm_dataset.DataReader, numerical_fields, "eval")
+            validate_numerical_fields(
+                pipeline_dataset.DataReader, numerical_fields, "eval"
+            )
             logger.info("✓ Numerical field type validation passed")
         except Exception as e:
             logger.warning(f"Numerical field validation failed: {e}")
@@ -522,7 +528,7 @@ def apply_preprocessing_artifacts(
         logger.info("Validating categorical field types...")
         try:
             validate_categorical_fields(
-                bsm_dataset.DataReader, categorical_fields, "eval"
+                pipeline_dataset.DataReader, categorical_fields, "eval"
             )
             logger.info("✓ Categorical field type validation passed")
         except Exception as e:
@@ -535,8 +541,8 @@ def apply_preprocessing_artifacts(
             f"Applying {len(numerical_processors)} numerical imputation processors..."
         )
         for feature, processor in numerical_processors.items():
-            if feature in bsm_dataset.DataReader.columns:
-                bsm_dataset.add_pipeline(feature, processor)
+            if feature in pipeline_dataset.DataReader.columns:
+                pipeline_dataset.add_pipeline(feature, processor)
         logger.info(f"✓ Applied {len(numerical_processors)} numerical processors")
 
     # === RISK TABLE MAPPING ===
@@ -563,8 +569,8 @@ def apply_preprocessing_artifacts(
             if feature in text_fields:
                 excluded_count += 1
                 continue
-            if feature in bsm_dataset.DataReader.columns:
-                bsm_dataset.add_pipeline(feature, processor)
+            if feature in pipeline_dataset.DataReader.columns:
+                pipeline_dataset.add_pipeline(feature, processor)
                 applied_count += 1
 
         logger.info(f"✓ Applied {applied_count} risk table processors")
@@ -575,13 +581,15 @@ def apply_preprocessing_artifacts(
 
 
 def add_label_processor(
-    bsm_dataset: BSMDataset, config: Dict[str, Any], processors: Dict[str, Any]
+    pipeline_dataset: PipelineDataset,
+    config: Dict[str, Any],
+    processors: Dict[str, Any],
 ) -> None:
     """
     Add multiclass label processor if needed.
 
     Args:
-        bsm_dataset: Dataset to add label processor to
+        pipeline_dataset: Dataset to add label processor to
         config: Model configuration
         processors: Dictionary containing label mappings
     """
@@ -592,18 +600,20 @@ def add_label_processor(
                 label_to_id=label_mappings["label_to_id"],
                 id_to_label=label_mappings["id_to_label"],
             )
-            bsm_dataset.add_pipeline(config["label_name"], label_processor)
+            pipeline_dataset.add_pipeline(config["label_name"], label_processor)
             logger.info("Added multiclass label processor")
 
 
-def create_dataloader(bsm_dataset: BSMDataset, config: Dict[str, Any]) -> DataLoader:
+def create_dataloader(
+    pipeline_dataset: PipelineDataset, config: Dict[str, Any]
+) -> DataLoader:
     """
     Create DataLoader with appropriate collate function.
 
     Uses unified collate function for all model types.
 
     Args:
-        bsm_dataset: Dataset to create DataLoader for
+        pipeline_dataset: Dataset to create DataLoader for
         config: Model configuration
 
     Returns:
@@ -615,15 +625,15 @@ def create_dataloader(bsm_dataset: BSMDataset, config: Dict[str, Any]) -> DataLo
     )
 
     # Use unified keys for all models (single tokenizer design)
-    bsm_collate_batch = build_collate_batch(
+    collate_batch = build_collate_batch(
         input_ids_key=config.get("text_input_ids_key", "input_ids"),
         attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
     )
 
     batch_size = config.get("batch_size", 32)
     dataloader = DataLoader(
-        bsm_dataset,
-        collate_fn=bsm_collate_batch,
+        pipeline_dataset,
+        collate_fn=collate_batch,
         batch_size=batch_size,
         shuffle=False,
     )
@@ -639,10 +649,10 @@ def preprocess_eval_data(
     processors: Dict[str, Any],
     eval_data_dir: str,
     filename: str,
-) -> Tuple[BSMDataset, DataLoader]:
+) -> Tuple[PipelineDataset, DataLoader]:
     """
     Apply complete preprocessing pipeline to evaluation data.
-    Orchestrates the creation of BSMDataset and DataLoader.
+    Orchestrates the creation of PipelineDataset and DataLoader.
 
     Args:
         df: Input DataFrame
@@ -653,14 +663,14 @@ def preprocess_eval_data(
         filename: Name of evaluation data file
 
     Returns:
-        Tuple of (BSMDataset, DataLoader)
+        Tuple of (PipelineDataset, DataLoader)
     """
     logger.info("=" * 70)
     logger.info(f"PREPROCESSING EVALUATION DATA: {filename}")
     logger.info("=" * 70)
 
     # Step 1: Create and initialize dataset
-    bsm_dataset = create_bsm_dataset(config, eval_data_dir, filename)
+    pipeline_dataset = create_pipeline_dataset(config, eval_data_dir, filename)
 
     # Step 2: Build and add text preprocessing pipelines (bimodal or trimodal)
     tokenizer, text_pipelines = data_preprocess_pipeline(config, tokenizer)
@@ -668,23 +678,23 @@ def preprocess_eval_data(
     logger.info("Registering text processing pipelines...")
     for field_name, pipeline in text_pipelines.items():
         logger.info(f"  Field: '{field_name}' -> Pipeline registered")
-        bsm_dataset.add_pipeline(field_name, pipeline)
+        pipeline_dataset.add_pipeline(field_name, pipeline)
     logger.info(f"✅ Registered {len(text_pipelines)} text processing pipelines")
 
     # Step 3: Apply preprocessing artifacts (numerical + categorical)
-    apply_preprocessing_artifacts(bsm_dataset, processors, config)
+    apply_preprocessing_artifacts(pipeline_dataset, processors, config)
 
     # Step 4: Add label processor for multiclass if needed
-    add_label_processor(bsm_dataset, config, processors)
+    add_label_processor(pipeline_dataset, config, processors)
 
     # Step 5: Create DataLoader with appropriate collate function
-    dataloader = create_dataloader(bsm_dataset, config)
+    dataloader = create_dataloader(pipeline_dataset, config)
 
     logger.info("=" * 70)
     logger.info("PREPROCESSING COMPLETE")
     logger.info("=" * 70)
 
-    return bsm_dataset, dataloader
+    return pipeline_dataset, dataloader
 
 
 # ============================================================================
@@ -1192,7 +1202,7 @@ def evaluate_model(
     logger.info("Starting model evaluation")
 
     # Preprocess data and create DataLoader
-    bsm_dataset, dataloader = preprocess_eval_data(
+    pipeline_dataset, dataloader = preprocess_eval_data(
         df, config, tokenizer, processors, eval_data_dir, filename
     )
 
