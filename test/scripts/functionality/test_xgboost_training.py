@@ -12,13 +12,13 @@ import pickle as pkl
 import sys
 
 # Mock torch before any imports that might need it
-sys.modules['torch'] = MagicMock()
+sys.modules["torch"] = MagicMock()
 
 # CRITICAL: Set USE_SECURE_PYPI=false AND mock subprocess.check_call BEFORE importing
 # The xgboost_training script calls install_packages() at module level (line 179)
 # Setting USE_SECURE_PYPI=false makes it use public PyPI path
 # Mocking subprocess.check_call prevents actual pip installs
-os.environ['USE_SECURE_PYPI'] = 'false'
+os.environ["USE_SECURE_PYPI"] = "false"
 
 # Mock subprocess.check_call to prevent pip installs during module import
 with patch("subprocess.check_call"):
@@ -104,7 +104,9 @@ class TestXGBoostTrainHelpers:
 
         assert "Missing required key in config" in str(exc_info.value)
 
-    def test_load_and_validate_config_invalid_class_weights(self, temp_dir, sample_config):
+    def test_load_and_validate_config_invalid_class_weights(
+        self, temp_dir, sample_config
+    ):
         """Test validation fails with mismatched class weights."""
         invalid_config = sample_config.copy()
         invalid_config["class_weights"] = [0.3, 0.7, 0.5]  # 3 weights for 2 classes
@@ -194,7 +196,9 @@ class TestXGBoostTrainHelpers:
             (test_df, "csv"),
         ]
 
-        result_train, result_val, result_test, result_format = load_datasets("/input/path")
+        result_train, result_val, result_test, result_format = load_datasets(
+            "/input/path"
+        )
 
         # Verify results
         pd.testing.assert_frame_equal(result_train, train_df)
@@ -219,12 +223,16 @@ class TestXGBoostTrainHelpers:
         with pytest.raises(FileNotFoundError) as exc_info:
             load_datasets("/input/path")
 
-        assert "Training, validation, or test data file not found" in str(exc_info.value)
+        assert "Training, validation, or test data file not found" in str(
+            exc_info.value
+        )
 
     @patch("cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor")
-    def test_apply_numerical_imputation(self, mock_imputer_class, sample_config, sample_data):
+    def test_apply_numerical_imputation(
+        self, mock_imputer_class, sample_config, sample_data
+    ):
         """Test numerical imputation application with single-column architecture."""
-        # Create mock imputer  
+        # Create mock imputer
         mock_imputer = MagicMock()
         mock_imputer.transform.side_effect = lambda series: series  # Return unchanged
         mock_imputer.get_imputation_value.return_value = 0.5
@@ -235,29 +243,31 @@ class TestXGBoostTrainHelpers:
         val_df = sample_data.copy()
         test_df = sample_data.copy()
 
-        result = apply_numerical_imputation(
-            sample_config, train_df, val_df, test_df
-        )
+        result = apply_numerical_imputation(sample_config, train_df, val_df, test_df)
 
         train_result, val_result, test_result, impute_dict = result
 
         # Verify imputer was created for each column (single-column architecture)
         # Should be called 3 times, once per feature in tab_field_list
         assert mock_imputer_class.call_count == 3
-        
+
         # Verify each call used correct parameters
         expected_calls = [
-            ((('column_name', 'feature1'), ('strategy', 'mean')),),
-            ((('column_name', 'feature2'), ('strategy', 'mean')),),
-            ((('column_name', 'feature3'), ('strategy', 'mean')),),
+            ((("column_name", "feature1"), ("strategy", "mean")),),
+            ((("column_name", "feature2"), ("strategy", "mean")),),
+            ((("column_name", "feature3"), ("strategy", "mean")),),
         ]
         for call, expected in zip(mock_imputer_class.call_args_list, expected_calls):
-            assert call.kwargs.get('column_name') in ['feature1', 'feature2', 'feature3']
-            assert call.kwargs.get('strategy') == 'mean'
+            assert call.kwargs.get("column_name") in [
+                "feature1",
+                "feature2",
+                "feature3",
+            ]
+            assert call.kwargs.get("strategy") == "mean"
 
         # Verify fit was called 3 times (once per column)
         assert mock_imputer.fit.call_count == 3
-        
+
         # Verify transform was called 9 times (3 columns × 3 splits)
         assert mock_imputer.transform.call_count == 9
 
@@ -266,7 +276,9 @@ class TestXGBoostTrainHelpers:
         assert all(f in impute_dict for f in ["feature1", "feature2", "feature3"])
 
     @patch("cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor")
-    def test_fit_and_apply_risk_tables(self, mock_processor_class, sample_config, sample_data):
+    def test_fit_and_apply_risk_tables(
+        self, mock_processor_class, sample_config, sample_data
+    ):
         """Test risk table fitting and application."""
         # Create mock processor
         mock_processor = MagicMock()
@@ -281,9 +293,7 @@ class TestXGBoostTrainHelpers:
         val_df = sample_data.copy()
         test_df = sample_data.copy()
 
-        result = fit_and_apply_risk_tables(
-            sample_config, train_df, val_df, test_df
-        )
+        result = fit_and_apply_risk_tables(sample_config, train_df, val_df, test_df)
 
         train_result, val_result, test_result, risk_tables = result
 
@@ -416,7 +426,12 @@ class TestXGBoostTrainHelpers:
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     def test_save_artifacts(
-        self, mock_makedirs, mock_file_open, mock_pkl_dump, mock_json_dump, sample_config
+        self,
+        mock_makedirs,
+        mock_file_open,
+        mock_pkl_dump,
+        mock_json_dump,
+        sample_config,
     ):
         """Test model artifacts saving."""
         # Create mock model
@@ -473,13 +488,13 @@ class TestXGBoostTrainMain:
             (data_dir / split).mkdir()
 
         yield {
-            'temp_dir': temp_dir,
-            'data_dir': data_dir,
-            'config_dir': config_dir,
-            'model_dir': model_dir,
-            'output_dir': output_dir
+            "temp_dir": temp_dir,
+            "data_dir": data_dir,
+            "config_dir": config_dir,
+            "model_dir": model_dir,
+            "output_dir": output_dir,
         }
-        
+
         shutil.rmtree(temp_dir)
 
     @pytest.fixture
@@ -500,9 +515,9 @@ class TestXGBoostTrainMain:
 
     def _create_test_data(self, dirs, sample_config):
         """Create test data files."""
-        data_dir = dirs['data_dir']
-        config_dir = dirs['config_dir']
-        
+        data_dir = dirs["data_dir"]
+        config_dir = dirs["config_dir"]
+
         # Save configuration
         config_path = config_dir / "hyperparameters.json"
         with open(config_path, "w") as f:
@@ -526,16 +541,25 @@ class TestXGBoostTrainMain:
     @patch("cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor")
     @patch("cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor")
     def test_main_success(
-        self, mock_imputer_class, mock_processor_class, mock_xgb_train, setup_dirs, sample_config
+        self,
+        mock_imputer_class,
+        mock_processor_class,
+        mock_xgb_train,
+        setup_dirs,
+        sample_config,
     ):
         """Test successful main function execution."""
         dirs = setup_dirs
         self._create_test_data(dirs, sample_config)
-        
+
         # Setup mocks for single-column architecture
         mock_imputer = MagicMock()
-        mock_imputer.transform.side_effect = lambda series: series  # Single-column: returns Series
-        mock_imputer.get_imputation_value.return_value = 0.5  # Return actual float, not Mock
+        mock_imputer.transform.side_effect = (
+            lambda series: series
+        )  # Single-column: returns Series
+        mock_imputer.get_imputation_value.return_value = (
+            0.5  # Return actual float, not Mock
+        )
         mock_imputer_class.return_value = mock_imputer
 
         mock_processor = MagicMock()
@@ -552,12 +576,12 @@ class TestXGBoostTrainMain:
 
         # Prepare input parameters using contract logical names
         input_paths = {
-            "input_path": str(dirs['data_dir']),
-            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
+            "input_path": str(dirs["data_dir"]),
+            "hyperparameters_s3_uri": str(dirs["config_dir"] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(dirs['model_dir']),
-            "evaluation_output": str(dirs['output_dir']),
+            "model_output": str(dirs["model_dir"]),
+            "evaluation_output": str(dirs["output_dir"]),
         }
         environ_vars = {}
         args = argparse.Namespace(job_type=None)
@@ -571,32 +595,33 @@ class TestXGBoostTrainMain:
             error = str(e)
 
         # Verify success
-        assert success, f"Main function failed with error: {error if not success else 'None'}"
+        assert success, (
+            f"Main function failed with error: {error if not success else 'None'}"
+        )
 
         # Verify model training was called
         mock_xgb_train.assert_called_once()
 
         # Verify model artifacts were saved
         assert (
-            (Path(dirs['model_dir']) / "xgboost_model.bst").exists()
-            or mock_model.save_model.called
-        )
+            Path(dirs["model_dir"]) / "xgboost_model.bst"
+        ).exists() or mock_model.save_model.called
 
     def test_main_missing_config(self, setup_dirs, sample_config):
         """Test main function with missing configuration file."""
         dirs = setup_dirs
         self._create_test_data(dirs, sample_config)
-        
+
         # Remove config file
-        (dirs['config_dir'] / "hyperparameters.json").unlink()
+        (dirs["config_dir"] / "hyperparameters.json").unlink()
 
         input_paths = {
-            "input_path": str(dirs['data_dir']),
-            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
+            "input_path": str(dirs["data_dir"]),
+            "hyperparameters_s3_uri": str(dirs["config_dir"] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(dirs['model_dir']),
-            "evaluation_output": str(dirs['output_dir']),
+            "model_output": str(dirs["model_dir"]),
+            "evaluation_output": str(dirs["output_dir"]),
         }
         environ_vars = {}
         args = argparse.Namespace(job_type=None)
@@ -608,17 +633,17 @@ class TestXGBoostTrainMain:
         """Test main function with missing data files."""
         dirs = setup_dirs
         self._create_test_data(dirs, sample_config)
-        
+
         # Remove training data
-        shutil.rmtree(dirs['data_dir'] / "train")
+        shutil.rmtree(dirs["data_dir"] / "train")
 
         input_paths = {
-            "input_path": str(dirs['data_dir']),
-            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
+            "input_path": str(dirs["data_dir"]),
+            "hyperparameters_s3_uri": str(dirs["config_dir"] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(dirs['model_dir']),
-            "evaluation_output": str(dirs['output_dir']),
+            "model_output": str(dirs["model_dir"]),
+            "evaluation_output": str(dirs["output_dir"]),
         }
         environ_vars = {}
         args = argparse.Namespace(job_type=None)
@@ -629,20 +654,20 @@ class TestXGBoostTrainMain:
     def test_main_invalid_config(self, setup_dirs):
         """Test main function with invalid configuration."""
         dirs = setup_dirs
-        
+
         # Create invalid config (missing required keys)
         invalid_config = {"tab_field_list": ["feature1"]}
-        config_path = dirs['config_dir'] / "hyperparameters.json"
+        config_path = dirs["config_dir"] / "hyperparameters.json"
         with open(config_path, "w") as f:
             json.dump(invalid_config, f)
 
         input_paths = {
-            "input_path": str(dirs['data_dir']),
-            "hyperparameters_s3_uri": str(dirs['config_dir'] / "hyperparameters.json"),
+            "input_path": str(dirs["data_dir"]),
+            "hyperparameters_s3_uri": str(dirs["config_dir"] / "hyperparameters.json"),
         }
         output_paths = {
-            "model_output": str(dirs['model_dir']),
-            "evaluation_output": str(dirs['output_dir']),
+            "model_output": str(dirs["model_dir"]),
+            "evaluation_output": str(dirs["output_dir"]),
         }
         environ_vars = {}
         args = argparse.Namespace(job_type=None)
