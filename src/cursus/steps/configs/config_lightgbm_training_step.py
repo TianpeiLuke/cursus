@@ -111,6 +111,14 @@ class LightGBMTrainingConfig(BasePipelineConfig):
         "If False (default), uses all features without selection.",
     )
 
+    use_native_categorical: bool = Field(
+        default=True,
+        description="Controls categorical feature handling mode for LightGBM. "
+        "If True (default), uses LightGBM native categorical features with DictionaryEncodingProcessor for integer encoding. "
+        "If False, uses risk table mapping (XGBoost-style) for categorical features. "
+        "Can be overridden at runtime via USE_NATIVE_CATEGORICAL environment variable.",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
     # with public read-only properties for access
@@ -212,6 +220,7 @@ class LightGBMTrainingConfig(BasePipelineConfig):
             "use_precomputed_imputation": self.use_precomputed_imputation,
             "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
             "use_precomputed_features": self.use_precomputed_features,
+            "use_native_categorical": self.use_native_categorical,
         }
 
         # Combine base fields and training fields (training fields take precedence if overlap)

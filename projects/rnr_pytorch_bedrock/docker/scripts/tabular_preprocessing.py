@@ -150,18 +150,76 @@ def _read_file_to_df(
         raise ValueError(f"Unsupported file type: {file_path}")
 
 
+def _read_shard_wrapper(args: tuple) -> pd.DataFrame:
+    """
+    Wrapper function for parallel shard reading.
+
+    Args:
+        args: Tuple of (shard_path, signature_columns, shard_index, total_shards)
+
+    Returns:
+        DataFrame from the shard
+    """
+    shard_path, signature_columns, idx, total = args
+    try:
+        df = _read_file_to_df(shard_path, signature_columns)
+        # Log progress (will be captured by parent process)
+        print(
+            f"[INFO] Processed shard {idx + 1}/{total}: {shard_path.name} ({df.shape[0]} rows)"
+        )
+        return df
+    except Exception as e:
+        raise RuntimeError(f"Failed to read shard {shard_path.name}: {e}")
+
+
+def _batch_concat_dataframes(dfs: list, batch_size: int = 10) -> pd.DataFrame:
+    """
+    Concatenate DataFrames in batches to minimize memory copies.
+
+    Args:
+        dfs: List of DataFrames to concatenate
+        batch_size: Number of DataFrames to concatenate at once
+
+    Returns:
+        Single concatenated DataFrame
+    """
+    if not dfs:
+        raise ValueError("No DataFrames to concatenate")
+
+    if len(dfs) == 1:
+        return dfs[0]
+
+    # Process in batches to reduce intermediate copies
+    while len(dfs) > 1:
+        batch_results = []
+        for i in range(0, len(dfs), batch_size):
+            batch = dfs[i : i + batch_size]
+            if len(batch) == 1:
+                batch_results.append(batch[0])
+            else:
+                batch_results.append(pd.concat(batch, axis=0, ignore_index=True))
+        dfs = batch_results
+
+    return dfs[0]
+
+
 def combine_shards(
-    input_dir: str, signature_columns: Optional[list] = None
+    input_dir: str,
+    signature_columns: Optional[list] = None,
+    max_workers: Optional[int] = None,
+    batch_size: int = 10,
 ) -> pd.DataFrame:
     """
-    Detect and combine all supported data shards in a directory.
+    Detect and combine all supported data shards in a directory using parallel processing.
 
-    Uses memory-efficient iterative concatenation to handle large files
-    and avoid PyArrow's 2GB column limit error.
+    Uses parallel shard reading and batch concatenation for improved performance.
+    Memory-efficient approach avoids PyArrow's 2GB column limit error.
 
     Args:
         input_dir: Directory containing data shards
         signature_columns: Optional column names for CSV/TSV files
+        max_workers: Maximum number of parallel workers (default: cpu_count)
+        batch_size: Number of DataFrames to concatenate at once (default: 10)
 
     Returns:
         Combined DataFrame from all shards
@@ -169,6 +227,7 @@ def combine_shards(
     input_path = Path(input_dir)
     if not input_path.is_dir():
         raise RuntimeError(f"Input directory does not exist: {input_dir}")
+
     patterns = [
         "part-*.csv",
         "part-*.csv.gz",
@@ -179,36 +238,48 @@ def combine_shards(
         "part-*.parquet.gz",
     ]
     all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
+
     if not all_shards:
         raise RuntimeError(f"No CSV/JSON/Parquet shards found under {input_dir}")
 
+    total_shards = len(all_shards)
+    print(f"[INFO] Found {total_shards} shards to process")
+
     try:
-        # Use iterative concatenation to avoid memory spikes and PyArrow 2GB limit
-        result_df = None
+        # Determine optimal number of workers
+        if max_workers is None:
+            max_workers = min(cpu_count(), total_shards)
 
-        for i, shard in enumerate(all_shards):
-            try:
-                # Read individual shard
-                shard_df = _read_file_to_df(shard, signature_columns)
+        print(f"[INFO] Using {max_workers} parallel workers for shard reading")
 
-                # Concatenate iteratively
-                if result_df is None:
-                    result_df = shard_df
-                else:
-                    result_df = pd.concat(
-                        [result_df, shard_df], axis=0, ignore_index=True
-                    )
+        # Prepare arguments for parallel processing
+        shard_args = [
+            (shard, signature_columns, i, total_shards)
+            for i, shard in enumerate(all_shards)
+        ]
 
-                # Explicitly delete to free memory immediately
-                del shard_df
+        # Read shards in parallel
+        if max_workers > 1 and total_shards > 1:
+            with Pool(processes=max_workers) as pool:
+                dataframes = pool.map(_read_shard_wrapper, shard_args)
+        else:
+            # Fall back to sequential processing for single shard or single worker
+            print("[INFO] Using sequential processing (single worker or single shard)")
+            dataframes = [_read_shard_wrapper(args) for args in shard_args]
 
-            except Exception as shard_error:
-                raise RuntimeError(
-                    f"Failed to process shard {shard.name} (shard {i + 1}/{len(all_shards)}): {shard_error}"
-                )
-
-        if result_df is None:
+        if not dataframes:
             raise RuntimeError("No data was loaded from any shards")
+
+        # Log total rows before concatenation
+        total_rows = sum(df.shape[0] for df in dataframes)
+        print(f"[INFO] Loaded {total_rows} total rows from {total_shards} shards")
+
+        # Concatenate using batch approach
+        print(f"[INFO] Concatenating DataFrames with batch_size={batch_size}")
+        result_df = _batch_concat_dataframes(dataframes, batch_size)
+
+        # Verify final shape
+        print(f"[INFO] Final combined shape: {result_df.shape}")
 
         return result_df
 

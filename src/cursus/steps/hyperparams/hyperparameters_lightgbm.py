@@ -115,6 +115,30 @@ class LightGBMModelHyperparameters(ModelHyperparameters):
         default=None, description="Random seed for reproducibility."
     )
 
+    # Categorical Feature Parameters
+    min_data_per_group: int = Field(
+        default=100,
+        ge=1,
+        description="Minimum number of data per categorical group. Used for dealing with overfitting when #data is small or #category is large.",
+    )
+
+    cat_smooth: float = Field(
+        default=10.0,
+        ge=0.0,
+        description="Categorical smoothing parameter. Used for reducing noise in categorical features. Larger values lead to stronger smoothing.",
+    )
+
+    max_cat_threshold: int = Field(
+        default=32,
+        ge=1,
+        description="Maximum number of categories to consider for splitting. For categories with cardinality > max_cat_threshold, treat as numeric.",
+    )
+
+    use_native_categorical: bool = Field(
+        default=True,
+        description="Whether to use LightGBM's native categorical feature handling. If False, uses risk table mapping (XGBoost-style preprocessing).",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
 
