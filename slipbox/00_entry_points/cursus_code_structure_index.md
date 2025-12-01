@@ -386,25 +386,43 @@ Multi-level validation framework ensuring pipeline correctness.
 
 ## 7. Pipeline Catalog (`src/cursus/pipeline_catalog/`)
 
-Extended catalog for sharing complete pipeline structures.
+Extended catalog for sharing complete pipeline structures with intelligent discovery and creation.
 
 **Code Components:**
-- Pipeline catalog components
-- Pipeline templates
-- MODS integration
+- `core/catalog_registry.py` - Zettelkasten metadata registry
+- `core/tag_discovery.py` - Multi-dimensional search
+- `core/connection_traverser.py` - Relationship navigation
+- `core/recommendation_engine.py` - Pipeline recommendations
+- `core/base_pipeline.py` - Pipeline foundation
+- `shared_dags/` - Reusable DAG definitions
+- `pipelines/` - Pipeline implementations (being replaced by factory)
 
 **Related Design Docs:**
-- [Pipeline Catalog Design](../1_design/pipeline_catalog_design.md)
-- [Pipeline Catalog Zettelkasten Refactoring](../1_design/pipeline_catalog_zettelkasten_refactoring.md)
-- [Expanded Pipeline Catalog MODS Integration](../1_design/expanded_pipeline_catalog_mods_integration.md)
-- [Pipeline Catalog Integration Guide](../0_developer_guide/pipeline_catalog_integration_guide.md)
-- [Zettelkasten Pipeline Catalog Utilities](../1_design/zettelkasten_pipeline_catalog_utilities.md)
+
+**System Redesign (2025-11-30):**
+- [Pipeline Catalog Redesign](../1_design/pipeline_catalog_redesign.md) - **Complete system redesign with UX focus**
+  - Knowledge-driven discovery and creation
+  - DAGAutoDiscovery with AST-based scanning
+  - PipelineFactory for search-driven creation
+  - Interactive exploration and navigation
+  - Workspace development support
+- [Pipeline Factory Design](../1_design/pipeline_factory_design.md) - Factory pattern implementation
+  - Eliminates redundant pipeline classes
+  - Dynamic pipeline creation
+  - Metadata-driven approach
+
+**Existing Architecture:**
+- [Pipeline Catalog Design](../1_design/pipeline_catalog_design.md) - Original catalog design
+- [Pipeline Catalog Zettelkasten Refactoring](../1_design/pipeline_catalog_zettelkasten_refactoring.md) - Zettelkasten integration
+- [Expanded Pipeline Catalog MODS Integration](../1_design/expanded_pipeline_catalog_mods_integration.md) - MODS features
+- [Pipeline Catalog Integration Guide](../0_developer_guide/pipeline_catalog_integration_guide.md) - Integration guide
+- [Zettelkasten Pipeline Catalog Utilities](../1_design/zettelkasten_pipeline_catalog_utilities.md) - Utility tools
 
 **Key Concepts:**
-- Pipeline sharing
-- Template management
-- MODS integration
-- Version control
+- **New System**: Search-driven pipeline discovery, natural language queries, workspace auto-discovery
+- **Knowledge Graph**: Relationship tracking, evolution paths, usage analytics
+- **Intelligent Recommendations**: Requirements-to-pipeline matching, gap analysis
+- **Legacy**: Pipeline sharing, template management, MODS integration, version control
 
 ---
 

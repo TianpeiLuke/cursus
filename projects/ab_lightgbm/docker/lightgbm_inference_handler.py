@@ -121,17 +121,22 @@ from io import StringIO, BytesIO
 # Third-party imports
 import pandas as pd
 import numpy as np
-import xgboost as xgb
+import lightgbm as lgb
 
 # Local imports
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.categorical.dictionary_encoding_processor import (
+    DictionaryEncodingProcessor,
+)
 from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 
 # File names
-MODEL_FILE = "xgboost_model.bst"
+MODEL_FILE = "lightgbm_model.txt"
 RISK_TABLE_FILE = "risk_table_map.pkl"
+CATEGORICAL_MAPPINGS_FILE = "categorical_mappings.pkl"
+CATEGORICAL_CONFIG_FILE = "categorical_config.json"
 IMPUTE_DICT_FILE = "impute_dict.pkl"
 FEATURE_IMPORTANCE_FILE = "feature_importance.json"
 FEATURE_COLUMNS_FILE = "feature_columns.txt"
@@ -167,22 +172,33 @@ if not logger.handlers:
 # --------------------------------------------------------------------------------
 
 
-def validate_model_files(model_dir: str) -> None:
+def validate_model_files(model_dir: str, categorical_config: Dict[str, Any]) -> None:
     """
-    Validate that all required model files exist.
+    Validate that all required model files exist based on categorical mode.
 
     Args:
         model_dir: Directory containing model artifacts
+        categorical_config: Configuration determining which categorical files are required
 
     Raises:
         FileNotFoundError: If any required file is missing
     """
+    # Always required files
     required_files = [
         MODEL_FILE,
-        RISK_TABLE_FILE,
         IMPUTE_DICT_FILE,
         FEATURE_COLUMNS_FILE,
     ]
+
+    # Mode-specific files
+    use_native_cat = categorical_config.get("use_native_categorical", False)
+    if use_native_cat:
+        required_files.append(CATEGORICAL_MAPPINGS_FILE)
+        logger.info("Native categorical mode detected - requiring categorical mappings")
+    else:
+        required_files.append(RISK_TABLE_FILE)
+        logger.info("Risk table mode detected - requiring risk tables")
+
     for file in required_files:
         file_path = os.path.join(model_dir, file)
         if not os.path.exists(file_path):
@@ -230,17 +246,84 @@ def read_feature_columns(model_dir: str) -> List[str]:
         raise
 
 
-def load_xgboost_model(model_dir: str) -> xgb.Booster:
-    """Load XGBoost model from file."""
-    model = xgb.Booster()
-    model.load_model(os.path.join(model_dir, MODEL_FILE))
+def load_lightgbm_model(model_dir: str) -> lgb.Booster:
+    """Load LightGBM model from file."""
+    model_path = os.path.join(model_dir, MODEL_FILE)
+    model = lgb.Booster(model_file=model_path)
+    logger.info(f"Loaded LightGBM model from {model_path}")
     return model
+
+
+def load_categorical_config(model_dir: str) -> Dict[str, Any]:
+    """
+    Load categorical configuration from JSON file.
+
+    Args:
+        model_dir: Directory containing model artifacts
+
+    Returns:
+        Dictionary containing categorical configuration
+    """
+    config_path = os.path.join(model_dir, CATEGORICAL_CONFIG_FILE)
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            return json.load(f)
+    else:
+        # Default to risk table mode for backward compatibility
+        logger.warning(
+            f"{CATEGORICAL_CONFIG_FILE} not found, defaulting to risk table mode"
+        )
+        return {"use_native_categorical": False}
+
+
+def load_categorical_mappings(model_dir: str) -> Dict[str, Dict[str, int]]:
+    """
+    Load categorical mappings from pickle file.
+
+    Args:
+        model_dir: Directory containing model artifacts
+
+    Returns:
+        Dictionary mapping feature names to their encoding dictionaries
+    """
+    mappings_path = os.path.join(model_dir, CATEGORICAL_MAPPINGS_FILE)
+    with open(mappings_path, "rb") as f:
+        return pkl.load(f)
+
+
+def create_categorical_processors(
+    categorical_mappings: Dict[str, Dict[str, int]],
+) -> Dict[str, DictionaryEncodingProcessor]:
+    """
+    Create dictionary encoding processors for each categorical feature.
+
+    Args:
+        categorical_mappings: Dictionary of feature name to encoding mapping
+
+    Returns:
+        Dictionary of feature name to DictionaryEncodingProcessor
+    """
+    categorical_processors = {}
+    for feature, mapping in categorical_mappings.items():
+        processor = DictionaryEncodingProcessor(
+            columns=[feature],
+            unknown_strategy="default",
+            default_value=-1,
+        )
+        # Set the pre-computed mapping
+        processor.categorical_map = {feature: mapping}
+        processor.is_fitted = True
+        categorical_processors[feature] = processor
+    return categorical_processors
 
 
 def load_risk_tables(model_dir: str) -> Dict[str, Any]:
     """Load risk tables from pickle file."""
-    with open(os.path.join(model_dir, RISK_TABLE_FILE), "rb") as f:
-        return pkl.load(f)
+    risk_path = os.path.join(model_dir, RISK_TABLE_FILE)
+    if os.path.exists(risk_path):
+        with open(risk_path, "rb") as f:
+            return pkl.load(f)
+    return {}
 
 
 def create_risk_processors(
@@ -582,22 +665,29 @@ def apply_calibration(
 
 
 def create_model_config(
-    model: xgb.Booster, feature_columns: List[str], hyperparameters: Dict[str, Any]
+    model: lgb.Booster,
+    feature_columns: List[str],
+    hyperparameters: Dict[str, Any],
+    categorical_config: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Create model configuration dictionary."""
+    """Create model configuration dictionary for LightGBM."""
+    # Determine if multiclass from model dump
+    model_dump = model.dump_model()
+    num_classes = model_dump.get("num_class", 1)
+
     return {
-        "is_multiclass": (
-            True if hasattr(model, "num_class") and model.num_class() > 2 else False
-        ),
-        "num_classes": model.num_class() if hasattr(model, "num_class") else 2,
+        "is_multiclass": num_classes > 2,
+        "num_classes": num_classes if num_classes > 1 else 2,
         "feature_columns": feature_columns,
         "hyperparameters": hyperparameters,
+        "categorical_config": categorical_config,
     }
 
 
 def model_fn(model_dir: str) -> Dict[str, Any]:
     """
-    Load the model and preprocessing artifacts from model_dir.
+    Load the LightGBM model and preprocessing artifacts from model_dir.
+    Supports dual-mode categorical handling (native categorical or risk tables).
 
     Args:
         model_dir (str): Directory containing model artifacts
@@ -609,26 +699,48 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
         FileNotFoundError: If required model files are missing
         Exception: For other loading errors
     """
-    logger.info(f"Loading model from {model_dir}")
+    logger.info(f"Loading LightGBM model from {model_dir}")
 
     try:
+        # Load categorical configuration first
+        categorical_config = load_categorical_config(model_dir)
+        use_native_cat = categorical_config.get("use_native_categorical", False)
+
+        logger.info(f"Categorical mode: {'NATIVE' if use_native_cat else 'RISK_TABLE'}")
+
         # Validate all required files exist
-        validate_model_files(model_dir)
+        validate_model_files(model_dir, categorical_config)
 
-        # Load model and artifacts
-        model = load_xgboost_model(model_dir)
-        risk_tables = load_risk_tables(model_dir)
-        risk_processors = create_risk_processors(risk_tables)
+        # Load model
+        model = load_lightgbm_model(model_dir)
 
+        # Load categorical processors based on mode
+        if use_native_cat:
+            # Native categorical mode
+            categorical_mappings = load_categorical_mappings(model_dir)
+            categorical_processors = create_categorical_processors(categorical_mappings)
+            risk_processors = {}  # Empty for native mode
+            logger.info(f"Loaded {len(categorical_processors)} categorical processors")
+        else:
+            # Risk table mode
+            risk_tables = load_risk_tables(model_dir)
+            risk_processors = create_risk_processors(risk_tables)
+            categorical_processors = {}  # Empty for risk table mode
+            logger.info(f"Loaded {len(risk_processors)} risk table processors")
+
+        # Load numerical processors (always needed)
         impute_dict = load_imputation_dict(model_dir)
         numerical_processors = create_numerical_processors(impute_dict)
 
+        # Load metadata
         feature_importance = load_feature_importance(model_dir)
         feature_columns = read_feature_columns(model_dir)
         hyperparameters = load_hyperparameters(model_dir)
 
         # Create configuration
-        config = create_model_config(model, feature_columns, hyperparameters)
+        config = create_model_config(
+            model, feature_columns, hyperparameters, categorical_config
+        )
 
         # Load calibration model if available
         calibrator = load_calibration_model(model_dir)
@@ -637,7 +749,8 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
 
         return {
             "model": model,
-            "risk_processors": risk_processors,
+            "risk_processors": risk_processors,  # Empty if native mode
+            "categorical_processors": categorical_processors,  # Empty if risk table mode
             "numerical_processors": numerical_processors,
             "feature_importance": feature_importance,
             "config": config,
@@ -808,47 +921,64 @@ def preprocess_single_record_fast(
     df: pd.DataFrame,
     feature_columns: List[str],
     risk_processors: Dict[str, Any],
+    categorical_processors: Dict[str, Any],
     numerical_processors: Dict[str, Any],
+    use_native_categorical: bool = False,
 ) -> np.ndarray:
     """
-    Fast path for single-record preprocessing.
-
-    Bypasses pandas DataFrame operations for 10-100x speedup.
-    Uses processor.process() method for direct value processing.
+    Fast path for single-record preprocessing with dual-mode categorical support.
 
     Args:
         df: Single-row DataFrame with feature values
         feature_columns: Ordered feature column names
-        risk_processors: Risk table processors for categorical features
+        risk_processors: Risk table processors (risk table mode)
+        categorical_processors: Dictionary encoding processors (native mode)
         numerical_processors: Imputation processors for numerical features
+        use_native_categorical: If True, use dictionary encoding; if False, use risk tables
 
     Returns:
         Processed feature values ready for model [n_features]
     """
-    processed = np.zeros(len(feature_columns), dtype=np.float32)
+    if use_native_categorical:
+        # Native categorical mode: keep as int32
+        processed = np.zeros(len(feature_columns), dtype=np.int32)
+    else:
+        # Risk table mode: keep as float32
+        processed = np.zeros(len(feature_columns), dtype=np.float32)
 
     for i, col in enumerate(feature_columns):
         val = df[col].iloc[0]
 
-        # Apply risk table mapping if categorical
-        if col in risk_processors:
-            # Uses optimized process() method (direct dict lookup)
-            val = risk_processors[col].process(val)
+        if use_native_categorical:
+            # Native categorical mode
+            if col in categorical_processors:
+                # Apply dictionary encoding (string → int)
+                val = categorical_processors[col].process(val)
+            elif col in numerical_processors:
+                # Apply numerical imputation, then convert to int32
+                val = numerical_processors[col].process(val)
+                try:
+                    val = int(val) if not pd.isna(val) else 0
+                except (ValueError, TypeError):
+                    val = 0
+            processed[i] = val
+        else:
+            # Risk table mode
+            if col in risk_processors:
+                # Apply risk table mapping (string → float)
+                val = risk_processors[col].process(val)
+            elif col in numerical_processors:
+                # Apply numerical imputation
+                val = numerical_processors[col].process(val)
 
-        # Apply numerical imputation
-        if col in numerical_processors:
-            # Uses optimized process() method (simple null check)
-            val = numerical_processors[col].process(val)
-
-        # Convert to float with error handling
-        try:
-            val = float(val)
-        except (ValueError, TypeError):
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Could not convert {col}={val} to float, using 0.0")
-            val = 0.0
-
-        processed[i] = val
+            # Convert to float
+            try:
+                val = float(val)
+            except (ValueError, TypeError):
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Could not convert {col}={val} to float, using 0.0")
+                val = 0.0
+            processed[i] = val
 
     return processed
 
@@ -857,21 +987,24 @@ def apply_preprocessing(
     df: pd.DataFrame,
     feature_columns: List[str],
     risk_processors: Dict[str, Any],
+    categorical_processors: Dict[str, Any],
     numerical_processors: Dict[str, Any],
+    use_native_categorical: bool = False,
 ) -> pd.DataFrame:
     """
-    Apply preprocessing steps to input data.
+    Apply preprocessing steps with dual-mode categorical support.
 
     Args:
         df: Input DataFrame
         feature_columns: List of feature columns
-        risk_processors: Dictionary of risk table processors
+        risk_processors: Dictionary of risk table processors (risk table mode)
+        categorical_processors: Dictionary of dictionary encoding processors (native mode)
         numerical_processors: Dictionary of numerical imputation processors
+        use_native_categorical: If True, use dictionary encoding; if False, use risk tables
 
     Returns:
         Preprocessed DataFrame
     """
-    # Conditional logging (only if DEBUG enabled)
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Initial data types and unique values:")
         for col in feature_columns:
@@ -879,14 +1012,22 @@ def apply_preprocessing(
                 f"{col}: dtype={df[col].dtype}, unique values={df[col].unique()}"
             )
 
-    # Apply risk table mapping
-    for feature, processor in risk_processors.items():
-        if feature in df.columns:
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Applying risk table mapping for feature: {feature}")
-            df[feature] = processor.transform(df[feature])
+    if use_native_categorical:
+        # Native categorical mode: apply dictionary encoding
+        for feature, processor in categorical_processors.items():
+            if feature in df.columns:
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Applying dictionary encoding for feature: {feature}")
+                df[feature] = processor.transform(df[feature])
+    else:
+        # Risk table mode: apply risk table mapping
+        for feature, processor in risk_processors.items():
+            if feature in df.columns:
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Applying risk table mapping for feature: {feature}")
+                df[feature] = processor.transform(df[feature])
 
-    # Apply numerical imputation (one processor per column)
+    # Apply numerical imputation (always needed)
     for feature, processor in numerical_processors.items():
         if feature in df.columns:
             if logger.isEnabledFor(logging.DEBUG):
@@ -963,38 +1104,11 @@ def convert_to_numeric(df: pd.DataFrame, feature_columns: List[str]) -> pd.DataF
     return df
 
 
-def generate_predictions(
-    model: xgb.Booster,
-    df: pd.DataFrame,
-    feature_columns: List[str],
-    is_multiclass: bool,
-) -> np.ndarray:
-    """
-    Generate predictions using the XGBoost model.
-
-    Args:
-        model: XGBoost model
-        df: Preprocessed DataFrame
-        feature_columns: Feature columns to use
-        is_multiclass: Whether this is a multiclass model
-
-    Returns:
-        numpy array of predictions
-    """
-    dtest = xgb.DMatrix(df[feature_columns].values, feature_names=feature_columns)
-    predictions = model.predict(dtest)
-
-    if not is_multiclass and len(predictions.shape) == 1:
-        predictions = np.column_stack([1 - predictions, predictions])
-
-    return predictions
-
-
 def predict_fn(
     input_data: pd.DataFrame, model_artifacts: Dict[str, Any]
 ) -> Dict[str, np.ndarray]:
     """
-    Generate predictions from preprocessed input data.
+    Generate predictions using LightGBM with dual-mode categorical support.
 
     Optimized for single-record inference with fast path detection.
 
@@ -1012,10 +1126,13 @@ def predict_fn(
         # Extract configuration
         model = model_artifacts["model"]
         risk_processors = model_artifacts["risk_processors"]
+        categorical_processors = model_artifacts["categorical_processors"]
         numerical_processors = model_artifacts["numerical_processors"]
         config = model_artifacts["config"]
         feature_columns = config["feature_columns"]
         is_multiclass = config["is_multiclass"]
+        categorical_config = config["categorical_config"]
+        use_native_cat = categorical_config.get("use_native_categorical", False)
         calibrator = model_artifacts.get("calibrator")
 
         # Validate input
@@ -1034,13 +1151,13 @@ def predict_fn(
                 df=df,
                 feature_columns=feature_columns,
                 risk_processors=risk_processors,
+                categorical_processors=categorical_processors,
                 numerical_processors=numerical_processors,
+                use_native_categorical=use_native_cat,
             )
 
-            # Create DMatrix from preprocessed values
-            dtest = xgb.DMatrix(
-                processed_values.reshape(1, -1), feature_names=feature_columns
-            )
+            # LightGBM predict directly from numpy array
+            raw_predictions = model.predict(processed_values.reshape(1, -1))
         else:
             # BATCH PATH: Original DataFrame processing for multiple records
             if logger.isEnabledFor(logging.DEBUG):
@@ -1049,22 +1166,24 @@ def predict_fn(
             # Assign column names if needed
             df = assign_column_names(input_data, feature_columns)
 
-            # Apply preprocessing
+            # Apply preprocessing with dual-mode support
             df = apply_preprocessing(
-                df, feature_columns, risk_processors, numerical_processors
+                df,
+                feature_columns,
+                risk_processors,
+                categorical_processors,
+                numerical_processors,
+                use_native_categorical=use_native_cat,
             )
 
-            # Convert to numeric
-            df = convert_to_numeric(df, feature_columns)
+            # Convert to numeric (risk table mode needs this)
+            if not use_native_cat:
+                df = convert_to_numeric(df, feature_columns)
 
-            # Create DMatrix
-            dtest = xgb.DMatrix(
-                df[feature_columns].values, feature_names=feature_columns
-            )
+            # LightGBM predict directly from numpy array
+            raw_predictions = model.predict(df[feature_columns].values)
 
-        # Generate raw predictions (same for both paths)
-        raw_predictions = model.predict(dtest)
-
+        # Format predictions for binary classification
         if not is_multiclass and len(raw_predictions.shape) == 1:
             raw_predictions = np.column_stack([1 - raw_predictions, raw_predictions])
 

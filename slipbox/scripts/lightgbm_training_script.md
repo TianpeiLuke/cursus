@@ -26,11 +26,11 @@ date of note: 2025-11-18
 
 ## Overview
 
-The `lightgbm_training.py` script implements a comprehensive LightGBM training pipeline for tabular data classification with integrated preprocessing capabilities including numerical imputation and risk table mapping for categorical features.
+The `lightgbm_training.py` script implements a comprehensive LightGBM training pipeline for tabular data classification with integrated preprocessing capabilities including numerical imputation and dual-mode categorical feature handling (native categorical or risk table mapping).
 
 The script provides a production-ready training workflow that supports both inline preprocessing computation and pre-computed artifact reuse from upstream steps. It handles binary and multiclass classification with configurable hyperparameters, class imbalance handling, comprehensive evaluation metrics, and format-preserving I/O across CSV, TSV, and Parquet formats.
 
-Key capabilities include flexible preprocessing artifact control (compute inline vs reuse pre-computed), risk table mapping for categorical feature transformation, mean-based numerical imputation, LightGBM model training with early stopping, comprehensive evaluation with ROC/PR curves, and packaged output artifacts in tarball format for deployment. The script mirrors the XGBoost training workflow but uses LightGBM's gradient boosting implementation with its characteristic leaf-wise tree growth strategy.
+Key capabilities include flexible preprocessing artifact control (compute inline vs reuse pre-computed), **dual-mode categorical handling** (LightGBM's native categorical features via dictionary encoding OR traditional risk table mapping), mean-based numerical imputation, LightGBM model training with early stopping, comprehensive evaluation with ROC/PR curves, and packaged output artifacts in tarball format for deployment. The native categorical mode leverages LightGBM's built-in categorical feature support for better performance and accuracy, while risk table mode maintains backward compatibility with XGBoost-style workflows.
 
 ## Purpose and Major Tasks
 
@@ -44,7 +44,9 @@ Train LightGBM gradient boosting models for tabular classification tasks with in
 3. **Data Loading**: Load train/validation/test datasets with automatic format detection (CSV, TSV, Parquet)
 4. **Preprocessing Artifact Control**: Detect and load pre-computed artifacts or compute inline based on environment flags
 5. **Numerical Imputation**: Apply mean-based imputation for missing values (inline or pre-computed)
-6. **Risk Table Mapping**: Fit and apply risk tables for categorical feature transformation (inline or pre-computed)
+6. **Categorical Feature Handling**: Dual-mode support:
+   - **Native Mode** (recommended): Dictionary encoding for LightGBM's native categorical features
+   - **Risk Table Mode**: Traditional risk table mapping for backward compatibility
 7. **Feature Selection Integration**: Apply pre-computed feature selection if available
 8. **Model Training**: Train LightGBM model with configurable hyperparameters and early stopping
 9. **Comprehensive Evaluation**: Compute metrics, generate predictions, and create ROC/PR visualizations
@@ -70,7 +72,8 @@ lightgbm_training.py
 
 **Optional Preprocessing Artifacts** (in model_artifacts_input):
 - `impute_dict.pkl`: Pre-computed imputation parameters (mean values per column)
-- `risk_table_map.pkl`: Pre-computed risk tables for categorical features
+- `risk_table_map.pkl`: Pre-computed risk tables (risk table mode only)
+- `categorical_mappings.pkl`: Pre-computed dictionary encodings (native categorical mode only)
 - `selected_features.json`: Pre-computed feature selection results
 
 ### Output Paths
@@ -82,7 +85,10 @@ lightgbm_training.py
 
 **Model Output Contents**:
 - `lightgbm_model.txt`: Trained LightGBM model in text format (human-readable, version-stable)
-- `risk_table_map.pkl`: Risk table mappings for categorical features
+- `categorical_config.json`: Categorical mode configuration (native vs risk table)
+- **Mode-specific artifacts**:
+  - Native mode: `categorical_mappings.pkl` (dictionary encodings) + `categorical_mappings.json` (human-readable)
+  - Risk table mode: `risk_table_map.pkl` (risk table mappings)
 - `impute_dict.pkl`: Imputation values for numerical features
 - `feature_importance.json`: Feature importance scores from model
 - `feature_columns.txt`: Ordered feature column names with indices
@@ -111,8 +117,9 @@ None strictly required - all configuration via hyperparameters.json
 | Variable | Default | Description | Use Case |
 |----------|---------|-------------|----------|
 | `USE_PRECOMPUTED_IMPUTATION` | `"false"` | Use pre-computed imputation artifacts | When data already imputed upstream |
-| `USE_PRECOMPUTED_RISK_TABLES` | `"false"` | Use pre-computed risk table artifacts | When risk mapping done upstream |
+| `USE_PRECOMPUTED_RISK_TABLES` | `"false"` | Use pre-computed risk table artifacts | When risk mapping done upstream (risk table mode only) |
 | `USE_PRECOMPUTED_FEATURES` | `"false"` | Use pre-computed feature selection | When features already selected upstream |
+| `USE_NATIVE_CATEGORICAL` | `"true"` | Use LightGBM's native categorical features | **Recommended** for better performance and accuracy |
 
 **Artifact Control Behavior**:
 - When `USE_PRECOMPUTED_*=true`: Script loads artifacts from `model_artifacts_input` and skips transformation (data must already be processed)
@@ -166,9 +173,20 @@ None strictly required - all configuration via hyperparameters.json
 | `num_round` | `int` | No | Number of boosting rounds | Default: `100`, Typical: `50-500` |
 | `early_stopping_rounds` | `int` | No | Early stopping patience | Default: `10`, Typical: `5-20` |
 
-#### Risk Table Parameters
+#### Categorical Feature Parameters
+
+**Native Categorical Mode** (use_native_categorical=True, recommended):
 | Parameter | Type | Required | Description | Range/Default |
 |-----------|------|----------|-------------|---------------|
+| `use_native_categorical` | `bool` | No | Use LightGBM's native categorical features | Default: `true` (recommended) |
+| `min_data_per_group` | `int` | No | Minimum data per categorical group | Default: `100`, Range: `1+` |
+| `cat_smooth` | `float` | No | Categorical feature smoothing | Default: `10.0`, Range: `0+` |
+| `max_cat_threshold` | `int` | No | Max number of categorical bins | Default: `32`, Range: `1-255` |
+
+**Risk Table Mode** (use_native_categorical=False, backward compatibility):
+| Parameter | Type | Required | Description | Range/Default |
+|-----------|------|----------|-------------|---------------|
+| `use_native_categorical` | `bool` | No | Use risk table mapping instead | Default: `false` |
 | `smooth_factor` | `float` | No | Smoothing factor for risk table estimation | Default: `0.0`, Range: `0.0-1.0` |
 | `count_threshold` | `int` | No | Minimum count threshold for risk table bins | Default: `0`, Range: `0+` |
 
@@ -226,8 +244,9 @@ None strictly required - all configuration via hyperparameters.json
 
 **Categorical Features** (`cat_field_list`):
 - Can be string or numeric types
-- Will be transformed to risk scores via risk table mapping
-- After transformation, will be numeric type
+- **Native mode** (recommended): Encoded to integers, LightGBM handles natively
+- **Risk table mode**: Transformed to risk scores (float)
+- After transformation, will be numeric type (int32 for native, float32 for risk table)
 
 **Labels**:
 - Must match values in `multiclass_categories`
@@ -243,10 +262,11 @@ When using pre-computed artifacts, input data must match expected state:
 - Data already imputed upstream
 - Script validates no missing values exist
 
-**USE_PRECOMPUTED_RISK_TABLES=true**:
-- Categorical columns in `cat_field_list` must be numeric type
+**USE_PRECOMPUTED_RISK_TABLES=true** (risk table mode only):
+- Categorical columns in `cat_field_list` must be numeric type (float)
 - Data already risk-mapped upstream
 - Script validates numeric dtype
+- Not applicable in native categorical mode
 
 **USE_PRECOMPUTED_FEATURES=true**:
 - Data may contain additional columns beyond selected features
@@ -260,7 +280,10 @@ When using pre-computed artifacts, input data must match expected state:
 ```
 /opt/ml/model/
 ├── lightgbm_model.txt             # LightGBM model (text format)
-├── risk_table_map.pkl             # Risk tables dictionary
+├── categorical_config.json        # Categorical mode configuration
+├── categorical_mappings.pkl       # Dictionary encodings (native mode)
+├── categorical_mappings.json      # Human-readable encodings (native mode)
+├── risk_table_map.pkl             # Risk tables (risk table mode)
 ├── impute_dict.pkl                # Imputation values dictionary
 ├── feature_importance.json        # Feature importance scores
 ├── feature_columns.txt            # Ordered feature column names
@@ -273,7 +296,37 @@ When using pre-computed artifacts, input data must match expected state:
 - Alternative formats: `.bin` (binary), `.pkl`/`.joblib` (scikit-learn API)
 - Contains all tree structures and parameters
 
-**risk_table_map.pkl**:
+**categorical_config.json**:
+```json
+{
+    "use_native_categorical": true,
+    "categorical_features": ["marketplace", "category", "payment_method"],
+    "min_data_per_group": 100,
+    "cat_smooth": 10.0,
+    "max_cat_threshold": 32
+}
+```
+
+**categorical_mappings.pkl** (native mode):
+```python
+{
+    "marketplace": {
+        "US": 0,
+        "UK": 1,
+        "DE": 2,
+        "FR": 3,
+        "__unknown__": -1  # For unseen categories
+    },
+    "category": {
+        "Electronics": 0,
+        "Books": 1,
+        "__unknown__": -1
+    },
+    ...
+}
+```
+
+**risk_table_map.pkl** (risk table mode):
 ```python
 {
     "marketplace": {
@@ -395,27 +448,40 @@ Note: LightGBM uses split-based importance by default (number of times feature u
 ### Dataset Preparation Component
 
 #### `prepare_datasets(config, train_df, val_df)`
-**Purpose**: Prepare LightGBM Dataset objects from DataFrames
+**Purpose**: Prepare LightGBM Dataset objects from DataFrames with categorical feature support
 
 **Algorithm**:
 ```python
 1. Maintain exact ordering of features:
    a. feature_columns = tab_field_list + cat_field_list
 2. Extract feature matrices:
-   a. X_train = train_df[feature_columns].astype(float)
-   b. X_val = val_df[feature_columns].astype(float)
-3. Validate no NaN/inf values remain
-4. Get label arrays:
+   a. X_train = train_df[feature_columns].copy()
+   b. X_val = val_df[feature_columns].copy()
+3. Apply proper data types based on categorical mode:
+   a. If use_native_categorical:
+      - Numerical features: float32
+      - Categorical features: int32
+   b. Else (risk table mode):
+      - All features: float32
+4. Validate no NaN/inf values remain
+5. Get label arrays:
    a. y_train, y_val from label_name column
-5. Handle class weights for multiclass:
+6. Handle class weights for multiclass:
    a. If multiclass and class_weights provided:
       - Create sample_weights array
       - Map class weights to each sample
-6. Create LightGBM Dataset objects:
-   a. train_set = lgb.Dataset(X_train, label=y_train, weight=sample_weights)
-   b. val_set = lgb.Dataset(X_val, label=y_val, reference=train_set)
-7. Set feature names in Dataset
-8. Return train_set, val_set, feature_columns
+7. Specify categorical features for LightGBM:
+   a. If use_native_categorical:
+      - categorical_feature = cat_field_list
+   b. Else:
+      - categorical_feature = None
+8. Create LightGBM Dataset objects:
+   a. train_set = lgb.Dataset(X_train, label=y_train, weight=sample_weights,
+                               categorical_feature=categorical_feature)
+   b. val_set = lgb.Dataset(X_val, label=y_val, reference=train_set,
+                             categorical_feature=categorical_feature)
+9. Set feature names in Dataset
+10. Return train_set, val_set, feature_columns
 ```
 
 **Parameters**:
@@ -428,6 +494,8 @@ Note: LightGBM uses split-based importance by default (number of times feature u
 - Uses `lgb.Dataset` instead of `xgb.DMatrix`
 - Sample weights set during Dataset creation for multiclass
 - Reference parameter links validation set to training set
+- **Categorical feature support**: `categorical_feature` parameter for native mode
+- **Data types**: Supports int32 for categorical features (native mode)
 
 ### Model Training Component
 
@@ -444,10 +512,15 @@ Note: LightGBM uses split-based importance by default (number of times feature u
    e. feature_fraction = colsample_bytree
    f. lambda_l2 = lambda_xgb
    g. lambda_l1 = alpha_xgb
-2. Set bagging_freq:
+2. Add categorical parameters if using native categorical:
+   a. If use_native_categorical:
+      - min_data_per_group (default: 100)
+      - cat_smooth (default: 10.0)
+      - max_cat_threshold (default: 32)
+3. Set bagging_freq:
    a. If subsample < 1: bagging_freq = 1
    b. Else: bagging_freq = 0
-3. Set objective based on classification type:
+4. Set objective based on classification type:
    a. If is_binary:
       - objective = "binary"
       - Handle class weights via scale_pos_weight
@@ -458,14 +531,21 @@ Note: LightGBM uses split-based importance by default (number of times feature u
 4. Configure callbacks:
    a. log_evaluation(period=1)
    b. early_stopping if configured
-5. Call lgb.train() with:
+6. Call lgb.train() with:
    a. params dictionary
-   b. train_set (training data)
+   b. train_set (training data with categorical_feature info)
    c. num_boost_round
    d. valid_sets (train and validation)
    e. callbacks
-6. Return trained model
+7. Return trained model
 ```
+
+**Native Categorical Feature Benefits**:
+- LightGBM can find optimal splits on categorical features directly
+- No information loss from encoding (maintains semantic meaning)
+- Better accuracy and generalization
+- Faster training (no need for risk table computation)
+- Memory efficient (int32 vs float32/64)
 
 **Parameters**:
 - `config` (dict): Configuration with LightGBM hyperparameters
@@ -485,8 +565,8 @@ Note: LightGBM uses split-based importance by default (number of times feature u
 
 ### Model Saving Component
 
-#### `save_artifacts(model, risk_tables, impute_dict, model_path, feature_columns, config)`
-**Purpose**: Save trained model and preprocessing artifacts
+#### `save_artifacts(model, risk_tables, impute_dict, model_path, feature_columns, config, categorical_mappings)`
+**Purpose**: Save trained model and preprocessing artifacts with mode-specific handling
 
 **Algorithm**:
 ```python
@@ -494,14 +574,21 @@ Note: LightGBM uses split-based importance by default (number of times feature u
 2. Save LightGBM model:
    a. model.save_model(os.path.join(model_path, "lightgbm_model.txt"))
    b. Text format for version stability
-3. Save risk tables (pickle format)
-4. Save imputation dictionary (pickle format)
-5. Save feature importance:
+3. Save categorical configuration:
+   a. categorical_config.json with mode and parameters
+4. Save mode-specific categorical artifacts:
+   a. If use_native_categorical:
+      - Save categorical_mappings.pkl (pickle format)
+      - Save categorical_mappings.json (human-readable)
+   b. Else (risk table mode):
+      - Save risk_table_map.pkl (pickle format)
+5. Save imputation dictionary (pickle format)
+6. Save feature importance:
    a. importance = model.feature_importance()
    b. Map to feature names
    c. Save as JSON
-6. Save feature columns with ordering
-7. Save hyperparameters as JSON
+7. Save feature columns with ordering
+8. Save hyperparameters as JSON
 ```
 
 **Parameters**:
@@ -517,6 +604,8 @@ Note: LightGBM uses split-based importance by default (number of times feature u
 **Key Differences from XGBoost**:
 - Saves as `lightgbm_model.txt` (text) instead of `.bst` (binary)
 - Feature importance extracted via `model.feature_importance()` (returns array)
+- **Dual-mode artifacts**: Saves categorical_mappings.pkl (native) OR risk_table_map.pkl (risk table)
+- **Mode configuration**: Saves categorical_config.json for inference consistency
 
 ## Algorithms and Data Structures
 
@@ -705,7 +794,21 @@ ValueError: Training data contains NaN or inf values after preprocessing
 
 ### For Production Deployments
 
-1. **Use Pre-Computed Artifacts**
+1. **Use Native Categorical Mode (Recommended)**
+   ```json
+   {
+       "use_native_categorical": true,
+       "min_data_per_group": 100,
+       "cat_smooth": 10.0,
+       "max_cat_threshold": 32
+   }
+   ```
+   - Better accuracy and generalization
+   - Faster training (no risk table computation)
+   - Memory efficient (int32 encoding)
+   - Leverages LightGBM's built-in categorical handling
+
+2. **Use Pre-Computed Artifacts**
    ```bash
    export USE_PRECOMPUTED_IMPUTATION=true
    export USE_PRECOMPUTED_RISK_TABLES=true
@@ -749,7 +852,7 @@ ValueError: Training data contains NaN or inf values after preprocessing
    - Set max_depth to prevent overfitting
    - Typical range: 3-10 for most datasets
 
-5. **Use Parquet Format**
+6. **Use Parquet Format**
    - 6-10x faster I/O than CSV
    - Smaller file sizes
    - Better compression
@@ -773,7 +876,17 @@ ValueError: Training data contains NaN or inf values after preprocessing
    - Check convergence behavior
    - Validate label distributions
 
-3. **Use Inline Preprocessing Initially**
+3. **Start with Native Categorical Mode**
+   ```json
+   {
+       "use_native_categorical": true
+   }
+   ```
+   - Simpler than risk table mapping
+   - Better performance out-of-the-box
+   - Less preprocessing complexity
+
+4. **Use Inline Preprocessing Initially**
    ```bash
    export USE_PRECOMPUTED_IMPUTATION=false
    export USE_PRECOMPUTED_RISK_TABLES=false
@@ -813,7 +926,7 @@ ValueError: Training data contains NaN or inf values after preprocessing
 
 ## Example Configurations
 
-### Example 1: Binary Fraud Detection
+### Example 1: Binary Fraud Detection (Native Categorical Mode)
 ```json
 {
     "tab_field_list": ["price", "quantity", "seller_rating", "buyer_age"],
@@ -823,17 +936,18 @@ ValueError: Training data contains NaN or inf values after preprocessing
     "multiclass_categories": [0, 1],
     "is_binary": true,
     "class_weights": [1.0, 10.0],
+    "use_native_categorical": true,
+    "min_data_per_group": 100,
+    "cat_smooth": 10.0,
     "eta": 0.1,
     "max_depth": 6,
     "num_round": 100,
-    "early_stopping_rounds": 10,
-    "smooth_factor": 0.1,
-    "count_threshold": 10
+    "early_stopping_rounds": 10
 }
 ```
-**Use Case**: Fraud detection with severe class imbalance
+**Use Case**: Fraud detection with severe class imbalance using native categorical features
 
-### Example 2: Multiclass Risk Scoring
+### Example 2: Multiclass Risk Scoring (Native Categorical Mode)
 ```json
 {
     "tab_field_list": ["amount", "frequency", "recency"],
@@ -843,21 +957,24 @@ ValueError: Training data contains NaN or inf values after preprocessing
     "is_binary": false,
     "num_classes": 4,
     "class_weights": [1.0, 2.0, 5.0, 10.0],
+    "use_native_categorical": true,
     "eta": 0.05,
     "max_depth": 8,
     "subsample": 0.8,
     "num_round": 200
 }
 ```
-**Use Case**: Multi-level risk scoring with ordered classes
+**Use Case**: Multi-level risk scoring with ordered classes using native categorical features
 
-### Example 3: High-Dimensional Data
+### Example 3: High-Dimensional Data with Native Categorical
 ```json
 {
     "tab_field_list": ["feature1", "feature2", ..., "feature500"],
     "cat_field_list": ["category1", "category2"],
     "label_name": "target",
     "multiclass_categories": [0, 1],
+    "use_native_categorical": true,
+    "max_cat_threshold": 64,
     "eta": 0.05,
     "max_depth": -1,
     "subsample": 0.7,
@@ -865,12 +982,42 @@ ValueError: Training data contains NaN or inf values after preprocessing
     "num_round": 300
 }
 ```
-**Use Case**: High-dimensional dataset leveraging LightGBM's efficiency
+**Use Case**: High-dimensional dataset leveraging LightGBM's efficiency with native categorical features
+
+### Example 4: Legacy Risk Table Mode (Backward Compatibility)
+```json
+{
+    "tab_field_list": ["price", "quantity"],
+    "cat_field_list": ["marketplace", "category"],
+    "label_name": "target",
+    "multiclass_categories": [0, 1],
+    "use_native_categorical": false,
+    "smooth_factor": 0.1,
+    "count_threshold": 10,
+    "eta": 0.1,
+    "max_depth": 6,
+    "num_round": 100
+}
+```
+**Use Case**: XGBoost-style workflow using risk table mapping for backward compatibility
 
 ## Integration Patterns
 
 ### Upstream Integration (Preprocessing)
 
+**Native Categorical Mode (Recommended)**:
+```
+MissingValueImputation
+   ↓ (outputs: imputed train/val/test + impute_dict.pkl)
+DictionaryEncoding (optional upstream)
+   ↓ (outputs: encoded train/val/test + categorical_mappings.pkl)
+FeatureSelection
+   ↓ (outputs: filtered train/val/test + selected_features.json)
+LightGBMTraining (USE_NATIVE_CATEGORICAL=true)
+   ↓ (outputs: model + categorical_mappings.pkl + evaluation)
+```
+
+**Risk Table Mode (Backward Compatibility)**:
 ```
 MissingValueImputation
    ↓ (outputs: imputed train/val/test + impute_dict.pkl)
@@ -878,8 +1025,8 @@ RiskTableMapping
    ↓ (outputs: transformed train/val/test + risk_table_map.pkl)
 FeatureSelection
    ↓ (outputs: filtered train/val/test + selected_features.json)
-LightGBMTraining (USE_PRECOMPUTED_*=true)
-   ↓ (outputs: model + evaluation)
+LightGBMTraining (USE_PRECOMPUTED_RISK_TABLES=true)
+   ↓ (outputs: model + risk_table_map.pkl + evaluation)
 ```
 
 **Artifact Flow**:

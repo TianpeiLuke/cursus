@@ -337,8 +337,11 @@ def get_effective_feature_columns(
 # -------------------------------------------------------------------------
 # Assuming the processor is in a directory that can be imported
 # -------------------------------------------------------------------------
-from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
-from ...processing.numerical.numerical_imputation_processor import (
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.categorical.dictionary_encoding_processor import (
+    DictionaryEncodingProcessor,
+)
+from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 
@@ -384,7 +387,7 @@ logger = setup_logging()
 # Pydantic V2 model for all hyperparameters
 # -------------------------------------------------------------------------
 from pydantic import BaseModel, Field, model_validator
-from ..hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
+from hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
 
 
 class LightGBMConfig(LightGBMModelHyperparameters):
@@ -661,13 +664,31 @@ def prepare_datasets(
     # Maintain exact ordering of features as they'll be used in the model
     feature_columns = config["tab_field_list"] + config["cat_field_list"]
 
-    # Check for any remaining NaN/inf values
-    X_train = train_df[feature_columns].astype(float)
-    X_val = val_df[feature_columns].astype(float)
+    # Prepare data matrices with proper typing
+    X_train = train_df[feature_columns].copy()
+    X_val = val_df[feature_columns].copy()
 
-    if X_train.isna().any().any() or np.isinf(X_train).any().any():
+    # Check if using native categorical features
+    use_native_cat = config.get("use_native_categorical", True)
+
+    if use_native_cat:
+        # Ensure numerical features are float and categorical features are int
+        for col in config["tab_field_list"]:
+            X_train[col] = X_train[col].astype("float32")
+            X_val[col] = X_val[col].astype("float32")
+
+        for col in config["cat_field_list"]:
+            X_train[col] = X_train[col].astype("int32")
+            X_val[col] = X_val[col].astype("int32")
+    else:
+        # Risk table mode - all features are float
+        X_train = X_train.astype("float32")
+        X_val = X_val.astype("float32")
+
+    # Check for any remaining NaN/inf values
+    if X_train.isna().any().any() or np.isinf(X_train.values).any():
         raise ValueError("Training data contains NaN or inf values after preprocessing")
-    if X_val.isna().any().any() or np.isinf(X_val).any().any():
+    if X_val.isna().any().any() or np.isinf(X_val.values).any():
         raise ValueError(
             "Validation data contains NaN or inf values after preprocessing"
         )
@@ -683,12 +704,21 @@ def prepare_datasets(
         for i, weight in enumerate(config["class_weights"]):
             sample_weights_train[y_train == i] = weight
 
+    # Specify categorical features for LightGBM if using native categorical
+    categorical_feature = config["cat_field_list"] if use_native_cat else None
+
+    if categorical_feature:
+        logger.info(
+            f"Specifying categorical features for LightGBM: {categorical_feature}"
+        )
+
     # Create LightGBM Datasets
     train_set = lgb.Dataset(
         X_train.values,
         label=y_train,
         weight=sample_weights_train,  # Set weight during creation for multiclass
         feature_name=feature_columns,
+        categorical_feature=categorical_feature,  # Specify categorical features
         free_raw_data=False,
     )
 
@@ -696,6 +726,7 @@ def prepare_datasets(
         X_val.values,
         label=y_val,
         feature_name=feature_columns,
+        categorical_feature=categorical_feature,  # Specify categorical features
         reference=train_set,  # Reference to training set for consistency
         free_raw_data=False,
     )
@@ -729,6 +760,17 @@ def train_model(
         "bagging_freq": 1 if config.get("subsample", 1) < 1 else 0,
         "verbose": -1,
     }
+
+    # Add categorical feature parameters if using native categorical
+    use_native_cat = config.get("use_native_categorical", True)
+    if use_native_cat:
+        lgb_params["min_data_per_group"] = config.get("min_data_per_group", 100)
+        lgb_params["cat_smooth"] = config.get("cat_smooth", 10.0)
+        lgb_params["max_cat_threshold"] = config.get("max_cat_threshold", 32)
+        logger.info(
+            f"Added categorical parameters: min_data_per_group={lgb_params['min_data_per_group']}, "
+            f"cat_smooth={lgb_params['cat_smooth']}, max_cat_threshold={lgb_params['max_cat_threshold']}"
+        )
 
     # Set objective and handle class weights
     if config.get("is_binary", True):
@@ -783,6 +825,7 @@ def save_artifacts(
     model_path: str,
     feature_columns: List[str],
     config: dict,
+    categorical_mappings: dict = None,
 ):
     """
     Saves the trained model and preprocessing artifacts.
@@ -794,6 +837,7 @@ def save_artifacts(
         model_path: Path to save model artifacts
         feature_columns: List of feature column names
         config: Configuration dictionary containing hyperparameters
+        categorical_mappings: Dictionary of categorical feature encodings (optional)
     """
     os.makedirs(model_path, exist_ok=True)
 
@@ -802,17 +846,52 @@ def save_artifacts(
     model.save_model(model_file)
     logger.info(f"Saved LightGBM model to {model_file}")
 
-    # Save risk tables
-    risk_map_file = os.path.join(model_path, "risk_table_map.pkl")
-    with open(risk_map_file, "wb") as f:
-        pkl.dump(risk_tables, f)
-    logger.info(f"Saved consolidated risk table map to {risk_map_file}")
+    # Save preprocessing artifacts based on mode
+    use_native_cat = config.get("use_native_categorical", True)
 
-    # Save imputation dictionary
+    if use_native_cat:
+        # Save categorical mappings for native categorical mode
+        if categorical_mappings:
+            cat_mappings_file = os.path.join(model_path, "categorical_mappings.pkl")
+            with open(cat_mappings_file, "wb") as f:
+                pkl.dump(categorical_mappings, f)
+            logger.info(f"Saved categorical mappings to {cat_mappings_file}")
+
+            # Also save as JSON for readability
+            cat_mappings_json = os.path.join(model_path, "categorical_mappings.json")
+            with open(cat_mappings_json, "w") as f:
+                json.dump(categorical_mappings, f, indent=2)
+            logger.info(f"Saved categorical mappings (JSON) to {cat_mappings_json}")
+
+        logger.info("Using native categorical features - risk tables not saved")
+    else:
+        # Save risk tables for XGBoost-style mode
+        if risk_tables:
+            risk_map_file = os.path.join(model_path, "risk_table_map.pkl")
+            with open(risk_map_file, "wb") as f:
+                pkl.dump(risk_tables, f)
+            logger.info(f"Saved consolidated risk table map to {risk_map_file}")
+        else:
+            logger.warning("No risk tables to save in risk table mode")
+
+    # Save imputation dictionary (used in both modes)
     impute_file = os.path.join(model_path, "impute_dict.pkl")
     with open(impute_file, "wb") as f:
         pkl.dump(impute_dict, f)
     logger.info(f"Saved imputation dictionary to {impute_file}")
+
+    # Save categorical configuration
+    cat_config = {
+        "use_native_categorical": use_native_cat,
+        "categorical_features": config["cat_field_list"],
+        "min_data_per_group": config.get("min_data_per_group", 100),
+        "cat_smooth": config.get("cat_smooth", 10.0),
+        "max_cat_threshold": config.get("max_cat_threshold", 32),
+    }
+    cat_config_file = os.path.join(model_path, "categorical_config.json")
+    with open(cat_config_file, "w") as f:
+        json.dump(cat_config, f, indent=2)
+    logger.info(f"Saved categorical configuration to {cat_config_file}")
 
     # Save feature importance
     fmap_json = os.path.join(model_path, "feature_importance.json")
@@ -1242,6 +1321,14 @@ def main(
         )
         use_precomputed_features = environ_vars.get("USE_PRECOMPUTED_FEATURES", False)
 
+        # Override use_native_categorical from environment variable if set
+        if "USE_NATIVE_CATEGORICAL" in environ_vars:
+            use_native_categorical_env = environ_vars.get("USE_NATIVE_CATEGORICAL")
+            config["use_native_categorical"] = use_native_categorical_env
+            logger.info(
+                f"Overriding use_native_categorical from environment: {use_native_categorical_env}"
+            )
+
         # ===== PREPROCESSING ARTIFACT CONTROL =====
         logger.info("=" * 70)
         logger.info("PREPROCESSING ARTIFACT CONTROL")
@@ -1249,6 +1336,9 @@ def main(
         logger.info(f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
         logger.info(f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
         logger.info(f"USE_PRECOMPUTED_FEATURES: {use_precomputed_features}")
+        logger.info(
+            f"USE_NATIVE_CATEGORICAL: {config.get('use_native_categorical', True)}"
+        )
         logger.info(f"model_artifacts_input directory: {model_artifacts_input_dir}")
         logger.info("=" * 70)
 
@@ -1286,21 +1376,86 @@ def main(
             )
             logger.info("✓ Numerical imputation completed")
 
-        # ===== 2. Risk Table Mapping =====
-        if precomputed["loaded"]["risk_tables"]:
-            # Data already risk-mapped - just use the artifacts for model packaging
-            risk_tables = precomputed["risk_tables"]
+        # ===== 2. Categorical Feature Encoding =====
+        # Check if using native categorical features or risk table mapping
+        use_native_cat = config.get("use_native_categorical", True)
+        categorical_mappings = {}
+
+        if use_native_cat:
+            logger.info("=" * 70)
+            logger.info("USING LIGHTGBM NATIVE CATEGORICAL FEATURE HANDLING")
+            logger.info("=" * 70)
+            logger.info(f"Categorical features: {config['cat_field_list']}")
             logger.info(
-                "✓ Using pre-computed risk table artifacts (data already transformed)"
+                "Encoding categorical features to integers using DictionaryEncodingProcessor..."
             )
-            logger.info("  → Skipping risk table transformation")
+
+            # Encode categorical features to integers for LightGBM
+            encoding_processors = {}
+
+            for cat_col in config["cat_field_list"]:
+                if cat_col not in train_df.columns:
+                    logger.warning(
+                        f"Categorical column '{cat_col}' not found in data, skipping"
+                    )
+                    continue
+
+                # Create processor for each categorical column
+                processor = DictionaryEncodingProcessor(
+                    columns=[cat_col],
+                    unknown_strategy="default",  # Use default value for unseen categories
+                    default_value=-1,  # -1 will be treated as missing by LightGBM
+                )
+
+                # Fit on training data
+                processor.fit(train_df[[cat_col]])
+                encoding_processors[cat_col] = processor
+
+                # Get the mapping for artifacts
+                categorical_mappings[cat_col] = processor.categorical_map.get(
+                    cat_col, {}
+                )
+
+                # Transform all splits
+                train_df = processor.process(train_df)
+                val_df = processor.process(val_df)
+                test_df = processor.process(test_df)
+
+                # Ensure integer type
+                train_df[cat_col] = train_df[cat_col].astype("int32")
+                val_df[cat_col] = val_df[cat_col].astype("int32")
+                test_df[cat_col] = test_df[cat_col].astype("int32")
+
+                logger.info(
+                    f"✓ Encoded '{cat_col}': {len(categorical_mappings[cat_col])} unique categories"
+                )
+
+            # Risk tables not needed when using native categorical
+            risk_tables = {}
+            logger.info("✓ Categorical encoding completed")
+            logger.info("=" * 70)
+
         else:
-            # Compute inline AND transform data
-            logger.info("Computing risk tables inline and transforming data...")
-            train_df, val_df, test_df, risk_tables = fit_and_apply_risk_tables(
-                config, train_df, val_df, test_df
-            )
-            logger.info("✓ Risk table mapping completed")
+            logger.info("=" * 70)
+            logger.info("USING RISK TABLE MAPPING (XGBoost-STYLE)")
+            logger.info("=" * 70)
+
+            if precomputed["loaded"]["risk_tables"]:
+                # Data already risk-mapped - just use the artifacts for model packaging
+                risk_tables = precomputed["risk_tables"]
+                logger.info(
+                    "✓ Using pre-computed risk table artifacts (data already transformed)"
+                )
+                logger.info("  → Skipping risk table transformation")
+            else:
+                # Compute inline AND transform data
+                logger.info("Computing risk tables inline and transforming data...")
+                train_df, val_df, test_df, risk_tables = fit_and_apply_risk_tables(
+                    config, train_df, val_df, test_df
+                )
+                logger.info("✓ Risk table mapping completed")
+
+            logger.info("=" * 70)
 
         # ===== 3. Feature Selection =====
         if use_precomputed_features:
@@ -1371,6 +1526,7 @@ def main(
             model_path=model_dir,
             feature_columns=feature_columns,
             config=config,
+            categorical_mappings=categorical_mappings,
         )
         logger.info("✓ Model artifacts saved successfully")
 
@@ -1473,6 +1629,12 @@ if __name__ == "__main__":
         ).lower()
         == "true",
     }
+
+    # Add USE_NATIVE_CATEGORICAL if set in environment
+    if "USE_NATIVE_CATEGORICAL" in os.environ:
+        environ_vars["USE_NATIVE_CATEGORICAL"] = (
+            os.environ.get("USE_NATIVE_CATEGORICAL", "true").lower() == "true"
+        )
 
     # Create empty args namespace to maintain function signature
     args = argparse.Namespace()

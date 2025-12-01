@@ -90,8 +90,13 @@ Model Architecture Designs
 
 **Code Locations:**
 - `projects/ab_lightgbm/docker/lightgbm_inference.py` - Inference implementation
+- `projects/ab_lightgbm/docker/lightgbm_inference_handler.py` - Real-time endpoint handler
 - `src/cursus/steps/specs/lightgbm_training_spec.py` - Training specification
 - `src/cursus/steps/configs/config_lightgbm_model_eval_step.py` - Evaluation config
+
+**Related Script Documentation:**
+- [LightGBM Training Script](../scripts/lightgbm_training_script.md) - Training implementation with dual-mode categorical handling
+- [LightGBM Inference Handler Script](../scripts/lightgbm_inference_handler_script.md) - **NEW** - Real-time endpoint handler with native categorical support
 
 **Related Design Docs:**
 - [LightGBM Model Training Design](../1_design/lightgbm_model_training_design.md)
@@ -99,7 +104,7 @@ Model Architecture Designs
 
 **Key Features:**
 - Histogram-based gradient boosting
-- Categorical feature support
+- Native categorical feature support (dual-mode: native or risk table)
 - Memory efficiency
 - Fast training speed
 
