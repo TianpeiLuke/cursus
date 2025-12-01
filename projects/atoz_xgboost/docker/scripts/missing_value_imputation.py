@@ -1067,14 +1067,15 @@ def internal_main(
             imputation_engine, imputation_config, artifacts_output_dir
         )
 
-    # Generate comprehensive report
-    if transformed_data:
+    # Generate comprehensive report (only for training jobs)
+    if job_type == "training" and transformed_data:
         sample_df = next(iter(transformed_data.values()))
         missing_analysis = analyze_missing_values(sample_df)
         validation_report = validate_imputation_data(sample_df, label_field)
         generate_imputation_report(
             imputation_engine, missing_analysis, validation_report, output_dir
         )
+        logger.info("Generated imputation report for training job")
 
     logger.info("Missing value imputation complete.")
     return transformed_data, imputation_engine
