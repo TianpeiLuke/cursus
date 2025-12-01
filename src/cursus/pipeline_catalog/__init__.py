@@ -16,9 +16,10 @@ from .utils import (
     RegistryValidator,
 )
 
-# Import pipeline discovery functions
-from .pipelines import discover_pipelines, load_pipeline, get_registered_pipelines
+# Import new factory-based pipeline creation (Phase 1 refactoring)
+from .core import PipelineFactory, DAGAutoDiscovery
 
+# Import MODS pipelines
 from .mods_pipelines import (
     discover_mods_pipelines,
     load_mods_pipeline,
@@ -35,10 +36,10 @@ __all__ = [
     "TagBasedDiscovery",
     "PipelineRecommendationEngine",
     "RegistryValidator",
-    # Pipeline discovery
-    "discover_pipelines",
-    "load_pipeline",
-    "get_registered_pipelines",
+    # New factory-based pipeline creation (replaces old pipeline classes)
+    "PipelineFactory",
+    "DAGAutoDiscovery",
+    # MODS pipelines
     "discover_mods_pipelines",
     "load_mods_pipeline",
     "get_registered_mods_pipelines",
@@ -60,6 +61,10 @@ def get_catalog_info() -> Dict[str, Any]:
         registry = CatalogRegistry()
         catalog_data = registry.load_catalog()
 
+        # Use new factory-based discovery
+        factory = PipelineFactory()
+        available_pipelines = factory.list_available_pipelines()
+
         return {
             "total_pipelines": catalog_data.get("metadata", {}).get(
                 "total_pipelines", 0
@@ -71,14 +76,13 @@ def get_catalog_info() -> Dict[str, Any]:
             "last_updated": catalog_data.get("metadata", {}).get(
                 "last_updated", "unknown"
             ),
-            "standard_pipelines": len(get_registered_pipelines()),
+            "factory_pipelines": len(available_pipelines),
             "mods_pipelines": len(get_registered_mods_pipelines()),
             "shared_dags": len(get_all_shared_dags()),
         }
     except Exception as e:
         return {
             "error": f"Failed to load catalog info: {e}",
-            "standard_pipelines": len(get_registered_pipelines()),
             "mods_pipelines": len(get_registered_mods_pipelines()),
             "shared_dags": len(get_all_shared_dags()),
         }
@@ -89,6 +93,10 @@ def discover_all_pipelines() -> Dict[str, List[str]]:
     Discover all available pipelines in the catalog.
 
     Returns:
-        Dict with 'standard' and 'mods' pipeline lists
+        Dict with 'factory' (new approach) and 'mods' pipeline lists
     """
-    return {"standard": discover_pipelines(), "mods": discover_mods_pipelines()}
+    factory = PipelineFactory()
+    return {
+        "factory": factory.list_available_pipelines(),
+        "mods": discover_mods_pipelines(),
+    }

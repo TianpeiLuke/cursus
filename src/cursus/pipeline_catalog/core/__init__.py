@@ -17,6 +17,8 @@ from .connection_traverser import ConnectionTraverser
 from .tag_discovery import TagBasedDiscovery
 from .recommendation_engine import PipelineRecommendationEngine
 from .registry_validator import RegistryValidator
+from .dag_discovery import DAGAutoDiscovery, DAGInfo
+from .pipeline_factory import PipelineFactory
 
 __all__ = [
     "BasePipeline",
@@ -25,4 +27,7 @@ __all__ = [
     "TagBasedDiscovery",
     "PipelineRecommendationEngine",
     "RegistryValidator",
+    "DAGAutoDiscovery",
+    "DAGInfo",
+    "PipelineFactory",
 ]

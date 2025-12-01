@@ -110,67 +110,49 @@ def validate_dag_metadata(metadata: DAGMetadata) -> bool:
 
 def get_all_shared_dags() -> Dict[str, Dict[str, Any]]:
     """
-    Get information about all available shared DAG definitions.
+    Get information about all available shared DAG definitions using auto-discovery.
+
+    This function now uses DAGAutoDiscovery to automatically find all DAG files
+    following the naming convention (create_*_dag + get_dag_metadata).
+
+    BEFORE (Manual): Only 7 DAGs registered manually
+    AFTER (Auto-discovery): All 34+ DAGs discovered automatically
 
     Returns:
         Dict mapping DAG identifiers to their metadata
     """
+    from pathlib import Path
+    from ..core.dag_discovery import DAGAutoDiscovery
+
+    # Get the shared_dags directory (where this file is located)
+    shared_dags_dir = Path(__file__).parent
+
+    # Get src directory (4 levels up: shared_dags -> pipeline_catalog -> cursus -> src)
+    # DAGAutoDiscovery expects package_root to be the src directory
+    package_root = shared_dags_dir.parent.parent.parent
+
+    # Initialize discovery for package DAGs only
+    discovery = DAGAutoDiscovery(package_root=package_root)
+
+    # Discover all DAGs
+    all_dags = discovery.discover_all_dags()
+
+    # Convert to the format expected by legacy code
+    # Format: {dag_id: metadata_dict}
     shared_dags = {}
+    for dag_id, dag_info in all_dags.items():
+        # Handle None metadata gracefully
+        metadata = dag_info.metadata or {}
 
-    # XGBoost DAGs
-    try:
-        from .xgboost.simple_dag import get_dag_metadata as xgb_simple_meta
-
-        shared_dags["xgboost.simple"] = xgb_simple_meta()
-    except ImportError:
-        pass
-
-    try:
-        from .xgboost.training_with_calibration_dag import (
-            get_dag_metadata as xgb_training_meta,
-        )
-
-        shared_dags["xgboost.training_calibrated"] = xgb_training_meta()
-    except ImportError:
-        pass
-
-    try:
-        from .xgboost.training_with_evaluation_dag import (
-            get_dag_metadata as xgb_training_eval_meta,
-        )
-
-        shared_dags["xgboost.training_evaluation"] = xgb_training_eval_meta()
-    except ImportError:
-        pass
-
-    try:
-        from .xgboost.complete_e2e_dag import get_dag_metadata as xgb_e2e_meta
-
-        shared_dags["xgboost.complete_e2e"] = xgb_e2e_meta()
-    except ImportError:
-        pass
-
-    # PyTorch DAGs
-    try:
-        from .pytorch.training_dag import get_dag_metadata as pytorch_training_meta
-
-        shared_dags["pytorch.training"] = pytorch_training_meta()
-    except ImportError:
-        pass
-
-    try:
-        from .pytorch.standard_e2e_dag import get_dag_metadata as pytorch_e2e_meta
-
-        shared_dags["pytorch.standard_e2e"] = pytorch_e2e_meta()
-    except ImportError:
-        pass
-
-    # Dummy DAGs
-    try:
-        from .dummy.e2e_basic_dag import get_dag_metadata as dummy_e2e_basic_meta
-
-        shared_dags["dummy.e2e_basic"] = dummy_e2e_basic_meta()
-    except ImportError:
-        pass
+        # Convert DAGInfo to metadata dict format
+        shared_dags[dag_id] = {
+            "description": metadata.get("description", ""),
+            "complexity": dag_info.complexity,
+            "features": dag_info.features,
+            "framework": dag_info.framework,
+            "node_count": dag_info.node_count,
+            "edge_count": dag_info.edge_count,
+            **metadata.get("extra_metadata", {}),
+        }
 
     return shared_dags

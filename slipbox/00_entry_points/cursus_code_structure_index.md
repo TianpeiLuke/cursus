@@ -411,6 +411,33 @@ Extended catalog for sharing complete pipeline structures with intelligent disco
   - Dynamic pipeline creation
   - Metadata-driven approach
 
+**Core Component Documentation:**
+- [DAG Discovery](../pipeline_catalog/core/dag_discovery.md) - **AST-based DAG auto-discovery system**
+  - Automatic DAG scanning and metadata extraction
+  - Workspace-aware prioritization
+  - Convention-based naming validation
+  - Performance: <100ms discovery, <1ms cached
+- [Pipeline Factory](../pipeline_catalog/core/pipeline_factory.md) - **Dynamic pipeline creation factory**
+  - Three creation interfaces: direct ID, natural language search, structured criteria
+  - Class caching for performance (~15ms first, <1ms cached)
+  - Search scoring algorithm with weighted matching
+  - Eliminates redundant pipeline implementations
+- [Pipeline Explorer](../pipeline_catalog/core/pipeline_explorer.md) - **Interactive pipeline discovery**
+  - Multi-dimensional filtering (framework, complexity, features)
+  - Similarity search and recommendations
+  - Pipeline comparison tools
+  - Jupyter notebook integration
+- [Pipeline Knowledge Graph](../pipeline_catalog/core/pipeline_knowledge_graph.md) - **Relationship navigation system**
+  - Evolution path discovery (simple → comprehensive)
+  - Graph traversal algorithms (BFS, shortest path)
+  - Cluster detection (Union-Find)
+  - Visual graph generation
+- [Pipeline Advisor](../pipeline_catalog/core/pipeline_advisor.md) - **Intelligent pipeline recommendations**
+  - Requirements-based pipeline matching
+  - Gap analysis and upgrade path suggestions
+  - Use case to pipeline mapping
+  - Feature recommendations
+
 **Existing Architecture:**
 - [Pipeline Catalog Design](../1_design/pipeline_catalog_design.md) - Original catalog design
 - [Pipeline Catalog Zettelkasten Refactoring](../1_design/pipeline_catalog_zettelkasten_refactoring.md) - Zettelkasten integration
