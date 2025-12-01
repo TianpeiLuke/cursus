@@ -130,6 +130,7 @@ def _load_split_data(split_dir: Path, split_name: str) -> pd.DataFrame:
     - {split_name}_processed_data.tsv
     - {split_name}_processed_data.parquet
     - part-*.csv (for sharded data)
+    - part-*.parquet (for sharded data)
     """
     # Try specific file names first
     for ext in [".csv", ".tsv", ".parquet"]:
@@ -137,7 +138,18 @@ def _load_split_data(split_dir: Path, split_name: str) -> pd.DataFrame:
         if file_path.exists():
             return _read_file(file_path)
 
-    # Fall back to pattern matching
+    # Check for sharded data (same logic as _load_single_dataset)
+    csv_shards = list(split_dir.glob("part-*.csv"))
+    parquet_shards = list(split_dir.glob("part-*.parquet"))
+
+    if csv_shards or parquet_shards:
+        # Combine shards
+        all_shards = sorted(csv_shards + parquet_shards)
+        dfs = [_read_file(shard) for shard in all_shards]
+        logger.info(f"Combining {len(all_shards)} shard files from {split_dir}")
+        return pd.concat(dfs, ignore_index=True)
+
+    # Fall back to pattern matching for single files
     csv_files = list(split_dir.glob("*.csv"))
     tsv_files = list(split_dir.glob("*.tsv"))
     parquet_files = list(split_dir.glob("*.parquet"))
