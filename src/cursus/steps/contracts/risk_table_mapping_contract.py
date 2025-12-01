@@ -25,7 +25,9 @@ RISK_TABLE_MAPPING_CONTRACT = ScriptContract(
         # No strictly required environment variables - script has defaults
     ],
     optional_env_vars={
-        # No optional environment variables needed
+        "SMOOTH_FACTOR": "0.01",
+        "COUNT_THRESHOLD": "5",
+        "MAX_UNIQUE_THRESHOLD": "100",
     },
     framework_requirements={
         "pandas": ">=1.3.0",

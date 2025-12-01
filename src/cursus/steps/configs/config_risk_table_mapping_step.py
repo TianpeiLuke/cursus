@@ -8,8 +8,8 @@ After Phase 6 refactor: Hyperparameters are now embedded in the source directory
 eliminating the need for S3 upload logic and hyperparameters_s3_uri field.
 """
 
-from typing import List
-from pydantic import Field, model_validator, field_validator
+from typing import List, Dict, Any, Optional
+from pydantic import Field, model_validator, field_validator, PrivateAttr
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
@@ -71,6 +71,36 @@ class RiskTableMappingConfig(ProcessingStepConfigBase):
         default=5,
         description="Minimum count threshold for risk table calculation (embedded in hyperparams/hyperparameters.json)",
     )
+
+    max_unique_threshold: int = Field(
+        default=100,
+        description="Maximum unique values threshold for categorical field validation (embedded in hyperparams/hyperparameters.json)",
+    )
+
+    # ===== Derived Fields (Tier 3) =====
+    # These are fields calculated from other fields
+    # They are private with public read-only property access
+
+    _environment_variables: Optional[Dict[str, str]] = PrivateAttr(default=None)
+
+    # ===== Properties for Derived Fields =====
+
+    @property
+    def environment_variables(self) -> Dict[str, str]:
+        """
+        Get environment variables for the risk table mapping script.
+
+        Returns:
+            Dictionary of environment variables
+        """
+        if self._environment_variables is None:
+            self._environment_variables = {
+                "SMOOTH_FACTOR": str(self.smooth_factor),
+                "COUNT_THRESHOLD": str(self.count_threshold),
+                "MAX_UNIQUE_THRESHOLD": str(self.max_unique_threshold),
+            }
+
+        return self._environment_variables
 
     @field_validator("job_type")
     @classmethod

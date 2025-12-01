@@ -194,17 +194,20 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
         """
         Create environment variables for the processing job.
 
-        Uses the base class implementation to get environment variables from the
-        script contract (both required and optional), then adds any additional
-        environment variables from config.env.
+        Uses the configuration's environment_variables property which automatically
+        generates all required environment variables from the config fields.
 
         Returns:
             Dict[str, str]: Environment variables for the processing job
         """
-        # Get environment variables from contract using base class implementation
+        # Get base environment variables from contract
         env_vars = super()._get_environment_variables()
 
-        # Add environment variables from config if they exist
+        # Get environment variables from config (includes all risk table mapping settings)
+        config_env_vars = self.config.environment_variables
+        env_vars.update(config_env_vars)
+
+        # Add environment variables from config.env if they exist
         if hasattr(self.config, "env") and self.config.env:
             env_vars.update(self.config.env)
 

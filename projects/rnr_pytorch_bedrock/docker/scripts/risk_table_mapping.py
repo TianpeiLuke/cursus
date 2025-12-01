@@ -109,7 +109,7 @@ def load_json_config(config_path: str) -> Dict[str, Any]:
 
 
 def validate_categorical_fields(
-    df: pd.DataFrame, cat_field_list: List[str]
+    df: pd.DataFrame, cat_field_list: List[str], max_unique_threshold: int = 100
 ) -> List[str]:
     """
     Validate that fields in cat_field_list are suitable for risk mapping.
@@ -117,6 +117,7 @@ def validate_categorical_fields(
     Args:
         df: DataFrame containing the data
         cat_field_list: List of categorical field names
+        max_unique_threshold: Maximum unique values threshold for suitability (default: 100)
 
     Returns:
         List of valid fields for risk mapping
@@ -131,14 +132,17 @@ def validate_categorical_fields(
         # Check if field is categorical or has few unique values
         unique_count = df[field].nunique()
 
-        if pd.api.types.is_categorical_dtype(df[field]) or unique_count < 100:
+        if (
+            pd.api.types.is_categorical_dtype(df[field])
+            or unique_count < max_unique_threshold
+        ):
             valid_fields.append(field)
             logger.info(
                 f"Field '{field}' is valid for risk mapping ({unique_count} unique values)"
             )
         else:
             logger.warning(
-                f"Field '{field}' may not be suitable for risk mapping ({unique_count} unique values)"
+                f"Field '{field}' may not be suitable for risk mapping ({unique_count} unique values, threshold={max_unique_threshold})"
             )
 
     return valid_fields
@@ -354,6 +358,7 @@ def process_data(
     risk_tables_dict: Optional[Dict] = None,
     smooth_factor: float = 0.01,
     count_threshold: int = 5,
+    max_unique_threshold: int = 100,
 ) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
     """
     Core data processing logic for risk table mapping.
@@ -366,6 +371,7 @@ def process_data(
         risk_tables_dict: Pre-existing risk tables (for non-training jobs)
         smooth_factor: Smoothing factor for risk tables (default: 0.01)
         count_threshold: Minimum count threshold (default: 5)
+        max_unique_threshold: Maximum unique values threshold (default: 100)
 
     Returns:
         Tuple containing:
@@ -376,7 +382,7 @@ def process_data(
     if job_type == "training":
         # Validate categorical fields on training data
         valid_cat_fields = validate_categorical_fields(
-            data_dict["train"], cat_field_list
+            data_dict["train"], cat_field_list, max_unique_threshold
         )
 
         if not valid_cat_fields:
@@ -542,6 +548,7 @@ def internal_main(
     input_dir: str,
     output_dir: str,
     hyperparams: Dict[str, Any],
+    environ_vars: Dict[str, str],
     model_artifacts_input_dir: Optional[str] = None,
     model_artifacts_output_dir: Optional[str] = None,
     load_data_func: Callable = load_split_data,
@@ -555,6 +562,7 @@ def internal_main(
         input_dir: Input directory for data
         output_dir: Output directory for processed data
         hyperparams: Hyperparameters dictionary loaded from hyperparameters.json
+        environ_vars: Environment variables dictionary
         model_artifacts_input_dir: Directory containing model artifacts from previous steps
         model_artifacts_output_dir: Directory to save model artifacts for next steps
         load_data_func: Function to load data (for dependency injection in tests)
@@ -569,14 +577,26 @@ def internal_main(
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Extract required hyperparameters with defaults
+    # Environment variables take priority over hyperparameters
     cat_field_list = hyperparams.get("cat_field_list", [])
     label_name = hyperparams.get("label_name", "target")
-    smooth_factor = hyperparams.get("smooth_factor", 0.01)  # Default if not provided
-    count_threshold = hyperparams.get("count_threshold", 5)  # Default if not provided
+
+    smooth_factor = float(
+        environ_vars.get("SMOOTH_FACTOR", hyperparams.get("smooth_factor", 0.01))
+    )
+    count_threshold = int(
+        environ_vars.get("COUNT_THRESHOLD", hyperparams.get("count_threshold", 5))
+    )
+    max_unique_threshold = int(
+        environ_vars.get(
+            "MAX_UNIQUE_THRESHOLD", hyperparams.get("max_unique_threshold", 100)
+        )
+    )
 
     logger.info(
-        f"Using hyperparameters: label_name={label_name}, "
-        + f"smooth_factor={smooth_factor}, count_threshold={count_threshold}"
+        f"Using parameters: label_name={label_name}, "
+        + f"smooth_factor={smooth_factor}, count_threshold={count_threshold}, "
+        + f"max_unique_threshold={max_unique_threshold}"
     )
     logger.info(f"Categorical fields from hyperparameters: {cat_field_list}")
 
@@ -615,6 +635,7 @@ def internal_main(
         risk_tables_dict=risk_tables_dict,
         smooth_factor=smooth_factor,
         count_threshold=count_threshold,
+        max_unique_threshold=max_unique_threshold,
     )
 
     # Save processed data
@@ -712,6 +733,7 @@ def main(
             input_dir=input_dir,
             output_dir=output_dir,
             hyperparams=hyperparams,
+            environ_vars=environ_vars,
             model_artifacts_input_dir=model_artifacts_input_dir,
             model_artifacts_output_dir=model_artifacts_output_dir,
         )
@@ -750,8 +772,12 @@ if __name__ == "__main__":
         if args.job_type != "training":
             input_paths["model_artifacts_input"] = DEFAULT_MODEL_ARTIFACTS_DIR
 
-        # Environment variables dictionary (not used in this script)
-        environ_vars = {}
+        # Environment variables dictionary - read from os.environ
+        environ_vars = {
+            "SMOOTH_FACTOR": os.environ.get("SMOOTH_FACTOR", "0.01"),
+            "COUNT_THRESHOLD": os.environ.get("COUNT_THRESHOLD", "5"),
+            "MAX_UNIQUE_THRESHOLD": os.environ.get("MAX_UNIQUE_THRESHOLD", "100"),
+        }
 
         # Execute the main function with standardized inputs
         result, _ = main(input_paths, output_paths, environ_vars, args)
