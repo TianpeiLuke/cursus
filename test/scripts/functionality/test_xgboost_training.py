@@ -14,18 +14,26 @@ import sys
 # Mock torch before any imports that might need it
 sys.modules['torch'] = MagicMock()
 
-# Import the functions to be tested
-from cursus.steps.scripts.xgboost_training import (
-    load_and_validate_config,
-    find_first_data_file,
-    load_datasets,
-    apply_numerical_imputation,
-    fit_and_apply_risk_tables,
-    prepare_dmatrices,
-    train_model,
-    save_artifacts,
-    main,
-)
+# CRITICAL: Set USE_SECURE_PYPI=false AND mock subprocess.check_call BEFORE importing
+# The xgboost_training script calls install_packages() at module level (line 179)
+# Setting USE_SECURE_PYPI=false makes it use public PyPI path
+# Mocking subprocess.check_call prevents actual pip installs
+os.environ['USE_SECURE_PYPI'] = 'false'
+
+# Mock subprocess.check_call to prevent pip installs during module import
+with patch("subprocess.check_call"):
+    from cursus.steps.scripts.xgboost_training import (
+        load_and_validate_config,
+        find_first_data_file,
+        load_datasets,
+        apply_numerical_imputation,
+        fit_and_apply_risk_tables,
+        prepare_dmatrices,
+        train_model,
+        save_artifacts,
+        main,
+        logger,  # Import the module-level logger
+    )
 
 
 class TestXGBoostTrainHelpers:
@@ -164,9 +172,9 @@ class TestXGBoostTrainHelpers:
 
         assert result is None
 
-    @patch("cursus.steps.scripts.xgboost_training.pd.read_csv")
+    @patch("cursus.steps.scripts.xgboost_training.load_dataframe_with_format")
     @patch("cursus.steps.scripts.xgboost_training.find_first_data_file")
-    def test_load_datasets_success(self, mock_find_file, mock_read_csv):
+    def test_load_datasets_success(self, mock_find_file, mock_load_df):
         """Test successful dataset loading."""
         # Mock file finding
         mock_find_file.side_effect = [
@@ -175,23 +183,28 @@ class TestXGBoostTrainHelpers:
             "/path/test.csv",
         ]
 
-        # Mock dataframe reading
+        # Mock dataframe loading with format
         train_df = pd.DataFrame({"col1": [1, 2], "target": [0, 1]})
         val_df = pd.DataFrame({"col1": [3, 4], "target": [1, 0]})
         test_df = pd.DataFrame({"col1": [5, 6], "target": [0, 1]})
 
-        mock_read_csv.side_effect = [train_df, val_df, test_df]
+        mock_load_df.side_effect = [
+            (train_df, "csv"),
+            (val_df, "csv"),
+            (test_df, "csv"),
+        ]
 
-        result_train, result_val, result_test = load_datasets("/input/path")
+        result_train, result_val, result_test, result_format = load_datasets("/input/path")
 
         # Verify results
         pd.testing.assert_frame_equal(result_train, train_df)
         pd.testing.assert_frame_equal(result_val, val_df)
         pd.testing.assert_frame_equal(result_test, test_df)
+        assert result_format == "csv"
 
         # Verify calls
         assert mock_find_file.call_count == 3
-        assert mock_read_csv.call_count == 3
+        assert mock_load_df.call_count == 3
 
     @patch("cursus.steps.scripts.xgboost_training.find_first_data_file")
     def test_load_datasets_missing_files(self, mock_find_file):
@@ -210,13 +223,11 @@ class TestXGBoostTrainHelpers:
 
     @patch("cursus.steps.scripts.xgboost_training.NumericalVariableImputationProcessor")
     def test_apply_numerical_imputation(self, mock_imputer_class, sample_config, sample_data):
-        """Test numerical imputation application."""
-        # Create mock imputer
+        """Test numerical imputation application with single-column architecture."""
+        # Create mock imputer  
         mock_imputer = MagicMock()
-        mock_imputer.transform.side_effect = (
-            lambda df: df
-        )  # Return unchanged for simplicity
-        mock_imputer.get_params.return_value = {"imputation_dict": {"feature1": 0.5}}
+        mock_imputer.transform.side_effect = lambda series: series  # Return unchanged
+        mock_imputer.get_imputation_value.return_value = 0.5
         mock_imputer_class.return_value = mock_imputer
 
         # Test data
@@ -230,17 +241,29 @@ class TestXGBoostTrainHelpers:
 
         train_result, val_result, test_result, impute_dict = result
 
-        # Verify imputer was created correctly
-        mock_imputer_class.assert_called_once_with(
-            variables=sample_config["tab_field_list"], strategy="mean"
-        )
+        # Verify imputer was created for each column (single-column architecture)
+        # Should be called 3 times, once per feature in tab_field_list
+        assert mock_imputer_class.call_count == 3
+        
+        # Verify each call used correct parameters
+        expected_calls = [
+            ((('column_name', 'feature1'), ('strategy', 'mean')),),
+            ((('column_name', 'feature2'), ('strategy', 'mean')),),
+            ((('column_name', 'feature3'), ('strategy', 'mean')),),
+        ]
+        for call, expected in zip(mock_imputer_class.call_args_list, expected_calls):
+            assert call.kwargs.get('column_name') in ['feature1', 'feature2', 'feature3']
+            assert call.kwargs.get('strategy') == 'mean'
 
-        # Verify imputer methods were called
-        mock_imputer.fit.assert_called_once()
-        assert mock_imputer.transform.call_count == 3
+        # Verify fit was called 3 times (once per column)
+        assert mock_imputer.fit.call_count == 3
+        
+        # Verify transform was called 9 times (3 columns × 3 splits)
+        assert mock_imputer.transform.call_count == 9
 
-        # Verify imputation dictionary
-        assert impute_dict == {"feature1": 0.5}
+        # Verify imputation dictionary has all 3 features
+        assert len(impute_dict) == 3
+        assert all(f in impute_dict for f in ["feature1", "feature2", "feature3"])
 
     @patch("cursus.steps.scripts.xgboost_training.RiskTableMappingProcessor")
     def test_fit_and_apply_risk_tables(self, mock_processor_class, sample_config, sample_data):
@@ -509,10 +532,10 @@ class TestXGBoostTrainMain:
         dirs = setup_dirs
         self._create_test_data(dirs, sample_config)
         
-        # Setup mocks
+        # Setup mocks for single-column architecture
         mock_imputer = MagicMock()
-        mock_imputer.transform.side_effect = lambda df: df
-        mock_imputer.get_params.return_value = {"imputation_dict": {}}
+        mock_imputer.transform.side_effect = lambda series: series  # Single-column: returns Series
+        mock_imputer.get_imputation_value.return_value = 0.5  # Return actual float, not Mock
         mock_imputer_class.return_value = mock_imputer
 
         mock_processor = MagicMock()
@@ -537,11 +560,11 @@ class TestXGBoostTrainMain:
             "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
-        args = argparse.Namespace()
+        args = argparse.Namespace(job_type=None)
 
-        # Execute main function
+        # Execute main function with logger
         try:
-            main(input_paths, output_paths, environ_vars, args)
+            main(input_paths, output_paths, environ_vars, args, logger)
             success = True
         except Exception as e:
             success = False
@@ -576,10 +599,10 @@ class TestXGBoostTrainMain:
             "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
-        args = argparse.Namespace()
+        args = argparse.Namespace(job_type=None)
 
         with pytest.raises(FileNotFoundError):
-            main(input_paths, output_paths, environ_vars, args)
+            main(input_paths, output_paths, environ_vars, args, logger)
 
     def test_main_missing_data(self, setup_dirs, sample_config):
         """Test main function with missing data files."""
@@ -598,10 +621,10 @@ class TestXGBoostTrainMain:
             "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
-        args = argparse.Namespace()
+        args = argparse.Namespace(job_type=None)
 
         with pytest.raises(FileNotFoundError):
-            main(input_paths, output_paths, environ_vars, args)
+            main(input_paths, output_paths, environ_vars, args, logger)
 
     def test_main_invalid_config(self, setup_dirs):
         """Test main function with invalid configuration."""
@@ -622,10 +645,10 @@ class TestXGBoostTrainMain:
             "evaluation_output": str(dirs['output_dir']),
         }
         environ_vars = {}
-        args = argparse.Namespace()
+        args = argparse.Namespace(job_type=None)
 
         with pytest.raises(ValueError):
-            main(input_paths, output_paths, environ_vars, args)
+            main(input_paths, output_paths, environ_vars, args, logger)
 
 
 class TestXGBoostTrainIntegration:
