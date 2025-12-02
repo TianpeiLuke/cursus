@@ -732,7 +732,7 @@ class TestLoadEvalData:
         csv_file = temp_dir / "eval_data.csv"
         data.to_csv(csv_file, index=False)
         
-        result = load_eval_data(str(temp_dir))
+        result, format_str = load_eval_data(str(temp_dir))
         
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 5
@@ -750,7 +750,7 @@ class TestLoadEvalData:
         parquet_file = temp_dir / "eval_data.parquet"
         data.to_parquet(parquet_file, index=False)
         
-        result = load_eval_data(str(temp_dir))
+        result, format_str = load_eval_data(str(temp_dir))
         
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 5
@@ -768,7 +768,7 @@ class TestLoadEvalData:
         data1.to_csv(csv_file1, index=False)
         data2.to_csv(csv_file2, index=False)
         
-        result = load_eval_data(str(temp_dir))
+        result, format_str = load_eval_data(str(temp_dir))
         
         # Should load the first file (alphabetically)
         assert isinstance(result, pd.DataFrame)
@@ -789,7 +789,7 @@ class TestLoadEvalData:
         csv_file = nested_dir / "eval_data.csv"
         data.to_csv(csv_file, index=False)
         
-        result = load_eval_data(str(temp_dir))
+        result, format_str = load_eval_data(str(temp_dir))
         
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3
@@ -887,7 +887,7 @@ class TestSavePredictions:
         df, predictions = sample_data_and_predictions
         
         output_path = save_predictions(
-            df, predictions, str(temp_dir), format="csv"
+            df, predictions, str(temp_dir), input_format="csv"
         )
         
         assert output_path.endswith("predictions.csv")
@@ -905,7 +905,7 @@ class TestSavePredictions:
         df, predictions = sample_data_and_predictions
         
         output_path = save_predictions(
-            df, predictions, str(temp_dir), format="parquet"
+            df, predictions, str(temp_dir), input_format="parquet"
         )
         
         assert output_path.endswith("predictions.parquet")
@@ -922,7 +922,7 @@ class TestSavePredictions:
         df, predictions = sample_data_and_predictions
         
         output_path = save_predictions(
-            df, predictions, str(temp_dir), format="json", json_orient="records"
+            df, predictions, str(temp_dir), input_format="json", json_orient="records"
         )
         
         assert output_path.endswith("predictions.json")
@@ -1333,7 +1333,7 @@ class TestCommonFailurePatterns:
         
         # Should handle special float values in JSON serialization
         try:
-            output_path = save_predictions(df, predictions, str(temp_dir), format="json")
+            output_path = save_predictions(df, predictions, str(temp_dir), input_format="json")
             assert os.path.exists(output_path)
         except Exception as e:
             # If it fails due to special values, that's expected

@@ -695,6 +695,7 @@ class TestInternalMain:
             input_dir=input_dir,
             output_dir=output_dir,
             hyperparams=hyperparams,
+            environ_vars={},
         )
 
         # Verify outputs
@@ -733,6 +734,7 @@ class TestInternalMain:
             input_dir=input_dir,
             output_dir=output_dir,
             hyperparams=hyperparams,
+            environ_vars={},
             model_artifacts_input_dir=artifacts_input_dir,
         )
 
@@ -766,6 +768,7 @@ class TestInternalMain:
             input_dir=dirs["input_dir"],
             output_dir=dirs["output_dir"],
             hyperparams=hyperparams,
+            environ_vars={},
             load_data_func=mock_load_func,
             save_data_func=mock_save_func,
         )
@@ -908,6 +911,7 @@ class TestMainRiskTableFlow:
             input_dir=input_dir,
             output_dir=risk_table_dir,
             hyperparams=hyperparams,
+            environ_vars={},
             model_artifacts_output_dir=os.path.join(risk_table_dir, "model_artifacts"),
         )
 

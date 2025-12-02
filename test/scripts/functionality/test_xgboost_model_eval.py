@@ -33,7 +33,7 @@ import sys
 # CRITICAL: Mock subprocess.check_call BEFORE importing the module
 # This prevents actual pip installations from running during test collection
 with patch("subprocess.check_call"):
-    from src.cursus.steps.scripts.xgboost_model_eval import (
+    from cursus.steps.scripts.xgboost_model_eval import (
         _detect_file_format,
         load_dataframe_with_format,
         save_dataframe_with_format,
@@ -368,7 +368,7 @@ class TestModelArtifactLoading:
         # Should not raise error
         decompress_model_artifacts(str(temp_dir))
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
+    @patch("cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
     def test_load_model_artifacts_success(
         self, mock_booster_class, model_artifacts_dir
     ):
@@ -400,7 +400,7 @@ class TestModelArtifactLoading:
         assert hyperparams["is_binary"] is True
         assert hyperparams["max_depth"] == 6
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
+    @patch("cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
     def test_load_model_artifacts_with_tarball(
         self, mock_booster_class, temp_dir, sample_risk_tables, sample_impute_dict
     ):
@@ -759,7 +759,7 @@ class TestMetricsSaving:
 class TestVisualizationGeneration:
     """Tests for visualization generation."""
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plt")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plt")
     def test_plot_and_save_roc_curve(self, mock_plt, temp_dir, sample_binary_labels):
         """Test ROC curve generation and saving."""
         y_score = np.array([0.2, 0.7, 0.1, 0.8, 0.6, 0.3, 0.9, 0.4])
@@ -772,7 +772,7 @@ class TestVisualizationGeneration:
         mock_plt.savefig.assert_called_once()
         assert str(temp_dir) in str(mock_plt.savefig.call_args)
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plt")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plt")
     def test_plot_and_save_pr_curve(self, mock_plt, temp_dir, sample_binary_labels):
         """Test PR curve generation and saving."""
         y_score = np.array([0.2, 0.7, 0.1, 0.8, 0.6, 0.3, 0.9, 0.4])
@@ -784,7 +784,7 @@ class TestVisualizationGeneration:
         # Verify savefig was called
         mock_plt.savefig.assert_called_once()
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plt")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plt")
     def test_plot_comparison_roc_curves(self, mock_plt, temp_dir, sample_binary_labels):
         """Test comparison ROC curve generation."""
         y_new = np.array([0.2, 0.7, 0.1, 0.8, 0.6, 0.3, 0.9, 0.4])
@@ -986,11 +986,11 @@ class TestLoadEvalData:
 class TestEvaluateModel:
     """Tests for evaluate_model orchestration function."""
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.xgb.DMatrix")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.save_predictions")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.save_metrics")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_and_save_roc_curve")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_and_save_pr_curve")
+    @patch("cursus.steps.scripts.xgboost_model_eval.xgb.DMatrix")
+    @patch("cursus.steps.scripts.xgboost_model_eval.save_predictions")
+    @patch("cursus.steps.scripts.xgboost_model_eval.save_metrics")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_and_save_roc_curve")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_and_save_pr_curve")
     def test_evaluate_model_binary_orchestration(
         self,
         mock_plot_pr,
@@ -999,8 +999,15 @@ class TestEvaluateModel:
         mock_save_predictions,
         mock_dmatrix,
         sample_dataframe,
+        temp_dir,
     ):
         """Test evaluate_model orchestrates binary classification correctly."""
+        # Setup output directories
+        output_eval = temp_dir / "eval"
+        output_eval.mkdir()
+        output_metrics = temp_dir / "metrics"
+        output_metrics.mkdir()
+
         # Setup
         mock_model = Mock()
         # Binary classification: 1D predictions converted to 2-column
@@ -1017,8 +1024,8 @@ class TestEvaluateModel:
             id_col="id",
             label_col="label",
             hyperparams=hyperparams,
-            output_eval_dir="/tmp/eval",
-            output_metrics_dir="/tmp/metrics",
+            output_eval_dir=str(output_eval),
+            output_metrics_dir=str(output_metrics),
             input_format="csv",
         )
 
@@ -1033,18 +1040,18 @@ class TestEvaluateModel:
 class TestEvaluateModelWithComparison:
     """Tests for evaluate_model_with_comparison orchestration function."""
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.xgb.DMatrix")
+    @patch("cursus.steps.scripts.xgboost_model_eval.xgb.DMatrix")
     @patch(
-        "src.cursus.steps.scripts.xgboost_model_eval.save_predictions_with_comparison"
+        "cursus.steps.scripts.xgboost_model_eval.save_predictions_with_comparison"
     )
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.save_metrics")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_comparison_roc_curves")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_comparison_pr_curves")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_score_scatter")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_score_distributions")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.create_comparison_report")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_and_save_roc_curve")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.plot_and_save_pr_curve")
+    @patch("cursus.steps.scripts.xgboost_model_eval.save_metrics")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_comparison_roc_curves")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_comparison_pr_curves")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_score_scatter")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_score_distributions")
+    @patch("cursus.steps.scripts.xgboost_model_eval.create_comparison_report")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_and_save_roc_curve")
+    @patch("cursus.steps.scripts.xgboost_model_eval.plot_and_save_pr_curve")
     def test_evaluate_with_comparison_orchestration(
         self,
         mock_plot_pr_single,
@@ -1112,11 +1119,11 @@ class TestEvaluateModelWithComparison:
 class TestMainEntryPoint:
     """Tests for main entry point orchestration (not internal implementation)."""
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.load_model_artifacts")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.load_eval_data")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.preprocess_eval_data")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.evaluate_model")
+    @patch("cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
+    @patch("cursus.steps.scripts.xgboost_model_eval.load_model_artifacts")
+    @patch("cursus.steps.scripts.xgboost_model_eval.load_eval_data")
+    @patch("cursus.steps.scripts.xgboost_model_eval.preprocess_eval_data")
+    @patch("cursus.steps.scripts.xgboost_model_eval.evaluate_model")
     def test_main_standard_mode_orchestration(
         self,
         mock_evaluate,
@@ -1188,11 +1195,11 @@ class TestMainEntryPoint:
         # Verify evaluate_model was called (parameters passed correctly)
         assert mock_evaluate.called
 
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.load_model_artifacts")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.load_eval_data")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.preprocess_eval_data")
-    @patch("src.cursus.steps.scripts.xgboost_model_eval.evaluate_model_with_comparison")
+    @patch("cursus.steps.scripts.xgboost_model_eval.xgb.Booster")
+    @patch("cursus.steps.scripts.xgboost_model_eval.load_model_artifacts")
+    @patch("cursus.steps.scripts.xgboost_model_eval.load_eval_data")
+    @patch("cursus.steps.scripts.xgboost_model_eval.preprocess_eval_data")
+    @patch("cursus.steps.scripts.xgboost_model_eval.evaluate_model_with_comparison")
     def test_main_comparison_mode_orchestration(
         self,
         mock_evaluate_comp,
