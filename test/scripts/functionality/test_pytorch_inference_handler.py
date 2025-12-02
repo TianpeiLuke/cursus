@@ -636,7 +636,7 @@ class TestModelFunction:
             
             # Test when ONNX model doesn't exist (should load PyTorch model)
             onnx_file = temp_dir / "model.onnx"
-            assert not onnx_file.exists()  # Verify ONNX file doesn't exist
+            assert not onnx_file.exists()  # Verify ONNX file doesn't exist so PyTorch path is taken
             
             result = model_fn(str(temp_dir))
             
