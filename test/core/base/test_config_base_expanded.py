@@ -686,7 +686,8 @@ class TestBasePipelineConfigExpanded:
         system_fields = set(categories["system"])
         expected_system = {
             "model_class", "current_date", "framework_version", 
-            "py_version", "source_dir"
+            "py_version", "source_dir", "enable_caching", 
+            "use_secure_pypi", "max_runtime_seconds"
         }
         assert system_fields == expected_system
         

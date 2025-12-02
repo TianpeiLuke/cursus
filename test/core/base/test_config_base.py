@@ -35,12 +35,16 @@ class TestBasePipelineConfig:
         assert config.region == "NA"
         assert config.service_name == "test_service"
         assert config.pipeline_version == "1.0.0"
+        assert config.project_root_folder == "cursus"
 
         # Verify default fields
         assert config.model_class == "xgboost"
         assert config.framework_version == "2.1.0"
         assert config.py_version == "py310"
         assert config.source_dir is None
+        assert config.enable_caching is False
+        assert config.use_secure_pypi is False
+        assert config.max_runtime_seconds == 172800
 
         # Verify current_date is set
         assert isinstance(config.current_date, str)
@@ -55,6 +59,9 @@ class TestBasePipelineConfig:
                 "framework_version": "1.8.0",
                 "py_version": "py39",
                 "source_dir": "/test/source",
+                "enable_caching": True,
+                "use_secure_pypi": True,
+                "max_runtime_seconds": 86400,  # 1 day
             }
         )
 
@@ -67,6 +74,9 @@ class TestBasePipelineConfig:
             assert config.framework_version == "1.8.0"
             assert config.py_version == "py39"
             assert config.source_dir == "/test/source"
+            assert config.enable_caching is True
+            assert config.use_secure_pypi is True
+            assert config.max_runtime_seconds == 86400
 
     def test_derived_properties(self, valid_config_data):
         """Test derived properties are calculated correctly."""
@@ -136,6 +146,10 @@ class TestBasePipelineConfig:
         # Verify values
         assert data["aws_region"] == "us-east-1"
         assert data["pipeline_name"] == "test_author-test_service-xgboost-NA"
+        assert data["pipeline_s3_loc"] == "s3://test-bucket/MODS/test_author-test_service-xgboost-NA_1.0.0"
+        
+        # effective_source_dir should not be included when it's None
+        assert "effective_source_dir" not in data
 
     def test_categorize_fields(self, valid_config_data):
         """Test field categorization."""
@@ -168,6 +182,9 @@ class TestBasePipelineConfig:
             "framework_version",
             "py_version",
             "source_dir",
+            "enable_caching",
+            "use_secure_pypi",
+            "max_runtime_seconds",
         }
         assert system_fields == expected_system
 
@@ -200,6 +217,7 @@ class TestBasePipelineConfig:
             "region",
             "service_name",
             "pipeline_version",
+            "project_root_folder",
         ]:
             assert field in init_fields
             assert init_fields[field] == getattr(config, field)
@@ -224,6 +242,7 @@ class TestBasePipelineConfig:
         # Should inherit base fields
         assert derived_config.author == base_config.author
         assert derived_config.bucket == base_config.bucket
+        assert derived_config.project_root_folder == base_config.project_root_folder
 
         # Should override with new values
         assert derived_config.model_class == "pytorch"
@@ -336,3 +355,75 @@ class TestBasePipelineConfig:
 
         # Extra field should be accessible
         assert config.extra_field == "extra_value"
+
+    def test_max_runtime_seconds_validation(self, valid_config_data):
+        """Test max_runtime_seconds validation boundaries."""
+        # Test minimum value (60 seconds)
+        config_data = valid_config_data.copy()
+        config_data["max_runtime_seconds"] = 60
+        config = BasePipelineConfig(**config_data)
+        assert config.max_runtime_seconds == 60
+
+        # Test maximum value (432000 seconds = 5 days)
+        config_data["max_runtime_seconds"] = 432000
+        config = BasePipelineConfig(**config_data)
+        assert config.max_runtime_seconds == 432000
+
+        # Test value below minimum should raise ValueError
+        config_data["max_runtime_seconds"] = 59
+        with pytest.raises(ValueError):
+            BasePipelineConfig(**config_data)
+
+        # Test value above maximum should raise ValueError
+        config_data["max_runtime_seconds"] = 432001
+        with pytest.raises(ValueError):
+            BasePipelineConfig(**config_data)
+
+    def test_initialize_derived_fields(self, valid_config_data):
+        """Test that derived fields are initialized correctly."""
+        config = BasePipelineConfig(**valid_config_data)
+        
+        # Check that derived fields are initialized during creation
+        assert config._aws_region is not None
+        assert config._pipeline_name is not None
+        assert config._pipeline_description is not None
+        assert config._pipeline_s3_loc is not None
+
+    def test_effective_source_dir_with_source_dir(self, valid_config_data):
+        """Test effective_source_dir when source_dir is provided."""
+        config_data = valid_config_data.copy()
+        config_data["source_dir"] = "/test/source"
+        
+        with patch("pathlib.Path.exists", return_value=False):
+            config = BasePipelineConfig(**config_data)
+            # Should return the source_dir when path doesn't exist
+            assert config.effective_source_dir == "/test/source"
+
+    def test_resolved_source_dir(self, valid_config_data):
+        """Test resolved_source_dir property."""
+        config_data = valid_config_data.copy()
+        config_data["source_dir"] = "/test/source"
+        
+        config = BasePipelineConfig(**config_data)
+        # Should return None when resolve_hybrid_path is not available
+        assert config.resolved_source_dir is None
+
+    def test_model_dump_with_effective_source_dir(self, valid_config_data):
+        """Test model_dump includes effective_source_dir when it's not None."""
+        config_data = valid_config_data.copy()
+        config_data["source_dir"] = "/test/source"
+        
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "pathlib.Path.is_dir", return_value=True
+        ):
+            config = BasePipelineConfig(**config_data)
+            data = config.model_dump()
+            
+            # Should include effective_source_dir when it's not None
+            assert "effective_source_dir" in data
+
+    def test_get_step_registry(self, valid_config_data):
+        """Test _get_step_registry method."""
+        # Should not raise exceptions
+        registry = BasePipelineConfig._get_step_registry()
+        assert isinstance(registry, dict)
