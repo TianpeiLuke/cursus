@@ -50,7 +50,10 @@ except ImportError:
     # Fallback to direct import if the above fails
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+    # Add the dockers directory to the Python path
+    dockers_path = os.path.join(os.path.dirname(__file__), '../../../projects/rnr_pytorch_bedrock/dockers')
+    if dockers_path not in sys.path:
+        sys.path.insert(0, dockers_path)
     from projects.rnr_pytorch_bedrock.dockers.pytorch_inference_handler import (
         Config,
         read_feature_columns,
