@@ -24,6 +24,7 @@ from processing.text.dialogue_processor import (
     DialogueChunkerProcessor,
 )
 from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
 from processing.numerical.numerical_imputation_processor import (
@@ -70,6 +71,10 @@ val_path = os.path.join(input_path, val_channel)
 test_channel = "test"
 test_path = os.path.join(input_path, test_channel)
 # ==========================================
+
+# File names for preprocessing artifacts
+RISK_TABLE_FILE = "risk_table_map.pkl"
+IMPUTE_DICT_FILE = "impute_dict.pkl"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -241,16 +246,25 @@ def load_hyperparameters(model_dir: str) -> Dict[str, Any]:
         return {}
 
 
-# =================== Preprocessing Artifact Loaders ================
+def get_text_field_names(config: Config) -> set:
+    """Identify text field names to exclude from risk table processing."""
+    text_fields = set()
+    if hasattr(config, 'text_name') and config.text_name:
+        text_fields.add(config.text_name)
+    if hasattr(config, 'primary_text_name') and config.primary_text_name:
+        text_fields.add(config.primary_text_name)
+    if hasattr(config, 'secondary_text_name') and config.secondary_text_name:
+        text_fields.add(config.secondary_text_name)
+    return text_fields
+
+
 def load_risk_tables(model_dir: str) -> Dict[str, Any]:
     """Load risk tables from pickle file."""
-    import pickle as pkl
-
-    risk_file = os.path.join(model_dir, "risk_table_map.pkl")
+    risk_file = os.path.join(model_dir, RISK_TABLE_FILE)
     if not os.path.exists(risk_file):
         logger.warning(f"Risk table file not found: {risk_file}")
         return {}
-
+    
     try:
         with open(risk_file, "rb") as f:
             risk_tables = pkl.load(f)
@@ -261,9 +275,7 @@ def load_risk_tables(model_dir: str) -> Dict[str, Any]:
         return {}
 
 
-def create_risk_processors(
-    risk_tables: Dict[str, Any],
-) -> Dict[str, RiskTableMappingProcessor]:
+def create_risk_processors(risk_tables: Dict[str, Any]) -> Dict[str, RiskTableMappingProcessor]:
     """Create risk table processors for each categorical feature."""
     risk_processors = {}
     for feature, risk_table in risk_tables.items():
@@ -279,13 +291,11 @@ def create_risk_processors(
 
 def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
     """Load imputation dictionary from pickle file."""
-    import pickle as pkl
-
-    impute_file = os.path.join(model_dir, "impute_dict.pkl")
+    impute_file = os.path.join(model_dir, IMPUTE_DICT_FILE)
     if not os.path.exists(impute_file):
         logger.warning(f"Imputation file not found: {impute_file}")
         return {}
-
+    
     try:
         with open(impute_file, "rb") as f:
             impute_dict = pkl.load(f)
@@ -296,14 +306,8 @@ def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
         return {}
 
 
-def create_numerical_processors(
-    impute_dict: Dict[str, Any],
-) -> Dict[str, NumericalVariableImputationProcessor]:
-    """
-    Create numerical imputation processors for each numerical feature.
-
-    Uses single-column architecture - one processor per column.
-    """
+def create_numerical_processors(impute_dict: Dict[str, Any]) -> Dict[str, NumericalVariableImputationProcessor]:
+    """Create numerical imputation processors for each numerical feature."""
     numerical_processors = {}
     for feature, imputation_value in impute_dict.items():
         processor = NumericalVariableImputationProcessor(
@@ -314,7 +318,118 @@ def create_numerical_processors(
     return numerical_processors
 
 
-# =================== Calibration Functions ================
+def data_preprocess_pipeline(
+    config: Config,
+    hyperparameters: Optional[Dict[str, Any]] = None,
+) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    """
+    Build text preprocessing pipelines based on config and hyperparameters.
+
+    For bimodal: Uses text_name with configured or default steps
+    For trimodal: Uses primary_text_name and secondary_text_name with separate steps
+
+    Args:
+        config: Configuration object
+        hyperparameters: Optional hyperparameters dict loaded from hyperparameters.json
+
+    Returns:
+        Tuple of (tokenizer, pipelines_dict)
+    """
+    if not config.tokenizer:
+        config.tokenizer = "bert-base-multilingual-cased"
+
+    logger.info(f"Constructing tokenizer: {config.tokenizer}")
+    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+    pipelines = {}
+
+    # Extract processing steps from hyperparameters if available
+    text_steps = None
+    primary_steps = None
+    secondary_steps = None
+    primary_text_name = None
+    secondary_text_name = None
+
+    if hyperparameters:
+        text_steps = hyperparameters.get("text_processing_steps")
+        primary_steps = hyperparameters.get("primary_text_processing_steps")
+        secondary_steps = hyperparameters.get("secondary_text_processing_steps")
+        primary_text_name = hyperparameters.get("primary_text_name")
+        secondary_text_name = hyperparameters.get("secondary_text_name")
+
+    # BIMODAL: Single text pipeline
+    if not primary_text_name:
+        # Use configured steps from hyperparameters or fallback to default
+        steps = text_steps or [
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ]
+
+        pipelines[config.text_name] = build_text_pipeline_from_steps(
+            processing_steps=steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(
+            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}"
+        )
+
+    # TRIMODAL: Dual text pipelines
+    else:
+        # Primary text pipeline (e.g., chat - full cleaning)
+        primary_pipeline_steps = primary_steps or [
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ]
+
+        pipelines[primary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=primary_pipeline_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(
+            f"Built primary pipeline for '{primary_text_name}' with steps: {primary_pipeline_steps}"
+        )
+
+        # Secondary text pipeline (e.g., events - minimal cleaning)
+        secondary_pipeline_steps = secondary_steps or [
+            "dialogue_splitter",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ]
+
+        pipelines[secondary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=secondary_pipeline_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(
+            f"Built secondary pipeline for '{secondary_text_name}' with steps: {secondary_pipeline_steps}"
+        )
+
+    return tokenizer, pipelines
+
+
 def load_calibration_model(model_dir: str) -> Optional[Dict]:
     """
     Load calibration model if it exists. Supports both regular calibration models
@@ -537,117 +652,52 @@ def apply_calibration(
         return scores
 
 
-# =================== Text Preprocessing Pipeline ================
-def data_preprocess_pipeline(
+def preprocess_single_record_fast(
+    df: pd.DataFrame,
     config: Config,
-    hyperparameters: Optional[Dict[str, Any]] = None,
-) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    risk_processors: Dict[str, RiskTableMappingProcessor],
+    numerical_processors: Dict[str, NumericalVariableImputationProcessor]
+) -> Dict[str, Any]:
     """
-    Build text preprocessing pipelines based on config and hyperparameters.
-
-    For bimodal: Uses text_name with configured or default steps
-    For trimodal: Uses primary_text_name and secondary_text_name with separate steps
-
+    Fast path for single-record preprocessing.
+    
+    Bypasses pandas DataFrame operations for reduced latency.
+    Uses processor.process() method for direct value processing.
+    
     Args:
+        df: Single-row DataFrame with feature values
         config: Configuration object
-        hyperparameters: Optional hyperparameters dict loaded from hyperparameters.json
-
+        risk_processors: Risk table processors for categorical features
+        numerical_processors: Imputation processors for numerical features
+        
     Returns:
-        Tuple of (tokenizer, pipelines_dict)
+        Dictionary with processed feature values
     """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-multilingual-cased"
-
-    logger.info(f"Constructing tokenizer: {config.tokenizer}")
-    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-    pipelines = {}
-
-    # Extract processing steps from hyperparameters if available
-    text_steps = None
-    primary_steps = None
-    secondary_steps = None
-    primary_text_name = None
-    secondary_text_name = None
-
-    if hyperparameters:
-        text_steps = hyperparameters.get("text_processing_steps")
-        primary_steps = hyperparameters.get("primary_text_processing_steps")
-        secondary_steps = hyperparameters.get("secondary_text_processing_steps")
-        primary_text_name = hyperparameters.get("primary_text_name")
-        secondary_text_name = hyperparameters.get("secondary_text_name")
-
-    # BIMODAL: Single text pipeline
-    if not primary_text_name:
-        # Use configured steps from hyperparameters or fallback to default
-        steps = text_steps or [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-
-        pipelines[config.text_name] = build_text_pipeline_from_steps(
-            processing_steps=steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        logger.info(
-            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}"
-        )
-
-    # TRIMODAL: Dual text pipelines
-    else:
-        # Primary text pipeline (e.g., chat - full cleaning)
-        primary_pipeline_steps = primary_steps or [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-
-        pipelines[primary_text_name] = build_text_pipeline_from_steps(
-            processing_steps=primary_pipeline_steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        logger.info(
-            f"Built primary pipeline for '{primary_text_name}' with steps: {primary_pipeline_steps}"
-        )
-
-        # Secondary text pipeline (e.g., events - minimal cleaning)
-        secondary_pipeline_steps = secondary_steps or [
-            "dialogue_splitter",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
-
-        pipelines[secondary_text_name] = build_text_pipeline_from_steps(
-            processing_steps=secondary_pipeline_steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        logger.info(
-            f"Built secondary pipeline for '{secondary_text_name}' with steps: {secondary_pipeline_steps}"
-        )
-
-    return tokenizer, pipelines
+    processed_features = {}
+    
+    # Process tabular (numerical) features
+    for feature in config.tab_field_list:
+        if feature in df.columns:
+            val = df[feature].iloc[0] if len(df) > 0 and feature in df.columns else None
+            
+            # Apply numerical imputation
+            if feature in numerical_processors:
+                val = numerical_processors[feature].process(val)
+            
+            processed_features[feature] = val
+    
+    # Process categorical features with risk tables
+    for feature in config.cat_field_list:
+        if feature in df.columns:
+            val = df[feature].iloc[0] if len(df) > 0 and feature in df.columns else None
+            
+            # Apply risk table mapping
+            if feature in risk_processors:
+                val = risk_processors[feature].process(val)
+            
+            processed_features[feature] = val
+    
+    return processed_features
 
 
 # =================== Model Function ======================
@@ -677,34 +727,30 @@ def model_fn(model_dir, context=None):
         )
         model.eval()
 
-    # Load hyperparameters if available
+    # Load feature columns if available (for alignment with XGBoost pattern)
+    feature_columns = read_feature_columns(model_dir)
+
+    # Load hyperparameters if available (for alignment with XGBoost pattern)
     hyperparameters = load_hyperparameters(model_dir)
 
-    ## reconstruct pipelines with hyperparameter-driven steps
+    # Load preprocessing artifacts (NEW - similar to XGBoost handler)
+    logger.info("Loading preprocessing artifacts...")
+    risk_tables = load_risk_tables(model_dir)
+    risk_processors = create_risk_processors(risk_tables) if risk_tables else {}
+    
+    impute_dict = load_imputation_dict(model_dir)
+    numerical_processors = create_numerical_processors(impute_dict) if impute_dict else {}
+
+    # Reconstruct pipelines with hyperparameter-driven steps
     tokenizer, pipelines = data_preprocess_pipeline(config, hyperparameters)
 
-    # === Add multiclass label processor if needed ===
+    # Add multiclass label processor if needed
     if not config.is_binary and config.num_classes > 2:
         if config.multiclass_categories:
             label_processor = MultiClassLabelProcessor(
                 label_list=config.multiclass_categories, strict=True
             )
             pipelines[config.label_name] = label_processor
-
-    # === Load preprocessing artifacts (numerical imputation + risk tables) ===
-    logger.info("Loading preprocessing artifacts...")
-    risk_tables = load_risk_tables(model_dir)
-    risk_processors = create_risk_processors(risk_tables)
-
-    impute_dict = load_imputation_dict(model_dir)
-    numerical_processors = create_numerical_processors(impute_dict)
-
-    logger.info(
-        f"Loaded {len(risk_processors)} risk processors and {len(numerical_processors)} numerical processors"
-    )
-
-    # Load feature columns if available (for alignment with XGBoost pattern)
-    feature_columns = read_feature_columns(model_dir)
 
     # Load calibration model if available
     calibrator = load_calibration_model(model_dir)
@@ -718,11 +764,11 @@ def model_fn(model_dir, context=None):
         "vocab": vocab,
         "model_class": model_class,
         "pipelines": pipelines,
+        "risk_processors": risk_processors,  # NEW
+        "numerical_processors": numerical_processors,  # NEW
         "calibrator": calibrator,
         "feature_columns": feature_columns,
         "hyperparameters": hyperparameters,
-        "risk_processors": risk_processors,
-        "numerical_processors": numerical_processors,
     }
 
 
@@ -822,9 +868,10 @@ def predict_fn(input_object, model_data, context=None):
     model = model_data["model"]
     config = model_data["config"]
     pipelines = model_data["pipelines"]
-    calibrator = model_data.get("calibrator")
+    # Get preprocessing processors
     risk_processors = model_data.get("risk_processors", {})
     numerical_processors = model_data.get("numerical_processors", {})
+    calibrator = model_data.get("calibrator")
 
     config_predict = config.model_dump()
     label_field = config_predict.get("label_name", None)
@@ -837,30 +884,51 @@ def predict_fn(input_object, model_data, context=None):
             col for col in config_predict["cat_field_list"] if col != label_field
         ]
 
-    dataset = PipelineDataset(config_predict, dataframe=input_object)
-
-    # === Apply preprocessing artifacts (numerical imputation + risk tables) ===
-    logger.info("Applying preprocessing to inference data...")
-
-    # Apply numerical imputation processors
-    for feature, processor in numerical_processors.items():
-        if feature in dataset.DataReader.columns:
-            logger.debug(f"Applying numerical imputation for feature: {feature}")
-            dataset.add_pipeline(feature, processor)
-
-    # Apply risk table mapping processors
-    for feature, processor in risk_processors.items():
-        if feature in dataset.DataReader.columns:
-            logger.debug(f"Applying risk table mapping for feature: {feature}")
-            dataset.add_pipeline(feature, processor)
-
-    logger.info(
-        f"Applied {len(numerical_processors)} numerical processors and {len(risk_processors)} risk processors"
-    )
-
-    # Apply text and other pipelines
-    for feature_name, pipeline in pipelines.items():
-        dataset.add_pipeline(feature_name, pipeline)
+    # FAST PATH: Single-record inference optimization
+    if len(input_object) == 1:
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Using fast path for single-record inference")
+        
+        # Process single record with fast path (bypasses pandas operations)
+        processed_features = preprocess_single_record_fast(
+            df=input_object,
+            config=config,
+            risk_processors=risk_processors,
+            numerical_processors=numerical_processors
+        )
+        
+        # For single-record inference, we still need to process text through pipelines
+        # But we'll use a more direct approach for tabular features
+        dataset = PipelineDataset(config_predict, dataframe=input_object)
+        
+        # Add text preprocessing pipelines (these still need the full pipeline approach)
+        for feature_name, pipeline in pipelines.items():
+            dataset.add_pipeline(feature_name, pipeline)
+        
+        # For single record, the fast path already processed tabular features
+        # The pipeline will handle text features normally
+        
+    else:
+        # BATCH PATH: Original DataFrame processing for multiple records
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"Using batch path for {len(input_object)} records")
+        
+        dataset = PipelineDataset(config_predict, dataframe=input_object)
+        
+        # Add text preprocessing pipelines
+        for feature_name, pipeline in pipelines.items():
+            dataset.add_pipeline(feature_name, pipeline)
+        
+        # Add numerical imputation processors
+        for feature_name, processor in numerical_processors.items():
+            if feature_name in dataset.DataReader.columns:
+                dataset.add_pipeline(feature_name, processor)
+        
+        # Add risk table processors (excluding text fields)
+        text_fields = get_text_field_names(config)
+        for feature_name, processor in risk_processors.items():
+            if feature_name not in text_fields and feature_name in dataset.DataReader.columns:
+                dataset.add_pipeline(feature_name, processor)
 
     collate_batch = build_collate_batch(
         input_ids_key=config.text_input_ids_key,
@@ -1006,15 +1074,15 @@ def output_fn(prediction_output, accept="application/json"):
             response_body = "\n".join(csv_lines) + "\n"
             return response_body, "text/csv"
 
-        # Step 4: Unsupported content type
+        # Step 5: Unsupported content type
         else:
             logger.error(f"Unsupported accept type: {accept}")
             raise ValueError(f"Unsupported accept type: {accept}")
 
-    # Step 5: Error handling
+    # Step 6: Error handling
     except Exception as e:
         logger.error(
-            f"Error during DataFrame creation or serialization in output_fn: {e}",
+            f"Error during serialization in output_fn: {e}",
             exc_info=True,
         )
         error_response = json.dumps({"error": f"Failed to serialize output: {e}"})
