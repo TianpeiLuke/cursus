@@ -18,7 +18,7 @@ from pathlib import Path
 import json
 
 # Import from actual source (following best practice)
-from docker.models.implementations.mtgbm_model import MtgbmModel
+from dockers.models.implementations.mtgbm_model import MtgbmModel
 
 
 # ============================================================================
@@ -551,7 +551,7 @@ class TestMtgbmModelIntegration:
 
     def test_inherits_from_base_model(self, mtgbm_model):
         """Test MtgbmModel inherits from BaseMultiTaskModel."""
-        from docker.models.base.base_model import BaseMultiTaskModel
+        from dockers.models.base.base_model import BaseMultiTaskModel
 
         assert isinstance(mtgbm_model, BaseMultiTaskModel)
 

@@ -11,7 +11,7 @@ Following pytest best practices:
 import pytest
 import numpy as np
 from unittest.mock import Mock
-from docker.models.loss.fixed_weight_loss import FixedWeightLoss
+from dockers.models.loss.fixed_weight_loss import FixedWeightLoss
 
 
 @pytest.fixture

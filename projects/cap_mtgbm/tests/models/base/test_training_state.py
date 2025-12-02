@@ -10,7 +10,7 @@ Following pytest best practices:
 
 import pytest
 import numpy as np
-from docker.models.base.training_state import TrainingState
+from dockers.models.base.training_state import TrainingState
 
 
 class TestTrainingStateInitialization:

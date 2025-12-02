@@ -16,11 +16,11 @@ import numpy as np
 from unittest.mock import Mock
 
 # Import from actual source (following best practice)
-from docker.models.loss.loss_factory import LossFactory
-from docker.models.loss.base_loss_function import BaseLossFunction
-from docker.models.loss.fixed_weight_loss import FixedWeightLoss
-from docker.models.loss.adaptive_weight_loss import AdaptiveWeightLoss
-from docker.models.loss.knowledge_distillation_loss import KnowledgeDistillationLoss
+from dockers.models.loss.loss_factory import LossFactory
+from dockers.models.loss.base_loss_function import BaseLossFunction
+from dockers.models.loss.fixed_weight_loss import FixedWeightLoss
+from dockers.models.loss.adaptive_weight_loss import AdaptiveWeightLoss
+from dockers.models.loss.knowledge_distillation_loss import KnowledgeDistillationLoss
 
 
 # ============================================================================

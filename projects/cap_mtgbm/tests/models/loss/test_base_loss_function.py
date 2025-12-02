@@ -12,7 +12,7 @@ Following pytest best practices:
 import pytest
 import numpy as np
 from unittest.mock import Mock
-from docker.models.loss.base_loss_function import BaseLossFunction
+from dockers.models.loss.base_loss_function import BaseLossFunction
 
 
 # Concrete implementation for testing abstract base class

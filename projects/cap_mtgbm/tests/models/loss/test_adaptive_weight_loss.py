@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 
 # Import from actual source (following best practice)
-from docker.models.loss.adaptive_weight_loss import (
+from dockers.models.loss.adaptive_weight_loss import (
     AdaptiveWeightLoss,
 )
 
@@ -140,7 +140,7 @@ class TestAdaptiveWeightLossInitialization:
 
     def test_inherits_from_base_loss_function(self, mock_hyperparams, sample_indices):
         """Test AdaptiveWeightLoss inherits from BaseLossFunction."""
-        from docker.models.loss.base_loss_function import (
+        from dockers.models.loss.base_loss_function import (
             BaseLossFunction,
         )
 

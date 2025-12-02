@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 
 # Import from actual source (following best practice)
-from docker.models.loss.knowledge_distillation_loss import (
+from dockers.models.loss.knowledge_distillation_loss import (
     KnowledgeDistillationLoss,
 )
 
@@ -174,7 +174,7 @@ class TestKDInitialization:
 
     def test_inherits_from_adaptive_loss(self, mock_hyperparams, sample_indices):
         """Test KnowledgeDistillationLoss inherits from AdaptiveWeightLoss."""
-        from docker.models.loss.adaptive_weight_loss import AdaptiveWeightLoss
+        from dockers.models.loss.adaptive_weight_loss import AdaptiveWeightLoss
 
         loss = KnowledgeDistillationLoss(
             num_label=4, val_sublabel_idx=sample_indices, hyperparams=mock_hyperparams

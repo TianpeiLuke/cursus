@@ -16,9 +16,9 @@ import numpy as np
 from unittest.mock import Mock
 
 # Import from actual source (following best practice)
-from docker.models.factory.model_factory import ModelFactory
-from docker.models.base.base_model import BaseMultiTaskModel
-from docker.models.implementations.mtgbm_model import MtgbmModel
+from dockers.models.factory.model_factory import ModelFactory
+from dockers.models.base.base_model import BaseMultiTaskModel
+from dockers.models.implementations.mtgbm_model import MtgbmModel
 
 
 # ============================================================================
