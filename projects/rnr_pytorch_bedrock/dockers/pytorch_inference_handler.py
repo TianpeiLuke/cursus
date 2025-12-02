@@ -707,7 +707,7 @@ def model_fn(model_dir, context=None):
     onnx_model_path = os.path.join(model_dir, "model.onnx")
 
     load_config, embedding_mat, vocab, model_class = load_artifacts(
-        os.path.join(model_path, model_artifact_name), device_l=device
+        os.path.join(model_dir, model_artifact_name), device_l=device
     )
 
     config = Config(**load_config)
@@ -719,7 +719,7 @@ def model_fn(model_dir, context=None):
     else:
         logger.info("Detected PyTorch model.")
         model = load_model(
-            os.path.join(model_path, model_filename),
+            os.path.join(model_dir, model_filename),
             config.model_dump(),
             embedding_mat,
             model_class,
