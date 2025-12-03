@@ -38,6 +38,199 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+# ============================================================================
+# PACKAGE INSTALLATION CONFIGURATION
+# ============================================================================
+
+# Control which PyPI source to use via environment variable
+# Set USE_SECURE_PYPI=true to use secure CodeArtifact PyPI
+# Set USE_SECURE_PYPI=false or leave unset to use public PyPI
+USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
+
+# Logging setup for installation (uses logger configured below)
+from subprocess import check_call
+import boto3
+
+
+def _get_secure_pypi_access_token() -> str:
+    """
+    Get CodeArtifact access token for secure PyPI.
+
+    Returns:
+        str: Authorization token for CodeArtifact
+
+    Raises:
+        Exception: If token retrieval fails
+    """
+    try:
+        os.environ["AWS_STS_REGIONAL_ENDPOINTS"] = "regional"
+        sts = boto3.client("sts", region_name="us-east-1")
+        caller_identity = sts.get_caller_identity()
+        assumed_role_object = sts.assume_role(
+            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            + caller_identity["Account"],
+            RoleSessionName="SecurePypiReadRole",
+        )
+        credentials = assumed_role_object["Credentials"]
+        code_artifact_client = boto3.client(
+            "codeartifact",
+            aws_access_key_id=credentials["AccessKeyId"],
+            aws_secret_access_key=credentials["SecretAccessKey"],
+            aws_session_token=credentials["SessionToken"],
+            region_name="us-west-2",
+        )
+        token = code_artifact_client.get_authorization_token(
+            domain="amazon", domainOwner="149122183214"
+        )["authorizationToken"]
+
+        print("✓ Successfully retrieved secure PyPI access token")
+        return token
+
+    except Exception as e:
+        print(f"✗ Failed to retrieve secure PyPI access token: {e}")
+        raise
+
+
+def install_packages_from_public_pypi(packages: list) -> None:
+    """
+    Install packages from standard public PyPI.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+    """
+    print(f"Installing {len(packages)} packages from public PyPI")
+    print(f"Packages: {packages}")
+
+    try:
+        check_call([sys.executable, "-m", "pip", "install", *packages])
+        print("✓ Successfully installed packages from public PyPI")
+    except Exception as e:
+        print(f"✗ Failed to install packages from public PyPI: {e}")
+        raise
+
+
+def install_packages_from_secure_pypi(packages: list) -> None:
+    """
+    Install packages from secure CodeArtifact PyPI.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+    """
+    print(f"Installing {len(packages)} packages from secure PyPI")
+    print(f"Packages: {packages}")
+
+    try:
+        token = _get_secure_pypi_access_token()
+        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                index_url,
+                *packages,
+            ]
+        )
+
+        print("✓ Successfully installed packages from secure PyPI")
+    except Exception as e:
+        print(f"✗ Failed to install packages from secure PyPI: {e}")
+        raise
+
+
+def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None:
+    """
+    Install packages from PyPI source based on configuration.
+
+    This is the main installation function that delegates to either public or
+    secure PyPI based on the USE_SECURE_PYPI environment variable.
+
+    Args:
+        packages: List of package specifications (e.g., ["pandas==1.5.0", "numpy"])
+        use_secure: If True, use secure CodeArtifact PyPI; if False, use public PyPI.
+                   Defaults to USE_SECURE_PYPI environment variable.
+
+    Environment Variables:
+        USE_SECURE_PYPI: Set to "true" to use secure PyPI, "false" for public PyPI
+
+    Example:
+        # Install from public PyPI (default)
+        install_packages(["pandas==1.5.0", "numpy"])
+
+        # Install from secure PyPI
+        os.environ["USE_SECURE_PYPI"] = "true"
+        install_packages(["pandas==1.5.0", "numpy"])
+    """
+    print("=" * 70)
+    print("PACKAGE INSTALLATION")
+    print("=" * 70)
+    print(f"PyPI Source: {'SECURE (CodeArtifact)' if use_secure else 'PUBLIC'}")
+    print(
+        f"Environment Variable USE_SECURE_PYPI: {os.environ.get('USE_SECURE_PYPI', 'not set')}"
+    )
+    print(f"Number of packages: {len(packages)}")
+    print("=" * 70)
+
+    try:
+        if use_secure:
+            install_packages_from_secure_pypi(packages)
+        else:
+            install_packages_from_public_pypi(packages)
+
+        print("=" * 70)
+        print("✓ PACKAGE INSTALLATION COMPLETED SUCCESSFULLY")
+        print("=" * 70)
+
+    except Exception as e:
+        print("=" * 70)
+        print("✗ PACKAGE INSTALLATION FAILED")
+        print("=" * 70)
+        raise
+
+
+# ============================================================================
+# INSTALL REQUIRED PACKAGES
+# ============================================================================
+
+# Define required packages from requirements.txt
+required_packages = [
+    # Core libraries (torch ecosystem)
+    "torch==2.1.2",
+    "torchvision==0.16.2",
+    "torchaudio==2.1.2",
+    # Transformers & HuggingFace
+    "transformers==4.37.2",
+    # Lightning (CRITICAL - needed for lightning_models!)
+    "lightning==2.1.3",
+    "lightning-utilities==0.10.1",
+    # Metrics
+    "torchmetrics==1.7.1",
+    # TensorBoard & Visualization
+    "tensorboard==2.16.2",
+    "matplotlib==3.8.2",
+    # Data & Processing
+    "scikit-learn==1.3.2",
+    "pandas==2.1.4",
+    "pyarrow==14.0.2",
+    "beautifulsoup4==4.12.3",
+    "gensim==4.3.1",
+    # Validation
+    "pydantic==2.11.2",
+    # ONNX Export
+    "onnx==1.15.0",
+    "onnxruntime==1.17.0",
+    # Serving
+    "flask==3.0.2",
+]
+
+# Install packages using unified installation function
+install_packages(required_packages)
+
+print("***********************Package Installation Complete*********************")
+
 # Import processing modules from bsm_pytorch
 sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), "../../../projects/bsm_pytorch/docker")

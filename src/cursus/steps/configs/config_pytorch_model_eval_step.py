@@ -208,7 +208,7 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
             {
                 "ID_FIELD": self.id_name,
                 "LABEL_FIELD": self.label_name,
-                "JOB_TYPE": self.job_type,
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
         )
 
