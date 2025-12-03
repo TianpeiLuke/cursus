@@ -174,7 +174,7 @@ class TestSimilarityComputation:
         labels, preds = sample_labels_preds
 
         # Patch jensenshannon to verify it's called
-        with patch("docker.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
+        with patch("dockers.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
             mock_js.return_value = 0.5
 
             weights = adaptive_loss._compute_similarity_weights(labels, preds)
@@ -189,7 +189,7 @@ class TestSimilarityComputation:
         labels, preds = sample_labels_preds
 
         # Patch jensenshannon to control divergence values
-        with patch("docker.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
+        with patch("dockers.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
             # Set different divergences for different subtasks
             mock_js.side_effect = [0.5, 0.25, 0.1]  # 3 subtasks
 
@@ -205,7 +205,7 @@ class TestSimilarityComputation:
         labels, preds = sample_labels_preds
 
         # Patch jensenshannon to return very small divergence
-        with patch("docker.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
+        with patch("dockers.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
             mock_js.return_value = 1e-12  # Very small, would cause large inverse
 
             weights = adaptive_loss._compute_similarity_weights(labels, preds)
@@ -219,7 +219,7 @@ class TestSimilarityComputation:
         labels, preds = sample_labels_preds
 
         # Patch jensenshannon to return zero divergence
-        with patch("docker.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
+        with patch("dockers.models.loss.adaptive_weight_loss.jensenshannon") as mock_js:
             mock_js.return_value = 0.0
 
             weights = adaptive_loss._compute_similarity_weights(labels, preds)

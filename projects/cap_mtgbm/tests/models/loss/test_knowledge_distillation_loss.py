@@ -531,7 +531,7 @@ class TestEvaluateIntegration:
 
         # Patch parent evaluate
         with patch(
-            "docker.models.loss.adaptive_weight_loss.AdaptiveWeightLoss.evaluate"
+            "dockers.models.loss.adaptive_weight_loss.AdaptiveWeightLoss.evaluate"
         ) as mock_eval:
             mock_eval.return_value = (np.array([0.8, 0.7, 0.6, 0.5]), 0.65)
 
@@ -548,7 +548,7 @@ class TestEvaluateIntegration:
         # Patch check_kd_trigger to verify it's called
         with patch.object(kd_loss, "_check_kd_trigger") as mock_check:
             with patch(
-                "docker.models.loss.adaptive_weight_loss.AdaptiveWeightLoss.evaluate"
+                "dockers.models.loss.adaptive_weight_loss.AdaptiveWeightLoss.evaluate"
             ) as mock_eval:
                 task_scores = np.array([0.8, 0.7, 0.6, 0.5])
                 mock_eval.return_value = (task_scores, 0.65)
@@ -565,7 +565,7 @@ class TestEvaluateIntegration:
         preds = np.random.rand(40)
 
         with patch(
-            "docker.models.loss.adaptive_weight_loss.AdaptiveWeightLoss.evaluate"
+            "dockers.models.loss.adaptive_weight_loss.AdaptiveWeightLoss.evaluate"
         ) as mock_eval:
             expected_task_scores = np.array([0.8, 0.7, 0.6, 0.5])
             expected_mean = 0.65

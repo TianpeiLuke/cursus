@@ -249,11 +249,11 @@ def load_hyperparameters(model_dir: str) -> Dict[str, Any]:
 def get_text_field_names(config: Config) -> set:
     """Identify text field names to exclude from risk table processing."""
     text_fields = set()
-    if hasattr(config, 'text_name') and config.text_name:
+    if hasattr(config, "text_name") and config.text_name:
         text_fields.add(config.text_name)
-    if hasattr(config, 'primary_text_name') and config.primary_text_name:
+    if hasattr(config, "primary_text_name") and config.primary_text_name:
         text_fields.add(config.primary_text_name)
-    if hasattr(config, 'secondary_text_name') and config.secondary_text_name:
+    if hasattr(config, "secondary_text_name") and config.secondary_text_name:
         text_fields.add(config.secondary_text_name)
     return text_fields
 
@@ -264,7 +264,7 @@ def load_risk_tables(model_dir: str) -> Dict[str, Any]:
     if not os.path.exists(risk_file):
         logger.warning(f"Risk table file not found: {risk_file}")
         return {}
-    
+
     try:
         with open(risk_file, "rb") as f:
             risk_tables = pkl.load(f)
@@ -275,7 +275,9 @@ def load_risk_tables(model_dir: str) -> Dict[str, Any]:
         return {}
 
 
-def create_risk_processors(risk_tables: Dict[str, Any]) -> Dict[str, RiskTableMappingProcessor]:
+def create_risk_processors(
+    risk_tables: Dict[str, Any],
+) -> Dict[str, RiskTableMappingProcessor]:
     """Create risk table processors for each categorical feature."""
     risk_processors = {}
     for feature, risk_table in risk_tables.items():
@@ -295,7 +297,7 @@ def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
     if not os.path.exists(impute_file):
         logger.warning(f"Imputation file not found: {impute_file}")
         return {}
-    
+
     try:
         with open(impute_file, "rb") as f:
             impute_dict = pkl.load(f)
@@ -306,7 +308,9 @@ def load_imputation_dict(model_dir: str) -> Dict[str, Any]:
         return {}
 
 
-def create_numerical_processors(impute_dict: Dict[str, Any]) -> Dict[str, NumericalVariableImputationProcessor]:
+def create_numerical_processors(
+    impute_dict: Dict[str, Any],
+) -> Dict[str, NumericalVariableImputationProcessor]:
     """Create numerical imputation processors for each numerical feature."""
     numerical_processors = {}
     for feature, imputation_value in impute_dict.items():
@@ -656,47 +660,47 @@ def preprocess_single_record_fast(
     df: pd.DataFrame,
     config: Config,
     risk_processors: Dict[str, RiskTableMappingProcessor],
-    numerical_processors: Dict[str, NumericalVariableImputationProcessor]
+    numerical_processors: Dict[str, NumericalVariableImputationProcessor],
 ) -> Dict[str, Any]:
     """
     Fast path for single-record preprocessing.
-    
+
     Bypasses pandas DataFrame operations for reduced latency.
     Uses processor.process() method for direct value processing.
-    
+
     Args:
         df: Single-row DataFrame with feature values
         config: Configuration object
         risk_processors: Risk table processors for categorical features
         numerical_processors: Imputation processors for numerical features
-        
+
     Returns:
         Dictionary with processed feature values
     """
     processed_features = {}
-    
+
     # Process tabular (numerical) features
     for feature in config.tab_field_list:
         if feature in df.columns:
             val = df[feature].iloc[0] if len(df) > 0 and feature in df.columns else None
-            
+
             # Apply numerical imputation
             if feature in numerical_processors:
                 val = numerical_processors[feature].process(val)
-            
+
             processed_features[feature] = val
-    
+
     # Process categorical features with risk tables
     for feature in config.cat_field_list:
         if feature in df.columns:
             val = df[feature].iloc[0] if len(df) > 0 and feature in df.columns else None
-            
+
             # Apply risk table mapping
             if feature in risk_processors:
                 val = risk_processors[feature].process(val)
-            
+
             processed_features[feature] = val
-    
+
     return processed_features
 
 
@@ -737,9 +741,11 @@ def model_fn(model_dir, context=None):
     logger.info("Loading preprocessing artifacts...")
     risk_tables = load_risk_tables(model_dir)
     risk_processors = create_risk_processors(risk_tables) if risk_tables else {}
-    
+
     impute_dict = load_imputation_dict(model_dir)
-    numerical_processors = create_numerical_processors(impute_dict) if impute_dict else {}
+    numerical_processors = (
+        create_numerical_processors(impute_dict) if impute_dict else {}
+    )
 
     # Reconstruct pipelines with hyperparameter-driven steps
     tokenizer, pipelines = data_preprocess_pipeline(config, hyperparameters)
@@ -888,46 +894,49 @@ def predict_fn(input_object, model_data, context=None):
     if len(input_object) == 1:
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("Using fast path for single-record inference")
-        
+
         # Process single record with fast path (bypasses pandas operations)
         processed_features = preprocess_single_record_fast(
             df=input_object,
             config=config,
             risk_processors=risk_processors,
-            numerical_processors=numerical_processors
+            numerical_processors=numerical_processors,
         )
-        
+
         # For single-record inference, we still need to process text through pipelines
         # But we'll use a more direct approach for tabular features
         dataset = PipelineDataset(config_predict, dataframe=input_object)
-        
+
         # Add text preprocessing pipelines (these still need the full pipeline approach)
         for feature_name, pipeline in pipelines.items():
             dataset.add_pipeline(feature_name, pipeline)
-        
+
         # For single record, the fast path already processed tabular features
         # The pipeline will handle text features normally
-        
+
     else:
         # BATCH PATH: Original DataFrame processing for multiple records
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"Using batch path for {len(input_object)} records")
-        
+
         dataset = PipelineDataset(config_predict, dataframe=input_object)
-        
+
         # Add text preprocessing pipelines
         for feature_name, pipeline in pipelines.items():
             dataset.add_pipeline(feature_name, pipeline)
-        
+
         # Add numerical imputation processors
         for feature_name, processor in numerical_processors.items():
             if feature_name in dataset.DataReader.columns:
                 dataset.add_pipeline(feature_name, processor)
-        
+
         # Add risk table processors (excluding text fields)
         text_fields = get_text_field_names(config)
         for feature_name, processor in risk_processors.items():
-            if feature_name not in text_fields and feature_name in dataset.DataReader.columns:
+            if (
+                feature_name not in text_fields
+                and feature_name in dataset.DataReader.columns
+            ):
                 dataset.add_pipeline(feature_name, processor)
 
     collate_batch = build_collate_batch(

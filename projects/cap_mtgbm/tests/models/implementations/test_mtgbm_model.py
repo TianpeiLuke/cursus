@@ -137,7 +137,7 @@ def mtgbm_model(mock_loss_function, mock_training_state, mock_hyperparams):
 class TestMtgbmModelDataPreparation:
     """Tests for data preparation methods."""
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.Dataset")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.Dataset")
     def test_prepare_data_creates_datasets(
         self, mock_dataset_class, mtgbm_model, sample_dataframe
     ):
@@ -162,7 +162,7 @@ class TestMtgbmModelDataPreparation:
         assert test_data == mock_test
         assert mock_dataset_class.call_count == 3
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.Dataset")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.Dataset")
     def test_prepare_data_without_test(
         self, mock_dataset_class, mtgbm_model, sample_dataframe
     ):
@@ -183,7 +183,7 @@ class TestMtgbmModelDataPreparation:
         assert test_data is None
         assert mock_dataset_class.call_count == 2
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.Dataset")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.Dataset")
     def test_prepare_data_extracts_features(
         self, mock_dataset_class, mtgbm_model, sample_dataframe
     ):
@@ -292,7 +292,7 @@ class TestMtgbmModelInitialization:
 class TestMtgbmModelTraining:
     """Tests for model training."""
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.train")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.train")
     def test_train_model_calls_lgb_train(self, mock_train, mtgbm_model):
         """Test _train_model calls lgb.train with correct parameters."""
         mock_train_data = Mock()
@@ -315,7 +315,7 @@ class TestMtgbmModelTraining:
         assert metrics["num_iterations"] == 50
         assert metrics["best_iteration"] == 45
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.train")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.train")
     def test_train_model_uses_custom_loss(self, mock_train, mtgbm_model):
         """Test _train_model passes custom loss function."""
         mock_train_data = Mock()
@@ -334,7 +334,7 @@ class TestMtgbmModelTraining:
         assert "fobj" in call_kwargs
         assert call_kwargs["fobj"] == mtgbm_model.loss_function.objective
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.train")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.train")
     def test_train_model_uses_custom_eval(self, mock_train, mtgbm_model):
         """Test _train_model uses custom evaluation function."""
         mock_train_data = Mock()
@@ -414,7 +414,7 @@ class TestMtgbmModelPrediction:
 class TestMtgbmModelPersistence:
     """Tests for model save/load operations."""
 
-    @patch("docker.models.implementations.mtgbm_model.Path")
+    @patch("dockers.models.implementations.mtgbm_model.Path")
     @patch("builtins.open", new_callable=mock_open)
     def test_save_model_creates_directory(
         self, mock_file, mock_path_class, mtgbm_model
@@ -434,7 +434,7 @@ class TestMtgbmModelPersistence:
         # Verify directory creation
         mock_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch("docker.models.implementations.mtgbm_model.Path")
+    @patch("dockers.models.implementations.mtgbm_model.Path")
     @patch("builtins.open", new_callable=mock_open)
     def test_save_model_saves_lightgbm_model(
         self, mock_file, mock_path_class, mtgbm_model
@@ -452,7 +452,7 @@ class TestMtgbmModelPersistence:
         # Verify model saved
         assert mtgbm_model.model.save_model.called
 
-    @patch("docker.models.implementations.mtgbm_model.Path")
+    @patch("dockers.models.implementations.mtgbm_model.Path")
     @patch("builtins.open", new_callable=mock_open)
     def test_save_model_saves_hyperparameters(
         self, mock_file, mock_path_class, mtgbm_model
@@ -470,7 +470,7 @@ class TestMtgbmModelPersistence:
         # Verify hyperparams model_dump called
         assert mtgbm_model.hyperparams.model_dump.called
 
-    @patch("docker.models.implementations.mtgbm_model.Path")
+    @patch("dockers.models.implementations.mtgbm_model.Path")
     @patch("builtins.open", new_callable=mock_open)
     def test_save_model_saves_training_state(
         self, mock_file, mock_path_class, mtgbm_model
@@ -488,8 +488,8 @@ class TestMtgbmModelPersistence:
         # Verify training state serialized
         assert mtgbm_model.training_state.to_checkpoint_dict.called
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.Booster")
-    @patch("docker.models.implementations.mtgbm_model.Path")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.Booster")
+    @patch("dockers.models.implementations.mtgbm_model.Path")
     @patch("builtins.open", new_callable=mock_open)
     def test_load_model_loads_lightgbm_model(
         self, mock_file, mock_path_class, mock_booster, mtgbm_model
@@ -515,8 +515,8 @@ class TestMtgbmModelPersistence:
         # Verify model loaded
         assert mtgbm_model.model == mock_model
 
-    @patch("docker.models.implementations.mtgbm_model.lgb.Booster")
-    @patch("docker.models.implementations.mtgbm_model.Path")
+    @patch("dockers.models.implementations.mtgbm_model.lgb.Booster")
+    @patch("dockers.models.implementations.mtgbm_model.Path")
     @patch("builtins.open", new_callable=mock_open, read_data='{"current_epoch": 5}')
     def test_load_model_loads_training_state_if_exists(
         self, mock_file, mock_path_class, mock_booster, mtgbm_model

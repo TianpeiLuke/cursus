@@ -2,42 +2,42 @@
   "configuration": {
     "shared": {
       "author": "lukexie",
-      "bucket": "buyer-seller-messaging-reversal",
-      "current_date": "2025-11-30",
+      "bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
+      "current_date": "2025-12-03",
       "enable_caching": false,
       "framework_version": "2.1.0",
       "max_runtime_seconds": 172800,
       "model_class": "pytorch",
       "pipeline_version": "0.0.2",
-      "processing_framework_version": "1.2-1",
-      "processing_instance_count": 1,
-      "processing_instance_type_small": "ml.m5.4xlarge",
-      "processing_volume_size": 500,
       "project_root_folder": "rnr_pytorch_bedrock",
       "py_version": "py310",
       "region": "NA",
-      "role": "arn:aws:iam::178936618742:role/AmazonSageMaker-ExecutionRole-Default",
+      "role": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
       "service_name": "BuyerAbuseRnR",
-      "source_dir": "docker",
-      "use_secure_pypi": false
+      "source_dir": "dockers",
+      "use_secure_pypi": true
     },
     "specific": {
       "DummyDataLoading_calibration": {
         "__model_type__": "DummyDataLoadingConfig",
         "aws_region": "us-east-1",
-        "data_source": "s3://buyer-seller-messaging-reversal/pipeline/lukexie-BuyerAbuseRnR-pytorch-NA/20251111035543/labelrulesetexecution/processed_data/test",
+        "data_source": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/processed_data/test",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
         "job_type": "calibration",
         "max_file_size_mb": 1000,
         "output_format": "PARQUET",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "dummy_data_loading.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
         "processing_instance_type_large": "ml.m5.12xlarge",
-        "processing_source_dir": "docker/scripts",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/dummy_data_loading.py",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/dummy_data_loading.py",
         "shard_size": 10000,
         "supported_formats": [
           "csv",
@@ -52,15 +52,19 @@
         "__model_type__": "DummyTrainingConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
-        "pretrained_model_path": "s3://buyer-seller-messaging-reversal/pipeline/lukexie-BuyerAbuseRnR-pytorch-NA/20251128070034/pytorch_training/pipelines-stiuq2fnydgp-PyTorchTraining-xXHG9pkuK0/output/model.tar.gz",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pretrained_model_path": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/lukexie-BuyerAbuseRnR-pytorch-NA-1-0-0-pipeline-2025-12-02-07-09-42/pytorch_training/pipelines-uu186yt9zlqz-PyTorchTraining-1aiejj5VXs/output/model.tar.gz",
         "processing_entry_point": "dummy_training.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
         "processing_instance_type_large": "ml.m5.12xlarge",
-        "processing_source_dir": "docker/scripts",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/dummy_training.py",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/dummy_training.py",
         "use_large_processing_instance": true
       },
       "ModelCalibration_calibration": {
@@ -69,7 +73,7 @@
         "calibration_method": "gam",
         "calibration_sample_points": 1000,
         "effective_instance_type": "ml.m5.4xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
         "error_threshold": 0.05,
         "gam_splines": 10,
         "is_binary": true,
@@ -83,27 +87,35 @@
         "num_classes": 2,
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "model_calibration.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
         "processing_instance_type_large": "ml.m5.12xlarge",
-        "processing_source_dir": "docker/scripts",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
         "score_field": "prob_class_1",
         "score_field_prefix": "prob_class_",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/model_calibration.py",
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/model_calibration.py",
         "use_large_processing_instance": false
       },
       "Package": {
         "__model_type__": "PackageConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.4xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "package.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
         "processing_instance_type_large": "ml.m5.12xlarge",
-        "processing_source_dir": "docker/scripts",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/package.py",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/package.py",
         "use_large_processing_instance": false
       },
       "Payload": {
@@ -112,7 +124,7 @@
         "default_numeric_value": 0.0,
         "default_text_value": "DEFAULT_TEXT",
         "effective_instance_type": "ml.m5.4xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
         "expected_tps": 10,
         "field_defaults": {
           "dialogue": "[bom] [Arrival Time]: 2025-06-11 [BUYER]: I need my refund. [eom]",
@@ -122,11 +134,15 @@
         "max_latency_in_millisecond": 800,
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "payload.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
         "processing_instance_type_large": "ml.m5.12xlarge",
-        "processing_source_dir": "docker/scripts",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/payload.py",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/payload.py",
         "source_model_inference_content_types": [
           "text/csv"
         ],
@@ -142,8 +158,8 @@
         "comparison_metrics": "all",
         "comparison_mode": false,
         "comparison_plots": true,
-        "effective_instance_type": "ml.g5.12xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker",
+        "effective_instance_type": "ml.p3.8xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers",
         "eval_metric_choices": [
           "auroc",
           "average_precision",
@@ -154,30 +170,180 @@
         "label_name": "llm_reversal_flag",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "previous_score_field": "",
         "processing_entry_point": "pytorch_model_eval.py",
-        "processing_instance_type_large": "ml.g5.12xlarge",
-        "processing_source_dir": "docker",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/pytorch_model_eval.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.p3.8xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/pytorch_model_eval.py",
         "statistical_tests": true,
         "use_large_processing_instance": true
+      },
+      "Registration": {
+        "__model_type__": "RegistrationConfig",
+        "aws_region": "us-east-1",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers",
+        "framework": "pytorch",
+        "inference_entry_point": "pytorch_inference_handler.py",
+        "inference_instance_type": "ml.m5.large",
+        "model_domain": "BuyerSellerMessaging",
+        "model_objective": "RnR_BSM_Model_NA",
+        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_input_variable_list": [
+          [
+            "net_conc_amt",
+            "NUMERIC"
+          ],
+          [
+            "ttm_conc_amt",
+            "NUMERIC"
+          ],
+          [
+            "ttm_conc_count",
+            "NUMERIC"
+          ],
+          [
+            "concsi",
+            "NUMERIC"
+          ],
+          [
+            "deliverable_flag",
+            "NUMERIC"
+          ],
+          [
+            "undeliverable_flag",
+            "NUMERIC"
+          ],
+          [
+            "unique_message_count",
+            "NUMERIC"
+          ],
+          [
+            "total_ship_track_events_by_order",
+            "NUMERIC"
+          ],
+          [
+            "total_unique_ship_track_events_by_order",
+            "NUMERIC"
+          ],
+          [
+            "dialogue",
+            "TEXT"
+          ],
+          [
+            "shiptrack_event_history_by_order",
+            "TEXT"
+          ]
+        ],
+        "source_model_inference_output_variable_list": {
+          "calibrated-score": "NUMERIC",
+          "custom-output-label": "TEXT",
+          "legacy-score": "NUMERIC",
+          "score-percentile": "NUMERIC"
+        },
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "variable_schema": {
+          "input": {
+            "variables": [
+              {
+                "name": "net_conc_amt",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "ttm_conc_amt",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "ttm_conc_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "concsi",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "deliverable_flag",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "undeliverable_flag",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "unique_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "total_ship_track_events_by_order",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "total_unique_ship_track_events_by_order",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "dialogue",
+                "type": "TEXT"
+              },
+              {
+                "name": "shiptrack_event_history_by_order",
+                "type": "TEXT"
+              }
+            ]
+          },
+          "output": {
+            "variables": [
+              {
+                "name": "legacy-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "score-percentile",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "calibrated-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "custom-output-label",
+                "type": "TEXT"
+              }
+            ]
+          }
+        }
       },
       "TabularPreprocessing_calibration": {
         "__model_type__": "TabularPreprocessingConfig",
         "aws_region": "us-east-1",
         "effective_instance_type": "ml.m5.12xlarge",
-        "effective_source_dir": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts",
-        "full_script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/tabular_preprocessing.py",
         "job_type": "calibration",
         "output_format": "Parquet",
         "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
         "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
-        "pipeline_s3_loc": "s3://buyer-seller-messaging-reversal/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_0.0.2",
         "processing_entry_point": "tabular_preprocessing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
         "processing_instance_type_large": "ml.m5.12xlarge",
-        "processing_source_dir": "docker/scripts",
-        "script_path": "/home/ec2-user/SageMaker/AmazonSageMaker-lukexie-sagemaker-bsm-repo/pipelines/rnr_pytorch_bedrock/docker/scripts/tabular_preprocessing.py",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/tabular_preprocessing.py",
         "test_val_ratio": 0.5,
         "train_ratio": 0.7,
         "use_large_processing_instance": true
@@ -192,9 +358,10 @@
       "Package": "PackageConfig",
       "Payload": "PayloadConfig",
       "PyTorchModelEval_calibration": "PyTorchModelEvalConfig",
+      "Registration": "RegistrationConfig",
       "TabularPreprocessing_calibration": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-11-30T06:33:11.176112",
+    "created_at": "2025-12-03T04:05:07.485862",
     "field_sources": {
       "author": [
         "DummyDataLoading_calibration",
@@ -203,6 +370,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "aws_region": [
@@ -212,6 +380,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "bucket": [
@@ -221,6 +390,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "ca_repository_arn": [
@@ -248,6 +418,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "data_source": [
@@ -275,6 +446,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "enable_caching": [
@@ -284,6 +456,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "error_threshold": [
@@ -298,6 +471,9 @@
       "field_defaults": [
         "Payload"
       ],
+      "framework": [
+        "Registration"
+      ],
       "framework_version": [
         "DummyDataLoading_calibration",
         "TabularPreprocessing_calibration",
@@ -305,6 +481,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "full_script_path": [
@@ -315,6 +492,12 @@
       ],
       "id_name": [
         "PyTorchModelEval_calibration"
+      ],
+      "inference_entry_point": [
+        "Registration"
+      ],
+      "inference_instance_type": [
+        "Registration"
       ],
       "is_binary": [
         "ModelCalibration_calibration"
@@ -347,6 +530,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "model_class": [
@@ -356,7 +540,17 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
+      ],
+      "model_domain": [
+        "Registration"
+      ],
+      "model_objective": [
+        "Registration"
+      ],
+      "model_owner": [
+        "Registration"
       ],
       "monotonic_constraint": [
         "ModelCalibration_calibration"
@@ -378,6 +572,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "pipeline_name": [
@@ -387,6 +582,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "pipeline_s3_loc": [
@@ -396,6 +592,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "pipeline_version": [
@@ -405,6 +602,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "pretrained_model_path": [
@@ -483,6 +681,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "py_version": [
@@ -492,6 +691,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "region": [
@@ -501,6 +701,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "role": [
@@ -510,6 +711,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "score_field": [
@@ -534,6 +736,7 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "shard_size": [
@@ -546,13 +749,22 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
       ],
       "source_model_inference_content_types": [
-        "Payload"
+        "Payload",
+        "Registration"
+      ],
+      "source_model_inference_input_variable_list": [
+        "Registration"
+      ],
+      "source_model_inference_output_variable_list": [
+        "Registration"
       ],
       "source_model_inference_response_types": [
-        "Payload"
+        "Payload",
+        "Registration"
       ],
       "statistical_tests": [
         "PyTorchModelEval_calibration"
@@ -582,7 +794,11 @@
         "PyTorchModelEval_calibration",
         "ModelCalibration_calibration",
         "Payload",
+        "Registration",
         "Package"
+      ],
+      "variable_schema": [
+        "Registration"
       ],
       "write_data_shards": [
         "DummyDataLoading_calibration"
