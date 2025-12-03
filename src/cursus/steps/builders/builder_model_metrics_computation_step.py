@@ -180,33 +180,18 @@ class ModelMetricsComputationStepBuilder(StepBuilderBase):
     def _get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables for the processor.
 
-        This method creates a dictionary of environment variables needed by the
-        metrics computation script, combining base variables with metrics-specific ones.
+        This method delegates to the config's get_environment_variables() method,
+        which handles all metrics computation-specific variables.
 
         Returns:
             Dict[str, str]: Environment variables dictionary
         """
-        env_vars = super()._get_environment_variables()
+        # Delegate to config's method which handles all metrics computation-specific variables
+        if hasattr(self.config, "get_environment_variables"):
+            return self.config.get_environment_variables()
 
-        # Add metrics computation specific environment variables
-        env_vars.update(
-            {
-                "ID_FIELD": self.config.id_name,
-                "LABEL_FIELD": self.config.label_name,
-                "INPUT_FORMAT": self.config.input_format,
-                "COMPUTE_DOLLAR_RECALL": str(self.config.compute_dollar_recall).lower(),
-                "COMPUTE_COUNT_RECALL": str(self.config.compute_count_recall).lower(),
-                "DOLLAR_RECALL_FPR": str(self.config.dollar_recall_fpr),
-                "COUNT_RECALL_CUTOFF": str(self.config.count_recall_cutoff),
-                "GENERATE_PLOTS": str(self.config.generate_plots).lower(),
-            }
-        )
-
-        # Add amount field if specified
-        if self.config.amount_field:
-            env_vars["AMOUNT_FIELD"] = self.config.amount_field
-
-        return env_vars
+        # Fallback to parent implementation if config doesn't have the method
+        return super()._get_environment_variables()
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:
         """Get inputs for the processor using the specification and contract.
