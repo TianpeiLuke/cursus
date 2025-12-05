@@ -414,6 +414,52 @@ def read_feature_columns(model_dir: str) -> Optional[List[str]]:
         raise
 
 
+def validate_input_data(input_data: pd.DataFrame, feature_columns: List[str]) -> None:
+    """
+    Validate input data meets requirements.
+
+    Args:
+        input_data: Input DataFrame
+        feature_columns: Expected feature columns
+
+    Raises:
+        ValueError: If validation fails
+    """
+    if input_data.empty:
+        raise ValueError("Input DataFrame is empty")
+
+    # If input is headerless CSV, validate column count
+    if all(isinstance(col, int) for col in input_data.columns):
+        if len(input_data.columns) != len(feature_columns):
+            raise ValueError(
+                f"Input data has {len(input_data.columns)} columns but model expects {len(feature_columns)} features"
+            )
+    else:
+        # Validate required features present
+        missing_features = set(feature_columns) - set(input_data.columns)
+        if missing_features:
+            raise ValueError(f"Missing required features: {missing_features}")
+
+
+def assign_column_names(
+    input_data: pd.DataFrame, feature_columns: List[str]
+) -> pd.DataFrame:
+    """
+    Assign column names to headerless input data.
+
+    Args:
+        input_data: Input DataFrame
+        feature_columns: Feature column names to assign
+
+    Returns:
+        DataFrame with assigned column names
+    """
+    df = input_data.copy()
+    if all(isinstance(col, int) for col in df.columns):
+        df.columns = feature_columns
+    return df
+
+
 def load_hyperparameters(model_dir: str) -> Dict[str, Any]:
     """
     Load hyperparameters from hyperparameters.json file.
@@ -1107,6 +1153,7 @@ def predict_fn(input_object, model_data, context=None):
     risk_processors = model_data.get("risk_processors", {})
     numerical_processors = model_data.get("numerical_processors", {})
     calibrator = model_data.get("calibrator")
+    feature_columns = model_data.get("feature_columns")
 
     config_predict = config.model_dump()
     label_field = config_predict.get("label_name", None)
@@ -1118,6 +1165,17 @@ def predict_fn(input_object, model_data, context=None):
         config_predict["cat_field_list"] = [
             col for col in config_predict["cat_field_list"] if col != label_field
         ]
+
+    # Validate input data if feature columns are available
+    if feature_columns:
+        validate_input_data(input_object, feature_columns)
+        
+        # Assign column names if needed for headerless CSV input
+        input_object = assign_column_names(input_object, feature_columns)
+        
+        # Reorder columns to match feature column order and filter out extra columns
+        # This ensures JSON input with different column ordering works correctly
+        input_object = input_object.reindex(columns=feature_columns)
 
     # FAST PATH: Single-record inference optimization
     if len(input_object) == 1:
