@@ -270,14 +270,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ================================================================================
 class Config(BaseModel):
     id_name: str = "order_id"
-    text_name: str = "text"
+    text_name: Optional[str] = None  # Changed to Optional to match training
     label_name: str = "label"
     batch_size: int = 32
     full_field_list: List[str] = Field(default_factory=list)
     cat_field_list: List[str] = Field(default_factory=list)
     tab_field_list: List[str] = Field(default_factory=list)
-    categorical_features_to_encode: List[str] = Field(default_factory=list)
-    header: int = 0
     max_sen_len: int = 512
     chunk_trancate: bool = False
     max_total_chunks: int = 5
@@ -309,22 +307,30 @@ class Config(BaseModel):
     val_check_interval: float = 0.25
     adam_epsilon: float = 1e-08
     fp16: bool = False
+    use_gradient_checkpointing: bool = False  # Added to match training
     run_scheduler: bool = True
     reinit_pooler: bool = True
     reinit_layers: int = 2
     warmup_steps: int = 300
     text_input_ids_key: str = "input_ids"  # Configurable text input key
     text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
-    train_filename: Optional[str] = None
-    val_filename: Optional[str] = None
-    test_filename: Optional[str] = None
+    # Added fields for trimodal model support
+    primary_text_name: Optional[str] = None
+    secondary_text_name: Optional[str] = None
     embed_size: Optional[int] = None  # Added for type consistency
-    model_path: str = "/opt/ml/model"  # Add model_path with a default value
-    categorical_processor_mappings: Optional[Dict[str, Dict[str, int]]] = (
-        None  # Add this line
-    )
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
+    # Added fields for text processing steps configuration
+    text_processing_steps: Optional[List[str]] = None
+    primary_text_processing_steps: Optional[List[str]] = None
+    secondary_text_processing_steps: Optional[List[str]] = None
+    # Added fields for preprocessing artifact storage
+    imputation_dict: Optional[Dict[str, float]] = None
+    risk_tables: Optional[Dict[str, Dict]] = None
+    # Added metadata fields
+    _input_format: Optional[str] = None
+    smooth_factor: float = 0.0
+    count_threshold: int = 0
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -517,8 +523,8 @@ def data_preprocess_pipeline(
     """
     Build text preprocessing pipelines based on config and hyperparameters.
 
-    For bimodal: Uses text_name with configured or default steps
-    For trimodal: Uses primary_text_name and secondary_text_name with separate steps
+    For bimodal: Uses text_name with default or configured steps
+    For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
 
     Args:
         config: Configuration object
@@ -534,59 +540,78 @@ def data_preprocess_pipeline(
     tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
     pipelines = {}
 
-    # Extract processing steps from hyperparameters if available
-    text_steps = None
-    primary_steps = None
-    secondary_steps = None
+    # Extract text field names from hyperparameters or config
     primary_text_name = None
     secondary_text_name = None
-
+    
     if hyperparameters:
-        text_steps = hyperparameters.get("text_processing_steps")
-        primary_steps = hyperparameters.get("primary_text_processing_steps")
-        secondary_steps = hyperparameters.get("secondary_text_processing_steps")
         primary_text_name = hyperparameters.get("primary_text_name")
         secondary_text_name = hyperparameters.get("secondary_text_name")
+    else:
+        # Fallback to config values
+        primary_text_name = getattr(config, "primary_text_name", None)
+        secondary_text_name = getattr(config, "secondary_text_name", None)
 
     # BIMODAL: Single text pipeline
     if not primary_text_name:
-        # Use configured steps from hyperparameters or fallback to default
-        steps = text_steps or [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
+        # Use configured steps from hyperparameters or config, or fallback to default
+        text_name = getattr(config, "text_name", None)
+        if text_name is None and hyperparameters:
+            text_name = hyperparameters.get("text_name")
+            
+        steps = None
+        if hyperparameters:
+            steps = hyperparameters.get("text_processing_steps")
+        if steps is None:
+            # Fallback to config attribute or default
+            steps = getattr(config, "text_processing_steps", None)
+        if steps is None:
+            # Default steps
+            steps = [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ]
 
-        pipelines[config.text_name] = build_text_pipeline_from_steps(
-            processing_steps=steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        logger.info(
-            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}"
-        )
+        if text_name:
+            pipelines[text_name] = build_text_pipeline_from_steps(
+                processing_steps=steps,
+                tokenizer=tokenizer,
+                max_sen_len=config.max_sen_len,
+                chunk_trancate=config.chunk_trancate,
+                max_total_chunks=config.max_total_chunks,
+                input_ids_key=config.text_input_ids_key,
+                attention_mask_key=config.text_attention_mask_key,
+            )
+            logger.info(
+                f"Built bimodal pipeline for '{text_name}' with steps: {steps}"
+            )
 
     # TRIMODAL: Dual text pipelines
     else:
         # Primary text pipeline (e.g., chat - full cleaning)
-        primary_pipeline_steps = primary_steps or [
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
+        primary_steps = None
+        if hyperparameters:
+            primary_steps = hyperparameters.get("primary_text_processing_steps")
+        if primary_steps is None:
+            # Fallback to config attribute or default
+            primary_steps = getattr(config, "primary_text_processing_steps", None)
+        if primary_steps is None:
+            # Default steps
+            primary_steps = [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ]
 
         pipelines[primary_text_name] = build_text_pipeline_from_steps(
-            processing_steps=primary_pipeline_steps,
+            processing_steps=primary_steps,
             tokenizer=tokenizer,
             max_sen_len=config.max_sen_len,
             chunk_trancate=config.chunk_trancate,
@@ -595,19 +620,27 @@ def data_preprocess_pipeline(
             attention_mask_key=config.text_attention_mask_key,
         )
         logger.info(
-            f"Built primary pipeline for '{primary_text_name}' with steps: {primary_pipeline_steps}"
+            f"Built primary pipeline for '{primary_text_name}' with steps: {primary_steps}"
         )
 
         # Secondary text pipeline (e.g., events - minimal cleaning)
-        secondary_pipeline_steps = secondary_steps or [
-            "dialogue_splitter",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ]
+        secondary_steps = None
+        if hyperparameters:
+            secondary_steps = hyperparameters.get("secondary_text_processing_steps")
+        if secondary_steps is None:
+            # Fallback to config attribute or default
+            secondary_steps = getattr(config, "secondary_text_processing_steps", None)
+        if secondary_steps is None:
+            # Default steps
+            secondary_steps = [
+                "dialogue_splitter",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ]
 
         pipelines[secondary_text_name] = build_text_pipeline_from_steps(
-            processing_steps=secondary_pipeline_steps,
+            processing_steps=secondary_steps,
             tokenizer=tokenizer,
             max_sen_len=config.max_sen_len,
             chunk_trancate=config.chunk_trancate,
@@ -616,7 +649,7 @@ def data_preprocess_pipeline(
             attention_mask_key=config.text_attention_mask_key,
         )
         logger.info(
-            f"Built secondary pipeline for '{secondary_text_name}' with steps: {secondary_pipeline_steps}"
+            f"Built secondary pipeline for '{secondary_text_name}' with steps: {secondary_steps}"
         )
 
     return tokenizer, pipelines
@@ -940,7 +973,15 @@ def model_fn(model_dir, context=None):
 
     # Add multiclass label processor if needed
     if not config.is_binary and config.num_classes > 2:
-        if config.multiclass_categories:
+        # Check if we have label mappings from the config
+        if config.label_to_id and config.id_to_label:
+            # Use the saved mappings
+            label_processor = MultiClassLabelProcessor(
+                label_list=config.id_to_label, strict=True
+            )
+            pipelines[config.label_name] = label_processor
+        elif config.multiclass_categories:
+            # Fallback to multiclass_categories if available
             label_processor = MultiClassLabelProcessor(
                 label_list=config.multiclass_categories, strict=True
             )
