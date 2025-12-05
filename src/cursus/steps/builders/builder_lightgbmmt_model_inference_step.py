@@ -166,39 +166,20 @@ class LightGBMMTModelInferenceStepBuilder(StepBuilderBase):
         )
 
     def _get_environment_variables(self) -> Dict[str, str]:
-        """
-        Constructs a dictionary of environment variables to be passed to the processing job.
-        These variables are used to control the behavior of the multi-task inference script
-        without needing to pass them as command-line arguments.
+        """Get environment variables for the processor.
+
+        This method delegates to the config's get_environment_variables() method,
+        which handles all multi-task inference-specific variables.
 
         Returns:
-            A dictionary of environment variables.
+            Dict[str, str]: Environment variables dictionary
         """
-        # Get base environment variables from contract
-        env_vars = super()._get_environment_variables()
-
-        # Add USE_SECURE_PYPI environment variable from config
-        # This controls which PyPI source the inference script uses for package installation
-        if hasattr(self.config, "use_secure_pypi"):
-            env_vars["USE_SECURE_PYPI"] = str(self.config.use_secure_pypi).lower()
-            self.log_info(
-                "Set USE_SECURE_PYPI=%s from config.use_secure_pypi",
-                env_vars["USE_SECURE_PYPI"],
-            )
-
-        # Add CA_REPOSITORY_ARN if use_secure_pypi is enabled (inherited from base config)
-        if hasattr(self.config, "use_secure_pypi") and self.config.use_secure_pypi:
-            env_vars["CA_REPOSITORY_ARN"] = self.config.ca_repository_arn
-            self.log_info(
-                "Added CA_REPOSITORY_ARN to environment variables for secure PyPI"
-            )
-
-        # Add multi-task inference-specific environment variables
-        if hasattr(self.config, "id_name"):
-            env_vars["ID_FIELD"] = str(self.config.id_name)
-        if hasattr(self.config, "task_label_names"):
-            # Convert list to comma-separated string for environment variable
-            env_vars["TASK_LABEL_NAMES"] = ",".join(self.config.task_label_names)
+        # Delegate to config's method which handles all inference-specific variables
+        if hasattr(self.config, "get_environment_variables"):
+            env_vars = self.config.get_environment_variables()
+        else:
+            # Fallback to parent implementation if config doesn't have the method
+            env_vars = super()._get_environment_variables()
 
         self.log_info("Multi-task inference environment variables: %s", env_vars)
         return env_vars

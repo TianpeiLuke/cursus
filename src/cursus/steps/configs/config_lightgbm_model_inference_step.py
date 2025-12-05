@@ -90,11 +90,6 @@ class LightGBMModelInferenceConfig(ProcessingStepConfigBase):
         description="Python version for the SageMaker PyTorch container.",
     )
 
-    ca_repository_arn: str = Field(
-        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
-        description="CodeArtifact repository ARN for secure PyPI access. Only used when use_secure_pypi=True.",
-    )
-
     # For inference jobs, we typically use smaller instances than evaluation
     use_large_processing_instance: bool = Field(
         default=False,
@@ -185,12 +180,14 @@ class LightGBMModelInferenceConfig(ProcessingStepConfigBase):
             else {}
         )
 
+        # Add USE_SECURE_PYPI (inherited from base config)
+        env_vars["USE_SECURE_PYPI"] = str(self.use_secure_pypi).lower()
+
         # Add model inference specific environment variables
         env_vars.update(
             {
                 "ID_FIELD": self.id_name,
                 "LABEL_FIELD": self.label_name,
-                "JOB_TYPE": self.job_type,
                 "OUTPUT_FORMAT": self.output_format,
                 "JSON_ORIENT": self.json_orient,
             }

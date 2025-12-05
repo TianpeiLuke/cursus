@@ -149,33 +149,20 @@ class LightGBMModelInferenceStepBuilder(StepBuilderBase):
         )
 
     def _get_environment_variables(self) -> Dict[str, str]:
-        """
-        Constructs a dictionary of environment variables to be passed to the processing job.
-        These variables are used to control the behavior of the inference script
-        without needing to pass them as command-line arguments.
+        """Get environment variables for the processor.
+
+        This method delegates to the config's get_environment_variables() method,
+        which handles all model inference-specific variables.
 
         Returns:
-            A dictionary of environment variables.
+            Dict[str, str]: Environment variables dictionary
         """
-        # Get base environment variables from contract
-        env_vars = super()._get_environment_variables()
-
-        # Add CA_REPOSITORY_ARN if use_secure_pypi is enabled (inherited from base config)
-        if hasattr(self.config, "use_secure_pypi") and self.config.use_secure_pypi:
-            env_vars["CA_REPOSITORY_ARN"] = self.config.ca_repository_arn
-            self.log_info(
-                "Added CA_REPOSITORY_ARN to environment variables for secure PyPI"
-            )
-
-        # Add inference-specific environment variables
-        if hasattr(self.config, "id_name") and self.config.id_name:
-            env_vars["ID_FIELD"] = str(self.config.id_name)
-        if hasattr(self.config, "label_name") and self.config.label_name:
-            env_vars["LABEL_FIELD"] = str(self.config.label_name)
-
-        # Add inference-specific configuration
-        env_vars["OUTPUT_FORMAT"] = str(self.config.output_format)
-        env_vars["JSON_ORIENT"] = str(self.config.json_orient)
+        # Delegate to config's method which handles all inference-specific variables
+        if hasattr(self.config, "get_environment_variables"):
+            env_vars = self.config.get_environment_variables()
+        else:
+            # Fallback to parent implementation if config doesn't have the method
+            env_vars = super()._get_environment_variables()
 
         self.log_info("Inference environment variables: %s", env_vars)
         return env_vars

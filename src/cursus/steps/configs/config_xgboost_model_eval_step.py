@@ -198,7 +198,6 @@ class XGBoostModelEvalConfig(ProcessingStepConfigBase):
             {
                 "ID_FIELD": self.id_name,
                 "LABEL_FIELD": self.label_name,
-                "JOB_TYPE": self.job_type,
             }
         )
 
