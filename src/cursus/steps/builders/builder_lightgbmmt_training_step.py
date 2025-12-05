@@ -167,59 +167,28 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
         )
 
     def _get_environment_variables(self) -> Dict[str, str]:
-        """
-        Constructs a dictionary of environment variables to be passed to the training job.
-        These variables are used to control the behavior of the training script
-        without needing to pass them as hyperparameters.
+        """Get environment variables for the training job.
+
+        This method delegates to the config's get_environment_variables() method,
+        which handles all training-specific variables, then adds CA_REPOSITORY_ARN
+        for Training containers (which support it unlike Processing containers).
 
         Returns:
-            A dictionary of environment variables.
+            Dict[str, str]: Environment variables dictionary
         """
-        # Get base environment variables from contract
-        env_vars = super()._get_environment_variables()
+        # Delegate to config's method which handles all training-specific variables
+        if hasattr(self.config, "get_environment_variables"):
+            env_vars = self.config.get_environment_variables()
+        else:
+            # Fallback to parent implementation if config doesn't have the method
+            env_vars = super()._get_environment_variables()
 
-        # Add CA_REPOSITORY_ARN if use_secure_pypi is enabled (inherited from base config)
+        # Training containers (unlike Processing) support CA_REPOSITORY_ARN
+        # Add it if use_secure_pypi is enabled
         if self.config.use_secure_pypi:
             env_vars["CA_REPOSITORY_ARN"] = self.config.ca_repository_arn
             self.log_info(
-                "Added CA_REPOSITORY_ARN to environment variables for secure PyPI"
-            )
-
-        # Add USE_SECURE_PYPI environment variable from config
-        # This controls which PyPI source the training script uses for package installation
-        if hasattr(self.config, "use_secure_pypi"):
-            env_vars["USE_SECURE_PYPI"] = str(self.config.use_secure_pypi).lower()
-            self.log_info(
-                "Set USE_SECURE_PYPI=%s from config.use_secure_pypi",
-                env_vars["USE_SECURE_PYPI"],
-            )
-
-        # Add preprocessing artifact control environment variables from config
-        if hasattr(self.config, "use_precomputed_imputation"):
-            env_vars["USE_PRECOMPUTED_IMPUTATION"] = str(
-                self.config.use_precomputed_imputation
-            ).lower()
-            self.log_info(
-                "Set USE_PRECOMPUTED_IMPUTATION=%s from config.use_precomputed_imputation",
-                env_vars["USE_PRECOMPUTED_IMPUTATION"],
-            )
-
-        if hasattr(self.config, "use_precomputed_risk_tables"):
-            env_vars["USE_PRECOMPUTED_RISK_TABLES"] = str(
-                self.config.use_precomputed_risk_tables
-            ).lower()
-            self.log_info(
-                "Set USE_PRECOMPUTED_RISK_TABLES=%s from config.use_precomputed_risk_tables",
-                env_vars["USE_PRECOMPUTED_RISK_TABLES"],
-            )
-
-        if hasattr(self.config, "use_precomputed_features"):
-            env_vars["USE_PRECOMPUTED_FEATURES"] = str(
-                self.config.use_precomputed_features
-            ).lower()
-            self.log_info(
-                "Set USE_PRECOMPUTED_FEATURES=%s from config.use_precomputed_features",
-                env_vars["USE_PRECOMPUTED_FEATURES"],
+                "Added CA_REPOSITORY_ARN to environment variables for Training container"
             )
 
         # Add environment variables from config if they exist

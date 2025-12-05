@@ -95,12 +95,41 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         "If False, hyperparameters_s3_uri channel is created as TrainingInput.",
     )
 
-    # Environment variables for package installation
+    # Environment variables for package installation and preprocessing artifact control
     use_secure_pypi: bool = Field(
         default=True,
         description="Controls PyPI source for package installation. "
         "If True (default), uses secure CodeArtifact PyPI. "
         "If False, uses public PyPI.",
+    )
+
+    use_precomputed_imputation: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed imputation artifacts. "
+        "If True, expects input data to be already imputed and loads impute_dict.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes imputation inline and transforms data.",
+    )
+
+    use_precomputed_risk_tables: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed risk table artifacts. "
+        "If True, expects input data to be already risk-mapped and loads risk_table_map.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes risk tables inline and transforms data.",
+    )
+
+    use_precomputed_features: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed feature selection. "
+        "If True, expects input data to be already feature-selected and loads selected_features.json from model_artifacts_input, skipping inline computation. "
+        "If False (default), uses all features without selection.",
+    )
+
+    use_native_categorical: bool = Field(
+        default=True,
+        description="Controls categorical feature handling mode for LightGBMMT. "
+        "If True (default), uses LightGBM native categorical features with DictionaryEncodingProcessor for integer encoding. "
+        "If False, uses risk table mapping (XGBoost-style) for categorical features. "
+        "Can be overridden at runtime via USE_NATIVE_CATEGORICAL environment variable.",
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -141,6 +170,37 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         )
 
         return self
+
+    def get_environment_variables(self) -> Dict[str, str]:
+        """
+        Get environment variables for the LightGBMMT training script.
+
+        Returns:
+            Dict[str, str]: Dictionary mapping environment variable names to values
+        """
+        # Get base environment variables from parent class if available
+        env_vars = (
+            super().get_environment_variables()
+            if hasattr(super(), "get_environment_variables")
+            else {}
+        )
+
+        # Add training-specific environment variables
+        env_vars.update(
+            {
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
+                "USE_PRECOMPUTED_IMPUTATION": str(
+                    self.use_precomputed_imputation
+                ).lower(),
+                "USE_PRECOMPUTED_RISK_TABLES": str(
+                    self.use_precomputed_risk_tables
+                ).lower(),
+                "USE_PRECOMPUTED_FEATURES": str(self.use_precomputed_features).lower(),
+                "USE_NATIVE_CATEGORICAL": str(self.use_native_categorical).lower(),
+            }
+        )
+
+        return env_vars
 
     @field_validator("training_instance_type")
     @classmethod
@@ -214,6 +274,10 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
             "max_run_seconds": self.max_run_seconds,
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
             "use_secure_pypi": self.use_secure_pypi,
+            "use_precomputed_imputation": self.use_precomputed_imputation,
+            "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
+            "use_precomputed_features": self.use_precomputed_features,
+            "use_native_categorical": self.use_native_categorical,
         }
 
         # Combine base fields and training fields (training fields take precedence if overlap)

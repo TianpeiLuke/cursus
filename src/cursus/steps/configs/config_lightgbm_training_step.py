@@ -158,6 +158,37 @@ class LightGBMTrainingConfig(BasePipelineConfig):
 
         return self
 
+    def get_environment_variables(self) -> Dict[str, str]:
+        """
+        Get environment variables for the LightGBM training script.
+
+        Returns:
+            Dict[str, str]: Dictionary mapping environment variable names to values
+        """
+        # Get base environment variables from parent class if available
+        env_vars = (
+            super().get_environment_variables()
+            if hasattr(super(), "get_environment_variables")
+            else {}
+        )
+
+        # Add training-specific environment variables
+        env_vars.update(
+            {
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
+                "USE_PRECOMPUTED_IMPUTATION": str(
+                    self.use_precomputed_imputation
+                ).lower(),
+                "USE_PRECOMPUTED_RISK_TABLES": str(
+                    self.use_precomputed_risk_tables
+                ).lower(),
+                "USE_PRECOMPUTED_FEATURES": str(self.use_precomputed_features).lower(),
+                "USE_NATIVE_CATEGORICAL": str(self.use_native_categorical).lower(),
+            }
+        )
+
+        return env_vars
+
     @field_validator("training_instance_type")
     @classmethod
     def _validate_sagemaker_lightgbm_instance_type(cls, v: str) -> str:
