@@ -64,6 +64,28 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         description="Model hyperparameters (optional when using external JSON files)",
     )
 
+    # Pre-computed artifact flags
+    use_precomputed_imputation: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed imputation artifacts. "
+        "If True, expects input data to be already imputed and loads impute_dict.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes imputation inline and transforms data.",
+    )
+
+    use_precomputed_risk_tables: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed risk table artifacts. "
+        "If True, expects input data to be already risk-mapped and loads risk_table_map.pkl from model_artifacts_input, skipping inline computation. "
+        "If False (default), computes risk tables inline and transforms data.",
+    )
+
+    use_precomputed_features: bool = Field(
+        default=False,
+        description="Controls whether to use pre-computed feature selection. "
+        "If True, expects input data to be already feature-selected and loads selected_features.json from model_artifacts_input, skipping inline computation. "
+        "If False (default), uses all features without selection.",
+    )
+
     model_config = BasePipelineConfig.model_config
 
     @field_validator("training_instance_type")
@@ -88,6 +110,36 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             )
         return v
 
+    def get_environment_variables(self) -> Dict[str, str]:
+        """
+        Get environment variables for the PyTorch training script.
+
+        Returns:
+            Dict[str, str]: Dictionary mapping environment variable names to values
+        """
+        # Get base environment variables from parent class if available
+        env_vars = (
+            super().get_environment_variables()
+            if hasattr(super(), "get_environment_variables")
+            else {}
+        )
+
+        # Add PyTorch training specific environment variables
+        env_vars.update(
+            {
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
+                "USE_PRECOMPUTED_IMPUTATION": str(
+                    self.use_precomputed_imputation
+                ).lower(),
+                "USE_PRECOMPUTED_RISK_TABLES": str(
+                    self.use_precomputed_risk_tables
+                ).lower(),
+                "USE_PRECOMPUTED_FEATURES": str(self.use_precomputed_features).lower(),
+            }
+        )
+
+        return env_vars
+
     def get_public_init_fields(self) -> Dict[str, Any]:
         """
         Override get_public_init_fields to include PyTorch training-specific fields.
@@ -110,6 +162,9 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "py_version": self.py_version,
             "ca_repository_arn": self.ca_repository_arn,
             "skip_hyperparameters_s3_uri": self.skip_hyperparameters_s3_uri,
+            "use_precomputed_imputation": self.use_precomputed_imputation,
+            "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
+            "use_precomputed_features": self.use_precomputed_features,
         }
 
         # Add hyperparameters if present (use model_dump for Pydantic models)

@@ -89,11 +89,6 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
         description="Python version for the SageMaker PyTorch container.",
     )
 
-    ca_repository_arn: str = Field(
-        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
-        description="CodeArtifact repository ARN for secure PyPI access. Only used when use_secure_pypi=True.",
-    )
-
     # For inference jobs, we typically use smaller instances than evaluation
     use_large_processing_instance: bool = Field(
         default=False,
@@ -192,6 +187,7 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
                 "JOB_TYPE": self.job_type,
                 "OUTPUT_FORMAT": self.output_format,
                 "JSON_ORIENT": self.json_orient,
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
         )
 

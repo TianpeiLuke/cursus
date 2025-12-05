@@ -27,17 +27,6 @@ import logging
 from datetime import datetime
 import time
 
-import torch
-import torch.distributed as dist
-from torch.utils.data import DataLoader
-from torch import nn
-from torch.utils.tensorboard import SummaryWriter
-
-from transformers import AutoTokenizer
-import warnings
-
-warnings.filterwarnings("ignore")
-
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
 # ============================================================================
@@ -195,41 +184,46 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # INSTALL REQUIRED PACKAGES
 # ============================================================================
 
-# Define required packages from requirements.txt
-required_packages = [
-    # Core libraries (torch ecosystem)
-    "torch==2.1.2",
-    "torchvision==0.16.2",
-    "torchaudio==2.1.2",
-    # Transformers & HuggingFace
-    "transformers==4.37.2",
-    # Lightning (CRITICAL - needed for lightning_models!)
-    "lightning==2.1.3",
-    "lightning-utilities==0.10.1",
-    # Metrics
-    "torchmetrics==1.7.1",
-    # TensorBoard & Visualization
-    "tensorboard==2.16.2",
-    "matplotlib==3.8.2",
-    # Data & Processing
-    "scikit-learn==1.3.2",
-    "pandas==2.1.4",
-    "pyarrow==14.0.2",
-    "beautifulsoup4==4.12.3",
-    "gensim==4.3.1",
-    # Validation
-    "pydantic==2.11.2",
-    # ONNX Export
-    "onnx==1.15.0",
-    "onnxruntime==1.17.0",
-    # Serving
-    "flask==3.0.2",
-]
+# Load packages from requirements-secure.txt
+requirements_file = os.path.join(os.path.dirname(__file__), "requirements-secure.txt")
 
-# Install packages using unified installation function
-install_packages(required_packages)
+try:
+    with open(requirements_file, "r") as f:
+        # Read lines, strip whitespace, and filter out comments and empty lines
+        required_packages = [
+            line.strip()
+            for line in f
+            if line.strip() and not line.strip().startswith("#")
+        ]
 
-print("***********************Package Installation Complete*********************")
+    print(f"Loaded {len(required_packages)} packages from {requirements_file}")
+
+    # Install packages using unified installation function
+    install_packages(required_packages)
+
+    print("***********************Package Installation Complete*********************")
+
+except FileNotFoundError:
+    print(f"Warning: {requirements_file} not found. Skipping package installation.")
+    print("Assuming packages are already installed in the environment.")
+except Exception as e:
+    print(f"Error loading or installing packages: {e}")
+    raise
+
+# ============================================================================
+# IMPORT INSTALLED PACKAGES (AFTER INSTALLATION)
+# ============================================================================
+
+import torch
+import torch.distributed as dist
+from torch.utils.data import DataLoader
+from torch import nn
+from torch.utils.tensorboard import SummaryWriter
+
+from transformers import AutoTokenizer
+import warnings
+
+warnings.filterwarnings("ignore")
 
 # Import processing modules from bsm_pytorch
 sys.path.insert(

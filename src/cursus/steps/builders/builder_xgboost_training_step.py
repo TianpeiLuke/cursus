@@ -150,55 +150,23 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
         )
 
     def _get_environment_variables(self) -> Dict[str, str]:
-        """
-        Constructs a dictionary of environment variables to be passed to the training job.
-        These variables are used to control the behavior of the training script
-        without needing to pass them as hyperparameters.
+        """Get environment variables for the estimator.
+
+        This method delegates to the config's get_environment_variables() method,
+        which handles all XGBoost training-specific variables, then adds
+        builder-specific environment variables.
 
         Returns:
-            A dictionary of environment variables.
+            Dict[str, str]: Environment variables dictionary
         """
-        # Get base environment variables from contract
-        env_vars = super()._get_environment_variables()
+        # Delegate to config's method which handles all training-specific variables
+        if hasattr(self.config, "get_environment_variables"):
+            env_vars = self.config.get_environment_variables()
+        else:
+            # Fallback to parent implementation if config doesn't have the method
+            env_vars = super()._get_environment_variables()
 
-        # Add USE_SECURE_PYPI environment variable from config
-        # This controls which PyPI source the training script uses for package installation
-        if hasattr(self.config, "use_secure_pypi"):
-            env_vars["USE_SECURE_PYPI"] = str(self.config.use_secure_pypi).lower()
-            self.log_info(
-                "Set USE_SECURE_PYPI=%s from config.use_secure_pypi",
-                env_vars["USE_SECURE_PYPI"],
-            )
-
-        # Add preprocessing artifact control environment variables from config
-        if hasattr(self.config, "use_precomputed_imputation"):
-            env_vars["USE_PRECOMPUTED_IMPUTATION"] = str(
-                self.config.use_precomputed_imputation
-            ).lower()
-            self.log_info(
-                "Set USE_PRECOMPUTED_IMPUTATION=%s from config.use_precomputed_imputation",
-                env_vars["USE_PRECOMPUTED_IMPUTATION"],
-            )
-
-        if hasattr(self.config, "use_precomputed_risk_tables"):
-            env_vars["USE_PRECOMPUTED_RISK_TABLES"] = str(
-                self.config.use_precomputed_risk_tables
-            ).lower()
-            self.log_info(
-                "Set USE_PRECOMPUTED_RISK_TABLES=%s from config.use_precomputed_risk_tables",
-                env_vars["USE_PRECOMPUTED_RISK_TABLES"],
-            )
-
-        if hasattr(self.config, "use_precomputed_features"):
-            env_vars["USE_PRECOMPUTED_FEATURES"] = str(
-                self.config.use_precomputed_features
-            ).lower()
-            self.log_info(
-                "Set USE_PRECOMPUTED_FEATURES=%s from config.use_precomputed_features",
-                env_vars["USE_PRECOMPUTED_FEATURES"],
-            )
-
-        # Add environment variables from config if they exist
+        # Add environment variables from config.env if they exist
         if hasattr(self.config, "env") and self.config.env:
             env_vars.update(self.config.env)
 
