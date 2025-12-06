@@ -589,7 +589,7 @@ def data_preprocess_pipeline(
     # Extract text field names from hyperparameters or config
     primary_text_name = None
     secondary_text_name = None
-    
+
     if hyperparameters:
         primary_text_name = hyperparameters.get("primary_text_name")
         secondary_text_name = hyperparameters.get("secondary_text_name")
@@ -604,7 +604,7 @@ def data_preprocess_pipeline(
         text_name = getattr(config, "text_name", None)
         if text_name is None and hyperparameters:
             text_name = hyperparameters.get("text_name")
-            
+
         steps = None
         if hyperparameters:
             steps = hyperparameters.get("text_processing_steps")
@@ -632,9 +632,7 @@ def data_preprocess_pipeline(
                 input_ids_key=config.text_input_ids_key,
                 attention_mask_key=config.text_attention_mask_key,
             )
-            logger.info(
-                f"Built bimodal pipeline for '{text_name}' with steps: {steps}"
-            )
+            logger.info(f"Built bimodal pipeline for '{text_name}' with steps: {steps}")
 
     # TRIMODAL: Dual text pipelines
     else:
@@ -1169,10 +1167,10 @@ def predict_fn(input_object, model_data, context=None):
     # Validate input data if feature columns are available
     if feature_columns:
         validate_input_data(input_object, feature_columns)
-        
+
         # Assign column names if needed for headerless CSV input
         input_object = assign_column_names(input_object, feature_columns)
-        
+
         # Reorder columns to match feature column order and filter out extra columns
         # This ensures JSON input with different column ordering works correctly
         input_object = input_object.reindex(columns=feature_columns)
