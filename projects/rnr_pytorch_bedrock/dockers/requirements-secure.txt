@@ -1,7 +1,5 @@
-# Core libraries
-torch==2.1.2
-torchvision==0.16.2
-torchaudio==2.1.2
+# Note: torch, torchvision, torchaudio are pre-installed in AWS DLC PyTorch 2.1.2
+# and should not be reinstalled to avoid conflicts and reduce build time
 
 # Transformers & HuggingFace
 transformers==4.37.2
@@ -20,8 +18,7 @@ tensorboard==2.16.2
 matplotlib==3.8.2
 
 # Data + Processing
-scikit-learn==1.3.2
-pandas==2.1.4
+# Note: scikit-learn and pandas are pre-installed in AWS DLC PyTorch 2.1.2 SageMaker variant
 pyarrow==14.0.2
 beautifulsoup4==4.12.3
 gensim==4.3.1

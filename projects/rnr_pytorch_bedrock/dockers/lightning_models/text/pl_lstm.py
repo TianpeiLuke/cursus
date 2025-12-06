@@ -186,7 +186,8 @@ class TextLSTM(pl.LightningModule):
 
         df = pd.DataFrame(results)
         test_file = self.test_output_folder / f"test_result_rank{self.global_rank}.tsv"
-        df.to_csv(test_file, sep="\t", index=False)
+        # Fix for pandas 2.x compatibility: reset index before saving
+        df.reset_index(drop=True).to_csv(test_file, sep="\t", index=False)
         logger.info(f"[Rank {self.global_rank}] Saved test results to {test_file}")
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
