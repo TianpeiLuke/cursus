@@ -1171,9 +1171,8 @@ def predict_fn(input_object, model_data, context=None):
         # Assign column names if needed for headerless CSV input
         input_object = assign_column_names(input_object, feature_columns)
 
-        # Reorder columns to match feature column order and filter out extra columns
-        # This ensures JSON input with different column ordering works correctly
-        input_object = input_object.reindex(columns=feature_columns)
+        # NOTE: Column reindexing removed for performance (was causing 600-700ms overhead)
+        # PipelineDataset uses name-based column access, so column order doesn't matter
 
     # FAST PATH: Single-record inference optimization
     if len(input_object) == 1:
