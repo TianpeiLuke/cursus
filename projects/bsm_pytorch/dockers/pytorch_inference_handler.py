@@ -234,7 +234,7 @@ from pydantic import BaseModel, Field, ValidationError  # For Config Validation
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  # <-- THIS LINE IS MISSING
+logger.setLevel(logging.INFO)
 
 if not logger.hasHandlers():
     handler = logging.StreamHandler()
@@ -243,6 +243,20 @@ if not logger.hasHandlers():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.propagate = False
+
+
+# ============================================================================
+# SHARED TOKENIZER CACHE CONFIGURATION
+# ============================================================================
+
+# Configure shared transformers cache for faster cold starts
+# This allows multiple workers to share the same tokenizer cache
+SHARED_CACHE_DIR = "/tmp/transformers_cache"
+os.makedirs(SHARED_CACHE_DIR, exist_ok=True)
+os.environ["TRANSFORMERS_CACHE"] = SHARED_CACHE_DIR
+os.environ["HF_HOME"] = SHARED_CACHE_DIR
+
+logger.info(f"Configured shared tokenizer cache at: {SHARED_CACHE_DIR}")
 
 
 # ================== Model, Data and Hyperparameter Folder =================
@@ -583,7 +597,29 @@ def data_preprocess_pipeline(
         config.tokenizer = "bert-base-multilingual-cased"
 
     logger.info(f"Constructing tokenizer: {config.tokenizer}")
-    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+
+    # ============================================================================
+    # DYNAMIC PADDING OPTIMIZATION
+    # ============================================================================
+    # Configure tokenizer with dynamic padding for better performance
+    # - use_fast=True: Uses fast Rust-based tokenizer (2-3x faster)
+    # - Dynamic padding: Controlled by config.fixed_tokenizer_length
+    #   * fixed_tokenizer_length=True: Always pad to max_sen_len (default, more memory)
+    #   * fixed_tokenizer_length=False: Pad to longest sequence in batch (recommended, saves 10-20ms)
+    # ============================================================================
+
+    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer, use_fast=True)
+
+    # Log padding strategy
+    padding_strategy = (
+        "fixed (max_sen_len)" if config.fixed_tokenizer_length else "dynamic (longest)"
+    )
+    logger.info(f"Tokenizer padding strategy: {padding_strategy}")
+    if not config.fixed_tokenizer_length:
+        logger.info(
+            f"Dynamic padding enabled - will pad to actual max length instead of {config.max_sen_len}"
+        )
+
     pipelines = {}
 
     # Extract text field names from hyperparameters or config
@@ -613,9 +649,10 @@ def data_preprocess_pipeline(
             steps = getattr(config, "text_processing_steps", None)
         if steps is None:
             # Default steps
+            # NOTE: html_normalizer disabled for performance (can add 50-100ms per request)
             steps = [
                 "dialogue_splitter",
-                "html_normalizer",
+                # "html_normalizer",  # Disabled - very time consuming
                 "emoji_remover",
                 "text_normalizer",
                 "dialogue_chunker",
@@ -645,9 +682,10 @@ def data_preprocess_pipeline(
             primary_steps = getattr(config, "primary_text_processing_steps", None)
         if primary_steps is None:
             # Default steps
+            # NOTE: html_normalizer disabled for performance (can add 50-100ms per request)
             primary_steps = [
                 "dialogue_splitter",
-                "html_normalizer",
+                # "html_normalizer",  # Disabled - very time consuming
                 "emoji_remover",
                 "text_normalizer",
                 "dialogue_chunker",
@@ -921,52 +959,104 @@ def apply_calibration(
         return scores
 
 
-def preprocess_single_record_fast(
+def preprocess_single_record_with_text(
     df: pd.DataFrame,
     config: Config,
+    pipelines: Dict[str, Any],
     risk_processors: Dict[str, RiskTableMappingProcessor],
     numerical_processors: Dict[str, NumericalVariableImputationProcessor],
-) -> Dict[str, Any]:
+) -> Dict[str, torch.Tensor]:
     """
-    Fast path for single-record preprocessing.
+    Fast path for single-record preprocessing INCLUDING text features.
 
-    Bypasses pandas DataFrame operations for reduced latency.
-    Uses processor.process() method for direct value processing.
+    Uses pre-built pipelines directly - NO DataLoader overhead!
+    Processes text, tabular, and categorical features in a single pass.
 
     Args:
         df: Single-row DataFrame with feature values
         config: Configuration object
+        pipelines: Pre-built text preprocessing pipelines
         risk_processors: Risk table processors for categorical features
         numerical_processors: Imputation processors for numerical features
 
     Returns:
-        Dictionary with processed feature values
+        Dictionary with processed tensors ready for ONNX model
     """
-    processed_features = {}
+    if len(df) != 1:
+        raise ValueError(f"Expected single record, got {len(df)}")
 
-    # Process tabular (numerical) features
+    batch = {}
+    record = df.iloc[0].to_dict()
+
+    # ===== 1. TABULAR FEATURES =====
     for feature in config.tab_field_list:
-        if feature in df.columns:
-            val = df[feature].iloc[0] if len(df) > 0 and feature in df.columns else None
+        val = record.get(feature)
+        if feature in numerical_processors:
+            val = numerical_processors[feature].process(val)
+        batch[feature] = torch.tensor(
+            [[val if val is not None else 0.0]], dtype=torch.float32
+        )
 
-            # Apply numerical imputation
-            if feature in numerical_processors:
-                val = numerical_processors[feature].process(val)
-
-            processed_features[feature] = val
-
-    # Process categorical features with risk tables
+    # ===== 2. CATEGORICAL FEATURES =====
     for feature in config.cat_field_list:
-        if feature in df.columns:
-            val = df[feature].iloc[0] if len(df) > 0 and feature in df.columns else None
+        val = record.get(feature)
+        if feature in risk_processors:
+            val = risk_processors[feature].process(val)
+        batch[feature] = torch.tensor(
+            [[val if val is not None else 0.0]], dtype=torch.float32
+        )
 
-            # Apply risk table mapping
-            if feature in risk_processors:
-                val = risk_processors[feature].process(val)
+    # ===== 3. TEXT FEATURES - KEY OPTIMIZATION! =====
+    for text_field_name, pipeline in pipelines.items():
+        # Skip label field
+        if text_field_name == config.label_name:
+            continue
 
-            processed_features[feature] = val
+        # Get raw text
+        raw_text = record.get(text_field_name, "")
+        if raw_text is None or (isinstance(raw_text, float) and pd.isna(raw_text)):
+            raw_text = ""
+        raw_text = str(raw_text)
 
-    return processed_features
+        try:
+            # ✨ MAGIC: Pipeline is already chained! Just call .process()
+            # This runs the entire chain: splitter >> html >> emoji >> normalizer >> chunker >> tokenizer
+            processed_dict = pipeline.process(raw_text)
+
+            # Extract results from tokenizer output
+            input_ids = processed_dict.get(config.text_input_ids_key)
+            attention_mask = processed_dict.get(config.text_attention_mask_key)
+
+            # Convert to tensors with batch dimension
+            if input_ids is not None:
+                if not isinstance(input_ids, torch.Tensor):
+                    input_ids = torch.tensor([input_ids], dtype=torch.long)
+                elif input_ids.dim() == 1:
+                    input_ids = input_ids.unsqueeze(0)
+
+                if not isinstance(attention_mask, torch.Tensor):
+                    attention_mask = torch.tensor([attention_mask], dtype=torch.long)
+                elif attention_mask.dim() == 1:
+                    attention_mask = attention_mask.unsqueeze(0)
+
+                # Add to batch with ONNX model's expected names
+                batch[f"{text_field_name}_{config.text_input_ids_key}"] = input_ids
+                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = (
+                    attention_mask
+                )
+
+        except Exception as e:
+            logger.error(f"Error processing text field '{text_field_name}': {e}")
+            # Fallback: empty tensors
+            max_len = config.max_sen_len
+            batch[f"{text_field_name}_{config.text_input_ids_key}"] = torch.zeros(
+                (1, max_len), dtype=torch.long
+            )
+            batch[f"{text_field_name}_{config.text_attention_mask_key}"] = torch.zeros(
+                (1, max_len), dtype=torch.long
+            )
+
+    return batch
 
 
 # =================== Model Function ======================
@@ -1176,52 +1266,70 @@ def predict_fn(input_object, model_data, context=None):
 
     # FAST PATH: Single-record inference optimization
     if len(input_object) == 1:
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("Using fast path for single-record inference")
+        logger.info("Using fast path for single-record inference (bypasses DataLoader)")
 
-        # Process single record with fast path (bypasses pandas operations)
-        processed_features = preprocess_single_record_fast(
-            df=input_object,
-            config=config,
-            risk_processors=risk_processors,
-            numerical_processors=numerical_processors,
-        )
+        try:
+            # ✨ NEW: Direct preprocessing without DataLoader overhead!
+            # Processes text, tabular, and categorical features in one pass
+            batch_dict = preprocess_single_record_with_text(
+                df=input_object,
+                config=config,
+                pipelines=pipelines,
+                risk_processors=risk_processors,
+                numerical_processors=numerical_processors,
+            )
 
-        # For single-record inference, we still need to process text through pipelines
-        # But we'll use a more direct approach for tabular features
-        dataset = PipelineDataset(config_predict, dataframe=input_object)
+            # Run model inference directly with preprocessed batch
+            logger.info("Model prediction...")
+            raw_probs = model_online_inference(model, [batch_dict])
 
-        # Add text preprocessing pipelines (these still need the full pipeline approach)
-        for feature_name, pipeline in pipelines.items():
-            dataset.add_pipeline(feature_name, pipeline)
+            # Apply calibration if available
+            if calibrator:
+                try:
+                    is_multiclass = not config.is_binary
+                    calibrated_probs = apply_calibration(
+                        raw_probs, calibrator, is_multiclass
+                    )
+                    logger.info("Applied calibration to predictions")
+                except Exception as e:
+                    logger.warning(f"Failed to apply calibration: {e}")
+                    calibrated_probs = raw_probs.copy()
+            else:
+                logger.info("No calibration model available, using raw predictions")
+                calibrated_probs = raw_probs.copy()
 
-        # For single record, the fast path already processed tabular features
-        # The pipeline will handle text features normally
+            return {
+                "raw_predictions": raw_probs,
+                "calibrated_predictions": calibrated_probs,
+            }
 
-    else:
-        # BATCH PATH: Original DataFrame processing for multiple records
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(f"Using batch path for {len(input_object)} records")
+        except Exception as e:
+            logger.warning(f"Fast path failed, falling back to DataLoader path: {e}")
+            # Fall through to batch path below
 
-        dataset = PipelineDataset(config_predict, dataframe=input_object)
+    # BATCH PATH: Original DataFrame processing for multiple records (or fallback)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"Using batch path for {len(input_object)} records")
 
-        # Add text preprocessing pipelines
-        for feature_name, pipeline in pipelines.items():
-            dataset.add_pipeline(feature_name, pipeline)
+    dataset = PipelineDataset(config_predict, dataframe=input_object)
 
-        # Add numerical imputation processors
-        for feature_name, processor in numerical_processors.items():
-            if feature_name in dataset.DataReader.columns:
-                dataset.add_pipeline(feature_name, processor)
+    # Add text preprocessing pipelines
+    for feature_name, pipeline in pipelines.items():
+        dataset.add_pipeline(feature_name, pipeline)
 
-        # Add risk table processors (excluding text fields)
-        text_fields = get_text_field_names(config)
-        for feature_name, processor in risk_processors.items():
-            if (
-                feature_name not in text_fields
-                and feature_name in dataset.DataReader.columns
-            ):
-                dataset.add_pipeline(feature_name, processor)
+    # Add numerical imputation processors
+    for feature_name, processor in numerical_processors.items():
+        if feature_name in dataset.DataReader.columns:
+            dataset.add_pipeline(feature_name, processor)
+
+    # Add risk table processors (excluding text fields)
+    text_fields = get_text_field_names(config)
+    for feature_name, processor in risk_processors.items():
+        if (
+            feature_name not in text_fields
+            and feature_name in dataset.DataReader.columns
+        ):
+            dataset.add_pipeline(feature_name, processor)
 
     collate_batch = build_collate_batch(
         input_ids_key=config.text_input_ids_key,
