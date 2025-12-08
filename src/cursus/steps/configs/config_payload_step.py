@@ -118,6 +118,27 @@ class PayloadConfig(ProcessingStepConfigBase):
         default=0.2, ge=0.0, le=1.0, description="Maximum acceptable error rate (0-1)"
     )
 
+    # Load testing configuration for registered model endpoint
+    load_test_instance_type_list: List[str] = Field(
+        default=["ml.m5.4xlarge"],  # Matches processing_instance_type_large default
+        description="""
+        List of instance types for load testing the registered model endpoint.
+        These instance types will be used for endpoint deployment during load testing.
+        
+        Default: ["ml.m5.4xlarge"] (matches processing_instance_type_large)
+        
+        Examples: 
+        - Single instance: ["ml.m5.2xlarge"]
+        - Multiple instances: ["ml.m5.2xlarge", "ml.m5.4xlarge", "ml.m5.12xlarge"]
+        
+        Common CPU instance types:
+        - ml.m5.2xlarge, ml.m5.4xlarge, ml.m5.12xlarge
+        
+        Common GPU instance types (for deep learning models):
+        - ml.g4dn.xlarge, ml.g5.xlarge, ml.g5.2xlarge, ml.g5.12xlarge
+        """,
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
 
@@ -143,6 +164,21 @@ class PayloadConfig(ProcessingStepConfigBase):
 
     # Removed validators for variable lists since those fields were removed
     # Script gets all variable information from hyperparameters.json
+
+    # Field validators
+
+    @field_validator("load_test_instance_type_list")
+    @classmethod
+    def validate_load_test_instance_types(cls, v: List[str]) -> List[str]:
+        """Validate load test instance type format"""
+        if not v:  # Empty list
+            raise ValueError("load_test_instance_type_list cannot be empty")
+        for instance_type in v:
+            if not instance_type.startswith("ml."):
+                raise ValueError(
+                    f"Instance type '{instance_type}' must start with 'ml.'"
+                )
+        return v
 
     # Model validators
 

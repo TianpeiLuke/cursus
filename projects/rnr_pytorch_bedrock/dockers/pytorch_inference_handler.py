@@ -1194,7 +1194,7 @@ def model_fn(model_dir, context=None):
     # ONNX RUNTIME OPTIMIZATION CONFIGURATION
     # ============================================================================
     # Read optimization configuration from environment variables
-    enable_bert_fusion = os.environ.get("ENABLE_BERT_FUSION", "true").lower() == "true"
+    enable_bert_fusion = os.environ.get("ENABLE_BERT_FUSION", "false").lower() == "true"
     enable_profiling = (
         os.environ.get("ENABLE_ONNX_PROFILING", "false").lower() == "true"
     )
@@ -1219,9 +1219,7 @@ def model_fn(model_dir, context=None):
         else:
             # Phase 1 only: SessionOptions optimization (no BERT fusion)
             logger.info("Loading with Phase 1 optimizations only (SessionOptions)")
-            from lightning_models.utils.pl_train import load_optimized_onnx_model
-
-            model = load_optimized_onnx_model(
+            model = load_onnx_model(
                 onnx_path=onnx_model_path,
                 enable_profiling=enable_profiling,
                 inter_op_threads=inter_op_threads,
