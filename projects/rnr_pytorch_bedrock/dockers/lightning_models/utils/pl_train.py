@@ -3,6 +3,9 @@ import os
 import ast
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, Optional
+import fcntl  # Unix file locking for multi-worker coordination
+import time
+from contextlib import contextmanager
 
 import torch
 import torch.nn as nn
@@ -47,6 +50,81 @@ def setup_logger():
 
 
 logger = setup_logger()
+
+
+# ============================================================================
+# FILE LOCKING FOR MULTI-WORKER COORDINATION
+# ============================================================================
+
+
+@contextmanager
+def file_lock(lock_path: Path, timeout: int = 60):
+    """
+    Atomic file lock for multi-worker coordination in TorchServe environments.
+
+    Prevents race conditions when multiple workers try to perform the same
+    expensive operation (e.g., BERT model optimization). Only one worker
+    acquires the lock and performs the operation; others wait for completion.
+
+    Args:
+        lock_path: Path to lock file (will be created/removed automatically)
+        timeout: Maximum seconds to wait for lock acquisition (default: 60s)
+
+    Yields:
+        None when lock is successfully acquired
+
+    Raises:
+        TimeoutError: If lock cannot be acquired within timeout period
+
+    Example:
+        >>> lock_file = Path("/opt/ml/model/.optimization.lock")
+        >>> with file_lock(lock_file, timeout=90):
+        >>>     # Only one worker executes this block
+        >>>     optimize_model()
+        >>> # Lock automatically released, other workers proceed
+    """
+    lock_file = None
+    try:
+        # Create lock file
+        lock_file = open(lock_path, "w")
+        start_time = time.time()
+
+        # Try to acquire exclusive lock with timeout
+        while True:
+            try:
+                # LOCK_EX: Exclusive lock (only one process can hold it)
+                # LOCK_NB: Non-blocking (return immediately if lock unavailable)
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                logger.info(f"✓ Acquired file lock: {lock_path}")
+                break
+            except IOError:
+                # Lock is held by another process
+                elapsed = time.time() - start_time
+                if elapsed > timeout:
+                    raise TimeoutError(
+                        f"Could not acquire lock within {timeout}s. "
+                        f"Another worker may be stuck or operation is taking too long."
+                    )
+                # Wait and retry
+                time.sleep(1)
+                if int(elapsed) % 10 == 0:  # Log every 10 seconds
+                    logger.info(
+                        f"Waiting for lock... ({int(elapsed)}s elapsed, max {timeout}s)"
+                    )
+
+        yield
+
+    finally:
+        # Always release lock and clean up
+        if lock_file:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                lock_file.close()
+                if lock_path.exists():
+                    lock_path.unlink()
+                logger.info(f"✓ Released file lock: {lock_path}")
+            except Exception as e:
+                logger.warning(f"Error releasing lock {lock_path}: {e}")
 
 
 # ----------------- FDSP ---------------------
@@ -740,14 +818,21 @@ def load_bert_optimized_model(
     inter_op_threads: int = 1,
     intra_op_threads: int = 4,
     force_reoptimize: bool = False,
+    optimization_timeout: int = 90,
 ) -> ort.InferenceSession:
     """
-    Load BERT-optimized ONNX model with full Phase 1 + Phase 2 optimizations.
+    Load BERT-optimized ONNX model with atomic file locking (multi-worker safe).
+
+    NEW: Added file locking to prevent race conditions when multiple workers
+    initialize simultaneously (e.g., TorchServe with 8 workers on ml.m5.4xlarge).
+
+    Only ONE worker performs the optimization, others wait for completion.
 
     This function implements the complete optimization workflow:
     1. Check for pre-optimized model (model_optimized.onnx)
-    2. If not found, apply BERT fusion to original model (one-time cost)
-    3. Load with Phase 1 SessionOptions configuration
+    2. If not found, acquire file lock for safe optimization
+    3. Apply BERT fusion to original model (one-time cost, single worker only)
+    4. Load with Phase 1 SessionOptions configuration
 
     Expected performance: 2-3x (Phase 1) × 1.5-2x (Phase 2) = 3-6x total speedup
 
@@ -757,6 +842,7 @@ def load_bert_optimized_model(
         inter_op_threads: Number of threads for parallel operator execution (default: 1)
         intra_op_threads: Number of threads within operators for matrix operations (default: 4)
         force_reoptimize: Force re-optimization even if optimized model exists (default: False)
+        optimization_timeout: Maximum seconds to wait for optimization lock (default: 90s)
 
     Returns:
         Optimized ONNX Runtime InferenceSession with Phase 1 + Phase 2 optimizations
@@ -778,44 +864,82 @@ def load_bert_optimized_model(
     model_dir = Path(model_dir)
     original_model = model_dir / "model.onnx"
     optimized_model = model_dir / "model_optimized.onnx"
+    lock_file = model_dir / ".model_optimization.lock"
 
     # Validate original model exists
     if not original_model.exists():
         raise FileNotFoundError(f"Original ONNX model not found: {original_model}")
 
-    # Create optimized model if needed
-    if force_reoptimize or not optimized_model.exists():
-        if force_reoptimize:
-            logger.info(
-                "Force re-optimization requested, rebuilding optimized model..."
-            )
-        else:
-            logger.info("Optimized BERT model not found, creating from original...")
+    # FAST PATH: Optimized model already exists and no force reoptimize
+    if not force_reoptimize and optimized_model.exists():
+        logger.info("✓ Using cached BERT-optimized model")
+        return load_onnx_model(
+            onnx_path=optimized_model,
+            enable_profiling=enable_profiling,
+            inter_op_threads=inter_op_threads,
+            intra_op_threads=intra_op_threads,
+        )
+
+    # OPTIMIZATION PATH: Need to create or recreate optimized model
+    logger.info("BERT-optimized model not found, acquiring lock for optimization...")
+
+    try:
+        with file_lock(lock_file, timeout=optimization_timeout):
+            # Double-check: another worker may have created it while we waited
+            if not force_reoptimize and optimized_model.exists():
+                logger.info(
+                    "✓ Another worker completed optimization, using cached model"
+                )
+                return load_onnx_model(
+                    onnx_path=optimized_model,
+                    enable_profiling=enable_profiling,
+                    inter_op_threads=inter_op_threads,
+                    intra_op_threads=intra_op_threads,
+                )
+
+            # This worker won the race - perform optimization
+            logger.info("✓ Lock acquired, starting BERT fusion optimization...")
             logger.info("  This is a one-time cost (10-30 seconds)")
-            logger.info("  Subsequent loads will use the cached optimized model")
-
-        try:
-            optimize_bert_model(
-                input_model_path=original_model,
-                output_model_path=optimized_model,
-                model_type="bert",
-                num_heads=12,  # Standard BERT-base configuration
-                hidden_size=768,  # Standard BERT-base configuration
-            )
-        except Exception as e:
-            logger.warning(f"BERT fusion optimization failed: {e}")
-            logger.warning(
-                "Falling back to Phase 1 optimizations only (SessionOptions)"
-            )
-            # Fallback to original model with Phase 1 optimizations
-            return load_onnx_model(
-                onnx_path=original_model,
-                enable_profiling=enable_profiling,
-                inter_op_threads=inter_op_threads,
-                intra_op_threads=intra_op_threads,
+            logger.info(
+                "  Other workers will wait and use the optimized model once ready"
             )
 
-    # Load optimized model with Phase 1 SessionOptions
+            try:
+                optimize_bert_model(
+                    input_model_path=original_model,
+                    output_model_path=optimized_model,
+                    model_type="bert",
+                    num_heads=12,  # Standard BERT-base configuration
+                    hidden_size=768,  # Standard BERT-base configuration
+                )
+                logger.info("✓ BERT optimization completed successfully")
+
+            except Exception as e:
+                logger.error(f"BERT fusion optimization failed: {e}")
+                logger.warning(
+                    "Falling back to Phase 1 optimizations only (SessionOptions)"
+                )
+                # Fallback: load original model with Phase 1 optimizations
+                return load_onnx_model(
+                    onnx_path=original_model,
+                    enable_profiling=enable_profiling,
+                    inter_op_threads=inter_op_threads,
+                    intra_op_threads=intra_op_threads,
+                )
+
+    except TimeoutError as e:
+        logger.error(f"Lock acquisition timeout: {e}")
+        logger.warning("Optimization is taking too long or another worker is stuck")
+        logger.warning("Falling back to Phase 1 optimizations only (SessionOptions)")
+        # Fallback: load original model with Phase 1 optimizations
+        return load_onnx_model(
+            onnx_path=original_model,
+            enable_profiling=enable_profiling,
+            inter_op_threads=inter_op_threads,
+            intra_op_threads=intra_op_threads,
+        )
+
+    # Load the optimized model (either just created or found after waiting)
     logger.info("Loading BERT-optimized model with Phase 1 + Phase 2 optimizations")
     return load_onnx_model(
         onnx_path=optimized_model,

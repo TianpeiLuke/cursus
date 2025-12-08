@@ -1583,9 +1583,12 @@ def output_fn(prediction_output, accept="application/json"):
                         "calibrated-score": str(
                             cal_probs[1] if len(cal_probs) > 1 else cal_probs[0]
                         ),  # Calibrated class-1
-                        "output-label": f"class-{max_idx}"
-                        if max_idx >= 0
-                        else "unknown",
+                        "score-percentile": str(
+                            cal_probs[1] if len(cal_probs) > 1 else cal_probs[0]
+                        ),  # Duplicate of calibrated-score (for compatibility)
+                        # "custom-output-label": f"class-{max_idx}"
+                        # if max_idx >= 0
+                        # else "unknown",
                     }
                 else:
                     # Multiclass
@@ -1595,9 +1598,9 @@ def output_fn(prediction_output, accept="application/json"):
                         record[f"calibrated_prob_{str(i + 1).zfill(2)}"] = str(
                             cal_probs[i]
                         )
-                    record["output-label"] = (
-                        f"class-{max_idx}" if max_idx >= 0 else "unknown"
-                    )
+                    # record["custom-output-label"] = (
+                    #     f"class-{max_idx}" if max_idx >= 0 else "unknown"
+                    # )
 
                 output_records.append(record)
 
@@ -1610,19 +1613,37 @@ def output_fn(prediction_output, accept="application/json"):
             for raw_probs, cal_probs in zip(raw_scores_list, calibrated_scores_list):
                 max_idx = raw_probs.index(max(raw_probs)) if raw_probs else -1
 
-                # Format raw probabilities
-                raw_formatted = [round(float(p), 4) for p in raw_probs]
-                raw_str = ",".join(f"{p:.4f}" for p in raw_formatted)
+                if not is_multiclass:
+                    # Binary classification: legacy-score, calibrated-score, score-percentile
+                    raw_score = round(
+                        float(raw_probs[1] if len(raw_probs) > 1 else raw_probs[0]), 4
+                    )
+                    cal_score = round(
+                        float(cal_probs[1] if len(cal_probs) > 1 else cal_probs[0]), 4
+                    )
 
-                # Format calibrated probabilities
-                cal_formatted = [round(float(p), 4) for p in cal_probs]
-                cal_str = ",".join(f"{p:.4f}" for p in cal_formatted)
+                    line = [
+                        f"{raw_score:.4f}",
+                        f"{cal_score:.4f}",
+                        f"{cal_score:.4f}",  # score-percentile (duplicate of calibrated-score)
+                        # f"class-{max_idx}" if max_idx >= 0 else "unknown",
+                    ]
+                else:
+                    # Multiclass: interleaved raw and calibrated probs
+                    # Format raw probabilities
+                    raw_formatted = [round(float(p), 4) for p in raw_probs]
+                    raw_str = ",".join(f"{p:.4f}" for p in raw_formatted)
 
-                line = [
-                    raw_str,
-                    cal_str,
-                    f"class-{max_idx}" if max_idx >= 0 else "unknown",
-                ]
+                    # Format calibrated probabilities
+                    cal_formatted = [round(float(p), 4) for p in cal_probs]
+                    cal_str = ",".join(f"{p:.4f}" for p in cal_formatted)
+
+                    line = [
+                        raw_str,
+                        cal_str,
+                        # f"class-{max_idx}" if max_idx >= 0 else "unknown",
+                    ]
+
                 csv_lines.append(",".join(map(str, line)))
 
             response_body = "\n".join(csv_lines) + "\n"

@@ -1,0 +1,2541 @@
+{
+  "configuration": {
+    "shared": {
+      "author": "lukexie",
+      "bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
+      "current_date": "2025-12-08",
+      "enable_caching": false,
+      "framework_version": "2.1.0",
+      "max_runtime_seconds": 172800,
+      "model_class": "pytorch",
+      "pipeline_version": "1.0.0",
+      "project_root_folder": "rnr_pytorch_bedrock",
+      "py_version": "py310",
+      "region": "NA",
+      "role": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+      "service_name": "BuyerAbuseRnR",
+      "source_dir": "dockers",
+      "use_secure_pypi": false
+    },
+    "specific": {
+      "BedrockBatchProcessing_calibration": {
+        "__model_type__": "BedrockBatchProcessingConfig",
+        "aws_region": "us-east-1",
+        "batch_configuration": {
+          "auto_selection_enabled": true,
+          "cost_optimization_enabled": true,
+          "fallback_to_realtime": true,
+          "forced_batch_mode": false,
+          "forced_realtime_mode": false,
+          "mode": "auto",
+          "role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "threshold": 1000,
+          "timeout_hours": 24
+        },
+        "bedrock_batch_mode": "auto",
+        "bedrock_batch_role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+        "bedrock_batch_size": 10,
+        "bedrock_batch_threshold": 1000,
+        "bedrock_batch_timeout_hours": 24,
+        "bedrock_concurrency_mode": "sequential",
+        "bedrock_environment_variables": {
+          "AWS_DEFAULT_REGION": "us-east-1",
+          "BEDROCK_BATCH_INPUT_S3_PATH": "",
+          "BEDROCK_BATCH_MODE": "auto",
+          "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
+          "BEDROCK_BATCH_ROLE_ARN": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "BEDROCK_BATCH_SIZE": "10",
+          "BEDROCK_BATCH_THRESHOLD": "1000",
+          "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+          "BEDROCK_CONCURRENCY_MODE": "sequential",
+          "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
+          "BEDROCK_LOG_TRUNCATIONS": "true",
+          "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
+          "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
+          "BEDROCK_MAX_INPUT_FIELD_LENGTH": "400000",
+          "BEDROCK_MAX_RECORDS_PER_JOB": "45000",
+          "BEDROCK_MAX_RETRIES": "3",
+          "BEDROCK_MAX_TOKENS": "32768",
+          "BEDROCK_OUTPUT_COLUMN_PREFIX": "llm_",
+          "BEDROCK_PRIMARY_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
+          "BEDROCK_SKIP_ERROR_RECORDS": "false",
+          "BEDROCK_TEMPERATURE": "1.0",
+          "BEDROCK_TOP_P": "0.999",
+          "BEDROCK_TRUNCATION_ENABLED": "true",
+          "USE_SECURE_PYPI": "false"
+        },
+        "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "bedrock_log_truncations": true,
+        "bedrock_max_concurrent_batch_jobs": 20,
+        "bedrock_max_concurrent_workers": 5,
+        "bedrock_max_input_field_length": 400000,
+        "bedrock_max_records_per_job": 45000,
+        "bedrock_max_retries": 3,
+        "bedrock_max_tokens": 32768,
+        "bedrock_output_column_prefix": "llm_",
+        "bedrock_primary_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock_rate_limit_per_second": 10,
+        "bedrock_skip_error_records": false,
+        "bedrock_temperature": 1.0,
+        "bedrock_top_p": 0.999,
+        "bedrock_truncation_enabled": true,
+        "cost_optimization_info": {
+          "automatic_fallback": true,
+          "batch_mode": "auto",
+          "cost_efficient_for_large_datasets": true,
+          "estimated_savings": "Up to 50% for datasets >= 1000 records",
+          "optimization_strategy": "Automatic selection based on data size",
+          "production_ready": true,
+          "threshold": 1000
+        },
+        "effective_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "job_type": "calibration",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "bedrock_batch_processing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "batch_mode": "auto",
+          "batch_role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "batch_size": 10,
+          "batch_threshold": 1000,
+          "batch_timeout_hours": 24,
+          "concurrency_mode": "sequential",
+          "fallback_model": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "inference_profile_required_models": [
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "anthropic.claude-sonnet-4-20250514-v1:0",
+            "anthropic.claude-opus-4-1-20250805-v1:0"
+          ],
+          "max_tokens": 32768,
+          "output_column_prefix": "llm_",
+          "primary_model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "step_type": "bedrock_batch_processing",
+          "temperature": 1.0,
+          "top_p": 0.999,
+          "uses_inference_profile": true
+        },
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/bedrock_batch_processing.py",
+        "use_large_processing_instance": false
+      },
+      "BedrockBatchProcessing_training": {
+        "__model_type__": "BedrockBatchProcessingConfig",
+        "aws_region": "us-east-1",
+        "batch_configuration": {
+          "auto_selection_enabled": true,
+          "cost_optimization_enabled": true,
+          "fallback_to_realtime": true,
+          "forced_batch_mode": false,
+          "forced_realtime_mode": false,
+          "mode": "auto",
+          "role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "threshold": 1000,
+          "timeout_hours": 24
+        },
+        "bedrock_batch_mode": "auto",
+        "bedrock_batch_role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+        "bedrock_batch_size": 10,
+        "bedrock_batch_threshold": 1000,
+        "bedrock_batch_timeout_hours": 24,
+        "bedrock_concurrency_mode": "sequential",
+        "bedrock_environment_variables": {
+          "AWS_DEFAULT_REGION": "us-east-1",
+          "BEDROCK_BATCH_INPUT_S3_PATH": "",
+          "BEDROCK_BATCH_MODE": "auto",
+          "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
+          "BEDROCK_BATCH_ROLE_ARN": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "BEDROCK_BATCH_SIZE": "10",
+          "BEDROCK_BATCH_THRESHOLD": "1000",
+          "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+          "BEDROCK_CONCURRENCY_MODE": "sequential",
+          "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
+          "BEDROCK_LOG_TRUNCATIONS": "true",
+          "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
+          "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
+          "BEDROCK_MAX_INPUT_FIELD_LENGTH": "400000",
+          "BEDROCK_MAX_RECORDS_PER_JOB": "45000",
+          "BEDROCK_MAX_RETRIES": "3",
+          "BEDROCK_MAX_TOKENS": "32768",
+          "BEDROCK_OUTPUT_COLUMN_PREFIX": "llm_",
+          "BEDROCK_PRIMARY_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
+          "BEDROCK_SKIP_ERROR_RECORDS": "false",
+          "BEDROCK_TEMPERATURE": "1.0",
+          "BEDROCK_TOP_P": "0.999",
+          "BEDROCK_TRUNCATION_ENABLED": "true",
+          "USE_SECURE_PYPI": "false"
+        },
+        "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "bedrock_log_truncations": true,
+        "bedrock_max_concurrent_batch_jobs": 20,
+        "bedrock_max_concurrent_workers": 5,
+        "bedrock_max_input_field_length": 400000,
+        "bedrock_max_records_per_job": 45000,
+        "bedrock_max_retries": 3,
+        "bedrock_max_tokens": 32768,
+        "bedrock_output_column_prefix": "llm_",
+        "bedrock_primary_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock_rate_limit_per_second": 10,
+        "bedrock_skip_error_records": false,
+        "bedrock_temperature": 1.0,
+        "bedrock_top_p": 0.999,
+        "bedrock_truncation_enabled": true,
+        "cost_optimization_info": {
+          "automatic_fallback": true,
+          "batch_mode": "auto",
+          "cost_efficient_for_large_datasets": true,
+          "estimated_savings": "Up to 50% for datasets >= 1000 records",
+          "optimization_strategy": "Automatic selection based on data size",
+          "production_ready": true,
+          "threshold": 1000
+        },
+        "effective_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "job_type": "training",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "bedrock_batch_processing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "batch_mode": "auto",
+          "batch_role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "batch_size": 10,
+          "batch_threshold": 1000,
+          "batch_timeout_hours": 24,
+          "concurrency_mode": "sequential",
+          "fallback_model": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "inference_profile_required_models": [
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "anthropic.claude-sonnet-4-20250514-v1:0",
+            "anthropic.claude-opus-4-1-20250805-v1:0"
+          ],
+          "max_tokens": 32768,
+          "output_column_prefix": "llm_",
+          "primary_model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "step_type": "bedrock_batch_processing",
+          "temperature": 1.0,
+          "top_p": 0.999,
+          "uses_inference_profile": true
+        },
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/bedrock_batch_processing.py",
+        "use_large_processing_instance": false
+      },
+      "BedrockPromptTemplateGeneration": {
+        "__model_type__": "BedrockPromptTemplateGenerationConfig",
+        "aws_region": "us-east-1",
+        "effective_categories": null,
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_instruction_config": {
+          "classification_guidelines": {
+            "sections": [
+              {
+                "subsections": [
+                  {
+                    "content": [
+                      "**Category Selection:**",
+                      "- Choose exactly ONE category from the provided list",
+                      "- Category name must match exactly (case-sensitive)",
+                      "",
+                      "**Confidence Score:**",
+                      "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                      "- Base confidence for complete data: 0.7-1.0",
+                      "- Missing one field: reduce by 0.1-0.2",
+                      "- Missing two fields: reduce by 0.2-0.3",
+                      "- Minimum confidence threshold: 0.5"
+                    ],
+                    "title": "### 1. Output Format Requirements"
+                  },
+                  {
+                    "content": [
+                      "**Multiple Shipment Structure:**",
+                      "- Multiple shipment sequences separated by shipment IDs",
+                      "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                      "",
+                      "**Analysis Approach:**",
+                      "- Process each shipment sequence separately",
+                      "- Compare delivery events (EVENT_301) across all sequences",
+                      "",
+                      "**Key Event Codes:**",
+                      "- EVENT_301: Delivery confirmation",
+                      "- EVENT_302: Out for delivery",
+                      "- EVENT_201: Arrival at facility"
+                    ],
+                    "title": "### 2. Shiptrack Parsing Rules"
+                  },
+                  {
+                    "content": [
+                      "**When Dialogue is Empty but Shiptrack Exists:**",
+                      "- Focus on shipping events and timeline",
+                      "- Reduce confidence score by 0.1-0.2",
+                      "",
+                      "**When Shiptrack is Empty but Dialogue Exists:**",
+                      "- Focus on message content and reported issues",
+                      "- Reduce confidence score by 0.1-0.2"
+                    ],
+                    "title": "### 3. Missing Data Handling"
+                  },
+                  {
+                    "content": [
+                      "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                      "- PDA_Undeliverable: Verify no delivery + refund given",
+                      "- PDA_Early_Refund: Verify refund before delivery",
+                      "",
+                      "**Tier 2: Delivery Status Categories**",
+                      "- TrueDNR: Delivered but disputed",
+                      "- Confirmed_Delay: External factors confirmed"
+                    ],
+                    "title": "### 4. Category Priority Hierarchy"
+                  },
+                  {
+                    "content": [
+                      "**Message Evidence Must Include:**",
+                      "- Direct quotes from dialogue with speaker identification",
+                      "",
+                      "**Shipping Evidence Must Include:**",
+                      "- All tracking events listed chronologically",
+                      "",
+                      "**Timeline Evidence Must Show:**",
+                      "- Clear chronological sequence of events"
+                    ],
+                    "title": "### 5. Evidence Requirements"
+                  }
+                ],
+                "title": "## Classification Guidelines"
+              }
+            ]
+          },
+          "include_analysis_steps": true,
+          "include_decision_criteria": true,
+          "include_evidence_validation": true,
+          "include_reasoning_requirements": true,
+          "step_by_step_format": true
+        },
+        "effective_output_format_config": {
+          "evidence_validation_rules": [
+            "Message Evidence must include direct quotes with speaker identification",
+            "Shipping Evidence must include tracking events with timestamps",
+            "Timeline Evidence must show chronological sequence of events",
+            "All evidence must reference specific content from input data"
+          ],
+          "example_output": {
+            "category": "TrueDNR",
+            "confidence_score": 0.92,
+            "key_evidence": {
+              "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+              ],
+              "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+              ],
+              "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+              ]
+            },
+            "reasoning": {
+              "contradicting_evidence": [],
+              "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+              ],
+              "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+              ]
+            }
+          },
+          "field_descriptions": {
+            "category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "key_evidence": "MUST be an object (not individual arrays) containing exactly three nested arrays: message_evidence, shipping_evidence, timeline_evidence",
+            "reasoning": "MUST be an object (not individual arrays) containing exactly three nested arrays: primary_factors, supporting_evidence, contradicting_evidence"
+          },
+          "format_type": "structured_json",
+          "formatting_rules": [
+            "Output MUST be valid, parseable JSON.",
+            "Do not include any text before the opening { or after the closing }.",
+            "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+            "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+            "Ensure all arrays and objects are properly closed.",
+            "Use empty arrays [] for missing values, not null or empty strings.",
+            "Do not include trailing commas.",
+            "Ensure proper escaping of special characters in strings.",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: key_evidence MUST BE AN OBJECT",
+            "================================================================================",
+            "'key_evidence' MUST be an object containing three arrays as properties.",
+            "Do NOT output message_evidence, shipping_evidence, or timeline_evidence at the top level.",
+            "All evidence arrays MUST be nested inside the 'key_evidence' object.",
+            "",
+            "CORRECT STRUCTURE for key_evidence:",
+            "\"key_evidence\": {",
+            "  \"message_evidence\": [...],",
+            "  \"shipping_evidence\": [...],",
+            "  \"timeline_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"message_evidence\": [...],  <-- WRONG: at top level",
+            "\"shipping_evidence\": [...],  <-- WRONG: at top level",
+            "\"timeline_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: reasoning MUST BE AN OBJECT",
+            "================================================================================",
+            "'reasoning' MUST be an object containing three arrays as properties.",
+            "Do NOT output primary_factors, supporting_evidence, or contradicting_evidence at the top level.",
+            "All reasoning arrays MUST be nested inside the 'reasoning' object.",
+            "",
+            "CORRECT STRUCTURE for reasoning:",
+            "\"reasoning\": {",
+            "  \"primary_factors\": [...],",
+            "  \"supporting_evidence\": [...],",
+            "  \"contradicting_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"primary_factors\": [...],         <-- WRONG: at top level",
+            "\"supporting_evidence\": [...],     <-- WRONG: at top level",
+            "\"contradicting_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "COMPLETE STRUCTURE EXAMPLE - FOLLOW THIS EXACT PATTERN",
+            "================================================================================",
+            "{",
+            "  \"category\": \"...\",",
+            "  \"confidence_score\": 0.88,",
+            "  \"key_evidence\": {           <-- OBJECT wrapper required",
+            "    \"message_evidence\": [...],",
+            "    \"shipping_evidence\": [...],",
+            "    \"timeline_evidence\": [...]",
+            "  },",
+            "  \"reasoning\": {              <-- OBJECT wrapper required",
+            "    \"primary_factors\": [...],",
+            "    \"supporting_evidence\": [...],",
+            "    \"contradicting_evidence\": [...]",
+            "  }",
+            "}",
+            "",
+            "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+            "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+            "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+            "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+            "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+            "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+            "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+            "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+            "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
+          ],
+          "header_text": null,
+          "json_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "description": "Exactly one category from the predefined list (case-sensitive match required)",
+                "enum": [],
+                "type": "string"
+              },
+              "confidence_score": {
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "key_evidence": {
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                  "message_evidence": {
+                    "description": "Direct quotes from dialogue with speaker identification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "shipping_evidence": {
+                    "description": "Tracking events with timestamps",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "timeline_evidence": {
+                    "description": "Chronological sequence of key events",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "message_evidence",
+                  "shipping_evidence",
+                  "timeline_evidence"
+                ],
+                "type": "object"
+              },
+              "reasoning": {
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                  "contradicting_evidence": {
+                    "description": "Evidence that contradicts the classification (use empty array if none)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "primary_factors": {
+                    "description": "Main reasons supporting the selected category",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "supporting_evidence": {
+                    "description": "Additional evidence that strengthens the classification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "primary_factors",
+                  "supporting_evidence",
+                  "contradicting_evidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "category",
+              "confidence_score",
+              "key_evidence",
+              "reasoning"
+            ],
+            "type": "object"
+          },
+          "required_fields": [
+            "category",
+            "confidence_score",
+            "key_evidence",
+            "reasoning"
+          ],
+          "structured_text_sections": null,
+          "validation_requirements": [
+            "Must be valid JSON format",
+            "Category must match exactly from predefined list",
+            "Confidence score must be number between 0.0 and 1.0",
+            "All required fields must be present",
+            "key_evidence MUST be an object containing three nested arrays",
+            "reasoning MUST be an object containing three nested arrays",
+            "Evidence arrays must NOT appear at top level of JSON",
+            "Reasoning arrays must NOT appear at top level of JSON"
+          ]
+        },
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "effective_system_prompt_config": {
+          "behavioral_guidelines": [
+            "be precise in classification decisions",
+            "be objective in evidence evaluation",
+            "be thorough in timeline analysis",
+            "follow exact formatting requirements",
+            "consider all available evidence sources"
+          ],
+          "expertise_areas": [
+            "buyer-seller messaging analysis",
+            "shipping logistics",
+            "delivery timing analysis",
+            "e-commerce dispute resolution",
+            "classification and categorization"
+          ],
+          "responsibilities": [
+            "classify interactions based on message content",
+            "analyze shipping events and delivery timing",
+            "categorize into predefined dispute categories",
+            "provide evidence-based reasoning for classifications"
+          ],
+          "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+          "tone": "professional"
+        },
+        "environment_variables": {
+          "GENERATE_VALIDATION_SCHEMA": "true",
+          "INCLUDE_EXAMPLES": "true",
+          "INPUT_PLACEHOLDERS": "[\"dialogue\", \"shiptrack_event_history_by_order\", \"shiptrack_max_estimated_arrival_date_by_order\"]",
+          "TEMPLATE_STYLE": "structured",
+          "TEMPLATE_TASK_TYPE": "buyer_seller_classification",
+          "TEMPLATE_VERSION": "2.0",
+          "VALIDATION_LEVEL": "comprehensive"
+        },
+        "generate_validation_schema": true,
+        "include_examples": true,
+        "input_placeholders": [
+          "dialogue",
+          "shiptrack_event_history_by_order",
+          "shiptrack_max_estimated_arrival_date_by_order"
+        ],
+        "instruction_settings": {
+          "__model_type__": "InstructionConfig",
+          "classification_guidelines": {
+            "sections": [
+              {
+                "subsections": [
+                  {
+                    "content": [
+                      "**Category Selection:**",
+                      "- Choose exactly ONE category from the provided list",
+                      "- Category name must match exactly (case-sensitive)",
+                      "",
+                      "**Confidence Score:**",
+                      "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                      "- Base confidence for complete data: 0.7-1.0",
+                      "- Missing one field: reduce by 0.1-0.2",
+                      "- Missing two fields: reduce by 0.2-0.3",
+                      "- Minimum confidence threshold: 0.5"
+                    ],
+                    "title": "### 1. Output Format Requirements"
+                  },
+                  {
+                    "content": [
+                      "**Multiple Shipment Structure:**",
+                      "- Multiple shipment sequences separated by shipment IDs",
+                      "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                      "",
+                      "**Analysis Approach:**",
+                      "- Process each shipment sequence separately",
+                      "- Compare delivery events (EVENT_301) across all sequences",
+                      "",
+                      "**Key Event Codes:**",
+                      "- EVENT_301: Delivery confirmation",
+                      "- EVENT_302: Out for delivery",
+                      "- EVENT_201: Arrival at facility"
+                    ],
+                    "title": "### 2. Shiptrack Parsing Rules"
+                  },
+                  {
+                    "content": [
+                      "**When Dialogue is Empty but Shiptrack Exists:**",
+                      "- Focus on shipping events and timeline",
+                      "- Reduce confidence score by 0.1-0.2",
+                      "",
+                      "**When Shiptrack is Empty but Dialogue Exists:**",
+                      "- Focus on message content and reported issues",
+                      "- Reduce confidence score by 0.1-0.2"
+                    ],
+                    "title": "### 3. Missing Data Handling"
+                  },
+                  {
+                    "content": [
+                      "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                      "- PDA_Undeliverable: Verify no delivery + refund given",
+                      "- PDA_Early_Refund: Verify refund before delivery",
+                      "",
+                      "**Tier 2: Delivery Status Categories**",
+                      "- TrueDNR: Delivered but disputed",
+                      "- Confirmed_Delay: External factors confirmed"
+                    ],
+                    "title": "### 4. Category Priority Hierarchy"
+                  },
+                  {
+                    "content": [
+                      "**Message Evidence Must Include:**",
+                      "- Direct quotes from dialogue with speaker identification",
+                      "",
+                      "**Shipping Evidence Must Include:**",
+                      "- All tracking events listed chronologically",
+                      "",
+                      "**Timeline Evidence Must Show:**",
+                      "- Clear chronological sequence of events"
+                    ],
+                    "title": "### 5. Evidence Requirements"
+                  }
+                ],
+                "title": "## Classification Guidelines"
+              }
+            ]
+          },
+          "include_analysis_steps": true,
+          "include_decision_criteria": true,
+          "include_evidence_validation": true,
+          "include_reasoning_requirements": true,
+          "step_by_step_format": true
+        },
+        "output_format_settings": {
+          "__model_type__": "OutputFormatConfig",
+          "evidence_validation_rules": [
+            "Message Evidence must include direct quotes with speaker identification",
+            "Shipping Evidence must include tracking events with timestamps",
+            "Timeline Evidence must show chronological sequence of events",
+            "All evidence must reference specific content from input data"
+          ],
+          "example_output": {
+            "category": "TrueDNR",
+            "confidence_score": 0.92,
+            "key_evidence": {
+              "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+              ],
+              "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+              ],
+              "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+              ]
+            },
+            "reasoning": {
+              "contradicting_evidence": [],
+              "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+              ],
+              "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+              ]
+            }
+          },
+          "field_descriptions": {
+            "category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "key_evidence": "MUST be an object (not individual arrays) containing exactly three nested arrays: message_evidence, shipping_evidence, timeline_evidence",
+            "reasoning": "MUST be an object (not individual arrays) containing exactly three nested arrays: primary_factors, supporting_evidence, contradicting_evidence"
+          },
+          "format_type": "structured_json",
+          "formatting_rules": [
+            "Output MUST be valid, parseable JSON.",
+            "Do not include any text before the opening { or after the closing }.",
+            "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+            "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+            "Ensure all arrays and objects are properly closed.",
+            "Use empty arrays [] for missing values, not null or empty strings.",
+            "Do not include trailing commas.",
+            "Ensure proper escaping of special characters in strings.",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: key_evidence MUST BE AN OBJECT",
+            "================================================================================",
+            "'key_evidence' MUST be an object containing three arrays as properties.",
+            "Do NOT output message_evidence, shipping_evidence, or timeline_evidence at the top level.",
+            "All evidence arrays MUST be nested inside the 'key_evidence' object.",
+            "",
+            "CORRECT STRUCTURE for key_evidence:",
+            "\"key_evidence\": {",
+            "  \"message_evidence\": [...],",
+            "  \"shipping_evidence\": [...],",
+            "  \"timeline_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"message_evidence\": [...],  <-- WRONG: at top level",
+            "\"shipping_evidence\": [...],  <-- WRONG: at top level",
+            "\"timeline_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: reasoning MUST BE AN OBJECT",
+            "================================================================================",
+            "'reasoning' MUST be an object containing three arrays as properties.",
+            "Do NOT output primary_factors, supporting_evidence, or contradicting_evidence at the top level.",
+            "All reasoning arrays MUST be nested inside the 'reasoning' object.",
+            "",
+            "CORRECT STRUCTURE for reasoning:",
+            "\"reasoning\": {",
+            "  \"primary_factors\": [...],",
+            "  \"supporting_evidence\": [...],",
+            "  \"contradicting_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"primary_factors\": [...],         <-- WRONG: at top level",
+            "\"supporting_evidence\": [...],     <-- WRONG: at top level",
+            "\"contradicting_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "COMPLETE STRUCTURE EXAMPLE - FOLLOW THIS EXACT PATTERN",
+            "================================================================================",
+            "{",
+            "  \"category\": \"...\",",
+            "  \"confidence_score\": 0.88,",
+            "  \"key_evidence\": {           <-- OBJECT wrapper required",
+            "    \"message_evidence\": [...],",
+            "    \"shipping_evidence\": [...],",
+            "    \"timeline_evidence\": [...]",
+            "  },",
+            "  \"reasoning\": {              <-- OBJECT wrapper required",
+            "    \"primary_factors\": [...],",
+            "    \"supporting_evidence\": [...],",
+            "    \"contradicting_evidence\": [...]",
+            "  }",
+            "}",
+            "",
+            "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+            "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+            "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+            "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+            "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+            "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+            "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+            "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+            "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
+          ],
+          "header_text": null,
+          "json_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "description": "Exactly one category from the predefined list (case-sensitive match required)",
+                "enum": [],
+                "type": "string"
+              },
+              "confidence_score": {
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "key_evidence": {
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                  "message_evidence": {
+                    "description": "Direct quotes from dialogue with speaker identification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "shipping_evidence": {
+                    "description": "Tracking events with timestamps",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "timeline_evidence": {
+                    "description": "Chronological sequence of key events",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "message_evidence",
+                  "shipping_evidence",
+                  "timeline_evidence"
+                ],
+                "type": "object"
+              },
+              "reasoning": {
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                  "contradicting_evidence": {
+                    "description": "Evidence that contradicts the classification (use empty array if none)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "primary_factors": {
+                    "description": "Main reasons supporting the selected category",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "supporting_evidence": {
+                    "description": "Additional evidence that strengthens the classification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "primary_factors",
+                  "supporting_evidence",
+                  "contradicting_evidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "category",
+              "confidence_score",
+              "key_evidence",
+              "reasoning"
+            ],
+            "type": "object"
+          },
+          "required_fields": [
+            "category",
+            "confidence_score",
+            "key_evidence",
+            "reasoning"
+          ],
+          "structured_text_sections": null,
+          "validation_requirements": [
+            "Must be valid JSON format",
+            "Category must match exactly from predefined list",
+            "Confidence score must be number between 0.0 and 1.0",
+            "All required fields must be present",
+            "key_evidence MUST be an object containing three nested arrays",
+            "reasoning MUST be an object containing three nested arrays",
+            "Evidence arrays must NOT appear at top level of JSON",
+            "Reasoning arrays must NOT appear at top level of JSON"
+          ]
+        },
+        "output_format_type": "structured_json",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "bedrock_prompt_template_generation.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "prompt_configs_path": "prompt_configs",
+        "required_output_fields": [
+          "Category",
+          "Confidence Score",
+          "Key Evidence",
+          "Reasoning"
+        ],
+        "resolved_prompt_configs_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/prompt_configs",
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/bedrock_prompt_template_generation.py",
+        "system_prompt_settings": {
+          "__model_type__": "SystemPromptConfig",
+          "behavioral_guidelines": [
+            "be precise in classification decisions",
+            "be objective in evidence evaluation",
+            "be thorough in timeline analysis",
+            "follow exact formatting requirements",
+            "consider all available evidence sources"
+          ],
+          "expertise_areas": [
+            "buyer-seller messaging analysis",
+            "shipping logistics",
+            "delivery timing analysis",
+            "e-commerce dispute resolution",
+            "classification and categorization"
+          ],
+          "responsibilities": [
+            "classify interactions based on message content",
+            "analyze shipping events and delivery timing",
+            "categorize into predefined dispute categories",
+            "provide evidence-based reasoning for classifications"
+          ],
+          "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+          "tone": "professional"
+        },
+        "template_metadata": {
+          "generate_validation_schema": true,
+          "includes_examples": true,
+          "input_placeholders": [
+            "dialogue",
+            "shiptrack_event_history_by_order",
+            "shiptrack_max_estimated_arrival_date_by_order"
+          ],
+          "output_format": "structured_json",
+          "required_output_fields": [
+            "Category",
+            "Confidence Score",
+            "Key Evidence",
+            "Reasoning"
+          ],
+          "task_type": "buyer_seller_classification",
+          "template_style": "structured",
+          "template_version": "2.0",
+          "validation_level": "comprehensive"
+        },
+        "template_style": "structured",
+        "template_task_type": "buyer_seller_classification",
+        "template_version": "2.0",
+        "use_large_processing_instance": false,
+        "validation_level": "comprehensive"
+      },
+      "DummyDataLoading_calibration": {
+        "__model_type__": "DummyDataLoadingConfig",
+        "aws_region": "us-east-1",
+        "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03/",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "job_type": "calibration",
+        "max_file_size_mb": 1000,
+        "output_format": "PARQUET",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "dummy_data_loading.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/dummy_data_loading.py",
+        "shard_size": 10000,
+        "supported_formats": [
+          "csv",
+          "parquet",
+          "json",
+          "jsonl"
+        ],
+        "use_large_processing_instance": true,
+        "write_data_shards": true
+      },
+      "DummyDataLoading_training": {
+        "__model_type__": "DummyDataLoadingConfig",
+        "aws_region": "us-east-1",
+        "data_source": "s3://buyer-seller-messaging-reversal/production-pipeline/raw-input/2025-11-03",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "job_type": "training",
+        "max_file_size_mb": 1000,
+        "output_format": "PARQUET",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "dummy_data_loading.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/dummy_data_loading.py",
+        "shard_size": 10000,
+        "supported_formats": [
+          "csv",
+          "parquet",
+          "json",
+          "jsonl"
+        ],
+        "use_large_processing_instance": true,
+        "write_data_shards": true
+      },
+      "LabelRulesetExecution_calibration": {
+        "__model_type__": "LabelRulesetExecutionConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "enable_progress_logging": true,
+        "enable_rule_match_tracking": true,
+        "execution_configuration": {
+          "fail_on_missing_fields": true,
+          "graceful_degradation": false,
+          "job_type": "calibration",
+          "performance_optimized": false,
+          "progress_logging": true,
+          "rule_match_tracking": true
+        },
+        "execution_environment_variables": {
+          "ENABLE_PROGRESS_LOGGING": "true",
+          "ENABLE_RULE_MATCH_TRACKING": "true",
+          "FAIL_ON_MISSING_FIELDS": "true",
+          "PREFERRED_INPUT_FORMAT": "parquet",
+          "USE_SECURE_PYPI": "false"
+        },
+        "fail_on_missing_fields": true,
+        "job_type": "calibration",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "preferred_input_format": "Parquet",
+        "processing_entry_point": "label_ruleset_execution.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "fail_on_missing_fields": true,
+          "job_type": "calibration",
+          "multi_format_support": [
+            "csv",
+            "tsv",
+            "parquet"
+          ],
+          "progress_logging_enabled": true,
+          "rule_match_tracking_enabled": true,
+          "step_type": "label_ruleset_execution",
+          "supports_stacked_preprocessing": true
+        },
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/label_ruleset_execution.py",
+        "use_large_processing_instance": true
+      },
+      "LabelRulesetExecution_training": {
+        "__model_type__": "LabelRulesetExecutionConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "enable_progress_logging": true,
+        "enable_rule_match_tracking": true,
+        "execution_configuration": {
+          "fail_on_missing_fields": true,
+          "graceful_degradation": false,
+          "job_type": "training",
+          "performance_optimized": false,
+          "progress_logging": true,
+          "rule_match_tracking": true
+        },
+        "execution_environment_variables": {
+          "ENABLE_PROGRESS_LOGGING": "true",
+          "ENABLE_RULE_MATCH_TRACKING": "true",
+          "FAIL_ON_MISSING_FIELDS": "true",
+          "PREFERRED_INPUT_FORMAT": "parquet",
+          "USE_SECURE_PYPI": "false"
+        },
+        "fail_on_missing_fields": true,
+        "job_type": "training",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "preferred_input_format": "Parquet",
+        "processing_entry_point": "label_ruleset_execution.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "fail_on_missing_fields": true,
+          "job_type": "training",
+          "multi_format_support": [
+            "csv",
+            "tsv",
+            "parquet"
+          ],
+          "progress_logging_enabled": true,
+          "rule_match_tracking_enabled": true,
+          "step_type": "label_ruleset_execution",
+          "supports_stacked_preprocessing": true
+        },
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/label_ruleset_execution.py",
+        "use_large_processing_instance": true
+      },
+      "LabelRulesetGeneration": {
+        "__model_type__": "LabelRulesetGenerationConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "enable_field_validation": true,
+        "enable_label_validation": true,
+        "enable_logic_validation": true,
+        "enable_rule_optimization": true,
+        "environment_variables": {
+          "ENABLE_FIELD_VALIDATION": "true",
+          "ENABLE_LABEL_VALIDATION": "true",
+          "ENABLE_LOGIC_VALIDATION": "true",
+          "ENABLE_RULE_OPTIMIZATION": "true"
+        },
+        "label_config": {
+          "__model_type__": "LabelConfig",
+          "default_label": 1,
+          "evaluation_mode": "priority",
+          "label_mapping": {
+            "0": "No_Reversal_Required",
+            "1": "Reversal_Required"
+          },
+          "label_values": [
+            0,
+            1
+          ],
+          "output_label_name": "llm_reversal_flag",
+          "output_label_type": "binary",
+          "sparse_representation": true
+        },
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "label_ruleset_generation.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "resolved_ruleset_configs_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/ruleset_configs",
+        "rule_definitions": {
+          "__model_type__": "RulesetDefinitionList",
+          "rules": [
+            {
+              "conditions": {
+                "__type_info__": "dict",
+                "value": {
+                  "all_of": null,
+                  "any_of": null,
+                  "field": "llm_category",
+                  "none_of": null,
+                  "operator": "in",
+                  "value": [
+                    "TrueDNR",
+                    "PDA_Undeliverable",
+                    "PDA_Early_Refund",
+                    "Returnless_Refund"
+                  ]
+                }
+              },
+              "description": "Categories indicating NO reversal: delivered/fraud patterns, logistics delays, goodwill refunds",
+              "enabled": true,
+              "name": "No_Reversal_Categories",
+              "output_label": 0,
+              "priority": 1
+            },
+            {
+              "conditions": {
+                "__type_info__": "dict",
+                "value": {
+                  "all_of": null,
+                  "any_of": null,
+                  "field": "llm_category",
+                  "none_of": null,
+                  "operator": "in",
+                  "value": [
+                    "Confirmed_Delay",
+                    "Delivery_Attempt_Failed",
+                    "Seller_Unable_To_Ship",
+                    "Buyer_Received_WrongORDefective_Item",
+                    "BuyerCancellation",
+                    "Return_NoLongerNeeded",
+                    "Product_Information_Support",
+                    "Insufficient_Information"
+                  ]
+                }
+              },
+              "description": "Categories indicating reversal required: legitimate refunds, quality issues, cancellations, manual review cases",
+              "enabled": true,
+              "name": "Reversal_Required_Categories",
+              "output_label": 1,
+              "priority": 2
+            }
+          ]
+        },
+        "ruleset_configs_path": "ruleset_configs",
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/label_ruleset_generation.py",
+        "use_large_processing_instance": false
+      },
+      "ModelCalibration_calibration": {
+        "__model_type__": "ModelCalibrationConfig",
+        "aws_region": "us-east-1",
+        "calibration_method": "gam",
+        "calibration_sample_points": 1000,
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "error_threshold": 0.05,
+        "gam_splines": 10,
+        "is_binary": true,
+        "job_type": "calibration",
+        "label_field": "llm_reversal_flag",
+        "monotonic_constraint": true,
+        "multiclass_categories": [
+          0,
+          1
+        ],
+        "num_classes": 2,
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "model_calibration.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "score_field": "prob_class_1",
+        "score_field_prefix": "prob_class_",
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/model_calibration.py",
+        "use_large_processing_instance": false
+      },
+      "Package": {
+        "__model_type__": "PackageConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "package.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/package.py",
+        "use_large_processing_instance": false
+      },
+      "Payload": {
+        "__model_type__": "PayloadConfig",
+        "aws_region": "us-east-1",
+        "default_numeric_value": 0.0,
+        "default_text_value": "DEFAULT_TEXT",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "expected_tps": 1,
+        "field_defaults": {
+          "dialogue": "[bom] [Arrival Time]: 2025-06-11 [BUYER]: I need my refund. [eom]",
+          "shiptrack_event_history_by_order": "[bom] [Shipment ID]: [eom] [bom] [Ship Track Event Code]: EVENT_503 [Ship Track Event]: Pickup scheduled with Carrier. [eom]"
+        },
+        "load_test_instance_type_list": [
+          "ml.m5.4xlarge"
+        ],
+        "max_acceptable_error_rate": 0.2,
+        "max_latency_in_millisecond": 1000,
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "payload.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/payload.py",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "use_large_processing_instance": false
+      },
+      "PyTorchModelEval_calibration": {
+        "__model_type__": "PyTorchModelEvalConfig",
+        "aws_region": "us-east-1",
+        "comparison_metrics": "all",
+        "comparison_mode": false,
+        "comparison_plots": true,
+        "effective_instance_type": "ml.p3.8xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers",
+        "eval_metric_choices": [
+          "auroc",
+          "average_precision",
+          "f1_score"
+        ],
+        "id_name": "order_id",
+        "job_type": "calibration",
+        "label_name": "llm_reversal_flag",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "previous_score_field": "",
+        "processing_entry_point": "pytorch_model_eval.py",
+        "processing_framework_version": "2.1.2",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.p3.8xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/pytorch_model_eval.py",
+        "statistical_tests": true,
+        "use_large_processing_instance": true
+      },
+      "PyTorchTraining": {
+        "__model_type__": "PyTorchTrainingConfig",
+        "aws_region": "us-east-1",
+        "ca_repository_arn": "arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "skip_hyperparameters_s3_uri": true,
+        "training_entry_point": "pytorch_training.py",
+        "training_instance_count": 1,
+        "training_instance_type": "ml.p3.16xlarge",
+        "training_volume_size": 800,
+        "use_precomputed_features": false,
+        "use_precomputed_imputation": false,
+        "use_precomputed_risk_tables": false
+      },
+      "Registration": {
+        "__model_type__": "RegistrationConfig",
+        "aws_region": "us-east-1",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers",
+        "framework": "pytorch",
+        "inference_entry_point": "pytorch_inference_handler.py",
+        "inference_instance_type": "ml.m5.large",
+        "model_domain": "BuyerSellerMessaging",
+        "model_objective": "RnR_BSM_Model_NA",
+        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "source_model_inference_content_types": [
+          "text/csv"
+        ],
+        "source_model_inference_input_variable_list": [
+          [
+            "net_conc_amt",
+            "NUMERIC"
+          ],
+          [
+            "ttm_conc_amt",
+            "NUMERIC"
+          ],
+          [
+            "ttm_conc_count",
+            "NUMERIC"
+          ],
+          [
+            "concsi",
+            "NUMERIC"
+          ],
+          [
+            "deliverable_flag",
+            "NUMERIC"
+          ],
+          [
+            "undeliverable_flag",
+            "NUMERIC"
+          ],
+          [
+            "unique_message_count",
+            "NUMERIC"
+          ],
+          [
+            "total_ship_track_events_by_order",
+            "NUMERIC"
+          ],
+          [
+            "total_unique_ship_track_events_by_order",
+            "NUMERIC"
+          ],
+          [
+            "dialogue",
+            "TEXT"
+          ],
+          [
+            "shiptrack_event_history_by_order",
+            "TEXT"
+          ]
+        ],
+        "source_model_inference_output_variable_list": {
+          "calibrated-score": "NUMERIC",
+          "legacy-score": "NUMERIC",
+          "score-percentile": "NUMERIC"
+        },
+        "source_model_inference_response_types": [
+          "application/json"
+        ],
+        "variable_schema": {
+          "input": {
+            "variables": [
+              {
+                "name": "net_conc_amt",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "ttm_conc_amt",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "ttm_conc_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "concsi",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "deliverable_flag",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "undeliverable_flag",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "unique_message_count",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "total_ship_track_events_by_order",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "total_unique_ship_track_events_by_order",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "dialogue",
+                "type": "TEXT"
+              },
+              {
+                "name": "shiptrack_event_history_by_order",
+                "type": "TEXT"
+              }
+            ]
+          },
+          "output": {
+            "variables": [
+              {
+                "name": "legacy-score",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "score-percentile",
+                "type": "NUMERIC"
+              },
+              {
+                "name": "calibrated-score",
+                "type": "NUMERIC"
+              }
+            ]
+          }
+        }
+      },
+      "TabularPreprocessing_calibration": {
+        "__model_type__": "TabularPreprocessingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/tabular_preprocessing.py",
+        "job_type": "calibration",
+        "output_format": "Parquet",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "tabular_preprocessing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/tabular_preprocessing.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      },
+      "TabularPreprocessing_training": {
+        "__model_type__": "TabularPreprocessingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/tabular_preprocessing.py",
+        "job_type": "training",
+        "output_format": "Parquet",
+        "pipeline_description": "BuyerAbuseRnR pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnR-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnR-pytorch-NA_1.0.0",
+        "processing_entry_point": "tabular_preprocessing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_pytorch_bedrock/dockers/scripts/tabular_preprocessing.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      }
+    }
+  },
+  "metadata": {
+    "config_types": {
+      "BedrockBatchProcessing_calibration": "BedrockBatchProcessingConfig",
+      "BedrockBatchProcessing_training": "BedrockBatchProcessingConfig",
+      "BedrockPromptTemplateGeneration": "BedrockPromptTemplateGenerationConfig",
+      "DummyDataLoading_calibration": "DummyDataLoadingConfig",
+      "DummyDataLoading_training": "DummyDataLoadingConfig",
+      "LabelRulesetExecution_calibration": "LabelRulesetExecutionConfig",
+      "LabelRulesetExecution_training": "LabelRulesetExecutionConfig",
+      "LabelRulesetGeneration": "LabelRulesetGenerationConfig",
+      "ModelCalibration_calibration": "ModelCalibrationConfig",
+      "Package": "PackageConfig",
+      "Payload": "PayloadConfig",
+      "PyTorchModelEval_calibration": "PyTorchModelEvalConfig",
+      "PyTorchTraining": "PyTorchTrainingConfig",
+      "Registration": "RegistrationConfig",
+      "TabularPreprocessing_calibration": "TabularPreprocessingConfig",
+      "TabularPreprocessing_training": "TabularPreprocessingConfig"
+    },
+    "created_at": "2025-12-08T23:50:22.323326",
+    "field_sources": {
+      "author": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "aws_region": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "batch_configuration": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_batch_mode": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_batch_role_arn": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_batch_size": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_batch_threshold": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_batch_timeout_hours": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_concurrency_mode": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_environment_variables": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_fallback_model_id": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_inference_profile_arn": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_inference_profile_required_models": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_log_truncations": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_max_concurrent_batch_jobs": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_max_concurrent_workers": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_max_input_field_length": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_max_records_per_job": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_max_retries": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_max_tokens": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_output_column_prefix": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_primary_model_id": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_rate_limit_per_second": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_skip_error_records": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_temperature": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_top_p": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bedrock_truncation_enabled": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "bucket": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "ca_repository_arn": [
+        "PyTorchTraining"
+      ],
+      "calibration_method": [
+        "ModelCalibration_calibration"
+      ],
+      "calibration_sample_points": [
+        "ModelCalibration_calibration"
+      ],
+      "comparison_metrics": [
+        "PyTorchModelEval_calibration"
+      ],
+      "comparison_mode": [
+        "PyTorchModelEval_calibration"
+      ],
+      "comparison_plots": [
+        "PyTorchModelEval_calibration"
+      ],
+      "cost_optimization_info": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "current_date": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "data_source": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "default_numeric_value": [
+        "Payload"
+      ],
+      "default_text_value": [
+        "Payload"
+      ],
+      "effective_categories": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_inference_profile_required_models": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration"
+      ],
+      "effective_instance_type": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "effective_instruction_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_output_format_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "effective_system_prompt_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "enable_caching": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "enable_field_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_label_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_logic_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_progress_logging": [
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "enable_rule_match_tracking": [
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "enable_rule_optimization": [
+        "LabelRulesetGeneration"
+      ],
+      "environment_variables": [
+        "BedrockPromptTemplateGeneration",
+        "LabelRulesetGeneration"
+      ],
+      "error_threshold": [
+        "ModelCalibration_calibration"
+      ],
+      "eval_metric_choices": [
+        "PyTorchModelEval_calibration"
+      ],
+      "execution_configuration": [
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "execution_environment_variables": [
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "expected_tps": [
+        "Payload"
+      ],
+      "fail_on_missing_fields": [
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "field_defaults": [
+        "Payload"
+      ],
+      "framework": [
+        "Registration"
+      ],
+      "framework_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "full_script_path": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "gam_splines": [
+        "ModelCalibration_calibration"
+      ],
+      "generate_validation_schema": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "id_name": [
+        "PyTorchModelEval_calibration"
+      ],
+      "include_examples": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "inference_entry_point": [
+        "Registration"
+      ],
+      "inference_instance_type": [
+        "Registration"
+      ],
+      "input_placeholders": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "instruction_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "is_binary": [
+        "ModelCalibration_calibration"
+      ],
+      "job_type": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      "label_config": [
+        "LabelRulesetGeneration"
+      ],
+      "label_field": [
+        "ModelCalibration_calibration"
+      ],
+      "label_name": [
+        "PyTorchModelEval_calibration"
+      ],
+      "load_test_instance_type_list": [
+        "Payload"
+      ],
+      "max_acceptable_error_rate": [
+        "Payload"
+      ],
+      "max_file_size_mb": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "max_latency_in_millisecond": [
+        "Payload"
+      ],
+      "max_runtime_seconds": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "model_class": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "model_domain": [
+        "Registration"
+      ],
+      "model_objective": [
+        "Registration"
+      ],
+      "model_owner": [
+        "Registration"
+      ],
+      "monotonic_constraint": [
+        "ModelCalibration_calibration"
+      ],
+      "multiclass_categories": [
+        "ModelCalibration_calibration"
+      ],
+      "num_classes": [
+        "ModelCalibration_calibration"
+      ],
+      "output_format": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "output_format_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "output_format_type": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "pipeline_description": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "pipeline_name": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "pipeline_s3_loc": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "pipeline_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "preferred_input_format": [
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "previous_score_field": [
+        "PyTorchModelEval_calibration"
+      ],
+      "processing_entry_point": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "processing_framework_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "processing_instance_count": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "processing_instance_type_large": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "processing_instance_type_small": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "processing_metadata": [
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration"
+      ],
+      "processing_source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "processing_volume_size": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "project_root_folder": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "prompt_configs_path": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "py_version": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "region": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "required_output_fields": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "resolved_prompt_configs_path": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "resolved_ruleset_configs_path": [
+        "LabelRulesetGeneration"
+      ],
+      "role": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "rule_definitions": [
+        "LabelRulesetGeneration"
+      ],
+      "ruleset_configs_path": [
+        "LabelRulesetGeneration"
+      ],
+      "score_field": [
+        "ModelCalibration_calibration"
+      ],
+      "score_field_prefix": [
+        "ModelCalibration_calibration"
+      ],
+      "script_path": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "service_name": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "shard_size": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "skip_hyperparameters_s3_uri": [
+        "PyTorchTraining"
+      ],
+      "source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "source_model_inference_content_types": [
+        "Registration",
+        "Payload"
+      ],
+      "source_model_inference_input_variable_list": [
+        "Registration"
+      ],
+      "source_model_inference_output_variable_list": [
+        "Registration"
+      ],
+      "source_model_inference_response_types": [
+        "Registration",
+        "Payload"
+      ],
+      "statistical_tests": [
+        "PyTorchModelEval_calibration"
+      ],
+      "supported_formats": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "system_prompt_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_metadata": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_style": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_task_type": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_version": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "test_val_ratio": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "train_ratio": [
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration"
+      ],
+      "training_entry_point": [
+        "PyTorchTraining"
+      ],
+      "training_instance_count": [
+        "PyTorchTraining"
+      ],
+      "training_instance_type": [
+        "PyTorchTraining"
+      ],
+      "training_volume_size": [
+        "PyTorchTraining"
+      ],
+      "use_large_processing_instance": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "use_precomputed_features": [
+        "PyTorchTraining"
+      ],
+      "use_precomputed_imputation": [
+        "PyTorchTraining"
+      ],
+      "use_precomputed_risk_tables": [
+        "PyTorchTraining"
+      ],
+      "use_secure_pypi": [
+        "BedrockPromptTemplateGeneration",
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "PyTorchTraining",
+        "Registration",
+        "TabularPreprocessing_training",
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_training",
+        "BedrockBatchProcessing_calibration",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training",
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration",
+        "Payload",
+        "Package"
+      ],
+      "validation_level": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "variable_schema": [
+        "Registration"
+      ],
+      "write_data_shards": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ]
+    }
+  }
+}
