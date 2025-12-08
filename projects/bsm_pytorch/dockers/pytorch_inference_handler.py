@@ -7,6 +7,8 @@ import logging
 from typing import List, Union, Dict, Tuple, Optional, Any
 import pickle as pkl
 import sys
+import time
+from contextlib import contextmanager
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -257,6 +259,32 @@ os.environ["TRANSFORMERS_CACHE"] = SHARED_CACHE_DIR
 os.environ["HF_HOME"] = SHARED_CACHE_DIR
 
 logger.info(f"Configured shared tokenizer cache at: {SHARED_CACHE_DIR}")
+
+
+# ============================================================================
+# PERFORMANCE TIMING UTILITIES
+# ============================================================================
+
+@contextmanager
+def log_timing(operation_name: str, logger_instance=None):
+    """
+    Context manager to measure and log execution time of operations.
+    
+    Usage:
+        with log_timing("Model Inference"):
+            model.predict(data)
+    
+    Args:
+        operation_name: Name of the operation being timed
+        logger_instance: Logger to use (defaults to module logger)
+    """
+    log = logger_instance or logger
+    start_time = time.time()
+    try:
+        yield
+    finally:
+        elapsed_ms = (time.time() - start_time) * 1000
+        log.info(f"⏱️  {operation_name}: {elapsed_ms:.2f}ms")
 
 
 # ================== Model, Data and Hyperparameter Folder =================
@@ -959,6 +987,29 @@ def apply_calibration(
         return scores
 
 
+def _safe_float_convert(val, default=0.0):
+    """
+    Convert any value to float, handling edge cases.
+    
+    Handles string representations of numbers, None values, NaN, etc.
+    Critical for CSV input where numerical values come as strings.
+    
+    Args:
+        val: Value to convert (can be str, int, float, None, np.float, etc.)
+        default: Default value if conversion fails
+    
+    Returns:
+        float: Converted value or default
+    """
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return default
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to convert value '{val}' to float, using default {default}")
+        return default
+
+
 def preprocess_single_record_with_text(
     df: pd.DataFrame,
     config: Config,
@@ -971,6 +1022,11 @@ def preprocess_single_record_with_text(
 
     Uses pre-built pipelines directly - NO DataLoader overhead!
     Processes text, tabular, and categorical features in a single pass.
+    
+    IMPORTANT: Replicates collate_batch behavior for trimodal models:
+    - Handles List[Dict] return from tokenizer pipeline
+    - Creates rank-3 tensors: (batch_size, num_chunks, seq_length)
+    - Applies proper padding to match DataLoader behavior
 
     Args:
         df: Single-row DataFrame with feature values
@@ -988,25 +1044,36 @@ def preprocess_single_record_with_text(
     batch = {}
     record = df.iloc[0].to_dict()
 
+    # Identify text fields from config (text_name, primary_text_name, secondary_text_name)
+    text_field_names = get_text_field_names(config)
+
     # ===== 1. TABULAR FEATURES =====
     for feature in config.tab_field_list:
+        # Skip text fields - they're processed separately through text pipelines
+        if feature in text_field_names:
+            continue
+        
         val = record.get(feature)
         if feature in numerical_processors:
             val = numerical_processors[feature].process(val)
-        batch[feature] = torch.tensor(
-            [[val if val is not None else 0.0]], dtype=torch.float32
-        )
+        # Convert to float explicitly before tensor creation (handles string values from CSV)
+        val = _safe_float_convert(val, 0.0)
+        batch[feature] = torch.tensor([[val]], dtype=torch.float32)
 
     # ===== 2. CATEGORICAL FEATURES =====
     for feature in config.cat_field_list:
+        # Skip text fields - they're processed separately through text pipelines
+        if feature in text_field_names:
+            continue
+        
         val = record.get(feature)
         if feature in risk_processors:
             val = risk_processors[feature].process(val)
-        batch[feature] = torch.tensor(
-            [[val if val is not None else 0.0]], dtype=torch.float32
-        )
+        # Convert to float explicitly before tensor creation (handles string values from CSV)
+        val = _safe_float_convert(val, 0.0)
+        batch[feature] = torch.tensor([[val]], dtype=torch.float32)
 
-    # ===== 3. TEXT FEATURES - KEY OPTIMIZATION! =====
+    # ===== 3. TEXT FEATURES - TRIMODAL RANK-3 TENSOR CREATION =====
     for text_field_name, pipeline in pipelines.items():
         # Skip label field
         if text_field_name == config.label_name:
@@ -1019,41 +1086,75 @@ def preprocess_single_record_with_text(
         raw_text = str(raw_text)
 
         try:
-            # ✨ MAGIC: Pipeline is already chained! Just call .process()
-            # This runs the entire chain: splitter >> html >> emoji >> normalizer >> chunker >> tokenizer
-            processed_dict = pipeline.process(raw_text)
-
-            # Extract results from tokenizer output
-            input_ids = processed_dict.get(config.text_input_ids_key)
-            attention_mask = processed_dict.get(config.text_attention_mask_key)
-
-            # Convert to tensors with batch dimension
-            if input_ids is not None:
-                if not isinstance(input_ids, torch.Tensor):
-                    input_ids = torch.tensor([input_ids], dtype=torch.long)
-                elif input_ids.dim() == 1:
-                    input_ids = input_ids.unsqueeze(0)
-
-                if not isinstance(attention_mask, torch.Tensor):
-                    attention_mask = torch.tensor([attention_mask], dtype=torch.long)
-                elif attention_mask.dim() == 1:
-                    attention_mask = attention_mask.unsqueeze(0)
-
-                # Add to batch with ONNX model's expected names
-                batch[f"{text_field_name}_{config.text_input_ids_key}"] = input_ids
-                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = (
-                    attention_mask
+            # Pipeline returns List[Dict] where each dict has input_ids and attention_mask
+            # Example: [{"input_ids": [101, 2023, ...], "attention_mask": [1, 1, ...]}, ...]
+            tokenized_chunks = pipeline.process(raw_text)
+            
+            # Handle case where pipeline returns a single dict instead of list
+            if isinstance(tokenized_chunks, dict):
+                tokenized_chunks = [tokenized_chunks]
+            
+            # Extract input_ids and attention_masks from each chunk
+            input_ids_list = []
+            attention_mask_list = []
+            
+            for chunk_dict in tokenized_chunks:
+                # Get the token IDs and attention mask for this chunk
+                chunk_input_ids = chunk_dict.get(config.text_input_ids_key, [])
+                chunk_attention_mask = chunk_dict.get(config.text_attention_mask_key, [])
+                
+                # Convert to tensors
+                input_ids_tensor = torch.tensor(chunk_input_ids, dtype=torch.long)
+                attention_mask_tensor = torch.tensor(chunk_attention_mask, dtype=torch.long)
+                
+                input_ids_list.append(input_ids_tensor)
+                attention_mask_list.append(attention_mask_tensor)
+            
+            # Pad sequences to uniform length within chunks
+            # This replicates pad_sequence behavior in collate_batch
+            if input_ids_list:
+                # Find max sequence length across all chunks
+                max_seq_len = max(t.size(0) for t in input_ids_list)
+                
+                # Pad each chunk to max_seq_len
+                padded_input_ids = []
+                padded_attention_masks = []
+                
+                for ids_tensor, mask_tensor in zip(input_ids_list, attention_mask_list):
+                    pad_len = max_seq_len - ids_tensor.size(0)
+                    if pad_len > 0:
+                        # Pad with zeros
+                        ids_tensor = torch.nn.functional.pad(ids_tensor, (0, pad_len), value=0)
+                        mask_tensor = torch.nn.functional.pad(mask_tensor, (0, pad_len), value=0)
+                    padded_input_ids.append(ids_tensor)
+                    padded_attention_masks.append(mask_tensor)
+                
+                # Stack chunks: (num_chunks, seq_length)
+                stacked_input_ids = torch.stack(padded_input_ids)
+                stacked_attention_masks = torch.stack(padded_attention_masks)
+                
+                # Add batch dimension: (1, num_chunks, seq_length) - rank 3!
+                batch[f"{text_field_name}_{config.text_input_ids_key}"] = stacked_input_ids.unsqueeze(0)
+                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = stacked_attention_masks.unsqueeze(0)
+            else:
+                # No chunks - create empty rank-3 tensor
+                max_len = config.max_sen_len
+                batch[f"{text_field_name}_{config.text_input_ids_key}"] = torch.zeros(
+                    (1, 1, max_len), dtype=torch.long
+                )
+                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = torch.zeros(
+                    (1, 1, max_len), dtype=torch.long
                 )
 
         except Exception as e:
-            logger.error(f"Error processing text field '{text_field_name}': {e}")
-            # Fallback: empty tensors
+            logger.error(f"Error processing text field '{text_field_name}': {e}", exc_info=True)
+            # Fallback: create rank-3 tensor with single empty chunk
             max_len = config.max_sen_len
             batch[f"{text_field_name}_{config.text_input_ids_key}"] = torch.zeros(
-                (1, max_len), dtype=torch.long
+                (1, 1, max_len), dtype=torch.long
             )
             batch[f"{text_field_name}_{config.text_attention_mask_key}"] = torch.zeros(
-                (1, max_len), dtype=torch.long
+                (1, 1, max_len), dtype=torch.long
             )
 
     return batch
