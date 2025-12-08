@@ -230,6 +230,7 @@ from lightning_models.utils.pl_train import (
     load_model,
     load_artifacts,
     load_onnx_model,
+    load_bert_optimized_model,
 )
 from lightning_models.utils.dist_utils import get_rank, is_main_process
 from pydantic import BaseModel, Field, ValidationError  # For Config Validation
@@ -265,15 +266,16 @@ logger.info(f"Configured shared tokenizer cache at: {SHARED_CACHE_DIR}")
 # PERFORMANCE TIMING UTILITIES
 # ============================================================================
 
+
 @contextmanager
 def log_timing(operation_name: str, logger_instance=None):
     """
     Context manager to measure and log execution time of operations.
-    
+
     Usage:
         with log_timing("Model Inference"):
             model.predict(data)
-    
+
     Args:
         operation_name: Name of the operation being timed
         logger_instance: Logger to use (defaults to module logger)
@@ -990,14 +992,14 @@ def apply_calibration(
 def _safe_float_convert(val, default=0.0):
     """
     Convert any value to float, handling edge cases.
-    
+
     Handles string representations of numbers, None values, NaN, etc.
     Critical for CSV input where numerical values come as strings.
-    
+
     Args:
         val: Value to convert (can be str, int, float, None, np.float, etc.)
         default: Default value if conversion fails
-    
+
     Returns:
         float: Converted value or default
     """
@@ -1006,7 +1008,9 @@ def _safe_float_convert(val, default=0.0):
     try:
         return float(val)
     except (ValueError, TypeError):
-        logger.warning(f"Failed to convert value '{val}' to float, using default {default}")
+        logger.warning(
+            f"Failed to convert value '{val}' to float, using default {default}"
+        )
         return default
 
 
@@ -1022,7 +1026,7 @@ def preprocess_single_record_with_text(
 
     Uses pre-built pipelines directly - NO DataLoader overhead!
     Processes text, tabular, and categorical features in a single pass.
-    
+
     IMPORTANT: Replicates collate_batch behavior for trimodal models:
     - Handles List[Dict] return from tokenizer pipeline
     - Creates rank-3 tensors: (batch_size, num_chunks, seq_length)
@@ -1052,7 +1056,7 @@ def preprocess_single_record_with_text(
         # Skip text fields - they're processed separately through text pipelines
         if feature in text_field_names:
             continue
-        
+
         val = record.get(feature)
         if feature in numerical_processors:
             val = numerical_processors[feature].process(val)
@@ -1065,7 +1069,7 @@ def preprocess_single_record_with_text(
         # Skip text fields - they're processed separately through text pipelines
         if feature in text_field_names:
             continue
-        
+
         val = record.get(feature)
         if feature in risk_processors:
             val = risk_processors[feature].process(val)
@@ -1089,65 +1093,79 @@ def preprocess_single_record_with_text(
             # Pipeline returns List[Dict] where each dict has input_ids and attention_mask
             # Example: [{"input_ids": [101, 2023, ...], "attention_mask": [1, 1, ...]}, ...]
             tokenized_chunks = pipeline.process(raw_text)
-            
+
             # Handle case where pipeline returns a single dict instead of list
             if isinstance(tokenized_chunks, dict):
                 tokenized_chunks = [tokenized_chunks]
-            
+
             # Extract input_ids and attention_masks from each chunk
             input_ids_list = []
             attention_mask_list = []
-            
+
             for chunk_dict in tokenized_chunks:
                 # Get the token IDs and attention mask for this chunk
                 chunk_input_ids = chunk_dict.get(config.text_input_ids_key, [])
-                chunk_attention_mask = chunk_dict.get(config.text_attention_mask_key, [])
-                
+                chunk_attention_mask = chunk_dict.get(
+                    config.text_attention_mask_key, []
+                )
+
                 # Convert to tensors
                 input_ids_tensor = torch.tensor(chunk_input_ids, dtype=torch.long)
-                attention_mask_tensor = torch.tensor(chunk_attention_mask, dtype=torch.long)
-                
+                attention_mask_tensor = torch.tensor(
+                    chunk_attention_mask, dtype=torch.long
+                )
+
                 input_ids_list.append(input_ids_tensor)
                 attention_mask_list.append(attention_mask_tensor)
-            
+
             # Pad sequences to uniform length within chunks
             # This replicates pad_sequence behavior in collate_batch
             if input_ids_list:
                 # Find max sequence length across all chunks
                 max_seq_len = max(t.size(0) for t in input_ids_list)
-                
+
                 # Pad each chunk to max_seq_len
                 padded_input_ids = []
                 padded_attention_masks = []
-                
+
                 for ids_tensor, mask_tensor in zip(input_ids_list, attention_mask_list):
                     pad_len = max_seq_len - ids_tensor.size(0)
                     if pad_len > 0:
                         # Pad with zeros
-                        ids_tensor = torch.nn.functional.pad(ids_tensor, (0, pad_len), value=0)
-                        mask_tensor = torch.nn.functional.pad(mask_tensor, (0, pad_len), value=0)
+                        ids_tensor = torch.nn.functional.pad(
+                            ids_tensor, (0, pad_len), value=0
+                        )
+                        mask_tensor = torch.nn.functional.pad(
+                            mask_tensor, (0, pad_len), value=0
+                        )
                     padded_input_ids.append(ids_tensor)
                     padded_attention_masks.append(mask_tensor)
-                
+
                 # Stack chunks: (num_chunks, seq_length)
                 stacked_input_ids = torch.stack(padded_input_ids)
                 stacked_attention_masks = torch.stack(padded_attention_masks)
-                
+
                 # Add batch dimension: (1, num_chunks, seq_length) - rank 3!
-                batch[f"{text_field_name}_{config.text_input_ids_key}"] = stacked_input_ids.unsqueeze(0)
-                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = stacked_attention_masks.unsqueeze(0)
+                batch[f"{text_field_name}_{config.text_input_ids_key}"] = (
+                    stacked_input_ids.unsqueeze(0)
+                )
+                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = (
+                    stacked_attention_masks.unsqueeze(0)
+                )
             else:
                 # No chunks - create empty rank-3 tensor
                 max_len = config.max_sen_len
                 batch[f"{text_field_name}_{config.text_input_ids_key}"] = torch.zeros(
                     (1, 1, max_len), dtype=torch.long
                 )
-                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = torch.zeros(
-                    (1, 1, max_len), dtype=torch.long
+                batch[f"{text_field_name}_{config.text_attention_mask_key}"] = (
+                    torch.zeros((1, 1, max_len), dtype=torch.long)
                 )
 
         except Exception as e:
-            logger.error(f"Error processing text field '{text_field_name}': {e}", exc_info=True)
+            logger.error(
+                f"Error processing text field '{text_field_name}': {e}", exc_info=True
+            )
             # Fallback: create rank-3 tensor with single empty chunk
             max_len = config.max_sen_len
             batch[f"{text_field_name}_{config.text_input_ids_key}"] = torch.zeros(
@@ -1172,10 +1190,43 @@ def model_fn(model_dir, context=None):
 
     config = Config(**load_config)
 
+    # ============================================================================
+    # ONNX RUNTIME OPTIMIZATION CONFIGURATION
+    # ============================================================================
+    # Read optimization configuration from environment variables
+    enable_bert_fusion = os.environ.get("ENABLE_BERT_FUSION", "true").lower() == "true"
+    enable_profiling = (
+        os.environ.get("ENABLE_ONNX_PROFILING", "false").lower() == "true"
+    )
+    inter_op_threads = int(os.environ.get("ONNX_INTER_OP_THREADS", "1"))
+    intra_op_threads = int(os.environ.get("ONNX_INTRA_OP_THREADS", "4"))
+
     # Load model based on file type
     if os.path.exists(onnx_model_path):
         logger.info("Detected ONNX model.")
-        model = load_onnx_model(onnx_model_path)
+
+        if enable_bert_fusion:
+            # ✅ Phase 1 + Phase 2: Full ONNX optimization with BERT fusion
+            logger.info(
+                "Loading with Phase 1 + Phase 2 optimizations (BERT fusion + SessionOptions)"
+            )
+            model = load_bert_optimized_model(
+                model_dir=model_dir,
+                enable_profiling=enable_profiling,
+                inter_op_threads=inter_op_threads,
+                intra_op_threads=intra_op_threads,
+            )
+        else:
+            # Phase 1 only: SessionOptions optimization (no BERT fusion)
+            logger.info("Loading with Phase 1 optimizations only (SessionOptions)")
+            from lightning_models.utils.pl_train import load_optimized_onnx_model
+
+            model = load_optimized_onnx_model(
+                onnx_path=onnx_model_path,
+                enable_profiling=enable_profiling,
+                inter_op_threads=inter_op_threads,
+                intra_op_threads=intra_op_threads,
+            )
     else:
         logger.info("Detected PyTorch model.")
         model = load_model(
