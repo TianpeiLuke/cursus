@@ -1378,11 +1378,27 @@ def main(
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments
     """
-    # Load hyperparameters
-    hparam_file = input_paths.get("hyperparameters_s3_uri")
-    if not hparam_file.endswith("hyperparameters.json"):
-        hparam_file = os.path.join(hparam_file, "hyperparameters.json")
+    # Load hyperparameters with region-specific support
+    # Get region from environment variable
+    region = environ_vars.get("REGION", "").upper()
 
+    if region in ["NA", "EU", "FE"]:
+        hparam_filename = f"hyperparameters_{region}.json"
+        logger.info(f"Loading region-specific hyperparameters for region: {region}")
+    else:
+        hparam_filename = "hyperparameters.json"
+        if region:
+            logger.warning(
+                f"Unknown REGION '{region}', falling back to default hyperparameters.json"
+            )
+        else:
+            logger.info("No REGION specified, using default hyperparameters.json")
+
+    hparam_file = input_paths.get("hyperparameters_s3_uri")
+    if not hparam_file.endswith(hparam_filename):
+        hparam_file = os.path.join(hparam_file, hparam_filename)
+
+    logger.info(f"Loading hyperparameters from: {hparam_file}")
     hyperparameters = load_parse_hyperparameters(hparam_file)
     hyperparameters = sanitize_config(hyperparameters)
 
@@ -1571,6 +1587,7 @@ if __name__ == "__main__":
             "USE_PRECOMPUTED_RISK_TABLES", "false"
         ).lower()
         == "true",
+        "REGION": os.environ.get("REGION", "NA"),
     }
 
     # Create empty args namespace to maintain function signature

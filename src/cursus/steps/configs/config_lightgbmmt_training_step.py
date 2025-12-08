@@ -197,6 +197,7 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
                 ).lower(),
                 "USE_PRECOMPUTED_FEATURES": str(self.use_precomputed_features).lower(),
                 "USE_NATIVE_CATEGORICAL": str(self.use_native_categorical).lower(),
+                "REGION": self.region,
             }
         )
 

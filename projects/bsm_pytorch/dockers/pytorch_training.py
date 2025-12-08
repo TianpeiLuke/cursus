@@ -1363,8 +1363,29 @@ def main(
     """
     # Load hyperparameters
     hparam_file = input_paths.get("hyperparameters_s3_uri")
-    if not hparam_file.endswith("hyperparameters.json"):
-        hparam_file = os.path.join(hparam_file, "hyperparameters.json")
+
+    # Check for region-specific hyperparameters
+    region = environ_vars.get("REGION", "").upper()
+
+    if region in ["NA", "EU", "FE"]:
+        # Try region-specific file first
+        hparam_dir = (
+            hparam_file if os.path.isdir(hparam_file) else os.path.dirname(hparam_file)
+        )
+        regional_file = os.path.join(hparam_dir, f"hyperparameters_{region}.json")
+
+        if os.path.exists(regional_file):
+            hparam_file = regional_file
+            logger.info(f"Using region-specific hyperparameters: {regional_file}")
+        else:
+            # Fall back to default
+            if not hparam_file.endswith("hyperparameters.json"):
+                hparam_file = os.path.join(hparam_file, "hyperparameters.json")
+            logger.info(f"Region-specific file not found, using default: {hparam_file}")
+    else:
+        # Use default hyperparameters.json
+        if not hparam_file.endswith("hyperparameters.json"):
+            hparam_file = os.path.join(hparam_file, "hyperparameters.json")
 
     hyperparameters = load_parse_hyperparameters(hparam_file)
     hyperparameters = sanitize_config(hyperparameters)
@@ -1554,6 +1575,7 @@ if __name__ == "__main__":
             "USE_PRECOMPUTED_RISK_TABLES", "false"
         ).lower()
         == "true",
+        "REGION": os.environ.get("REGION", "NA"),
     }
 
     # Create empty args namespace to maintain function signature

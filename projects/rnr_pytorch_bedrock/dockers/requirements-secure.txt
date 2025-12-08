@@ -1,6 +1,12 @@
 # Note: torch, torchvision, torchaudio are pre-installed in AWS DLC PyTorch 2.1.2
 # and should not be reinstalled to avoid conflicts and reduce build time
 
+# Note: The following packages are pre-installed in AWS DLC PyTorch 2.1.2 SageMaker variant:
+# - scikit-learn, pandas, numpy
+# - pyarrow 17.0.0 (DO NOT downgrade - causes ABI conflicts and memory corruption)
+# - pydantic 2.8.2 (DO NOT downgrade - may cause dependency conflicts)
+# - matplotlib 3.9.1 (DO NOT downgrade - may cause numpy ABI issues)
+
 # Transformers & HuggingFace
 transformers==4.37.2
 
@@ -14,18 +20,9 @@ torchmetrics==1.7.1
 # TensorBoard (for logging and visualization)
 tensorboard==2.16.2
 
-# Plotting support
-matplotlib==3.8.2
-
-# Data + Processing
-# Note: scikit-learn and pandas are pre-installed in AWS DLC PyTorch 2.1.2 SageMaker variant
-pyarrow==14.0.2
+# Data Processing
 beautifulsoup4==4.12.3
 gensim==4.3.1
-
-
-# Validation
-pydantic==2.11.2
 
 # ONNX Export
 onnx==1.15.0

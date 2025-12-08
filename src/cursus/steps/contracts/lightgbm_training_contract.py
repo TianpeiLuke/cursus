@@ -31,6 +31,7 @@ LIGHTGBM_TRAIN_CONTRACT = TrainingScriptContract(
         "USE_PRECOMPUTED_RISK_TABLES": "false",  # If true, uses pre-computed risk table artifacts and skips inline computation
         "USE_PRECOMPUTED_FEATURES": "false",  # If true, uses pre-computed feature selection and skips inline computation
         "USE_NATIVE_CATEGORICAL": "true",  # If true, uses LightGBM native categorical features; if false, uses risk table mapping (XGBoost-style)
+        "REGION": "NA",  # Region identifier (NA/EU/FE) for loading region-specific hyperparameters
     },
     framework_requirements={
         "boto3": ">=1.26.0",

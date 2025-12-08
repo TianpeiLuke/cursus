@@ -182,6 +182,7 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         # Add XGBoost training specific environment variables
         env_vars.update(
             {
+                "REGION": self.region,
                 "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
                 "USE_PRECOMPUTED_IMPUTATION": str(
                     self.use_precomputed_imputation

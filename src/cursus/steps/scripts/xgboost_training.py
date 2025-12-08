@@ -1277,24 +1277,43 @@ def main(
                 "No model_artifacts_input provided - will compute all parameters inline"
             )
 
-        # Priority-based hyperparameters path resolution
+        # Priority-based hyperparameters path resolution with region-specific support
+        # Get region from environ_vars parameter (for testability)
+        region = environ_vars.get("REGION", "").upper()
+
+        if region in ["NA", "EU", "FE"]:
+            hparam_filename = f"hyperparameters_{region}.json"
+            logger.info(f"Loading region-specific hyperparameters for region: {region}")
+        else:
+            hparam_filename = "hyperparameters.json"
+            if region:
+                logger.warning(
+                    f"Unknown REGION '{region}', falling back to default hyperparameters.json"
+                )
+            else:
+                logger.info("No REGION specified, using default hyperparameters.json")
+
         # Priority 1: Start with code directory (highest priority)
-        hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
+        hparam_path = f"/opt/ml/code/hyperparams/{hparam_filename}"
 
         # Priority 2: If code directory file doesn't exist, check input_paths
         if not os.path.exists(hparam_path):
             logger.info(f"Hyperparameters not found in code directory: {hparam_path}")
 
             if "hyperparameters_s3_uri" in input_paths:
-                hparam_path = input_paths["hyperparameters_s3_uri"]
+                hparam_dir = input_paths["hyperparameters_s3_uri"]
                 # If it's a directory path, append the filename
-                if not hparam_path.endswith("hyperparameters.json"):
-                    hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+                if not hparam_dir.endswith(hparam_filename):
+                    hparam_path = os.path.join(hparam_dir, hparam_filename)
+                else:
+                    hparam_path = hparam_dir
                 logger.info(f"Using fallback hyperparameters path: {hparam_path}")
             else:
                 logger.error("No hyperparameters_s3_uri provided in input_paths")
         else:
             logger.info(f"Found hyperparameters in code directory: {hparam_path}")
+
+        logger.info(f"Loading hyperparameters from: {hparam_path}")
 
         logger.info("Starting XGBoost training process...")
         logger.info(f"Loading configuration from {hparam_path}")
@@ -1592,6 +1611,7 @@ if __name__ == "__main__":
             "USE_PRECOMPUTED_FEATURES", "false"
         ).lower()
         == "true",
+        "REGION": os.environ.get("REGION", "NA"),
     }
 
     try:
