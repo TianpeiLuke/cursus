@@ -861,10 +861,16 @@ def load_bert_optimized_model(
         >>> }
         >>> outputs = session.run(None, inputs)
     """
+    import hashlib
+
     model_dir = Path(model_dir)
     original_model = model_dir / "model.onnx"
-    optimized_model = model_dir / "model_optimized.onnx"
-    lock_file = model_dir / ".model_optimization.lock"
+
+    # Generate unique hash for this model path to avoid conflicts
+    # Use /tmp/ for writable locations (SageMaker endpoint compatible)
+    model_hash = hashlib.md5(str(model_dir).encode()).hexdigest()[:16]
+    optimized_model = Path(f"/tmp/model_optimized_{model_hash}.onnx")
+    lock_file = Path(f"/tmp/.model_optimization_{model_hash}.lock")
 
     # Validate original model exists
     if not original_model.exists():
