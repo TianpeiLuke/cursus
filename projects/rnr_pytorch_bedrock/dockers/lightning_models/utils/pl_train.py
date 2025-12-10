@@ -83,10 +83,8 @@ def file_lock(lock_path: Path, timeout: int = 60):
         >>>     optimize_model()
         >>> # Lock automatically released, other workers proceed
     """
-    lock_file = None
-    try:
-        # Create lock file
-        lock_file = open(lock_path, "w")
+    # Use 'with' statement to guarantee file closure in all code paths
+    with open(lock_path, "w") as lock_file:
         start_time = time.time()
 
         # Try to acquire exclusive lock with timeout
@@ -112,14 +110,13 @@ def file_lock(lock_path: Path, timeout: int = 60):
                         f"Waiting for lock... ({int(elapsed)}s elapsed, max {timeout}s)"
                     )
 
-        yield
-
-    finally:
-        # Always release lock and clean up
-        if lock_file:
+        try:
+            yield
+        finally:
+            # Release lock and clean up
+            # File will be automatically closed by 'with' statement
             try:
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-                lock_file.close()
                 if lock_path.exists():
                     lock_path.unlink()
                 logger.info(f"✓ Released file lock: {lock_path}")
@@ -587,6 +584,8 @@ def load_onnx_model(
     enable_profiling: bool = False,
     inter_op_threads: int = 1,
     intra_op_threads: int = 4,
+    providers: Optional[List[Union[str, Tuple[str, Dict]]]] = None,
+    provider_options: Optional[List[Dict]] = None,
 ) -> ort.InferenceSession:
     """
     Load ONNX model with production-grade optimization settings (Phase 1 Optimization).
@@ -603,6 +602,8 @@ def load_onnx_model(
         enable_profiling: Enable performance profiling for debugging (default: False)
         inter_op_threads: Number of threads for parallel operator execution (default: 1)
         intra_op_threads: Number of threads within operators for matrix operations (default: 4)
+        providers: Optional list of execution providers (e.g., ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        provider_options: Optional list of provider-specific options
 
     Returns:
         ort.InferenceSession: Optimized ONNX Runtime InferenceSession
@@ -655,52 +656,63 @@ def load_onnx_model(
         )
 
     # ===== 2. Configure Execution Providers =====
-    providers = []
+    # Use provided providers or auto-detect
+    if providers is None:
+        providers = []
 
-    # Try TensorRT first (best GPU performance, 1.2-1.5x additional speedup)
-    if ort.get_device() == "GPU":
-        try:
+        # Try TensorRT first (best GPU performance, 1.2-1.5x additional speedup)
+        if ort.get_device() == "GPU":
+            try:
+                providers.append(
+                    (
+                        "TensorrtExecutionProvider",
+                        {
+                            "trt_fp16_enable": False,  # Disabled - causes numerical instability
+                            "trt_engine_cache_enable": True,  # Cache compiled engines
+                            "trt_engine_cache_path": "/tmp/trt_cache",
+                            "trt_max_workspace_size": 2147483648,  # 2GB workspace
+                        },
+                    )
+                )
+                logger.info("✓ TensorRT execution provider configured (FP16 disabled)")
+            except Exception as e:
+                logger.warning(f"TensorRT provider not available: {e}")
+
+        # Fallback to CUDA (standard GPU execution)
+        if ort.get_device() == "GPU":
             providers.append(
                 (
-                    "TensorrtExecutionProvider",
+                    "CUDAExecutionProvider",
                     {
-                        "trt_fp16_enable": True,  # Enable FP16 precision (2x faster)
-                        "trt_engine_cache_enable": True,  # Cache compiled engines
-                        "trt_engine_cache_path": "/tmp/trt_cache",
-                        "trt_max_workspace_size": 2147483648,  # 2GB workspace
+                        "device_id": 0,
+                        "arena_extend_strategy": "kNextPowerOfTwo",
+                        "gpu_mem_limit": 2 * 1024 * 1024 * 1024,  # 2GB limit
+                        "cudnn_conv_algo_search": "EXHAUSTIVE",  # Find best convolution algorithm
+                        "do_copy_in_default_stream": True,
                     },
                 )
             )
-            logger.info("✓ TensorRT execution provider configured")
-        except Exception as e:
-            logger.warning(f"TensorRT provider not available: {e}")
+            logger.info("✓ CUDA execution provider configured")
 
-    # Fallback to CUDA (standard GPU execution)
-    if ort.get_device() == "GPU":
-        providers.append(
-            (
-                "CUDAExecutionProvider",
-                {
-                    "device_id": 0,
-                    "arena_extend_strategy": "kNextPowerOfTwo",
-                    "gpu_mem_limit": 2 * 1024 * 1024 * 1024,  # 2GB limit
-                    "cudnn_conv_algo_search": "EXHAUSTIVE",  # Find best convolution algorithm
-                    "do_copy_in_default_stream": True,
-                },
-            )
-        )
-        logger.info("✓ CUDA execution provider configured")
-
-    # CPU fallback (always available)
-    providers.append("CPUExecutionProvider")
+        # CPU fallback (always available)
+        providers.append("CPUExecutionProvider")
 
     # ===== 3. Create Optimized Session =====
     try:
-        session = ort.InferenceSession(
-            str(onnx_path),
-            sess_options=sess_options,
-            providers=providers,
-        )
+        # Create session with providers and optional provider_options
+        if provider_options is not None:
+            session = ort.InferenceSession(
+                str(onnx_path),
+                sess_options=sess_options,
+                providers=providers,
+                provider_options=provider_options,
+            )
+        else:
+            session = ort.InferenceSession(
+                str(onnx_path),
+                sess_options=sess_options,
+                providers=providers,
+            )
 
         logger.info(f"✓ Loaded ONNX model with Phase 1 optimizations from {onnx_path}")
         logger.info(f"  Graph optimization: ORT_ENABLE_ALL")
@@ -819,6 +831,8 @@ def load_bert_optimized_model(
     intra_op_threads: int = 4,
     force_reoptimize: bool = False,
     optimization_timeout: int = 90,
+    providers: Optional[List[Union[str, Tuple[str, Dict]]]] = None,
+    provider_options: Optional[List[Dict]] = None,
 ) -> ort.InferenceSession:
     """
     Load BERT-optimized ONNX model with atomic file locking (multi-worker safe).
@@ -833,6 +847,10 @@ def load_bert_optimized_model(
     2. If not found, acquire file lock for safe optimization
     3. Apply BERT fusion to original model (one-time cost, single worker only)
     4. Load with Phase 1 SessionOptions configuration
+
+    Storage Strategy:
+    - PREFERRED: Store optimized model in model_dir (persistent across restarts)
+    - FALLBACK: Use /tmp/ if model_dir is read-only (SageMaker endpoint scenario)
 
     Expected performance: 2-3x (Phase 1) × 1.5-2x (Phase 2) = 3-6x total speedup
 
@@ -866,15 +884,42 @@ def load_bert_optimized_model(
     model_dir = Path(model_dir)
     original_model = model_dir / "model.onnx"
 
-    # Generate unique hash for this model path to avoid conflicts
-    # Use /tmp/ for writable locations (SageMaker endpoint compatible)
-    model_hash = hashlib.md5(str(model_dir).encode()).hexdigest()[:16]
-    optimized_model = Path(f"/tmp/model_optimized_{model_hash}.onnx")
-    lock_file = Path(f"/tmp/.model_optimization_{model_hash}.lock")
-
     # Validate original model exists
     if not original_model.exists():
         raise FileNotFoundError(f"Original ONNX model not found: {original_model}")
+
+    # ========================================================================
+    # STORAGE STRATEGY: Try persistent storage first, fallback to ephemeral
+    # ========================================================================
+    # PREFERRED: Store in model_dir (persistent across container restarts)
+    persistent_optimized = model_dir / "model_optimized.onnx"
+    persistent_lock = model_dir / ".model_optimization.lock"
+
+    # FALLBACK: Use /tmp/ if model_dir is read-only (SageMaker endpoints)
+    model_hash = hashlib.sha256(str(model_dir).encode()).hexdigest()[:16]
+    ephemeral_optimized = Path(f"/tmp/model_optimized_{model_hash}.onnx")
+    ephemeral_lock = Path(f"/tmp/.model_optimization_{model_hash}.lock")
+
+    # Test write permissions to determine storage location
+    use_persistent = False
+    try:
+        # Try creating a test file in model_dir
+        test_file = model_dir / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+        use_persistent = True
+        optimized_model = persistent_optimized
+        lock_file = persistent_lock
+        logger.info(
+            "✓ Using persistent storage for optimized model (survives restarts)"
+        )
+    except (PermissionError, OSError) as e:
+        logger.warning(f"model_dir is read-only ({e}), using ephemeral /tmp/ storage")
+        logger.warning(
+            "⚠️  Optimization will be repeated on each container restart (10-30s)"
+        )
+        optimized_model = ephemeral_optimized
+        lock_file = ephemeral_lock
 
     # FAST PATH: Optimized model already exists and no force reoptimize
     if not force_reoptimize and optimized_model.exists():
@@ -884,6 +929,8 @@ def load_bert_optimized_model(
             enable_profiling=enable_profiling,
             inter_op_threads=inter_op_threads,
             intra_op_threads=intra_op_threads,
+            providers=providers,
+            provider_options=provider_options,
         )
 
     # OPTIMIZATION PATH: Need to create or recreate optimized model
@@ -901,6 +948,8 @@ def load_bert_optimized_model(
                     enable_profiling=enable_profiling,
                     inter_op_threads=inter_op_threads,
                     intra_op_threads=intra_op_threads,
+                    providers=providers,
+                    provider_options=provider_options,
                 )
 
             # This worker won the race - perform optimization
@@ -931,6 +980,8 @@ def load_bert_optimized_model(
                     enable_profiling=enable_profiling,
                     inter_op_threads=inter_op_threads,
                     intra_op_threads=intra_op_threads,
+                    providers=providers,
+                    provider_options=provider_options,
                 )
 
     except TimeoutError as e:
@@ -943,6 +994,8 @@ def load_bert_optimized_model(
             enable_profiling=enable_profiling,
             inter_op_threads=inter_op_threads,
             intra_op_threads=intra_op_threads,
+            providers=providers,
+            provider_options=provider_options,
         )
 
     # Load the optimized model (either just created or found after waiting)
@@ -952,4 +1005,6 @@ def load_bert_optimized_model(
         enable_profiling=enable_profiling,
         inter_op_threads=inter_op_threads,
         intra_op_threads=intra_op_threads,
+        providers=providers,
+        provider_options=provider_options,
     )

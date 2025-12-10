@@ -30,7 +30,7 @@ gensim==4.3.1
 
 # ONNX Export
 onnx==1.15.0
-onnxruntime==1.17.0
+onnxruntime-gpu==1.17.0
 
 # Serving
 flask==3.0.2

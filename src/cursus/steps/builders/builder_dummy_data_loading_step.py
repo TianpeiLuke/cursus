@@ -230,7 +230,12 @@ class DummyDataLoadingStepBuilder(StepBuilderBase):
                 base_output_path = self._get_base_output_path()
                 destination = Join(
                     on="/",
-                    values=[base_output_path, "dummy_data_loading", logical_name],
+                    values=[
+                        base_output_path,
+                        "dummy_data_loading",
+                        self.config.job_type,
+                        logical_name,
+                    ],
                 )
                 self.log_info(
                     "Using generated destination for '%s': %s",

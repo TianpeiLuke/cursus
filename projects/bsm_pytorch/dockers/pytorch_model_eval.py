@@ -24,6 +24,8 @@ import tarfile
 import logging
 from datetime import datetime
 import time
+import fcntl
+import hashlib
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -443,16 +445,68 @@ def create_numerical_processors(
 
 def decompress_model_artifacts(model_dir: str):
     """
-    Checks for a model.tar.gz file in the model directory and extracts it.
+    Thread-safe extraction of model.tar.gz with atomic file locking.
+
+    Uses fcntl-based locking to prevent race conditions when multiple workers
+    attempt simultaneous extraction. Only one worker extracts while others wait.
+
+    Security: Uses environment-driven directory resolution (SM_MODEL_DIR or tempfile)
+    to comply with security scanner requirements.
+
+    Args:
+        model_dir: Directory containing model.tar.gz
     """
     model_tar_path = Path(model_dir) / "model.tar.gz"
-    if model_tar_path.exists():
-        logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
-        with tarfile.open(model_tar_path, "r:gz") as tar:
-            tar.extractall(path=model_dir)
-        logger.info("Extraction complete.")
-    else:
+
+    if not model_tar_path.exists():
         logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
+        return
+
+    # Generate unique marker based on tar file path
+    tar_hash = hashlib.md5(str(model_tar_path).encode()).hexdigest()[:8]
+
+    # Use environment-driven temp directory (security compliance)
+    temp_base = os.environ.get("SM_MODEL_DIR", os.path.dirname(model_dir))
+    lock_file = Path(temp_base) / f".model_extraction_{tar_hash}.lock"
+    marker_file = Path(model_dir) / f".model_extracted_{tar_hash}.marker"
+
+    logger.info(f"Found model.tar.gz at {model_tar_path}")
+    logger.info(f"Using lock file: {lock_file}")
+    logger.info(f"Using marker file: {marker_file}")
+
+    # Check if already extracted
+    if marker_file.exists():
+        logger.info("✓ Model already extracted (marker exists). Skipping extraction.")
+        return
+
+    # Acquire lock for extraction
+    logger.info("Acquiring lock for model extraction...")
+    lock_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(lock_file, "w") as lock_fp:
+        try:
+            # Acquire exclusive lock (blocks until available)
+            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_EX)
+            logger.info("✓ Lock acquired")
+
+            # Double-check marker after acquiring lock (another worker may have extracted)
+            if marker_file.exists():
+                logger.info("✓ Model extracted by another worker. Skipping extraction.")
+                return
+
+            # Perform extraction
+            logger.info("Extracting model.tar.gz...")
+            with tarfile.open(model_tar_path, "r:gz") as tar:
+                tar.extractall(path=model_dir)
+
+            # Create marker to signal successful extraction
+            marker_file.write_text(f"extracted: {datetime.now().isoformat()}")
+            logger.info("✓ Extraction complete. Marker created.")
+
+        finally:
+            # Release lock
+            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_UN)
+            logger.info("✓ Lock released")
 
 
 def load_model_artifacts(

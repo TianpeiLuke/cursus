@@ -32,7 +32,8 @@ from torchmetrics.functional.classification import (
 
 
 # Color palettes
-class_colors = cm.get_cmap("tab10")  # tab10 supports up to 10 distinct colors
+# Use plt.get_cmap() for matplotlib 3.9+ compatibility (cm.get_cmap() deprecated)
+class_colors = plt.get_cmap("tab10")  # tab10 supports up to 10 distinct colors
 curve_colors = {
     "test": "red",
     "val": "green",

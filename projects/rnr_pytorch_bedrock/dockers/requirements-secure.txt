@@ -7,6 +7,10 @@
 # - pydantic 2.8.2 (DO NOT downgrade - may cause dependency conflicts)
 # - matplotlib 3.9.1 (DO NOT downgrade - may cause numpy ABI issues)
 
+# IMPORTANT: PyTorch 2.1.0 inference containers do NOT include pydantic pre-installed
+# Must explicitly install for inference compatibility
+pydantic>=2.0.0
+
 # Transformers & HuggingFace
 transformers==4.37.2
 

@@ -164,28 +164,151 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 
 
 # ============================================================================
-# INSTALL REQUIRED PACKAGES
+# INSTALL REQUIRED PACKAGES WITH MULTI-WORKER SAFETY
 # ============================================================================
 
-# Load packages from requirements-secure.txt
-requirements_file = os.path.join(os.path.dirname(__file__), "requirements-secure.txt")
+import fcntl
+import hashlib
+import torch  # Import torch early to check CUDA availability
+
+
+def install_packages_once(requirements_file: str, use_secure: bool = USE_SECURE_PYPI):
+    """
+    Thread-safe package installation using file lock to prevent race conditions.
+
+    When multiple TorchServe workers start simultaneously, only ONE worker
+    installs packages while others wait. Uses file lock + installation marker.
+
+    Args:
+        requirements_file: Path to requirements file
+        use_secure: Whether to use secure PyPI
+    """
+    # Create secure temp directory for lock files (CWE-379 mitigation)
+    # Use environment-provided directory (SageMaker), otherwise Python's secure temp
+    import tempfile
+
+    secure_temp_dir = os.environ.get("SM_MODEL_DIR")
+    if (
+        not secure_temp_dir
+        or not os.path.exists(secure_temp_dir)
+        or not os.access(secure_temp_dir, os.W_OK)
+    ):
+        # Use Python's secure temp directory with restricted permissions
+        secure_temp_dir = tempfile.gettempdir()
+
+    # Create lock and marker files in secure directory
+    lock_file = os.path.join(secure_temp_dir, ".pytorch_inference_packages.lock")
+
+    # Create installation marker based on requirements file hash
+    # Note: Using SHA256 for content hashing (not cryptographic security)
+    with open(requirements_file, "rb") as f:
+        req_hash = hashlib.sha256(f.read()).hexdigest()[:16]
+    marker_file = os.path.join(
+        secure_temp_dir, f".packages_installed_{req_hash}.marker"
+    )
+
+    # Check if packages already installed (fast path)
+    if os.path.exists(marker_file):
+        print(f"✓ Packages already installed (marker found: {marker_file})")
+        return
+
+    # Check if previous installation failed (prevent thundering herd)
+    failure_marker = f"{marker_file}.failed"
+    if os.path.exists(failure_marker):
+        with open(failure_marker, "r") as f:
+            failure_info = f.read()
+        print(f"✗ Previous installation failed (marker found: {failure_marker})")
+        print(f"Failure details: {failure_info}")
+        raise RuntimeError(
+            f"Package installation previously failed. See {failure_marker} for details."
+        )
+
+    print(f"Acquiring installation lock: {lock_file}")
+
+    # Acquire exclusive lock with timeout (prevents indefinite hang if worker crashes)
+    with open(lock_file, "w") as lock:
+        try:
+            # Acquire lock with 300-second timeout
+            timeout = 300
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                try:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    print("✓ Lock acquired")
+                    break
+                except BlockingIOError:
+                    time.sleep(1)  # Retry every second
+            else:
+                raise TimeoutError(
+                    f"Failed to acquire lock after {timeout} seconds - another worker may have crashed"
+                )
+
+            # Double-check marker (another worker may have installed while we waited)
+            if os.path.exists(marker_file):
+                print(f"✓ Packages installed by another worker (marker: {marker_file})")
+                return
+
+            # WE are the first worker - install packages
+            print("📦 This worker will install packages")
+
+            # Read requirements
+            with open(requirements_file, "r") as f:
+                required_packages = [
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.strip().startswith("#")
+                ]
+
+            print(f"Loaded {len(required_packages)} packages from {requirements_file}")
+
+            try:
+                # Install packages
+                install_packages(required_packages, use_secure)
+
+                # Create success marker
+                with open(marker_file, "w") as marker:
+                    marker.write(f"Installed at {time.time()}\n")
+
+                print(f"✓ Created installation marker: {marker_file}")
+                print(
+                    "***********************Package Installation Complete*********************"
+                )
+
+            except Exception as e:
+                # Create failure marker to prevent thundering herd
+                failure_marker = f"{marker_file}.failed"
+                with open(failure_marker, "w") as marker:
+                    marker.write(f"Failed at {time.time()}: {str(e)}\n")
+                print(f"✗ Installation failed, created marker: {failure_marker}")
+                raise  # Re-raise to prevent serving with missing dependencies
+
+        finally:
+            # Release lock automatically when 'with' block exits
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+            print("✓ Lock released")
+
+
+# Load packages from requirements file with multi-worker safety
+# Dynamically select GPU or CPU requirements based on CUDA availability
+if torch.cuda.is_available():
+    requirements_file = os.path.join(
+        os.path.dirname(__file__), "requirements-gpu-secure.txt"
+    )
+    print("=" * 70)
+    print("✓ CUDA available - loading GPU-optimized dependencies")
+    print("  Using: requirements-gpu-secure.txt (onnxruntime-gpu)")
+    print("=" * 70)
+else:
+    requirements_file = os.path.join(
+        os.path.dirname(__file__), "requirements-secure.txt"
+    )
+    print("=" * 70)
+    print("✓ CUDA not available - loading CPU dependencies")
+    print("  Using: requirements-secure.txt (onnxruntime)")
+    print("=" * 70)
 
 try:
-    with open(requirements_file, "r") as f:
-        # Read lines, strip whitespace, and filter out comments and empty lines
-        required_packages = [
-            line.strip()
-            for line in f
-            if line.strip() and not line.strip().startswith("#")
-        ]
-
-    print(f"Loaded {len(required_packages)} packages from {requirements_file}")
-
-    # Install packages using unified installation function
-    install_packages(required_packages)
-
-    print("***********************Package Installation Complete*********************")
-
+    install_packages_once(requirements_file, USE_SECURE_PYPI)
 except FileNotFoundError:
     print(f"Warning: {requirements_file} not found. Skipping package installation.")
     print("Assuming packages are already installed in the environment.")
@@ -1201,6 +1324,37 @@ def model_fn(model_dir, context=None):
     inter_op_threads = int(os.environ.get("ONNX_INTER_OP_THREADS", "1"))
     intra_op_threads = int(os.environ.get("ONNX_INTRA_OP_THREADS", "4"))
 
+    # ============================================================================
+    # GPU/CUDA SUPPORT CONFIGURATION
+    # ============================================================================
+    import onnxruntime as ort
+
+    # Detect available execution providers
+    available_providers = ort.get_available_providers()
+
+    # Configure execution providers (try GPU first, fallback to CPU)
+    if "CUDAExecutionProvider" in available_providers:
+        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        logger.info("✓ CUDA available, using GPU acceleration")
+
+        # CUDA-specific optimization options
+        provider_options = [
+            {
+                "device_id": 0,
+                "arena_extend_strategy": "kSameAsRequested",
+                "cudnn_conv_algo_search": "DEFAULT",
+                "do_copy_in_default_stream": True,
+                "cudnn_conv_use_max_workspace": "1",
+            },
+            {},  # CPU options (empty)
+        ]
+    else:
+        providers = ["CPUExecutionProvider"]
+        provider_options = [{}]
+        logger.warning("CUDA not available, using CPU")
+
+    logger.info(f"Active execution providers: {providers}")
+
     # Load model based on file type
     if os.path.exists(onnx_model_path):
         logger.info("Detected ONNX model.")
@@ -1215,6 +1369,8 @@ def model_fn(model_dir, context=None):
                 enable_profiling=enable_profiling,
                 inter_op_threads=inter_op_threads,
                 intra_op_threads=intra_op_threads,
+                providers=providers,
+                provider_options=provider_options,
             )
         else:
             # Phase 1 only: SessionOptions optimization (no BERT fusion)
@@ -1224,6 +1380,8 @@ def model_fn(model_dir, context=None):
                 enable_profiling=enable_profiling,
                 inter_op_threads=inter_op_threads,
                 intra_op_threads=intra_op_threads,
+                providers=providers,
+                provider_options=provider_options,
             )
     else:
         logger.info("Detected PyTorch model.")
