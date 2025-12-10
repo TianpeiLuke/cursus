@@ -699,20 +699,15 @@ def load_onnx_model(
 
     # ===== 3. Create Optimized Session =====
     try:
-        # Create session with providers and optional provider_options
+        # Build session kwargs conditionally to avoid duplication
+        session_kwargs = {
+            "sess_options": sess_options,
+            "providers": providers,
+        }
         if provider_options is not None:
-            session = ort.InferenceSession(
-                str(onnx_path),
-                sess_options=sess_options,
-                providers=providers,
-                provider_options=provider_options,
-            )
-        else:
-            session = ort.InferenceSession(
-                str(onnx_path),
-                sess_options=sess_options,
-                providers=providers,
-            )
+            session_kwargs["provider_options"] = provider_options
+
+        session = ort.InferenceSession(str(onnx_path), **session_kwargs)
 
         logger.info(f"✓ Loaded ONNX model with Phase 1 optimizations from {onnx_path}")
         logger.info(f"  Graph optimization: ORT_ENABLE_ALL")

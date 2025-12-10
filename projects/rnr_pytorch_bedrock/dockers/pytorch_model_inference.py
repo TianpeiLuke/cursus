@@ -32,6 +32,9 @@ import tarfile
 import logging
 from datetime import datetime
 import time
+import fcntl
+import hashlib
+import tempfile
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -437,16 +440,192 @@ def create_numerical_processors(
 
 def decompress_model_artifacts(model_dir: str):
     """
-    Checks for a model.tar.gz file in the model directory and extracts it.
+    Securely checks for and extracts a model.tar.gz file with comprehensive safety measures.
+
+    Security Features:
+    - SHA-256 checksum verification (mandatory, no MD5 fallback)
+    - Path traversal attack prevention
+    - Symlink attack prevention
+    - File locking to prevent race conditions
+    - Thunder herd mitigation with exponential backoff
+    - Safe temporary directory extraction with atomic move
+    - Comprehensive error handling and logging
+
+    Args:
+        model_dir: Directory containing model.tar.gz and checksums
+
+    Raises:
+        RuntimeError: If security checks fail or extraction errors occur
     """
     model_tar_path = Path(model_dir) / "model.tar.gz"
-    if model_tar_path.exists():
-        logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
-        with tarfile.open(model_tar_path, "r:gz") as tar:
-            tar.extractall(path=model_dir)
-        logger.info("Extraction complete.")
-    else:
+
+    if not model_tar_path.exists():
         logger.info("No model.tar.gz found. Assuming artifacts are directly available.")
+        return
+
+    logger.info(f"Found model.tar.gz at {model_tar_path}")
+
+    # ================================================================
+    # SECURITY CHECK 1: SHA-256 Checksum Verification (MANDATORY)
+    # ================================================================
+    sha256_path = Path(model_dir) / "model.tar.gz.sha256"
+
+    if not sha256_path.exists():
+        raise RuntimeError(
+            f"Security Error: SHA-256 checksum file not found at {sha256_path}. "
+            "Cannot verify archive integrity. Extraction aborted."
+        )
+
+    logger.info("Verifying SHA-256 checksum...")
+
+    # Read expected checksum
+    try:
+        with open(sha256_path, "r") as f:
+            expected_sha256 = f.read().strip().split()[0]
+    except Exception as e:
+        raise RuntimeError(f"Failed to read SHA-256 checksum file: {e}")
+
+    # Compute actual checksum
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(model_tar_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256_hash.update(chunk)
+        actual_sha256 = sha256_hash.hexdigest()
+    except Exception as e:
+        raise RuntimeError(f"Failed to compute SHA-256 checksum: {e}")
+
+    # Verify checksum match
+    if actual_sha256 != expected_sha256:
+        raise RuntimeError(
+            f"Security Error: SHA-256 checksum mismatch!\n"
+            f"Expected: {expected_sha256}\n"
+            f"Actual:   {actual_sha256}\n"
+            "Archive may be corrupted or tampered with. Extraction aborted."
+        )
+
+    logger.info("✓ SHA-256 checksum verification passed")
+
+    # ================================================================
+    # SECURITY CHECK 2: File Locking (Prevent Race Conditions)
+    # ================================================================
+    lock_file_path = Path(model_dir) / ".extraction.lock"
+
+    try:
+        lock_file = open(lock_file_path, "w")
+
+        # Try to acquire exclusive lock with exponential backoff (thunder herd mitigation)
+        max_attempts = 5
+        base_wait = 1.0  # seconds
+
+        for attempt in range(max_attempts):
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                logger.info("✓ Acquired extraction lock")
+                break
+            except IOError:
+                if attempt < max_attempts - 1:
+                    wait_time = base_wait * (2**attempt) + (
+                        0.1 * attempt
+                    )  # Exponential + jitter
+                    logger.info(
+                        f"Extraction in progress by another process. "
+                        f"Waiting {wait_time:.1f}s (attempt {attempt + 1}/{max_attempts})..."
+                    )
+                    time.sleep(wait_time)
+                else:
+                    raise RuntimeError(
+                        "Failed to acquire extraction lock after maximum attempts. "
+                        "Another process may be stuck."
+                    )
+
+        # Check if already extracted (another process completed while we waited)
+        expected_files = ["hyperparameters.json", "model.pth", "model_artifacts.pth"]
+        if all((Path(model_dir) / f).exists() for f in expected_files):
+            logger.info(
+                "✓ Model already extracted by another process. Skipping extraction."
+            )
+            return
+
+        # ================================================================
+        # SECURE EXTRACTION: Use temporary directory + atomic move
+        # ================================================================
+        logger.info("Starting secure extraction...")
+
+        # Create temporary extraction directory
+        with tempfile.TemporaryDirectory(
+            dir=model_dir, prefix=".extract_"
+        ) as temp_extract_dir:
+            temp_path = Path(temp_extract_dir)
+            logger.info(f"Extracting to temporary directory: {temp_path}")
+
+            # Extract with security checks
+            with tarfile.open(model_tar_path, "r:gz") as tar:
+                members = tar.getmembers()
+                logger.info(f"Archive contains {len(members)} members")
+
+                for member in members:
+                    # ========================================================
+                    # SECURITY CHECK 3: Path Traversal Prevention
+                    # ========================================================
+                    member_path = Path(temp_extract_dir) / member.name
+                    try:
+                        member_path.resolve().relative_to(temp_path.resolve())
+                    except ValueError:
+                        raise RuntimeError(
+                            f"Security Error: Path traversal detected in archive member '{member.name}'. "
+                            "Extraction aborted."
+                        )
+
+                    # ========================================================
+                    # SECURITY CHECK 4: Symlink Attack Prevention
+                    # ========================================================
+                    if member.issym() or member.islnk():
+                        raise RuntimeError(
+                            f"Security Error: Symbolic/hard link detected in archive member '{member.name}'. "
+                            "Extraction aborted."
+                        )
+
+                    # Safe to extract this member
+                    tar.extract(member, path=temp_extract_dir)
+
+                logger.info(
+                    f"✓ Extracted {len(members)} members to temporary directory"
+                )
+
+            # ========================================================
+            # ATOMIC MOVE: Move files from temp to target directory
+            # ========================================================
+            logger.info("Moving extracted files to model directory...")
+            extracted_files = list(temp_path.rglob("*"))
+
+            for src_file in extracted_files:
+                if src_file.is_file():
+                    rel_path = src_file.relative_to(temp_path)
+                    dest_file = Path(model_dir) / rel_path
+
+                    # Create parent directories if needed
+                    dest_file.parent.mkdir(parents=True, exist_ok=True)
+
+                    # Atomic move (rename)
+                    src_file.replace(dest_file)
+
+            logger.info("✓ Extraction complete")
+
+        # Temporary directory automatically cleaned up here
+
+    finally:
+        # ================================================================
+        # CLEANUP: Release lock and remove lock file
+        # ================================================================
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            lock_file.close()
+            if lock_file_path.exists():
+                lock_file_path.unlink()
+            logger.info("✓ Released extraction lock")
+        except Exception as e:
+            logger.warning(f"Failed to clean up lock file: {e}")
 
 
 def load_model_artifacts(

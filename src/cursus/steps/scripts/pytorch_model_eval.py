@@ -28,6 +28,7 @@ from datetime import datetime
 import time
 import fcntl
 import hashlib
+import tempfile
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -467,16 +468,24 @@ def decompress_model_artifacts(model_dir: str):
         return
 
     # Generate unique marker based on tar file path
-    tar_hash = hashlib.md5(str(model_tar_path).encode()).hexdigest()[:8]
+    tar_hash = hashlib.sha256(str(model_tar_path).encode()).hexdigest()[:8]
 
     # Use environment-driven temp directory (security compliance)
-    temp_base = os.environ.get("SM_MODEL_DIR", os.path.dirname(model_dir))
+    temp_base = os.environ.get("SM_MODEL_DIR", tempfile.gettempdir())
     lock_file = Path(temp_base) / f".model_extraction_{tar_hash}.lock"
     marker_file = Path(model_dir) / f".model_extracted_{tar_hash}.marker"
+    failure_marker = Path(model_dir) / f".model_extraction_failed_{tar_hash}.marker"
 
     logger.info(f"Found model.tar.gz at {model_tar_path}")
     logger.info(f"Using lock file: {lock_file}")
     logger.info(f"Using marker file: {marker_file}")
+
+    # Check for previous extraction failure (early exit to prevent thundering herd)
+    if failure_marker.exists():
+        error_msg = failure_marker.read_text()
+        logger.error(f"✗ Model extraction previously failed (marker: {failure_marker})")
+        logger.error(f"  Failure details: {error_msg}")
+        raise RuntimeError(f"Model extraction previously failed: {error_msg}")
 
     # Check if already extracted
     if marker_file.exists():
@@ -498,14 +507,38 @@ def decompress_model_artifacts(model_dir: str):
                 logger.info("✓ Model extracted by another worker. Skipping extraction.")
                 return
 
-            # Perform extraction
-            logger.info("Extracting model.tar.gz...")
-            with tarfile.open(model_tar_path, "r:gz") as tar:
-                tar.extractall(path=model_dir)
+            # Double-check failure marker after acquiring lock
+            if failure_marker.exists():
+                error_msg = failure_marker.read_text()
+                logger.error(f"✗ Model extraction failed by another worker")
+                raise RuntimeError(f"Model extraction previously failed: {error_msg}")
 
-            # Create marker to signal successful extraction
-            marker_file.write_text(f"extracted: {datetime.now().isoformat()}")
-            logger.info("✓ Extraction complete. Marker created.")
+            # Perform extraction with failure handling
+            try:
+                logger.info("Extracting model.tar.gz...")
+                with tarfile.open(model_tar_path, "r:gz") as tar:
+                    # Safe extraction: validate paths to prevent zip slip attacks
+                    safe_extract_dir = Path(model_dir).resolve()
+                    for member in tar.getmembers():
+                        member_path = (safe_extract_dir / member.name).resolve()
+                        if not str(member_path).startswith(str(safe_extract_dir)):
+                            raise RuntimeError(
+                                f"Attempted path traversal in tar file: {member.name}"
+                            )
+                    # Extract after validation
+                    tar.extractall(path=model_dir)
+
+                # Create marker to signal successful extraction
+                marker_file.write_text(f"extracted: {datetime.now().isoformat()}")
+                logger.info("✓ Extraction complete. Marker created.")
+
+            except Exception as e:
+                # Create failure marker to prevent thundering herd
+                error_details = f"failed: {datetime.now().isoformat()}\nError: {str(e)}\nType: {type(e).__name__}"
+                failure_marker.write_text(error_details)
+                logger.error(f"✗ Extraction failed: {e}")
+                logger.error(f"  Created failure marker: {failure_marker}")
+                raise
 
         finally:
             # Release lock
