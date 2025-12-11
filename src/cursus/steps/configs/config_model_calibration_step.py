@@ -37,7 +37,12 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
     # These are fields that users must explicitly provide
     # At least one of score_field or score_fields must be provided
 
-    label_field: str = Field(description="Name of the label column")
+    label_field: str = Field(
+        description="Name of the main label column. "
+        "For single-task mode: this is the only label field used. "
+        "For multi-task mode: this represents the main task label field. "
+        "Additional task labels are specified via task_label_names.",
+    )
 
     score_field: Optional[str] = Field(
         default=None,
@@ -45,11 +50,22 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
         "Use this for backward compatibility or when calibrating a single score field.",
     )
 
-    score_fields: Optional[List[str]] = Field(
+    score_fields: Optional[str] = Field(
         default=None,
-        description="List of score column names to calibrate (multi-task mode). "
+        description="Comma-separated list of score column names to calibrate (multi-task mode). "
         "Use this when calibrating multiple score fields independently. "
-        "If both score_field and score_fields are provided, score_fields takes precedence.",
+        "If both score_field and score_fields are provided, score_fields takes precedence. "
+        "Example: 'task1_prob,task2_prob,task3_prob'",
+    )
+
+    task_label_names: Optional[str] = Field(
+        default=None,
+        description="Comma-separated list of label column names for multi-task mode (one per task). "
+        "REQUIRED when score_fields is provided (multi-task mode). "
+        "Must match the length of score_fields (number of comma-separated values). "
+        "The label_field must be included in this string (as the main task label). "
+        "Example: label_field='task1_true', score_fields='task1_prob,task2_prob', "
+        "task_label_names='task1_true,task2_true'",
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -186,20 +202,76 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
                 f"job_type must be one of {valid_job_types}, got '{self.job_type}'"
             )
 
+        # Determine if we're in single-task or multi-task mode
+        is_multitask = bool(self.score_fields)
+        is_singletask = bool(self.score_field) and not is_multitask
+
         # Validate that at least one of score_field or score_fields is provided
         if not self.score_field and not self.score_fields:
             raise ValueError(
                 "At least one of 'score_field' (single-task) or 'score_fields' (multi-task) must be provided"
             )
 
-        # Validate score_fields if provided
+        # label_field is always required (it's a required Field above)
+        # For multi-task mode: label_field represents the main task
+        # For single-task mode: label_field is the only label used
+
+        # Validate score_fields if provided (multi-task mode)
         if self.score_fields:
-            if not isinstance(self.score_fields, list):
-                raise ValueError("score_fields must be a list of strings")
-            if len(self.score_fields) == 0:
-                raise ValueError("score_fields cannot be an empty list")
-            if not all(isinstance(field, str) for field in self.score_fields):
-                raise ValueError("All elements in score_fields must be strings")
+            if not isinstance(self.score_fields, str):
+                raise ValueError("score_fields must be a comma-separated string")
+
+            # Parse score fields
+            score_fields_list = [
+                f.strip() for f in self.score_fields.split(",") if f.strip()
+            ]
+            if len(score_fields_list) == 0:
+                raise ValueError("score_fields cannot be empty")
+
+            # task_label_names is REQUIRED for multi-task mode
+            if not self.task_label_names:
+                raise ValueError(
+                    "task_label_names is required when score_fields is provided (multi-task mode)"
+                )
+
+            # Validate task_label_names
+            if self.task_label_names is not None:
+                # Validate task_label_names if provided
+                if not isinstance(self.task_label_names, str):
+                    raise ValueError(
+                        "task_label_names must be a comma-separated string"
+                    )
+
+                # Parse task label names
+                task_label_names_list = [
+                    f.strip() for f in self.task_label_names.split(",") if f.strip()
+                ]
+                if len(task_label_names_list) == 0:
+                    raise ValueError("task_label_names cannot be empty")
+
+                if len(task_label_names_list) != len(score_fields_list):
+                    raise ValueError(
+                        f"task_label_names count ({len(task_label_names_list)}) must match "
+                        f"score_fields count ({len(score_fields_list)})"
+                    )
+
+                # Validate label_field requirement based on task_label_names format
+                if "," not in self.task_label_names:
+                    # Single value without comma - must equal label_field
+                    if self.task_label_names.strip() != self.label_field:
+                        raise ValueError(
+                            f"When task_label_names is a single value without comma, "
+                            f"it must equal label_field. "
+                            f"Expected: '{self.label_field}', Got: '{self.task_label_names.strip()}'"
+                        )
+                else:
+                    # Multiple values with comma - label_field must be in the list
+                    if self.label_field not in task_label_names_list:
+                        raise ValueError(
+                            f"When task_label_names contains multiple values (comma-separated), "
+                            f"label_field '{self.label_field}' must be included in the list. "
+                            f"Current task_label_names: {task_label_names_list}"
+                        )
 
         # Validate multi-class parameters
         if self.is_binary and self.num_classes != 2:
@@ -307,8 +379,6 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
                 "GAM_SPLINES": str(self.gam_splines),
                 "ERROR_THRESHOLD": str(self.error_threshold),
                 "CALIBRATION_SAMPLE_POINTS": str(self.calibration_sample_points),
-                "LABEL_FIELD": self.label_field,
-                "SCORE_FIELD": self.score_field,
                 "IS_BINARY": str(self.is_binary).lower(),
                 "NUM_CLASSES": str(self.num_classes),
                 "SCORE_FIELD_PREFIX": self.score_field_prefix,
@@ -316,9 +386,21 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             }
         )
 
+        # Add label_field if provided (for single-task mode)
+        if self.label_field:
+            env["LABEL_FIELD"] = self.label_field
+
+        # Add score_field if provided (for single-task mode)
+        if self.score_field:
+            env["SCORE_FIELD"] = self.score_field
+
         # Add SCORE_FIELDS for multi-task mode (takes precedence over SCORE_FIELD)
         if self.score_fields:
-            env["SCORE_FIELDS"] = ",".join(self.score_fields)
+            env["SCORE_FIELDS"] = self.score_fields
+
+            # Add TASK_LABEL_NAMES if provided
+            if self.task_label_names:
+                env["TASK_LABEL_NAMES"] = self.task_label_names
 
         # Add multiclass categories if available and not binary
         if not self.is_binary and self.multiclass_categories:
@@ -340,8 +422,6 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
 
         # Add calibration-specific fields
         calibration_fields = {
-            # Tier 1 - Essential User Inputs
-            "label_field": self.label_field,
             # Tier 2 - System Inputs with Defaults
             "calibration_method": self.calibration_method,
             "monotonic_constraint": self.monotonic_constraint,
@@ -350,14 +430,24 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             "calibration_sample_points": self.calibration_sample_points,
             "is_binary": self.is_binary,
             "num_classes": self.num_classes,
-            "score_field": self.score_field,
             "score_field_prefix": self.score_field_prefix,
             "job_type": self.job_type,
         }
 
+        # Add Tier 1 fields if set
+        if self.label_field is not None:
+            calibration_fields["label_field"] = self.label_field
+
+        if self.score_field is not None:
+            calibration_fields["score_field"] = self.score_field
+
         # Add score_fields if set (multi-task mode)
         if self.score_fields is not None:
             calibration_fields["score_fields"] = self.score_fields
+
+        # Add task_label_names if set (multi-task mode)
+        if self.task_label_names is not None:
+            calibration_fields["task_label_names"] = self.task_label_names
 
         # Add multiclass_categories if set to non-default value
         if self.multiclass_categories != [0, 1]:

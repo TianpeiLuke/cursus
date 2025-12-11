@@ -5,7 +5,32 @@ This script calibrates model prediction scores to accurate probabilities,
 which is essential for risk-based decision-making and threshold setting.
 It supports multiple calibration methods including GAM, Isotonic Regression,
 and Platt Scaling, with options for monotonicity constraints.
-It supports both binary and multi-class classification scenarios.
+
+Supported Scenarios:
+- Binary single-task: One score field with binary labels
+- Multi-class single-task: Multiple score fields (one per class) with categorical labels
+- Multi-task binary: Multiple independent binary tasks, each with its own score and label fields
+
+Environment Variables:
+    Single-Task Binary:
+        SCORE_FIELD: Name of score column (e.g., "prob_class_1")
+        LABEL_FIELD: Name of label column (e.g., "label")
+        IS_BINARY: "true"
+
+    Multi-Task Binary (e.g., LightGBMMT):
+        SCORE_FIELDS: Comma-separated score columns (e.g., "task1_prob,task2_prob,task3_prob")
+        TASK_LABEL_NAMES: Comma-separated label columns (e.g., "task1_true,task2_true,task3_true")
+                         Optional - will be inferred from score field names if not provided
+        IS_BINARY: "true" (required)
+
+    Multi-Class Single-Task:
+        SCORE_FIELD_PREFIX: Prefix for probability columns (e.g., "prob_class_")
+        LABEL_FIELD: Name of label column
+        NUM_CLASSES: Number of classes
+        MULTICLASS_CATEGORIES: JSON array of class names
+        IS_BINARY: "false"
+
+Note: Multi-class multi-task calibration is not currently supported.
 """
 
 import os
@@ -523,6 +548,74 @@ def parse_score_fields(environ_vars: dict) -> List[str]:
         f"Neither SCORE_FIELD nor SCORE_FIELDS provided, using default: {default_field}"
     )
     return [default_field]
+
+
+def parse_task_label_fields(environ_vars: dict, score_fields: List[str]) -> List[str]:
+    """Parse TASK_LABEL_NAMES or infer from score_fields.
+
+    For multi-task calibration, each score field needs a corresponding
+    label field. This function either:
+    1. Uses explicit TASK_LABEL_NAMES environment variable
+    2. Infers labels from score field names (_prob -> _true)
+    3. Falls back to single LABEL_FIELD for backward compatibility
+
+    Args:
+        environ_vars: Dictionary of environment variables
+        score_fields: List of score field names
+
+    Returns:
+        List of label field names, one per score field
+
+    Raises:
+        ValueError: If TASK_LABEL_NAMES length doesn't match score_fields
+    """
+    is_multitask = len(score_fields) > 1
+
+    # Option 1: Explicit TASK_LABEL_NAMES (preferred for multi-task)
+    task_labels_str = environ_vars.get("TASK_LABEL_NAMES", "").strip()
+    if task_labels_str:
+        task_labels = [
+            field.strip() for field in task_labels_str.split(",") if field.strip()
+        ]
+
+        if len(task_labels) != len(score_fields):
+            raise ValueError(
+                f"TASK_LABEL_NAMES length ({len(task_labels)}) must match "
+                f"SCORE_FIELDS length ({len(score_fields)}). "
+                f"Score fields: {score_fields}, Label fields: {task_labels}"
+            )
+
+        logger.info(f"Using explicit task label fields: {task_labels}")
+        return task_labels
+
+    # Option 2: Infer from score_fields for multi-task
+    if is_multitask:
+        task_labels = []
+        for score_field in score_fields:
+            # Standard naming: is_abuse_prob -> is_abuse_true
+            if score_field.endswith("_prob"):
+                label_field = score_field.replace("_prob", "_true")
+            elif score_field.endswith("_score"):
+                label_field = score_field.replace("_score", "_label")
+            else:
+                # Fallback: append _true
+                logger.warning(
+                    f"Score field '{score_field}' doesn't follow standard naming. "
+                    f"Inferring label as '{score_field}_true'"
+                )
+                label_field = f"{score_field}_true"
+            task_labels.append(label_field)
+
+        logger.info(
+            f"Inferred {len(task_labels)} task label fields from score fields: "
+            f"{dict(zip(score_fields, task_labels))}"
+        )
+        return task_labels
+
+    # Option 3: Single-task - use LABEL_FIELD (backward compatibility)
+    label_field = environ_vars.get("LABEL_FIELD", "label")
+    logger.info(f"Single-task mode: Using label field: {label_field}")
+    return [label_field]
 
 
 def validate_score_fields(
@@ -1584,8 +1677,8 @@ def main(
         if config.is_binary:
             # Binary classification workflow (single-task or multi-task)
 
-            # Load data once
-            df, y_true, _, _ = load_and_prepare_data(config, job_type)
+            # Load data once (don't extract labels yet for multi-task)
+            df, _, _, _ = load_and_prepare_data(config, job_type)
 
             # Validate score fields exist in data
             valid_score_fields = validate_score_fields(
@@ -1595,19 +1688,77 @@ def main(
             if not valid_score_fields:
                 raise ValueError("No valid score fields found for calibration")
 
+            # Parse task-specific label fields
+            task_label_fields = parse_task_label_fields(
+                environ_vars, valid_score_fields
+            )
+
+            # Validate ALL required fields exist in data
+            missing_fields = []
+            for field_type, fields in [
+                ("score", valid_score_fields),
+                ("label", task_label_fields),
+            ]:
+                for field in fields:
+                    if field not in df.columns:
+                        missing_fields.append(f"{field_type}:{field}")
+
+            if missing_fields:
+                available_cols = sorted(df.columns.tolist())
+                raise ValueError(
+                    f"Missing {len(missing_fields)} required fields in data: {missing_fields}\n"
+                    f"Available columns ({len(available_cols)}): {available_cols}"
+                )
+
+            logger.info(
+                f"✓ Validated all fields exist in data:\n"
+                f"  Score fields: {valid_score_fields}\n"
+                f"  Label fields: {task_label_fields}"
+            )
+
             # Storage for multi-task results
             task_calibrators = {}
             task_metrics = {}
             task_calibrated_scores = {}
 
-            # Process each task
-            for task_idx, score_field in enumerate(valid_score_fields):
+            # Process each task with its specific label field
+            for task_idx, (score_field, label_field) in enumerate(
+                zip(valid_score_fields, task_label_fields)
+            ):
                 log_section(
-                    f"TASK {task_idx + 1}/{len(valid_score_fields)}: {score_field}"
+                    f"TASK {task_idx + 1}/{len(valid_score_fields)}: "
+                    f"Calibrating {score_field} against {label_field}"
                 )
 
-                # Extract scores for this task
+                # Extract task-specific data
                 y_prob_uncalibrated = df[score_field].values
+                y_true = df[label_field].values  # ✅ Task-specific labels!
+
+                # Validate label format
+                unique_labels = np.unique(y_true[~np.isnan(y_true)])
+                if not set(unique_labels).issubset({0, 1}):
+                    logger.warning(
+                        f"Task {score_field}: Expected binary labels [0,1], "
+                        f"found {unique_labels}. Proceeding with caution."
+                    )
+
+                # Check for missing labels
+                n_missing = np.isnan(y_true).sum()
+                if n_missing > 0:
+                    logger.warning(
+                        f"Task {score_field}: Found {n_missing} missing labels "
+                        f"({n_missing / len(y_true) * 100:.1f}% of data). "
+                        f"These samples will be excluded from calibration."
+                    )
+                    # Filter out missing labels
+                    valid_mask = ~np.isnan(y_true)
+                    y_prob_uncalibrated = y_prob_uncalibrated[valid_mask]
+                    y_true = y_true[valid_mask].astype(int)
+
+                logger.info(
+                    f"Task {score_field}: Calibrating {len(y_true)} samples "
+                    f"(pos: {y_true.sum()}, neg: {(~y_true.astype(bool)).sum()})"
+                )
 
                 # Select and train calibration model for this task
                 if config.calibration_method == "gam":
@@ -2133,7 +2284,7 @@ if __name__ == "__main__":
     OUTPUT_METRICS_PATH = "/opt/ml/processing/output/metrics"
     OUTPUT_CALIBRATED_DATA_PATH = "/opt/ml/processing/output/calibrated_data"
 
-    # Parse environment variables (multi-task support via SCORE_FIELDS)
+    # Parse environment variables (multi-task support via SCORE_FIELDS and TASK_LABEL_NAMES)
     environ_vars = {
         "CALIBRATION_METHOD": os.environ.get("CALIBRATION_METHOD", "gam"),
         "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),
@@ -2143,6 +2294,9 @@ if __name__ == "__main__":
         "SCORE_FIELDS": os.environ.get(
             "SCORE_FIELDS", ""
         ),  # Multi-task: comma-separated list
+        "TASK_LABEL_NAMES": os.environ.get(
+            "TASK_LABEL_NAMES", ""
+        ),  # Multi-task: comma-separated label fields
         "IS_BINARY": os.environ.get("IS_BINARY", "True"),
         "MONOTONIC_CONSTRAINT": os.environ.get("MONOTONIC_CONSTRAINT", "True"),
         "GAM_SPLINES": os.environ.get("GAM_SPLINES", "10"),
