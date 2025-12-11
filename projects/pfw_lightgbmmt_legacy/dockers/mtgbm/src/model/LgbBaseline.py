@@ -41,7 +41,7 @@ os.environ["PYTHONHASHSEED"] = str(seed)
 np.random.seed(seed)
 from collections import Counter
 
-from util import *
+from src.utils.util import *
 
 
 class LgbBaseline:

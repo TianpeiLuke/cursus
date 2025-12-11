@@ -115,6 +115,9 @@
   "seed": null,
   "sketch_eps": null,
   "subsample": 1.0,
+  "loss_weight_lr": 1.0,
+  "loss_delta_lr": 0.01,
+  "loss_sqrt_normalize": true,
   "tab_field_list": [
     "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_solicit_count_last_365_days",
     "Abuse.abuse_fap_action_by_customer_inline_transform_na.n_claims_warn_count_last_365_days",

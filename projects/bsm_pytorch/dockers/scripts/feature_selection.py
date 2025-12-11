@@ -18,7 +18,7 @@ import logging
 import traceback
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Union
 
 import pandas as pd
 import numpy as np

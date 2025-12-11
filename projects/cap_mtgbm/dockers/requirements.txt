@@ -1,25 +1,8 @@
 # Core ML Framework
 lightgbm>=3.3.0  # Multi-task gradient boosting
 
-# Plotting
-matplotlib>=3.0.0
-
-# Data Processing
-scikit-learn>=0.23.2,<1.0.0
-pandas>=1.2.0,<2.0.0
-pyarrow>=4.0.0,<6.0.0
-beautifulsoup4==4.12.3
-
-# Scientific Computing
-scipy>=1.7.0  # Required for Jensen-Shannon divergence in adaptive loss
+# Data Processing & Serialization
+pyarrow>=4.0.0,<6.0.0  # Parquet file format support for efficient data I/O
 
 # Validation & Type Support
-pydantic>=2.0.0,<3.0.0
-typing-extensions>=4.2.0
-
-# ONNX Export
-onnx==1.15.0
-onnxruntime==1.17.0
-
-# Serving
-flask==3.0.2
+pydantic>=2.0.0,<3.0.0  # Data validation and type hints

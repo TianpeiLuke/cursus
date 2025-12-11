@@ -19,7 +19,7 @@ import traceback
 import time
 import shutil
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Union
 from subprocess import check_call
 
 # ============================================================================
@@ -981,7 +981,10 @@ def feature_importance_selection(
 
 
 def lasso_selection(
-    X: pd.DataFrame, y: pd.Series, alpha: float = 0.01, random_state: int = 42
+    X: pd.DataFrame,
+    y: pd.Series,
+    alpha: Union[float, str] = 0.01,
+    random_state: int = 42,
 ) -> Dict[str, Any]:
     """
     Select features using LASSO regularization.

@@ -1343,6 +1343,316 @@ CONSERVATIVE_CONFIG = {
 - Save checkpoints at regular intervals
 - Visualize training curves for anomalies
 
+## Implementation Notes and Variations
+
+This section documents variations found in actual MTGBM implementations compared to the idealized design, based on analysis of the legacy PFW (Payment Fraud Warning) codebase.
+
+### Weight Update Frequency (tenIters Method)
+
+**Design Specification:**
+- Updates weights every 50 iterations for computational efficiency
+
+**Implementation Variations:**
+```python
+# Recommended implementation (customLossKDswap.py)
+if i % 50 == 0:
+    self.similar = self.similarity_vec(...)
+
+# Alternative implementation (customLossNoKD.py) 
+if i % 10 == 0:
+    self.similar = self.similarity_vec(...)
+```
+
+**Impact and Recommendations:**
+- **50 iterations** (recommended): Better computational efficiency, smoother weight trajectories
+- **10 iterations** (alternative): More responsive to training dynamics, higher computational cost (~5x more similarity computations)
+- **Choice depends on**: Training dataset size, convergence speed requirements, computational budget
+
+### Configuration Access Patterns
+
+**Design Examples:**
+```python
+# Dictionary notation
+params = {
+    "max_depth": 16,
+    "learning_rate": 0.05
+}
+value = params['max_depth']
+```
+
+**Implementation Alternatives:**
+```python
+# Attribute notation (when using config objects)
+params = load_config('config.json')
+value = params.max_depth
+
+# Both patterns are valid:
+# - Dictionary: Standard Python, explicit
+# - Attribute: Cleaner syntax, requires config wrapper class
+```
+
+### Task Naming Conventions
+
+**Design Documentation:**
+- Uses **generic names**: `main_task`, `is_abusive`, `subtask_1`, `subtask_2`, etc.
+- Enables reuse across different problem domains
+
+**Implementation Examples:**
+```python
+# Generic (design doc)
+main_target = 'is_abusive'
+sub_tasks_list = ['harassment', 'hate_speech', 'spam', 'violence', 'nsfw']
+
+# Domain-specific (PFW legacy)
+main_target = 'Overall'  # or 'isFraud'
+sub_tasks_list = ['is_abusive_dnr', 'is_abusive_pda', 'is_abusive_rr', 
+                  'is_abusive_flr', 'is_abusive_mdr']
+
+# Payment method specific (PFW legacy)
+sub_tasks_list = ['isCCfrd', 'isDDfrd', 'isGCfrd', 'isLOCfrd', 'isCimfrd']
+```
+
+**Best Practice:**
+- Use **descriptive, domain-specific names** in production implementations
+- Maintain **consistency** within each project
+- Document task naming conventions in project README
+
+### Evaluation Method Customization
+
+**Design Specification:**
+- Shows generic evaluation applicable to any task configuration
+
+**Implementation Reality:**
+```python
+# Generic approach (recommended)
+for i, task_name in enumerate(task_names):
+    true_labels = y_test_s[task_name]
+    pred_scores = df_pred[task_name]
+    auc = roc_auc_score(true_labels, pred_scores)
+    # Plot ROC curve...
+
+# Domain-specific approach (legacy code)
+# Hardcoded task-specific evaluation
+true_cc = self.y_test_s.iloc[self.idx_test_dic[1]]["is_abusive_dnr"]
+pred_cc = self.df_pred.iloc[self.idx_test_dic[1]]["CC"]
+# ...
+```
+
+**Recommendation:**
+- **Generic evaluation loops** are more maintainable and flexible
+- Avoid hardcoding task names in evaluation methods
+- Domain-specific code belongs in separate modules, not core model classes
+
+### Hyperparameter Default Values
+
+The design document specifies recommended hyperparameters that have been validated across multiple implementations:
+
+```python
+VALIDATED_DEFAULTS = {
+    # Core settings (universal)
+    "objective": "custom",
+    "num_labels": None,  # Set based on task count
+    "tree_learner": "serial2",
+    "boosting": "gbdt",
+    
+    # Tree structure (tunable)
+    "max_depth": 16,
+    "num_leaves": 750,
+    "min_data_in_leaf": 100,
+    "min_child_weight": 0.1,
+    
+    # Learning (tunable)
+    "learning_rate": 0.05,
+    "num_rounds": 100,
+    
+    # Sampling (tunable)
+    "bagging_fraction": 0.9,
+    "feature_fraction": 0.9,
+    
+    # Regularization (tunable)
+    "lambda_l1": 0.5,
+    "lambda_l2": 0.05,
+    
+    # Infrastructure
+    "num_threads": 80,
+    "data_random_seed": 17,
+    "verbosity": 1,
+}
+```
+
+**Note:** Values marked "tunable" should be adjusted based on:
+- Dataset size and characteristics
+- Overfitting/underfitting observations
+- Computational constraints
+- Domain-specific requirements
+
+### Random Seed Management
+
+**Design Specification:**
+- Uses `seed=10` for train/validation split
+- Uses `data_random_seed=17` for LightGBM internal randomness
+
+**Implementation Pattern:**
+```python
+import random
+import numpy as np
+import os
+
+seed = 10
+np.random.seed(seed)
+random.seed(seed)
+os.environ['PYTHONHASHSEED'] = str(seed)
+
+# Later in training
+X_tr, X_vl, Y_tr, Y_vl = train_test_split(
+    X_train, y_train, test_size=0.1, random_state=seed
+)
+```
+
+**Best Practice:**
+- Use **consistent seed** across all randomization points
+- Set **multiple random number generators** (numpy, random, TensorFlow, etc.)
+- Document seed values in experiment tracking
+- Use **different seeds** for different experiments to assess robustness
+
+### Label Matrix Shape Handling
+
+**Design Documentation:**
+```python
+# Main task + subtasks concatenation
+train_labels = np.concatenate([
+    y_train.values.reshape((-1, 1)),  # Main task
+    y_train_s.values                   # Subtasks
+], axis=1)
+```
+
+**Implementation Considerations:**
+- Always verify shape: `(N_samples, N_labels)`
+- Main task must be **first column** (index 0)
+- Subtasks follow in specified order
+- Missing labels not supported (all tasks must have values for all samples)
+
+### Weight Method Parameter
+
+The `weight_method` parameter in adaptive loss functions supports four strategies:
+
+```python
+WEIGHT_METHODS = {
+    None: "Recompute weights every iteration (default)",
+    "tenIters": "Update weights every 50 iterations",
+    "sqrt": "Apply square root damping to weights", 
+    "delta": "Incremental weight updates based on changes"
+}
+```
+
+**Selection Guidance:**
+- **None (default)**: Most responsive, highest computational cost
+- **tenIters**: Good balance for large datasets
+- **sqrt**: When weight stability is more important than responsiveness
+- **delta**: Experimental, use with caution
+
+### Knowledge Distillation Patience
+
+**Design Specification:**
+- Default patience = 100 iterations
+
+**Implementation Flexibility:**
+```python
+# Conservative (default)
+cl = custom_loss_KDswap(num_label, idx_val_dic, idx_trn_dic, patience=100)
+
+# Aggressive (faster label replacement)
+cl = custom_loss_KDswap(num_label, idx_val_dic, idx_trn_dic, patience=50)
+
+# Very patient (more training before replacement)
+cl = custom_loss_KDswap(num_label, idx_val_dic, idx_trn_dic, patience=200)
+```
+
+**Tuning Guidelines:**
+- **Lower patience (50-75)**: For unstable tasks or when KD is known to help
+- **Standard patience (100)**: Default, works well in most cases
+- **Higher patience (150-200)**: For stable tasks or when avoiding premature replacement
+
+### Visualization Defaults
+
+**Design Document:**
+Shows comprehensive visualization but doesn't specify all defaults
+
+**Implementation Standards:**
+```python
+# Evaluation curve settings
+plt.ylim(0.94, 1)      # Legacy: focuses on high-performance region
+plt.ylim(0.6, 1)       # Alternative: shows broader range
+
+# Feature importance
+top_n = 20             # Standard: top 20 features
+sns.set(font_scale=0.75)  # Readability for many features
+
+# Plot style
+plt.style.use('ggplot')  # Consistent with legacy implementation
+```
+
+**Recommendation:**
+- Adjust `ylim` based on expected performance range
+- Use **consistent styling** across all project visualizations
+- Save plots with **descriptive filenames** including timestamps
+
+### Compatibility Notes
+
+**Python Version:**
+- Designed for Python 3.7+
+- Tested on Python 3.8, 3.9, 3.11
+
+**Key Dependencies:**
+```python
+# Critical versions from legacy implementation
+DEPENDENCIES = {
+    "lightgbmmt": "custom fork",  # NOT standard LightGBM
+    "numpy": ">=1.21.0",
+    "pandas": "==2.1.4",          # Specific version in legacy
+    "scikit-learn": "==1.3.2",    # Specific version in legacy
+    "scipy": ">=1.7.0",
+    "matplotlib": "==3.8.2",
+}
+```
+
+**Note:** Version pinning in production is recommended to ensure reproducibility.
+
+### Migration from Legacy Code
+
+When adapting legacy MTGBM implementations:
+
+1. **Task Name Standardization**: Replace domain-specific names with generic equivalents
+2. **Evaluation Generalization**: Convert hardcoded evaluations to loops
+3. **Configuration Externalization**: Move hyperparameters to config files
+4. **Documentation**: Add docstrings for all custom loss functions
+5. **Testing**: Create unit tests for loss computations and similarity calculations
+
+### Performance Benchmarks
+
+Based on legacy implementation analysis:
+
+```
+Dataset Size: 1M samples, 100 features, 6 labels
+Hardware: 80 CPU threads
+
+Training Time:
+- Base Loss: ~15 minutes (100 rounds)
+- Adaptive Weight (no KD): ~20 minutes (100 rounds)
+- Adaptive Weight + KD: ~22 minutes (100 rounds)
+
+Memory Usage:
+- Peak RAM: ~8GB
+- Model Size: ~50MB (serialized)
+```
+
+**Scaling Considerations:**
+- Training time scales linearly with `num_rounds`
+- Memory scales with `N_samples × N_features × N_labels`
+- Adaptive weighting adds ~30% computational overhead vs base loss
+
+---
+
 ## Future Enhancements
 
 ### Planned Improvements

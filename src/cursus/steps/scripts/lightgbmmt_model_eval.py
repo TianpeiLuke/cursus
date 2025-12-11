@@ -119,11 +119,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # ============================================================================
 
 required_packages = [
-    "scikit-learn>=0.23.2,<1.0.0",
-    "pandas>=1.2.0,<2.0.0",
     "pyarrow>=4.0.0,<6.0.0",
-    "matplotlib>=3.0.0",
-    "scipy>=1.7.0",
     "lightgbm>=3.3.0",
 ]
 
@@ -442,13 +438,42 @@ def save_dataframe_with_format(
     return file_path
 
 
+def safe_extract_tar(tar: tarfile.TarFile, path: str) -> None:
+    """
+    Safely extract tar file, preventing path traversal attacks (zip slip).
+
+    Validates that each member's extracted path stays within the target directory.
+
+    Args:
+        tar: Open TarFile object
+        path: Target extraction directory
+
+    Raises:
+        ValueError: If a member would extract outside the target directory
+    """
+
+    def is_within_directory(directory: str, target: str) -> bool:
+        """Check if target path is within directory."""
+        abs_directory = os.path.abspath(directory)
+        abs_target = os.path.abspath(target)
+        return os.path.commonprefix([abs_directory, abs_target]) == abs_directory
+
+    for member in tar.getmembers():
+        member_path = os.path.join(path, member.name)
+        if not is_within_directory(path, member_path):
+            raise ValueError(f"Attempted path traversal in tar file: {member.name}")
+
+    # If all paths are safe, extract
+    tar.extractall(path=path)
+
+
 def decompress_model_artifacts(model_dir: str):
-    """Extract model.tar.gz if it exists."""
+    """Extract model.tar.gz if it exists with path traversal protection."""
     model_tar_path = Path(model_dir) / "model.tar.gz"
     if model_tar_path.exists():
         logger.info(f"Found model.tar.gz at {model_tar_path}. Extracting...")
         with tarfile.open(model_tar_path, "r:gz") as tar:
-            tar.extractall(path=model_dir)
+            safe_extract_tar(tar, model_dir)
         logger.info("Extraction complete.")
     else:
         logger.info("No model.tar.gz found. Assuming artifacts are directly available.")

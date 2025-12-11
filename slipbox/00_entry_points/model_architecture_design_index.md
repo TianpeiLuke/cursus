@@ -122,6 +122,12 @@ Model Architecture Designs
 - [MTGBM Models Refactoring Design](../1_design/mtgbm_models_refactoring_design.md)
 - [LightGBM-MT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
 
+**Related Analysis:**
+- [MTGBM Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)
+- [MTGBM Refactoring Functional Equivalence Analysis](../4_analysis/2025-12-10_mtgbm_refactoring_functional_equivalence_analysis.md) - **NEW** - Legacy vs refactored comparison
+- [MTGBM Model Optimization Analysis](../4_analysis/2025-11-11_mtgbm_models_optimization_analysis.md)
+- [MTGBM Pipeline Reuseablity Analysis](../4_analysis/2025-11-11_mtgbm_pipeline_reusability_analysis.md)
+
 **Key Features:**
 - Multi-task learning framework
 - Shared tree structures
