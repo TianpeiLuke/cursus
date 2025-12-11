@@ -41,8 +41,10 @@ This analysis verifies the functional equivalence between the legacy PFW (Paymen
 
 ## Related Documents
 - **[MTGBM Multi-Task Learning Design](../1_design/mtgbm_multi_task_learning_design.md)** - Design specification
+- **[LightGBMMT Package Correspondence Analysis](./2025-12-10_lightgbmmt_package_correspondence_analysis.md)** - Training script architecture analysis
 - **[LightGBMMT Implementation Analysis](./2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)** - Framework analysis
 - **[MTGBM Model Classes Refactoring Design](../1_design/mtgbm_model_classes_refactoring_design.md)** - Refactoring design document
+- **[Model Architecture Design Index](../00_entry_points/model_architecture_design_index.md)** - Architecture documentation index
 
 ## Methodology
 

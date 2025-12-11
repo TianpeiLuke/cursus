@@ -1021,6 +1021,7 @@ def main(
         # ===== 9. Train Model =====
         logger.info("Training model...")
         results = model.train(train_df, val_df, test_df)
+        logger.info("✓ Training completed successfully")
 
         # ===== 10. Save Model Artifacts =====
         logger.info("Saving model artifacts...")
