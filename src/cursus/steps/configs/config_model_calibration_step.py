@@ -50,22 +50,22 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
         "Use this for backward compatibility or when calibrating a single score field.",
     )
 
-    score_fields: Optional[str] = Field(
+    score_fields: Optional[List[str]] = Field(
         default=None,
-        description="Comma-separated list of score column names to calibrate (multi-task mode). "
+        description="List of score column names to calibrate (multi-task mode). "
         "Use this when calibrating multiple score fields independently. "
         "If both score_field and score_fields are provided, score_fields takes precedence. "
-        "Example: 'task1_prob,task2_prob,task3_prob'",
+        "Example: ['task1_prob', 'task2_prob', 'task3_prob']",
     )
 
-    task_label_names: Optional[str] = Field(
+    task_label_names: Optional[List[str]] = Field(
         default=None,
-        description="Comma-separated list of label column names for multi-task mode (one per task). "
+        description="List of task label field names for multi-task mode (one per task). "
         "REQUIRED when score_fields is provided (multi-task mode). "
-        "Must match the length of score_fields (number of comma-separated values). "
-        "The label_field must be included in this string (as the main task label). "
-        "Example: label_field='task1_true', score_fields='task1_prob,task2_prob', "
-        "task_label_names='task1_true,task2_true'",
+        "Must match the length of score_fields. "
+        "The label_field must be included in this list (as the main task label). "
+        "Example: label_field='task1_true', score_fields=['task1_prob', 'task2_prob'], "
+        "task_label_names=['task1_true', 'task2_true']",
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -218,14 +218,10 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
 
         # Validate score_fields if provided (multi-task mode)
         if self.score_fields:
-            if not isinstance(self.score_fields, str):
-                raise ValueError("score_fields must be a comma-separated string")
+            if not isinstance(self.score_fields, list):
+                raise ValueError("score_fields must be a list of strings")
 
-            # Parse score fields
-            score_fields_list = [
-                f.strip() for f in self.score_fields.split(",") if f.strip()
-            ]
-            if len(score_fields_list) == 0:
+            if len(self.score_fields) == 0:
                 raise ValueError("score_fields cannot be empty")
 
             # task_label_names is REQUIRED for multi-task mode
@@ -237,41 +233,24 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             # Validate task_label_names
             if self.task_label_names is not None:
                 # Validate task_label_names if provided
-                if not isinstance(self.task_label_names, str):
-                    raise ValueError(
-                        "task_label_names must be a comma-separated string"
-                    )
+                if not isinstance(self.task_label_names, list):
+                    raise ValueError("task_label_names must be a list of strings")
 
-                # Parse task label names
-                task_label_names_list = [
-                    f.strip() for f in self.task_label_names.split(",") if f.strip()
-                ]
-                if len(task_label_names_list) == 0:
+                if len(self.task_label_names) == 0:
                     raise ValueError("task_label_names cannot be empty")
 
-                if len(task_label_names_list) != len(score_fields_list):
+                if len(self.task_label_names) != len(self.score_fields):
                     raise ValueError(
-                        f"task_label_names count ({len(task_label_names_list)}) must match "
-                        f"score_fields count ({len(score_fields_list)})"
+                        f"task_label_names count ({len(self.task_label_names)}) must match "
+                        f"score_fields count ({len(self.score_fields)})"
                     )
 
-                # Validate label_field requirement based on task_label_names format
-                if "," not in self.task_label_names:
-                    # Single value without comma - must equal label_field
-                    if self.task_label_names.strip() != self.label_field:
-                        raise ValueError(
-                            f"When task_label_names is a single value without comma, "
-                            f"it must equal label_field. "
-                            f"Expected: '{self.label_field}', Got: '{self.task_label_names.strip()}'"
-                        )
-                else:
-                    # Multiple values with comma - label_field must be in the list
-                    if self.label_field not in task_label_names_list:
-                        raise ValueError(
-                            f"When task_label_names contains multiple values (comma-separated), "
-                            f"label_field '{self.label_field}' must be included in the list. "
-                            f"Current task_label_names: {task_label_names_list}"
-                        )
+                # Validate label_field must be included in task_label_names
+                if self.label_field not in self.task_label_names:
+                    raise ValueError(
+                        f"label_field '{self.label_field}' must be included in task_label_names. "
+                        f"Current task_label_names: {self.task_label_names}"
+                    )
 
         # Validate multi-class parameters
         if self.is_binary and self.num_classes != 2:
@@ -396,11 +375,15 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
 
         # Add SCORE_FIELDS for multi-task mode (takes precedence over SCORE_FIELD)
         if self.score_fields:
-            env["SCORE_FIELDS"] = self.score_fields
+            env["SCORE_FIELDS"] = ",".join(
+                self.score_fields
+            )  # Convert list to comma-separated string
 
             # Add TASK_LABEL_NAMES if provided
             if self.task_label_names:
-                env["TASK_LABEL_NAMES"] = self.task_label_names
+                env["TASK_LABEL_NAMES"] = ",".join(
+                    self.task_label_names
+                )  # Convert list to comma-separated string
 
         # Add multiclass categories if available and not binary
         if not self.is_binary and self.multiclass_categories:
