@@ -365,13 +365,29 @@ class LightGBMMTModelEvalStepBuilder(StepBuilderBase):
         # Get step name using standardized method with auto-detection
         step_name = self._get_step_name()
 
-        # Get script path using modernized method with comprehensive fallbacks
-        script_path = self.config.get_script_path()
-        self.log_info("Using script path: %s", script_path)
+        # Use FrameworkProcessor with source_dir parameter for LightGBMMT model evaluation
+        # This supports source_dir parameter which is needed for scripts with local imports
 
-        # Create step arguments
+        # Get fully resolved script path using hybrid resolution
+        # This ensures we get an absolute path even in Lambda where directories may not exist
+        script_path = self.config.get_script_path()
+        self.log_info("Using resolved script path: %s", script_path)
+
+        # Split the resolved script path into source_dir and entry_point
+        # This provides both the absolute directory path and the script filename
+        from pathlib import Path
+
+        script_path_obj = Path(script_path)
+        source_dir = str(script_path_obj.parent)  # Absolute directory path
+        entry_point = script_path_obj.name  # Just the filename
+
+        self.log_info("Using entry point: %s", entry_point)
+        self.log_info("Using source directory: %s", source_dir)
+
+        # Create step arguments using FrameworkProcessor.run() with source_dir
         step_args = processor.run(
-            code=script_path,
+            code=entry_point,
+            source_dir=source_dir,  # FrameworkProcessor.run() supports this parameter
             inputs=proc_inputs,
             outputs=proc_outputs,
             arguments=job_args,
