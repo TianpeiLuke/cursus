@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2025-12-11
+
+### Added
+- **Multi-Task Learning Enhancements** - Extended multi-task learning capabilities and model correspondences
+  - **MTL Model Correspondence** - Enhanced correspondence between multi-task learning models
+  - **MTL Calibration Support** - Expanded precision-based calibration for multi-task models
+  - **MTL Metric Computation** - Extended model metric computation to support multi-task scenarios
+
+- **LightGBM Multi-Task Improvements** - Enhanced LightGBM multi-task training and evaluation
+  - **LightGBMMT Training Updates** - Updated LightGBM multi-task training to collect environment variables in config
+  - **LightGBMMT Processing Steps** - Enhanced processing steps to support secure PyPI installation
+  - **LightGBMMT Model Evaluation** - Improved LightGBM multi-task model evaluation with customized module support
+  - **LightGBMMT Input Validation** - Added input validation to LightGBM multi-task training
+
+- **Security and Package Management** - Improved security and package management capabilities
+  - **Secure PyPI Installation** - Added support for optional secure PyPI package installation
+  - **Environment Variable Management** - Enhanced environment variable handling in training configurations
+  - **Security Updates** - Updated multi-task learning models with security improvements
+
+### Enhanced
+- **Inference System Improvements** - Improvements to inference performance and reliability
+  - **PyTorch Inference Alignment** - Enhanced alignment between PyTorch inference handler and training
+  - **Inference Handler Refinements** - Refined output field handling in PyTorch inference
+  - **ONNX Performance Optimization** - Further optimized ONNX inference performance
+  - **Inference Latency Reduction** - Reduced runtime latency in preprocessing steps
+
+- **Processing Infrastructure Improvements** - Major enhancements to data processing capabilities
+  - **Preprocessing Optimization** - Additional optimizations for preprocessing steps
+  - **Concurrent Processing** - Fixed concurrency issues in BERT optimization
+  - **Temporal Processing** - Enhanced temporal processing capabilities for time series data
+
+- **Pipeline Configuration Enhancements** - Improved configuration handling and management
+  - **Multi-Region Hyperparameter Support** - Added support for multi-region hyperparameters in training
+  - **Task Label Configuration** - Adjusted configuration for task label naming fields
+  - **Payload Method Expansion** - Expanded payload method to allow customer-provided inputs and support multimodal inputs
+
+### Fixed
+- **Concurrency and Safety Issues** - Resolved critical concurrency and safety issues
+  - **Thundering Herd Mitigation** - Addressed safety issues and mitigated thundering herd problems
+  - **Distributed Training Fixes** - Fixed synchronization issues in distributed training
+  - **Race Condition Prevention** - Added locker mechanisms to prevent racing issues in GPU instances
+
+- **Model Artifact Handling** - Improved handling of model artifacts and temporary files
+  - **Temporary Folder Issues** - Fixed errors when saving to temporary folders in inference handlers
+  - **Artifact Path Resolution** - Resolved issues with model artifact path resolution
+  - **Model Registration** - Added registration step for better model management
+
+- **Script and Configuration Fixes** - Various fixes to scripts and configuration handling
+  - **Missing Environment Variables** - Fixed missing environment variables in builders
+  - **Test Configuration Issues** - Resolved issues in test configurations
+  - **Requirements Updates** - Updated requirements to support pandas 2.0.0+ and matplotlib 3.9
+
+- **Pipeline Component Fixes** - Enhanced reliability of various pipeline components
+  - **Dummy Data Loading** - Added job type support to dummy data loading builder
+  - **Bedrock Batch Processing** - Fixed test issues in Bedrock batch processing
+  - **Label Ruleset Execution** - Fixed bugs in label ruleset execution
+  - **Active Sampling** - Enhanced active sampling capabilities
+
+### Technical Details
+- **Multi-Task Architecture** - Enhanced multi-task learning architecture with improved calibration and metric computation
+- **LightGBMMT Improvements** - Comprehensive improvements to LightGBM multi-task training, evaluation, and inference
+- **Security Enhancements** - Added secure package installation options and improved environment variable management
+- **Performance Optimizations** - Continued performance improvements in preprocessing and inference operations
+- **Concurrency Management** - Enhanced concurrency handling with locker mechanisms and thundering herd mitigation
+
+### Quality Assurance
+- **Enhanced Testing** - Improved test coverage for multi-task learning and LightGBM multi-task components
+- **Concurrency Validation** - Thorough validation of concurrency fixes and safety improvements
+- **Security Testing** - Enhanced security testing with secure PyPI installation validation
+- **Integration Testing** - Comprehensive integration testing of pipeline components and configurations
+
+### Performance Improvements
+- **Inference Performance** - Optimized ONNX inference and reduced preprocessing latency
+- **Training Efficiency** - Improved training efficiency with better environment variable management
+- **Memory Management** - Enhanced memory management in distributed training scenarios
+- **Processing Speed** - Optimized processing steps for better overall pipeline performance
+
 ## [1.4.5] - 2025-11-22
 
 ### Added
