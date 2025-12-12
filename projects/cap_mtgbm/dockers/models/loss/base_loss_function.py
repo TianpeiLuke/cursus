@@ -141,10 +141,13 @@ class BaseLossFunction(ABC):
         """
         Reshape label matrix with validation.
 
+        Retrieves multi-task labels from 'multi_task_labels' field in Dataset.
+        This field is set by MtgbmModel._prepare_data() and contains all task labels.
+
         Parameters
         ----------
         train_data : lightgbm.Dataset
-            Training dataset containing labels
+            Training dataset containing multi-task labels
         num_col : int
             Number of tasks
 
@@ -158,10 +161,19 @@ class BaseLossFunction(ABC):
         if self.cache_predictions and cache_key in self._label_cache:
             return self._label_cache[cache_key]
 
-        # Get labels
-        labels = train_data.get_label()
+        # Get multi-task labels from custom field
+        # This field is set by MtgbmModel._prepare_data() as y_train.flatten()
+        try:
+            labels = train_data.get_field("multi_task_labels")
+        except Exception:
+            # Fallback to standard label field for backward compatibility
+            self.logger.warning(
+                "multi_task_labels field not found, falling back to get_label(). "
+                "This may cause shape mismatch errors."
+            )
+            labels = train_data.get_label()
 
-        # Reshape
+        # Reshape from flattened [N*T] to matrix [N, T]
         labels_mat = labels.reshape(-1, num_col)
 
         # Validate

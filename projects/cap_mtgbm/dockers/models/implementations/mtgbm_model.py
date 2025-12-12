@@ -84,20 +84,32 @@ class MtgbmModel(BaseMultiTaskModel):
         X_train = train_df[feature_columns].values
         y_train = train_df[task_columns].values
 
-        # Create LightGBM Dataset
+        # Get main task index from hyperparameters (default to 0 if not specified)
+        main_task_idx = getattr(self.hyperparams, "main_task_index", 0)
+
+        # Create LightGBM Dataset with multi-task labels stored properly
+        # Pass main task label to LightGBM (for validation compatibility)
+        # Store full multi-task labels as flattened array for custom loss retrieval
         train_data = lgb.Dataset(
             X_train,
-            label=y_train.flatten(),  # Flatten for LightGBM
+            label=y_train[
+                :, main_task_idx
+            ],  # Main task (configurable) for LightGBM validation
             feature_name=feature_columns,
             categorical_feature=[
                 c for c in feature_columns if c in self.hyperparams.cat_field_list
             ],
         )
+        # Store full multi-task labels for custom loss function
+        train_data.set_field("multi_task_labels", y_train.flatten())
 
         # Prepare validation data
         X_val = val_df[feature_columns].values
         y_val = val_df[task_columns].values
-        val_data = lgb.Dataset(X_val, label=y_val.flatten(), reference=train_data)
+        val_data = lgb.Dataset(
+            X_val, label=y_val[:, main_task_idx], reference=train_data
+        )
+        val_data.set_field("multi_task_labels", y_val.flatten())
 
         # Prepare test data if provided
         test_data = None
@@ -105,8 +117,9 @@ class MtgbmModel(BaseMultiTaskModel):
             X_test = test_df[feature_columns].values
             y_test = test_df[task_columns].values
             test_data = lgb.Dataset(
-                X_test, label=y_test.flatten(), reference=train_data
+                X_test, label=y_test[:, main_task_idx], reference=train_data
             )
+            test_data.set_field("multi_task_labels", y_test.flatten())
 
         self.logger.info(
             f"Prepared data: train={X_train.shape}, "

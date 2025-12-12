@@ -861,15 +861,16 @@ def prepare_training_data(
     if missing_val:
         raise ValueError(f"Validation data missing columns: {missing_val}")
 
+    # Validate test_df BEFORE accessing
+    if test_df is not None:
+        missing_test = set(cols_to_keep) - set(test_df.columns)
+        if missing_test:
+            raise ValueError(f"Test data missing columns: {missing_test}")
+
     # Create clean DataFrames with ONLY the required columns
     train_clean = train_df[cols_to_keep].copy()
     val_clean = val_df[cols_to_keep].copy()
     test_clean = test_df[cols_to_keep].copy() if test_df is not None else None
-
-    if test_clean is not None:
-        missing_test = set(cols_to_keep) - set(test_df.columns)
-        if missing_test:
-            raise ValueError(f"Test data missing columns: {missing_test}")
 
     logger.info(f"✓ Filtered training data: {train_df.shape} → {train_clean.shape}")
     logger.info(f"✓ Filtered validation data: {val_df.shape} → {val_clean.shape}")
@@ -1337,13 +1338,18 @@ def main(
                 label_col = hyperparams.label_name
                 id_col = hyperparams.id_name
 
-                # Identify task columns before filtering
-                task_columns_temp = identify_task_columns(train_df, hyperparams)
+                # Identify task columns before filtering (do this once!)
+                task_columns = identify_task_columns(train_df, hyperparams)
 
-                # Keep only selected features, label, ID, and task columns
-                cols_to_keep = feature_columns + [label_col] + task_columns_temp
-                if id_col in train_df.columns:
-                    cols_to_keep.append(id_col)
+                # Keep only selected features, label, ID, and task columns (deduplicated)
+                cols_to_keep = list(
+                    dict.fromkeys(
+                        feature_columns
+                        + [label_col]
+                        + task_columns
+                        + ([id_col] if id_col in train_df.columns else [])
+                    )
+                )
 
                 train_df = train_df[cols_to_keep]
                 val_df = val_df[cols_to_keep]
@@ -1366,8 +1372,12 @@ def main(
             logger.info(f"  → Using {len(feature_columns)} features from config")
 
         # ===== 4. Identify Task Columns =====
-        logger.info("Identifying task columns...")
-        task_columns = identify_task_columns(train_df, hyperparams)
+        # Only identify if not already done in feature selection block
+        if "task_columns" not in locals():
+            logger.info("Identifying task columns...")
+            task_columns = identify_task_columns(train_df, hyperparams)
+        else:
+            logger.info(f"Using task columns identified earlier: {task_columns}")
 
         # num_tasks is now automatically derived from len(task_label_names)
         logger.info(

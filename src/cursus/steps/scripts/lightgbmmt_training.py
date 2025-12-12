@@ -256,8 +256,58 @@ def find_first_data_file(data_dir: str) -> str:
 
 
 # -------------------------------------------------------------------------
-# FIELD TYPE CONVERSION FUNCTIONS
+# FIELD TYPE VALIDATION FUNCTIONS
 # -------------------------------------------------------------------------
+
+
+def validate_categorical_fields(
+    df: pd.DataFrame, cat_fields: List[str], dataset_name: str = "dataset"
+) -> None:
+    """
+    Strictly validate categorical fields before risk table mapping.
+
+    Args:
+        df: Input dataframe
+        cat_fields: List of categorical field names from config
+        dataset_name: Name of dataset for error messages (e.g., "train", "val", "test")
+
+    Raises:
+        ValueError: If field not found in dataframe
+        TypeError: If field has wrong type with specific field names
+    """
+    mismatched_fields = []
+
+    for field in cat_fields:
+        if field not in df.columns:
+            raise ValueError(
+                f"Categorical field '{field}' not found in {dataset_name} dataframe"
+            )
+
+        dtype = df[field].dtype
+        # Allow: object, category, string types
+        if dtype not in [
+            "object",
+            "category",
+            "string",
+        ] and not pd.api.types.is_string_dtype(df[field]):
+            mismatched_fields.append(
+                {
+                    "field": field,
+                    "current_type": str(dtype),
+                    "expected_type": "categorical (object/string/category)",
+                }
+            )
+
+    if mismatched_fields:
+        error_msg = f"Categorical field type validation failed for {dataset_name}:\n"
+        for info in mismatched_fields:
+            error_msg += (
+                f"  - Field '{info['field']}': "
+                f"expected {info['expected_type']}, "
+                f"but got {info['current_type']}\n"
+            )
+        error_msg += "\nCategorical fields must have object, string, or category dtype before risk table mapping."
+        raise TypeError(error_msg)
 
 
 def convert_numerical_fields_to_numeric(
@@ -811,15 +861,16 @@ def prepare_training_data(
     if missing_val:
         raise ValueError(f"Validation data missing columns: {missing_val}")
 
+    # Validate test_df BEFORE accessing
+    if test_df is not None:
+        missing_test = set(cols_to_keep) - set(test_df.columns)
+        if missing_test:
+            raise ValueError(f"Test data missing columns: {missing_test}")
+
     # Create clean DataFrames with ONLY the required columns
     train_clean = train_df[cols_to_keep].copy()
     val_clean = val_df[cols_to_keep].copy()
     test_clean = test_df[cols_to_keep].copy() if test_df is not None else None
-
-    if test_clean is not None:
-        missing_test = set(cols_to_keep) - set(test_df.columns)
-        if missing_test:
-            raise ValueError(f"Test data missing columns: {missing_test}")
 
     logger.info(f"✓ Filtered training data: {train_df.shape} → {train_clean.shape}")
     logger.info(f"✓ Filtered validation data: {val_df.shape} → {val_clean.shape}")
@@ -1128,14 +1179,43 @@ def main(
         output_dir = output_paths["evaluation_output"]
         model_artifacts_input_dir = input_paths.get("model_artifacts_input")
 
-        # Priority-based hyperparameters loading
-        hparam_path = "/opt/ml/code/hyperparams/hyperparameters.json"
-        if not os.path.exists(hparam_path):
-            if "hyperparameters_s3_uri" in input_paths:
-                hparam_path = input_paths["hyperparameters_s3_uri"]
-                if not hparam_path.endswith("hyperparameters.json"):
-                    hparam_path = os.path.join(hparam_path, "hyperparameters.json")
+        # Priority-based hyperparameters path resolution with region-specific support
+        # Get region from environment variable
+        region = environ_vars.get("REGION", "").upper()
 
+        if region in ["NA", "EU", "FE"]:
+            hparam_filename = f"hyperparameters_{region}.json"
+            logger.info(f"Loading region-specific hyperparameters for region: {region}")
+        else:
+            hparam_filename = "hyperparameters.json"
+            if region:
+                logger.warning(
+                    f"Unknown REGION '{region}', falling back to default hyperparameters.json"
+                )
+            else:
+                logger.info("No REGION specified, using default hyperparameters.json")
+
+        # Priority 1: Start with code directory (highest priority)
+        hparam_path = f"/opt/ml/code/hyperparams/{hparam_filename}"
+
+        # Priority 2: If code directory file doesn't exist, check input_paths
+        if not os.path.exists(hparam_path):
+            logger.info(f"Hyperparameters not found in code directory: {hparam_path}")
+
+            if "hyperparameters_s3_uri" in input_paths:
+                hparam_dir = input_paths["hyperparameters_s3_uri"]
+                # If it's a directory path, append the filename
+                if not hparam_dir.endswith(hparam_filename):
+                    hparam_path = os.path.join(hparam_dir, hparam_filename)
+                else:
+                    hparam_path = hparam_dir
+                logger.info(f"Using fallback hyperparameters path: {hparam_path}")
+            else:
+                logger.error("No hyperparameters_s3_uri provided in input_paths")
+        else:
+            logger.info(f"Found hyperparameters in code directory: {hparam_path}")
+
+        logger.info(f"Loading hyperparameters from: {hparam_path}")
         logger.info(f"Loading configuration from {hparam_path}")
         with open(hparam_path, "r") as f:
             hyperparams_dict = json.load(f)
@@ -1144,20 +1224,6 @@ def main(
         # Load datasets with format detection
         logger.info("Loading datasets...")
         train_df, val_df, test_df, input_format = load_datasets(data_dir)
-
-        # Convert numerical fields to numeric dtype (handles string-formatted numbers)
-        logger.info("Converting numerical fields to numeric dtype...")
-        if hyperparams.tab_field_list:
-            train_df = convert_numerical_fields_to_numeric(
-                train_df, hyperparams.tab_field_list, "training"
-            )
-            val_df = convert_numerical_fields_to_numeric(
-                val_df, hyperparams.tab_field_list, "validation"
-            )
-            if test_df is not None:
-                test_df = convert_numerical_fields_to_numeric(
-                    test_df, hyperparams.tab_field_list, "test"
-                )
 
         # Extract environment variables for preprocessing control
         use_precomputed_imputation = environ_vars.get(
@@ -1191,6 +1257,47 @@ def main(
             precomputed["loaded"]["imputation"],
             precomputed["loaded"]["risk_tables"],
         )
+
+        # ===== NUMERIC TYPE CONVERSION =====
+        logger.info("=" * 70)
+        logger.info("NUMERIC TYPE CONVERSION")
+        logger.info("=" * 70)
+
+        # Convert numerical fields from object to numeric (only if computing inline)
+        if not precomputed["loaded"]["imputation"]:
+            logger.info("Converting numerical fields to numeric dtype...")
+            train_df = convert_numerical_fields_to_numeric(
+                train_df, hyperparams.tab_field_list, "train"
+            )
+            val_df = convert_numerical_fields_to_numeric(
+                val_df, hyperparams.tab_field_list, "val"
+            )
+            if test_df is not None:
+                test_df = convert_numerical_fields_to_numeric(
+                    test_df, hyperparams.tab_field_list, "test"
+                )
+            logger.info("✓ Numerical field conversion completed")
+        else:
+            logger.info(
+                "Skipping numerical field conversion (using pre-computed imputation)"
+            )
+
+        # Validate categorical fields before risk table mapping (only if computing inline)
+        if not precomputed["loaded"]["risk_tables"]:
+            logger.info(
+                "Validating categorical field types before risk table mapping..."
+            )
+            validate_categorical_fields(train_df, hyperparams.cat_field_list, "train")
+            validate_categorical_fields(val_df, hyperparams.cat_field_list, "val")
+            if test_df is not None:
+                validate_categorical_fields(test_df, hyperparams.cat_field_list, "test")
+            logger.info("✓ Categorical field type validation passed")
+        else:
+            logger.info(
+                "Skipping categorical field validation (using pre-computed risk tables)"
+            )
+
+        logger.info("=" * 70)
 
         # ===== 1. Numerical Imputation =====
         if precomputed["loaded"]["imputation"]:
@@ -1231,13 +1338,18 @@ def main(
                 label_col = hyperparams.label_name
                 id_col = hyperparams.id_name
 
-                # Identify task columns before filtering
-                task_columns_temp = identify_task_columns(train_df, hyperparams)
+                # Identify task columns before filtering (do this once!)
+                task_columns = identify_task_columns(train_df, hyperparams)
 
-                # Keep only selected features, label, ID, and task columns
-                cols_to_keep = feature_columns + [label_col] + task_columns_temp
-                if id_col in train_df.columns:
-                    cols_to_keep.append(id_col)
+                # Keep only selected features, label, ID, and task columns (deduplicated)
+                cols_to_keep = list(
+                    dict.fromkeys(
+                        feature_columns
+                        + [label_col]
+                        + task_columns
+                        + ([id_col] if id_col in train_df.columns else [])
+                    )
+                )
 
                 train_df = train_df[cols_to_keep]
                 val_df = val_df[cols_to_keep]
@@ -1260,8 +1372,12 @@ def main(
             logger.info(f"  → Using {len(feature_columns)} features from config")
 
         # ===== 4. Identify Task Columns =====
-        logger.info("Identifying task columns...")
-        task_columns = identify_task_columns(train_df, hyperparams)
+        # Only identify if not already done in feature selection block
+        if "task_columns" not in locals():
+            logger.info("Identifying task columns...")
+            task_columns = identify_task_columns(train_df, hyperparams)
+        else:
+            logger.info(f"Using task columns identified earlier: {task_columns}")
 
         # num_tasks is now automatically derived from len(task_label_names)
         logger.info(
@@ -1422,6 +1538,7 @@ if __name__ == "__main__":
             "USE_PRECOMPUTED_FEATURES", "false"
         ).lower()
         == "true",
+        "REGION": os.environ.get("REGION", "NA"),
     }
 
     # Create empty args namespace to maintain function signature
