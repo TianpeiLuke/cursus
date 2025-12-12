@@ -333,8 +333,62 @@ def get_effective_feature_columns(
 
 
 # -------------------------------------------------------------------------
-# Field Type Validation Functions
+# Field Type Conversion Functions
 # -------------------------------------------------------------------------
+
+
+def convert_numerical_fields_to_numeric(
+    df: pd.DataFrame, num_fields: List[str], dataset_name: str = "dataset"
+) -> pd.DataFrame:
+    """
+    Convert numerical fields from object dtype to float64.
+
+    This handles string-formatted numbers commonly found in CSV/Parquet files.
+    Invalid values are converted to NaN and handled by subsequent imputation.
+
+    Args:
+        df: Input dataframe
+        num_fields: List of numerical field names from config
+        dataset_name: Name of dataset for logging
+
+    Returns:
+        DataFrame with converted numerical columns
+
+    Raises:
+        ValueError: If field not found in dataframe
+    """
+    df_converted = df.copy()
+    converted_count = 0
+
+    for field in num_fields:
+        if field not in df_converted.columns:
+            raise ValueError(
+                f"Numerical field '{field}' not found in {dataset_name} dataframe"
+            )
+
+        # Check if field needs conversion (is object dtype)
+        if df_converted[field].dtype == "object":
+            logger.info(
+                f"  Converting {field} from object to numeric (invalid → NaN)..."
+            )
+            df_converted[field] = pd.to_numeric(
+                df_converted[field],
+                errors="coerce",  # Invalid values become NaN
+            )
+            converted_count += 1
+
+    if converted_count > 0:
+        logger.info(
+            f"✓ Converted {converted_count}/{len(num_fields)} fields from object to numeric in {dataset_name}"
+        )
+    else:
+        logger.info(
+            f"✓ All numerical fields already have correct dtype in {dataset_name}"
+        )
+
+    return df_converted
+
+
 def validate_categorical_fields(
     df: pd.DataFrame, cat_fields: List[str], dataset_name: str = "dataset"
 ) -> None:
@@ -382,52 +436,6 @@ def validate_categorical_fields(
                 f"but got {info['current_type']}\n"
             )
         error_msg += "\nCategorical fields must have object, string, or category dtype before risk table mapping."
-        raise TypeError(error_msg)
-
-
-def validate_numerical_fields(
-    df: pd.DataFrame, num_fields: List[str], dataset_name: str = "dataset"
-) -> None:
-    """
-    Strictly validate numerical fields before numerical imputation.
-
-    Args:
-        df: Input dataframe
-        num_fields: List of numerical field names from config
-        dataset_name: Name of dataset for error messages (e.g., "train", "val", "test")
-
-    Raises:
-        ValueError: If field not found in dataframe
-        TypeError: If field has wrong type with specific field names
-    """
-    mismatched_fields = []
-
-    for field in num_fields:
-        if field not in df.columns:
-            raise ValueError(
-                f"Numerical field '{field}' not found in {dataset_name} dataframe"
-            )
-
-        dtype = df[field].dtype
-        # Must be: int or float types
-        if not pd.api.types.is_numeric_dtype(df[field]):
-            mismatched_fields.append(
-                {
-                    "field": field,
-                    "current_type": str(dtype),
-                    "expected_type": "numerical (int/float)",
-                }
-            )
-
-    if mismatched_fields:
-        error_msg = f"Numerical field type validation failed for {dataset_name}:\n"
-        for info in mismatched_fields:
-            error_msg += (
-                f"  - Field '{info['field']}': "
-                f"expected {info['expected_type']}, "
-                f"but got {info['current_type']}\n"
-            )
-        error_msg += "\nNumerical fields must have int or float dtype before numerical imputation."
         raise TypeError(error_msg)
 
 
@@ -1318,6 +1326,19 @@ def main(
         train_df, val_df, test_df, input_format = load_datasets(data_dir)
         logger.info("Datasets loaded successfully")
 
+        # Convert numerical fields to numeric dtype (handles string-formatted numbers)
+        logger.info("Converting numerical fields to numeric dtype...")
+        if config.get("tab_field_list"):
+            train_df = convert_numerical_fields_to_numeric(
+                train_df, config["tab_field_list"], "training"
+            )
+            val_df = convert_numerical_fields_to_numeric(
+                val_df, config["tab_field_list"], "validation"
+            )
+            test_df = convert_numerical_fields_to_numeric(
+                test_df, config["tab_field_list"], "test"
+            )
+
         # Store format in config for output preservation
         config["_input_format"] = input_format
 
@@ -1360,18 +1381,6 @@ def main(
         logger.info("=" * 70)
         logger.info("FIELD TYPE VALIDATION")
         logger.info("=" * 70)
-
-        # Validate numerical fields before imputation (only if computing inline)
-        if not precomputed["loaded"]["imputation"]:
-            logger.info("Validating numerical field types before imputation...")
-            validate_numerical_fields(train_df, config["tab_field_list"], "train")
-            validate_numerical_fields(val_df, config["tab_field_list"], "val")
-            validate_numerical_fields(test_df, config["tab_field_list"], "test")
-            logger.info("✓ Numerical field type validation passed")
-        else:
-            logger.info(
-                "Skipping numerical field validation (using pre-computed imputation)"
-            )
 
         # Validate categorical fields before risk table mapping (only if computing inline)
         if not precomputed["loaded"]["risk_tables"]:

@@ -1,5 +1,5 @@
 # Core ML Framework
-lightgbm>=3.3.0  # Multi-task gradient boosting
+lightgbm>=3.3.0  # Multi-task gradient boosting (supports 3.x and 4.x API)
 
 # Data Processing & Serialization
 pyarrow>=10.0.0  # Parquet file format support for efficient data I/O

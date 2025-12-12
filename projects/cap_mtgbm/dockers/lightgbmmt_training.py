@@ -310,50 +310,56 @@ def validate_categorical_fields(
         raise TypeError(error_msg)
 
 
-def validate_numerical_fields(
+def convert_numerical_fields_to_numeric(
     df: pd.DataFrame, num_fields: List[str], dataset_name: str = "dataset"
-) -> None:
+) -> pd.DataFrame:
     """
-    Strictly validate numerical fields before numerical imputation.
+    Convert numerical fields from object dtype to float64.
+
+    This handles string-formatted numbers commonly found in CSV/Parquet files.
+    Invalid values are converted to NaN and handled by subsequent imputation.
 
     Args:
         df: Input dataframe
         num_fields: List of numerical field names from config
-        dataset_name: Name of dataset for error messages (e.g., "train", "val", "test")
+        dataset_name: Name of dataset for logging
+
+    Returns:
+        DataFrame with converted numerical columns
 
     Raises:
         ValueError: If field not found in dataframe
-        TypeError: If field has wrong type with specific field names
     """
-    mismatched_fields = []
+    df_converted = df.copy()
+    converted_count = 0
 
     for field in num_fields:
-        if field not in df.columns:
+        if field not in df_converted.columns:
             raise ValueError(
                 f"Numerical field '{field}' not found in {dataset_name} dataframe"
             )
 
-        dtype = df[field].dtype
-        # Must be: int or float types
-        if not pd.api.types.is_numeric_dtype(df[field]):
-            mismatched_fields.append(
-                {
-                    "field": field,
-                    "current_type": str(dtype),
-                    "expected_type": "numerical (int/float)",
-                }
+        # Check if field needs conversion (is object dtype)
+        if df_converted[field].dtype == "object":
+            logger.info(
+                f"  Converting {field} from object to numeric (invalid → NaN)..."
             )
+            df_converted[field] = pd.to_numeric(
+                df_converted[field],
+                errors="coerce",  # Invalid values become NaN
+            )
+            converted_count += 1
 
-    if mismatched_fields:
-        error_msg = f"Numerical field type validation failed for {dataset_name}:\n"
-        for info in mismatched_fields:
-            error_msg += (
-                f"  - Field '{info['field']}': "
-                f"expected {info['expected_type']}, "
-                f"but got {info['current_type']}\n"
-            )
-        error_msg += "\nNumerical fields must have int or float dtype before numerical imputation."
-        raise TypeError(error_msg)
+    if converted_count > 0:
+        logger.info(
+            f"✓ Converted {converted_count}/{len(num_fields)} fields from object to numeric in {dataset_name}"
+        )
+    else:
+        logger.info(
+            f"✓ All numerical fields already have correct dtype in {dataset_name}"
+        )
+
+    return df_converted
 
 
 # -------------------------------------------------------------------------
@@ -813,6 +819,68 @@ def create_task_indices(
     return trn_sublabel_idx, val_sublabel_idx
 
 
+def prepare_training_data(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    test_df: Optional[pd.DataFrame],
+    feature_columns: List[str],
+    task_columns: List[str],
+) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame]]:
+    """
+    Prepare clean DataFrames with ONLY features and task labels for model training.
+
+    This function follows the XGBoost pattern of explicitly selecting only the columns
+    needed for model training, excluding ID columns, main labels, and other metadata.
+
+    Args:
+        train_df: Training DataFrame (may contain ID, labels, metadata)
+        val_df: Validation DataFrame (may contain ID, labels, metadata)
+        test_df: Test DataFrame (may contain ID, labels, metadata)
+        feature_columns: List of feature column names to include
+        task_columns: List of task label column names to include
+
+    Returns:
+        Tuple of (train_clean, val_clean, test_clean) containing only features + task labels
+    """
+    # Columns to include: features + task labels ONLY
+    cols_to_keep = feature_columns + task_columns
+
+    logger.info("=" * 70)
+    logger.info("PREPARING CLEAN DATA FOR MODEL TRAINING")
+    logger.info("=" * 70)
+    logger.info(f"Feature columns: {len(feature_columns)}")
+    logger.info(f"Task label columns: {len(task_columns)}")
+    logger.info(f"Total columns to keep: {len(cols_to_keep)}")
+
+    # Verify all columns exist
+    missing_train = set(cols_to_keep) - set(train_df.columns)
+    missing_val = set(cols_to_keep) - set(val_df.columns)
+
+    if missing_train:
+        raise ValueError(f"Training data missing columns: {missing_train}")
+    if missing_val:
+        raise ValueError(f"Validation data missing columns: {missing_val}")
+
+    # Create clean DataFrames with ONLY the required columns
+    train_clean = train_df[cols_to_keep].copy()
+    val_clean = val_df[cols_to_keep].copy()
+    test_clean = test_df[cols_to_keep].copy() if test_df is not None else None
+
+    if test_clean is not None:
+        missing_test = set(cols_to_keep) - set(test_df.columns)
+        if missing_test:
+            raise ValueError(f"Test data missing columns: {missing_test}")
+
+    logger.info(f"✓ Filtered training data: {train_df.shape} → {train_clean.shape}")
+    logger.info(f"✓ Filtered validation data: {val_df.shape} → {val_clean.shape}")
+    if test_clean is not None:
+        logger.info(f"✓ Filtered test data: {test_df.shape} → {test_clean.shape}")
+
+    logger.info("=" * 70)
+
+    return train_clean, val_clean, test_clean
+
+
 # -------------------------------------------------------------------------
 # MULTI-TASK INFERENCE & EVALUATION
 # -------------------------------------------------------------------------
@@ -1189,22 +1257,28 @@ def main(
             precomputed["loaded"]["risk_tables"],
         )
 
-        # ===== FIELD TYPE VALIDATION =====
+        # ===== NUMERIC TYPE CONVERSION =====
         logger.info("=" * 70)
-        logger.info("FIELD TYPE VALIDATION")
+        logger.info("NUMERIC TYPE CONVERSION")
         logger.info("=" * 70)
 
-        # Validate numerical fields before imputation (only if computing inline)
+        # Convert numerical fields from object to numeric (only if computing inline)
         if not precomputed["loaded"]["imputation"]:
-            logger.info("Validating numerical field types before imputation...")
-            validate_numerical_fields(train_df, hyperparams.tab_field_list, "train")
-            validate_numerical_fields(val_df, hyperparams.tab_field_list, "val")
+            logger.info("Converting numerical fields to numeric dtype...")
+            train_df = convert_numerical_fields_to_numeric(
+                train_df, hyperparams.tab_field_list, "train"
+            )
+            val_df = convert_numerical_fields_to_numeric(
+                val_df, hyperparams.tab_field_list, "val"
+            )
             if test_df is not None:
-                validate_numerical_fields(test_df, hyperparams.tab_field_list, "test")
-            logger.info("✓ Numerical field type validation passed")
+                test_df = convert_numerical_fields_to_numeric(
+                    test_df, hyperparams.tab_field_list, "test"
+                )
+            logger.info("✓ Numerical field conversion completed")
         else:
             logger.info(
-                "Skipping numerical field validation (using pre-computed imputation)"
+                "Skipping numerical field conversion (using pre-computed imputation)"
             )
 
         # Validate categorical fields before risk table mapping (only if computing inline)
@@ -1328,12 +1402,20 @@ def main(
             hyperparams=hyperparams,
         )
 
-        # ===== 9. Train Model =====
+        # ===== 9. Prepare Clean Training Data (XGBoost Pattern) =====
+        logger.info(
+            "Preparing clean data for model training (filtering out ID/metadata)..."
+        )
+        train_clean, val_clean, test_clean = prepare_training_data(
+            train_df, val_df, test_df, feature_columns, task_columns
+        )
+
+        # ===== 10. Train Model =====
         logger.info("Training model...")
-        results = model.train(train_df, val_df, test_df)
+        results = model.train(train_clean, val_clean, test_clean)
         logger.info("✓ Training completed successfully")
 
-        # ===== 10. Save Model Artifacts =====
+        # ===== 11. Save Model Artifacts =====
         logger.info("Saving model artifacts...")
         save_artifacts(
             model=model,
@@ -1345,7 +1427,7 @@ def main(
             training_state=training_state,
         )
 
-        # ===== 11. Evaluation =====
+        # ===== 12. Evaluation =====
         logger.info("====== STARTING EVALUATION PHASE ======")
 
         # Validation evaluation

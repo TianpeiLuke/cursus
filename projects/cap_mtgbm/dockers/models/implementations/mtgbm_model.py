@@ -153,17 +153,31 @@ class MtgbmModel(BaseMultiTaskModel):
         """
         self.logger.info("Starting LightGBM training with custom loss...")
 
-        # Train with custom loss function
+        # Create params copy for training (LightGBM 4.x compatibility)
+        train_params = self.lgb_params.copy()
+
+        # LightGBM 4.x: Set custom objective in params dict instead of fobj parameter
+        train_params["objective"] = self.loss_function.objective
+
+        # Prepare callbacks for LightGBM 4.x
+        callbacks = []
+        if self.hyperparams.early_stopping_rounds:
+            callbacks.append(
+                lgb.early_stopping(
+                    stopping_rounds=self.hyperparams.early_stopping_rounds
+                )
+            )
+        callbacks.append(lgb.log_evaluation(period=10))
+
+        # Train with custom loss function (LightGBM 4.x API)
         self.model = lgb.train(
-            self.lgb_params,
+            train_params,
             train_data,
             num_boost_round=self.hyperparams.num_iterations,
             valid_sets=[val_data],
             valid_names=["valid"],
-            fobj=self.loss_function.objective,
             feval=self._create_eval_function(),
-            early_stopping_rounds=self.hyperparams.early_stopping_rounds,
-            verbose_eval=10,
+            callbacks=callbacks,
         )
 
         # Extract training metrics
