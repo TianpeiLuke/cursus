@@ -21,18 +21,30 @@ MODEL_METRICS_COMPUTATION_CONTRACT = ScriptContract(
     },
     required_env_vars=["ID_FIELD", "LABEL_FIELD"],
     optional_env_vars={
+        # Basic field configuration
         "AMOUNT_FIELD": "order_amount",
         "INPUT_FORMAT": "auto",
+        # Multi-task configuration
+        "SCORE_FIELDS": "",  # Comma-separated score fields for multi-task (e.g., "isFraud_prob,isAbuse_prob")
+        "SCORE_FIELD": "",  # Single score field for backward compatibility
+        "TASK_LABEL_NAMES": "",  # Optional explicit task labels (comma-separated)
+        # Domain metrics configuration
         "COMPUTE_DOLLAR_RECALL": "true",
         "COMPUTE_COUNT_RECALL": "true",
         "DOLLAR_RECALL_FPR": "0.1",
         "COUNT_RECALL_CUTOFF": "0.1",
+        # Visualization configuration
         "GENERATE_PLOTS": "true",
+        # Comparison mode configuration (single-task)
         "COMPARISON_MODE": "false",
         "PREVIOUS_SCORE_FIELD": "",
+        # Multi-task comparison mode configuration
+        "PREVIOUS_SCORE_FIELDS": "",  # Comma-separated previous score fields (e.g., "isFraud_v1,isAbuse_v1")
+        # Comparison mode options
         "COMPARISON_METRICS": "all",
         "STATISTICAL_TESTS": "true",
         "COMPARISON_PLOTS": "true",
+        # Installation configuration
         "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
@@ -51,80 +63,195 @@ MODEL_METRICS_COMPUTATION_CONTRACT = ScriptContract(
     5. Optionally compares performance with previous model scores
     6. Generates performance visualizations (ROC curves, PR curves, distributions)
     7. Creates detailed reports with insights and recommendations
-    8. Supports both binary and multiclass classification
+    8. Supports single-task, multi-task, binary, and multiclass classification
     
-    Input Structure:
+    ===== CLASSIFICATION MODE DETECTION =====
+    
+    Single-Task Mode (Auto-detected):
+    - Triggered when: SCORE_FIELD is set OR SCORE_FIELDS contains one field
+    - Environment Variables:
+      * SCORE_FIELD: Single score field name (e.g., "prob_class_1")
+      * LABEL_FIELD: Single label field name (e.g., "label")
+    - Behavior: Computes metrics for one classification task
+    - Output: Single set of metrics and visualizations
+    
+    Multi-Task Mode (Auto-detected):
+    - Triggered when: SCORE_FIELDS contains 2+ comma-separated fields
+    - Environment Variables:
+      * SCORE_FIELDS: Comma-separated score fields (e.g., "isFraud_prob,isAbuse_prob,isScam_prob")
+      * TASK_LABEL_NAMES: Optional explicit labels (e.g., "isFraud,isAbuse,isScam")
+      * If TASK_LABEL_NAMES not provided: labels inferred by removing "_prob" suffix
+    - Behavior: Computes per-task metrics + aggregate metrics (mean/median across tasks)
+    - Output: Per-task metrics, aggregate metrics, task-prefixed visualizations
+    
+    ===== INPUT STRUCTURE =====
+    
+    Single-Task Input:
     - /opt/ml/processing/input/eval_data: Prediction data directory containing:
-      - predictions.csv, predictions.parquet, or predictions.json: Prediction data with:
+      - predictions.{csv,parquet,json}: Prediction data with:
         - ID column (configurable via ID_FIELD)
         - Label column (configurable via LABEL_FIELD)
-        - Prediction probability columns (prob_class_0, prob_class_1, etc.)
-        - Optional amount column (configurable via AMOUNT_FIELD)
-        - For comparison mode: column with previous model scores
-      - eval_predictions.csv: Alternative prediction file from xgboost_model_eval
+        - Score column (configurable via SCORE_FIELD)
+        - Optional: prob_class_0, prob_class_1 columns
+        - Optional: amount column (configurable via AMOUNT_FIELD)
+        - Optional: previous model score column (for comparison mode)
     
-    Standard Output Structure:
-    - /opt/ml/processing/output/metrics/metrics.json: Standard metrics in JSON format
-    - /opt/ml/processing/output/metrics/metrics_summary.txt: Human-readable metrics summary
-    - /opt/ml/processing/output/metrics/metrics_report.json: Comprehensive report with insights
-    - /opt/ml/processing/output/plots/roc_curve.jpg: ROC curve visualization
-    - /opt/ml/processing/output/plots/pr_curve.jpg: Precision-Recall curve visualization
-    - /opt/ml/processing/output/plots/score_distribution.jpg: Score distribution plot
-    - /opt/ml/processing/output/plots/threshold_analysis.jpg: Threshold analysis plot
-    - /opt/ml/processing/output/plots/class_*_roc_curve.jpg: Per-class ROC curves (multiclass)
-    - /opt/ml/processing/output/plots/class_*_pr_curve.jpg: Per-class PR curves (multiclass)
-    - /opt/ml/processing/output/plots/multiclass_roc_curves.jpg: Combined multiclass ROC curves
+    Multi-Task Input:
+    - /opt/ml/processing/input/eval_data: Prediction data directory containing:
+      - predictions.{csv,parquet,json}: Prediction data with:
+        - ID column (configurable via ID_FIELD)
+        - Multiple score columns (configurable via SCORE_FIELDS)
+        - Multiple label columns (configurable via TASK_LABEL_NAMES or inferred)
+        - Optional: amount column (configurable via AMOUNT_FIELD)
+        - Optional: previous score columns (for multi-task comparison mode)
     
-    Additional Output Structure (Comparison Mode):
-    - /opt/ml/processing/output/plots/comparison_roc_curves.jpg: Side-by-side ROC comparison
-    - /opt/ml/processing/output/plots/comparison_pr_curves.jpg: Side-by-side PR comparison
-    - /opt/ml/processing/output/plots/score_scatter_plot.jpg: Model score correlation analysis
-    - /opt/ml/processing/output/plots/score_distributions.jpg: 4-panel distribution comparison
+    ===== OUTPUT STRUCTURE =====
     
-    Required Environment Variables:
+    Single-Task Output:
+    - /opt/ml/processing/output/metrics/metrics.json: Standard metrics
+      * auc_roc, average_precision, f1_score, precision, recall
+      * threshold-based metrics at 0.3, 0.5, 0.7
+      * optional: dollar_recall, count_recall
+      * optional: comparison metrics (auc_delta, correlation, etc.)
+    - /opt/ml/processing/output/plots/:
+      * roc_curve.jpg, pr_curve.jpg
+      * score_distribution.jpg, threshold_analysis.jpg
+      * comparison_roc_curves.jpg, comparison_pr_curves.jpg (if comparison mode)
+      * score_scatter_plot.jpg, score_distributions.jpg (if comparison mode)
+    
+    Multi-Task Output:
+    - /opt/ml/processing/output/metrics/metrics.json: Per-task + aggregate metrics
+      * aggregate: {mean_auc_roc, median_auc_roc, mean_average_precision, etc.}
+      * task_{label}: {auc_roc, average_precision, f1_score, etc.} for each task
+      * task_{label}_{metric}: comparison metrics for each task (if comparison mode)
+      * aggregate_comparison: {mean_auc_delta, mean_correlation, etc.} (if comparison mode)
+    - /opt/ml/processing/output/plots/:
+      * task_{label}_roc_curve.jpg for each task
+      * task_{label}_pr_curve.jpg for each task
+      * task_{label}_comparison_roc_curves.jpg (if comparison mode)
+      * task_{label}_comparison_pr_curves.jpg (if comparison mode)
+      * task_{label}_score_scatter_plot.jpg (if comparison mode)
+      * task_{label}_score_distributions.jpg (if comparison mode)
+    
+    ===== ENVIRONMENT VARIABLES =====
+    
+    Required:
     - ID_FIELD: Name of the ID column in prediction data
-    - LABEL_FIELD: Name of the label column in prediction data
     
-    Optional Environment Variables:
-    - AMOUNT_FIELD: Name of the amount column for dollar recall computation
-    - INPUT_FORMAT: Preferred input format ("csv", "parquet", "json", "auto")
-    - COMPUTE_DOLLAR_RECALL: Enable dollar recall computation ("true"/"false")
-    - COMPUTE_COUNT_RECALL: Enable count recall computation ("true"/"false")
+    Optional - Basic Configuration:
+    - LABEL_FIELD: Label column name (default: "label", single-task only)
+    - AMOUNT_FIELD: Amount column for dollar recall (default: None)
+    - INPUT_FORMAT: Input format - "csv", "parquet", "json", "auto" (default: "auto")
+    
+    Optional - Multi-Task Configuration:
+    - SCORE_FIELDS: Comma-separated score fields for multi-task mode
+      * Example: "isFraud_prob,isAbuse_prob,isScam_prob"
+      * When set with 2+ fields: enables multi-task mode
+    - SCORE_FIELD: Single score field for single-task mode (backward compatible)
+      * Example: "prob_class_1"
+      * When set: enables single-task mode
+    - TASK_LABEL_NAMES: Explicit task label field names (comma-separated)
+      * Example: "isFraud,isAbuse,isScam"
+      * If not provided: inferred from score field names by removing "_prob" suffix
+    
+    Optional - Domain Metrics:
+    - COMPUTE_DOLLAR_RECALL: Enable dollar recall (default: "true")
+    - COMPUTE_COUNT_RECALL: Enable count recall (default: "true")
     - DOLLAR_RECALL_FPR: False positive rate for dollar recall (default: "0.1")
     - COUNT_RECALL_CUTOFF: Cutoff percentile for count recall (default: "0.1")
-    - GENERATE_PLOTS: Enable plot generation ("true"/"false")
     
-    Optional Environment Variables (Comparison Mode):
-    - COMPARISON_MODE: Enable model comparison functionality (default: "false")
-    - PREVIOUS_SCORE_FIELD: Column name containing previous model scores (default: "")
-    - COMPARISON_METRICS: Metrics to compute - "all" or "basic" (default: "all")
-    - STATISTICAL_TESTS: Enable statistical significance tests (default: "true")
-    - COMPARISON_PLOTS: Enable comparison visualizations (default: "true")
+    Optional - Visualization:
+    - GENERATE_PLOTS: Enable plot generation (default: "true")
     
-    Arguments:
-    - job_type: Type of metrics computation job to perform (e.g., "evaluation", "validation")
+    Optional - Single-Task Comparison Mode:
+    - COMPARISON_MODE: Enable comparison (default: "false")
+    - PREVIOUS_SCORE_FIELD: Column with previous model scores
+      * Example: "prev_model_score"
+      * Enables comparison metrics and plots
     
-    Comparison Features:
-    - Performance delta metrics (AUC-ROC, Average Precision, F1-score improvements)
-    - Statistical significance testing (McNemar's test, paired t-test, Wilcoxon test)
-    - Correlation analysis between model scores
-    - Comprehensive visualizations comparing model performance
-    - Automated recommendations for model deployment decisions
+    Optional - Multi-Task Comparison Mode:
+    - PREVIOUS_SCORE_FIELDS: Comma-separated previous score fields
+      * Example: "isFraud_v1,isAbuse_v1,isScam_v1"
+      * Must match length of SCORE_FIELDS
+      * Enables per-task comparison + aggregate comparison
     
-    Features:
-    - Multi-format Support: Automatically detects and loads CSV, Parquet, and JSON files
-    - Binary/Multiclass: Automatically detects classification type and computes appropriate metrics
-    - Domain Metrics: Computes business-specific metrics like dollar and count recall
-    - Model Comparison: Compare new model performance with previous model scores
-    - Comprehensive Reporting: Generates detailed reports with actionable insights
-    - Visualization: Creates publication-quality plots and charts
-    - Flexible Configuration: Extensive environment variable configuration options
-    - Error Handling: Robust error handling with detailed validation and logging
+    Optional - Comparison Mode Options:
+    - COMPARISON_METRICS: "all" or "basic" (default: "all")
+    - STATISTICAL_TESTS: Enable statistical tests (default: "true")
+    - COMPARISON_PLOTS: Enable comparison plots (default: "true")
     
-    Compatibility:
-    - Input: Compatible with output from xgboost_model_eval.py and xgboost_model_inference.py
-    - Output: Provides metrics in same format as xgboost_model_eval.py plus enhanced reporting
-    - Framework: Works with any ML framework predictions (not limited to XGBoost)
-    - Comparison: Binary classification has full comparison functionality; multiclass has limited comparison support
+    Optional - Installation:
+    - USE_SECURE_PYPI: Use secure CodeArtifact PyPI (default: "false")
+    
+    ===== ARGUMENTS =====
+    
+    - job_type: Type of metrics computation job (e.g., "evaluation", "validation")
+    
+    ===== COMPARISON MODE FEATURES =====
+    
+    Single-Task Comparison:
+    - Performance delta metrics (AUC-ROC, AP, F1 deltas)
+    - Statistical tests (McNemar, paired t-test, Wilcoxon)
+    - Correlation analysis (Pearson, Spearman)
+    - Comparison visualizations (ROC, PR, scatter, distributions)
+    
+    Multi-Task Comparison:
+    - Per-task performance deltas (AUC-ROC, AP, F1 deltas per task)
+    - Per-task correlation analysis
+    - Aggregate comparison metrics (mean/median deltas across tasks)
+    - Per-task comparison visualizations (4 plots per task)
+    
+    ===== KEY FEATURES =====
+    
+    - Multi-Task Support: Automatically detects and handles multi-task classification
+    - Single-Task Support: Backward compatible with existing single-task pipelines
+    - Multi-format: Auto-detects CSV, Parquet, and JSON input formats
+    - Binary/Multiclass: Automatically detects classification type
+    - Domain Metrics: Business-specific metrics (dollar/count recall)
+    - Model Comparison: Compares new vs previous model (single-task or multi-task)
+    - Comprehensive Reporting: Detailed reports with actionable insights
+    - Visualization: Publication-quality plots with task prefixes
+    - Flexible Configuration: Extensive environment variable options
+    - Error Handling: Robust validation and logging
+    - Smart Inference: Label fields inferred from score field names when not explicit
+    
+    ===== COMPATIBILITY =====
+    
+    - Input: Compatible with xgboost_model_eval.py, lightgbmmt_model_eval.py outputs
+    - Output: Same format as xgboost_model_eval.py plus enhanced multi-task reporting
+    - Framework: Works with any ML framework (XGBoost, LightGBM, PyTorch, etc.)
+    - Comparison: Full comparison support for both single-task and multi-task
+    
+    ===== USAGE EXAMPLES =====
+    
+    Single-Task Example:
+    ```
+    ID_FIELD="transaction_id"
+    LABEL_FIELD="is_fraud"
+    SCORE_FIELD="fraud_score"
+    AMOUNT_FIELD="transaction_amount"
+    ```
+    
+    Multi-Task Example:
+    ```
+    ID_FIELD="transaction_id"
+    SCORE_FIELDS="isFraud_prob,isAbuse_prob,isScam_prob"
+    TASK_LABEL_NAMES="isFraud,isAbuse,isScam"  # Optional, can infer
+    AMOUNT_FIELD="transaction_amount"
+    ```
+    
+    Single-Task Comparison Example:
+    ```
+    ID_FIELD="transaction_id"
+    SCORE_FIELD="fraud_score"
+    PREVIOUS_SCORE_FIELD="fraud_score_v1"
+    ```
+    
+    Multi-Task Comparison Example:
+    ```
+    ID_FIELD="transaction_id"
+    SCORE_FIELDS="isFraud_prob,isAbuse_prob,isScam_prob"
+    PREVIOUS_SCORE_FIELDS="isFraud_v1,isAbuse_v1,isScam_v1"
+    ```
     """,
 )

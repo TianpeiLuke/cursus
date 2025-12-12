@@ -43,6 +43,8 @@ MODEL_METRICS_COMPUTATION_SPEC = StepSpecification(
             compatible_sources=[
                 "XGBoostModelInference",
                 "XGBoostModelEval",
+                "LightGBMMTModelInference",
+                "LightGBMModelInference",
                 "PyTorchModelInference",
                 "TabularPreprocessing",
                 "CradleDataLoading",

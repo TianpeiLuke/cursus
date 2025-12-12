@@ -283,11 +283,240 @@ def detect_and_load_predictions(
     )
 
 
+def parse_score_fields(environ_vars: Dict[str, str]) -> List[str]:
+    """
+    Parse SCORE_FIELD or SCORE_FIELDS from environment variables.
+    Pattern matching model_calibration.py
+
+    Priority:
+    1. SCORE_FIELDS (multi-task) - comma-separated list
+    2. SCORE_FIELD (single-task) - backward compatible
+    3. Default: "prob_class_1"
+
+    Returns:
+        List of score field names
+    """
+    # Check for SCORE_FIELDS first (multi-task)
+    score_fields_str = environ_vars.get("SCORE_FIELDS", "").strip()
+    if score_fields_str:
+        score_fields = [
+            field.strip() for field in score_fields_str.split(",") if field.strip()
+        ]
+        if not score_fields:
+            raise ValueError("SCORE_FIELDS is empty after parsing")
+        logger.info(
+            f"Multi-task mode: Found {len(score_fields)} score fields: {score_fields}"
+        )
+        return score_fields
+
+    # Fall back to SCORE_FIELD (single-task, backward compatible)
+    score_field = environ_vars.get("SCORE_FIELD", "").strip()
+    if score_field:
+        logger.info(f"Single-task mode: Using score field: {score_field}")
+        return [score_field]
+
+    # Default
+    default_field = "prob_class_1"
+    logger.warning(
+        f"Neither SCORE_FIELD nor SCORE_FIELDS provided, using default: {default_field}"
+    )
+    return [default_field]
+
+
+def parse_previous_score_fields(
+    environ_vars: Dict[str, str], score_fields: List[str]
+) -> List[str]:
+    """
+    Parse PREVIOUS_SCORE_FIELDS or PREVIOUS_SCORE_FIELD from environment variables.
+
+    Priority:
+    1. PREVIOUS_SCORE_FIELDS (multi-task) - comma-separated list
+    2. PREVIOUS_SCORE_FIELD (single-task) - backward compatible
+    3. Empty list if not in comparison mode
+
+    Args:
+        environ_vars: Environment variables dictionary
+        score_fields: List of score field names (for validation)
+
+    Returns:
+        List of previous score field names (empty if no comparison)
+    """
+    is_multitask = len(score_fields) > 1
+
+    # Check for PREVIOUS_SCORE_FIELDS first (multi-task)
+    prev_score_fields_str = environ_vars.get("PREVIOUS_SCORE_FIELDS", "").strip()
+    if prev_score_fields_str:
+        prev_score_fields = [
+            field.strip() for field in prev_score_fields_str.split(",") if field.strip()
+        ]
+
+        if len(prev_score_fields) != len(score_fields):
+            raise ValueError(
+                f"PREVIOUS_SCORE_FIELDS length ({len(prev_score_fields)}) must match "
+                f"SCORE_FIELDS length ({len(score_fields)}). "
+                f"Score fields: {score_fields}, Previous score fields: {prev_score_fields}"
+            )
+
+        logger.info(
+            f"Multi-task comparison mode: Found {len(prev_score_fields)} previous score fields: {prev_score_fields}"
+        )
+        return prev_score_fields
+
+    # Fall back to PREVIOUS_SCORE_FIELD (single-task, backward compatible)
+    prev_score_field = environ_vars.get("PREVIOUS_SCORE_FIELD", "").strip()
+    if prev_score_field:
+        if is_multitask:
+            logger.warning(
+                f"Multi-task mode detected but only PREVIOUS_SCORE_FIELD provided. "
+                f"Use PREVIOUS_SCORE_FIELDS for multi-task comparison."
+            )
+            return []  # Return empty to disable comparison
+
+        logger.info(
+            f"Single-task comparison mode: Using previous score field: {prev_score_field}"
+        )
+        return [prev_score_field]
+
+    # No comparison mode
+    return []
+
+
+def parse_task_label_fields(
+    environ_vars: Dict[str, str], score_fields: List[str]
+) -> List[str]:
+    """
+    Parse TASK_LABEL_NAMES or infer from score_fields.
+    Pattern matching model_calibration.py
+
+    Priority:
+    1. Explicit TASK_LABEL_NAMES (preferred for multi-task)
+    2. Infer from score field names (_prob → removes suffix)
+    3. Single LABEL_FIELD (backward compatibility)
+
+    Args:
+        environ_vars: Environment variables dictionary
+        score_fields: List of score field names
+
+    Returns:
+        List of label field names, one per score field
+    """
+    is_multitask = len(score_fields) > 1
+
+    # Option 1: Explicit TASK_LABEL_NAMES (preferred for multi-task)
+    task_labels_str = environ_vars.get("TASK_LABEL_NAMES", "").strip()
+    if task_labels_str:
+        task_labels = [
+            field.strip() for field in task_labels_str.split(",") if field.strip()
+        ]
+
+        if len(task_labels) != len(score_fields):
+            raise ValueError(
+                f"TASK_LABEL_NAMES length ({len(task_labels)}) must match "
+                f"SCORE_FIELDS length ({len(score_fields)}). "
+                f"Score fields: {score_fields}, Label fields: {task_labels}"
+            )
+
+        logger.info(f"Using explicit task label fields: {task_labels}")
+        return task_labels
+
+    # Option 2: Infer from score_fields for multi-task
+    if is_multitask:
+        task_labels = []
+        for score_field in score_fields:
+            # Standard naming: task_prob → task (remove _prob suffix)
+            if score_field.endswith("_prob"):
+                label_field = score_field.replace("_prob", "")  # isFraud_prob → isFraud
+            elif score_field.endswith("_score"):
+                label_field = score_field.replace("_score", "_label")
+            else:
+                # Fallback: append _true
+                logger.warning(
+                    f"Score field '{score_field}' doesn't follow standard naming. "
+                    f"Inferring label as '{score_field}_true'"
+                )
+                label_field = f"{score_field}_true"
+            task_labels.append(label_field)
+
+        logger.info(
+            f"Inferred {len(task_labels)} task label fields from score fields: "
+            f"{dict(zip(score_fields, task_labels))}"
+        )
+        return task_labels
+
+    # Option 3: Single-task - use LABEL_FIELD (backward compatibility)
+    label_field = environ_vars.get("LABEL_FIELD", "label")
+    logger.info(f"Single-task mode: Using label field: {label_field}")
+    return [label_field]
+
+
+def validate_prediction_columns(
+    df: pd.DataFrame,
+    score_fields: List[str],
+    label_fields: List[str],
+    id_field: str,
+) -> Dict[str, Any]:
+    """
+    Validate that all required columns exist in DataFrame.
+
+    Args:
+        df: Input DataFrame
+        score_fields: List of score column names
+        label_fields: List of label column names
+        id_field: ID column name
+
+    Returns:
+        Validation report dictionary
+
+    Raises:
+        ValueError: If critical columns are missing
+    """
+    validation_report = {
+        "is_valid": True,
+        "errors": [],
+        "warnings": [],
+        "data_summary": {},
+    }
+
+    # Check ID field
+    if id_field not in df.columns:
+        validation_report["errors"].append(f"ID field '{id_field}' not found")
+        validation_report["is_valid"] = False
+
+    # Check score fields
+    missing_scores = [f for f in score_fields if f not in df.columns]
+    if missing_scores:
+        validation_report["errors"].append(f"Missing score fields: {missing_scores}")
+        validation_report["is_valid"] = False
+
+    # Check label fields
+    missing_labels = [f for f in label_fields if f not in df.columns]
+    if missing_labels:
+        validation_report["errors"].append(f"Missing label fields: {missing_labels}")
+        validation_report["is_valid"] = False
+
+    # Generate data summary for multi-task
+    validation_report["data_summary"] = {
+        "total_records": len(df),
+        "score_columns": score_fields,
+        "label_columns": label_fields,
+    }
+
+    # Log results
+    if not validation_report["is_valid"]:
+        logger.error("Column validation failed:")
+        for error in validation_report["errors"]:
+            logger.error(f"  - {error}")
+        logger.info(f"Available columns: {df.columns.tolist()}")
+
+    return validation_report
+
+
 def validate_prediction_data(
     df: pd.DataFrame, id_field: str, label_field: str, amount_field: str = None
 ) -> Dict[str, Any]:
     """
     Validate prediction data schema and return validation report.
+    Legacy function for backward compatibility with single-task.
     """
     validation_report = {
         "is_valid": True,
@@ -1485,6 +1714,362 @@ def save_metrics(
     logger.info(f"Saved metrics summary to {summary_path}")
 
 
+def compute_multitask_metrics(
+    df: pd.DataFrame,
+    score_fields: List[str],
+    label_fields: List[str],
+    amounts: np.ndarray = None,
+    environ_vars: Dict[str, str] = None,
+) -> Dict[str, Any]:
+    """
+    Compute per-task and aggregate metrics for multi-task predictions.
+    Pattern matching lightgbmmt_model_eval.py
+
+    Args:
+        df: DataFrame with predictions
+        score_fields: List of score column names
+        label_fields: List of label column names
+        amounts: Optional array of transaction amounts
+        environ_vars: Environment variables for domain metrics
+
+    Returns:
+        Dictionary with per-task and aggregate metrics
+    """
+    logger.info("Computing multi-task metrics")
+    metrics = {}
+
+    # Per-task metrics
+    auc_rocs = []
+    aps = []
+    f1s = []
+
+    for score_field, label_field in zip(score_fields, label_fields):
+        logger.info(f"Computing metrics for task: {label_field}")
+
+        y_true = df[label_field].values
+        y_score = df[score_field].values
+
+        # Reshape for binary classification
+        y_prob = np.column_stack([1 - y_score, y_score])  # [prob_class_0, prob_class_1]
+
+        # Compute standard metrics
+        task_metrics = compute_standard_metrics(y_true, y_prob, is_binary=True)
+
+        # Store with task prefix
+        metrics[f"task_{label_field}"] = task_metrics
+
+        # Collect for aggregation
+        auc_rocs.append(task_metrics["auc_roc"])
+        aps.append(task_metrics["average_precision"])
+        f1s.append(task_metrics["f1_score"])
+
+        logger.info(
+            f"Task {label_field}: AUC={task_metrics['auc_roc']:.4f}, "
+            f"AP={task_metrics['average_precision']:.4f}, "
+            f"F1={task_metrics['f1_score']:.4f}"
+        )
+
+    # Aggregate metrics (matching lightgbmmt_model_eval.py pattern)
+    if auc_rocs:
+        metrics["aggregate"] = {
+            "mean_auc_roc": float(np.mean(auc_rocs)),
+            "median_auc_roc": float(np.median(auc_rocs)),
+            "mean_average_precision": float(np.mean(aps)),
+            "median_average_precision": float(np.median(aps)),
+            "mean_f1_score": float(np.mean(f1s)),
+            "median_f1_score": float(np.median(f1s)),
+        }
+
+        logger.info("Aggregate Metrics:")
+        logger.info(f"  Mean AUC-ROC: {metrics['aggregate']['mean_auc_roc']:.4f}")
+        logger.info(f"  Mean AP: {metrics['aggregate']['mean_average_precision']:.4f}")
+        logger.info(f"  Mean F1: {metrics['aggregate']['mean_f1_score']:.4f}")
+
+    # Domain metrics per task (if amounts provided)
+    if amounts is not None and environ_vars:
+        compute_dollar = (
+            environ_vars.get("COMPUTE_DOLLAR_RECALL", "true").lower() == "true"
+        )
+        compute_count = (
+            environ_vars.get("COMPUTE_COUNT_RECALL", "true").lower() == "true"
+        )
+
+        if compute_dollar or compute_count:
+            domain_metrics = compute_multitask_domain_metrics(
+                df, score_fields, label_fields, amounts, environ_vars
+            )
+            metrics.update(domain_metrics)
+
+    return metrics
+
+
+def compute_multitask_domain_metrics(
+    df: pd.DataFrame,
+    score_fields: List[str],
+    label_fields: List[str],
+    amounts: np.ndarray,
+    environ_vars: Dict[str, str],
+) -> Dict[str, Any]:
+    """
+    Compute domain-specific metrics (dollar/count recall) for each task.
+
+    Args:
+        df: DataFrame with predictions
+        score_fields: List of score column names
+        label_fields: List of label column names
+        amounts: Array of transaction amounts
+        environ_vars: Environment variables
+
+    Returns:
+        Dictionary with per-task domain metrics
+    """
+    domain_metrics = {}
+
+    compute_dollar = environ_vars.get("COMPUTE_DOLLAR_RECALL", "true").lower() == "true"
+    compute_count = environ_vars.get("COMPUTE_COUNT_RECALL", "true").lower() == "true"
+    dollar_fpr = float(environ_vars.get("DOLLAR_RECALL_FPR", "0.1"))
+    count_cutoff = float(environ_vars.get("COUNT_RECALL_CUTOFF", "0.1"))
+
+    for score_field, label_field in zip(score_fields, label_fields):
+        y_true = df[label_field].values
+        y_score = df[score_field].values
+
+        # Compute domain metrics for this task
+        task_domain = compute_domain_metrics(
+            scores=y_score,
+            labels=y_true,
+            amounts=amounts,
+            compute_dollar_recall=compute_dollar,
+            compute_count_recall=compute_count,
+            dollar_recall_fpr=dollar_fpr,
+            count_recall_cutoff=count_cutoff,
+        )
+
+        # Store with task prefix
+        for metric_name, value in task_domain.items():
+            domain_metrics[f"task_{label_field}_{metric_name}"] = value
+
+    return domain_metrics
+
+
+def generate_multitask_visualizations(
+    df: pd.DataFrame,
+    score_fields: List[str],
+    label_fields: List[str],
+    output_dir: str,
+) -> Dict[str, str]:
+    """
+    Generate per-task ROC and PR curves.
+    Pattern matching lightgbmmt_model_eval.py
+
+    Args:
+        df: DataFrame with predictions
+        score_fields: List of score column names
+        label_fields: List of label column names
+        output_dir: Output directory for plots
+
+    Returns:
+        Dictionary of plot file paths
+    """
+    logger.info("Generating multi-task visualizations")
+    plot_paths = {}
+
+    for score_field, label_field in zip(score_fields, label_fields):
+        logger.info(f"Generating plots for task: {label_field}")
+
+        y_true = df[label_field].values
+        y_score = df[score_field].values
+
+        # Skip if only one class present
+        if len(np.unique(y_true)) < 2:
+            logger.warning(
+                f"Task {label_field}: Only one class present, skipping plots"
+            )
+            continue
+
+        # ROC curve
+        plot_paths[f"task_{label_field}_roc"] = plot_and_save_roc_curve(
+            y_true, y_score, output_dir, prefix=f"task_{label_field}_"
+        )
+
+        # PR curve
+        plot_paths[f"task_{label_field}_pr"] = plot_and_save_pr_curve(
+            y_true, y_score, output_dir, prefix=f"task_{label_field}_"
+        )
+
+    logger.info(f"Generated {len(plot_paths)} visualization plots")
+    return plot_paths
+
+
+def compute_multitask_comparison_metrics(
+    df: pd.DataFrame,
+    score_fields: List[str],
+    label_fields: List[str],
+    prev_score_fields: List[str],
+) -> Dict[str, Any]:
+    """
+    Compute comparison metrics for multi-task predictions.
+    Pattern matching single-task comparison but per-task.
+
+    Args:
+        df: DataFrame with predictions
+        score_fields: List of current score column names
+        label_fields: List of label column names
+        prev_score_fields: List of previous score column names
+
+    Returns:
+        Dictionary with per-task and aggregate comparison metrics
+    """
+    logger.info("Computing multi-task comparison metrics")
+
+    comparison_metrics = {}
+
+    # Per-task comparison metrics
+    auc_deltas = []
+    ap_deltas = []
+    correlations = []
+
+    for score_field, label_field, prev_score_field in zip(
+        score_fields, label_fields, prev_score_fields
+    ):
+        logger.info(f"Computing comparison for task: {label_field}")
+
+        y_true = df[label_field].values
+        y_new_score = df[score_field].values
+        y_prev_score = df[prev_score_field].values
+
+        # Compute task-specific comparison metrics
+        task_comp = compute_comparison_metrics(
+            y_true, y_new_score, y_prev_score, is_binary=True
+        )
+
+        # Store with task prefix
+        for metric_name, value in task_comp.items():
+            comparison_metrics[f"task_{label_field}_{metric_name}"] = value
+
+        # Collect for aggregation
+        auc_deltas.append(task_comp.get("auc_delta", 0))
+        ap_deltas.append(task_comp.get("ap_delta", 0))
+        correlations.append(task_comp.get("pearson_correlation", 0))
+
+        logger.info(
+            f"Task {label_field}: AUC delta={task_comp.get('auc_delta', 0):.4f}, "
+            f"Correlation={task_comp.get('pearson_correlation', 0):.4f}"
+        )
+
+    # Aggregate comparison metrics
+    if auc_deltas:
+        comparison_metrics["aggregate_comparison"] = {
+            "mean_auc_delta": float(np.mean(auc_deltas)),
+            "median_auc_delta": float(np.median(auc_deltas)),
+            "mean_ap_delta": float(np.mean(ap_deltas)),
+            "median_ap_delta": float(np.median(ap_deltas)),
+            "mean_correlation": float(np.mean(correlations)),
+            "median_correlation": float(np.median(correlations)),
+        }
+
+        logger.info("Aggregate Comparison Metrics:")
+        logger.info(
+            f"  Mean AUC Delta: {comparison_metrics['aggregate_comparison']['mean_auc_delta']:.4f}"
+        )
+        logger.info(
+            f"  Mean Correlation: {comparison_metrics['aggregate_comparison']['mean_correlation']:.4f}"
+        )
+
+    return comparison_metrics
+
+
+def generate_multitask_comparison_plots(
+    df: pd.DataFrame,
+    score_fields: List[str],
+    label_fields: List[str],
+    prev_score_fields: List[str],
+    output_dir: str,
+) -> Dict[str, str]:
+    """
+    Generate per-task comparison visualizations.
+    Pattern matching single-task comparison but per-task.
+
+    Args:
+        df: DataFrame with predictions
+        score_fields: List of current score column names
+        label_fields: List of label column names
+        prev_score_fields: List of previous score column names
+        output_dir: Output directory for plots
+
+    Returns:
+        Dictionary of plot file paths
+    """
+    logger.info("Generating multi-task comparison visualizations")
+    plot_paths = {}
+
+    for score_field, label_field, prev_score_field in zip(
+        score_fields, label_fields, prev_score_fields
+    ):
+        logger.info(f"Generating comparison plots for task: {label_field}")
+
+        y_true = df[label_field].values
+        y_new_score = df[score_field].values
+        y_prev_score = df[prev_score_field].values
+
+        # Skip if only one class present
+        if len(np.unique(y_true)) < 2:
+            logger.warning(
+                f"Task {label_field}: Only one class present, skipping comparison plots"
+            )
+            continue
+
+        # Generate per-task comparison plots with task prefix
+        prefix = f"task_{label_field}_"
+
+        # ROC curve comparison
+        plot_paths[f"task_{label_field}_comparison_roc"] = plot_comparison_roc_curves(
+            y_true, y_new_score, y_prev_score, output_dir
+        )
+        # Rename to include task prefix
+        old_path = plot_paths[f"task_{label_field}_comparison_roc"]
+        new_path = os.path.join(output_dir, f"{prefix}comparison_roc_curves.jpg")
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+            plot_paths[f"task_{label_field}_comparison_roc"] = new_path
+
+        # PR curve comparison
+        plot_paths[f"task_{label_field}_comparison_pr"] = plot_comparison_pr_curves(
+            y_true, y_new_score, y_prev_score, output_dir
+        )
+        # Rename to include task prefix
+        old_path = plot_paths[f"task_{label_field}_comparison_pr"]
+        new_path = os.path.join(output_dir, f"{prefix}comparison_pr_curves.jpg")
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+            plot_paths[f"task_{label_field}_comparison_pr"] = new_path
+
+        # Score scatter plot
+        plot_paths[f"task_{label_field}_score_scatter"] = plot_score_scatter(
+            y_new_score, y_prev_score, y_true, output_dir
+        )
+        # Rename to include task prefix
+        old_path = plot_paths[f"task_{label_field}_score_scatter"]
+        new_path = os.path.join(output_dir, f"{prefix}score_scatter_plot.jpg")
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+            plot_paths[f"task_{label_field}_score_scatter"] = new_path
+
+        # Score distributions
+        plot_paths[f"task_{label_field}_score_distributions"] = (
+            plot_score_distributions(y_new_score, y_prev_score, y_true, output_dir)
+        )
+        # Rename to include task prefix
+        old_path = plot_paths[f"task_{label_field}_score_distributions"]
+        new_path = os.path.join(output_dir, f"{prefix}score_distributions.jpg")
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+            plot_paths[f"task_{label_field}_score_distributions"] = new_path
+
+    logger.info(f"Generated {len(plot_paths)} multi-task comparison plots")
+    return plot_paths
+
+
 def create_health_check_file(output_path: str) -> str:
     """Create a health check file to signal script completion."""
     health_path = output_path
@@ -1565,12 +2150,35 @@ def main(
 
     logger.info("Starting model metrics computation script")
 
-    # Load and validate prediction data
+    # ===== NEW: Multi-Task Detection =====
+
+    # Step 1: Parse score fields (determines single-task vs multi-task)
+    score_fields = parse_score_fields(environ_vars)
+    is_multitask = len(score_fields) > 1
+
+    logger.info(f"Detected mode: {'multi-task' if is_multitask else 'single-task'}")
+    logger.info(f"Score fields: {score_fields}")
+
+    # Step 2: Parse label fields (infer if needed)
+    label_fields = parse_task_label_fields(environ_vars, score_fields)
+    logger.info(f"Label fields: {label_fields}")
+
+    # Step 2b: Parse previous score fields (for comparison mode)
+    prev_score_fields = parse_previous_score_fields(environ_vars, score_fields)
+    if prev_score_fields:
+        logger.info(f"Previous score fields: {prev_score_fields}")
+        logger.info(
+            f"Comparison mode will be enabled for {'multi-task' if is_multitask else 'single-task'}"
+        )
+
+    # Step 3: Load and validate prediction data
     df = detect_and_load_predictions(
         eval_data_dir, preferred_format=input_format if input_format != "auto" else None
     )
-    validation_report = validate_prediction_data(
-        df, id_field, label_field, amount_field
+
+    # Step 4: Validate columns exist
+    validation_report = validate_prediction_columns(
+        df, score_fields, label_fields, id_field
     )
 
     if not validation_report["is_valid"]:
@@ -1579,64 +2187,149 @@ def main(
             logger.error(f"  - {error}")
         raise ValueError("Input data validation failed")
 
-    # Log warnings
-    for warning in validation_report["warnings"]:
-        logger.warning(warning)
+    # Step 4b: Validate previous score fields if in comparison mode
+    if prev_score_fields:
+        missing_prev = [f for f in prev_score_fields if f not in df.columns]
+        if missing_prev:
+            logger.warning(
+                f"Comparison mode requested but previous score fields missing: {missing_prev}. "
+                f"Disabling comparison mode."
+            )
+            prev_score_fields = []  # Disable comparison
+        else:
+            logger.info(
+                f"Validated previous score fields exist in data: {prev_score_fields}"
+            )
 
-    # Extract data for metrics computation
-    y_true = df[label_field].values
-    prob_cols = [col for col in df.columns if col.startswith("prob_class_")]
-    y_prob = df[prob_cols].values
-
-    # Get prediction scores for domain metrics (use class 1 probability for binary, max probability for multiclass)
-    if y_prob.shape[1] == 2:
-        scores = y_prob[:, 1]  # Binary classification - use positive class probability
-        is_binary = True
-    else:
-        scores = np.max(y_prob, axis=1)  # Multiclass - use max probability
-        is_binary = False
-
-    # Get amounts if available
+    # Step 5: Get amounts if available
     amounts = (
         df[amount_field].values if amount_field and amount_field in df.columns else None
     )
 
-    logger.info(
-        f"Computing metrics for {'binary' if is_binary else 'multiclass'} classification"
-    )
-    logger.info(f"Data shape: {df.shape}, Predictions shape: {y_prob.shape}")
+    # ===== ROUTING: Multi-Task vs Single-Task =====
 
-    # Compute standard ML metrics
-    standard_metrics = compute_standard_metrics(y_true, y_prob, is_binary=is_binary)
-    log_metrics_summary(standard_metrics, is_binary=is_binary)
-
-    # Compute domain-specific metrics
-    domain_metrics = compute_domain_metrics(
-        scores=scores,
-        labels=y_true,
-        amounts=amounts,
-        compute_dollar_recall=compute_dollar_recall and amounts is not None,
-        compute_count_recall=compute_count_recall,
-        dollar_recall_fpr=dollar_recall_fpr,
-        count_recall_cutoff=count_recall_cutoff,
-    )
-
-    if domain_metrics:
-        logger.info("Domain-specific metrics computed:")
-        for name, value in domain_metrics.items():
-            if isinstance(value, (int, float)):
-                logger.info(f"  {name}: {value:.4f}")
-            else:
-                logger.info(f"  {name}: {value}")
-
-    # Generate visualizations if enabled
-    plot_paths = {}
-    if generate_plots:
-        logger.info("Generating performance visualizations")
-        plot_paths = generate_performance_visualizations(
-            y_true, y_prob, standard_metrics, output_plots_dir, is_binary=is_binary
+    if is_multitask:
+        logger.info(
+            f"Running multi-task metrics computation for {len(score_fields)} tasks"
         )
-        logger.info(f"Generated {len(plot_paths)} visualization plots")
+
+        # Compute multi-task metrics
+        all_metrics = compute_multitask_metrics(
+            df, score_fields, label_fields, amounts, environ_vars
+        )
+
+        # Generate multi-task visualizations
+        if generate_plots:
+            plot_paths = generate_multitask_visualizations(
+                df, score_fields, label_fields, output_plots_dir
+            )
+        else:
+            plot_paths = {}
+
+        # Multi-task comparison mode
+        if prev_score_fields:
+            logger.info(
+                f"Enabling multi-task comparison mode for {len(prev_score_fields)} tasks"
+            )
+
+            # Compute multi-task comparison metrics
+            mt_comp_metrics = compute_multitask_comparison_metrics(
+                df, score_fields, label_fields, prev_score_fields
+            )
+            all_metrics.update(mt_comp_metrics)
+
+            # Generate multi-task comparison plots
+            if generate_plots and comparison_plots:
+                logger.info("Generating multi-task comparison visualizations")
+                mt_comp_plots = generate_multitask_comparison_plots(
+                    df, score_fields, label_fields, prev_score_fields, output_plots_dir
+                )
+                plot_paths.update(mt_comp_plots)
+                logger.info(
+                    f"Generated {len(mt_comp_plots)} multi-task comparison plots"
+                )
+
+        # Extract standard and domain metrics for reporting
+        standard_metrics = all_metrics.get("aggregate", {})
+        domain_metrics = {
+            k: v
+            for k, v in all_metrics.items()
+            if k.startswith("task_") and k not in ["aggregate"]
+        }
+
+    else:
+        # Single-task mode (EXISTING CODE PATH - unchanged)
+        logger.info("Running single-task metrics computation")
+
+        # Extract single task data
+        label_field = label_fields[0]
+        score_field = score_fields[0]
+
+        # Use legacy validation for backward compatibility
+        legacy_validation = validate_prediction_data(
+            df, id_field, label_field, amount_field
+        )
+
+        # Log warnings
+        for warning in legacy_validation.get("warnings", []):
+            logger.warning(warning)
+
+        y_true = df[label_field].values
+
+        # Detect probability columns (original logic)
+        prob_cols = [col for col in df.columns if col.startswith("prob_class_")]
+        if not prob_cols:
+            # Fallback: create binary prob columns from score field
+            logger.info(
+                f"No prob_class_* columns found, using {score_field} to create binary probabilities"
+            )
+            prob_cols = ["prob_class_0", "prob_class_1"]
+            df["prob_class_0"] = 1 - df[score_field]
+            df["prob_class_1"] = df[score_field]
+
+        y_prob = df[prob_cols].values
+        is_binary = y_prob.shape[1] == 2
+        scores = y_prob[:, 1] if is_binary else np.max(y_prob, axis=1)
+
+        logger.info(
+            f"Computing metrics for {'binary' if is_binary else 'multiclass'} classification"
+        )
+        logger.info(f"Data shape: {df.shape}, Predictions shape: {y_prob.shape}")
+
+        # Compute standard metrics (EXISTING)
+        standard_metrics = compute_standard_metrics(y_true, y_prob, is_binary=is_binary)
+        log_metrics_summary(standard_metrics, is_binary=is_binary)
+
+        # Compute domain metrics (EXISTING)
+        domain_metrics = compute_domain_metrics(
+            scores=scores,
+            labels=y_true,
+            amounts=amounts,
+            compute_dollar_recall=compute_dollar_recall and amounts is not None,
+            compute_count_recall=compute_count_recall,
+            dollar_recall_fpr=dollar_recall_fpr,
+            count_recall_cutoff=count_recall_cutoff,
+        )
+
+        if domain_metrics:
+            logger.info("Domain-specific metrics computed:")
+            for name, value in domain_metrics.items():
+                if isinstance(value, (int, float)):
+                    logger.info(f"  {name}: {value:.4f}")
+                else:
+                    logger.info(f"  {name}: {value}")
+
+        # Generate visualizations (EXISTING)
+        plot_paths = {}
+        if generate_plots:
+            logger.info("Generating performance visualizations")
+            plot_paths = generate_performance_visualizations(
+                y_true, y_prob, standard_metrics, output_plots_dir, is_binary=is_binary
+            )
+            logger.info(f"Generated {len(plot_paths)} visualization plots")
+
+        # Combine metrics
+        all_metrics = {**standard_metrics, **domain_metrics}
 
     # Check for comparison mode
     previous_scores = None
@@ -1737,15 +2430,32 @@ if __name__ == "__main__":
 
     # Collect environment variables
     environ_vars = {
+        # Basic field configuration
         "ID_FIELD": os.environ.get("ID_FIELD", "id"),
         "LABEL_FIELD": os.environ.get("LABEL_FIELD", "label"),
         "AMOUNT_FIELD": os.environ.get("AMOUNT_FIELD", None),
         "INPUT_FORMAT": os.environ.get("INPUT_FORMAT", "auto"),
+        # Multi-task configuration (NEW)
+        "SCORE_FIELDS": os.environ.get(
+            "SCORE_FIELDS", ""
+        ),  # Comma-separated score fields for multi-task
+        "SCORE_FIELD": os.environ.get(
+            "SCORE_FIELD", ""
+        ),  # Single score field for backward compatibility
+        "TASK_LABEL_NAMES": os.environ.get(
+            "TASK_LABEL_NAMES", ""
+        ),  # Optional explicit task labels
+        "PREVIOUS_SCORE_FIELDS": os.environ.get(
+            "PREVIOUS_SCORE_FIELDS", ""
+        ),  # Comma-separated previous score fields for multi-task comparison
+        # Domain metrics configuration
         "COMPUTE_DOLLAR_RECALL": os.environ.get("COMPUTE_DOLLAR_RECALL", "true"),
         "COMPUTE_COUNT_RECALL": os.environ.get("COMPUTE_COUNT_RECALL", "true"),
         "DOLLAR_RECALL_FPR": os.environ.get("DOLLAR_RECALL_FPR", "0.1"),
         "COUNT_RECALL_CUTOFF": os.environ.get("COUNT_RECALL_CUTOFF", "0.1"),
+        # Visualization configuration
         "GENERATE_PLOTS": os.environ.get("GENERATE_PLOTS", "true"),
+        # Comparison mode configuration
         "COMPARISON_MODE": os.environ.get("COMPARISON_MODE", "false"),
         "PREVIOUS_SCORE_FIELD": os.environ.get("PREVIOUS_SCORE_FIELD", ""),
         "COMPARISON_METRICS": os.environ.get("COMPARISON_METRICS", "all"),

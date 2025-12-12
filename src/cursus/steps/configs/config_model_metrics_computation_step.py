@@ -45,6 +45,7 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
+    # At least one of score_field or score_fields must be provided
 
     id_name: str = Field(
         ...,
@@ -53,7 +54,34 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
 
     label_name: str = Field(
         ...,
-        description="Name of the label field in the prediction data (required for metrics computation).",
+        description="Name of the main label column (REQUIRED). "
+        "For single-task mode: this is the only label field used. "
+        "For multi-task mode: this represents the main task label field. "
+        "Additional task labels are specified via task_label_names.",
+    )
+
+    score_field: Optional[str] = Field(
+        default=None,
+        description="Name of the score column to evaluate (single-task mode). "
+        "Use this for backward compatibility or when evaluating a single score field.",
+    )
+
+    score_fields: Optional[List[str]] = Field(
+        default=None,
+        description="List of score column names to evaluate (multi-task mode). "
+        "Use this when evaluating multiple score fields independently. "
+        "If both score_field and score_fields are provided, score_fields takes precedence. "
+        "Example: ['task1_prob', 'task2_prob', 'task3_prob']",
+    )
+
+    task_label_names: Optional[List[str]] = Field(
+        default=None,
+        description="List of task label field names for multi-task mode (one per task). "
+        "REQUIRED when score_fields is provided (multi-task mode). "
+        "Must match the length of score_fields. "
+        "If not provided, labels will be inferred by removing '_prob' suffix from score field names. "
+        "Example: score_fields=['task1_prob', 'task2_prob'], "
+        "task_label_names=['task1_true', 'task2_true']",
     )
 
     # ===== System Inputs with Defaults (Tier 2) =====
@@ -125,12 +153,19 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
     # Model comparison configuration (Tier 2 - Optional with defaults)
     comparison_mode: bool = Field(
         default=False,
-        description="Enable model comparison functionality to compare with previous model scores",
+        description="Enable model comparison functionality to compare with previous model scores (single-task mode)",
     )
 
     previous_score_field: str = Field(
         default="",
-        description="Name of the column containing previous model scores for comparison (required when comparison_mode=True)",
+        description="Name of the column containing previous model scores for comparison (single-task mode, required when comparison_mode=True)",
+    )
+
+    previous_score_fields: Optional[List[str]] = Field(
+        default=None,
+        description="List of columns containing previous model scores for multi-task comparison (multi-task mode). "
+        "Must match the length of score_fields when provided. "
+        "Example: ['task1_prev_prob', 'task2_prev_prob']",
     )
 
     comparison_metrics: str = Field(
@@ -204,8 +239,56 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
 
         if not self.label_name:
             raise ValueError(
-                "label_name must be provided (required by model metrics computation contract)"
+                "label_name must be provided (required for both single-task and multi-task modes)"
             )
+
+        # Determine if we're in single-task or multi-task mode
+        is_multitask = bool(self.score_fields)
+        is_singletask = bool(self.score_field) and not is_multitask
+
+        # Validate that at least one of score_field or score_fields is provided
+        if not self.score_field and not self.score_fields:
+            raise ValueError(
+                "At least one of 'score_field' (single-task) or 'score_fields' (multi-task) must be provided"
+            )
+
+        # Validate score_fields if provided (multi-task mode)
+        if self.score_fields:
+            if not isinstance(self.score_fields, list):
+                raise ValueError("score_fields must be a list of strings")
+
+            if len(self.score_fields) == 0:
+                raise ValueError("score_fields cannot be empty")
+
+            # For multi-task: task_label_names is optional (can be inferred)
+            # but if provided, must match score_fields length
+            if self.task_label_names is not None:
+                if not isinstance(self.task_label_names, list):
+                    raise ValueError("task_label_names must be a list of strings")
+
+                if len(self.task_label_names) == 0:
+                    raise ValueError("task_label_names cannot be empty")
+
+                if len(self.task_label_names) != len(self.score_fields):
+                    raise ValueError(
+                        f"task_label_names count ({len(self.task_label_names)}) must match "
+                        f"score_fields count ({len(self.score_fields)})"
+                    )
+
+            # Validate previous_score_fields if provided (multi-task comparison)
+            if self.previous_score_fields is not None:
+                if not isinstance(self.previous_score_fields, list):
+                    raise ValueError("previous_score_fields must be a list of strings")
+
+                if len(self.previous_score_fields) != len(self.score_fields):
+                    raise ValueError(
+                        f"previous_score_fields count ({len(self.previous_score_fields)}) must match "
+                        f"score_fields count ({len(self.score_fields)})"
+                    )
+
+                logger.info(
+                    f"Multi-task comparison mode enabled with {len(self.previous_score_fields)} previous score fields"
+                )
 
         # Validate job_type
         valid_job_types = {"training", "calibration", "validation", "testing"}
@@ -232,11 +315,11 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
                 f"count_recall_cutoff must be between 0 and 1, got {self.count_recall_cutoff}"
             )
 
-        # Validate comparison mode configuration
+        # Validate single-task comparison mode configuration
         if self.comparison_mode:
             if not self.previous_score_field or self.previous_score_field.strip() == "":
                 raise ValueError(
-                    "previous_score_field must be provided when comparison_mode is True"
+                    "previous_score_field must be provided when comparison_mode is True (single-task comparison)"
                 )
 
             # Validate comparison_metrics value
@@ -247,16 +330,21 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
                 )
 
             logger.info(
-                f"Comparison mode enabled with previous score field: '{self.previous_score_field}'"
+                f"Single-task comparison mode enabled with previous score field: '{self.previous_score_field}'"
             )
         else:
             logger.debug(
                 "Comparison mode disabled - standard metrics computation will be performed"
             )
 
-        logger.debug(
-            f"ID field '{self.id_name}' and label field '{self.label_name}' will be used for metrics computation"
-        )
+        if is_singletask:
+            logger.debug(
+                f"Single-task mode: ID field '{self.id_name}', label field '{self.label_name}', score field '{self.score_field}'"
+            )
+        else:
+            logger.debug(
+                f"Multi-task mode: ID field '{self.id_name}', {len(self.score_fields)} score fields"
+            )
 
         return self
 
@@ -278,7 +366,6 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         env_vars.update(
             {
                 "ID_FIELD": self.id_name,
-                "LABEL_FIELD": self.label_name,
                 "INPUT_FORMAT": self.input_format,
                 "COMPUTE_DOLLAR_RECALL": str(self.compute_dollar_recall).lower(),
                 "COMPUTE_COUNT_RECALL": str(self.compute_count_recall).lower(),
@@ -289,20 +376,49 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             }
         )
 
+        # Add label_field if provided (for single-task mode)
+        if self.label_name:
+            env_vars["LABEL_FIELD"] = self.label_name
+
+        # Add score_field if provided (for single-task mode)
+        if self.score_field:
+            env_vars["SCORE_FIELD"] = self.score_field
+
+        # Add SCORE_FIELDS for multi-task mode (takes precedence over SCORE_FIELD)
+        if self.score_fields:
+            env_vars["SCORE_FIELDS"] = ",".join(
+                self.score_fields
+            )  # Convert list to comma-separated string
+
+            # Add TASK_LABEL_NAMES if provided
+            if self.task_label_names:
+                env_vars["TASK_LABEL_NAMES"] = ",".join(
+                    self.task_label_names
+                )  # Convert list to comma-separated string
+
         # Add amount field if specified
         if self.amount_field:
             env_vars["AMOUNT_FIELD"] = self.amount_field
 
-        # Add comparison mode environment variables
+        # Add single-task comparison mode environment variables
         env_vars.update(
             {
                 "COMPARISON_MODE": str(self.comparison_mode).lower(),
-                "PREVIOUS_SCORE_FIELD": self.previous_score_field,
                 "COMPARISON_METRICS": self.comparison_metrics,
                 "STATISTICAL_TESTS": str(self.statistical_tests).lower(),
                 "COMPARISON_PLOTS": str(self.comparison_plots).lower(),
             }
         )
+
+        # Add PREVIOUS_SCORE_FIELD for single-task comparison
+        if self.previous_score_field:
+            env_vars["PREVIOUS_SCORE_FIELD"] = self.previous_score_field
+
+        # Add PREVIOUS_SCORE_FIELDS for multi-task comparison
+        if self.previous_score_fields:
+            env_vars["PREVIOUS_SCORE_FIELDS"] = ",".join(
+                self.previous_score_fields
+            )  # Convert list to comma-separated string
 
         return env_vars
 
@@ -350,6 +466,23 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             "statistical_tests": self.statistical_tests,
             "comparison_plots": self.comparison_plots,
         }
+
+        # Add Tier 1 optional fields if set
+
+        if self.score_field is not None:
+            metrics_fields["score_field"] = self.score_field
+
+        # Add score_fields if set (multi-task mode)
+        if self.score_fields is not None:
+            metrics_fields["score_fields"] = self.score_fields
+
+        # Add task_label_names if set (multi-task mode)
+        if self.task_label_names is not None:
+            metrics_fields["task_label_names"] = self.task_label_names
+
+        # Add previous_score_fields if set (multi-task comparison mode)
+        if self.previous_score_fields is not None:
+            metrics_fields["previous_score_fields"] = self.previous_score_fields
 
         # Only include optional fields if they're set
         if self.amount_field is not None:
