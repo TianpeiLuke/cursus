@@ -256,6 +256,240 @@ def find_first_data_file(data_dir: str) -> str:
 
 
 # -------------------------------------------------------------------------
+# FIELD TYPE VALIDATION FUNCTIONS
+# -------------------------------------------------------------------------
+
+
+def validate_categorical_fields(
+    df: pd.DataFrame, cat_fields: List[str], dataset_name: str = "dataset"
+) -> None:
+    """
+    Strictly validate categorical fields before risk table mapping.
+
+    Args:
+        df: Input dataframe
+        cat_fields: List of categorical field names from config
+        dataset_name: Name of dataset for error messages (e.g., "train", "val", "test")
+
+    Raises:
+        ValueError: If field not found in dataframe
+        TypeError: If field has wrong type with specific field names
+    """
+    mismatched_fields = []
+
+    for field in cat_fields:
+        if field not in df.columns:
+            raise ValueError(
+                f"Categorical field '{field}' not found in {dataset_name} dataframe"
+            )
+
+        dtype = df[field].dtype
+        # Allow: object, category, string types
+        if dtype not in [
+            "object",
+            "category",
+            "string",
+        ] and not pd.api.types.is_string_dtype(df[field]):
+            mismatched_fields.append(
+                {
+                    "field": field,
+                    "current_type": str(dtype),
+                    "expected_type": "categorical (object/string/category)",
+                }
+            )
+
+    if mismatched_fields:
+        error_msg = f"Categorical field type validation failed for {dataset_name}:\n"
+        for info in mismatched_fields:
+            error_msg += (
+                f"  - Field '{info['field']}': "
+                f"expected {info['expected_type']}, "
+                f"but got {info['current_type']}\n"
+            )
+        error_msg += "\nCategorical fields must have object, string, or category dtype before risk table mapping."
+        raise TypeError(error_msg)
+
+
+def validate_numerical_fields(
+    df: pd.DataFrame, num_fields: List[str], dataset_name: str = "dataset"
+) -> None:
+    """
+    Strictly validate numerical fields before numerical imputation.
+
+    Args:
+        df: Input dataframe
+        num_fields: List of numerical field names from config
+        dataset_name: Name of dataset for error messages (e.g., "train", "val", "test")
+
+    Raises:
+        ValueError: If field not found in dataframe
+        TypeError: If field has wrong type with specific field names
+    """
+    mismatched_fields = []
+
+    for field in num_fields:
+        if field not in df.columns:
+            raise ValueError(
+                f"Numerical field '{field}' not found in {dataset_name} dataframe"
+            )
+
+        dtype = df[field].dtype
+        # Must be: int or float types
+        if not pd.api.types.is_numeric_dtype(df[field]):
+            mismatched_fields.append(
+                {
+                    "field": field,
+                    "current_type": str(dtype),
+                    "expected_type": "numerical (int/float)",
+                }
+            )
+
+    if mismatched_fields:
+        error_msg = f"Numerical field type validation failed for {dataset_name}:\n"
+        for info in mismatched_fields:
+            error_msg += (
+                f"  - Field '{info['field']}': "
+                f"expected {info['expected_type']}, "
+                f"but got {info['current_type']}\n"
+            )
+        error_msg += "\nNumerical fields must have int or float dtype before numerical imputation."
+        raise TypeError(error_msg)
+
+
+# -------------------------------------------------------------------------
+# FEATURE SELECTION INTEGRATION FUNCTIONS
+# -------------------------------------------------------------------------
+
+
+def detect_feature_selection_artifacts(
+    model_artifacts_dir: Optional[str],
+) -> Optional[str]:
+    """
+    Conservatively detect if feature selection was applied in model_artifacts_input.
+    Returns path to selected_features.json if found, None otherwise.
+
+    Args:
+        model_artifacts_dir: Path to model artifacts directory
+
+    Returns:
+        Path to selected_features.json if found, None otherwise
+    """
+    if not model_artifacts_dir or not os.path.exists(model_artifacts_dir):
+        logger.info("No model artifacts directory - no feature selection artifacts")
+        return None
+
+    # Check for selected_features.json in model_artifacts_input
+    features_path = os.path.join(model_artifacts_dir, "selected_features.json")
+
+    if os.path.exists(features_path):
+        logger.info(f"Feature selection artifacts detected at: {features_path}")
+        return features_path
+
+    logger.info("No feature selection artifacts found in model_artifacts_input")
+    return None
+
+
+def load_selected_features(fs_artifacts_path: str) -> Optional[List[str]]:
+    """
+    Load selected features from feature selection artifacts.
+
+    Args:
+        fs_artifacts_path: Path to selected_features.json
+
+    Returns:
+        List of selected feature names, or None if loading fails
+    """
+    try:
+        with open(fs_artifacts_path, "r") as f:
+            fs_data = json.load(f)
+
+        selected_features = fs_data.get("selected_features", [])
+        if not selected_features:
+            logger.warning("Empty selected_features list found")
+            return None
+
+        logger.info(f"Loaded {len(selected_features)} selected features from artifacts")
+        logger.info(f"Selected features: {selected_features}")
+        return selected_features
+
+    except Exception as e:
+        logger.warning(f"Error loading feature selection artifacts: {e}")
+        return None
+
+
+def get_effective_feature_columns(
+    hyperparams: LightGBMMtModelHyperparameters,
+    model_artifacts_input_dir: Optional[str],
+    train_df: pd.DataFrame,
+) -> Tuple[List[str], bool]:
+    """
+    Get feature columns with fallback-first approach.
+
+    Args:
+        hyperparams: Hyperparameters object
+        model_artifacts_input_dir: Path to model artifacts directory
+        train_df: Training dataframe for validation
+
+    Returns:
+        Tuple of (feature_columns, feature_selection_applied)
+    """
+    # STEP 1: Always start with original behavior
+    original_features = hyperparams.tab_field_list + hyperparams.cat_field_list
+
+    logger.info("=== FEATURE SELECTION DETECTION ===")
+    logger.info(f"Original configuration features: {len(original_features)}")
+
+    # STEP 2: Check if feature selection artifacts exist
+    fs_artifacts_path = detect_feature_selection_artifacts(model_artifacts_input_dir)
+    if fs_artifacts_path is None:
+        # NO FEATURE SELECTION - Original behavior exactly
+        logger.info(
+            "Using original feature configuration (no feature selection detected)"
+        )
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 3: Feature selection detected - try to load
+    selected_features = load_selected_features(fs_artifacts_path)
+    if selected_features is None:
+        logger.warning(
+            "Failed to load selected features - falling back to original behavior"
+        )
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 4: Validate selected features exist in data
+    available_columns = set(train_df.columns)
+    missing_features = [f for f in selected_features if f not in available_columns]
+
+    if missing_features:
+        logger.warning(f"Selected features missing from data: {missing_features}")
+        logger.warning("Falling back to original behavior")
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 5: Additional validation - ensure reasonable subset
+    if len(selected_features) > len(original_features):
+        logger.warning(
+            f"Selected features ({len(selected_features)}) more than original ({len(original_features)}) - suspicious"
+        )
+        logger.warning("Falling back to original behavior")
+        logger.info("=====================================")
+        return original_features, False
+
+    # STEP 6: Success - use selected features
+    logger.info(f"Feature selection successfully applied!")
+    logger.info(
+        f"Features reduced from {len(original_features)} to {len(selected_features)}"
+    )
+    logger.info(
+        f"Reduction ratio: {len(selected_features) / len(original_features):.2%}"
+    )
+    logger.info("=====================================")
+    return selected_features, True
+
+
+# -------------------------------------------------------------------------
 # PREPROCESSING ARTIFACT LOADERS
 # -------------------------------------------------------------------------
 
@@ -955,6 +1189,41 @@ def main(
             precomputed["loaded"]["risk_tables"],
         )
 
+        # ===== FIELD TYPE VALIDATION =====
+        logger.info("=" * 70)
+        logger.info("FIELD TYPE VALIDATION")
+        logger.info("=" * 70)
+
+        # Validate numerical fields before imputation (only if computing inline)
+        if not precomputed["loaded"]["imputation"]:
+            logger.info("Validating numerical field types before imputation...")
+            validate_numerical_fields(train_df, hyperparams.tab_field_list, "train")
+            validate_numerical_fields(val_df, hyperparams.tab_field_list, "val")
+            if test_df is not None:
+                validate_numerical_fields(test_df, hyperparams.tab_field_list, "test")
+            logger.info("✓ Numerical field type validation passed")
+        else:
+            logger.info(
+                "Skipping numerical field validation (using pre-computed imputation)"
+            )
+
+        # Validate categorical fields before risk table mapping (only if computing inline)
+        if not precomputed["loaded"]["risk_tables"]:
+            logger.info(
+                "Validating categorical field types before risk table mapping..."
+            )
+            validate_categorical_fields(train_df, hyperparams.cat_field_list, "train")
+            validate_categorical_fields(val_df, hyperparams.cat_field_list, "val")
+            if test_df is not None:
+                validate_categorical_fields(test_df, hyperparams.cat_field_list, "test")
+            logger.info("✓ Categorical field type validation passed")
+        else:
+            logger.info(
+                "Skipping categorical field validation (using pre-computed risk tables)"
+            )
+
+        logger.info("=" * 70)
+
         # ===== 1. Numerical Imputation =====
         if precomputed["loaded"]["imputation"]:
             impute_dict = precomputed["impute_dict"]
@@ -977,9 +1246,50 @@ def main(
             )
             logger.info("✓ Risk table mapping completed")
 
-        # ===== 3. Feature Columns =====
-        feature_columns = hyperparams.tab_field_list + hyperparams.cat_field_list
-        logger.info(f"Using {len(feature_columns)} features: {feature_columns}")
+        # ===== 3. Feature Selection =====
+        if use_precomputed_features:
+            logger.info(
+                "Determining effective feature columns (USE_PRECOMPUTED_FEATURES=true)..."
+            )
+            feature_columns, fs_applied = get_effective_feature_columns(
+                hyperparams, model_artifacts_input_dir, train_df
+            )
+
+            if fs_applied:
+                logger.info("✓ Feature selection successfully applied")
+                logger.info(f"  → Using {len(feature_columns)} selected features")
+
+                # Filter DataFrames to only include selected features plus label and task columns
+                label_col = hyperparams.label_name
+                id_col = hyperparams.id_name
+
+                # Identify task columns before filtering
+                task_columns_temp = identify_task_columns(train_df, hyperparams)
+
+                # Keep only selected features, label, ID, and task columns
+                cols_to_keep = feature_columns + [label_col] + task_columns_temp
+                if id_col in train_df.columns:
+                    cols_to_keep.append(id_col)
+
+                train_df = train_df[cols_to_keep]
+                val_df = val_df[cols_to_keep]
+                if test_df is not None:
+                    test_df = test_df[cols_to_keep]
+
+                logger.info(f"  → Filtered datasets to {len(cols_to_keep)} columns")
+            else:
+                logger.info(
+                    "Feature selection artifacts not found - using original features"
+                )
+                feature_columns = (
+                    hyperparams.tab_field_list + hyperparams.cat_field_list
+                )
+        else:
+            logger.info(
+                "USE_PRECOMPUTED_FEATURES=false - using original feature configuration"
+            )
+            feature_columns = hyperparams.tab_field_list + hyperparams.cat_field_list
+            logger.info(f"  → Using {len(feature_columns)} features from config")
 
         # ===== 4. Identify Task Columns =====
         logger.info("Identifying task columns...")
