@@ -119,7 +119,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # ============================================================================
 
 required_packages = [
-    "pyarrow>=4.0.0,<6.0.0",
+    "pyarrow>=10.0.0",
     "pydantic>=2.0.0,<3.0.0",
     "lightgbm>=3.3.0",
 ]

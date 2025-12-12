@@ -2,7 +2,7 @@
 lightgbm>=3.3.0  # Multi-task gradient boosting
 
 # Data Processing & Serialization
-pyarrow>=4.0.0,<6.0.0  # Parquet file format support for efficient data I/O
+pyarrow>=10.0.0  # Parquet file format support for efficient data I/O
 
 # Validation & Type Support
 pydantic>=2.0.0,<3.0.0  # Data validation and type hints
