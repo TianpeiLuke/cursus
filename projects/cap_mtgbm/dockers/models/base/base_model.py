@@ -64,6 +64,8 @@ class BaseMultiTaskModel(ABC):
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
         test_df: Optional[pd.DataFrame] = None,
+        feature_columns: Optional[list] = None,
+        task_columns: Optional[list] = None,
     ) -> Dict[str, Any]:
         """
         Template method for training workflow.
@@ -73,11 +75,15 @@ class BaseMultiTaskModel(ABC):
         Parameters
         ----------
         train_df : DataFrame
-            Training data
+            Training data (should contain only feature_columns + task_columns)
         val_df : DataFrame
-            Validation data
+            Validation data (should contain only feature_columns + task_columns)
         test_df : DataFrame, optional
-            Test data
+            Test data (should contain only feature_columns + task_columns)
+        feature_columns : list, optional
+            List of feature column names in order
+        task_columns : list, optional
+            List of task label column names in order
 
         Returns
         -------
@@ -88,7 +94,9 @@ class BaseMultiTaskModel(ABC):
 
         # Step 1: Prepare data
         self.logger.info("Step 1: Preparing data...")
-        train_data, val_data, test_data = self._prepare_data(train_df, val_df, test_df)
+        train_data, val_data, test_data = self._prepare_data(
+            train_df, val_df, test_df, feature_columns, task_columns
+        )
 
         # Step 2: Initialize model
         self.logger.info("Step 2: Initializing model...")
@@ -115,11 +123,28 @@ class BaseMultiTaskModel(ABC):
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
         test_df: Optional[pd.DataFrame],
+        feature_columns: Optional[list] = None,
+        task_columns: Optional[list] = None,
     ) -> tuple:
         """
         Prepare data for training.
 
         Subclasses implement specific data preparation logic.
+        Training script controls the schema (WHAT columns to use).
+        Model just handles format conversion (HOW to convert for ML library).
+
+        Parameters
+        ----------
+        train_df : DataFrame
+            Training data (should contain only feature_columns + task_columns)
+        val_df : DataFrame
+            Validation data
+        test_df : DataFrame, optional
+            Test data
+        feature_columns : list, optional
+            List of feature column names in exact order
+        task_columns : list, optional
+            List of task label column names in exact order
 
         Returns
         -------

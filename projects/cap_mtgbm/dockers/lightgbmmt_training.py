@@ -1412,7 +1412,13 @@ def main(
 
         # ===== 10. Train Model =====
         logger.info("Training model...")
-        results = model.train(train_clean, val_clean, test_clean)
+        results = model.train(
+            train_clean,
+            val_clean,
+            test_clean,
+            feature_columns=feature_columns,
+            task_columns=task_columns,
+        )
         logger.info("✓ Training completed successfully")
 
         # ===== 11. Save Model Artifacts =====

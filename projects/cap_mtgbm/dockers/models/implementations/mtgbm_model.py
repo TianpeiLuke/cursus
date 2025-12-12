@@ -27,47 +27,83 @@ class MtgbmModel(BaseMultiTaskModel):
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
         test_df: Optional[pd.DataFrame],
+        feature_columns: Optional[list] = None,
+        task_columns: Optional[list] = None,
     ) -> Tuple[lgb.Dataset, lgb.Dataset, Optional[lgb.Dataset]]:
         """
         Prepare data for LightGBM training.
 
+        Converts DataFrames to LightGBM Dataset format.
+        Training script controls schema (WHAT columns), model handles format conversion (HOW).
+
         Parameters
         ----------
         train_df : DataFrame
-            Training data with features and multi-task labels
+            Training data (should contain only feature_columns + task_columns)
         val_df : DataFrame
             Validation data
         test_df : DataFrame, optional
             Test data
+        feature_columns : list, optional
+            List of feature column names in exact order
+            If not provided, falls back to tab_field_list + cat_field_list
+        task_columns : list, optional
+            List of task label column names in exact order
+            If not provided, infers from data
 
         Returns
         -------
         train_data, val_data, test_data : tuple of lgb.Dataset
             Prepared LightGBM datasets
         """
-        # Extract features and labels
-        feature_cols = self.hyperparams.full_field_list
+        # Use provided columns or fallback to hyperparams
+        if feature_columns is None:
+            feature_columns = (
+                self.hyperparams.tab_field_list + self.hyperparams.cat_field_list
+            )
+            self.logger.warning(
+                "feature_columns not provided, falling back to hyperparams. "
+                "Consider passing explicit columns from training script."
+            )
 
-        # Prepare training data
-        X_train = train_df[feature_cols].values
-        y_train = self._extract_multi_task_labels(train_df)
+        if task_columns is None:
+            # Use explicit task_label_names from hyperparams
+            if self.hyperparams.task_label_names:
+                task_columns = self.hyperparams.task_label_names
+                self.logger.warning(
+                    f"task_columns not provided, using hyperparams.task_label_names: {task_columns}. "
+                    "Consider passing explicit columns from training script."
+                )
+            else:
+                raise ValueError(
+                    "task_columns not provided and hyperparams.task_label_names is empty. "
+                    "Must specify task columns either via method parameter or hyperparameters."
+                )
+
+        # Extract features and labels (simple slicing - no schema knowledge needed!)
+        X_train = train_df[feature_columns].values
+        y_train = train_df[task_columns].values
+
+        # Create LightGBM Dataset
         train_data = lgb.Dataset(
             X_train,
             label=y_train.flatten(),  # Flatten for LightGBM
-            feature_name=feature_cols,
-            categorical_feature=self.hyperparams.cat_field_list,
+            feature_name=feature_columns,
+            categorical_feature=[
+                c for c in feature_columns if c in self.hyperparams.cat_field_list
+            ],
         )
 
         # Prepare validation data
-        X_val = val_df[feature_cols].values
-        y_val = self._extract_multi_task_labels(val_df)
+        X_val = val_df[feature_columns].values
+        y_val = val_df[task_columns].values
         val_data = lgb.Dataset(X_val, label=y_val.flatten(), reference=train_data)
 
         # Prepare test data if provided
         test_data = None
         if test_df is not None:
-            X_test = test_df[feature_cols].values
-            y_test = self._extract_multi_task_labels(test_df)
+            X_test = test_df[feature_columns].values
+            y_test = test_df[task_columns].values
             test_data = lgb.Dataset(
                 X_test, label=y_test.flatten(), reference=train_data
             )
@@ -77,38 +113,11 @@ class MtgbmModel(BaseMultiTaskModel):
             f"val={X_val.shape}, "
             f"test={X_test.shape if test_df is not None else None}"
         )
+        self.logger.info(
+            f"Features: {len(feature_columns)} columns, Tasks: {len(task_columns)} columns"
+        )
 
         return train_data, val_data, test_data
-
-    def _extract_multi_task_labels(self, df: pd.DataFrame) -> np.ndarray:
-        """
-        Extract multi-task labels from dataframe.
-
-        Parameters
-        ----------
-        df : DataFrame
-            Data with task label columns
-
-        Returns
-        -------
-        labels : np.ndarray
-            Multi-task labels [N_samples, N_tasks]
-        """
-        # Task columns should be specified in hyperparams
-        # For now, assume they follow pattern: task_0, task_1, ...
-        num_tasks = self.hyperparams.num_tasks or self.loss_function.num_col
-
-        task_cols = [f"task_{i}" for i in range(num_tasks)]
-        # Fallback to finding columns
-        if not all(col in df.columns for col in task_cols):
-            # Try finding task columns by pattern
-            task_cols = [col for col in df.columns if col.startswith("task_")]
-            if not task_cols:
-                # Try other common patterns
-                task_cols = [col for col in df.columns if "label" in col.lower()]
-
-        labels = df[task_cols].values
-        return labels
 
     def _initialize_model(self) -> None:
         """Initialize LightGBM model parameters."""
