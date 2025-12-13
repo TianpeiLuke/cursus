@@ -451,11 +451,14 @@ def find_first_data_file(
     )
 
 
-def load_data(config: "CalibrationConfig") -> Tuple[pd.DataFrame, str]:
+def load_data(
+    config: "CalibrationConfig", is_multitask: bool = False
+) -> Tuple[pd.DataFrame, str]:
     """Load evaluation data with predictions using format preservation.
 
     Args:
         config: Configuration object (required)
+        is_multitask: If True, skip score_field validation (multi-task mode)
 
     Returns:
         Tuple[pd.DataFrame, str]: Loaded evaluation data and detected format
@@ -476,7 +479,8 @@ def load_data(config: "CalibrationConfig") -> Tuple[pd.DataFrame, str]:
 
     if config.is_binary:
         # Binary classification case
-        if config.score_field not in df.columns:
+        # Skip score_field validation in multi-task mode (will validate later)
+        if not is_multitask and config.score_field not in df.columns:
             raise ValueError(f"Score field '{config.score_field}' not found in data")
     else:
         # Multi-class classification case
@@ -929,16 +933,20 @@ def extract_and_load_nested_tarball_data(
 
 
 def load_and_prepare_data(
-    config: "CalibrationConfig", job_type: str = "calibration"
+    config: "CalibrationConfig",
+    job_type: str = "calibration",
+    is_multitask: bool = False,
 ) -> Tuple[pd.DataFrame, np.ndarray, Optional[np.ndarray], Optional[np.ndarray]]:
     """Load evaluation data and prepare it for calibration based on classification type.
 
     Args:
         config: Configuration object (required)
         job_type: The job type to determine how to load data
+        is_multitask: If True, skip score_field validation (multi-task mode)
 
     Returns:
         tuple: Different return values based on classification type:
+            - Multi-task: (df, None, None, None) - main function handles per-task extraction
             - Binary: (df, y_true, y_prob, None)
             - Multi-class: (df, y_true, None, y_prob_matrix)
 
@@ -962,17 +970,22 @@ def load_and_prepare_data(
             logger.warning(f"Failed to extract data from nested tarballs: {e}")
             logger.warning(f"Exception details: {traceback.format_exc()}")
             logger.info("Falling back to standard data loading")
-            df, input_format = load_data(config)
+            df, input_format = load_data(config, is_multitask)
     else:
         # Calibration, validation, and testing job outputs are direct files from XGBoostModelEval
         logger.info(f"Loading data for job_type={job_type} using standard loading")
-        df, input_format = load_data(config)
+        df, input_format = load_data(config, is_multitask)
 
     # Store input format in config for later use when saving
     config._input_format = input_format
     logger.info(
         f"Stored input format '{input_format}' in config for output preservation"
     )
+
+    # Multi-task mode: Return dataframe only, main function handles per-task extraction
+    if is_multitask:
+        logger.info("Multi-task mode: Returning dataframe for per-task processing")
+        return df, None, None, None
 
     if config.is_binary:
         # Binary case - single score field
@@ -1657,7 +1670,7 @@ def main(
             job_type = job_args.job_type
             logger.info(f"Using job_type from command line: {job_type}")
 
-        # Parse score fields for multi-task support
+        # Parse score fields for multi-task support BEFORE loading data
         score_fields = parse_score_fields(environ_vars)
         is_multitask = len(score_fields) > 1
 
@@ -1677,8 +1690,8 @@ def main(
         if config.is_binary:
             # Binary classification workflow (single-task or multi-task)
 
-            # Load data once (don't extract labels yet for multi-task)
-            df, _, _, _ = load_and_prepare_data(config, job_type)
+            # Load data once (pass is_multitask to skip score_field validation)
+            df, _, _, _ = load_and_prepare_data(config, job_type, is_multitask)
 
             # Validate score fields exist in data
             valid_score_fields = validate_score_fields(
@@ -1843,17 +1856,16 @@ def main(
             if is_multitask:
                 log_section("MULTI-TASK CALIBRATION COMPLETE")
 
-                # Save per-task calibrators
-                for score_field, calibrator in task_calibrators.items():
-                    calibrator_path = os.path.join(
-                        config.output_calibration_path,
-                        f"calibration_model_{score_field}.pkl",
-                    )
-                    with open(calibrator_path, "wb") as f:
-                        pkl.dump(calibrator, f)
-                    logger.info(
-                        f"Saved calibrator for {score_field}: {calibrator_path}"
-                    )
+                # Save all calibrators in a single dictionary file
+                calibrators_dict_path = os.path.join(
+                    config.output_calibration_path,
+                    "calibration_models_dict.pkl",
+                )
+                with open(calibrators_dict_path, "wb") as f:
+                    pkl.dump(task_calibrators, f)
+                logger.info(
+                    f"Saved {len(task_calibrators)} task calibrators to: {calibrators_dict_path}"
+                )
 
                 # Add all calibrated scores to dataframe
                 for score_field, calibrated_scores in task_calibrated_scores.items():
@@ -1930,13 +1942,7 @@ def main(
                     ),
                     "output_files": {
                         "metrics": metrics_path,
-                        "calibrators": {
-                            score_field: os.path.join(
-                                config.output_calibration_path,
-                                f"calibration_model_{score_field}.pkl",
-                            )
-                            for score_field in valid_score_fields
-                        },
+                        "calibrators": calibrators_dict_path,
                         "calibrated_data": output_path,
                     },
                 }
