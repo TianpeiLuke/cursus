@@ -178,6 +178,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # NOTE: numpy is already available in SKLearn processor framework 1.2-1
 required_packages = [
     "lightgbm>=3.3.0",  # Required for LightGBMMT
+    "pydantic>=2.0.0",  # Required for TrainingState in model classes
 ]
 
 # Install packages using unified installation function
