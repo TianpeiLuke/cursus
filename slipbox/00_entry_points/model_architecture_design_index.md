@@ -119,6 +119,7 @@ Model Architecture Designs
 **Related Design Docs:**
 - [MTGBM Multi-Task Learning Design](../1_design/mtgbm_multi_task_learning_design.md) - **PRIMARY** - Multi-task architecture
 - [LightGBMMT Fork Integration Design](../1_design/lightgbmmt_fork_integration_design.md) - **NEW** - Integration strategy for custom fork enabling multi-task predictions
+- [LightGBMMT C++ Implementation and Python Wrapper Design](../1_design/lightgbmmt_cpp_implementation_design.md) - **NEW** - Detailed C++ implementation and Python wrapper architecture
 - [MTGBM Model Classes Refactoring Design](../1_design/mtgbm_model_classes_refactoring_design.md)
 - [MTGBM Models Refactoring Design](../1_design/mtgbm_models_refactoring_design.md)
 - [LightGBM-MT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
