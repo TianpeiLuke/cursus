@@ -194,7 +194,11 @@ from io import StringIO, BytesIO
 # Third-party imports
 import pandas as pd
 import numpy as np
-import lightgbm as lgb
+
+# Model wrapper imports (for consistency with training/eval)
+from models.factory.model_factory import ModelFactory
+from models.implementations.mtgbm_model import MtgbmModel
+from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
 
 # Local imports
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
@@ -301,19 +305,39 @@ def read_feature_columns(model_dir: str) -> List[str]:
         raise
 
 
-def load_lightgbmmt_model(model_dir: str) -> lgb.Booster:
+def load_lightgbmmt_model(model_dir: str) -> MtgbmModel:
     """
-    Load LightGBMMT model from file.
-
+    Load LightGBMMT model using MtgbmModel wrapper.
+    
+    Consistent with training/eval approach - uses ModelFactory pattern.
+    The wrapper handles multi-task specifics (num_labels, predictions, etc.).
+    
     Args:
         model_dir: Directory containing model artifacts
-
+    
     Returns:
-        LightGBM Booster model
+        MtgbmModel: Loaded multi-task model
     """
-    model_path = os.path.join(model_dir, MODEL_FILE)
-    model = lgb.Booster(model_file=model_path)
-    logger.info(f"Loaded LightGBMMT model from {model_path}")
+    # Load hyperparameters
+    hyperparams_file = os.path.join(model_dir, HYPERPARAMETERS_FILE)
+    with open(hyperparams_file, 'r') as f:
+        hyperparams_dict = json.load(f)
+    hyperparams = LightGBMMtModelHyperparameters(**hyperparams_dict)
+    
+    # Create model using factory (no loss_function/training_state for inference)
+    model = ModelFactory.create(
+        model_type="mtgbm",
+        loss_function=None,      # Not needed for inference
+        training_state=None,     # Not needed for inference  
+        hyperparams=hyperparams,
+    )
+    
+    # Load model artifacts
+    model.load(model_dir)
+    
+    num_tasks = len(hyperparams.task_label_names) if hyperparams.task_label_names else 1
+    logger.info(f"Loaded MtgbmModel with {num_tasks} tasks from {model_dir}")
+    
     return model
 
 
@@ -520,7 +544,7 @@ def apply_multitask_calibration(
 
 
 def create_model_config(
-    model: lgb.Booster,
+    model: MtgbmModel,
     feature_columns: List[str],
     hyperparameters: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -528,7 +552,7 @@ def create_model_config(
     Create model configuration dictionary for multi-task model.
 
     Args:
-        model: LightGBM Booster model
+        model: MtgbmModel wrapper
         feature_columns: List of feature column names
         hyperparameters: Model hyperparameters (includes task configuration)
 
@@ -552,6 +576,8 @@ def create_model_config(
 def model_fn(model_dir: str) -> Dict[str, Any]:
     """
     Load the model and preprocessing artifacts from model_dir.
+    
+    Uses MtgbmModel wrapper for consistency with training/eval scripts.
 
     Args:
         model_dir (str): Directory containing model artifacts
@@ -569,8 +595,10 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
         # Validate all required files exist
         validate_model_files(model_dir)
 
-        # Load model and artifacts
+        # Load model using wrapper (handles hyperparameters internally)
         model = load_lightgbmmt_model(model_dir)
+        
+        # Load preprocessing artifacts
         risk_tables = load_risk_tables(model_dir)
         risk_processors = create_risk_processors(risk_tables)
 
@@ -579,7 +607,9 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
 
         feature_importance = load_feature_importance(model_dir)
         feature_columns = read_feature_columns(model_dir)
-        hyperparameters = load_hyperparameters(model_dir)
+        
+        # Get hyperparameters from model wrapper
+        hyperparameters = model.hyperparams.model_dump()
 
         # Create configuration
         config = create_model_config(model, feature_columns, hyperparameters)
@@ -595,7 +625,7 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
             logger.info("No calibration models found - will use raw predictions")
 
         return {
-            "model": model,
+            "model": model,  # MtgbmModel wrapper
             "risk_processors": risk_processors,
             "numerical_processors": numerical_processors,
             "feature_importance": feature_importance,
@@ -927,44 +957,30 @@ def convert_to_numeric(df: pd.DataFrame, feature_columns: List[str]) -> pd.DataF
 
 
 def generate_multitask_predictions(
-    model: lgb.Booster,
+    model: MtgbmModel,
     df: pd.DataFrame,
     feature_columns: List[str],
-    num_tasks: int,
 ) -> np.ndarray:
     """
-    Generate multi-task predictions using the LightGBMMT model.
-
+    Generate multi-task predictions using MtgbmModel wrapper.
+    
+    The wrapper's predict() method handles:
+    - Feature extraction
+    - Multi-task prediction
+    - Sigmoid transformation
+    
     Args:
-        model: LightGBM Booster model
-        df: Preprocessed dataframe
+        model: MtgbmModel wrapper
+        df: Preprocessed DataFrame
         feature_columns: List of feature column names
-        num_tasks: Number of tasks (for validation)
-
+    
     Returns:
-        np.ndarray of shape (n_samples, n_tasks) with probabilities
-        Each column represents probability for one binary task
+        np.ndarray of shape (n_samples, n_tasks) with probabilities (sigmoid applied)
     """
-    # Get available features for prediction
-    available_features = [col for col in feature_columns if col in df.columns]
-    X = df[available_features].values
-
-    # Generate predictions using LightGBM
-    predictions = model.predict(X)
-
-    # Validate output shape
-    if len(predictions.shape) == 1:
-        # Edge case: single task, reshape to (n_samples, 1)
-        predictions = predictions.reshape(-1, 1)
-
-    if predictions.shape[1] != num_tasks:
-        raise ValueError(
-            f"Model output shape mismatch: expected {num_tasks} tasks, "
-            f"got {predictions.shape[1]} outputs"
-        )
-
+    # MtgbmModel.predict() handles everything internally
+    predictions = model.predict(df, feature_columns)
+    
     logger.info(f"Generated multi-task predictions: shape {predictions.shape}")
-
     return predictions
 
 
@@ -1016,8 +1032,11 @@ def predict_fn(
                 numerical_processors=numerical_processors,
             )
 
-            # Get available features for prediction
-            X = processed_values.reshape(1, -1)
+            # Create DataFrame for MtgbmModel.predict()
+            preprocessed_df = pd.DataFrame(
+                processed_values.reshape(1, -1), 
+                columns=feature_columns
+            )
         else:
             # BATCH PATH: Original DataFrame processing for multiple records
             if logger.isEnabledFor(logging.DEBUG):
@@ -1034,18 +1053,15 @@ def predict_fn(
             # Convert to numeric
             df = convert_to_numeric(df, feature_columns)
 
-            # Get available features for prediction
-            available_features = [col for col in feature_columns if col in df.columns]
-            X = df[available_features].values
+            # Prepare DataFrame for model
+            preprocessed_df = df[feature_columns]
 
-        # Generate raw predictions (same for both paths)
-        raw_predictions = model.predict(X)
+        # Generate predictions using wrapper (sigmoid already applied)
+        raw_predictions = generate_multitask_predictions(
+            model, preprocessed_df, feature_columns
+        )
 
-        # Validate and reshape output
-        if len(raw_predictions.shape) == 1:
-            # Edge case: single task, reshape to (n_samples, 1)
-            raw_predictions = raw_predictions.reshape(-1, 1)
-
+        # Validate output shape
         if raw_predictions.shape[1] != num_tasks:
             raise ValueError(
                 f"Model output shape mismatch: expected {num_tasks} tasks, "
