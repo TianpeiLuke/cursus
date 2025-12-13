@@ -716,6 +716,8 @@ def save_multitask_predictions(
     Save multi-task predictions with original data preserving input format.
     Supports CSV, TSV, Parquet, and JSON formats.
 
+    If task label columns exist in input data, they are preserved (for downstream calibration).
+
     Args:
         df: Original DataFrame (with ID and optional label columns)
         predictions: Prediction array of shape (n_samples, n_tasks)
@@ -734,10 +736,20 @@ def save_multitask_predictions(
     output_df = df.copy()
 
     # Add prediction columns for each task
+    # Also check if true labels exist (for downstream calibration)
     n_tasks = predictions.shape[1]
     for i in range(n_tasks):
         if i < len(task_names):
             task_name = task_names[i]
+
+            # If label column exists in input, it will be preserved in output_df
+            # (needed for model calibration downstream)
+            if task_name in df.columns:
+                logger.info(
+                    f"Label column '{task_name}' found in input data - preserving for calibration"
+                )
+
+            # Add prediction column
             output_df[f"{task_name}_prob"] = predictions[:, i]
         else:
             # Fallback if task names list is shorter than prediction array
