@@ -87,6 +87,7 @@ class MtgbmModel(BaseMultiTaskModel):
 
         # Create LightGBMT Dataset with native 2D label support
         # No field hacks needed - Dataset natively supports multi-dimensional labels
+        # CRITICAL: Set free_raw_data=False to preserve data for evaluation
         train_data = Dataset(
             X_train,
             label=y_train,  # Pass full 2D array [N_samples, N_tasks]
@@ -94,6 +95,7 @@ class MtgbmModel(BaseMultiTaskModel):
             categorical_feature=[
                 c for c in feature_columns if c in self.hyperparams.cat_field_list
             ],
+            free_raw_data=False,  # Keep raw data for evaluation phase
         )
 
         # Prepare validation data
@@ -103,6 +105,7 @@ class MtgbmModel(BaseMultiTaskModel):
             X_val,
             label=y_val,  # Full 2D array
             reference=train_data,
+            free_raw_data=False,  # Keep raw data for evaluation phase
         )
 
         # Prepare test data if provided
@@ -114,6 +117,7 @@ class MtgbmModel(BaseMultiTaskModel):
                 X_test,
                 label=y_test,  # Full 2D array
                 reference=train_data,
+                free_raw_data=False,  # Keep raw data for evaluation phase
             )
 
         self.logger.info(
@@ -226,12 +230,12 @@ class MtgbmModel(BaseMultiTaskModel):
 
     def _prepare_prediction_data(
         self, df: pd.DataFrame, feature_columns: Optional[list] = None
-    ) -> Dataset:
+    ) -> np.ndarray:
         """
         Prepare data for prediction (no labels needed).
 
-        Creates Dataset with same metadata as training (feature names, categorical features)
-        to ensure consistent behavior. Similar to _prepare_data but without labels.
+        Following legacy pattern: return numpy array directly instead of Dataset.
+        This avoids needing free_raw_data=False and matches LightGBM's standard usage.
 
         Parameters
         ----------
@@ -243,8 +247,8 @@ class MtgbmModel(BaseMultiTaskModel):
 
         Returns
         -------
-        data : Dataset
-            Dataset without labels for prediction
+        X : np.ndarray
+            Feature matrix for prediction
         """
         # Use provided feature_columns or fallback to hyperparams
         if feature_columns is None:
@@ -256,31 +260,22 @@ class MtgbmModel(BaseMultiTaskModel):
                 "Consider passing explicit columns for consistency with training."
             )
 
-        # Extract features from DataFrame
+        # Extract features from DataFrame and return as numpy array
+        # Legacy pattern: predict directly on arrays, not Datasets
         X = df[feature_columns].values
+        
+        return X
 
-        # Identify categorical features
-        categorical_features = [
-            c for c in feature_columns if c in self.hyperparams.cat_field_list
-        ]
-
-        # Create Dataset with same metadata as training
-        # This ensures consistent handling of categorical features
-        return Dataset(
-            X,
-            label=None,
-            feature_name=feature_columns,
-            categorical_feature=categorical_features,
-        )
-
-    def _predict(self, data: Dataset) -> np.ndarray:
+    def _predict(self, data: np.ndarray) -> np.ndarray:
         """
         Generate multi-task predictions.
 
+        Following legacy pattern: accept numpy array directly.
+
         Parameters
         ----------
-        data : Dataset
-            Data to predict on
+        data : np.ndarray
+            Feature matrix to predict on
 
         Returns
         -------
@@ -291,11 +286,9 @@ class MtgbmModel(BaseMultiTaskModel):
         if self.model is None:
             raise ValueError("Model not trained. Call train() first.")
 
-        # Get data from Dataset
-        X = data.data
-
-        # Multi-task prediction - returns [N_samples, N_tasks]
-        predictions = self.model.predict(X)
+        # Multi-task prediction on raw numpy array (legacy pattern)
+        # Returns [N_samples, N_tasks]
+        predictions = self.model.predict(data)
 
         # Apply sigmoid transformation for binary classification
         predictions = expit(predictions)
@@ -316,9 +309,10 @@ class MtgbmModel(BaseMultiTaskModel):
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save LightGBMT model using custom save method (preserves multi-task info)
+        # Save LightGBMT model using standard save_model (compatible with Booster load)
+        # Note: save_model2() creates incompatible format that Booster() cannot load
         model_file = output_dir / "lightgbmmt_model.txt"
-        self.model.save_model2(str(model_file))
+        self.model.save_model(str(model_file))
         self.logger.info(f"Saved multi-task model to {model_file}")
 
         # Save hyperparameters

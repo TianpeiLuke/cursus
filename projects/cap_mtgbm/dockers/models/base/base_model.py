@@ -188,9 +188,9 @@ class BaseMultiTaskModel(ABC):
         Parameters
         ----------
         val_data : Any
-            Validation data
+            Validation data (Dataset format)
         test_data : Any, optional
-            Test data
+            Test data (Dataset format)
 
         Returns
         -------
@@ -199,14 +199,17 @@ class BaseMultiTaskModel(ABC):
         """
         metrics = {}
 
-        # Validation metrics
-        val_preds = self._predict(val_data)
+        # Extract features from Dataset for prediction
+        # Model's _predict() expects numpy arrays, not Dataset objects
+        val_features = val_data.data
+        val_preds = self._predict(val_features)
         val_metrics = self._compute_metrics(val_data, val_preds)
         metrics["validation"] = val_metrics
 
         # Test metrics if available
         if test_data is not None:
-            test_preds = self._predict(test_data)
+            test_features = test_data.data
+            test_preds = self._predict(test_features)
             test_metrics = self._compute_metrics(test_data, test_preds)
             metrics["test"] = test_metrics
 

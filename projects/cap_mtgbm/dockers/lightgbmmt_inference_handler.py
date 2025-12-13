@@ -308,36 +308,36 @@ def read_feature_columns(model_dir: str) -> List[str]:
 def load_lightgbmmt_model(model_dir: str) -> MtgbmModel:
     """
     Load LightGBMMT model using MtgbmModel wrapper.
-    
+
     Consistent with training/eval approach - uses ModelFactory pattern.
     The wrapper handles multi-task specifics (num_labels, predictions, etc.).
-    
+
     Args:
         model_dir: Directory containing model artifacts
-    
+
     Returns:
         MtgbmModel: Loaded multi-task model
     """
     # Load hyperparameters
     hyperparams_file = os.path.join(model_dir, HYPERPARAMETERS_FILE)
-    with open(hyperparams_file, 'r') as f:
+    with open(hyperparams_file, "r") as f:
         hyperparams_dict = json.load(f)
     hyperparams = LightGBMMtModelHyperparameters(**hyperparams_dict)
-    
+
     # Create model using factory (no loss_function/training_state for inference)
     model = ModelFactory.create(
         model_type="mtgbm",
-        loss_function=None,      # Not needed for inference
-        training_state=None,     # Not needed for inference  
+        loss_function=None,  # Not needed for inference
+        training_state=None,  # Not needed for inference
         hyperparams=hyperparams,
     )
-    
+
     # Load model artifacts
     model.load(model_dir)
-    
+
     num_tasks = len(hyperparams.task_label_names) if hyperparams.task_label_names else 1
     logger.info(f"Loaded MtgbmModel with {num_tasks} tasks from {model_dir}")
-    
+
     return model
 
 
@@ -576,7 +576,7 @@ def create_model_config(
 def model_fn(model_dir: str) -> Dict[str, Any]:
     """
     Load the model and preprocessing artifacts from model_dir.
-    
+
     Uses MtgbmModel wrapper for consistency with training/eval scripts.
 
     Args:
@@ -597,7 +597,7 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
 
         # Load model using wrapper (handles hyperparameters internally)
         model = load_lightgbmmt_model(model_dir)
-        
+
         # Load preprocessing artifacts
         risk_tables = load_risk_tables(model_dir)
         risk_processors = create_risk_processors(risk_tables)
@@ -607,7 +607,7 @@ def model_fn(model_dir: str) -> Dict[str, Any]:
 
         feature_importance = load_feature_importance(model_dir)
         feature_columns = read_feature_columns(model_dir)
-        
+
         # Get hyperparameters from model wrapper
         hyperparameters = model.hyperparams.model_dump()
 
@@ -963,23 +963,23 @@ def generate_multitask_predictions(
 ) -> np.ndarray:
     """
     Generate multi-task predictions using MtgbmModel wrapper.
-    
+
     The wrapper's predict() method handles:
     - Feature extraction
     - Multi-task prediction
     - Sigmoid transformation
-    
+
     Args:
         model: MtgbmModel wrapper
         df: Preprocessed DataFrame
         feature_columns: List of feature column names
-    
+
     Returns:
         np.ndarray of shape (n_samples, n_tasks) with probabilities (sigmoid applied)
     """
     # MtgbmModel.predict() handles everything internally
     predictions = model.predict(df, feature_columns)
-    
+
     logger.info(f"Generated multi-task predictions: shape {predictions.shape}")
     return predictions
 
@@ -1034,8 +1034,7 @@ def predict_fn(
 
             # Create DataFrame for MtgbmModel.predict()
             preprocessed_df = pd.DataFrame(
-                processed_values.reshape(1, -1), 
-                columns=feature_columns
+                processed_values.reshape(1, -1), columns=feature_columns
             )
         else:
             # BATCH PATH: Original DataFrame processing for multiple records

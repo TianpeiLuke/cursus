@@ -121,8 +121,10 @@ class BaseLossFunction(ABC):
         if self.cache_predictions and cache_key in self._pred_cache:
             return self._pred_cache[cache_key]
 
-        # Reshape
-        preds_mat = preds.reshape(-1, num_col)
+        # Reshape from flattened [T*N] to matrix [N, T]
+        # LightGBM flattens as: transpose then reshape
+        # So we reverse: reshape to [T, N] then transpose to [N, T]
+        preds_mat = preds.reshape((num_col, -1)).transpose()
 
         # Apply sigmoid
         preds_mat = expit(preds_mat)
@@ -141,8 +143,8 @@ class BaseLossFunction(ABC):
         """
         Reshape label matrix with validation.
 
-        Retrieves multi-task labels from 'multi_task_labels' field in Dataset.
-        This field is set by MtgbmModel._prepare_data() and contains all task labels.
+        Retrieves multi-task labels directly from Dataset.get_label().
+        The Dataset is created with label=y_train (2D array) in MtgbmModel._prepare_data().
 
         Parameters
         ----------
@@ -161,20 +163,14 @@ class BaseLossFunction(ABC):
         if self.cache_predictions and cache_key in self._label_cache:
             return self._label_cache[cache_key]
 
-        # Get multi-task labels from custom field
-        # This field is set by MtgbmModel._prepare_data() as y_train.flatten()
-        try:
-            labels = train_data.get_field("multi_task_labels")
-        except Exception:
-            # Fallback to standard label field for backward compatibility
-            self.logger.warning(
-                "multi_task_labels field not found, falling back to get_label(). "
-                "This may cause shape mismatch errors."
-            )
-            labels = train_data.get_label()
+        # Get multi-task labels directly from Dataset
+        # Dataset stores the 2D label array passed during creation
+        labels = train_data.get_label()
 
-        # Reshape from flattened [N*T] to matrix [N, T]
-        labels_mat = labels.reshape(-1, num_col)
+        # Reshape from flattened [T*N] to matrix [N, T]
+        # LightGBM flattens as: transpose then reshape
+        # So we reverse: reshape to [T, N] then transpose to [N, T]
+        labels_mat = labels.reshape((num_col, -1)).transpose()
 
         # Validate
         if labels_mat.shape[1] != num_col:
