@@ -263,7 +263,7 @@ class MtgbmModel(BaseMultiTaskModel):
         # Extract features from DataFrame and return as numpy array
         # Legacy pattern: predict directly on arrays, not Datasets
         X = df[feature_columns].values
-        
+
         return X
 
     def _predict(self, data: np.ndarray) -> np.ndarray:

@@ -1084,10 +1084,9 @@ def save_artifacts(
     """Saves trained model and all preprocessing artifacts."""
     os.makedirs(model_path, exist_ok=True)
 
-    # 1. Save LightGBM model
-    model_file = os.path.join(model_path, "lightgbmmt_model.txt")
-    model.save(model_file)
-    logger.info(f"Saved LightGBMMT model to {model_file}")
+    # 1. Save LightGBM model (pass directory, model handles filename)
+    model.save(model_path)
+    logger.info(f"Saved LightGBMMT model to {model_path}")
 
     # 2. Save risk tables
     risk_map_file = os.path.join(model_path, "risk_table_map.pkl")

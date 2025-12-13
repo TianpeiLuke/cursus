@@ -36,6 +36,9 @@ class AdaptiveWeightLoss(BaseLossFunction):
         # Iteration counter for weight update methods
         self.iteration_count = 0
 
+        # Internal iteration counter for objective function calls
+        self._objective_call_count = 0
+
         # Cached similarity for tenIters and delta methods
         self.cached_similarity = None
 
@@ -236,7 +239,12 @@ class AdaptiveWeightLoss(BaseLossFunction):
     def objective(
         self, preds: np.ndarray, train_data: Any, ep: Optional[float] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Compute adaptive weighted gradients and hessians."""
+        """
+        Compute adaptive weighted gradients and hessians.
+
+        Uses internal iteration counter to track weight adaptation progress.
+        Logs weight evolution every 10 iterations for monitoring.
+        """
         # Preprocess
         labels_mat = self._preprocess_labels(train_data, self.num_col)
         preds_mat = self._preprocess_predictions(preds, self.num_col, ep)
@@ -245,8 +253,17 @@ class AdaptiveWeightLoss(BaseLossFunction):
         grad_i = self.grad(labels_mat, preds_mat)
         hess_i = self.hess(preds_mat)
 
-        # Compute adaptive weights (pass iteration as 0 for now - will be updated in training loop)
-        weights = self.compute_weights(labels_mat, preds_mat, iteration=0)
+        # Use actual iteration count (not hardcoded 0!)
+        # Use ep if provided (legacy compatibility), otherwise use internal counter
+        iteration = ep if ep is not None else self._objective_call_count
+        weights = self.compute_weights(labels_mat, preds_mat, iteration=iteration)
+
+        # Increment internal counter
+        self._objective_call_count += 1
+
+        # Log weight evolution periodically
+        if iteration % 10 == 0:
+            self.logger.info(f"Iteration {iteration}: weights = {np.round(weights, 4)}")
 
         # Weight and aggregate
         weights_reshaped = weights.reshape(1, -1)
