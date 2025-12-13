@@ -140,15 +140,21 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_curve,
     f1_score,
+    precision_score,
+    recall_score,
 )
 from scipy import stats
 from scipy.stats import pearsonr, spearmanr
-import lightgbm as lgbm
 import matplotlib.pyplot as plt
 import time
 import tarfile
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
+
+# Model factory imports
+from models.factory.model_factory import ModelFactory
+from models.base.training_state import TrainingState
+from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
 
 # Embedded processor classes to remove external dependencies
 
@@ -382,6 +388,7 @@ CONTAINER_PATHS = {
     "EVAL_DATA_DIR": "/opt/ml/processing/input/eval_data",
     "OUTPUT_EVAL_DIR": "/opt/ml/processing/output/eval",
     "OUTPUT_METRICS_DIR": "/opt/ml/processing/output/metrics",
+    "OUTPUT_PLOTS_DIR": "/opt/ml/processing/output/plots",
 }
 
 
@@ -526,9 +533,9 @@ def parse_task_label_names(env_value: str) -> List[str]:
 
 def load_model_artifacts(
     model_dir: str,
-) -> Tuple[lgbm.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
+) -> Tuple[Any, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
-    Load trained LightGBMMT model and preprocessing artifacts.
+    Load trained LightGBMMT model using MtgbmModel wrapper.
 
     Returns: model, risk_tables, impute_dict, feature_columns, hyperparameters
     """
@@ -536,11 +543,6 @@ def load_model_artifacts(
 
     # Decompress if needed
     decompress_model_artifacts(model_dir)
-
-    # Load LightGBM model
-    model_file = os.path.join(model_dir, "lightgbmmt_model.txt")
-    model = lgbm.Booster(model_file=model_file)
-    logger.info(f"Loaded lightgbmmt_model.txt")
 
     # Load preprocessing artifacts
     with open(os.path.join(model_dir, "risk_table_map.pkl"), "rb") as f:
@@ -555,13 +557,27 @@ def load_model_artifacts(
         feature_columns = [
             line.strip().split(",")[1] for line in f if not line.startswith("#")
         ]
-    logger.info(f"Loaded feature_columns.txt: {feature_columns}")
+    logger.info(f"Loaded feature_columns.txt: {len(feature_columns)} features")
 
+    # Load hyperparameters
     with open(os.path.join(model_dir, "hyperparameters.json"), "r") as f:
-        hyperparams = json.load(f)
+        hyperparams_dict = json.load(f)
+    hyperparams = LightGBMMtModelHyperparameters(**hyperparams_dict)
     logger.info("Loaded hyperparameters.json")
 
-    return model, risk_tables, impute_dict, feature_columns, hyperparams
+    # Create model using factory (NO loss_function or training_state for inference)
+    model = ModelFactory.create(
+        model_type="mtgbm",
+        loss_function=None,  # Not needed for inference
+        training_state=None,  # Not needed for inference
+        hyperparams=hyperparams,
+    )
+
+    # Load model artifacts
+    model.load(model_dir)
+    logger.info(f"Loaded model with {hyperparams.num_tasks} tasks")
+
+    return model, risk_tables, impute_dict, feature_columns, hyperparams_dict
 
 
 # ============================================================================
@@ -644,22 +660,526 @@ def get_id_column(df: pd.DataFrame, id_field: str) -> str:
 
 
 def predict_multitask(
-    model: lgbm.Booster, df: pd.DataFrame, feature_columns: List[str]
+    model: Any, df: pd.DataFrame, feature_columns: List[str]
 ) -> np.ndarray:
     """
-    Generate multi-task predictions.
+    Generate multi-task predictions using MtgbmModel wrapper.
 
     Returns: np.ndarray of shape (n_samples, n_tasks) with probabilities
     """
-    X = df[feature_columns]
-    predictions = model.predict(X)
-
-    # LightGBM multi-task output is already (n_samples, n_tasks)
-    if predictions.ndim == 1:
-        predictions = predictions.reshape(-1, 1)
+    # Pass full DataFrame - model handles feature extraction
+    predictions = model.predict(df, feature_columns)
 
     logger.info(f"Generated predictions shape: {predictions.shape}")
     return predictions
+
+
+# ============================================================================
+# MULTI-TASK MODEL COMPARISON
+# ============================================================================
+
+
+def compute_task_comparison_metrics(
+    y_true: np.ndarray,
+    y_new_score: np.ndarray,
+    y_prev_score: np.ndarray,
+    task_name: str,
+) -> Dict[str, float]:
+    """
+    Compute comparison metrics between new and previous model for a single task.
+    Pattern from xgboost_model_eval.py compute_comparison_metrics
+    """
+    logger.info(f"Computing comparison metrics for task: {task_name}")
+
+    comparison_metrics = {}
+
+    # Correlation metrics
+    try:
+        pearson_corr, pearson_p = pearsonr(y_new_score, y_prev_score)
+        spearman_corr, spearman_p = spearmanr(y_new_score, y_prev_score)
+    except (TypeError, AttributeError) as e:
+        logger.warning(f"SciPy correlation failed: {e}. Using numpy fallback.")
+        pearson_corr = float(np.corrcoef(y_new_score, y_prev_score)[0, 1])
+        pearson_p = np.nan
+        spearman_corr = pearson_corr
+        spearman_p = np.nan
+
+    comparison_metrics.update(
+        {
+            "pearson_correlation": pearson_corr,
+            "pearson_p_value": pearson_p,
+            "spearman_correlation": spearman_corr,
+            "spearman_p_value": spearman_p,
+        }
+    )
+
+    # Performance comparison
+    new_auc = roc_auc_score(y_true, y_new_score)
+    prev_auc = roc_auc_score(y_true, y_prev_score)
+    new_ap = average_precision_score(y_true, y_new_score)
+    prev_ap = average_precision_score(y_true, y_prev_score)
+
+    comparison_metrics.update(
+        {
+            "new_model_auc": new_auc,
+            "previous_model_auc": prev_auc,
+            "auc_delta": new_auc - prev_auc,
+            "auc_lift_percent": ((new_auc - prev_auc) / prev_auc) * 100
+            if prev_auc > 0
+            else 0,
+            "new_model_ap": new_ap,
+            "previous_model_ap": prev_ap,
+            "ap_delta": new_ap - prev_ap,
+            "ap_lift_percent": ((new_ap - prev_ap) / prev_ap) * 100
+            if prev_ap > 0
+            else 0,
+        }
+    )
+
+    # F1 comparison at thresholds
+    for threshold in [0.3, 0.5, 0.7]:
+        new_f1 = f1_score(y_true, (y_new_score >= threshold).astype(int))
+        prev_f1 = f1_score(y_true, (y_prev_score >= threshold).astype(int))
+        comparison_metrics[f"new_model_f1_at_{threshold}"] = new_f1
+        comparison_metrics[f"previous_model_f1_at_{threshold}"] = prev_f1
+        comparison_metrics[f"f1_delta_at_{threshold}"] = new_f1 - prev_f1
+
+    # Score distribution comparison
+    comparison_metrics.update(
+        {
+            "new_score_mean": float(np.mean(y_new_score)),
+            "previous_score_mean": float(np.mean(y_prev_score)),
+            "new_score_std": float(np.std(y_new_score)),
+            "previous_score_std": float(np.std(y_prev_score)),
+            "score_mean_delta": float(np.mean(y_new_score) - np.mean(y_prev_score)),
+        }
+    )
+
+    # Agreement metrics
+    for threshold in [0.3, 0.5, 0.7]:
+        new_pred = (y_new_score >= threshold).astype(int)
+        prev_pred = (y_prev_score >= threshold).astype(int)
+        agreement = np.mean(new_pred == prev_pred)
+        comparison_metrics[f"prediction_agreement_at_{threshold}"] = agreement
+
+    logger.info(
+        f"Task {task_name}: AUC delta={comparison_metrics['auc_delta']:.4f}, "
+        f"Correlation={comparison_metrics['pearson_correlation']:.4f}"
+    )
+
+    return comparison_metrics
+
+
+def perform_task_statistical_tests(
+    y_true: np.ndarray,
+    y_new_score: np.ndarray,
+    y_prev_score: np.ndarray,
+    task_name: str,
+) -> Dict[str, float]:
+    """
+    Perform statistical tests for a single task.
+    Pattern from xgboost_model_eval.py perform_statistical_tests
+    """
+    logger.info(f"Performing statistical tests for task: {task_name}")
+
+    test_results = {}
+
+    # McNemar's test
+    new_pred = (y_new_score >= 0.5).astype(int)
+    prev_pred = (y_prev_score >= 0.5).astype(int)
+
+    correct_both = np.sum((new_pred == y_true) & (prev_pred == y_true))
+    new_correct_prev_wrong = np.sum((new_pred == y_true) & (prev_pred != y_true))
+    new_wrong_prev_correct = np.sum((new_pred != y_true) & (prev_pred == y_true))
+    wrong_both = np.sum((new_pred != y_true) & (prev_pred != y_true))
+
+    if (new_correct_prev_wrong + new_wrong_prev_correct) > 0:
+        mcnemar_stat = (
+            (abs(new_correct_prev_wrong - new_wrong_prev_correct) - 1) ** 2
+        ) / (new_correct_prev_wrong + new_wrong_prev_correct)
+        mcnemar_p_value = 1 - stats.chi2.cdf(mcnemar_stat, 1)
+    else:
+        mcnemar_stat = 0.0
+        mcnemar_p_value = 1.0
+
+    test_results.update(
+        {
+            "mcnemar_statistic": mcnemar_stat,
+            "mcnemar_p_value": mcnemar_p_value,
+            "mcnemar_significant": bool(mcnemar_p_value < 0.05),
+            "correct_both": int(correct_both),
+            "new_correct_prev_wrong": int(new_correct_prev_wrong),
+            "new_wrong_prev_correct": int(new_wrong_prev_correct),
+            "wrong_both": int(wrong_both),
+        }
+    )
+
+    # Paired t-test
+    t_stat, t_p_value = stats.ttest_rel(y_new_score, y_prev_score)
+    test_results.update(
+        {
+            "paired_t_statistic": t_stat,
+            "paired_t_p_value": t_p_value,
+            "paired_t_significant": bool(t_p_value < 0.05),
+        }
+    )
+
+    # Wilcoxon signed-rank test
+    try:
+        wilcoxon_stat, wilcoxon_p = stats.wilcoxon(y_new_score, y_prev_score)
+        test_results.update(
+            {
+                "wilcoxon_statistic": wilcoxon_stat,
+                "wilcoxon_p_value": wilcoxon_p,
+                "wilcoxon_significant": bool(wilcoxon_p < 0.05),
+            }
+        )
+    except ValueError as e:
+        logger.warning(f"Could not perform Wilcoxon test for task {task_name}: {e}")
+        test_results.update(
+            {
+                "wilcoxon_statistic": np.nan,
+                "wilcoxon_p_value": np.nan,
+                "wilcoxon_significant": False,
+            }
+        )
+
+    logger.info(
+        f"Task {task_name}: McNemar p={test_results['mcnemar_p_value']:.4f}, "
+        f"Paired t-test p={test_results['paired_t_p_value']:.4f}"
+    )
+
+    return test_results
+
+
+def plot_task_comparison_roc(
+    y_true: np.ndarray,
+    y_new_score: np.ndarray,
+    y_prev_score: np.ndarray,
+    task_name: str,
+    output_dir: str,
+) -> None:
+    """Plot comparison ROC curves for a single task."""
+    logger.info(f"Creating comparison ROC curves for task: {task_name}")
+
+    fpr_new, tpr_new, _ = roc_curve(y_true, y_new_score)
+    fpr_prev, tpr_prev, _ = roc_curve(y_true, y_prev_score)
+
+    auc_new = roc_auc_score(y_true, y_new_score)
+    auc_prev = roc_auc_score(y_true, y_prev_score)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(
+        fpr_new, tpr_new, "b-", linewidth=2, label=f"New Model (AUC = {auc_new:.3f})"
+    )
+    plt.plot(
+        fpr_prev,
+        tpr_prev,
+        "r--",
+        linewidth=2,
+        label=f"Previous Model (AUC = {auc_prev:.3f})",
+    )
+    plt.plot([0, 1], [0, 1], "k:", alpha=0.6, label="Random")
+
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"{task_name} ROC Comparison (Δ AUC = {auc_new - auc_prev:+.3f})")
+    plt.legend(loc="lower right")
+    plt.grid(True, alpha=0.3)
+
+    out_path = os.path.join(output_dir, f"{task_name}_comparison_roc.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved comparison ROC to {out_path}")
+
+
+def plot_task_comparison_pr(
+    y_true: np.ndarray,
+    y_new_score: np.ndarray,
+    y_prev_score: np.ndarray,
+    task_name: str,
+    output_dir: str,
+) -> None:
+    """Plot comparison PR curves for a single task."""
+    logger.info(f"Creating comparison PR curves for task: {task_name}")
+
+    precision_new, recall_new, _ = precision_recall_curve(y_true, y_new_score)
+    precision_prev, recall_prev, _ = precision_recall_curve(y_true, y_prev_score)
+
+    ap_new = average_precision_score(y_true, y_new_score)
+    ap_prev = average_precision_score(y_true, y_prev_score)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(
+        recall_new,
+        precision_new,
+        "b-",
+        linewidth=2,
+        label=f"New Model (AP = {ap_new:.3f})",
+    )
+    plt.plot(
+        recall_prev,
+        precision_prev,
+        "r--",
+        linewidth=2,
+        label=f"Previous Model (AP = {ap_prev:.3f})",
+    )
+
+    baseline = np.mean(y_true)
+    plt.axhline(
+        y=baseline,
+        color="k",
+        linestyle=":",
+        alpha=0.6,
+        label=f"Random (AP = {baseline:.3f})",
+    )
+
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title(f"{task_name} PR Comparison (Δ AP = {ap_new - ap_prev:+.3f})")
+    plt.legend(loc="lower left")
+    plt.grid(True, alpha=0.3)
+
+    out_path = os.path.join(output_dir, f"{task_name}_comparison_pr.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved comparison PR to {out_path}")
+
+
+def plot_task_score_scatter(
+    y_new_score: np.ndarray,
+    y_prev_score: np.ndarray,
+    y_true: np.ndarray,
+    task_name: str,
+    output_dir: str,
+) -> None:
+    """Plot score scatter for a single task."""
+    logger.info(f"Creating score scatter for task: {task_name}")
+
+    plt.figure(figsize=(10, 8))
+
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+
+    plt.scatter(
+        y_prev_score[neg_mask],
+        y_new_score[neg_mask],
+        c="lightcoral",
+        alpha=0.6,
+        s=20,
+        label="Negative (0)",
+    )
+    plt.scatter(
+        y_prev_score[pos_mask],
+        y_new_score[pos_mask],
+        c="lightblue",
+        alpha=0.6,
+        s=20,
+        label="Positive (1)",
+    )
+
+    min_score = min(np.min(y_prev_score), np.min(y_new_score))
+    max_score = max(np.max(y_prev_score), np.max(y_new_score))
+    plt.plot(
+        [min_score, max_score],
+        [min_score, max_score],
+        "k--",
+        alpha=0.8,
+        label="Perfect Correlation",
+    )
+
+    try:
+        correlation = pearsonr(y_new_score, y_prev_score)[0]
+    except (TypeError, AttributeError):
+        correlation = float(np.corrcoef(y_new_score, y_prev_score)[0, 1])
+
+    plt.xlabel("Previous Model Score")
+    plt.ylabel("New Model Score")
+    plt.title(f"{task_name} Score Comparison (Correlation = {correlation:.3f})")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    out_path = os.path.join(output_dir, f"{task_name}_score_scatter.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved score scatter to {out_path}")
+
+
+def plot_task_score_distributions(
+    y_new_score: np.ndarray,
+    y_prev_score: np.ndarray,
+    y_true: np.ndarray,
+    task_name: str,
+    output_dir: str,
+) -> None:
+    """Plot score distributions for a single task."""
+    logger.info(f"Creating score distributions for task: {task_name}")
+
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+
+    # New model distributions
+    axes[0, 0].hist(
+        y_new_score[neg_mask],
+        bins=30,
+        alpha=0.7,
+        color="lightcoral",
+        label="Negative (0)",
+        density=True,
+    )
+    axes[0, 0].hist(
+        y_new_score[pos_mask],
+        bins=30,
+        alpha=0.7,
+        color="lightblue",
+        label="Positive (1)",
+        density=True,
+    )
+    axes[0, 0].set_title(f"{task_name} New Model Score Distribution")
+    axes[0, 0].set_xlabel("Score")
+    axes[0, 0].set_ylabel("Density")
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+
+    # Previous model distributions
+    axes[0, 1].hist(
+        y_prev_score[neg_mask],
+        bins=30,
+        alpha=0.7,
+        color="lightcoral",
+        label="Negative (0)",
+        density=True,
+    )
+    axes[0, 1].hist(
+        y_prev_score[pos_mask],
+        bins=30,
+        alpha=0.7,
+        color="lightblue",
+        label="Positive (1)",
+        density=True,
+    )
+    axes[0, 1].set_title(f"{task_name} Previous Model Score Distribution")
+    axes[0, 1].set_xlabel("Score")
+    axes[0, 1].set_ylabel("Density")
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+
+    # Score difference
+    score_diff = y_new_score - y_prev_score
+    axes[1, 0].hist(
+        score_diff[neg_mask],
+        bins=30,
+        alpha=0.7,
+        color="lightcoral",
+        label="Negative (0)",
+        density=True,
+    )
+    axes[1, 0].hist(
+        score_diff[pos_mask],
+        bins=30,
+        alpha=0.7,
+        color="lightblue",
+        label="Positive (1)",
+        density=True,
+    )
+    axes[1, 0].axvline(x=0, color="black", linestyle="--", alpha=0.8)
+    axes[1, 0].set_title(f"{task_name} Score Difference (New - Previous)")
+    axes[1, 0].set_xlabel("Score Difference")
+    axes[1, 0].set_ylabel("Density")
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+
+    # Box plots
+    box_data = [
+        y_prev_score[neg_mask],
+        y_new_score[neg_mask],
+        y_prev_score[pos_mask],
+        y_new_score[pos_mask],
+    ]
+    box_labels = ["Prev (Neg)", "New (Neg)", "Prev (Pos)", "New (Pos)"]
+    box_colors = ["lightcoral", "lightcoral", "lightblue", "lightblue"]
+
+    bp = axes[1, 1].boxplot(box_data, labels=box_labels, patch_artist=True)
+    for patch, color in zip(bp["boxes"], box_colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+
+    axes[1, 1].set_title(f"{task_name} Score Distribution Comparison")
+    axes[1, 1].set_ylabel("Score")
+    axes[1, 1].grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    out_path = os.path.join(output_dir, f"{task_name}_score_distributions.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved score distributions to {out_path}")
+
+
+def create_multitask_comparison_report(
+    metrics: Dict[str, Any],
+    task_names: List[str],
+    output_dir: str,
+) -> None:
+    """Create comprehensive multi-task comparison report."""
+    logger.info("Creating multi-task comparison report")
+
+    report_path = os.path.join(output_dir, "multitask_comparison_report.txt")
+
+    with open(report_path, "w") as f:
+        f.write("MULTI-TASK MODEL COMPARISON REPORT\n")
+        f.write("=" * 70 + "\n")
+        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+
+        # Per-task summaries
+        for i, task_name in enumerate(task_names):
+            task_key = f"task_{i}_{task_name}_comparison"
+            if task_key not in metrics:
+                continue
+
+            task_metrics = metrics[task_key]
+
+            f.write(f"\nTASK: {task_name}\n")
+            f.write("-" * 70 + "\n")
+
+            # Performance
+            new_auc = task_metrics.get("new_model_auc", "N/A")
+            prev_auc = task_metrics.get("previous_model_auc", "N/A")
+            auc_delta = task_metrics.get("auc_delta", "N/A")
+
+            f.write(f"  New Model AUC:      {new_auc:.4f}\n")
+            f.write(f"  Previous Model AUC: {prev_auc:.4f}\n")
+            f.write(f"  AUC Delta:          {auc_delta:+.4f}\n\n")
+
+            # Statistical significance
+            mcnemar_p = task_metrics.get("mcnemar_p_value", "N/A")
+            mcnemar_sig = task_metrics.get("mcnemar_significant", False)
+            f.write(
+                f"  McNemar p-value:    {mcnemar_p:.4f} {'(Significant)' if mcnemar_sig else '(Not Significant)'}\n"
+            )
+
+            # Recommendation
+            if isinstance(auc_delta, (int, float)):
+                if auc_delta > 0.01:
+                    f.write("  ✓ NEW MODEL RECOMMENDED\n")
+                elif auc_delta > -0.005:
+                    f.write("  ≈ SIMILAR PERFORMANCE\n")
+                else:
+                    f.write("  ✗ PREVIOUS MODEL PREFERRED\n")
+
+        # Aggregate summary
+        if "aggregate_comparison" in metrics:
+            agg = metrics["aggregate_comparison"]
+            f.write("\n" + "=" * 70 + "\n")
+            f.write("AGGREGATE SUMMARY\n")
+            f.write("=" * 70 + "\n")
+            f.write(f"Mean AUC Delta:     {agg.get('mean_auc_delta', 'N/A'):.4f}\n")
+            f.write(f"Median AUC Delta:   {agg.get('median_auc_delta', 'N/A'):.4f}\n")
+            f.write(f"Tasks Improved:     {agg.get('tasks_improved', 'N/A')}\n")
+            f.write(f"Tasks Degraded:     {agg.get('tasks_degraded', 'N/A')}\n")
+
+    logger.info(f"Saved multi-task comparison report to {report_path}")
 
 
 # ============================================================================
@@ -672,34 +1192,84 @@ def compute_multitask_metrics(
     y_pred_tasks: np.ndarray,
     task_names: List[str],
 ) -> Dict[str, Any]:
-    """Compute per-task and aggregate metrics."""
-    logger.info("Computing multi-task metrics")
+    """
+    Compute comprehensive per-task and aggregate metrics.
+    Enhanced with threshold analysis matching xgboost_model_eval.py pattern.
+    """
+    logger.info("Computing multi-task metrics with threshold analysis")
     metrics = {}
     auc_rocs = []
     aps = []
     f1s = []
+    max_f1s = []
+    optimal_thresholds = []
 
     for i, task_name in enumerate(task_names):
         y_true = y_true_tasks[i]
         y_pred = y_pred_tasks[:, i]
 
         try:
+            # Core metrics
             auc_roc = roc_auc_score(y_true, y_pred)
             ap = average_precision_score(y_true, y_pred)
             f1 = f1_score(y_true, y_pred > 0.5)
 
-            metrics[f"task_{i}_{task_name}"] = {
+            # Precision-Recall curve analysis
+            precision, recall, pr_thresholds = precision_recall_curve(y_true, y_pred)
+
+            # Threshold-based metrics (matching xgboost_model_eval.py)
+            task_metrics = {
                 "auc_roc": float(auc_roc),
                 "average_precision": float(ap),
                 "f1_score": float(f1),
+                "precision_at_threshold_0.5": float(
+                    precision_score(y_true, (y_pred > 0.5).astype(int))
+                ),
+                "recall_at_threshold_0.5": float(
+                    recall_score(y_true, (y_pred > 0.5).astype(int))
+                ),
             }
 
+            # Metrics at multiple thresholds
+            for threshold in [0.3, 0.5, 0.7]:
+                y_pred_thresh = (y_pred >= threshold).astype(int)
+                task_metrics[f"f1_score_at_{threshold}"] = float(
+                    f1_score(y_true, y_pred_thresh)
+                )
+                task_metrics[f"precision_at_{threshold}"] = float(
+                    precision_score(y_true, y_pred_thresh)
+                )
+                task_metrics[f"recall_at_{threshold}"] = float(
+                    recall_score(y_true, y_pred_thresh)
+                )
+
+            # Max F1 score and optimal threshold
+            f1_scores = 2 * precision * recall / (precision + recall + 1e-8)
+            max_f1 = np.max(f1_scores)
+            task_metrics["max_f1_score"] = float(max_f1)
+
+            # ROC curve for optimal threshold
+            fpr, tpr, roc_thresholds = roc_curve(y_true, y_pred)
+            optimal_idx = np.argmax(tpr - fpr)
+            optimal_threshold = (
+                roc_thresholds[optimal_idx]
+                if len(roc_thresholds) > optimal_idx
+                else 0.5
+            )
+            task_metrics["optimal_threshold"] = float(optimal_threshold)
+
+            metrics[f"task_{i}_{task_name}"] = task_metrics
+
+            # Collect for aggregation
             auc_rocs.append(auc_roc)
             aps.append(ap)
             f1s.append(f1)
+            max_f1s.append(max_f1)
+            optimal_thresholds.append(optimal_threshold)
 
             logger.info(
-                f"Task {i} ({task_name}): AUC={auc_roc:.4f}, AP={ap:.4f}, F1={f1:.4f}"
+                f"Task {i} ({task_name}): AUC={auc_roc:.4f}, AP={ap:.4f}, F1={f1:.4f}, "
+                f"Max F1={max_f1:.4f}, Optimal Threshold={optimal_threshold:.3f}"
             )
 
         except ValueError as e:
@@ -708,6 +1278,8 @@ def compute_multitask_metrics(
                 "auc_roc": 0.5,
                 "average_precision": 0.5,
                 "f1_score": 0.0,
+                "max_f1_score": 0.0,
+                "optimal_threshold": 0.5,
             }
 
     # Aggregate metrics
@@ -719,12 +1291,17 @@ def compute_multitask_metrics(
             "median_average_precision": float(np.median(aps)),
             "mean_f1_score": float(np.mean(f1s)),
             "median_f1_score": float(np.median(f1s)),
+            "mean_max_f1_score": float(np.mean(max_f1s)),
+            "median_max_f1_score": float(np.median(max_f1s)),
+            "mean_optimal_threshold": float(np.mean(optimal_thresholds)),
+            "median_optimal_threshold": float(np.median(optimal_thresholds)),
         }
 
         logger.info("Aggregate Metrics:")
         logger.info(f"  Mean AUC-ROC: {metrics['aggregate']['mean_auc_roc']:.4f}")
         logger.info(f"  Mean AP: {metrics['aggregate']['mean_average_precision']:.4f}")
         logger.info(f"  Mean F1: {metrics['aggregate']['mean_f1_score']:.4f}")
+        logger.info(f"  Mean Max F1: {metrics['aggregate']['mean_max_f1_score']:.4f}")
 
     return metrics
 
@@ -767,7 +1344,7 @@ def plot_multitask_curves(
             plt.ylabel("True Positive Rate")
             plt.legend()
             plt.savefig(
-                os.path.join(output_dir, f"task_{i}_{task_name}_roc.jpg"), dpi=150
+                os.path.join(output_dir, f"task_{i}_{task_name}_roc.jpg"), dpi=300
             )
             plt.close()
 
@@ -782,7 +1359,7 @@ def plot_multitask_curves(
             plt.ylabel("Precision")
             plt.legend()
             plt.savefig(
-                os.path.join(output_dir, f"task_{i}_{task_name}_pr.jpg"), dpi=150
+                os.path.join(output_dir, f"task_{i}_{task_name}_pr.jpg"), dpi=300
             )
             plt.close()
 
@@ -790,6 +1367,179 @@ def plot_multitask_curves(
 
         except Exception as e:
             logger.warning(f"Error plotting task {i} ({task_name}): {e}")
+
+
+def plot_task_score_distribution(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    task_name: str,
+    output_dir: str,
+) -> None:
+    """
+    Plot score distribution for a single task, separated by class.
+    Pattern from xgboost_model_eval.py and model_metrics_computation.py
+    """
+    plt.figure(figsize=(10, 6))
+    plt.hist(
+        y_score[y_true == 0],
+        bins=50,
+        alpha=0.7,
+        label="Negative (0)",
+        density=True,
+        color="lightcoral",
+    )
+    plt.hist(
+        y_score[y_true == 1],
+        bins=50,
+        alpha=0.7,
+        label="Positive (1)",
+        density=True,
+        color="lightblue",
+    )
+    plt.xlabel("Prediction Score")
+    plt.ylabel("Density")
+    plt.title(f"{task_name} - Score Distribution by Class")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    out_path = os.path.join(output_dir, f"{task_name}_score_distribution.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved score distribution plot to {out_path}")
+
+
+def plot_task_threshold_analysis(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    task_name: str,
+    optimal_threshold: float,
+    output_dir: str,
+) -> None:
+    """
+    Plot F1, precision, recall vs threshold for a single task.
+    Pattern from model_metrics_computation.py
+    """
+    thresholds = np.linspace(0, 1, 101)
+    f1_scores = []
+    precisions = []
+    recalls = []
+
+    for threshold in thresholds:
+        y_pred = (y_score >= threshold).astype(int)
+        if len(np.unique(y_pred)) > 1:
+            f1_scores.append(f1_score(y_true, y_pred))
+            precisions.append(precision_score(y_true, y_pred))
+            recalls.append(recall_score(y_true, y_pred))
+        else:
+            f1_scores.append(0)
+            precisions.append(0)
+            recalls.append(0)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, f1_scores, label="F1 Score", linewidth=2)
+    plt.plot(thresholds, precisions, label="Precision", linewidth=2)
+    plt.plot(thresholds, recalls, label="Recall", linewidth=2)
+    plt.axvline(
+        x=optimal_threshold,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Optimal Threshold ({optimal_threshold:.3f})",
+    )
+    plt.xlabel("Threshold")
+    plt.ylabel("Score")
+    plt.title(f"{task_name} - Threshold Analysis")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    out_path = os.path.join(output_dir, f"{task_name}_threshold_analysis.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved threshold analysis plot to {out_path}")
+
+
+def plot_combined_multitask_roc(
+    y_true_tasks: Dict[int, np.ndarray],
+    y_pred_tasks: np.ndarray,
+    task_names: List[str],
+    output_dir: str,
+) -> None:
+    """
+    Plot all task ROC curves on a single plot.
+    Pattern from model_metrics_computation.py multiclass_roc_curves
+    """
+    logger.info("Creating combined multi-task ROC curves")
+
+    plt.figure(figsize=(10, 8))
+
+    for i, task_name in enumerate(task_names):
+        y_true = y_true_tasks[i]
+        y_pred = y_pred_tasks[:, i]
+
+        if len(np.unique(y_true)) > 1:
+            fpr, tpr, _ = roc_curve(y_true, y_pred)
+            auc = roc_auc_score(y_true, y_pred)
+            plt.plot(fpr, tpr, linewidth=2, label=f"{task_name} (AUC={auc:.3f})")
+
+    plt.plot([0, 1], [0, 1], "k--", alpha=0.6, label="Random")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Multi-Task ROC Curves")
+    plt.legend(loc="lower right")
+    plt.grid(True, alpha=0.3)
+
+    out_path = os.path.join(output_dir, "multitask_combined_roc_curves.jpg")
+    plt.savefig(out_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Saved combined multi-task ROC curves to {out_path}")
+
+
+def generate_comprehensive_visualizations(
+    y_true_tasks: Dict[int, np.ndarray],
+    y_pred_tasks: np.ndarray,
+    task_names: List[str],
+    metrics: Dict[str, Any],
+    output_dir: str,
+) -> None:
+    """
+    Generate comprehensive visualizations for multi-task evaluation.
+    Includes per-task and aggregate plots.
+    """
+    logger.info("Generating comprehensive multi-task visualizations")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Per-task visualizations
+    for i, task_name in enumerate(task_names):
+        y_true = y_true_tasks[i]
+        y_pred = y_pred_tasks[:, i]
+
+        if len(np.unique(y_true)) < 2:
+            logger.warning(
+                f"Task {task_name}: Only one class present, skipping visualizations"
+            )
+            continue
+
+        try:
+            # Score distribution
+            plot_task_score_distribution(y_true, y_pred, task_name, output_dir)
+
+            # Threshold analysis
+            task_metrics = metrics.get(f"task_{i}_{task_name}", {})
+            optimal_threshold = task_metrics.get("optimal_threshold", 0.5)
+            plot_task_threshold_analysis(
+                y_true, y_pred, task_name, optimal_threshold, output_dir
+            )
+
+        except Exception as e:
+            logger.warning(f"Error generating visualizations for task {task_name}: {e}")
+
+    # Combined multi-task visualization
+    try:
+        plot_combined_multitask_roc(y_true_tasks, y_pred_tasks, task_names, output_dir)
+    except Exception as e:
+        logger.warning(f"Error generating combined multi-task ROC curves: {e}")
+
+    logger.info("Comprehensive visualization generation complete")
 
 
 # ============================================================================
@@ -867,8 +1617,144 @@ def create_health_check_file(output_path: str) -> str:
 # ============================================================================
 
 
+def evaluate_model_with_comparison(
+    model: Any,
+    df: pd.DataFrame,
+    feature_columns: List[str],
+    task_names: List[str],
+    previous_scores: Dict[str, np.ndarray],
+    id_col: str,
+    output_eval_dir: str,
+    output_metrics_dir: str,
+    comparison_metrics: str,
+    statistical_tests: bool,
+    comparison_plots: bool,
+    input_format: str = "csv",
+) -> None:
+    """
+    Run multi-task model evaluation with comparison to previous model.
+    Pattern from xgboost_model_eval.py evaluate_model_with_comparison
+    """
+    logger.info("Starting multi-task evaluation with comparison mode")
+
+    # Extract task labels
+    y_true_tasks = {}
+    for i, task_name in enumerate(task_names):
+        if task_name not in df.columns:
+            raise ValueError(f"Task label '{task_name}' not found in data")
+        y_true_tasks[i] = df[task_name].astype(int).values
+
+    # Get IDs
+    ids = df[id_col].values
+
+    # Generate new model predictions
+    y_pred_tasks = predict_multitask(model, df, feature_columns)
+
+    # Compute standard metrics
+    metrics = compute_multitask_metrics(y_true_tasks, y_pred_tasks, task_names)
+
+    # Per-task comparison
+    auc_deltas = []
+    for i, task_name in enumerate(task_names):
+        y_true = y_true_tasks[i]
+        y_new_score = y_pred_tasks[:, i]
+        y_prev_score = previous_scores[task_name]
+
+        # Compute comparison metrics
+        if comparison_metrics in ["all", "basic"]:
+            comp_metrics = compute_task_comparison_metrics(
+                y_true, y_new_score, y_prev_score, task_name
+            )
+            metrics[f"task_{i}_{task_name}_comparison"] = comp_metrics
+            auc_deltas.append(comp_metrics["auc_delta"])
+
+        # Perform statistical tests
+        if statistical_tests:
+            stat_results = perform_task_statistical_tests(
+                y_true, y_new_score, y_prev_score, task_name
+            )
+            metrics[f"task_{i}_{task_name}_comparison"].update(stat_results)
+
+        # Generate comparison plots
+        if comparison_plots:
+            plot_task_comparison_roc(
+                y_true, y_new_score, y_prev_score, task_name, output_metrics_dir
+            )
+            plot_task_comparison_pr(
+                y_true, y_new_score, y_prev_score, task_name, output_metrics_dir
+            )
+            plot_task_score_scatter(
+                y_new_score, y_prev_score, y_true, task_name, output_metrics_dir
+            )
+            plot_task_score_distributions(
+                y_new_score, y_prev_score, y_true, task_name, output_metrics_dir
+            )
+
+    # Aggregate comparison metrics
+    if auc_deltas:
+        metrics["aggregate_comparison"] = {
+            "mean_auc_delta": float(np.mean(auc_deltas)),
+            "median_auc_delta": float(np.median(auc_deltas)),
+            "tasks_improved": int(sum(1 for d in auc_deltas if d > 0.01)),
+            "tasks_degraded": int(sum(1 for d in auc_deltas if d < -0.01)),
+        }
+
+    # Save enhanced predictions with comparison
+    save_predictions_with_comparison(
+        ids,
+        y_true_tasks,
+        y_pred_tasks,
+        previous_scores,
+        task_names,
+        id_col,
+        output_eval_dir,
+        input_format,
+    )
+
+    # Save metrics
+    save_metrics(metrics, output_metrics_dir)
+
+    # Create comparison report
+    create_multitask_comparison_report(metrics, task_names, output_metrics_dir)
+
+    logger.info("Multi-task evaluation with comparison complete")
+
+
+def save_predictions_with_comparison(
+    ids: np.ndarray,
+    y_true_tasks: Dict[int, np.ndarray],
+    y_pred_tasks: np.ndarray,
+    previous_scores: Dict[str, np.ndarray],
+    task_names: List[str],
+    id_col: str,
+    output_dir: str,
+    input_format: str = "csv",
+) -> None:
+    """Save multi-task predictions with comparison to previous model."""
+    logger.info(
+        f"Saving predictions with comparison to {output_dir} in {input_format} format"
+    )
+
+    # Build predictions DataFrame
+    pred_df = pd.DataFrame({id_col: ids})
+
+    for i, task_name in enumerate(task_names):
+        pred_df[f"{task_name}_true"] = y_true_tasks[i]
+        pred_df[f"{task_name}_new_prob"] = y_pred_tasks[:, i]
+        pred_df[f"{task_name}_prev_prob"] = previous_scores[task_name]
+        pred_df[f"{task_name}_score_diff"] = (
+            y_pred_tasks[:, i] - previous_scores[task_name]
+        )
+
+    output_base = Path(output_dir) / "eval_predictions_with_comparison"
+    output_path = save_dataframe_with_format(pred_df, output_base, input_format)
+    logger.info(
+        f"Saved predictions with comparison (format={input_format}): {output_path}"
+    )
+
+
 def evaluate_model(
-    model: lgbm.Booster,
+    model: Any,
     df: pd.DataFrame,
     feature_columns: List[str],
     task_names: List[str],
@@ -876,8 +1762,9 @@ def evaluate_model(
     output_eval_dir: str,
     output_metrics_dir: str,
     input_format: str = "csv",
+    generate_plots: bool = True,
 ) -> None:
-    """Run multi-task model evaluation."""
+    """Run multi-task model evaluation using MtgbmModel wrapper."""
     logger.info("Starting multi-task evaluation")
 
     # Extract task labels
@@ -896,8 +1783,19 @@ def evaluate_model(
     # Compute metrics
     metrics = compute_multitask_metrics(y_true_tasks, y_pred_tasks, task_names)
 
-    # Generate plots
-    plot_multitask_curves(y_true_tasks, y_pred_tasks, task_names, output_metrics_dir)
+    # Generate visualizations
+    if generate_plots:
+        logger.info("Generating visualizations (enabled via GENERATE_PLOTS)")
+        # Basic ROC/PR curves per task
+        plot_multitask_curves(
+            y_true_tasks, y_pred_tasks, task_names, output_metrics_dir
+        )
+        # Comprehensive visualizations
+        generate_comprehensive_visualizations(
+            y_true_tasks, y_pred_tasks, task_names, metrics, output_metrics_dir
+        )
+    else:
+        logger.info("Visualization generation skipped (GENERATE_PLOTS=false)")
 
     # Save outputs
     save_predictions(
@@ -932,12 +1830,43 @@ def main(
     )
 
     # Extract environment variables
+    # Basic field configuration
     id_field = environ_vars.get("ID_FIELD", "id")
+
+    # Multi-task configuration
     task_label_names_str = environ_vars.get("TASK_LABEL_NAMES", "")
+    previous_score_fields_str = environ_vars.get("PREVIOUS_SCORE_FIELDS", "")
+
+    # Visualization configuration
+    generate_plots = environ_vars.get("GENERATE_PLOTS", "true").lower() == "true"
+
+    # Comparison mode configuration (reserved for future implementation)
+    comparison_mode = environ_vars.get("COMPARISON_MODE", "false").lower() == "true"
+    comparison_metrics = environ_vars.get("COMPARISON_METRICS", "all")
+    statistical_tests = environ_vars.get("STATISTICAL_TESTS", "true").lower() == "true"
+    comparison_plots = environ_vars.get("COMPARISON_PLOTS", "true").lower() == "true"
+
+    # Guard rail: If PREVIOUS_SCORE_FIELDS is empty, disable comparison mode
+    if comparison_mode and (
+        not previous_score_fields_str or previous_score_fields_str.strip() == ""
+    ):
+        logger.warning(
+            "COMPARISON_MODE is enabled but PREVIOUS_SCORE_FIELDS is empty. Disabling comparison mode."
+        )
+        comparison_mode = False
 
     # Parse task label names
     task_names = parse_task_label_names(task_label_names_str)
     logger.info(f"Parsed task names: {task_names}")
+
+    # Log configuration
+    logger.info(f"Visualization plots: {generate_plots}")
+    logger.info(f"Comparison mode: {comparison_mode}")
+    if comparison_mode:
+        logger.info(f"Previous score fields: {previous_score_fields_str}")
+        logger.info(f"Comparison metrics: {comparison_metrics}")
+        logger.info(f"Statistical tests: {statistical_tests}")
+        logger.info(f"Comparison plots: {comparison_plots}")
 
     # Ensure output directories exist
     os.makedirs(output_eval_dir, exist_ok=True)
@@ -971,17 +1900,63 @@ def main(
     available_features = [col for col in feature_columns if col in df.columns]
     logger.info(f"Using {len(available_features)} features for inference")
 
-    # Evaluate
-    evaluate_model(
-        model,
-        df,
-        available_features,
-        task_names,
-        id_col,
-        output_eval_dir,
-        output_metrics_dir,
-        input_format,
-    )
+    # Evaluate with or without comparison
+    if comparison_mode and previous_score_fields_str:
+        # Parse previous score fields
+        prev_score_fields = [
+            f.strip() for f in previous_score_fields_str.split(",") if f.strip()
+        ]
+
+        # Validate and load previous scores
+        previous_scores = {}
+        for i, task_name in enumerate(task_names):
+            if i < len(prev_score_fields):
+                prev_field = prev_score_fields[i]
+                if prev_field not in df.columns:
+                    logger.error(
+                        f"Previous score field '{prev_field}' not found in data for task '{task_name}'"
+                    )
+                    raise ValueError(
+                        f"Previous score field '{prev_field}' not found in data"
+                    )
+                previous_scores[task_name] = df[prev_field].values
+                logger.info(
+                    f"Loaded previous scores for task '{task_name}' from field '{prev_field}'"
+                )
+            else:
+                logger.error(
+                    f"No previous score field specified for task '{task_name}' (index {i})"
+                )
+                raise ValueError(f"PREVIOUS_SCORE_FIELDS must have one field per task")
+
+        # Run comparison evaluation
+        evaluate_model_with_comparison(
+            model,
+            df,
+            available_features,
+            task_names,
+            previous_scores,
+            id_col,
+            output_eval_dir,
+            output_metrics_dir,
+            comparison_metrics,
+            statistical_tests,
+            comparison_plots,
+            input_format,
+        )
+    else:
+        # Standard evaluation
+        evaluate_model(
+            model,
+            df,
+            available_features,
+            task_names,
+            id_col,
+            output_eval_dir,
+            output_metrics_dir,
+            input_format,
+            generate_plots,
+        )
 
     logger.info("LightGBMMT model evaluation complete")
 
@@ -1002,10 +1977,24 @@ if __name__ == "__main__":
         "metrics_output": CONTAINER_PATHS["OUTPUT_METRICS_DIR"],
     }
 
-    # Collect environment variables
+    # Collect environment variables (aligned with xgboost_model_eval)
     environ_vars = {
+        # Basic field configuration
         "ID_FIELD": os.environ.get("ID_FIELD", "id"),
-        "TASK_LABEL_NAMES": os.environ.get("TASK_LABEL_NAMES", ""),
+        # Multi-task configuration
+        "TASK_LABEL_NAMES": os.environ.get(
+            "TASK_LABEL_NAMES", ""
+        ),  # Explicit task labels (comma-separated or JSON)
+        "PREVIOUS_SCORE_FIELDS": os.environ.get(
+            "PREVIOUS_SCORE_FIELDS", ""
+        ),  # Comma-separated previous score fields for multi-task comparison
+        # Visualization configuration
+        "GENERATE_PLOTS": os.environ.get("GENERATE_PLOTS", "true"),
+        # Comparison mode configuration (reserved for future implementation)
+        "COMPARISON_MODE": os.environ.get("COMPARISON_MODE", "false"),
+        "COMPARISON_METRICS": os.environ.get("COMPARISON_METRICS", "all"),
+        "STATISTICAL_TESTS": os.environ.get("STATISTICAL_TESTS", "true"),
+        "COMPARISON_PLOTS": os.environ.get("COMPARISON_PLOTS", "true"),
     }
 
     try:

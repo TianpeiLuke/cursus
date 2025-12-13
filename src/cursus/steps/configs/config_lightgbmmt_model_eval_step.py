@@ -88,8 +88,37 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
         default=True, description="Whether to use large instance type for processing"
     )
 
-    # Note: Multi-task comparison mode is not yet implemented but reserved for future enhancement
-    # following the single-task pattern
+    # Visualization configuration (Tier 2 - Optional with defaults)
+    generate_plots: bool = Field(
+        default=True,
+        description="Enable visualization generation (ROC, PR curves, score distributions, threshold analysis)",
+    )
+
+    # Multi-task model comparison configuration (Tier 2 - Optional with defaults)
+    comparison_mode: bool = Field(
+        default=False,
+        description="Enable multi-task model comparison functionality to compare with previous model scores per task",
+    )
+
+    previous_score_fields: str = Field(
+        default="",
+        description="Comma-separated list of columns containing previous model scores for each task (required when comparison_mode=True). Must provide one field per task in same order as task_label_names.",
+    )
+
+    comparison_metrics: str = Field(
+        default="all",
+        description="Comparison metrics to compute per task: 'all' for comprehensive metrics, 'basic' for essential metrics only",
+    )
+
+    statistical_tests: bool = Field(
+        default=True,
+        description="Enable statistical significance tests per task (McNemar's test, paired t-test, Wilcoxon test)",
+    )
+
+    comparison_plots: bool = Field(
+        default=True,
+        description="Enable comparison visualizations per task (side-by-side ROC/PR curves, scatter plots, distributions)",
+    )
 
     model_config = ProcessingStepConfigBase.model_config
 
@@ -152,6 +181,42 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
                 f"task_label_names contains duplicate task names: {set(duplicates)}"
             )
 
+        # Validate comparison mode configuration
+        if self.comparison_mode:
+            if (
+                not self.previous_score_fields
+                or self.previous_score_fields.strip() == ""
+            ):
+                raise ValueError(
+                    "previous_score_fields must be provided when comparison_mode is True"
+                )
+
+            # Validate comparison_metrics value
+            valid_comparison_metrics = {"all", "basic"}
+            if self.comparison_metrics not in valid_comparison_metrics:
+                raise ValueError(
+                    f"comparison_metrics must be one of {valid_comparison_metrics}, got '{self.comparison_metrics}'"
+                )
+
+            # Parse and validate previous_score_fields count matches task count
+            prev_fields = [
+                f.strip() for f in self.previous_score_fields.split(",") if f.strip()
+            ]
+            if len(prev_fields) != len(self.task_label_names):
+                raise ValueError(
+                    f"previous_score_fields must contain exactly {len(self.task_label_names)} fields "
+                    f"(one per task), got {len(prev_fields)} fields"
+                )
+
+            logger.info(
+                f"Multi-task comparison mode enabled with {len(prev_fields)} previous score fields: "
+                f"{self.previous_score_fields}"
+            )
+        else:
+            logger.debug(
+                "Comparison mode disabled - standard multi-task evaluation will be performed"
+            )
+
         logger.debug(
             f"ID field '{self.id_name}' and {len(self.task_label_names)} task labels "
             f"{self.task_label_names} will be used for multi-task evaluation"
@@ -189,6 +254,20 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
         # Add eval metric choices
         if self.eval_metric_choices:
             env_vars["EVAL_METRIC_CHOICES"] = ",".join(self.eval_metric_choices)
+
+        # Add visualization configuration
+        env_vars["GENERATE_PLOTS"] = str(self.generate_plots).lower()
+
+        # Add comparison mode environment variables
+        env_vars.update(
+            {
+                "COMPARISON_MODE": str(self.comparison_mode).lower(),
+                "PREVIOUS_SCORE_FIELDS": self.previous_score_fields,
+                "COMPARISON_METRICS": self.comparison_metrics,
+                "STATISTICAL_TESTS": str(self.statistical_tests).lower(),
+                "COMPARISON_PLOTS": str(self.comparison_plots).lower(),
+            }
+        )
 
         return env_vars
 
@@ -229,6 +308,13 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
             "framework_version": self.framework_version,
             "py_version": self.py_version,
             "use_large_processing_instance": self.use_large_processing_instance,
+            # Tier 2 - Visualization and comparison mode fields
+            "generate_plots": self.generate_plots,
+            "comparison_mode": self.comparison_mode,
+            "previous_score_fields": self.previous_score_fields,
+            "comparison_metrics": self.comparison_metrics,
+            "statistical_tests": self.statistical_tests,
+            "comparison_plots": self.comparison_plots,
         }
 
         # Add eval_metric_choices if set to non-default value

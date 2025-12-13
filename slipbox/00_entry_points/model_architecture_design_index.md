@@ -118,11 +118,14 @@ Model Architecture Designs
 
 **Related Design Docs:**
 - [MTGBM Multi-Task Learning Design](../1_design/mtgbm_multi_task_learning_design.md) - **PRIMARY** - Multi-task architecture
+- [LightGBMMT Fork Integration Design](../1_design/lightgbmmt_fork_integration_design.md) - **NEW** - Integration strategy for custom fork enabling multi-task predictions
 - [MTGBM Model Classes Refactoring Design](../1_design/mtgbm_model_classes_refactoring_design.md)
 - [MTGBM Models Refactoring Design](../1_design/mtgbm_models_refactoring_design.md)
 - [LightGBM-MT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
 
 **Related Analysis:**
+- [LightGBMMT Package Architecture Critical Analysis](../4_analysis/2025-12-12_lightgbmmt_package_architecture_critical_analysis.md) - **🚨 CRITICAL** - Custom LightGBM fork dependency
+- [Legacy LightGBMMT Package Integration Analysis](../4_analysis/2025-12-12_legacy_lightgbmmt_package_integration_analysis.md) - **NEW** - C++ modifications, Python wrapper extensions, and integration strategy
 - [MTGBM Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)
 - [MTGBM Refactoring Functional Equivalence Analysis](../4_analysis/2025-12-10_mtgbm_refactoring_functional_equivalence_analysis.md) - **NEW** - Legacy vs refactored loss function comparison
 - [LightGBMMT Package Correspondence Analysis](../4_analysis/2025-12-10_lightgbmmt_package_correspondence_analysis.md) - **NEW** - Training script architecture analysis

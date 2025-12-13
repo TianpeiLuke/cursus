@@ -30,7 +30,7 @@ This analysis documents the correspondence between the legacy **lightgbmmt packa
 **Key Findings:**
 - ✅ **Legacy `engine.py::train()` → Refactored `lightgbmmt_training.py::main()`**
 - ✅ **Package-based architecture → Script-based architecture**
-- ✅ **Functional equivalence maintained** with enhanced modularity
+- ⚠️ **Partial functional equivalence** - Training complete, inference incomplete
 - ✅ **Better separation of concerns** (training vs evaluation vs inference)
 - ✅ **Improved testability** through dependency injection
 - ✅ **Enhanced configurability** via hyperparameters
@@ -41,9 +41,21 @@ Legacy: Import lightgbmmt.engine.train()
 Refactored: Execute lightgbmmt_training.py as standalone script
 ```
 
-**Verdict:** Successful transformation from **package-centric** to **script-centric** architecture, enabling better deployment patterns, clearer responsibilities, and improved maintainability.
+**Critical Limitation:**
+> ⚠️ **Multi-Task Prediction Not Fully Implemented**
+> 
+> The refactored code successfully trains multi-task models but **cannot generate multi-task predictions** at inference time. Standard LightGBM (used in refactored code) only supports single-output predictions, while the legacy lightgbmmt package (custom C++ fork) supports multi-output predictions.
+>
+> **Status:**
+> - ✅ Training: Fully functional with multi-task loss
+> - ❌ Inference: Incomplete - missing public predict() method and multi-task output capability
+>
+> See **[LightGBMMT Package Architecture Critical Analysis](./2025-12-12_lightgbmmt_package_architecture_critical_analysis.md)** for detailed analysis.
+
+**Verdict:** Partially successful transformation from **package-centric** to **script-centric** architecture. While training architecture is improved, inference capabilities require completion or migration to lightgbmmt package for production use.
 
 ## Related Documents
+- **[LightGBMMT Package Architecture Critical Analysis](./2025-12-12_lightgbmmt_package_architecture_critical_analysis.md)** - **🚨 CRITICAL** - Custom LightGBM fork dependency analysis
 - **[MTGBM Refactoring Functional Equivalence Analysis](./2025-12-10_mtgbm_refactoring_functional_equivalence_analysis.md)** - Loss function analysis
 - **[MTGBM Multi-Task Learning Design](../1_design/mtgbm_multi_task_learning_design.md)** - Design specification
 
@@ -150,7 +162,7 @@ python lightgbmmt_training.py
 | Callback system | `models/base/training_state.py::TrainingState` | ✅ **Modernized with Pydantic** |
 | Manual validation | `evaluate_split_multitask()` | ✅ Built-in |
 | `booster.update()` loop | `models/implementations/mtgbm_model.py::_train_model()` | ✅ Encapsulated in model |
-| `booster.predict()` | `models/implementations/mtgbm_model.py::_predict()` | ✅ Encapsulated in model |
+| `booster.predict()` (multi-task) | ❌ **NOT IMPLEMENTED** | ⚠️ **INCOMPLETE** - See critical analysis |
 
 ---
 
@@ -1255,17 +1267,26 @@ model.train(train_df, val_df, test_df)
 - Predictions with ground truth
 - Format-preserving output
 
-**New Capabilities:**
+**⚠️ IMPLEMENTATION STATUS:**
+> **Multi-task prediction incomplete** - The evaluation script calls `model.predict()` which:
+> 1. Does not exist as a public method in `MtgbmModel`
+> 2. Even if added, standard LightGBM only returns single-task predictions
+> 
+> **Current State:** Evaluation script will fail at runtime when attempting predictions.
+>
+> **Required Fix:** Either use lightgbmmt package OR train separate models per task.
+
+**Intended Capabilities (Not Fully Functional):**
 ```python
-# lightgbmmt_model_eval.py provides:
+# lightgbmmt_model_eval.py intends to provide:
 1. Model loading from saved artifacts
 2. Data loading with format detection
 3. Preprocessing using saved artifacts
-4. Multi-task prediction
-5. Per-task metrics (AUC, AP, F1)
-6. Aggregate metrics (mean, median)
-7. Visualization (ROC, PR curves)
-8. Predictions export (preserves input format)
+4. ❌ Multi-task prediction (NOT WORKING)
+5. ❌ Per-task metrics (BLOCKED by prediction issue)
+6. ❌ Aggregate metrics (BLOCKED by prediction issue)
+7. ⚠️ Visualization (BLOCKED by prediction issue)
+8. ⚠️ Predictions export (BLOCKED by prediction issue)
 ```
 
 ---
@@ -1286,14 +1307,23 @@ model.train(train_df, val_df, test_df)
 - Multiple output formats (CSV, Parquet, JSON)
 - Production-ready
 
-**New Capabilities:**
+**⚠️ IMPLEMENTATION STATUS:**
+> **Same multi-task prediction issue** - The inference script has the same limitation as evaluation:
+> 1. Missing public `predict()` method in `MtgbmModel`
+> 2. Standard LightGBM cannot generate multi-task predictions
+> 
+> **Current State:** Inference script will fail at runtime when attempting predictions.
+>
+> **Required Fix:** Either use lightgbmmt package OR train separate models per task.
+
+**Intended Capabilities (Not Fully Functional):**
 ```python
-# lightgbmmt_model_inference.py provides:
+# lightgbmmt_model_inference.py intends to provide:
 1. Model + artifact loading
 2. Data loading with format detection
 3. Consistent preprocessing pipeline
-4. Multi-task prediction generation
-5. Format-preserving or custom output
+4. ❌ Multi-task prediction generation (NOT WORKING)
+5. ⚠️ Format-preserving or custom output (BLOCKED by prediction issue)
 6. No metrics (pure inference)
 7. Health check markers
 8. Error handling

@@ -134,10 +134,14 @@ import pandas as pd
 import numpy as np
 import pickle as pkl
 from pathlib import Path
-import lightgbm as lgbm
 import tarfile
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
+
+# Import unified model architecture
+from models.implementations.mtgbm_model import MtgbmModel
+from models.factory.model_factory import ModelFactory
+from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
 
 # Embedded processor classes to remove external dependencies
 
@@ -514,9 +518,9 @@ def parse_task_label_names(env_value: str) -> List[str]:
 
 def load_model_artifacts(
     model_dir: str,
-) -> Tuple[lgbm.Booster, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
+) -> Tuple[MtgbmModel, Dict[str, Any], Dict[str, Any], List[str], Dict[str, Any]]:
     """
-    Load trained LightGBMMT model and preprocessing artifacts.
+    Load trained LightGBMMT model and preprocessing artifacts using unified architecture.
 
     Returns: model, risk_tables, impute_dict, feature_columns, hyperparameters
     """
@@ -525,10 +529,27 @@ def load_model_artifacts(
     # Decompress if needed
     decompress_model_artifacts(model_dir)
 
-    # Load LightGBM model
-    model_file = os.path.join(model_dir, "lightgbmmt_model.txt")
-    model = lgbm.Booster(model_file=model_file)
-    logger.info(f"✓ Loaded lightgbmmt_model.txt")
+    # Load hyperparameters first to create model instance
+    hyperparams_path = os.path.join(model_dir, "hyperparameters.json")
+    with open(hyperparams_path, "r") as f:
+        hyperparams_dict = json.load(f)
+    logger.info("✓ Loaded hyperparameters.json")
+
+    # Create hyperparameters object
+    hyperparams = LightGBMMtModelHyperparameters(**hyperparams_dict)
+
+    # Create model instance using factory (no loss function needed for inference)
+    model = ModelFactory.create(
+        model_type="mtgbm",
+        loss_function=None,  # Not needed for inference
+        training_state=None,  # Not needed for inference
+        hyperparams=hyperparams,
+    )
+    logger.info("✓ Created MtgbmModel instance")
+
+    # Load model artifacts using unified interface
+    model.load(model_dir)
+    logger.info("✓ Loaded model using MtgbmModel.load()")
 
     # Load preprocessing artifacts
     with open(os.path.join(model_dir, "risk_table_map.pkl"), "rb") as f:
@@ -545,12 +566,8 @@ def load_model_artifacts(
         ]
     logger.info(f"✓ Loaded feature_columns.txt: {len(feature_columns)} features")
 
-    with open(os.path.join(model_dir, "hyperparameters.json"), "r") as f:
-        hyperparams = json.load(f)
-    logger.info("✓ Loaded hyperparameters.json")
-
     logger.info("All model artifacts loaded successfully")
-    return model, risk_tables, impute_dict, feature_columns, hyperparams
+    return model, risk_tables, impute_dict, feature_columns, hyperparams_dict
 
 
 # ============================================================================
@@ -618,13 +635,13 @@ def preprocess_inference_data(
 
 
 def generate_multitask_predictions(
-    model: lgbm.Booster, df: pd.DataFrame, feature_columns: List[str]
+    model: MtgbmModel, df: pd.DataFrame, feature_columns: List[str]
 ) -> np.ndarray:
     """
-    Generate multi-task predictions using the LightGBM model.
+    Generate multi-task predictions using the unified MtgbmModel.
 
     Args:
-        model: Trained LightGBM multi-task model
+        model: Trained MtgbmModel instance
         df: DataFrame with preprocessed features
         feature_columns: List of feature column names
 
@@ -634,16 +651,10 @@ def generate_multitask_predictions(
     # Get available features for prediction
     available_features = [col for col in feature_columns if col in df.columns]
     logger.info(f"Using {len(available_features)} features for prediction")
-    X = df[available_features]
 
-    # Generate predictions
-    predictions = model.predict(X)
+    # Generate predictions using unified model interface
+    predictions = model.predict(df, feature_columns=available_features)
     logger.info(f"Model prediction shape: {predictions.shape}")
-
-    # Ensure 2D output (n_samples, n_tasks)
-    if predictions.ndim == 1:
-        predictions = predictions.reshape(-1, 1)
-        logger.info("Converted 1D prediction to 2D array")
 
     return predictions
 

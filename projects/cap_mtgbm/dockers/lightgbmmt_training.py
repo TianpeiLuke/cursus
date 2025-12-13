@@ -895,8 +895,9 @@ def predict_multitask(
 
     Returns: np.ndarray of shape (n_samples, n_tasks) with probabilities
     """
-    X = df[feature_columns]
-    predictions = model.predict(X)
+    # Pass full DataFrame and feature_columns to model
+    # Model handles feature extraction internally
+    predictions = model.predict(df, feature_columns)
     return predictions
 
 

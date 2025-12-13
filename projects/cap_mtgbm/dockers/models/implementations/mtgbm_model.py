@@ -7,10 +7,11 @@ Implements shared tree structure for multi-task learning.
 from typing import Optional, Dict, Any, Tuple
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
 import json
 from pathlib import Path
+from scipy.special import expit
 
+from ..lightgbmmt import Dataset, Booster, train
 from ..base.base_model import BaseMultiTaskModel
 
 
@@ -29,11 +30,11 @@ class MtgbmModel(BaseMultiTaskModel):
         test_df: Optional[pd.DataFrame],
         feature_columns: Optional[list] = None,
         task_columns: Optional[list] = None,
-    ) -> Tuple[lgb.Dataset, lgb.Dataset, Optional[lgb.Dataset]]:
+    ) -> Tuple[Dataset, Dataset, Optional[Dataset]]:
         """
-        Prepare data for LightGBM training.
+        Prepare data for LightGBMT training.
 
-        Converts DataFrames to LightGBM Dataset format.
+        Converts DataFrames to LightGBMT Dataset format with native 2D label support.
         Training script controls schema (WHAT columns), model handles format conversion (HOW).
 
         Parameters
@@ -80,46 +81,40 @@ class MtgbmModel(BaseMultiTaskModel):
                     "Must specify task columns either via method parameter or hyperparameters."
                 )
 
-        # Extract features and labels (simple slicing - no schema knowledge needed!)
+        # Extract features and labels
         X_train = train_df[feature_columns].values
         y_train = train_df[task_columns].values
 
-        # Get main task index from hyperparameters (default to 0 if not specified)
-        main_task_idx = getattr(self.hyperparams, "main_task_index", 0)
-
-        # Create LightGBM Dataset with multi-task labels stored properly
-        # Pass main task label to LightGBM (for validation compatibility)
-        # Store full multi-task labels as flattened array for custom loss retrieval
-        train_data = lgb.Dataset(
+        # Create LightGBMT Dataset with native 2D label support
+        # No field hacks needed - Dataset natively supports multi-dimensional labels
+        train_data = Dataset(
             X_train,
-            label=y_train[
-                :, main_task_idx
-            ],  # Main task (configurable) for LightGBM validation
+            label=y_train,  # Pass full 2D array [N_samples, N_tasks]
             feature_name=feature_columns,
             categorical_feature=[
                 c for c in feature_columns if c in self.hyperparams.cat_field_list
             ],
         )
-        # Store full multi-task labels for custom loss function
-        train_data.set_field("multi_task_labels", y_train.flatten())
 
         # Prepare validation data
         X_val = val_df[feature_columns].values
         y_val = val_df[task_columns].values
-        val_data = lgb.Dataset(
-            X_val, label=y_val[:, main_task_idx], reference=train_data
+        val_data = Dataset(
+            X_val,
+            label=y_val,  # Full 2D array
+            reference=train_data,
         )
-        val_data.set_field("multi_task_labels", y_val.flatten())
 
         # Prepare test data if provided
         test_data = None
         if test_df is not None:
             X_test = test_df[feature_columns].values
             y_test = test_df[task_columns].values
-            test_data = lgb.Dataset(
-                X_test, label=y_test[:, main_task_idx], reference=train_data
+            test_data = Dataset(
+                X_test,
+                label=y_test,  # Full 2D array
+                reference=train_data,
             )
-            test_data.set_field("multi_task_labels", y_test.flatten())
 
         self.logger.info(
             f"Prepared data: train={X_train.shape}, "
@@ -133,9 +128,19 @@ class MtgbmModel(BaseMultiTaskModel):
         return train_data, val_data, test_data
 
     def _initialize_model(self) -> None:
-        """Initialize LightGBM model parameters."""
-        # Build LightGBM parameters from hyperparameters
+        """Initialize LightGBMT model parameters."""
+        # Get number of tasks
+        num_tasks = (
+            len(self.hyperparams.task_label_names)
+            if self.hyperparams.task_label_names
+            else 1
+        )
+
+        # Build LightGBMT parameters from hyperparameters
         self.lgb_params = {
+            "objective": "custom",  # Required for multi-task
+            "num_labels": num_tasks,  # Number of tasks
+            "tree_learner": "serial2",  # Required for multi-task
             "boosting_type": self.hyperparams.boosting_type,
             "num_leaves": self.hyperparams.num_leaves,
             "learning_rate": self.hyperparams.learning_rate,
@@ -153,19 +158,18 @@ class MtgbmModel(BaseMultiTaskModel):
         if self.hyperparams.seed is not None:
             self.lgb_params["seed"] = self.hyperparams.seed
 
-        self.logger.info(f"Initialized model with params: {self.lgb_params}")
+        self.logger.info(f"Initialized multi-task model with {num_tasks} tasks")
+        self.logger.info(f"Model params: {self.lgb_params}")
 
-    def _train_model(
-        self, train_data: lgb.Dataset, val_data: lgb.Dataset
-    ) -> Dict[str, Any]:
+    def _train_model(self, train_data: Dataset, val_data: Dataset) -> Dict[str, Any]:
         """
-        Train MT-GBM model with custom loss function.
+        Train MT-GBM model with custom multi-task loss function.
 
         Parameters
         ----------
-        train_data : lgb.Dataset
+        train_data : Dataset
             Training data
-        val_data : lgb.Dataset
+        val_data : Dataset
             Validation data
 
         Returns
@@ -173,43 +177,40 @@ class MtgbmModel(BaseMultiTaskModel):
         metrics : dict
             Training metrics
         """
-        self.logger.info("Starting LightGBM training with custom loss...")
+        self.logger.info("Starting LightGBMT multi-task training with custom loss...")
 
-        # Create params copy for training (LightGBM 4.x compatibility)
-        train_params = self.lgb_params.copy()
+        # Get number of tasks
+        num_tasks = self.lgb_params["num_labels"]
 
-        # LightGBM 4.x: Set custom objective in params dict instead of fobj parameter
-        train_params["objective"] = self.loss_function.objective
-
-        # Prepare callbacks for LightGBM 4.x
-        callbacks = []
-        if self.hyperparams.early_stopping_rounds:
-            callbacks.append(
-                lgb.early_stopping(
-                    stopping_rounds=self.hyperparams.early_stopping_rounds
-                )
-            )
-        callbacks.append(lgb.log_evaluation(period=10))
-
-        # Train with custom loss function (LightGBM 4.x API)
-        self.model = lgb.train(
-            train_params,
+        # Train with custom train() function (supports epoch passing)
+        self.model = train(
+            self.lgb_params,
             train_data,
             num_boost_round=self.hyperparams.num_iterations,
             valid_sets=[val_data],
             valid_names=["valid"],
+            fobj=self.loss_function.objective,  # Custom loss with multi-task support
             feval=self._create_eval_function(),
-            callbacks=callbacks,
+            early_stopping_rounds=self.hyperparams.early_stopping_rounds
+            if self.hyperparams.early_stopping_rounds
+            else None,
+            verbose_eval=10,
         )
+
+        # CRITICAL: Set number of labels for multi-task predictions
+        self.model.set_num_labels(num_tasks)
 
         # Extract training metrics
         metrics = {
             "num_iterations": self.model.num_trees(),
             "best_iteration": self.model.best_iteration,
             "feature_importance": self.model.feature_importance().tolist(),
+            "num_tasks": num_tasks,
         }
 
-        self.logger.info(f"Training completed: {metrics['num_iterations']} trees")
+        self.logger.info(
+            f"Training completed: {metrics['num_iterations']} trees, {num_tasks} tasks"
+        )
 
         return metrics
 
@@ -223,32 +224,89 @@ class MtgbmModel(BaseMultiTaskModel):
 
         return eval_func
 
-    def _predict(self, data: lgb.Dataset) -> np.ndarray:
+    def _prepare_prediction_data(
+        self, df: pd.DataFrame, feature_columns: Optional[list] = None
+    ) -> Dataset:
         """
-        Generate predictions.
+        Prepare data for prediction (no labels needed).
+
+        Creates Dataset with same metadata as training (feature names, categorical features)
+        to ensure consistent behavior. Similar to _prepare_data but without labels.
 
         Parameters
         ----------
-        data : lgb.Dataset
+        df : DataFrame
+            Data to predict on (may contain features + other columns)
+        feature_columns : list, optional
+            List of feature column names to use
+            If not provided, falls back to hyperparameters
+
+        Returns
+        -------
+        data : Dataset
+            Dataset without labels for prediction
+        """
+        # Use provided feature_columns or fallback to hyperparams
+        if feature_columns is None:
+            feature_columns = (
+                self.hyperparams.tab_field_list + self.hyperparams.cat_field_list
+            )
+            self.logger.warning(
+                "feature_columns not provided for prediction, falling back to hyperparams. "
+                "Consider passing explicit columns for consistency with training."
+            )
+
+        # Extract features from DataFrame
+        X = df[feature_columns].values
+
+        # Identify categorical features
+        categorical_features = [
+            c for c in feature_columns if c in self.hyperparams.cat_field_list
+        ]
+
+        # Create Dataset with same metadata as training
+        # This ensures consistent handling of categorical features
+        return Dataset(
+            X,
+            label=None,
+            feature_name=feature_columns,
+            categorical_feature=categorical_features,
+        )
+
+    def _predict(self, data: Dataset) -> np.ndarray:
+        """
+        Generate multi-task predictions.
+
+        Parameters
+        ----------
+        data : Dataset
             Data to predict on
 
         Returns
         -------
         predictions : np.ndarray
-            Raw predictions [N_samples * N_tasks]
+            Multi-task predictions [N_samples, N_tasks]
+            Already includes sigmoid transformation from model
         """
         if self.model is None:
             raise ValueError("Model not trained. Call train() first.")
 
         # Get data from Dataset
         X = data.data
+
+        # Multi-task prediction - returns [N_samples, N_tasks]
         predictions = self.model.predict(X)
+
+        # Apply sigmoid transformation for binary classification
+        predictions = expit(predictions)
+
+        self.logger.info(f"Generated predictions with shape: {predictions.shape}")
 
         return predictions
 
     def _save_model(self, output_path: str) -> None:
         """
-        Save model artifacts.
+        Save multi-task model artifacts.
 
         Parameters
         ----------
@@ -258,10 +316,10 @@ class MtgbmModel(BaseMultiTaskModel):
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save LightGBM model
+        # Save LightGBMT model using custom save method (preserves multi-task info)
         model_file = output_dir / "lightgbmmt_model.txt"
-        self.model.save_model(str(model_file))
-        self.logger.info(f"Saved model to {model_file}")
+        self.model.save_model2(str(model_file))
+        self.logger.info(f"Saved multi-task model to {model_file}")
 
         # Save hyperparameters
         hyperparams_file = output_dir / "hyperparameters.json"
@@ -277,7 +335,7 @@ class MtgbmModel(BaseMultiTaskModel):
 
     def _load_model(self, model_path: str) -> None:
         """
-        Load model artifacts.
+        Load multi-task model artifacts.
 
         Parameters
         ----------
@@ -286,10 +344,18 @@ class MtgbmModel(BaseMultiTaskModel):
         """
         model_dir = Path(model_path)
 
-        # Load LightGBM model
+        # Load LightGBMT model using custom Booster
         model_file = model_dir / "lightgbmmt_model.txt"
-        self.model = lgb.Booster(model_file=str(model_file))
-        self.logger.info(f"Loaded model from {model_file}")
+        self.model = Booster(model_file=str(model_file))
+        self.logger.info(f"Loaded multi-task model from {model_file}")
+
+        # Restore num_labels from hyperparameters
+        if self.hyperparams.task_label_names:
+            num_tasks = len(self.hyperparams.task_label_names)
+            self.model.set_num_labels(num_tasks)
+            self.logger.info(
+                f"Restored num_labels={num_tasks} for multi-task predictions"
+            )
 
         # Load training state if available
         state_file = model_dir / "training_state.json"

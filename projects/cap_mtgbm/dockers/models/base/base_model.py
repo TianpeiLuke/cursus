@@ -27,8 +27,8 @@ class BaseMultiTaskModel(ABC):
 
     def __init__(
         self,
-        loss_function: "BaseLossFunction",
-        training_state: TrainingState,
+        loss_function: Optional["BaseLossFunction"],
+        training_state: Optional[TrainingState],
         hyperparams: "LightGBMMtModelHyperparameters",
     ):
         """
@@ -36,15 +36,15 @@ class BaseMultiTaskModel(ABC):
 
         Parameters
         ----------
-        loss_function : BaseLossFunction
-            Loss function instance
-        training_state : TrainingState
-            Training state for tracking progress
+        loss_function : BaseLossFunction, optional
+            Loss function instance (not required for inference-only mode)
+        training_state : TrainingState, optional
+            Training state for tracking progress (not required for inference-only mode)
         hyperparams : LightGBMMtModelHyperparameters
             Model hyperparameters
         """
         self.loss_function = loss_function
-        self.training_state = training_state
+        self.training_state = training_state or TrainingState()
         self.hyperparams = hyperparams
 
         # Setup logging
@@ -212,15 +212,67 @@ class BaseMultiTaskModel(ABC):
 
         return metrics
 
+    def predict(
+        self, df: pd.DataFrame, feature_columns: Optional[list] = None
+    ) -> np.ndarray:
+        """
+        Public prediction method.
+
+        Accepts DataFrame (same format as training), extracts features,
+        and generates predictions.
+
+        Parameters
+        ----------
+        df : DataFrame
+            Data to predict on (may contain features + other columns)
+        feature_columns : list, optional
+            List of feature column names to use
+            If not provided, model uses hyperparameters
+
+        Returns
+        -------
+        predictions : np.ndarray
+            Model predictions
+        """
+        # Prepare data for prediction (extracts features, creates Dataset)
+        data = self._prepare_prediction_data(df, feature_columns)
+
+        return self._predict(data)
+
+    @abstractmethod
+    def _prepare_prediction_data(
+        self, df: pd.DataFrame, feature_columns: Optional[list] = None
+    ) -> Any:
+        """
+        Prepare data for prediction (no labels needed).
+
+        Subclasses implement model-specific prediction data preparation.
+        Similar to _prepare_data but without labels.
+
+        Parameters
+        ----------
+        df : DataFrame
+            Data to predict on (may contain features + other columns)
+        feature_columns : list, optional
+            List of feature column names to use
+            If not provided, model uses hyperparameters
+
+        Returns
+        -------
+        data : Any
+            Data in model-specific format
+        """
+        pass
+
     @abstractmethod
     def _predict(self, data: Any) -> np.ndarray:
         """
-        Generate predictions.
+        Generate predictions (internal method).
 
         Parameters
         ----------
         data : Any
-            Data to predict on
+            Data to predict on (model-specific format)
 
         Returns
         -------
