@@ -330,14 +330,24 @@ class PipelineAssembler:
         outputs = {}
         step_type = builder.spec.step_type.lower()
 
+        # Check if config has job_type (e.g., training, validation, testing, calibration)
+        job_type = getattr(builder.config, "job_type", None)
+
         # Use each output specification to generate standard output path
         for logical_name, output_spec in builder.spec.outputs.items():
             # Standard path pattern using Join instead of f-string to ensure proper parameter substitution
             from sagemaker.workflow.functions import Join
 
-            outputs[logical_name] = Join(
-                on="/", values=[base_s3_loc, step_type, logical_name]
-            )
+            if job_type:
+                # Include job_type in path for steps that have it (e.g., DummyDataLoading, CradleDataLoading)
+                outputs[logical_name] = Join(
+                    on="/", values=[base_s3_loc, step_type, job_type, logical_name]
+                )
+            else:
+                # Fallback without job_type for steps that don't have it
+                outputs[logical_name] = Join(
+                    on="/", values=[base_s3_loc, step_type, logical_name]
+                )
 
             # Add debug log with type-safe handling using safe_value_for_logging
             logger.debug(
