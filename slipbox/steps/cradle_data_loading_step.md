@@ -70,6 +70,73 @@ The step now uses step specifications and script contracts to standardize input/
 | edx_data_source_properties | EDX-specific properties (required if type is 'EDX') | None |
 | andes_data_source_properties | ANDES-specific properties (required if type is 'ANDES') | None |
 
+### EDX Data Source Examples
+
+The EDX data source supports two main ARN formats for accessing data: **manifest** (direct reference) and **manifest_range** (range queries). Here are examples of both:
+
+#### Example 1: Manifest ARN (Direct Reference)
+Use this format when you have a specific manifest with a dataset key:
+
+```python
+from src.pipeline_steps.config_data_load_step_cradle import EdxDataSourceConfig
+
+# Example: Tag data with specific date range in Ion format
+tag_job_id_dict = {"NA": "job123", "EU": "job456"}
+region = "NA"
+edx_start_date = "2024-11-05"
+edx_end_date = "2025-12-11"
+
+edx_arn_tag = f'arn:amazon:edx:iad::manifest/trms-abuse-analytics/buyer-seller-messaging/bsm-tag-rnr/["{tag_job_id_dict[region]}", {edx_start_date}T00:00:00Z, {edx_end_date}T00:00:00Z, "{region}"]'
+
+edx_config_tag = EdxDataSourceConfig(
+    edx_arn=edx_arn_tag
+)
+```
+
+**Format breakdown:**
+- `arn:amazon:edx:iad::manifest/` - Base ARN prefix for manifest type
+- `{provider}/{subject}/{dataset}/` - EDX resource path
+- `[...]` - Dataset key in Ion list format with elements
+
+#### Example 2: Manifest Range ARN (Range Query)
+Use this format for querying a range of data with query parameters. **⚠️ CRITICAL: Note the `?` separator before query parameters!**
+
+```python
+from src.pipeline_steps.config_data_load_step_cradle import EdxDataSourceConfig
+
+# Example: BSM data with range query
+region = "NA"
+bsm_start_date = "2024-11-05"
+bsm_end_date = "2025-12-11"
+
+# IMPORTANT: Use '?' before query parameters, NOT '/'
+edx_arn_bsm = f'arn:amazon:edx:iad::manifest_range/bsm-prod/thread-message-with-bodies-daily/thread-message-with-bodies-daily-data?range_start=["prod","{region}",{bsm_start_date}]&range_end=["prod","{region}",{bsm_end_date}]&completeness_check_type=no_check'
+
+edx_config_bsm = EdxDataSourceConfig(
+    edx_arn=edx_arn_bsm
+)
+```
+
+**Format breakdown:**
+- `arn:amazon:edx:iad::manifest_range/` - Base ARN prefix for manifest_range type
+- `{provider}/{subject}/{dataset}` - EDX resource path (no trailing `/`)
+- `?` - **CRITICAL separator** between resource path and query parameters
+- `range_start=[...]` - Start range in Ion list format
+- `&range_end=[...]` - End range in Ion list format
+- `&completeness_check_type=no_check` - Additional query parameter
+
+**Common mistakes to avoid:**
+- ❌ Using `/` instead of `?` before query parameters: `.../dataset/range_start=...`
+- ✅ Correct format with `?`: `.../dataset?range_start=...`
+- ❌ Missing query parameters for manifest_range: Will cause validation error
+- ✅ Always include both `range_start` and `range_end` parameters
+
+**Query parameter options for manifest_range:**
+- `completeness_check_type`: Options are `throw`, `no_throw`, or `no_check`
+  - `throw`: Throws error if data is incomplete (default if omitted)
+  - `no_throw`: Logs warning if data is incomplete but continues
+  - `no_check`: Skips completeness check entirely
+
 ### Transform Specification
 | Parameter | Description | Default |
 |-----------|-------------|---------|
