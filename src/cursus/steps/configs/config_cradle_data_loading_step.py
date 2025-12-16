@@ -227,16 +227,19 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
 
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must always explicitly provide
-
-    schema_overrides: List[Dict[str, Any]] = Field(
-        description=(
-            "List of dicts overriding the EDX schema, e.g. "
-            "[{'field_name':'order_id','field_type':'STRING'}, …]"
-        )
-    )
+    # (None currently - all fields are optional with defaults)
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # Control field that determines requirement of component fields
+
+    schema_overrides: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description=(
+            "List of dicts overriding the EDX schema, e.g. "
+            "[{'field_name':'order_id','field_type':'STRING'}, …]. "
+            "If None, EDX will use the default schema."
+        ),
+    )
 
     edx_arn: Optional[str] = Field(
         default=None,
@@ -287,8 +290,11 @@ class EdxDataSourceConfig(BaseCradleComponentConfig):
     def categorize_fields(self) -> Dict[str, List[str]]:
         """Dynamic field categorization based on edx_arn presence."""
         categories = {
-            "essential": ["schema_overrides"],  # Always required
-            "system": ["edx_arn"],  # Control field
+            "essential": [],  # No always-required fields
+            "system": [
+                "edx_arn",
+                "schema_overrides",
+            ],  # Control field and optional schema overrides
             "derived": ["edx_manifest"],  # Computed property
         }
 

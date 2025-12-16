@@ -252,15 +252,21 @@ class CradleDataLoadingHelper(ExecutionDocumentHelper):
 
                 elif ds_cfg.data_source_type == "EDX":
                     edx_props_cfg = ds_cfg.edx_data_source_properties
-                    edx_props = EdxDataSourceProperties(
-                        edx_arn=edx_props_cfg.edx_manifest,
-                        schema_overrides=[
+
+                    # Build EdxDataSourceProperties with conditional schema_overrides
+                    edx_kwargs = {"edx_arn": edx_props_cfg.edx_manifest}
+
+                    # Only include schema_overrides if not None
+                    if edx_props_cfg.schema_overrides is not None:
+                        edx_kwargs["schema_overrides"] = [
                             Field(
                                 field_name=f["field_name"], field_type=f["field_type"]
                             )
                             for f in edx_props_cfg.schema_overrides
-                        ],
-                    )
+                        ]
+
+                    edx_props = EdxDataSourceProperties(**edx_kwargs)
+
                     data_source_models.append(
                         DataSource(
                             data_source_name=ds_cfg.data_source_name,
