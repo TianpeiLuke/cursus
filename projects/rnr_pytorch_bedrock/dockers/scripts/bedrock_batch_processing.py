@@ -181,8 +181,8 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 required_packages = [
     "pydantic==2.11.2",
     "tenacity==8.5.0",
-    "boto3>=1.35.0",
-    "botocore>=1.35.0",
+    "boto3==1.35.70",
+    "botocore==1.35.70",
 ]
 
 # Install packages using unified installation function
