@@ -197,6 +197,17 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
         description="Entry point script for Bedrock batch processing",
     )
 
+    # PyTorch framework configuration
+    framework_version: str = Field(
+        default="2.1.2",
+        description="PyTorch framework version for processing container",
+    )
+
+    py_version: str = Field(
+        default="py310",
+        description="Python version for PyTorch container (e.g., 'py310', 'py39')",
+    )
+
     # ===== Tier 3: Derived Fields (Private with Property Access) =====
     # These fields are calculated from other fields
 
