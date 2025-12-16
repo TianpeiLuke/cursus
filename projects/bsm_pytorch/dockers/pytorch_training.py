@@ -6,7 +6,12 @@ import traceback
 import ast
 import logging
 import argparse
+import pandas as pd
+import numpy as np
 from pathlib import Path
+
+from typing import List, Tuple, Pattern, Union, Dict, Set, Optional
+from collections.abc import Callable, Mapping
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -195,11 +200,6 @@ except Exception as e:
 # IMPORT INSTALLED PACKAGES (AFTER INSTALLATION)
 # ============================================================================
 
-import pandas as pd
-import numpy as np
-from typing import List, Tuple, Pattern, Union, Dict, Set, Optional
-from collections.abc import Callable, Mapping
-
 import torch
 from torch.utils.data import Dataset, IterableDataset, DataLoader
 import torch.optim as optim
@@ -214,6 +214,7 @@ from transformers import AutoTokenizer, AutoModel
 import warnings
 
 warnings.filterwarnings("ignore")
+
 from processing.processors import (
     Processor,
 )
@@ -238,6 +239,8 @@ from processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
+from lightning_models.tabular.pl_tab_ae import TabAE
+from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
 from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
 from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
@@ -674,125 +677,6 @@ def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> 
     log_once(logger, f"Saved risk table artifacts to {output_dir}")
 
 
-# ----------------- Dataset Loading -------------------------
-def load_data_module(file_dir, filename, config: Config) -> PipelineDataset:
-    log_once(logger, f"Loading pipeline dataset from {filename} in folder {file_dir}")
-    pipeline_dataset = PipelineDataset(
-        config=config.model_dump(), file_dir=file_dir, filename=filename
-    )  # Pass as dict
-    log_once(logger, f"Filling missing values in dataset {filename}")
-    pipeline_dataset.fill_missing_value(
-        label_name=config.label_name, column_cat_name=config.cat_field_list
-    )
-    return pipeline_dataset
-
-
-# ----------------- Updated Data Preprocessing Pipeline ------------------
-def data_preprocess_pipeline(
-    config: Config,
-) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
-    """
-    Build text preprocessing pipelines based on config.
-
-    For bimodal: Uses text_name with default or configured steps
-    For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
-    """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-multilingual-cased"
-
-    log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
-    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-    pipelines = {}
-
-    # BIMODAL: Single text pipeline
-    if not config.primary_text_name:
-        # Use configured steps or fallback to default
-        steps = getattr(
-            config,
-            "text_processing_steps",
-            [
-                "dialogue_splitter",
-                "html_normalizer",
-                "emoji_remover",
-                "text_normalizer",
-                "dialogue_chunker",
-                "tokenizer",
-            ],
-        )
-
-        pipelines[config.text_name] = build_text_pipeline_from_steps(
-            processing_steps=steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        log_once(
-            logger,
-            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}",
-        )
-
-    # TRIMODAL: Dual text pipelines
-    else:
-        # Primary text pipeline (e.g., chat - full cleaning)
-        primary_steps = getattr(
-            config,
-            "primary_text_processing_steps",
-            [
-                "dialogue_splitter",
-                "html_normalizer",
-                "emoji_remover",
-                "text_normalizer",
-                "dialogue_chunker",
-                "tokenizer",
-            ],
-        )
-
-        pipelines[config.primary_text_name] = build_text_pipeline_from_steps(
-            processing_steps=primary_steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        log_once(
-            logger,
-            f"Built primary pipeline for '{config.primary_text_name}' with steps: {primary_steps}",
-        )
-
-        # Secondary text pipeline (e.g., events - minimal cleaning)
-        secondary_steps = getattr(
-            config,
-            "secondary_text_processing_steps",
-            [
-                "dialogue_splitter",
-                "text_normalizer",
-                "dialogue_chunker",
-                "tokenizer",
-            ],
-        )
-
-        pipelines[config.secondary_text_name] = build_text_pipeline_from_steps(
-            processing_steps=secondary_steps,
-            tokenizer=tokenizer,
-            max_sen_len=config.max_sen_len,
-            chunk_trancate=config.chunk_trancate,
-            max_total_chunks=config.max_total_chunks,
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        log_once(
-            logger,
-            f"Built secondary pipeline for '{config.secondary_text_name}' with steps: {secondary_steps}",
-        )
-
-    return tokenizer, pipelines
-
-
 # ----------------- Preprocessing Pipeline Builder (Imputation + Risk Tables) ------------------
 def build_preprocessing_pipelines(
     config: Config,
@@ -931,6 +815,125 @@ def build_preprocessing_pipelines(
     return pipelines, imputation_dict, risk_tables
 
 
+# ----------------- Dataset Loading -------------------------
+def load_data_module(file_dir, filename, config: Config) -> PipelineDataset:
+    log_once(logger, f"Loading pipeline dataset from {filename} in folder {file_dir}")
+    pipeline_dataset = PipelineDataset(
+        config=config.model_dump(), file_dir=file_dir, filename=filename
+    )  # Pass as dict
+    log_once(logger, f"Filling missing values in dataset {filename}")
+    pipeline_dataset.fill_missing_value(
+        label_name=config.label_name, column_cat_name=config.cat_field_list
+    )
+    return pipeline_dataset
+
+
+# ----------------- Updated Data Preprocessing Pipeline ------------------
+def data_preprocess_pipeline(
+    config: Config,
+) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    """
+    Build text preprocessing pipelines based on config.
+
+    For bimodal: Uses text_name with default or configured steps
+    For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
+    """
+    if not config.tokenizer:
+        config.tokenizer = "bert-base-multilingual-cased"
+
+    log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
+    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+    pipelines = {}
+
+    # BIMODAL: Single text pipeline
+    if not config.primary_text_name:
+        # Use configured steps or fallback to default
+        steps = getattr(
+            config,
+            "text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[config.text_name] = build_text_pipeline_from_steps(
+            processing_steps=steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        log_once(
+            logger,
+            f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}",
+        )
+
+    # TRIMODAL: Dual text pipelines
+    else:
+        # Primary text pipeline (e.g., chat - full cleaning)
+        primary_steps = getattr(
+            config,
+            "primary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "html_normalizer",
+                "emoji_remover",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[config.primary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=primary_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        log_once(
+            logger,
+            f"Built primary pipeline for '{config.primary_text_name}' with steps: {primary_steps}",
+        )
+
+        # Secondary text pipeline (e.g., events - minimal cleaning)
+        secondary_steps = getattr(
+            config,
+            "secondary_text_processing_steps",
+            [
+                "dialogue_splitter",
+                "text_normalizer",
+                "dialogue_chunker",
+                "tokenizer",
+            ],
+        )
+
+        pipelines[config.secondary_text_name] = build_text_pipeline_from_steps(
+            processing_steps=secondary_steps,
+            tokenizer=tokenizer,
+            max_sen_len=config.max_sen_len,
+            chunk_trancate=config.chunk_trancate,
+            max_total_chunks=config.max_total_chunks,
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        log_once(
+            logger,
+            f"Built secondary pipeline for '{config.secondary_text_name}' with steps: {secondary_steps}",
+        )
+
+    return tokenizer, pipelines
+
+
 # ----------------- Model Selection -----------------------
 def model_select(
     model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
@@ -1040,10 +1043,17 @@ def load_and_preprocess_data(
     tokenizer, pipelines = data_preprocess_pipeline(config)
 
     # Add pipelines for each text field
+    log_once(logger, "=" * 70)
+    log_once(logger, "REGISTERING TEXT PROCESSING PIPELINES:")
     for field_name, pipeline in pipelines.items():
+        log_once(
+            logger, f"  Field: '{field_name}' -> Pipeline: {type(pipeline).__name__}"
+        )
         train_pipeline_dataset.add_pipeline(field_name, pipeline)
         val_pipeline_dataset.add_pipeline(field_name, pipeline)
         test_pipeline_dataset.add_pipeline(field_name, pipeline)
+    log_once(logger, f"✅ Registered {len(pipelines)} text processing pipelines")
+    log_once(logger, "=" * 70)
 
     # === Build preprocessing pipelines (numerical imputation + risk tables) ===
     preprocessing_pipelines, imputation_dict, risk_tables = (
@@ -1057,10 +1067,17 @@ def load_and_preprocess_data(
     )
 
     # Add preprocessing pipelines to all datasets
+    log_once(logger, "=" * 70)
+    log_once(logger, "REGISTERING NUMERICAL/CATEGORICAL PREPROCESSING PIPELINES:")
     for field, processor in preprocessing_pipelines.items():
+        log_once(logger, f"  Field: '{field}' -> Processor: {type(processor).__name__}")
         train_pipeline_dataset.add_pipeline(field, processor)
         val_pipeline_dataset.add_pipeline(field, processor)
         test_pipeline_dataset.add_pipeline(field, processor)
+    log_once(
+        logger, f"✅ Registered {len(preprocessing_pipelines)} preprocessing pipelines"
+    )
+    log_once(logger, "=" * 70)
 
     # Store artifacts in config for saving
     config.imputation_dict = imputation_dict
@@ -1099,9 +1116,9 @@ def build_model_and_optimizer(
     config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
-    log_once(logger, f"Using collate batch for model: {config.model_class}")
+    logger.info(f"Using collate batch for model: {config.model_class}")
 
-    # Use unified keys for both bimodal and trimodal (single tokenizer design)
+    # Use unified keys for all models (single tokenizer design)
     collate_batch = build_collate_batch(
         input_ids_key=config.text_input_ids_key,
         attention_mask_key=config.text_attention_mask_key,
@@ -1361,32 +1378,27 @@ def main(
         environ_vars: Dictionary of environment variables
         job_args: Command line arguments
     """
-    # Load hyperparameters
-    hparam_file = input_paths.get("hyperparameters_s3_uri")
-
-    # Check for region-specific hyperparameters
+    # Load hyperparameters with region-specific support
+    # Get region from environment variable
     region = environ_vars.get("REGION", "").upper()
 
     if region in ["NA", "EU", "FE"]:
-        # Try region-specific file first
-        hparam_dir = (
-            hparam_file if os.path.isdir(hparam_file) else os.path.dirname(hparam_file)
-        )
-        regional_file = os.path.join(hparam_dir, f"hyperparameters_{region}.json")
-
-        if os.path.exists(regional_file):
-            hparam_file = regional_file
-            logger.info(f"Using region-specific hyperparameters: {regional_file}")
-        else:
-            # Fall back to default
-            if not hparam_file.endswith("hyperparameters.json"):
-                hparam_file = os.path.join(hparam_file, "hyperparameters.json")
-            logger.info(f"Region-specific file not found, using default: {hparam_file}")
+        hparam_filename = f"hyperparameters_{region}.json"
+        logger.info(f"Loading region-specific hyperparameters for region: {region}")
     else:
-        # Use default hyperparameters.json
-        if not hparam_file.endswith("hyperparameters.json"):
-            hparam_file = os.path.join(hparam_file, "hyperparameters.json")
+        hparam_filename = "hyperparameters.json"
+        if region:
+            logger.warning(
+                f"Unknown REGION '{region}', falling back to default hyperparameters.json"
+            )
+        else:
+            logger.info("No REGION specified, using default hyperparameters.json")
 
+    hparam_file = input_paths.get("hyperparameters_s3_uri")
+    if not hparam_file.endswith(hparam_filename):
+        hparam_file = os.path.join(hparam_file, hparam_filename)
+
+    logger.info(f"Loading hyperparameters from: {hparam_file}")
     hyperparameters = load_parse_hyperparameters(hparam_file)
     hyperparameters = sanitize_config(hyperparameters)
 
@@ -1428,9 +1440,13 @@ def main(
         ),
     )
 
-    model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
-        build_model_and_optimizer(config, tokenizer, datasets)
-    )
+    (
+        model,
+        train_dataloader,
+        val_dataloader,
+        test_dataloader,
+        embedding_mat,
+    ) = build_model_and_optimizer(config, tokenizer, datasets)
     # update tab dimension
     config.input_tab_dim = len(config.tab_field_list)
     log_once(logger, "Training starts using pytorch.lightning ...")
@@ -1542,7 +1558,7 @@ if __name__ == "__main__":
         "INPUT_DATA": "/opt/ml/input/data",
         "MODEL_DIR": "/opt/ml/model",
         "OUTPUT_DATA": "/opt/ml/output/data",
-        "CONFIG_DIR": "/opt/ml/input/config/hyperparameters.json",  # Source directory path (matches XGBoost)
+        "CONFIG_DIR": "/opt/ml/code/hyperparams",  # Source directory path (matches XGBoost)
         "MODEL_ARTIFACTS_INPUT": "/opt/ml/input/data/model_artifacts_input",  # Optional pre-computed artifacts
     }
 

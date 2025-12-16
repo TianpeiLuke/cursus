@@ -17,7 +17,7 @@ from contextlib import contextmanager
 # Control which PyPI source to use via environment variable
 # Set USE_SECURE_PYPI=true to use secure CodeArtifact PyPI
 # Set USE_SECURE_PYPI=false or leave unset to use public PyPI
-USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
+USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "true").lower() == "true"
 
 # Logging setup for installation (uses logger configured below)
 from subprocess import check_call
@@ -1579,25 +1579,28 @@ def predict_fn(input_object, model_data, context=None):
         try:
             # ✨ NEW: Direct preprocessing without DataLoader overhead!
             # Processes text, tabular, and categorical features in one pass
-            batch_dict = preprocess_single_record_with_text(
-                df=input_object,
-                config=config,
-                pipelines=pipelines,
-                risk_processors=risk_processors,
-                numerical_processors=numerical_processors,
-            )
+            with log_timing("Fast Path - Preprocessing"):
+                batch_dict = preprocess_single_record_with_text(
+                    df=input_object,
+                    config=config,
+                    pipelines=pipelines,
+                    risk_processors=risk_processors,
+                    numerical_processors=numerical_processors,
+                )
 
             # Run model inference directly with preprocessed batch
             logger.info("Model prediction...")
-            raw_probs = model_online_inference(model, [batch_dict])
+            with log_timing("Fast Path - Model Inference"):
+                raw_probs = model_online_inference(model, [batch_dict])
 
             # Apply calibration if available
             if calibrator:
                 try:
                     is_multiclass = not config.is_binary
-                    calibrated_probs = apply_calibration(
-                        raw_probs, calibrator, is_multiclass
-                    )
+                    with log_timing("Fast Path - Calibration"):
+                        calibrated_probs = apply_calibration(
+                            raw_probs, calibrator, is_multiclass
+                        )
                     logger.info("Applied calibration to predictions")
                 except Exception as e:
                     logger.warning(f"Failed to apply calibration: {e}")
