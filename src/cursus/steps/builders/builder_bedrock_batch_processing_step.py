@@ -606,14 +606,19 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
         script_path = self.config.get_script_path()
         self.log_info("Using script path: %s", script_path)
 
-        # Create step
-        step = ProcessingStep(
-            name=step_name,
-            processor=processor,
+        # Use processor.run() to generate step_args for FrameworkProcessor
+        # This ensures proper Python execution setup by SageMaker
+        step_args = processor.run(
+            code=script_path,
             inputs=proc_inputs,
             outputs=proc_outputs,
-            code=script_path,
-            job_arguments=job_args,
+            arguments=job_args,
+        )
+
+        # Create step using step_args (not passing processor directly)
+        step = ProcessingStep(
+            name=step_name,
+            step_args=step_args,
             depends_on=dependencies,
             cache_config=self._get_cache_config(enable_caching),
         )

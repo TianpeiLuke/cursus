@@ -11,8 +11,8 @@ import logging
 import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
-from sagemaker.processing import ProcessingInput, ProcessingOutput
-from sagemaker.sklearn import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
+from sagemaker.pytorch import PyTorch
 
 from ..configs.config_bedrock_processing_step import BedrockProcessingConfig
 from ...core.base.builder_base import StepBuilderBase
@@ -258,14 +258,17 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
 
         self.log_info("BedrockProcessingConfig validation succeeded.")
 
-    def _create_processor(self) -> SKLearnProcessor:
+    def _create_processor(self) -> FrameworkProcessor:
         """
-        Creates and configures the SKLearnProcessor for the SageMaker Processing Job.
+        Creates and configures the FrameworkProcessor with PyTorch for the SageMaker Processing Job.
         This defines the execution environment for the script, including the instance
         type, framework version, and environment variables.
 
+        Uses PyTorch 2.1.2 container which has boto3>=1.35.0 pre-installed, enabling
+        Bedrock APIs without version conflicts.
+
         Returns:
-            An instance of sagemaker.sklearn.SKLearnProcessor configured for Bedrock processing.
+            An instance of sagemaker.processing.FrameworkProcessor configured for Bedrock processing.
         """
         # Get the appropriate instance type based on use_large_processing_instance
         instance_type = (
@@ -274,13 +277,10 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             else self.config.processing_instance_type_small
         )
 
-        # Get framework version
-        framework_version = getattr(
-            self.config, "processing_framework_version", "1.2-1"
-        )
-
-        return SKLearnProcessor(
-            framework_version=framework_version,
+        return FrameworkProcessor(
+            estimator_cls=PyTorch,
+            framework_version=self.config.framework_version,
+            py_version=self.config.py_version,
             role=self.role,
             instance_type=instance_type,
             instance_count=self.config.processing_instance_count,
@@ -541,14 +541,19 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         script_path = self.config.get_script_path()
         self.log_info("Using script path: %s", script_path)
 
-        # Create step
-        step = ProcessingStep(
-            name=step_name,
-            processor=processor,
+        # Use processor.run() to generate step_args for FrameworkProcessor
+        # This ensures proper Python execution setup by SageMaker
+        step_args = processor.run(
+            code=script_path,
             inputs=proc_inputs,
             outputs=proc_outputs,
-            code=script_path,
-            job_arguments=job_args,
+            arguments=job_args,
+        )
+
+        # Create step using step_args (not passing processor directly)
+        step = ProcessingStep(
+            name=step_name,
+            step_args=step_args,
             depends_on=dependencies,
             cache_config=self._get_cache_config(enable_caching),
         )

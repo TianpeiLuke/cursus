@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Bedrock Batch Processing Script
 
@@ -178,11 +179,13 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # ============================================================================
 
 # Define required packages for this script
+# Use exact versions to ensure compatibility and avoid package corruption
 required_packages = [
     "pydantic==2.11.2",
     "tenacity==8.5.0",
-    "boto3>=1.35.0",
-    "botocore>=1.35.0",
+    "boto3==1.35.50",  # Version with Bedrock batch inference support (Oct 2024+)
+    "botocore==1.35.50",  # Must match boto3 version
+    "s3transfer==0.10.3",  # Compatible with botocore 1.35.50
 ]
 
 # Install packages using unified installation function
