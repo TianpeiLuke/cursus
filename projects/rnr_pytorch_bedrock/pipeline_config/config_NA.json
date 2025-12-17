@@ -1,0 +1,2111 @@
+{
+  "configuration": {
+    "shared": {
+      "author": "lukexie",
+      "bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
+      "current_date": "2025-12-16",
+      "enable_caching": false,
+      "framework_version": "2.1.0",
+      "max_runtime_seconds": 172800,
+      "model_class": "pytorch",
+      "pipeline_version": "1.0.0",
+      "project_root_folder": "rnr_audit_bedrock",
+      "py_version": "py310",
+      "region": "NA",
+      "role": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+      "service_name": "BuyerAbuseRnRAudit",
+      "source_dir": "dockers",
+      "use_secure_pypi": true
+    },
+    "specific": {
+      "BedrockBatchProcessing_training": {
+        "__model_type__": "BedrockBatchProcessingConfig",
+        "aws_region": "us-east-1",
+        "batch_configuration": {
+          "auto_selection_enabled": true,
+          "cost_optimization_enabled": true,
+          "fallback_to_realtime": true,
+          "forced_batch_mode": false,
+          "forced_realtime_mode": false,
+          "mode": "auto",
+          "role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "threshold": 1000,
+          "timeout_hours": 24
+        },
+        "bedrock_batch_mode": "auto",
+        "bedrock_batch_role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+        "bedrock_batch_size": 10,
+        "bedrock_batch_threshold": 1000,
+        "bedrock_batch_timeout_hours": 24,
+        "bedrock_concurrency_mode": "sequential",
+        "bedrock_environment_variables": {
+          "AWS_DEFAULT_REGION": "us-east-1",
+          "BEDROCK_BATCH_INPUT_S3_PATH": "",
+          "BEDROCK_BATCH_MODE": "auto",
+          "BEDROCK_BATCH_OUTPUT_S3_PATH": "",
+          "BEDROCK_BATCH_ROLE_ARN": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "BEDROCK_BATCH_SIZE": "10",
+          "BEDROCK_BATCH_THRESHOLD": "1000",
+          "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
+          "BEDROCK_CONCURRENCY_MODE": "sequential",
+          "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
+          "BEDROCK_LOG_TRUNCATIONS": "true",
+          "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
+          "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
+          "BEDROCK_MAX_INPUT_FIELD_LENGTH": "400000",
+          "BEDROCK_MAX_RECORDS_PER_JOB": "45000",
+          "BEDROCK_MAX_RETRIES": "3",
+          "BEDROCK_MAX_TOKENS": "32768",
+          "BEDROCK_OUTPUT_COLUMN_PREFIX": "llm_",
+          "BEDROCK_PRIMARY_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
+          "BEDROCK_SKIP_ERROR_RECORDS": "false",
+          "BEDROCK_TEMPERATURE": "1.0",
+          "BEDROCK_TOP_P": "0.999",
+          "BEDROCK_TRUNCATION_ENABLED": "true",
+          "USE_SECURE_PYPI": "true"
+        },
+        "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "bedrock_log_truncations": true,
+        "bedrock_max_concurrent_batch_jobs": 20,
+        "bedrock_max_concurrent_workers": 5,
+        "bedrock_max_input_field_length": 400000,
+        "bedrock_max_records_per_job": 45000,
+        "bedrock_max_retries": 3,
+        "bedrock_max_tokens": 32768,
+        "bedrock_output_column_prefix": "llm_",
+        "bedrock_primary_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock_rate_limit_per_second": 10,
+        "bedrock_skip_error_records": false,
+        "bedrock_temperature": 1.0,
+        "bedrock_top_p": 0.999,
+        "bedrock_truncation_enabled": true,
+        "cost_optimization_info": {
+          "automatic_fallback": true,
+          "batch_mode": "auto",
+          "cost_efficient_for_large_datasets": true,
+          "estimated_savings": "Up to 50% for datasets >= 1000 records",
+          "optimization_strategy": "Automatic selection based on data size",
+          "production_ready": true,
+          "threshold": 1000
+        },
+        "effective_inference_profile_required_models": [
+          "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "anthropic.claude-sonnet-4-20250514-v1:0",
+          "anthropic.claude-opus-4-1-20250805-v1:0"
+        ],
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts",
+        "job_type": "training",
+        "pipeline_description": "BuyerAbuseRnRAudit pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnRAudit-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0",
+        "processing_entry_point": "bedrock_batch_processing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "batch_mode": "auto",
+          "batch_role_arn": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+          "batch_size": 10,
+          "batch_threshold": 1000,
+          "batch_timeout_hours": 24,
+          "concurrency_mode": "sequential",
+          "fallback_model": "anthropic.claude-sonnet-4-20250514-v1:0",
+          "inference_profile_required_models": [
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "anthropic.claude-sonnet-4-20250514-v1:0",
+            "anthropic.claude-opus-4-1-20250805-v1:0"
+          ],
+          "max_tokens": 32768,
+          "output_column_prefix": "llm_",
+          "primary_model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+          "step_type": "bedrock_batch_processing",
+          "temperature": 1.0,
+          "top_p": 0.999,
+          "uses_inference_profile": true
+        },
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/bedrock_batch_processing.py",
+        "use_large_processing_instance": false
+      },
+      "BedrockPromptTemplateGeneration": {
+        "__model_type__": "BedrockPromptTemplateGenerationConfig",
+        "aws_region": "us-east-1",
+        "effective_categories": null,
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_instruction_config": {
+          "classification_guidelines": {
+            "sections": [
+              {
+                "subsections": [
+                  {
+                    "content": [
+                      "**Category Selection:**",
+                      "- Choose exactly ONE category from the provided list",
+                      "- Category name must match exactly (case-sensitive)",
+                      "",
+                      "**Confidence Score:**",
+                      "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                      "- Base confidence for complete data: 0.7-1.0",
+                      "- Missing one field: reduce by 0.1-0.2",
+                      "- Missing two fields: reduce by 0.2-0.3",
+                      "- Minimum confidence threshold: 0.5"
+                    ],
+                    "title": "### 1. Output Format Requirements"
+                  },
+                  {
+                    "content": [
+                      "**Multiple Shipment Structure:**",
+                      "- Multiple shipment sequences separated by shipment IDs",
+                      "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                      "",
+                      "**Analysis Approach:**",
+                      "- Process each shipment sequence separately",
+                      "- Compare delivery events (EVENT_301) across all sequences",
+                      "",
+                      "**Key Event Codes:**",
+                      "- EVENT_301: Delivery confirmation",
+                      "- EVENT_302: Out for delivery",
+                      "- EVENT_201: Arrival at facility"
+                    ],
+                    "title": "### 2. Shiptrack Parsing Rules"
+                  },
+                  {
+                    "content": [
+                      "**When Dialogue is Empty but Shiptrack Exists:**",
+                      "- Focus on shipping events and timeline",
+                      "- Reduce confidence score by 0.1-0.2",
+                      "",
+                      "**When Shiptrack is Empty but Dialogue Exists:**",
+                      "- Focus on message content and reported issues",
+                      "- Reduce confidence score by 0.1-0.2"
+                    ],
+                    "title": "### 3. Missing Data Handling"
+                  },
+                  {
+                    "content": [
+                      "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                      "- PDA_Undeliverable: Verify no delivery + refund given",
+                      "- PDA_Early_Refund: Verify refund before delivery",
+                      "",
+                      "**Tier 2: Delivery Status Categories**",
+                      "- TrueDNR: Delivered but disputed",
+                      "- Confirmed_Delay: External factors confirmed"
+                    ],
+                    "title": "### 4. Category Priority Hierarchy"
+                  },
+                  {
+                    "content": [
+                      "**Message Evidence Must Include:**",
+                      "- Direct quotes from dialogue with speaker identification",
+                      "",
+                      "**Shipping Evidence Must Include:**",
+                      "- All tracking events listed chronologically",
+                      "",
+                      "**Timeline Evidence Must Show:**",
+                      "- Clear chronological sequence of events"
+                    ],
+                    "title": "### 5. Evidence Requirements"
+                  }
+                ],
+                "title": "## Classification Guidelines"
+              }
+            ]
+          },
+          "include_analysis_steps": true,
+          "include_decision_criteria": true,
+          "include_evidence_validation": true,
+          "include_reasoning_requirements": true,
+          "step_by_step_format": true
+        },
+        "effective_output_format_config": {
+          "evidence_validation_rules": [
+            "Message Evidence must include direct quotes with speaker identification",
+            "Shipping Evidence must include tracking events with timestamps",
+            "Timeline Evidence must show chronological sequence of events",
+            "All evidence must reference specific content from input data"
+          ],
+          "example_output": {
+            "category": "TrueDNR",
+            "confidence_score": 0.92,
+            "key_evidence": {
+              "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+              ],
+              "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+              ],
+              "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+              ]
+            },
+            "reasoning": {
+              "contradicting_evidence": [],
+              "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+              ],
+              "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+              ]
+            }
+          },
+          "field_descriptions": {
+            "category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "key_evidence": "MUST be an object (not individual arrays) containing exactly three nested arrays: message_evidence, shipping_evidence, timeline_evidence",
+            "reasoning": "MUST be an object (not individual arrays) containing exactly three nested arrays: primary_factors, supporting_evidence, contradicting_evidence"
+          },
+          "format_type": "structured_json",
+          "formatting_rules": [
+            "Output MUST be valid, parseable JSON.",
+            "Do not include any text before the opening { or after the closing }.",
+            "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+            "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+            "Ensure all arrays and objects are properly closed.",
+            "Use empty arrays [] for missing values, not null or empty strings.",
+            "Do not include trailing commas.",
+            "Ensure proper escaping of special characters in strings.",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: key_evidence MUST BE AN OBJECT",
+            "================================================================================",
+            "'key_evidence' MUST be an object containing three arrays as properties.",
+            "Do NOT output message_evidence, shipping_evidence, or timeline_evidence at the top level.",
+            "All evidence arrays MUST be nested inside the 'key_evidence' object.",
+            "",
+            "CORRECT STRUCTURE for key_evidence:",
+            "\"key_evidence\": {",
+            "  \"message_evidence\": [...],",
+            "  \"shipping_evidence\": [...],",
+            "  \"timeline_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"message_evidence\": [...],  <-- WRONG: at top level",
+            "\"shipping_evidence\": [...],  <-- WRONG: at top level",
+            "\"timeline_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: reasoning MUST BE AN OBJECT",
+            "================================================================================",
+            "'reasoning' MUST be an object containing three arrays as properties.",
+            "Do NOT output primary_factors, supporting_evidence, or contradicting_evidence at the top level.",
+            "All reasoning arrays MUST be nested inside the 'reasoning' object.",
+            "",
+            "CORRECT STRUCTURE for reasoning:",
+            "\"reasoning\": {",
+            "  \"primary_factors\": [...],",
+            "  \"supporting_evidence\": [...],",
+            "  \"contradicting_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"primary_factors\": [...],         <-- WRONG: at top level",
+            "\"supporting_evidence\": [...],     <-- WRONG: at top level",
+            "\"contradicting_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "COMPLETE STRUCTURE EXAMPLE - FOLLOW THIS EXACT PATTERN",
+            "================================================================================",
+            "{",
+            "  \"category\": \"...\",",
+            "  \"confidence_score\": 0.88,",
+            "  \"key_evidence\": {           <-- OBJECT wrapper required",
+            "    \"message_evidence\": [...],",
+            "    \"shipping_evidence\": [...],",
+            "    \"timeline_evidence\": [...]",
+            "  },",
+            "  \"reasoning\": {              <-- OBJECT wrapper required",
+            "    \"primary_factors\": [...],",
+            "    \"supporting_evidence\": [...],",
+            "    \"contradicting_evidence\": [...]",
+            "  }",
+            "}",
+            "",
+            "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+            "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+            "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+            "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+            "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+            "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+            "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+            "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+            "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
+          ],
+          "header_text": null,
+          "json_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "description": "Exactly one category from the predefined list (case-sensitive match required)",
+                "enum": [],
+                "type": "string"
+              },
+              "confidence_score": {
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "key_evidence": {
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                  "message_evidence": {
+                    "description": "Direct quotes from dialogue with speaker identification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "shipping_evidence": {
+                    "description": "Tracking events with timestamps",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "timeline_evidence": {
+                    "description": "Chronological sequence of key events",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "message_evidence",
+                  "shipping_evidence",
+                  "timeline_evidence"
+                ],
+                "type": "object"
+              },
+              "reasoning": {
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                  "contradicting_evidence": {
+                    "description": "Evidence that contradicts the classification (use empty array if none)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "primary_factors": {
+                    "description": "Main reasons supporting the selected category",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "supporting_evidence": {
+                    "description": "Additional evidence that strengthens the classification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "primary_factors",
+                  "supporting_evidence",
+                  "contradicting_evidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "category",
+              "confidence_score",
+              "key_evidence",
+              "reasoning"
+            ],
+            "type": "object"
+          },
+          "required_fields": [
+            "category",
+            "confidence_score",
+            "key_evidence",
+            "reasoning"
+          ],
+          "structured_text_sections": null,
+          "validation_requirements": [
+            "Must be valid JSON format",
+            "Category must match exactly from predefined list",
+            "Confidence score must be number between 0.0 and 1.0",
+            "All required fields must be present",
+            "key_evidence MUST be an object containing three nested arrays",
+            "reasoning MUST be an object containing three nested arrays",
+            "Evidence arrays must NOT appear at top level of JSON",
+            "Reasoning arrays must NOT appear at top level of JSON"
+          ]
+        },
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts",
+        "effective_system_prompt_config": {
+          "behavioral_guidelines": [
+            "be precise in classification decisions",
+            "be objective in evidence evaluation",
+            "be thorough in timeline analysis",
+            "follow exact formatting requirements",
+            "consider all available evidence sources"
+          ],
+          "expertise_areas": [
+            "buyer-seller messaging analysis",
+            "shipping logistics",
+            "delivery timing analysis",
+            "e-commerce dispute resolution",
+            "classification and categorization"
+          ],
+          "responsibilities": [
+            "classify interactions based on message content",
+            "analyze shipping events and delivery timing",
+            "categorize into predefined dispute categories",
+            "provide evidence-based reasoning for classifications"
+          ],
+          "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+          "tone": "professional"
+        },
+        "environment_variables": {
+          "GENERATE_VALIDATION_SCHEMA": "true",
+          "INCLUDE_EXAMPLES": "true",
+          "INPUT_PLACEHOLDERS": "[\"dialogue\", \"shiptrack_event_history_by_order\", \"shiptrack_max_estimated_arrival_date_by_order\"]",
+          "TEMPLATE_STYLE": "structured",
+          "TEMPLATE_TASK_TYPE": "buyer_seller_classification",
+          "TEMPLATE_VERSION": "2.0",
+          "VALIDATION_LEVEL": "comprehensive"
+        },
+        "generate_validation_schema": true,
+        "include_examples": true,
+        "input_placeholders": [
+          "dialogue",
+          "shiptrack_event_history_by_order",
+          "shiptrack_max_estimated_arrival_date_by_order"
+        ],
+        "instruction_settings": {
+          "__model_type__": "InstructionConfig",
+          "classification_guidelines": {
+            "sections": [
+              {
+                "subsections": [
+                  {
+                    "content": [
+                      "**Category Selection:**",
+                      "- Choose exactly ONE category from the provided list",
+                      "- Category name must match exactly (case-sensitive)",
+                      "",
+                      "**Confidence Score:**",
+                      "- Provide as decimal number between 0.00 and 1.00 (e.g., 0.95)",
+                      "- Base confidence for complete data: 0.7-1.0",
+                      "- Missing one field: reduce by 0.1-0.2",
+                      "- Missing two fields: reduce by 0.2-0.3",
+                      "- Minimum confidence threshold: 0.5"
+                    ],
+                    "title": "### 1. Output Format Requirements"
+                  },
+                  {
+                    "content": [
+                      "**Multiple Shipment Structure:**",
+                      "- Multiple shipment sequences separated by shipment IDs",
+                      "- Each sequence starts with \"[bom] [Shipment ID]:* [eom]\"",
+                      "",
+                      "**Analysis Approach:**",
+                      "- Process each shipment sequence separately",
+                      "- Compare delivery events (EVENT_301) across all sequences",
+                      "",
+                      "**Key Event Codes:**",
+                      "- EVENT_301: Delivery confirmation",
+                      "- EVENT_302: Out for delivery",
+                      "- EVENT_201: Arrival at facility"
+                    ],
+                    "title": "### 2. Shiptrack Parsing Rules"
+                  },
+                  {
+                    "content": [
+                      "**When Dialogue is Empty but Shiptrack Exists:**",
+                      "- Focus on shipping events and timeline",
+                      "- Reduce confidence score by 0.1-0.2",
+                      "",
+                      "**When Shiptrack is Empty but Dialogue Exists:**",
+                      "- Focus on message content and reported issues",
+                      "- Reduce confidence score by 0.1-0.2"
+                    ],
+                    "title": "### 3. Missing Data Handling"
+                  },
+                  {
+                    "content": [
+                      "**Tier 1: Abuse Pattern Categories (Highest Priority)**",
+                      "- PDA_Undeliverable: Verify no delivery + refund given",
+                      "- PDA_Early_Refund: Verify refund before delivery",
+                      "",
+                      "**Tier 2: Delivery Status Categories**",
+                      "- TrueDNR: Delivered but disputed",
+                      "- Confirmed_Delay: External factors confirmed"
+                    ],
+                    "title": "### 4. Category Priority Hierarchy"
+                  },
+                  {
+                    "content": [
+                      "**Message Evidence Must Include:**",
+                      "- Direct quotes from dialogue with speaker identification",
+                      "",
+                      "**Shipping Evidence Must Include:**",
+                      "- All tracking events listed chronologically",
+                      "",
+                      "**Timeline Evidence Must Show:**",
+                      "- Clear chronological sequence of events"
+                    ],
+                    "title": "### 5. Evidence Requirements"
+                  }
+                ],
+                "title": "## Classification Guidelines"
+              }
+            ]
+          },
+          "include_analysis_steps": true,
+          "include_decision_criteria": true,
+          "include_evidence_validation": true,
+          "include_reasoning_requirements": true,
+          "step_by_step_format": true
+        },
+        "output_format_settings": {
+          "__model_type__": "OutputFormatConfig",
+          "evidence_validation_rules": [
+            "Message Evidence must include direct quotes with speaker identification",
+            "Shipping Evidence must include tracking events with timestamps",
+            "Timeline Evidence must show chronological sequence of events",
+            "All evidence must reference specific content from input data"
+          ],
+          "example_output": {
+            "category": "TrueDNR",
+            "confidence_score": 0.92,
+            "key_evidence": {
+              "message_evidence": [
+                "[BUYER]: Hello, I have not received my package, but I see the order shows that it has been delivered, why?",
+                "[BUYER]: But I did not find any package, please refund me, thank you"
+              ],
+              "shipping_evidence": [
+                "[Event Time]: 2025-02-21T17:40:49.323Z [Ship Track Event]: Delivered to customer",
+                "No further shipping events after delivery confirmation"
+              ],
+              "timeline_evidence": [
+                "Delivery confirmation on 2025-02-21 17:40",
+                "Buyer reports non-receipt starting 2025-02-25 07:14"
+              ]
+            },
+            "reasoning": {
+              "contradicting_evidence": [],
+              "primary_factors": [
+                "Tracking shows package was delivered successfully",
+                "Buyer explicitly states they did not receive the package after delivery scan"
+              ],
+              "supporting_evidence": [
+                "Buyer requests refund due to missing package",
+                "No evidence of buyer receiving wrong/defective item"
+              ]
+            }
+          },
+          "field_descriptions": {
+            "category": "Exactly one category from the predefined list (case-sensitive match required)",
+            "confidence_score": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+            "key_evidence": "MUST be an object (not individual arrays) containing exactly three nested arrays: message_evidence, shipping_evidence, timeline_evidence",
+            "reasoning": "MUST be an object (not individual arrays) containing exactly three nested arrays: primary_factors, supporting_evidence, contradicting_evidence"
+          },
+          "format_type": "structured_json",
+          "formatting_rules": [
+            "Output MUST be valid, parseable JSON.",
+            "Do not include any text before the opening { or after the closing }.",
+            "CRITICAL: Do NOT wrap JSON in markdown code blocks - no ``` or ```json markers.",
+            "CRITICAL: Output pure JSON starting with { and ending with } - nothing else.",
+            "Ensure all arrays and objects are properly closed.",
+            "Use empty arrays [] for missing values, not null or empty strings.",
+            "Do not include trailing commas.",
+            "Ensure proper escaping of special characters in strings.",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: key_evidence MUST BE AN OBJECT",
+            "================================================================================",
+            "'key_evidence' MUST be an object containing three arrays as properties.",
+            "Do NOT output message_evidence, shipping_evidence, or timeline_evidence at the top level.",
+            "All evidence arrays MUST be nested inside the 'key_evidence' object.",
+            "",
+            "CORRECT STRUCTURE for key_evidence:",
+            "\"key_evidence\": {",
+            "  \"message_evidence\": [...],",
+            "  \"shipping_evidence\": [...],",
+            "  \"timeline_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"message_evidence\": [...],  <-- WRONG: at top level",
+            "\"shipping_evidence\": [...],  <-- WRONG: at top level",
+            "\"timeline_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "CRITICAL STRUCTURE REQUIREMENT: reasoning MUST BE AN OBJECT",
+            "================================================================================",
+            "'reasoning' MUST be an object containing three arrays as properties.",
+            "Do NOT output primary_factors, supporting_evidence, or contradicting_evidence at the top level.",
+            "All reasoning arrays MUST be nested inside the 'reasoning' object.",
+            "",
+            "CORRECT STRUCTURE for reasoning:",
+            "\"reasoning\": {",
+            "  \"primary_factors\": [...],",
+            "  \"supporting_evidence\": [...],",
+            "  \"contradicting_evidence\": [...]",
+            "}",
+            "",
+            "WRONG STRUCTURE (DO NOT DO THIS):",
+            "\"primary_factors\": [...],         <-- WRONG: at top level",
+            "\"supporting_evidence\": [...],     <-- WRONG: at top level",
+            "\"contradicting_evidence\": [...]   <-- WRONG: at top level",
+            "",
+            "================================================================================",
+            "COMPLETE STRUCTURE EXAMPLE - FOLLOW THIS EXACT PATTERN",
+            "================================================================================",
+            "{",
+            "  \"category\": \"...\",",
+            "  \"confidence_score\": 0.88,",
+            "  \"key_evidence\": {           <-- OBJECT wrapper required",
+            "    \"message_evidence\": [...],",
+            "    \"shipping_evidence\": [...],",
+            "    \"timeline_evidence\": [...]",
+            "  },",
+            "  \"reasoning\": {              <-- OBJECT wrapper required",
+            "    \"primary_factors\": [...],",
+            "    \"supporting_evidence\": [...],",
+            "    \"contradicting_evidence\": [...]",
+            "  }",
+            "}",
+            "",
+            "Quote Handling - JSON Structure: ALWAYS use ASCII double quotes (U+0022) for JSON keys and for starting/ending JSON string values.",
+            "Quote Handling - Cited Content (Smart Quotes): If the input text contains any non-ASCII or 'smart' quotation marks, do NOT copy those characters into the JSON. Instead, replace each of them with a simple ASCII apostrophe (').",
+            "The smart quotation marks that MUST be replaced include (but are not limited to): U+201C (LEFT DOUBLE QUOTATION MARK), U+201D (RIGHT DOUBLE QUOTATION MARK), U+201E (DOUBLE LOW-9 QUOTATION MARK, used in German), U+201F, and U+2018/U+2019/U+201A/U+201B (Unicode single quotation marks).",
+            "Example (described, not shown verbatim): If the input shows a name surrounded by any kind of non-ASCII quote characters (for example, a German-style opening quote before a person name), you MUST output that name in JSON as 'Person Name' using ASCII apostrophes only.",
+            "Inner Double Quotes - General Rule: Inside JSON string values, NEVER include a raw ASCII double quote character (\") as part of the content. The ONLY double quotes you should ever emit are the ones required by JSON syntax (around keys and around entire string values).",
+            "Inner Double Quotes - Rewriting Measurements: If the original text uses double quotes for measurements or sizes (for example, a rug described as 8\"x10\"), you MUST rewrite this in plain text without inner double quotes (for example, '8 x 10 inch rug' or '8 by 10 inch rug').",
+            "Inner Double Quotes - Rewriting Emphasized Phrases: If the original text puts a word or phrase in double quotes (for example, a buyer writing a word like impossible in quotes), you MUST rewrite it using apostrophes or plain text, such as [BUYER]: 'impossible' or [BUYER]: impossible, without any inner double quote characters.",
+            "Inner Double Quotes - No Literal Copy: Do NOT copy any internal double quotes from the source text into the JSON output. When the original text uses double quotes around a phrase, output that phrase using ASCII apostrophes (') or rephrase it so that no internal double quotes appear inside the JSON string.",
+            "Summary: Use the ASCII double quote character (U+0022) only for JSON structure (keys and string delimiters). Inside JSON string values, never emit smart quotation marks and never emit raw inner double quotes. When the original text uses quotes around a phrase or measurement, rewrite that phrase using ASCII apostrophes (') or plain words instead."
+          ],
+          "header_text": null,
+          "json_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "description": "Exactly one category from the predefined list (case-sensitive match required)",
+                "enum": [],
+                "type": "string"
+              },
+              "confidence_score": {
+                "description": "Decimal number between 0.00 and 1.00 indicating classification certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "key_evidence": {
+                "description": "Object containing three arrays of evidence from different sources",
+                "properties": {
+                  "message_evidence": {
+                    "description": "Direct quotes from dialogue with speaker identification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "shipping_evidence": {
+                    "description": "Tracking events with timestamps",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "timeline_evidence": {
+                    "description": "Chronological sequence of key events",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "message_evidence",
+                  "shipping_evidence",
+                  "timeline_evidence"
+                ],
+                "type": "object"
+              },
+              "reasoning": {
+                "description": "Object containing three arrays explaining the classification decision",
+                "properties": {
+                  "contradicting_evidence": {
+                    "description": "Evidence that contradicts the classification (use empty array if none)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "primary_factors": {
+                    "description": "Main reasons supporting the selected category",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "supporting_evidence": {
+                    "description": "Additional evidence that strengthens the classification",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "primary_factors",
+                  "supporting_evidence",
+                  "contradicting_evidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "category",
+              "confidence_score",
+              "key_evidence",
+              "reasoning"
+            ],
+            "type": "object"
+          },
+          "required_fields": [
+            "category",
+            "confidence_score",
+            "key_evidence",
+            "reasoning"
+          ],
+          "structured_text_sections": null,
+          "validation_requirements": [
+            "Must be valid JSON format",
+            "Category must match exactly from predefined list",
+            "Confidence score must be number between 0.0 and 1.0",
+            "All required fields must be present",
+            "key_evidence MUST be an object containing three nested arrays",
+            "reasoning MUST be an object containing three nested arrays",
+            "Evidence arrays must NOT appear at top level of JSON",
+            "Reasoning arrays must NOT appear at top level of JSON"
+          ]
+        },
+        "output_format_type": "structured_json",
+        "pipeline_description": "BuyerAbuseRnRAudit pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnRAudit-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0",
+        "processing_entry_point": "bedrock_prompt_template_generation.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "prompt_configs_path": "prompt_configs",
+        "required_output_fields": [
+          "Category",
+          "Confidence Score",
+          "Key Evidence",
+          "Reasoning"
+        ],
+        "resolved_prompt_configs_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/prompt_configs",
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/bedrock_prompt_template_generation.py",
+        "system_prompt_settings": {
+          "__model_type__": "SystemPromptConfig",
+          "behavioral_guidelines": [
+            "be precise in classification decisions",
+            "be objective in evidence evaluation",
+            "be thorough in timeline analysis",
+            "follow exact formatting requirements",
+            "consider all available evidence sources"
+          ],
+          "expertise_areas": [
+            "buyer-seller messaging analysis",
+            "shipping logistics",
+            "delivery timing analysis",
+            "e-commerce dispute resolution",
+            "classification and categorization"
+          ],
+          "responsibilities": [
+            "classify interactions based on message content",
+            "analyze shipping events and delivery timing",
+            "categorize into predefined dispute categories",
+            "provide evidence-based reasoning for classifications"
+          ],
+          "role_definition": "expert in analyzing buyer-seller messaging conversations and shipping logistics",
+          "tone": "professional"
+        },
+        "template_metadata": {
+          "generate_validation_schema": true,
+          "includes_examples": true,
+          "input_placeholders": [
+            "dialogue",
+            "shiptrack_event_history_by_order",
+            "shiptrack_max_estimated_arrival_date_by_order"
+          ],
+          "output_format": "structured_json",
+          "required_output_fields": [
+            "Category",
+            "Confidence Score",
+            "Key Evidence",
+            "Reasoning"
+          ],
+          "task_type": "buyer_seller_classification",
+          "template_style": "structured",
+          "template_version": "2.0",
+          "validation_level": "comprehensive"
+        },
+        "template_style": "structured",
+        "template_task_type": "buyer_seller_classification",
+        "template_version": "2.0",
+        "use_large_processing_instance": false,
+        "validation_level": "comprehensive"
+      },
+      "CradleDataLoading_training": {
+        "__model_type__": "CradleDataLoadingConfig",
+        "aws_region": "us-east-1",
+        "cradle_job_spec": {
+          "__model_type__": "CradleJobSpecificationConfig",
+          "cluster_type": "LARGE",
+          "cradle_account": "BRP-ML-Abuse",
+          "extra_spark_job_arguments": "",
+          "job_retry_count": 1
+        },
+        "data_sources_spec": {
+          "__model_type__": "DataSourcesSpecificationConfig",
+          "data_sources": {
+            "__type_info__": "list",
+            "value": [
+              {
+                "__model_type__": "DataSourceConfig",
+                "andes_data_source_properties": {
+                  "__model_type__": "AndesDataSourceConfig",
+                  "andes3_enabled": true,
+                  "provider": "8bd21a1a-8197-4eff-a6b2-1edd4e7c5079",
+                  "table_name": "ShiptrackEventHistory_0"
+                },
+                "data_source_name": "ShiptrackEventHistory_NA",
+                "data_source_type": "ANDES"
+              },
+              {
+                "__model_type__": "DataSourceConfig",
+                "data_source_name": "BSM_Body_Input",
+                "data_source_type": "EDX",
+                "edx_data_source_properties": {
+                  "__model_type__": "EdxDataSourceConfig",
+                  "edx_arn": "arn:amazon:edx:iad::manifest_range/bsm-prod/thread-message-with-bodies-daily/thread-message-with-bodies-daily-data?range_start=[\"prod\",\"NA\",2024-11-05]&range_end=[\"prod\",\"NA\",2025-12-11]&completeness_check_type=no_check"
+                }
+              },
+              {
+                "__model_type__": "DataSourceConfig",
+                "data_source_name": "RnR_Tag",
+                "data_source_type": "EDX",
+                "edx_data_source_properties": {
+                  "__model_type__": "EdxDataSourceConfig",
+                  "edx_arn": "arn:amazon:edx:iad::manifest/trms-abuse-analytics/buyer-seller-messaging/bsm-tag-rnr/[\"27676109\", 2025-09-01T00:00:00Z, 2025-12-08T00:00:00Z, \"NA\"]",
+                  "schema_overrides": [
+                    {
+                      "field_name": "order_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "customer_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "marketplace_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "org",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "week",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "month",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "order_day",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "queued_date",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "action_date",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "queueid",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "fraud_action_type_id",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "abuse_type",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "mfn_type",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "concession_type",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "concession_status",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "abuse_flag",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "net_conc_amt",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "rr_tag",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "reversal_reason",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "reversal_flag",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "reclassification_flag",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "reclassified_segment",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "concession_closed_date",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "deliverable_flag",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "undeliverable_flag",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "ttm_conc_count",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "ttm_conc_amt",
+                      "field_type": "STRING"
+                    },
+                    {
+                      "field_name": "concsi",
+                      "field_type": "STRING"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "end_date": "2025-12-08T00:00:00",
+          "start_date": "2025-09-01T00:00:00"
+        },
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers",
+        "job_type": "training",
+        "output_spec": {
+          "__model_type__": "OutputSpecificationConfig",
+          "include_header_in_s3_output": true,
+          "job_type": "training",
+          "keep_dot_in_output_schema": false,
+          "output_file_count": 0,
+          "output_format": "PARQUET",
+          "output_save_mode": "ERRORIFEXISTS",
+          "output_schema": [
+            "THREAD_ID",
+            "region",
+            "order_id",
+            "sender_customer_ids",
+            "receipient_customer_ids",
+            "entry_point_list",
+            "topic_id_list",
+            "subject_list",
+            "dialogue",
+            "unique_message_count",
+            "shipment_ids",
+            "shiptrack_tracking_id_lists_by_order",
+            "shiptrack_sender_id_lists_by_order",
+            "shiptrack_event_history_by_order",
+            "shiptrack_event_code_lists_by_order",
+            "shiptrack_supplement_code_lists_by_order",
+            "shiptrack_event_date_lists_by_order",
+            "shiptrack_max_estimated_arrival_date_by_order",
+            "shiptrack_max_estimated_delivery_date_by_order",
+            "total_ship_track_events_by_order",
+            "total_unique_ship_track_events_by_order",
+            "customer_id",
+            "marketplace_id",
+            "org",
+            "concession_type",
+            "abuse_type",
+            "mfn_type",
+            "week",
+            "month",
+            "order_day",
+            "queued_date",
+            "action_date",
+            "queueid",
+            "fraud_action_type_id",
+            "concession_status",
+            "abuse_flag",
+            "concession_closed_date",
+            "rr_tag",
+            "reversal_reason",
+            "reversal_flag",
+            "reclassification_flag",
+            "reclassified_segment",
+            "net_conc_amt",
+            "ttm_conc_amt",
+            "ttm_conc_count",
+            "concsi",
+            "deliverable_flag",
+            "undeliverable_flag"
+          ],
+          "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0"
+        },
+        "pipeline_description": "BuyerAbuseRnRAudit pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnRAudit-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0",
+        "transform_spec": {
+          "__model_type__": "TransformSpecificationConfig",
+          "job_split_options": {
+            "__model_type__": "JobSplitOptionsConfig",
+            "days_per_split": 7,
+            "merge_sql": "\nselect * from INPUT\n",
+            "split_job": false
+          },
+          "transform_sql": "\nWITH RR_TAG_BASE AS (\nSELECT \n    order_id,\n    customer_id,\n    marketplace_id,\n    org,\n    week,\n    month,\n    order_day,\n    queued_date,\n    action_date,\n    queueid,\n    fraud_action_type_id,\n    abuse_type,\n    mfn_type,\n    concession_type,\n    concession_status,\n    abuse_flag,\n    net_conc_amt,\n    rr_tag,\n    reversal_reason,\n    reversal_flag,\n    reclassification_flag,\n    reclassified_segment,\n    concession_closed_date,\n    deliverable_flag,\n    undeliverable_flag,\n    ttm_conc_count,\n    ttm_conc_amt,\n    concsi\nFROM RnR_Tag\n),\n\nVALID_ORDERS AS (\n    SELECT /*+ BROADCAST */ DISTINCT order_id \n    FROM RR_TAG_BASE\n),\n\nBSM_Body AS (\n    select MESSAGE_ID, \n        THREAD_ID, \n        ORDER,\n        cast(amzn_id_decrypt(split(SENDER,':')[0]) as bigint) AS SENDER_CUSTOMER_ID,\n        split(SENDER,':')[2] as SENDER_ROLE,\n        cast(amzn_id_decrypt(split(RECIPIENT,':')[0]) as bigint) AS RECIPIENT_CUSTOMER_ID,\n        split(RECIPIENT,':')[2] as RECIPIENT_ROLE,\n        COALESCE(ENTRY_POINT, -1) as ENTRY_POINT, \n        regexp_replace(regexp_replace(SUBJECT, '([^a-zA-Z0-9])', ' '), '(Re|RE)\\s+', '') as SUBJECT,\n        MESSAGE_TYPE, \n        TOPIC_ID, \n        MESSAGE_STATUS, \n        LAST_UPDATED_DATE, \n        RETRANSMISSION_DATE, \n        STATUS_EFFECTIVE_DATE, \n        FROM_ADDRESS, \n        RECIPIENT_ADDRESS, \n        regexp_replace(regexp_replace(regexp_replace(MESSAGE_BODY, '(\")', ''), '\\n', ''), '\\t', '') as MESSAGE_BODY,\n        ARRIVAL_DATE\n    from BSM_Body_Input a\n    inner join VALID_ORDERS b\n    on a.ORDER =  b.order_id\n),\n\nBSM_Body_Order AS (\nSELECT \n    THREAD_ID, \n    ORDER,\n    NULLIF(CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n            STRUCT(ARRIVAL_DATE, SENDER_CUSTOMER_ID)\n        )).SENDER_CUSTOMER_ID), '') as sender_customer_ids,\n    NULLIF(CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n        STRUCT(ARRIVAL_DATE, RECIPIENT_CUSTOMER_ID)\n    )).RECIPIENT_CUSTOMER_ID), '') as receipient_customer_ids,\n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n        STRUCT(ARRIVAL_DATE, ENTRY_POINT)\n    )).ENTRY_POINT) as entry_point_list,\n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n        STRUCT(ARRIVAL_DATE, TOPIC_ID)\n    )).TOPIC_ID) as topic_id_list,\n    NULLIF(CONCAT_WS(' ',\n        SORT_ARRAY(COLLECT_LIST(\n            STRUCT(ARRIVAL_DATE, \n                  CONCAT('[bos] ', SUBJECT, ' [eos]')\n            )\n        )).col2\n    ), '') as subject_list,    \n    SUBSTR(NULLIF(CONCAT_WS(' ',\n        SORT_ARRAY(COLLECT_LIST(\n            STRUCT(ARRIVAL_DATE, \n                  CONCAT('[bom] [Arrival Time]: ', ARRIVAL_DATE, ' [', SENDER_ROLE, ']: ',  MESSAGE_BODY, ' [eom]')\n            )\n        )).col2\n    ), ''), 1, 393216) as dialogue,\n    count(distinct MESSAGE_ID) as unique_message_count\nFROM BSM_Body\nGROUP BY\n    THREAD_ID,\n    ORDER\n),\n\nShiptrack_Region AS (\n    select\n        sna.customer_id,\n        sna.order_id,\n        sna.seller_id,\n        sna.marketplace_id, \n        sna.tracking_id,\n        sna.shipment_id,\n        sna.ship_track_event_code,\n        COALESCE(sna.sender_id, '') as sender_id,\n        COALESCE(sna.supplement_code, '') as supplement_code,\n        (CASE WHEN sna.ship_track_event_code = \"EVENT_101\" THEN \"Shipment has left seller facility and is in transit.\"\n        WHEN sna.ship_track_event_code = \"EVENT_102\" THEN \"Shipment received by carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_103\" THEN \"Picked up by carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_104\" THEN \"Virtual Manifest has been received by carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_160\" THEN \"Documents and information required for clearance have been received by the carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_199\" THEN \"The delivery date for this package has been modified.\"\n        WHEN sna.ship_track_event_code = \"EVENT_200\" THEN \"Pickup carrier physical collection of shipment.\"\n        WHEN sna.ship_track_event_code = \"EVENT_201\" THEN \"Shipment arrived at carrier facility.\"\n        WHEN sna.ship_track_event_code = \"EVENT_202\" THEN \"Shipment departed from carrier facility.\"\n        WHEN sna.ship_track_event_code = \"EVENT_203\" THEN \"Shipment arrived in destination country and is awaiting customs clearance.\"\n        WHEN sna.ship_track_event_code = \"EVENT_204\" THEN \"Shipment started customs clearance process.\"\n        WHEN sna.ship_track_event_code = \"EVENT_205\" THEN \"Shipment completed customs clearance process.\"\n        WHEN sna.ship_track_event_code = \"EVENT_206\" THEN \"Shipment is in transit to pickup location.\"\n        WHEN sna.ship_track_event_code = \"EVENT_207\" THEN \"Problem resolved. Shipment is in transit.\"\n        WHEN sna.ship_track_event_code = \"EVENT_208\" THEN \"Shipment has been rerouted to a nearby store.\"\n        WHEN sna.ship_track_event_code = \"EVENT_212\" THEN \"Sortation has completed at carrier facility.\"\n        WHEN sna.ship_track_event_code = \"EVENT_228\" THEN \"Shipment is in Transit within the carriers network.\"\n        WHEN sna.ship_track_event_code = \"EVENT_235\" THEN \"Package in transit to destination country.\"\n        WHEN sna.ship_track_event_code = \"EVENT_238\" THEN \"Package has been re-slammed/re-planned.\"\n        WHEN sna.ship_track_event_code = \"EVENT_301\" THEN \"Delivered to customer.\"\n        WHEN sna.ship_track_event_code = \"EVENT_302\" THEN \"Shipment is out for delivery.\"\n        WHEN sna.ship_track_event_code = \"EVENT_304\" THEN \"Addressee was not at home. Delivery will be re-attempted.\"\n        WHEN sna.ship_track_event_code = \"EVENT_306\" THEN \"Customer was contacted to arrange delivery.\"\n        WHEN sna.ship_track_event_code = \"EVENT_307\" THEN \"Delivery appointment confirmed by carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_308\" THEN \"Shipment is available for pickup.\"\n        WHEN sna.ship_track_event_code = \"EVENT_309\" THEN \"Shipment was returned to Amazon.\"\n        WHEN sna.ship_track_event_code = \"EVENT_310\" THEN \"Shipment tendered to third party carrier for final delivery.\"\n        WHEN sna.ship_track_event_code = \"EVENT_311\" THEN \"Transferred to local carrier for final delivery.\"\n        WHEN sna.ship_track_event_code = \"EVENT_314\" THEN \"First delivery attempt. A second attempt will be made on the next business day.\"\n        WHEN sna.ship_track_event_code = \"EVENT_315\" THEN \"Second delivery attempt. A final delivery attempt will be made on the next business day.\"\n        WHEN sna.ship_track_event_code = \"EVENT_316\" THEN \"Third and final delivery attempt. Shipment will be held for 3 business days before returning to Amazon.com. Please contact the carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_317\" THEN \"Delivery Attempted.\"\n        WHEN sna.ship_track_event_code = \"EVENT_320\" THEN \"Picked up by customer.\"\n        WHEN sna.ship_track_event_code = \"EVENT_321\" THEN \"Delivery rescheduled by carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_340\" THEN \"Parcel was delivered to collection location.\"\n        WHEN sna.ship_track_event_code = \"EVENT_343\" THEN \"Parcel has not yet been picked up by customer from the collection depot.\"\n        WHEN sna.ship_track_event_code = \"EVENT_398\" THEN \"The carrier has arrived at the customers delivery location.\"\n        WHEN sna.ship_track_event_code = \"EVENT_399\" THEN \"Out for Delivery - UPS.\"\n        WHEN sna.ship_track_event_code = \"EVENT_401\" THEN \"Driver failed attempt due to an address related problem.\"\n        WHEN sna.ship_track_event_code = \"EVENT_402\" THEN \"Shipment is delayed in the customs clearance process.\"\n        WHEN sna.ship_track_event_code = \"EVENT_403\" THEN \"Addressee no longer lives at the delivery address and left no forwarding address information.\"\n        WHEN sna.ship_track_event_code = \"EVENT_404\" THEN \"Shipment is delayed in transit due to carrier network issues. The delivery will be delayed by 1-2 days.\"\n        WHEN sna.ship_track_event_code = \"EVENT_405\" THEN \"Shipment has been damaged in the shipping process, but will still be delivered.\"\n        WHEN sna.ship_track_event_code = \"EVENT_406\" THEN \"Shipment is being held by carrier. Additional information is needed for delivery or customer pick-up.\"\n        WHEN sna.ship_track_event_code = \"EVENT_407\" THEN \"Addressee refused to accept shipment. Shipment will be returned to seller and an automatic refund may have already been submitted. Please validate before additional concessions.\"\n        WHEN sna.ship_track_event_code = \"EVENT_408\" THEN \"Shipment is in transit returning to seller.\"\n        WHEN sna.ship_track_event_code = \"EVENT_409\" THEN \"Carrier has lost the shipment. An automatic refund/replacement may have already been submitted. Please validate before additional concessions.\"\n        WHEN sna.ship_track_event_code = \"EVENT_411\" THEN \"Carrier received electronic or paper manifest, but the shipment has not yet arrived.\"\n        WHEN sna.ship_track_event_code = \"EVENT_412\" THEN \"Carrier received shipment, but the electronic/paper manifest has not arrived and the shipment cannot move until this happens.\"\n        WHEN sna.ship_track_event_code = \"EVENT_414\" THEN \"Carrier has mis-sorted the shipment within their network. Delivery may be delayed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_415\" THEN \"Carrier has received the shipment from another carrier. Delivery may be delayed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_416\" THEN \"Parcel is undeliverable and may be disposed of.\"\n        WHEN sna.ship_track_event_code = \"EVENT_417\" THEN \"The seller mis-sorted the shipment. It is now enroute to correct facility but delivery may be delayed by 1-2 days.\"\n        WHEN sna.ship_track_event_code = \"EVENT_419\" THEN \"Returning to the seller because customer refused delivery.\"\n        WHEN sna.ship_track_event_code = \"EVENT_420\" THEN \"Delay in delivery due to weather or natural disaster.\"\n        WHEN sna.ship_track_event_code = \"EVENT_422\" THEN \"Shipment has been forwarded to a new address by customer request.\"\n        WHEN sna.ship_track_event_code = \"EVENT_423\" THEN \"Shipment was damaged and will not be delivered to the customer.\"\n        WHEN sna.ship_track_event_code = \"EVENT_425\" THEN \"Possible delay in delivery due to extra carrier processing.\"\n        WHEN sna.ship_track_event_code = \"EVENT_426\" THEN \"The shipment has been confiscated or seized by an official government authority.\"\n        WHEN sna.ship_track_event_code = \"EVENT_427\" THEN \"The package is being held by the carrier due to further information needed from the seller.\"\n        WHEN sna.ship_track_event_code = \"EVENT_428\" THEN \"Problem resolved. Shipment is in transit.\"\n        WHEN sna.ship_track_event_code = \"EVENT_429\" THEN \"Shipment is delayed due to carrier network issues.\"\n        WHEN sna.ship_track_event_code = \"EVENT_430\" THEN \"Shipment is delayed due to carrier network issues.\"\n        WHEN sna.ship_track_event_code = \"EVENT_431\" THEN \"Shipment is delayed due to carrier network issues.\"\n        WHEN sna.ship_track_event_code = \"EVENT_432\" THEN \"Shipment is being held by carrier, customer input not needed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_433\" THEN \"Additional information is required to process the shipment through customs.\"\n        WHEN sna.ship_track_event_code = \"EVENT_434\" THEN \"Stop and Return request by Amazon.\"\n        WHEN sna.ship_track_event_code = \"EVENT_436\" THEN \"Carrier is unable to contact addressee to arrange delivery.\"\n        WHEN sna.ship_track_event_code = \"EVENT_438\" THEN \"Customer has requested delivery appointment to be rescheduled.\"\n        WHEN sna.ship_track_event_code = \"EVENT_440\" THEN \"Carrier is unable to gain access to front door to deliver the package.\"\n        WHEN sna.ship_track_event_code = \"EVENT_441\" THEN \"The delivery terms have been modified by the carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_442\" THEN \"The customer has requested special delivery arrangements with the carrier. The delivery date may have changed from original estimate.\"\n        WHEN sna.ship_track_event_code = \"EVENT_443\" THEN \"The tracking number on this shipment has been altered.\"\n        WHEN sna.ship_track_event_code = \"EVENT_447\" THEN \"Package was missorted and is being returned to the shipper.\"\n        WHEN sna.ship_track_event_code = \"EVENT_476\" THEN \"Potential_Lost.\"\n        WHEN sna.ship_track_event_code = \"EVENT_482\" THEN \"Customer pick-up failed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_502\" THEN \"Vessel Departure.\"\n        WHEN sna.ship_track_event_code = \"EVENT_503\" THEN \"Pickup scheduled with Carrier.\"\n        WHEN sna.ship_track_event_code = \"EVENT_513\" THEN \"Customs Released at Port of Loading.\"\n        WHEN sna.ship_track_event_code = \"EVENT_600\" THEN \"This event is not displayed to customers.\"\n        WHEN sna.ship_track_event_code = \"EVENT_630\" THEN \"EAD greater than PDD.\"\n        WHEN sna.ship_track_event_code = \"EVENT_631\" THEN \"Scheduled Ship Date miss by more than 30 minutes.\"\n        WHEN sna.ship_track_event_code = \"EVENT_636\" THEN \"Delayed or Late first scan.\"\n        WHEN sna.ship_track_event_code = \"EVENT_637\" THEN \"Delayed or late out for delivery scan.\"\n        WHEN sna.ship_track_event_code = \"EVENT_650\" THEN \"Package is predicted as delayed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_660\" THEN \"Shipment arrived late (Delay Alarm).\"\n        WHEN sna.ship_track_event_code = \"EVENT_661\" THEN \"Shipment departed late (Delay Alarm).\"\n        WHEN sna.ship_track_event_code = \"EVENT_760\" THEN \"The package was damaged in transit and is being returned to the shipper for replacement.\"\n        WHEN sna.ship_track_event_code = \"EVENT_762\" THEN \"Package was missorted and is being returned to the shipper.\"\n        WHEN sna.ship_track_event_code = \"EVENT_763\" THEN \"Package was missorted and is being forwarded under a different tracking ID.\"\n        WHEN sna.ship_track_event_code = \"EVENT_764\" THEN \"The package with bad/missing label is being returned to the shipper.\"\n        WHEN sna.ship_track_event_code = \"EVENT_801\" THEN \"Delivered to Locker.\"\n        WHEN sna.ship_track_event_code = \"EVENT_804\" THEN \"Picked up from Locker.\"\n        WHEN sna.ship_track_event_code = \"EVENT_820\" THEN \"Picked up for return from Locker.\"\n        WHEN sna.ship_track_event_code = \"EVENT_823\" THEN \"Delivery delay detected due to an issue at Locker.\"\n        WHEN sna.ship_track_event_code = \"EVENT_825\" THEN \"Not delivered due to package too big.\"\n        WHEN sna.ship_track_event_code = \"EVENT_828\" THEN \"Package inside locker for 3 business days.\"\n        WHEN sna.ship_track_event_code = \"EVENT_900\" THEN \"Customer Requested Return Authorization.\"\n        WHEN sna.ship_track_event_code = \"EVENT_901\" THEN \"Return package arrived at carrier facility and available for pickup.\"\n        WHEN sna.ship_track_event_code = \"EVENT_932\" THEN \"Pickup Date / Time Offered.\"\n        WHEN sna.ship_track_event_code = \"EVENT_933\" THEN \"Customer Contacted to arrange pickup.\"\n        WHEN sna.ship_track_event_code = \"EVENT_941\" THEN \"Previous pickup attempt has been made.\"\n        WHEN sna.ship_track_event_code = \"EVENT_946\" THEN \"Pickup attempted. Someone is required to be at home.\"\n        WHEN sna.ship_track_event_code = \"EVENT_949\" THEN \"Pickup attempted - package not ready.\"\n        WHEN sna.ship_track_event_code = \"EVENT_950\" THEN \"Pickup rescheduled.\"\n        WHEN sna.ship_track_event_code = \"EVENT_951\" THEN \"Return Pickup refused by customers and return cancelled.\"\n        WHEN sna.ship_track_event_code = \"EVENT_953\" THEN \"Replacement or Exchange refused by customers and canceled.\"\n        WHEN sna.ship_track_event_code = \"EVENT_957\" THEN \"Pick up attempted and unsuccessful. Unable to contact customer.\"\n        WHEN sna.ship_track_event_code = \"EVENT_962\" THEN \"Pick up attempted and unsuccessful.\"\n        WHEN sna.ship_track_event_code = \"EVENT_972\" THEN \"Return or Replacement or Exchange pickup succeed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_973\" THEN \"Return or Replacement or Exchange pickup succeed.\"\n        WHEN sna.ship_track_event_code = \"EVENT_981\" THEN \"Return is in transit from carriers to FCs.\"\n        WHEN sna.ship_track_event_code = \"EVENT_982\" THEN \"Return arrived in return FCs.\"\n        WHEN sna.ship_track_event_code = \"EVENT_983\" THEN \"Return processed in return FCs.\"\n        WHEN sna.ship_track_event_code = \"EVENT_987\" THEN \"Carrier out for pickup from Customer.\"\n        WHEN sna.ship_track_event_code = \"EVENT_989\" THEN \"Pickup attempt abandoned. Attempt will occur next day.\"\n        WHEN sna.ship_track_event_code = \"EVENT_999\" THEN \"Unknown.\"\n        ELSE \"Unmapped ShipTrack Event.\"\n        END) as ship_track_event,\n        COALESCE(sna.reason_code, '') as reason_code,\n        sna.event_date,\n        COALESCE(sna.estimated_arrival_date, \"1000-01-01T00:00:00Z\") as estimated_arrival_date,\n        COALESCE(sna.estimated_delivery_date, \"1000-01-01T00:00:00Z\") as estimated_delivery_date\n    from ShiptrackEventHistory_NA sna\n    inner join VALID_ORDERS b\n    on sna.order_id = b.order_id\n    where sna.mds_date between CAST('2025-12-08T00:00:00Z' AS TIMESTAMP) - INTERVAL 365 DAYS and CAST('2025-12-08T00:00:00Z' AS TIMESTAMP)\n),\n\nShipTrack_by_Shipment AS (\nSELECT\n    marketplace_id,\n    order_id,\n    customer_id,\n    seller_id,\n    shipment_id,\n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n                    STRUCT(event_date, \n                            tracking_id, \n                            sender_id, \n                            ship_track_event_code, \n                            supplement_code\n                            )\n    )).tracking_id) AS tracking_ids,\n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n                    STRUCT(event_date, \n                            tracking_id, \n                            sender_id, \n                            ship_track_event_code, \n                            supplement_code\n                            )\n    )).sender_id) as sender_ids,\n    SUBSTR(NULLIF(CONCAT_WS(' ',\n        SORT_ARRAY(COLLECT_LIST(\n            STRUCT(event_date, \n                  CONCAT('[bom] [Event Time]: ', event_date,\n                  ' [Tracking ID]: ', tracking_id,\n                  ' [Sender ID]: ', sender_id, \n                  ' [Supplement Code]: ', supplement_code, \n                  ' [Ship Track Event Code]: ', ship_track_event_code,  \n                  ' [Ship Track Event]: ',  ship_track_event, ' [eom]')\n            )\n        )).col2\n    ), ''), 1, 262144) as shiptrack_event_history,\n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n                    STRUCT(event_date, \n                            tracking_id, \n                            sender_id, \n                            ship_track_event_code, \n                            supplement_code\n                            )\n    )).ship_track_event_code) as shiptrack_event_code_list,\n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(\n                    STRUCT(event_date, \n                            tracking_id, \n                            sender_id, \n                            ship_track_event_code, \n                            supplement_code\n                            )\n    )).supplement_code) as supplement_code_list, \n    CONCAT_WS(',', SORT_ARRAY(COLLECT_LIST(event_date))\n    ) as event_date_list,  \n    max(estimated_arrival_date) as max_estimated_arrival_date,\n    max(estimated_delivery_date) as max_estimated_delivery_date,\n    COUNT(ship_track_event_code) as ship_track_event_count,\n    COUNT(DISTINCT ship_track_event_code) as ship_track_event_unique_count\nFROM Shiptrack_Region\nGROUP BY\n    marketplace_id,\n    order_id,\n    customer_id,\n    seller_id,\n    shipment_id\n),\n\nShipTrack_by_Order AS (\nSELECT\n    marketplace_id,\n    order_id,\n    customer_id,\n    seller_id,\n    CONCAT_WS(',', SORT_ARRAY(ARRAY_DISTINCT(\n        COLLECT_LIST(shipment_id)\n    ))) AS shipment_ids,\n    TO_JSON(ARRAY_AGG(SPLIT(NULLIF(tracking_ids, ''), ','))) AS tracking_id_lists_by_order,\n    TO_JSON(ARRAY_AGG(SPLIT(NULLIF(sender_ids, ''), ','))) AS sender_id_lists_by_order,\n    CONCAT_WS(' ', \n        COLLECT_LIST(\n            CONCAT(\n                '[bom] [Shipment ID]: ', shipment_id, ' [eom] ',\n                shiptrack_event_history,\n                ' [bom] End of Ship Track Event for ', shipment_id, ' [eom]'\n            )\n        )\n    ) AS shiptrack_event_history_by_order,\n    TO_JSON(ARRAY_AGG(SPLIT(NULLIF(shiptrack_event_code_list, ''), ','))) AS shiptrack_event_code_lists_by_order,\n    TO_JSON(ARRAY_AGG(SPLIT(NULLIF(supplement_code_list, ''), ','))) AS supplement_code_lists_by_order,\n    TO_JSON(ARRAY_AGG(SPLIT(NULLIF(event_date_list, ''), ','))) AS event_date_lists_by_order,\n    MAX(max_estimated_arrival_date) AS max_estimated_arrival_date_by_order,\n    MAX(max_estimated_delivery_date) AS max_estimated_delivery_date_by_order,\n    SUM(ship_track_event_count) AS total_ship_track_events_by_order,\n    SUM(ship_track_event_unique_count) AS total_unique_ship_track_events_by_order,\n    COUNT(DISTINCT shipment_id) AS shipment_count\nFROM ShipTrack_by_Shipment\nGROUP BY\n    marketplace_id,\n    order_id,\n    customer_id,\n    seller_id\n),\n\ndeduplicated_results AS (\nSELECT *,\n       ROW_NUMBER() OVER (\n        PARTITION BY COALESCE(org, 'UNKNOWN'), \n                     COALESCE(order_id, 'UNKNOWN'), \n                     COALESCE(customer_id, -1)\n        ORDER BY COALESCE(concession_closed_date, '1900-01-01') DESC, \n                 COALESCE(unique_message_count, 0) DESC,\n                 COALESCE(total_ship_track_events_by_order, 0) DESC\n    ) as row_num\nFROM (\n    select \n        a.THREAD_ID,\n        'NA' as region,\n        COALESCE(a.ORDER, b.order_id) as order_id,\n        a.sender_customer_ids,\n        a.receipient_customer_ids,\n        a.entry_point_list,\n        a.topic_id_list,\n        a.subject_list,\n        a.dialogue,\n        a.unique_message_count,\n        c.shipment_ids,\n        c.tracking_id_lists_by_order as shiptrack_tracking_id_lists_by_order,\n        c.sender_id_lists_by_order as shiptrack_sender_id_lists_by_order,\n        c.shiptrack_event_history_by_order,\n        c.shiptrack_event_code_lists_by_order,\n        c.supplement_code_lists_by_order as shiptrack_supplement_code_lists_by_order,\n        c.event_date_lists_by_order as shiptrack_event_date_lists_by_order,\n        c.max_estimated_arrival_date_by_order as shiptrack_max_estimated_arrival_date_by_order,\n        c.max_estimated_delivery_date_by_order as shiptrack_max_estimated_delivery_date_by_order,\n        c.total_ship_track_events_by_order,\n        c.total_unique_ship_track_events_by_order,\n        b.customer_id,\n        b.marketplace_id,\n        b.org,\n        b.concession_type,\n        b.abuse_type,\n        b.mfn_type,\n        b.week,\n        b.month,\n        b.order_day,\n        b.queued_date,\n        b.action_date,\n        b.queueid,\n        b.fraud_action_type_id,\n        b.concession_status,\n        b.abuse_flag,\n        b.concession_closed_date,\n        COALESCE(b.rr_tag, 'UNKNOWN') as rr_tag,\n        COALESCE(b.reversal_reason, 'UNKNOWN') as reversal_reason,\n        COALESCE(b.reversal_flag, -1) as reversal_flag,\n        COALESCE(b.reclassification_flag, -1) as reclassification_flag,\n        COALESCE(b.reclassified_segment, 'UNKNOWN') as reclassified_segment,\n        COALESCE(b.net_conc_amt, 0) as net_conc_amt,\n        COALESCE(b.ttm_conc_amt, 0) as ttm_conc_amt,\n        COALESCE(b.ttm_conc_count, 0) as ttm_conc_count,\n        COALESCE(b.concsi, 0) as concsi,\n        COALESCE(b.deliverable_flag, 0) as deliverable_flag,\n        COALESCE(b.undeliverable_flag, 0) as undeliverable_flag\n    from BSM_Body_Order a\n    left join ShipTrack_by_Order c\n    on a.ORDER = c.order_id\n    inner join RR_TAG_BASE b \n    on a.ORDER = b.order_id\n    )\n)\n\nSELECT * \nFROM deduplicated_results\nWHERE row_num = 1\nORDER BY org, order_id, customer_id\n"
+        }
+      },
+      "LabelRulesetExecution_training": {
+        "__model_type__": "LabelRulesetExecutionConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts",
+        "enable_progress_logging": true,
+        "enable_rule_match_tracking": true,
+        "execution_configuration": {
+          "fail_on_missing_fields": true,
+          "graceful_degradation": false,
+          "job_type": "training",
+          "performance_optimized": false,
+          "progress_logging": true,
+          "rule_match_tracking": true
+        },
+        "execution_environment_variables": {
+          "ENABLE_PROGRESS_LOGGING": "true",
+          "ENABLE_RULE_MATCH_TRACKING": "true",
+          "FAIL_ON_MISSING_FIELDS": "true",
+          "PREFERRED_INPUT_FORMAT": "parquet",
+          "USE_SECURE_PYPI": "true"
+        },
+        "fail_on_missing_fields": true,
+        "job_type": "training",
+        "pipeline_description": "BuyerAbuseRnRAudit pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnRAudit-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0",
+        "preferred_input_format": "Parquet",
+        "processing_entry_point": "label_ruleset_execution.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_metadata": {
+          "fail_on_missing_fields": true,
+          "job_type": "training",
+          "multi_format_support": [
+            "csv",
+            "tsv",
+            "parquet"
+          ],
+          "progress_logging_enabled": true,
+          "rule_match_tracking_enabled": true,
+          "step_type": "label_ruleset_execution",
+          "supports_stacked_preprocessing": true
+        },
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/label_ruleset_execution.py",
+        "use_large_processing_instance": true
+      },
+      "LabelRulesetGeneration": {
+        "__model_type__": "LabelRulesetGenerationConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.4xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts",
+        "enable_field_validation": true,
+        "enable_label_validation": true,
+        "enable_logic_validation": true,
+        "enable_rule_optimization": true,
+        "environment_variables": {
+          "ENABLE_FIELD_VALIDATION": "true",
+          "ENABLE_LABEL_VALIDATION": "true",
+          "ENABLE_LOGIC_VALIDATION": "true",
+          "ENABLE_RULE_OPTIMIZATION": "true"
+        },
+        "label_config": {
+          "__model_type__": "LabelConfig",
+          "default_label": {
+            "llm_reclassification_flag": 0,
+            "llm_reversal_flag": 0
+          },
+          "evaluation_mode": "priority",
+          "label_mapping": {
+            "llm_reclassification_flag": {
+              "0": "No_Reclassification_Required",
+              "1": "Reclassification_Required"
+            },
+            "llm_reversal_flag": {
+              "0": "No_Reversal_Required",
+              "1": "Reversal_Required"
+            }
+          },
+          "label_values": {
+            "llm_reclassification_flag": [
+              0,
+              1
+            ],
+            "llm_reversal_flag": [
+              0,
+              1
+            ]
+          },
+          "output_label_name": [
+            "llm_reversal_flag",
+            "llm_reclassification_flag"
+          ],
+          "output_label_type": "multilabel",
+          "sparse_representation": true
+        },
+        "pipeline_description": "BuyerAbuseRnRAudit pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnRAudit-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0",
+        "processing_entry_point": "label_ruleset_generation.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "resolved_ruleset_configs_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/ruleset_configs",
+        "rule_definitions": {
+          "__model_type__": "RulesetDefinitionList",
+          "rules": [
+            {
+              "conditions": {
+                "__type_info__": "dict",
+                "value": {
+                  "all_of": null,
+                  "any_of": null,
+                  "field": "abuse_flag",
+                  "none_of": null,
+                  "operator": "not_equals",
+                  "value": 1.0
+                }
+              },
+              "description": "If non-abuse, then we exclude this population from reversal and reclassification",
+              "enabled": true,
+              "name": "Non_Abuse_Default",
+              "output_label": {
+                "llm_reclassification_flag": 0,
+                "llm_reversal_flag": 0
+              },
+              "priority": 1
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "Confirmed_Delay",
+                        "Delivery_Attempt_Failed",
+                        "Seller_Unable_To_Ship",
+                        "Buyer_Received_WrongORDefective_Item",
+                        "BuyerCancellation",
+                        "Return_NoLongerNeeded",
+                        "Product_Information_Support",
+                        "Insufficient_Information"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "abuse_flag",
+                      "none_of": null,
+                      "operator": "equals",
+                      "value": 1.0
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating reversal required: the refund is not abuse but flagged as abuse",
+              "enabled": true,
+              "name": "Reversal_Required_Categories",
+              "output_label": {
+                "llm_reversal_flag": 1
+              },
+              "priority": 2
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "TrueDNR",
+                        "PDA_Undeliverable",
+                        "PDA_Early_Refund",
+                        "Returnless_Refund"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "abuse_flag",
+                      "none_of": null,
+                      "operator": "equals",
+                      "value": 1.0
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating NO reversal: identified abuse (PDA, DNR, RR) with abuse flag already in place;",
+              "enabled": true,
+              "name": "No_Reversal_Categories",
+              "output_label": {
+                "llm_reversal_flag": 0
+              },
+              "priority": 3
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "PDA_Undeliverable",
+                        "PDA_Early_Refund",
+                        "Returnless_Refund"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "concession_type",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "NOTR"
+                      ]
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating Reclassification Needed: identified abuse type different from reported abuse type (DNR);",
+              "enabled": true,
+              "name": "Reclassification_DNR_Categories",
+              "output_label": {
+                "llm_reclassification_flag": 1
+              },
+              "priority": 4
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "TrueDNR"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "concession_type",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "NOTR"
+                      ]
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating No Reclassification Needed: identified abuse type is the same as the reported abuse type (DNR);",
+              "enabled": true,
+              "name": "No_Reclassification_DNR_Categories",
+              "output_label": {
+                "llm_reclassification_flag": 0
+              },
+              "priority": 5
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "TrueDNR",
+                        "Returnless_Refund"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "concession_type",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "PDA"
+                      ]
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating Reclassification Needed: identified abuse type different from reported abuse type (PDA);",
+              "enabled": true,
+              "name": "Reclassification_PDA_Categories",
+              "output_label": {
+                "llm_reclassification_flag": 1
+              },
+              "priority": 6
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "PDA_Undeliverable",
+                        "PDA_Early_Refund"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "concession_type",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "PDA"
+                      ]
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating No Reclassification Needed: identified abuse type is the same as the reported abuse type (PDA);",
+              "enabled": true,
+              "name": "No_Reclassification_PDA_Categories",
+              "output_label": {
+                "llm_reclassification_flag": 0
+              },
+              "priority": 7
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "TrueDNR",
+                        "PDA_Undeliverable",
+                        "PDA_Early_Refund"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "concession_type",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "RR"
+                      ]
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating Reclassification Needed: identified abuse type different from reported abuse type (RR);",
+              "enabled": true,
+              "name": "Reclassification_RR_Categories",
+              "output_label": {
+                "llm_reclassification_flag": 1
+              },
+              "priority": 8
+            },
+            {
+              "conditions": {
+                "all_of": [
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "llm_category",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "Returnless_Refund"
+                      ]
+                    }
+                  },
+                  {
+                    "__type_info__": "dict",
+                    "value": {
+                      "all_of": null,
+                      "any_of": null,
+                      "field": "concession_type",
+                      "none_of": null,
+                      "operator": "in",
+                      "value": [
+                        "RR"
+                      ]
+                    }
+                  }
+                ],
+                "any_of": null,
+                "field": null,
+                "none_of": null,
+                "operator": null,
+                "value": null
+              },
+              "description": "Categories indicating No Reclassification Needed: identified abuse type is the same as the reported abuse type (RR);",
+              "enabled": true,
+              "name": "No_Reclassification_RR_Categories",
+              "output_label": {
+                "llm_reclassification_flag": 0
+              },
+              "priority": 9
+            }
+          ]
+        },
+        "ruleset_configs_path": "ruleset_configs",
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/label_ruleset_generation.py",
+        "use_large_processing_instance": false
+      },
+      "TabularPreprocessing_training": {
+        "__model_type__": "TabularPreprocessingConfig",
+        "aws_region": "us-east-1",
+        "effective_instance_type": "ml.m5.12xlarge",
+        "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts",
+        "full_script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/tabular_preprocessing.py",
+        "job_type": "training",
+        "output_format": "Parquet",
+        "pipeline_description": "BuyerAbuseRnRAudit pytorch Model NA",
+        "pipeline_name": "lukexie-BuyerAbuseRnRAudit-pytorch-NA",
+        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-BuyerAbuseRnRAudit-pytorch-NA_1.0.0",
+        "processing_entry_point": "tabular_preprocessing.py",
+        "processing_framework_version": "1.2-1",
+        "processing_instance_count": 1,
+        "processing_instance_type_large": "ml.m5.12xlarge",
+        "processing_instance_type_small": "ml.m5.4xlarge",
+        "processing_source_dir": "dockers/scripts",
+        "processing_volume_size": 500,
+        "script_path": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/rnr_audit_bedrock/dockers/scripts/tabular_preprocessing.py",
+        "test_val_ratio": 0.5,
+        "train_ratio": 0.7,
+        "use_large_processing_instance": true
+      }
+    }
+  },
+  "metadata": {
+    "config_types": {
+      "BedrockBatchProcessing_training": "BedrockBatchProcessingConfig",
+      "BedrockPromptTemplateGeneration": "BedrockPromptTemplateGenerationConfig",
+      "CradleDataLoading_training": "CradleDataLoadingConfig",
+      "LabelRulesetExecution_training": "LabelRulesetExecutionConfig",
+      "LabelRulesetGeneration": "LabelRulesetGenerationConfig",
+      "TabularPreprocessing_training": "TabularPreprocessingConfig"
+    },
+    "created_at": "2025-12-16T21:10:42.937953",
+    "field_sources": {
+      "author": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "aws_region": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "batch_configuration": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_mode": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_role_arn": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_size": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_threshold": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_batch_timeout_hours": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_concurrency_mode": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_environment_variables": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_fallback_model_id": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_inference_profile_arn": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_inference_profile_required_models": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_log_truncations": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_concurrent_batch_jobs": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_concurrent_workers": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_input_field_length": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_records_per_job": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_retries": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_max_tokens": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_output_column_prefix": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_primary_model_id": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_rate_limit_per_second": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_skip_error_records": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_temperature": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_top_p": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bedrock_truncation_enabled": [
+        "BedrockBatchProcessing_training"
+      ],
+      "bucket": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "cost_optimization_info": [
+        "BedrockBatchProcessing_training"
+      ],
+      "cradle_job_spec": [
+        "CradleDataLoading_training"
+      ],
+      "current_date": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "data_sources_spec": [
+        "CradleDataLoading_training"
+      ],
+      "effective_categories": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_inference_profile_required_models": [
+        "BedrockBatchProcessing_training"
+      ],
+      "effective_instance_type": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "effective_instruction_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_output_format_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "effective_source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "effective_system_prompt_config": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "enable_caching": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "enable_field_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_label_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_logic_validation": [
+        "LabelRulesetGeneration"
+      ],
+      "enable_progress_logging": [
+        "LabelRulesetExecution_training"
+      ],
+      "enable_rule_match_tracking": [
+        "LabelRulesetExecution_training"
+      ],
+      "enable_rule_optimization": [
+        "LabelRulesetGeneration"
+      ],
+      "environment_variables": [
+        "BedrockPromptTemplateGeneration",
+        "LabelRulesetGeneration"
+      ],
+      "execution_configuration": [
+        "LabelRulesetExecution_training"
+      ],
+      "execution_environment_variables": [
+        "LabelRulesetExecution_training"
+      ],
+      "fail_on_missing_fields": [
+        "LabelRulesetExecution_training"
+      ],
+      "framework_version": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "full_script_path": [
+        "TabularPreprocessing_training"
+      ],
+      "generate_validation_schema": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "include_examples": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "input_placeholders": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "instruction_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "job_type": [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetExecution_training"
+      ],
+      "label_config": [
+        "LabelRulesetGeneration"
+      ],
+      "max_runtime_seconds": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "model_class": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "output_format": [
+        "TabularPreprocessing_training"
+      ],
+      "output_format_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "output_format_type": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "output_spec": [
+        "CradleDataLoading_training"
+      ],
+      "pipeline_description": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "pipeline_name": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "pipeline_s3_loc": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "pipeline_version": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "preferred_input_format": [
+        "LabelRulesetExecution_training"
+      ],
+      "processing_entry_point": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_framework_version": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_instance_count": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_instance_type_large": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_instance_type_small": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_metadata": [
+        "BedrockBatchProcessing_training",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "processing_volume_size": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "project_root_folder": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "prompt_configs_path": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "py_version": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "region": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "required_output_fields": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "resolved_prompt_configs_path": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "resolved_ruleset_configs_path": [
+        "LabelRulesetGeneration"
+      ],
+      "role": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "rule_definitions": [
+        "LabelRulesetGeneration"
+      ],
+      "ruleset_configs_path": [
+        "LabelRulesetGeneration"
+      ],
+      "script_path": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "service_name": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "source_dir": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "system_prompt_settings": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_metadata": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_style": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_task_type": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "template_version": [
+        "BedrockPromptTemplateGeneration"
+      ],
+      "test_val_ratio": [
+        "TabularPreprocessing_training"
+      ],
+      "train_ratio": [
+        "TabularPreprocessing_training"
+      ],
+      "transform_spec": [
+        "CradleDataLoading_training"
+      ],
+      "use_large_processing_instance": [
+        "BedrockPromptTemplateGeneration",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "use_secure_pypi": [
+        "BedrockPromptTemplateGeneration",
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training",
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      "validation_level": [
+        "BedrockPromptTemplateGeneration"
+      ]
+    }
+  }
+}

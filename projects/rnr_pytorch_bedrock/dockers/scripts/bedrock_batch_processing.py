@@ -1155,6 +1155,16 @@ class BedrockBatchProcessor(BedrockProcessor):
     """
 
     def __init__(self, config: Dict[str, Any]):
+        # Auto-correct inference profile ARN account ID BEFORE parent initialization
+        # This ensures the correct ARN is used throughout the parent class initialization
+        if config.get("batch_role_arn") and config.get("inference_profile_arn"):
+            config["inference_profile_arn"] = (
+                self._validate_and_correct_inference_profile_arn(
+                    inference_profile_arn=config["inference_profile_arn"],
+                    batch_role_arn=config["batch_role_arn"],
+                )
+            )
+
         super().__init__(config)
 
         # Batch-specific configuration
@@ -1215,6 +1225,93 @@ class BedrockBatchProcessor(BedrockProcessor):
             logger.info(f"Batch input S3 path: {self.batch_input_s3_path}")
         if self.batch_output_s3_path:
             logger.info(f"Batch output S3 path: {self.batch_output_s3_path}")
+
+    @staticmethod
+    def _validate_and_correct_inference_profile_arn(
+        inference_profile_arn: str, batch_role_arn: str
+    ) -> str:
+        """
+        Validates and auto-corrects inference profile ARN to use same account as batch role ARN.
+
+        This defensive programming approach prevents cross-account AccessDeniedException errors
+        by ensuring the inference profile and batch role are in the same AWS account.
+
+        Args:
+            inference_profile_arn: Original inference profile ARN
+                Format: arn:aws:bedrock:REGION:ACCOUNT_ID:inference-profile/PROFILE_ID
+            batch_role_arn: Batch role ARN
+                Format: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+
+        Returns:
+            Corrected inference profile ARN with matching account ID
+
+        Examples:
+            Input:
+                inference_profile_arn = "arn:aws:bedrock:us-east-1:178936618742:inference-profile/..."
+                batch_role_arn = "arn:aws:iam::601857636239:role/SandboxRole"
+            Output:
+                "arn:aws:bedrock:us-east-1:601857636239:inference-profile/..."
+        """
+        import re
+
+        # Extract account ID from batch_role_arn
+        # Format: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+        role_match = re.search(r"arn:aws:iam::(\d+):", batch_role_arn)
+        if not role_match:
+            logger.warning(
+                f"Could not parse account ID from batch_role_arn: {batch_role_arn}"
+            )
+            logger.warning("Skipping inference profile ARN validation")
+            return inference_profile_arn
+
+        role_account_id = role_match.group(1)
+
+        # Extract account ID from inference_profile_arn
+        # Format: arn:aws:bedrock:REGION:ACCOUNT_ID:inference-profile/PROFILE_ID
+        profile_match = re.search(
+            r"arn:aws:bedrock:([^:]+):(\d+):", inference_profile_arn
+        )
+        if not profile_match:
+            logger.warning(
+                f"Could not parse account ID from inference_profile_arn: {inference_profile_arn}"
+            )
+            logger.warning("Skipping inference profile ARN validation")
+            return inference_profile_arn
+
+        profile_region = profile_match.group(1)
+        profile_account_id = profile_match.group(2)
+
+        # Check if accounts match
+        if role_account_id != profile_account_id:
+            logger.warning("=" * 70)
+            logger.warning("ACCOUNT ID MISMATCH DETECTED - AUTO-CORRECTING")
+            logger.warning("=" * 70)
+            logger.warning(f"Batch Role Account ID:        {role_account_id}")
+            logger.warning(f"Inference Profile Account ID: {profile_account_id}")
+            logger.warning("")
+            logger.warning("This mismatch would cause AccessDeniedException errors.")
+            logger.warning(
+                "Auto-correcting inference profile ARN to use batch role account..."
+            )
+            logger.warning("")
+
+            # Replace account ID in inference profile ARN
+            corrected_arn = re.sub(
+                r"(arn:aws:bedrock:[^:]+:)\d+:",
+                f"\\1{role_account_id}:",
+                inference_profile_arn,
+            )
+
+            logger.warning(f"Original ARN:  {inference_profile_arn}")
+            logger.warning(f"Corrected ARN: {corrected_arn}")
+            logger.warning("=" * 70)
+
+            return corrected_arn
+        else:
+            logger.info(f"✓ Account ID validation passed: {role_account_id}")
+            logger.info(f"  Batch role and inference profile are in the same account")
+
+        return inference_profile_arn
 
     def _parse_s3_path(self, s3_path: str) -> tuple[str, str]:
         """Parse S3 path into bucket and prefix components."""

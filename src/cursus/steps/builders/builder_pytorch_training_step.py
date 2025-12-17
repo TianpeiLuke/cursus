@@ -6,6 +6,7 @@ from sagemaker.workflow.steps import TrainingStep, Step
 from sagemaker.pytorch import PyTorch
 from sagemaker.inputs import TrainingInput
 from sagemaker.workflow.functions import Join
+from sagemaker import image_uris
 
 from ..configs.config_pytorch_training_step import PyTorchTrainingConfig
 from ...core.base.builder_base import StepBuilderBase
@@ -129,9 +130,21 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
         source_dir = self.config.effective_source_dir
         self.log_info("Using source directory: %s", source_dir)
 
+        # Explicitly retrieve the image URI for PyTorch training
+        image_uri = image_uris.retrieve(
+            framework="pytorch",
+            region="us-east-1",
+            version=self.config.framework_version,
+            py_version=self.config.py_version,
+            instance_type=self.config.training_instance_type,
+            image_scope="training",
+        )
+        self.log_info("Using PyTorch training image URI: %s", image_uri)
+
         return PyTorch(
             entry_point=self.config.training_entry_point,
             source_dir=source_dir,
+            image_uri=image_uri,
             framework_version=self.config.framework_version,
             py_version=self.config.py_version,
             role=self.role,
