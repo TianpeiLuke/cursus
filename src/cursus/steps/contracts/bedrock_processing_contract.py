@@ -39,6 +39,10 @@ BEDROCK_PROCESSING_CONTRACT = ScriptContract(
         "BEDROCK_MAX_CONCURRENT_WORKERS": "5",
         "BEDROCK_RATE_LIMIT_PER_SECOND": "10",
         "BEDROCK_CONCURRENCY_MODE": "sequential",
+        # Input truncation configuration
+        "BEDROCK_MAX_INPUT_FIELD_LENGTH": "400000",
+        "BEDROCK_TRUNCATION_ENABLED": "true",
+        "BEDROCK_LOG_TRUNCATIONS": "true",
         "USE_SECURE_PYPI": "false",
     },
     framework_requirements={
@@ -132,6 +136,18 @@ BEDROCK_PROCESSING_CONTRACT = ScriptContract(
       - Recommended range: 3-10 workers depending on rate limits
     - BEDROCK_RATE_LIMIT_PER_SECOND: API requests per second limit (optional, default: "10")
       - Enforced only in concurrent mode to respect Bedrock API limits
+    
+    Input Truncation Configuration:
+    - BEDROCK_MAX_INPUT_FIELD_LENGTH: Maximum character length for input fields (optional, default: "400000")
+      - Input fields exceeding this length will be truncated with a marker
+      - Prevents API errors from extremely long input fields
+      - Recommended range: 100000-500000 characters depending on model limits
+    - BEDROCK_TRUNCATION_ENABLED: Enable/disable input truncation (optional, default: "true")
+      - Set to "false" to disable truncation and allow full field lengths
+      - Truncation helps prevent API errors and reduce token costs
+    - BEDROCK_LOG_TRUNCATIONS: Log truncation events (optional, default: "true")
+      - Set to "false" to suppress truncation logging for cleaner logs
+      - Useful for tracking which fields and records are being truncated
     
     Template Integration Features:
     - Zero-Configuration Processing: Templates provide all prompt configuration

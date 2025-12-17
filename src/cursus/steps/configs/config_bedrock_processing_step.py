@@ -128,6 +128,24 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         description="API requests per second limit for concurrent processing",
     )
 
+    # Input truncation configuration
+    bedrock_max_input_field_length: int = Field(
+        default=400000,
+        ge=100,
+        le=1000000,
+        description="Maximum length in characters for input fields before truncation (default: 400,000 chars ≈ 100,000 tokens)",
+    )
+
+    bedrock_truncation_enabled: bool = Field(
+        default=True,
+        description="Enable automatic truncation of oversized input fields to prevent error 413 'Input is too long'",
+    )
+
+    bedrock_log_truncations: bool = Field(
+        default=True,
+        description="Log detailed information about truncated fields for debugging and monitoring",
+    )
+
     # Processing step overrides
     processing_entry_point: str = Field(
         default="bedrock_processing.py",
@@ -218,6 +236,14 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                 "BEDROCK_RATE_LIMIT_PER_SECOND": str(
                     self.bedrock_rate_limit_per_second
                 ),
+                # Input truncation configuration
+                "BEDROCK_MAX_INPUT_FIELD_LENGTH": str(
+                    self.bedrock_max_input_field_length
+                ),
+                "BEDROCK_TRUNCATION_ENABLED": str(
+                    self.bedrock_truncation_enabled
+                ).lower(),
+                "BEDROCK_LOG_TRUNCATIONS": str(self.bedrock_log_truncations).lower(),
                 "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
 

@@ -77,7 +77,17 @@ def install_packages_from_public_pypi(packages: list) -> None:
     logger.info(f"Packages: {packages}")
 
     try:
-        check_call([sys.executable, "-m", "pip", "install", *packages])
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--force-reinstall",  # Force clean reinstall
+                "--no-cache-dir",  # Don't use cached packages
+                *packages,
+            ]
+        )
         logger.info("✓ Successfully installed packages from public PyPI")
     except Exception as e:
         logger.error(f"✗ Failed to install packages from public PyPI: {e}")
@@ -171,7 +181,14 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 # ============================================================================
 
 # Define required packages for this script
-required_packages = ["pydantic==2.11.2", "tenacity==8.5.0"]
+# Use exact versions to ensure compatibility and avoid package corruption
+required_packages = [
+    "pydantic==2.11.2",
+    "tenacity==8.5.0",
+    "boto3==1.35.50",  # Version with Bedrock batch inference support (Oct 2024+)
+    "botocore==1.35.50",  # Must match boto3 version
+    "s3transfer==0.10.3",  # Compatible with botocore 1.35.50
+]
 
 # Install packages using unified installation function
 install_packages(required_packages)
@@ -183,6 +200,7 @@ import argparse
 import pandas as pd
 import boto3
 import traceback
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Callable
 import logging
@@ -450,6 +468,18 @@ class BedrockProcessor:
         self.last_request_times = {}
         self.time_lock = threading.Lock()
 
+        # Input truncation configuration
+        self.max_input_field_length = config.get("max_input_field_length", 300000)
+        self.truncation_enabled = config.get("truncation_enabled", True)
+        self.log_truncations = config.get("log_truncations", True)
+
+        # Truncation tracking
+        self.truncation_stats = {
+            "total_truncations": 0,
+            "truncated_records": 0,
+            "truncated_fields": {},
+        }
+
         self._initialize_bedrock_client()
         self._configure_inference_profile()
         self._create_response_model_from_schema()
@@ -663,15 +693,100 @@ class BedrockProcessor:
         model_name = object_schema.get("title", f"NestedModel_{id(object_schema)}")
         return create_model(model_name, **nested_fields)
 
+    def _truncate_field_value(
+        self, value: str, field_name: str, max_length: int
+    ) -> tuple[str, bool]:
+        """
+        Truncate field value to maximum length, preserving as much original content as possible.
+
+        Args:
+            value: Field value to potentially truncate
+            field_name: Name of the field (for logging)
+            max_length: Maximum length in characters
+
+        Returns:
+            Tuple of (truncated_value, was_truncated)
+        """
+        if len(value) <= max_length:
+            return value, False
+
+        # Truncation needed
+        truncation_marker = "\n... [TRUNCATED DUE TO LENGTH]"
+        keep_length = max_length - len(truncation_marker)
+
+        if keep_length <= 0:
+            # Edge case: max_length is too small
+            logger.warning(
+                f"Field '{field_name}' truncation limit ({max_length}) is too small. "
+                f"Using minimum truncation."
+            )
+            return value[: max(100, max_length)] + truncation_marker, True
+
+        truncated = value[:keep_length] + truncation_marker
+
+        # Log truncation
+        if self.log_truncations:
+            logger.info(
+                f"Truncated field '{field_name}': {len(value)} → {len(truncated)} chars "
+                f"({len(value) - len(truncated)} chars removed)"
+            )
+
+        # Track truncation stats
+        self.truncation_stats["total_truncations"] += 1
+        if field_name not in self.truncation_stats["truncated_fields"]:
+            self.truncation_stats["truncated_fields"][field_name] = 0
+        self.truncation_stats["truncated_fields"][field_name] += 1
+
+        return truncated, True
+
+    def _truncate_input_data(
+        self, row_data: Dict[str, Any]
+    ) -> tuple[Dict[str, Any], List[str]]:
+        """
+        Truncate input fields if they exceed maximum length.
+
+        Args:
+            row_data: Dictionary containing row data
+
+        Returns:
+            Tuple of (truncated_row_data, list_of_truncated_field_names)
+        """
+        if not self.truncation_enabled:
+            return row_data, []
+
+        truncated_data = row_data.copy()
+        truncated_fields = []
+
+        for field_name, value in row_data.items():
+            # Only truncate string fields
+            if isinstance(value, str) and len(value) > self.max_input_field_length:
+                truncated_value, was_truncated = self._truncate_field_value(
+                    value, field_name, self.max_input_field_length
+                )
+                truncated_data[field_name] = truncated_value
+                if was_truncated:
+                    truncated_fields.append(field_name)
+
+        return truncated_data, truncated_fields
+
     def _format_prompt(self, row_data: Dict[str, Any]) -> str:
-        """Format prompt using template placeholders and DataFrame row data."""
+        """Format prompt using template placeholders and DataFrame row data with input truncation."""
+        # Apply truncation if enabled
+        truncated_data, truncated_fields = self._truncate_input_data(row_data)
+
+        if truncated_fields:
+            # Track that this record had truncation
+            self.truncation_stats["truncated_records"] += 1
+            if self.log_truncations:
+                logger.info(
+                    f"Record had {len(truncated_fields)} truncated fields: {truncated_fields}"
+                )
+
         # Use input_placeholders from template configuration (preferred method)
         placeholders = self.config.get("input_placeholders", [])
 
         # Fallback to regex extraction if input_placeholders not available
         if not placeholders:
-            import re
-
             placeholders = re.findall(r"\{(\w+)\}", self.config["user_prompt_template"])
 
         # Start with the template
@@ -681,18 +796,18 @@ class BedrockProcessor:
         # This avoids issues with curly braces in JSON examples being interpreted as placeholders
         for placeholder in placeholders:
             placeholder_pattern = "{" + placeholder + "}"
-            if placeholder in row_data:
+            if placeholder in truncated_data:
                 # Convert value to string and replace
                 value = (
-                    str(row_data[placeholder])
-                    if row_data[placeholder] is not None
+                    str(truncated_data[placeholder])
+                    if truncated_data[placeholder] is not None
                     else ""
                 )
                 formatted_prompt = formatted_prompt.replace(placeholder_pattern, value)
             else:
                 # Log warning for missing placeholder data
                 logger.warning(
-                    f"Placeholder '{placeholder}' not found in row data. Available columns: {list(row_data.keys())}"
+                    f"Placeholder '{placeholder}' not found in row data. Available columns: {list(truncated_data.keys())}"
                 )
                 formatted_prompt = formatted_prompt.replace(
                     placeholder_pattern, f"[Missing: {placeholder}]"
@@ -1502,6 +1617,18 @@ def main(
             "concurrency_mode": environ_vars.get(
                 "BEDROCK_CONCURRENCY_MODE", "sequential"
             ),  # sequential, concurrent
+            # Input truncation configuration
+            "max_input_field_length": int(
+                environ_vars.get("BEDROCK_MAX_INPUT_FIELD_LENGTH", "300000")
+            ),
+            "truncation_enabled": environ_vars.get(
+                "BEDROCK_TRUNCATION_ENABLED", "true"
+            ).lower()
+            == "true",
+            "log_truncations": environ_vars.get(
+                "BEDROCK_LOG_TRUNCATIONS", "true"
+            ).lower()
+            == "true",
         }
 
         # Initialize processor with template-driven configuration
@@ -1757,6 +1884,19 @@ def main(
         )
         processing_stats["processing_timestamp"] = datetime.now().isoformat()
 
+        # Add truncation statistics
+        processing_stats["truncation_stats"] = {
+            "truncation_enabled": config["truncation_enabled"],
+            "max_input_field_length": config["max_input_field_length"],
+            "total_truncations": processor.truncation_stats["total_truncations"],
+            "truncated_records": processor.truncation_stats["truncated_records"],
+            "truncated_fields": processor.truncation_stats["truncated_fields"],
+            "truncation_rate": processor.truncation_stats["truncated_records"]
+            / processing_stats["total_records"]
+            if processing_stats["total_records"] > 0
+            else 0,
+        }
+
         # Save processing summary
         summary_file = (
             summary_path
@@ -1770,6 +1910,22 @@ def main(
         log(f"Success rate: {processing_stats['overall_success_rate']:.2%}")
         log(f"Validation rate: {processing_stats['overall_validation_rate']:.2%}")
         log(f"Model used: {processing_stats['effective_model_id']}")
+
+        # Log truncation statistics
+        if processing_stats["truncation_stats"]["truncation_enabled"]:
+            log(
+                f"Truncation enabled: max_input_field_length={processing_stats['truncation_stats']['max_input_field_length']}"
+            )
+            log(
+                f"Truncated records: {processing_stats['truncation_stats']['truncated_records']} ({processing_stats['truncation_stats']['truncation_rate']:.2%})"
+            )
+            log(
+                f"Total truncations: {processing_stats['truncation_stats']['total_truncations']}"
+            )
+            if processing_stats["truncation_stats"]["truncated_fields"]:
+                log(
+                    f"Truncated fields: {processing_stats['truncation_stats']['truncated_fields']}"
+                )
 
         if job_type == "training" and processing_stats["splits_processed"]:
             log("Split-level statistics:")
@@ -1865,6 +2021,19 @@ if __name__ == "__main__":
             #   export BEDROCK_CONCURRENCY_MODE="sequential"  # Disable concurrent processing (default)
             "BEDROCK_CONCURRENCY_MODE": os.environ.get(
                 "BEDROCK_CONCURRENCY_MODE", "sequential"
+            ),
+            # Input Truncation Configuration:
+            # BEDROCK_MAX_INPUT_FIELD_LENGTH: Maximum length for input field values (default: 300000 chars)
+            "BEDROCK_MAX_INPUT_FIELD_LENGTH": os.environ.get(
+                "BEDROCK_MAX_INPUT_FIELD_LENGTH", "300000"
+            ),
+            # BEDROCK_TRUNCATION_ENABLED: Enable/disable input truncation (default: "true")
+            "BEDROCK_TRUNCATION_ENABLED": os.environ.get(
+                "BEDROCK_TRUNCATION_ENABLED", "true"
+            ),
+            # BEDROCK_LOG_TRUNCATIONS: Log truncation events (default: "true")
+            "BEDROCK_LOG_TRUNCATIONS": os.environ.get(
+                "BEDROCK_LOG_TRUNCATIONS", "true"
             ),
         }
 

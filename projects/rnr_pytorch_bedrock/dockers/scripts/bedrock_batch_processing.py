@@ -1772,27 +1772,39 @@ class BedrockBatchProcessor(BedrockProcessor):
 
     def _estimate_jsonl_size(self, jsonl_records: List[Dict[str, Any]]) -> int:
         """
-        Estimate JSONL file size in bytes.
+        Estimate JSONL file size in bytes with improved sampling and safety margin.
 
         Args:
             jsonl_records: List of JSONL records
 
         Returns:
-            Estimated size in bytes
+            Estimated size in bytes (with 10% safety margin)
         """
-        # Convert first few records to estimate average size
-        sample_size = min(100, len(jsonl_records))
+        if not jsonl_records:
+            return 0
+
+        # Sample larger portion for better accuracy (up from 100)
+        sample_size = min(500, len(jsonl_records))
         sample_records = jsonl_records[:sample_size]
 
-        # Serialize sample records
-        sample_bytes = 0
-        for record in sample_records:
-            record_json = json.dumps(record)
-            sample_bytes += len(record_json.encode("utf-8")) + 1  # +1 for newline
+        # Calculate actual bytes
+        sample_bytes = sum(
+            len(json.dumps(record).encode("utf-8")) + 1  # +1 for newline
+            for record in sample_records
+        )
 
         # Estimate total size based on average
         avg_record_size = sample_bytes / sample_size
         estimated_total = int(avg_record_size * len(jsonl_records))
+
+        # Add 10% safety margin for encoding variations
+        estimated_total = int(estimated_total * 1.1)
+
+        logger.info(
+            f"Size estimation: {sample_size} samples, "
+            f"avg={avg_record_size:.0f} bytes/record, "
+            f"estimated total={estimated_total / (1024 * 1024):.1f}MB (with 10% margin)"
+        )
 
         return estimated_total
 
@@ -1966,8 +1978,8 @@ class BedrockBatchProcessor(BedrockProcessor):
         Process DataFrame using Bedrock batch inference with multi-job support.
 
         Automatically splits large datasets into multiple batch jobs to comply with
-        AWS Bedrock limits (50,000 records per file). Jobs are processed in parallel
-        for optimal performance.
+        AWS Bedrock limits (50,000 records per file, 1GB file size). Jobs are processed
+        in parallel for optimal performance.
 
         Args:
             df: Input DataFrame
@@ -1981,13 +1993,33 @@ class BedrockBatchProcessor(BedrockProcessor):
         logger.info(f"Starting batch inference processing for {len(df)} records")
 
         try:
-            # Check if we need multi-job processing
-            if len(df) <= self.max_records_per_job:
-                logger.info(f"Using single batch job for {len(df)} records")
-                return self._process_single_batch_job(df)
-            else:
-                logger.info(f"Using multi-job batch processing for {len(df)} records")
+            # Check file size BEFORE deciding on single vs multi-job
+            MAX_FILE_SIZE = 900 * 1024 * 1024  # 900MB conservative limit
+
+            # Quick size check with sample
+            jsonl_sample = self.convert_df_to_jsonl(df.head(min(100, len(df))))
+            estimated_total_size = self._estimate_jsonl_size(
+                self.convert_df_to_jsonl(df)
+            )
+
+            # Decision logic: record count AND file size
+            needs_multi_job = (
+                len(df) > self.max_records_per_job
+                or estimated_total_size > MAX_FILE_SIZE
+            )
+
+            if needs_multi_job:
+                logger.info(
+                    f"Using multi-job batch processing: "
+                    f"{len(df)} records, estimated {estimated_total_size / (1024 * 1024):.1f}MB"
+                )
                 return self._process_multi_batch_jobs(df)
+            else:
+                logger.info(
+                    f"Using single batch job: "
+                    f"{len(df)} records, estimated {estimated_total_size / (1024 * 1024):.1f}MB"
+                )
+                return self._process_single_batch_job(df)
 
         except Exception as e:
             logger.error(f"Batch inference failed: {e}")

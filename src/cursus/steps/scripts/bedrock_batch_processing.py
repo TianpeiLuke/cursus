@@ -1391,7 +1391,7 @@ class BedrockBatchProcessor(BedrockProcessor):
         return jsonl_records
 
     def upload_jsonl_to_s3(self, jsonl_records: List[Dict[str, Any]]) -> str:
-        """Upload JSONL data to S3 using multipart upload for large files."""
+        """Upload JSONL data to S3 using multipart upload for large files with pre-upload validation."""
         if not self.input_bucket:
             raise RuntimeError("No input S3 bucket configured for batch processing")
 
@@ -1410,6 +1410,21 @@ class BedrockBatchProcessor(BedrockProcessor):
 
         logger.info(
             f"Preparing to upload {len(jsonl_records)} records ({content_size_mb:.2f} MB)"
+        )
+
+        # CRITICAL: Pre-upload size validation
+        # AWS Bedrock hard limit is 1GB per file
+        MAX_FILE_SIZE_MB = 1024  # 1GB in MB
+        if content_size_mb > MAX_FILE_SIZE_MB:
+            raise RuntimeError(
+                f"JSONL file too large: {content_size_mb:.2f}MB exceeds "
+                f"AWS Bedrock limit of {MAX_FILE_SIZE_MB}MB. "
+                f"This should have been split earlier. Records: {len(jsonl_records)}. "
+                f"Please report this as a bug - the splitting logic failed to prevent this."
+            )
+
+        logger.info(
+            f"✓ Pre-upload validation passed: {content_size_mb:.2f}MB < {MAX_FILE_SIZE_MB}MB"
         )
 
         # Use multipart upload for files larger than 100MB
@@ -1783,27 +1798,39 @@ class BedrockBatchProcessor(BedrockProcessor):
 
     def _estimate_jsonl_size(self, jsonl_records: List[Dict[str, Any]]) -> int:
         """
-        Estimate JSONL file size in bytes.
+        Estimate JSONL file size in bytes with improved sampling and safety margin.
 
         Args:
             jsonl_records: List of JSONL records
 
         Returns:
-            Estimated size in bytes
+            Estimated size in bytes (with 10% safety margin)
         """
-        # Convert first few records to estimate average size
-        sample_size = min(100, len(jsonl_records))
+        if not jsonl_records:
+            return 0
+
+        # Sample larger portion for better accuracy (up from 100)
+        sample_size = min(500, len(jsonl_records))
         sample_records = jsonl_records[:sample_size]
 
-        # Serialize sample records
-        sample_bytes = 0
-        for record in sample_records:
-            record_json = json.dumps(record)
-            sample_bytes += len(record_json.encode("utf-8")) + 1  # +1 for newline
+        # Calculate actual bytes
+        sample_bytes = sum(
+            len(json.dumps(record).encode("utf-8")) + 1  # +1 for newline
+            for record in sample_records
+        )
 
         # Estimate total size based on average
         avg_record_size = sample_bytes / sample_size
         estimated_total = int(avg_record_size * len(jsonl_records))
+
+        # Add 10% safety margin for encoding variations
+        estimated_total = int(estimated_total * 1.1)
+
+        logger.info(
+            f"Size estimation: {sample_size} samples, "
+            f"avg={avg_record_size:.0f} bytes/record, "
+            f"estimated total={estimated_total / (1024 * 1024):.1f}MB (with 10% margin)"
+        )
 
         return estimated_total
 
@@ -1977,8 +2004,8 @@ class BedrockBatchProcessor(BedrockProcessor):
         Process DataFrame using Bedrock batch inference with multi-job support.
 
         Automatically splits large datasets into multiple batch jobs to comply with
-        AWS Bedrock limits (50,000 records per file). Jobs are processed in parallel
-        for optimal performance.
+        AWS Bedrock limits (50,000 records AND 1GB file size per file). Jobs are
+        processed in parallel for optimal performance.
 
         Args:
             df: Input DataFrame
@@ -1992,13 +2019,37 @@ class BedrockBatchProcessor(BedrockProcessor):
         logger.info(f"Starting batch inference processing for {len(df)} records")
 
         try:
-            # Check if we need multi-job processing
-            if len(df) <= self.max_records_per_job:
-                logger.info(f"Using single batch job for {len(df)} records")
-                return self._process_single_batch_job(df)
-            else:
-                logger.info(f"Using multi-job batch processing for {len(df)} records")
+            # STEP 1: Convert to JSONL to get actual size estimation
+            logger.info("Converting to JSONL format for size estimation...")
+            jsonl_records = self.convert_df_to_jsonl(df)
+            estimated_size = self._estimate_jsonl_size(jsonl_records)
+
+            # STEP 2: Check BOTH record count AND file size limits
+            MAX_FILE_SIZE = 900 * 1024 * 1024  # 900MB (conservative)
+
+            exceeds_record_limit = len(df) > self.max_records_per_job
+            exceeds_size_limit = estimated_size > MAX_FILE_SIZE
+
+            # Log decision criteria
+            logger.info(
+                f"Job selection criteria: "
+                f"records={len(df)} (limit={self.max_records_per_job}), "
+                f"estimated_size={estimated_size / (1024 * 1024):.1f}MB "
+                f"(limit={MAX_FILE_SIZE / (1024 * 1024):.0f}MB)"
+            )
+
+            if exceeds_record_limit or exceeds_size_limit:
+                logger.info(
+                    f"Using multi-job batch processing: "
+                    f"exceeds_records={exceeds_record_limit}, "
+                    f"exceeds_size={exceeds_size_limit}"
+                )
                 return self._process_multi_batch_jobs(df)
+            else:
+                logger.info(
+                    f"Using single batch job: within both record and size limits"
+                )
+                return self._process_single_batch_job(df)
 
         except Exception as e:
             logger.error(f"Batch inference failed: {e}")
