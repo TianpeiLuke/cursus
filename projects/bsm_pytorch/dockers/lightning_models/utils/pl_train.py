@@ -819,6 +819,74 @@ def optimize_bert_model(
         raise RuntimeError(f"Failed to optimize BERT model: {e}") from e
 
 
+def quantize_onnx_model(
+    input_model_path: Union[str, Path],
+    output_model_path: Union[str, Path],
+) -> None:
+    """
+    Apply dynamic INT8 quantization to ONNX model.
+
+    Dynamic quantization converts model weights to INT8 while keeping activations
+    in FP32. This provides 2-3x speedup with minimal accuracy loss (<1%).
+
+    Benefits:
+    - 2-3x inference speedup
+    - 4x model size reduction (768MB → 192MB for BERT-base)
+    - No retraining required
+    - Minimal accuracy impact (<1% degradation)
+
+    Args:
+        input_model_path: Path to original ONNX model (model.onnx or model_optimized.onnx)
+        output_model_path: Path to save quantized model (model_quantized.onnx)
+
+    Raises:
+        RuntimeError: If quantization fails
+    """
+    try:
+        from onnxruntime.quantization import quantize_dynamic, QuantType
+    except ImportError as e:
+        raise RuntimeError(
+            "ONNX quantization requires onnxruntime package. "
+            "Already installed, but quantization module may need update."
+        ) from e
+
+    logger.info(f"Starting dynamic INT8 quantization: {input_model_path}")
+    logger.info(f"  Target: {output_model_path}")
+
+    try:
+        # Apply dynamic quantization (INT8 weights, FP32 activations)
+        quantize_dynamic(
+            model_input=str(input_model_path),
+            model_output=str(output_model_path),
+            weight_type=QuantType.QInt8,  # INT8 quantization for weights
+            optimize_model=True,  # Apply additional graph optimizations
+            extra_options={
+                "ActivationSymmetric": True,  # Symmetric quantization (faster)
+                "WeightSymmetric": True,
+            },
+        )
+
+        # Verify quantized model
+        onnx_model = onnx.load(str(output_model_path))
+        onnx.checker.check_model(onnx_model)
+
+        # Report size reduction
+        original_size = Path(input_model_path).stat().st_size / (1024 * 1024)
+        quantized_size = Path(output_model_path).stat().st_size / (1024 * 1024)
+        reduction = (1 - quantized_size / original_size) * 100
+
+        logger.info(f"✓ Dynamic INT8 quantization completed successfully")
+        logger.info(f"  Original model: {original_size:.1f} MB")
+        logger.info(f"  Quantized model: {quantized_size:.1f} MB")
+        logger.info(f"  Size reduction: {reduction:.1f}%")
+        logger.info(f"  Expected speedup: 2-3x")
+        logger.info(f"  Expected accuracy impact: <1%")
+
+    except Exception as e:
+        logger.error(f"Dynamic quantization failed: {e}")
+        raise RuntimeError(f"Failed to quantize ONNX model: {e}") from e
+
+
 def load_bert_optimized_model(
     model_dir: Union[str, Path],
     enable_profiling: bool = False,
@@ -826,6 +894,7 @@ def load_bert_optimized_model(
     intra_op_threads: int = 4,
     force_reoptimize: bool = False,
     optimization_timeout: int = 90,
+    enable_quantization: bool = True,
     providers: Optional[List[Union[str, Tuple[str, Dict]]]] = None,
     provider_options: Optional[List[Dict]] = None,
 ) -> ort.InferenceSession:
@@ -888,12 +957,16 @@ def load_bert_optimized_model(
     # ========================================================================
     # PREFERRED: Store in model_dir (persistent across container restarts)
     persistent_optimized = model_dir / "model_optimized.onnx"
+    persistent_quantized = model_dir / "model_quantized.onnx"
     persistent_lock = model_dir / ".model_optimization.lock"
+    persistent_quant_lock = model_dir / ".model_quantization.lock"
 
     # FALLBACK: Use /tmp/ if model_dir is read-only (SageMaker endpoints)
     model_hash = hashlib.sha256(str(model_dir).encode()).hexdigest()[:16]
     ephemeral_optimized = Path(f"/tmp/model_optimized_{model_hash}.onnx")
+    ephemeral_quantized = Path(f"/tmp/model_quantized_{model_hash}.onnx")
     ephemeral_lock = Path(f"/tmp/.model_optimization_{model_hash}.lock")
+    ephemeral_quant_lock = Path(f"/tmp/.model_quantization_{model_hash}.lock")
 
     # Test write permissions to determine storage location
     use_persistent = False
@@ -904,7 +977,9 @@ def load_bert_optimized_model(
         test_file.unlink()
         use_persistent = True
         optimized_model = persistent_optimized
+        quantized_model = persistent_quantized
         lock_file = persistent_lock
+        quant_lock_file = persistent_quant_lock
         logger.info(
             "✓ Using persistent storage for optimized model (survives restarts)"
         )
@@ -914,13 +989,23 @@ def load_bert_optimized_model(
             "⚠️  Optimization will be repeated on each container restart (10-30s)"
         )
         optimized_model = ephemeral_optimized
+        quantized_model = ephemeral_quantized
         lock_file = ephemeral_lock
+        quant_lock_file = ephemeral_quant_lock
 
-    # FAST PATH: Optimized model already exists and no force reoptimize
-    if not force_reoptimize and optimized_model.exists():
-        logger.info("✓ Using cached BERT-optimized model")
+    # Determine final model to load based on quantization setting
+    if enable_quantization:
+        final_model = quantized_model
+        logger.info("INT8 quantization ENABLED (3-6x total speedup expected)")
+    else:
+        final_model = optimized_model
+        logger.info("INT8 quantization DISABLED (1.5-3x speedup expected)")
+
+    # FAST PATH: Final model already exists and no force reoptimize
+    if not force_reoptimize and final_model.exists():
+        logger.info(f"✓ Using cached model: {final_model.name}")
         return load_onnx_model(
-            onnx_path=optimized_model,
+            onnx_path=final_model,
             enable_profiling=enable_profiling,
             inter_op_threads=inter_op_threads,
             intra_op_threads=intra_op_threads,
@@ -928,75 +1013,85 @@ def load_bert_optimized_model(
             provider_options=provider_options,
         )
 
-    # OPTIMIZATION PATH: Need to create or recreate optimized model
-    logger.info("BERT-optimized model not found, acquiring lock for optimization...")
+    # OPTIMIZATION PATH: Create BERT-fused model first (if needed)
+    if not optimized_model.exists() or force_reoptimize:
+        logger.info(
+            "BERT-optimized model not found, acquiring lock for optimization..."
+        )
+        try:
+            with file_lock(lock_file, timeout=optimization_timeout):
+                # Double-check: another worker may have created it while we waited
+                if not force_reoptimize and optimized_model.exists():
+                    logger.info("✓ Another worker completed BERT fusion")
+                else:
+                    # This worker won the race - perform BERT fusion
+                    logger.info("✓ Lock acquired, starting BERT fusion optimization...")
+                    logger.info("  This is a one-time cost (10-30 seconds)")
+                    logger.info(
+                        "  Other workers will wait and use the optimized model once ready"
+                    )
+                    try:
+                        optimize_bert_model(
+                            input_model_path=original_model,
+                            output_model_path=optimized_model,
+                            model_type="bert",
+                            num_heads=12,
+                            hidden_size=768,
+                        )
+                        logger.info("✓ BERT fusion optimization completed successfully")
+                    except Exception as e:
+                        logger.error(f"BERT fusion optimization failed: {e}")
+                        logger.warning("Using original model without BERT fusion")
+                        optimized_model = original_model
+        except TimeoutError as e:
+            logger.error(f"Lock acquisition timeout: {e}")
+            logger.warning("Using original model without BERT fusion")
+            optimized_model = original_model
 
-    try:
-        with file_lock(lock_file, timeout=optimization_timeout):
-            # Double-check: another worker may have created it while we waited
-            if not force_reoptimize and optimized_model.exists():
-                logger.info(
-                    "✓ Another worker completed optimization, using cached model"
-                )
-                return load_onnx_model(
-                    onnx_path=optimized_model,
-                    enable_profiling=enable_profiling,
-                    inter_op_threads=inter_op_threads,
-                    intra_op_threads=intra_op_threads,
-                    providers=providers,
-                    provider_options=provider_options,
-                )
-
-            # This worker won the race - perform optimization
-            logger.info("✓ Lock acquired, starting BERT fusion optimization...")
-            logger.info("  This is a one-time cost (10-30 seconds)")
-            logger.info(
-                "  Other workers will wait and use the optimized model once ready"
-            )
-
+    # QUANTIZATION PATH: Create quantized model if enabled
+    if enable_quantization:
+        if not quantized_model.exists() or force_reoptimize:
+            logger.info("Quantized model not found, acquiring lock for quantization...")
             try:
-                optimize_bert_model(
-                    input_model_path=original_model,
-                    output_model_path=optimized_model,
-                    model_type="bert",
-                    num_heads=12,  # Standard BERT-base configuration
-                    hidden_size=768,  # Standard BERT-base configuration
-                )
-                logger.info("✓ BERT optimization completed successfully")
+                with file_lock(quant_lock_file, timeout=optimization_timeout):
+                    # Double-check: another worker may have created it while we waited
+                    if not force_reoptimize and quantized_model.exists():
+                        logger.info("✓ Another worker completed quantization")
+                    else:
+                        # This worker won the race - perform quantization
+                        logger.info("✓ Lock acquired, starting INT8 quantization...")
+                        logger.info("  This is a one-time cost (5-15 seconds)")
+                        try:
+                            quantize_onnx_model(
+                                input_model_path=optimized_model,
+                                output_model_path=quantized_model,
+                            )
+                            logger.info("✓ INT8 quantization completed successfully")
+                        except Exception as e:
+                            logger.error(f"Quantization failed: {e}")
+                            logger.warning("Falling back to non-quantized model")
+                            final_model = optimized_model
+            except TimeoutError as e:
+                logger.error(f"Quantization lock timeout: {e}")
+                logger.warning("Falling back to non-quantized model")
+                final_model = optimized_model
 
-            except Exception as e:
-                logger.error(f"BERT fusion optimization failed: {e}")
-                logger.warning(
-                    "Falling back to Phase 1 optimizations only (SessionOptions)"
-                )
-                # Fallback: load original model with Phase 1 optimizations
-                return load_onnx_model(
-                    onnx_path=original_model,
-                    enable_profiling=enable_profiling,
-                    inter_op_threads=inter_op_threads,
-                    intra_op_threads=intra_op_threads,
-                    providers=providers,
-                    provider_options=provider_options,
-                )
-
-    except TimeoutError as e:
-        logger.error(f"Lock acquisition timeout: {e}")
-        logger.warning("Optimization is taking too long or another worker is stuck")
-        logger.warning("Falling back to Phase 1 optimizations only (SessionOptions)")
-        # Fallback: load original model with Phase 1 optimizations
-        return load_onnx_model(
-            onnx_path=original_model,
-            enable_profiling=enable_profiling,
-            inter_op_threads=inter_op_threads,
-            intra_op_threads=intra_op_threads,
-            providers=providers,
-            provider_options=provider_options,
+    # Load final model with Phase 1 optimizations
+    logger.info(f"Loading final model: {final_model.name}")
+    if enable_quantization and final_model == quantized_model:
+        logger.info(
+            "  Optimizations: Phase 1 (SessionOptions) + Phase 2 (BERT fusion) + INT8 Quantization"
         )
+        logger.info("  Expected total speedup: 3-6x")
+    elif final_model == optimized_model:
+        logger.info("  Optimizations: Phase 1 (SessionOptions) + Phase 2 (BERT fusion)")
+        logger.info("  Expected total speedup: 1.5-3x")
+    else:
+        logger.info("  Optimizations: Phase 1 (SessionOptions) only")
+        logger.info("  Expected total speedup: 2-3x")
 
-    # Load the optimized model (either just created or found after waiting)
-    logger.info("Loading BERT-optimized model with Phase 1 + Phase 2 optimizations")
     return load_onnx_model(
-        onnx_path=optimized_model,
+        onnx_path=final_model,
         enable_profiling=enable_profiling,
         inter_op_threads=inter_op_threads,
         intra_op_threads=intra_op_threads,

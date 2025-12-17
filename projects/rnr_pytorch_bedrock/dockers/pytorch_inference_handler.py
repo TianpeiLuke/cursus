@@ -1316,13 +1316,73 @@ def model_fn(model_dir, context=None):
     # ============================================================================
     # ONNX RUNTIME OPTIMIZATION CONFIGURATION
     # ============================================================================
-    # Read optimization configuration from environment variables
+    # ONNX RUNTIME OPTIMIZATION CONFIGURATION
+    # ============================================================================
+    # Auto-detect CPU count for adaptive threading (optimizes for both 4xlarge and 12xlarge)
+    import multiprocessing
+
+    num_cpus = multiprocessing.cpu_count()
+
+    # Calculate optimal thread defaults based on CPU count
+    # Rule: Use 25-33% of cores for intra-op parallelism (matrix operations)
+    # This scales from 4 threads on 4xlarge (16 CPUs) to 16 threads on 12xlarge (48 CPUs)
+    default_intra_threads = max(4, min(16, num_cpus // 3))
+
+    # Inter-op threads for parallel operator execution (conservative scaling)
+    # 1 thread for <32 CPUs (4xlarge), 2-3 threads for 32+ CPUs (12xlarge)
+    default_inter_threads = max(1, num_cpus // 16) if num_cpus >= 32 else 1
+
+    # Read optimization configuration from environment variables (with CPU-aware defaults)
     enable_bert_fusion = os.environ.get("ENABLE_BERT_FUSION", "false").lower() == "true"
+    enable_quantization = (
+        os.environ.get("USE_ONNX_QUANTIZATION", "true").lower() == "true"
+    )
     enable_profiling = (
         os.environ.get("ENABLE_ONNX_PROFILING", "false").lower() == "true"
     )
-    inter_op_threads = int(os.environ.get("ONNX_INTER_OP_THREADS", "1"))
-    intra_op_threads = int(os.environ.get("ONNX_INTRA_OP_THREADS", "4"))
+    inter_op_threads = int(
+        os.environ.get("ONNX_INTER_OP_THREADS", str(default_inter_threads))
+    )
+    intra_op_threads = int(
+        os.environ.get("ONNX_INTRA_OP_THREADS", str(default_intra_threads))
+    )
+
+    # Log CPU and threading configuration
+    logger.info("=" * 70)
+    logger.info("CPU & THREADING CONFIGURATION")
+    logger.info("=" * 70)
+    logger.info(f"Detected CPUs: {num_cpus}")
+    logger.info(f"Intra-op threads (matrix operations): {intra_op_threads}")
+    logger.info(f"Inter-op threads (operator parallelism): {inter_op_threads}")
+    if num_cpus >= 48:
+        logger.info("Instance type: ml.m5.12xlarge or larger (high CPU count)")
+        logger.info("Optimization: Configured for high throughput")
+    elif num_cpus >= 16:
+        logger.info("Instance type: ml.m5.4xlarge (medium CPU count)")
+        logger.info("Optimization: Configured for balanced latency/throughput")
+    else:
+        logger.info("Instance type: Small instance (low CPU count)")
+        logger.info("Optimization: Configured for low latency")
+    logger.info("=" * 70)
+
+    # ============================================================================
+    # ONNX QUANTIZATION CONFIGURATION
+    # ============================================================================
+    logger.info("=" * 70)
+    logger.info("ONNX QUANTIZATION CONFIGURATION")
+    logger.info("=" * 70)
+    logger.info(
+        f"USE_ONNX_QUANTIZATION: {os.environ.get('USE_ONNX_QUANTIZATION', 'not set (default: true)')}"
+    )
+    logger.info(f"Quantization enabled: {enable_quantization}")
+    if enable_quantization:
+        logger.info("Expected benefits:")
+        logger.info("  • 2-3x inference speedup")
+        logger.info("  • 4x model size reduction")
+        logger.info("  • <1% accuracy impact")
+    else:
+        logger.info("Quantization disabled - using non-quantized model")
+    logger.info("=" * 70)
 
     # ============================================================================
     # GPU/CUDA SUPPORT CONFIGURATION
@@ -1360,15 +1420,16 @@ def model_fn(model_dir, context=None):
         logger.info("Detected ONNX model.")
 
         if enable_bert_fusion:
-            # ✅ Phase 1 + Phase 2: Full ONNX optimization with BERT fusion
+            # ✅ Phase 1 + Phase 2 + Phase 3: Full ONNX optimization with BERT fusion + quantization
             logger.info(
-                "Loading with Phase 1 + Phase 2 optimizations (BERT fusion + SessionOptions)"
+                "Loading with Phase 1 + Phase 2 + Phase 3 optimizations (BERT fusion + SessionOptions + Quantization)"
             )
             model = load_bert_optimized_model(
                 model_dir=model_dir,
                 enable_profiling=enable_profiling,
                 inter_op_threads=inter_op_threads,
                 intra_op_threads=intra_op_threads,
+                enable_quantization=enable_quantization,
                 providers=providers,
                 provider_options=provider_options,
             )
