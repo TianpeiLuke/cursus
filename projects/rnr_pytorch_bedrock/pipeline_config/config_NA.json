@@ -3,7 +3,7 @@
     "shared": {
       "author": "lukexie",
       "bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
-      "current_date": "2025-12-16",
+      "current_date": "2025-12-17",
       "enable_caching": false,
       "framework_version": "2.1.0",
       "max_runtime_seconds": 172800,
@@ -49,7 +49,7 @@
           "BEDROCK_BATCH_TIMEOUT_HOURS": "24",
           "BEDROCK_CONCURRENCY_MODE": "sequential",
           "BEDROCK_FALLBACK_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
-          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "BEDROCK_INFERENCE_PROFILE_ARN": "arn:aws:bedrock:us-east-1:601857636239:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
           "BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS": "[\"anthropic.claude-sonnet-4-5-20250929-v1:0\", \"anthropic.claude-sonnet-4-20250514-v1:0\", \"anthropic.claude-opus-4-1-20250805-v1:0\"]",
           "BEDROCK_LOG_TRUNCATIONS": "true",
           "BEDROCK_MAX_CONCURRENT_BATCH_JOBS": "20",
@@ -68,7 +68,7 @@
           "USE_SECURE_PYPI": "true"
         },
         "bedrock_fallback_model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
-        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:178936618742:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "bedrock_inference_profile_arn": "arn:aws:bedrock:us-east-1:601857636239:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
         "bedrock_inference_profile_required_models": [
           "anthropic.claude-sonnet-4-5-20250929-v1:0",
           "anthropic.claude-sonnet-4-20250514-v1:0",
@@ -1656,7 +1656,7 @@
       "LabelRulesetGeneration": "LabelRulesetGenerationConfig",
       "TabularPreprocessing_training": "TabularPreprocessingConfig"
     },
-    "created_at": "2025-12-16T21:10:42.937953",
+    "created_at": "2025-12-17T04:26:25.405732",
     "field_sources": {
       "author": [
         "BedrockPromptTemplateGeneration",

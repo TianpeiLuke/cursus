@@ -1600,7 +1600,7 @@ class BedrockBatchProcessor(BedrockProcessor):
         return job_arn
 
     def monitor_batch_job(self, job_arn: str) -> Dict[str, Any]:
-        """Monitor batch job until completion with exponential backoff."""
+        """Monitor batch job until completion with exponential backoff and enhanced error logging."""
         logger.info(f"Monitoring batch job: {job_arn}")
 
         start_time = time.time()
@@ -1621,6 +1621,22 @@ class BedrockBatchProcessor(BedrockProcessor):
                 logger.info("Batch job completed successfully")
                 return response
             elif status in ["Failed", "Stopping", "Stopped"]:
+                # Enhanced error logging
+                logger.error("=" * 70)
+                logger.error("BATCH JOB FAILURE DETAILS")
+                logger.error("=" * 70)
+                logger.error(f"Job ARN: {job_arn}")
+                logger.error(f"Status: {status}")
+
+                # Log failure message if present
+                if "failureMessage" in response:
+                    logger.error(f"Failure Message: {response['failureMessage']}")
+
+                # Log all response fields for debugging
+                logger.error("Full job response:")
+                logger.error(json.dumps(response, indent=2, default=str))
+                logger.error("=" * 70)
+
                 error_msg = f"Batch job failed with status: {status}"
                 if "failureMessage" in response:
                     error_msg += f". Error: {response['failureMessage']}"
@@ -1907,6 +1923,25 @@ class BedrockBatchProcessor(BedrockProcessor):
                     if status in ["Failed", "Stopped"]
                 ]
                 if failed_jobs:
+                    # Enhanced error logging for multiple failed jobs
+                    logger.error("=" * 70)
+                    logger.error("MULTIPLE BATCH JOBS FAILED")
+                    logger.error("=" * 70)
+
+                    for job_arn in failed_jobs:
+                        logger.error(f"\nFailed Job: {job_arn}")
+                        job_response = job_responses[job_arn]
+                        logger.error(f"Status: {job_statuses[job_arn]}")
+                        if "failureMessage" in job_response:
+                            logger.error(
+                                f"Failure Message: {job_response['failureMessage']}"
+                            )
+                        logger.error(
+                            f"Full response: {json.dumps(job_response, indent=2, default=str)}"
+                        )
+
+                    logger.error("=" * 70)
+
                     error_msg = f"{len(failed_jobs)} batch jobs failed: {failed_jobs}"
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
