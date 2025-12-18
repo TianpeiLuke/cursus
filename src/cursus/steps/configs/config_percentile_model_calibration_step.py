@@ -36,6 +36,10 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
     # ===== Essential User Inputs (Tier 1) =====
     # These are fields that users must explicitly provide
     # At least one of score_field or score_fields must be provided
+    # Job type parameter for variant handling
+    job_type: str = Field(
+        description="Which data split to use for calibration (e.g., 'training', 'calibration', 'validation', 'test').",
+    )
 
     score_field: Optional[str] = Field(
         default=None,
@@ -66,12 +70,6 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
         gt=0,
         le=1,
         description="Accuracy threshold for percentile mapping (default: 0.001)",
-    )
-
-    # Job type parameter for variant handling
-    job_type: str = Field(
-        default="calibration",
-        description="Which data split to use for calibration (e.g., 'training', 'calibration', 'validation', 'test').",
     )
 
     # Processing parameters - set defaults specific to percentile calibration

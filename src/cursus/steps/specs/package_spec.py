@@ -56,7 +56,7 @@ PACKAGE_SPEC = StepSpecification(
             logical_name="calibration_model",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
             required=False,
-            compatible_sources=["ModelCalibration"],
+            compatible_sources=["ModelCalibration", "PercentileModelCalibration"],
             semantic_keywords=[
                 "calibration",
                 "calibration_model",
