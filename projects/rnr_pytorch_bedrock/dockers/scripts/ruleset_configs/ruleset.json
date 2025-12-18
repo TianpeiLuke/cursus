@@ -1,42 +1,254 @@
 [
   {
-    "rule_id": "rule_e71bc91e",
-    "name": "No_Reversal_Categories",
+    "rule_id": "rule_cee79df8",
+    "name": "Non_Abuse_Default",
     "priority": 1,
     "enabled": true,
     "conditions": {
-      "field": "llm_category",
-      "operator": "in",
-      "value": [
-        "TrueDNR",
-        "PDA_Undeliverable",
-        "PDA_Early_Refund",
-        "Returnless_Refund"
-      ]
+      "field": "abuse_flag",
+      "operator": "not_equals",
+      "value": 1.0
     },
-    "output_label": 0,
-    "description": "Categories indicating NO reversal: delivered/fraud patterns, logistics delays, goodwill refunds"
+    "output_label": {
+      "llm_reclassification_flag": 0,
+      "llm_reversal_flag": 0
+    },
+    "description": "If non-abuse, then we exclude this population from reversal and reclassification"
   },
   {
-    "rule_id": "rule_451b3688",
+    "rule_id": "rule_6a676bdb",
     "name": "Reversal_Required_Categories",
     "priority": 2,
     "enabled": true,
     "conditions": {
-      "field": "llm_category",
-      "operator": "in",
-      "value": [
-        "Confirmed_Delay",
-        "Delivery_Attempt_Failed",
-        "Seller_Unable_To_Ship",
-        "Buyer_Received_WrongORDefective_Item",
-        "BuyerCancellation",
-        "Return_NoLongerNeeded",
-        "Product_Information_Support",
-        "Insufficient_Information"
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "Confirmed_Delay",
+            "Delivery_Attempt_Failed",
+            "Seller_Unable_To_Ship",
+            "Buyer_Received_WrongORDefective_Item",
+            "BuyerCancellation",
+            "Return_NoLongerNeeded",
+            "Product_Information_Support",
+            "Insufficient_Information"
+          ]
+        },
+        {
+          "field": "abuse_flag",
+          "operator": "equals",
+          "value": 1.0
+        }
       ]
     },
-    "output_label": 1,
-    "description": "Categories indicating reversal required: legitimate refunds, quality issues, cancellations, manual review cases"
+    "output_label": {
+      "llm_reversal_flag": 1
+    },
+    "description": "Categories indicating reversal required: the refund is not abuse but flagged as abuse"
+  },
+  {
+    "rule_id": "rule_a8fa1945",
+    "name": "No_Reversal_Categories",
+    "priority": 3,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "TrueDNR",
+            "PDA_Undeliverable",
+            "PDA_Early_Refund",
+            "Returnless_Refund"
+          ]
+        },
+        {
+          "field": "abuse_flag",
+          "operator": "equals",
+          "value": 1.0
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reversal_flag": 0
+    },
+    "description": "Categories indicating NO reversal: identified abuse (PDA, DNR, RR) with abuse flag already in place;"
+  },
+  {
+    "rule_id": "rule_c5228960",
+    "name": "Reclassification_DNR_Categories",
+    "priority": 4,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "PDA_Undeliverable",
+            "PDA_Early_Refund",
+            "Returnless_Refund"
+          ]
+        },
+        {
+          "field": "concession_type",
+          "operator": "in",
+          "value": [
+            "NOTR"
+          ]
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reclassification_flag": 1
+    },
+    "description": "Categories indicating Reclassification Needed: identified abuse type different from reported abuse type (DNR);"
+  },
+  {
+    "rule_id": "rule_44d0d8b8",
+    "name": "No_Reclassification_DNR_Categories",
+    "priority": 5,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "TrueDNR"
+          ]
+        },
+        {
+          "field": "concession_type",
+          "operator": "in",
+          "value": [
+            "NOTR"
+          ]
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reclassification_flag": 0
+    },
+    "description": "Categories indicating No Reclassification Needed: identified abuse type is the same as the reported abuse type (DNR);"
+  },
+  {
+    "rule_id": "rule_3e6e47a9",
+    "name": "Reclassification_PDA_Categories",
+    "priority": 6,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "TrueDNR",
+            "Returnless_Refund"
+          ]
+        },
+        {
+          "field": "concession_type",
+          "operator": "in",
+          "value": [
+            "PDA"
+          ]
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reclassification_flag": 1
+    },
+    "description": "Categories indicating Reclassification Needed: identified abuse type different from reported abuse type (PDA);"
+  },
+  {
+    "rule_id": "rule_425e3434",
+    "name": "No_Reclassification_PDA_Categories",
+    "priority": 7,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "PDA_Undeliverable",
+            "PDA_Early_Refund"
+          ]
+        },
+        {
+          "field": "concession_type",
+          "operator": "in",
+          "value": [
+            "PDA"
+          ]
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reclassification_flag": 0
+    },
+    "description": "Categories indicating No Reclassification Needed: identified abuse type is the same as the reported abuse type (PDA);"
+  },
+  {
+    "rule_id": "rule_05b96dfa",
+    "name": "Reclassification_RR_Categories",
+    "priority": 8,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "TrueDNR",
+            "PDA_Undeliverable",
+            "PDA_Early_Refund"
+          ]
+        },
+        {
+          "field": "concession_type",
+          "operator": "in",
+          "value": [
+            "RR"
+          ]
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reclassification_flag": 1
+    },
+    "description": "Categories indicating Reclassification Needed: identified abuse type different from reported abuse type (RR);"
+  },
+  {
+    "rule_id": "rule_fd1d73b1",
+    "name": "No_Reclassification_RR_Categories",
+    "priority": 9,
+    "enabled": true,
+    "conditions": {
+      "all_of": [
+        {
+          "field": "llm_category",
+          "operator": "in",
+          "value": [
+            "Returnless_Refund"
+          ]
+        },
+        {
+          "field": "concession_type",
+          "operator": "in",
+          "value": [
+            "RR"
+          ]
+        }
+      ]
+    },
+    "output_label": {
+      "llm_reclassification_flag": 0
+    },
+    "description": "Categories indicating No Reclassification Needed: identified abuse type is the same as the reported abuse type (RR);"
   }
 ]

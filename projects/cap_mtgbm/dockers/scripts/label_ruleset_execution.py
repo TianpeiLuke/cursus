@@ -514,6 +514,62 @@ def _write_dataframe(df: pd.DataFrame, file_path: Path, file_format: str):
         raise ValueError(f"Unsupported file format: {file_format}")
 
 
+def apply_field_types(df: pd.DataFrame, field_config: dict) -> pd.DataFrame:
+    """
+    Apply field type conversions based on ruleset field_config.
+
+    This ensures data types match rule expectations, avoiding type mismatch issues
+    (e.g., string '1' vs float 1.0) that can cause rule evaluation failures.
+
+    Args:
+        df: Input DataFrame
+        field_config: Field configuration from validated ruleset containing field_types
+
+    Returns:
+        DataFrame with corrected types
+    """
+    field_types = field_config.get("field_types", {})
+
+    for field, expected_type in field_types.items():
+        if field not in df.columns:
+            continue
+
+        try:
+            if expected_type == "float":
+                # Convert to numeric, coercing errors to NaN
+                df[field] = pd.to_numeric(df[field], errors="coerce")
+                logger.info(f"Converted field '{field}' to float")
+
+            elif expected_type == "int":
+                # Convert to numeric Int64 (nullable integer type)
+                df[field] = pd.to_numeric(df[field], errors="coerce").astype("Int64")
+                logger.info(f"Converted field '{field}' to int")
+
+            elif expected_type == "bool":
+
+                def parse_bool(val):
+                    if pd.isna(val):
+                        return val
+                    str_val = str(val).lower().strip()
+                    if str_val in ("true", "1", "yes", "t"):
+                        return True
+                    elif str_val in ("false", "0", "no", "f", ""):
+                        return False
+                    return pd.NA  # Invalid boolean value
+
+                df[field] = df[field].map(parse_bool)
+                logger.info(f"Converted field '{field}' to bool")
+
+            elif expected_type == "string":
+                df[field] = df[field].astype(str)
+                logger.info(f"Converted field '{field}' to string")
+
+        except Exception as e:
+            logger.warning(f"Could not convert field '{field}' to {expected_type}: {e}")
+
+    return df
+
+
 def main(
     input_paths: Dict[str, str],
     output_paths: Dict[str, str],
@@ -643,6 +699,10 @@ def main(
 
         df = _read_dataframe(data_file)
         log(f"[INFO] Loaded {split_name}: {df.shape} (format: {input_format})")
+
+        # Apply field type conversions from field_config
+        df = apply_field_types(df, validated_ruleset["field_config"])
+        log(f"[INFO] Applied field type conversions for {split_name}")
 
         # Validate field availability in data
         validation_result = field_validator.validate_fields(validated_ruleset, df)
