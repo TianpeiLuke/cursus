@@ -35,6 +35,7 @@ This document outlines the design and implementation of Multi-Task Gradient Boos
 The implementation builds on a custom fork of LightGBM (`lightgbmmt`) that supports multi-label training with sophisticated loss functions including adaptive task weighting and knowledge distillation mechanisms.
 
 ## Related Documents
+- **⚠️ [MTGBM Refactoring: Critical Bugs Fixed](../4_analysis/2025-12-18_mtgbm_refactoring_critical_bugs_fixed.md)** - **IMPORTANT: 7 critical implementation bugs and fixes (Dec 2025)**
 - **[LightGBMMT C++ Implementation and Python Wrapper Design](./lightgbmmt_cpp_implementation_design.md)** - Detailed C++ implementation and Python wrapper architecture
 - **[LightGBMMT Multi-Task Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)** - Comprehensive analysis of lightgbmmt framework
 - **[LightGBM Training Contract](../../src/cursus/steps/contracts/lightgbm_training_contract.py)** - LightGBM training interface
@@ -270,6 +271,397 @@ TASK_CONFIG = {
     "random_state": 10,                 # Split random seed
 }
 ```
+
+## Critical Implementation Details (From Debugging Journey)
+
+⚠️ **This section documents essential implementation details discovered through production debugging that are critical for correct MTGBM behavior.**
+
+See [MTGBM Refactoring: Critical Bugs Fixed](../4_analysis/2025-12-18_mtgbm_refactoring_critical_bugs_fixed.md) for full bug analysis.
+
+### 1. Gradient Normalization (Z-Score)
+
+**Critical Discovery:** Legacy implementation applies z-score normalization to gradients BEFORE weighted aggregation.
+
+**Why This Matters:**
+Tasks with different sample sizes have different gradient scales. Without normalization, small tasks can dominate despite low weights.
+
+**Legacy Implementation:**
+```python
+def normalize(self, vec):
+    """Z-score normalization (legacy method name)."""
+    norm_vec = (vec - np.mean(vec, axis=0)) / np.std(vec, axis=0)
+    return norm_vec
+
+def self_obj(self, preds, train_data, ep):
+    # ... compute gradients ...
+    grad_i = preds_mat - labels_mat  # Per-task gradients [N, T]
+    
+    # ✅ CRITICAL: Normalize gradients before aggregation
+    grad_n = self.normalize(grad_i)
+    
+    # Then aggregate with weights
+    grad = np.sum(grad_n * np.array(w), axis=1)
+```
+
+**Impact Without Normalization:**
+```
+Task 0 (47K samples):  grad scale = 0.3
+Task 3 (110 samples):  grad scale = 0.15  ← Different scale!
+
+Without normalization:
+  Combined gradient dominated by Task 0 scale despite weights
+
+With z-score normalization:
+  All tasks: mean=0, std=1  ← Same scale
+  Weights properly control contribution
+```
+
+**Application Rules:**
+- **Adaptive Weight Loss**: ALWAYS apply (default in legacy)
+- **Knowledge Distillation Loss**: ALWAYS apply (inherits from adaptive)
+- **Fixed Weight Loss**: OPTIONAL (not used in legacy, but recommended for scale matching)
+
+---
+
+### 2. Prediction Array Lifecycle (No Caching!)
+
+**Critical Discovery:** LightGBM reuses the SAME prediction array across all iterations with in-place updates.
+
+**The Danger:**
+```python
+# ❌ WRONG - This breaks everything!
+def _preprocess_predictions(self, preds):
+    cache_key = id(preds)  # Same ID every iteration!
+    if cache_key in self._prediction_cache:
+        return self._prediction_cache[cache_key]  # Returns stale data
+    # ... process ...
+    self._prediction_cache[cache_key] = result
+    return result
+```
+
+**LightGBM Internal Behavior:**
+```python
+# LightGBM internal (simplified):
+predictions = np.zeros((n_samples * n_tasks,))  # Create ONCE
+for iteration in range(n_iterations):
+    predictions[:] = model.predict_raw(...)  # UPDATE IN-PLACE
+    grad, hess = objective_fn(predictions, data)  # Same array ID!
+```
+
+**Correct Implementation:**
+```python
+# ✅ CORRECT - Always process fresh
+def _preprocess_predictions(self, preds, num_col, ep=None):
+    """NO CACHING - LightGBM reuses arrays."""
+    preds_mat = preds.reshape((num_col, -1)).transpose()
+    preds_mat = expit(preds_mat)
+    preds_mat = np.clip(preds_mat, ep or self.epsilon, 1 - (ep or self.epsilon))
+    return preds_mat
+```
+
+**Rule:** Never cache data from external arrays without understanding the caller's lifecycle.
+
+---
+
+### 3. JS Divergence Input Semantics
+
+**Critical Discovery:** JS divergence compares main task LABELS vs subtask PREDICTIONS (not predictions vs predictions).
+
+**Legacy Correct Implementation:**
+```python
+def similarity_vec(self, main_label, sub_predmat, num_col, ind_dic, lr):
+    """
+    Calculate similarity between subtask and main task.
+    
+    Parameters
+    ----------
+    main_label : array
+        Main task GROUND TRUTH labels  ← LABELS!
+    sub_predmat : array
+        Subtask PREDICTIONS matrix     ← PREDICTIONS!
+    """
+    dis = []
+    for j in range(1, num_col):
+        js_div = jensenshannon(
+            main_label[ind_dic[j]],      # ✅ Main task LABELS
+            sub_predmat[ind_dic[j], j]   # ✅ Subtask PREDICTIONS
+        )
+        dis.append(js_div)
+```
+
+**What This Measures:**
+- **Correct (Labels vs Preds)**: "How well do subtask predictions align with main task ground truth?"
+- **Wrong (Preds vs Preds)**: "How similar are prediction patterns?" (rewards similarly-wrong predictions!)
+
+**Critical Scenario:**
+```python
+Labels:                [1, 0, 1, 1, 0]
+Main predictions:      [0.4, 0.6, 0.3, 0.5, 0.7]  # Wrong
+Subtask predictions:   [0.35, 0.65, 0.25, 0.45, 0.75]  # Also wrong, similar
+
+# Correct (Labels vs Preds):
+js_div ≈ 0.65  → Low similarity → Low weight ✓
+
+# Wrong (Preds vs Preds):
+js_div ≈ 0.04  → High similarity → HIGH weight! ✗
+  → Rewards subtasks making similarly-wrong predictions!
+```
+
+**Rule:** Always use ground truth labels for main task, predictions for subtasks.
+
+---
+
+### 4. Sample Filtering with Per-Task Indices
+
+**Critical Discovery:** JS divergence and evaluation must use per-task sample indices, not all samples.
+
+**Legacy Pattern:**
+```python
+def __init__(self, ..., trn_sublabel_idx, val_sublabel_idx):
+    # Index dictionaries mapping task_id -> sample indices
+    self.trn_sublabel_idx = trn_sublabel_idx  # {0: idx0, 1: idx1, ...}
+    self.val_sublabel_idx = val_sublabel_idx
+
+def similarity_vec(self, main_label, sub_predmat, num_col, ind_dic, lr):
+    for j in range(1, num_col):
+        # ✅ Use per-task indices
+        js_div = jensenshannon(
+            main_label[ind_dic[j]],      # Only samples for task j
+            sub_predmat[ind_dic[j], j]
+        )
+
+def self_eval(self, preds, train_data):
+    for j in range(self.num_col):
+        # ✅ Use validation indices for task j
+        s = roc_auc_score(
+            labels_mat[self.val_label_idx[j], j],
+            preds_mat[self.val_label_idx[j], j]
+        )
+```
+
+**Why This Matters:**
+- Different tasks may have labels for different sample subsets
+- Using all samples includes samples without labels (incorrect)
+- Evaluation must match training sample selection
+
+**Rule:** Always filter by per-task sample indices for both similarity computation and evaluation.
+
+---
+
+### 5. Weight Normalization Formula
+
+**Critical Discovery:** Weight normalization uses L2 norm × learning rate (not sum normalization).
+
+**Legacy Formula:**
+```python
+def unit_scale(self, vec):
+    """L2 normalization."""
+    return vec / np.linalg.norm(vec)
+
+def similarity_vec(self, main_label, sub_predmat, num_col, ind_dic, lr):
+    dis = []
+    for j in range(1, num_col):
+        js_div = jensenshannon(...)
+        dis.append(js_div)
+    
+    # ✅ CORRECT: L2 normalization × learning rate
+    dis_norm = self.unit_scale(np.reciprocal(dis)) * lr
+    
+    # Prepend main task weight
+    w = np.insert(dis_norm, 0, 1)
+    return w
+```
+
+**Not This:**
+```python
+# ❌ WRONG: Sum normalization
+weights = similarities / similarities.sum()  
+```
+
+**Correct Sequence:**
+```
+1. Compute JS divergence for each subtask
+2. Take inverse: similarity = 1 / js_divergence
+3. L2 normalize: norm_sim = similarity / ||similarity||_2
+4. Scale by learning rate: final_weights = norm_sim * lr
+5. Prepend main task weight (1.0)
+```
+
+**Rule:** Use L2 normalization (not sum) and multiply by learning rate for proper scaling.
+
+---
+
+### 6. Training State Tracking
+
+**Critical Discovery:** Legacy implementation tracks training state through iteration counters and weight history arrays.
+
+**Legacy Pattern:**
+```python
+class custom_loss_noKD:
+    def __init__(self, ...):
+        self.curr_obj_round = 0      # Objective call counter
+        self.curr_eval_round = 0     # Evaluation call counter
+        self.w_trn_mat = []          # Weight history
+        self.eval_mat = []           # Evaluation history
+    
+    def self_obj(self, preds, train_data, ep):
+        self.curr_obj_round += 1  # Increment
+        
+        # Compute weights
+        w = self.similarity_vec(...)
+        
+        # ✅ Store in history
+        self.w_trn_mat.append(w)
+        
+        # Use iteration number for conditional logic
+        if self.weight_method == "tenIters":
+            i = self.curr_obj_round - 1
+            if i % 50 == 0:
+                # Update weights every 50 iterations
+```
+
+**Why This Matters:**
+- Enables weight update strategies (tenIters, delta)
+- Provides historical context for debugging
+- Allows visualization of training dynamics
+- Essential for knowledge distillation timing
+
+**Modern Pattern (Refactored):**
+```python
+# Use callback for cleaner tracking
+class TrainingStateCallback:
+    def __init__(self, loss_function):
+        self.loss_function = loss_function
+        self.iteration = 0
+    
+    def __call__(self, env):
+        self.iteration = env.iteration
+        # Loss function can access via callback
+        return False
+
+# In training:
+training_callback = TrainingStateCallback(loss_fn)
+lgb.train(..., callbacks=[training_callback])
+```
+
+**Rule:** Track iteration numbers and state history for adaptive behavior and debugging.
+
+---
+
+### 7. Epsilon Values and Numerical Stability
+
+**Critical Discovery:** Multiple epsilon values control different numerical stability aspects.
+
+**Legacy Values:**
+```python
+# Prediction clipping
+preds_mat = np.clip(preds_mat, 1e-15, 1 - 1e-15)
+
+# Epsilon for z-score normalization
+# (Implicit: handled by numpy, but should protect against zero std)
+eps_norm = 1e-6  # Modern: explicit threshold
+
+# Similarity clipping
+max_similarity = 1e10  # Legacy
+max_similarity = 1e8   # Modern: more conservative
+```
+
+**Configuration Best Practices:**
+```python
+# Recommended values (prevent NaN)
+loss_epsilon = 1e-15              # Prediction clipping
+loss_epsilon_norm = 1e-6          # Normalization stability
+loss_clip_similarity_inverse = 1e8  # Prevent extreme similarities
+```
+
+**Impact:**
+```
+Too small epsilon_norm (1e-10):
+  → Near-zero std not caught
+  → Division by near-zero
+  → Huge inverse values
+  → Numerical overflow → NaN
+
+Proper epsilon_norm (1e-6):
+  → Catches near-zero std
+  → Replaces with 1.0
+  → Stable gradients ✓
+```
+
+**Rule:** Use conservative epsilon values (1e-6 for normalization, 1e8 for similarity clipping).
+
+---
+
+### 8. Evaluation Return Format
+
+**Critical Discovery:** LightGBM expects specific evaluation function return format.
+
+**Legacy Correct Format:**
+```python
+def self_eval(self, preds, train_data):
+    # ... compute metrics ...
+    
+    # ✅ CORRECT: (name, score, is_higher_better)
+    return "self_eval", weighted_auc, False  # False = lower is better
+```
+
+**Common Mistakes:**
+```python
+# ❌ WRONG: Missing is_higher_better
+return ("mean_auc", score)
+
+# ❌ WRONG: Wrong number of elements
+return "mean_auc", score, -score, False
+
+# ❌ WRONG: Direct value instead of tuple
+return weighted_auc
+```
+
+**LightGBM Convention:**
+- `is_higher_better = False`: Minimize (negative AUC for maximization)
+- `is_higher_better = True`: Maximize (positive metric)
+
+**Rule:** Always return 3-element tuple: `(metric_name, score, is_higher_better)`.
+
+---
+
+### 9. Implementation Checklist
+
+When implementing MTGBM loss functions, verify:
+
+- [ ] **Gradient normalization** applied before aggregation
+- [ ] **No caching** of prediction arrays from LightGBM
+- [ ] **JS divergence** uses labels (main) vs predictions (subtasks)
+- [ ] **Sample filtering** with per-task indices
+- [ ] **Weight normalization** uses L2 norm × learning rate
+- [ ] **Training state** tracked via counters or callbacks
+- [ ] **Epsilon values** set conservatively (1e-6, 1e8)
+- [ ] **Evaluation format** returns 3-element tuple
+- [ ] **Weight history** stored for visualization/debugging
+- [ ] **Numerical stability** checks for zero division
+
+**Verification:**
+```python
+# Test gradient normalization
+assert hasattr(loss_fn, 'normalize_gradients')
+assert loss_fn.normalize_gradients_flag == True
+
+# Test no caching
+assert not hasattr(loss_fn, '_prediction_cache')
+
+# Test JS divergence inputs
+# Should use labels_mat[:, main_idx] not preds_mat[:, main_idx]
+
+# Test sample filtering
+assert len(loss_fn.trn_sublabel_idx) == num_tasks
+assert len(loss_fn.val_sublabel_idx) == num_tasks
+
+# Test weight history
+assert hasattr(loss_fn, 'weight_history')
+assert len(loss_fn.weight_history) > 0 after training
+```
+
+---
 
 ## Loss Function Implementations
 

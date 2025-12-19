@@ -45,6 +45,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Tabular data preprocessing step",
     },
+    "TemporalSplitPreprocessing": {
+        "config_class": "TemporalSplitPreprocessingConfig",
+        "builder_step_name": "TemporalSplitPreprocessingStepBuilder",
+        "spec_type": "TemporalSplitPreprocessing",
+        "sagemaker_step_type": "Processing",
+        "description": "Temporal split preprocessing step with customer-level splitting and OOT validation",
+    },
     "TemporalSequenceNormalization": {
         "config_class": "TemporalSequenceNormalizationConfig",
         "builder_step_name": "TemporalSequenceNormalizationStepBuilder",

@@ -105,6 +105,23 @@ class TrainingStateCallback:
 
             self.training_state.per_task_metrics.append(metrics_dict)
 
+            # NEW: Store raw per-task AUC scores (matches legacy eval_mat)
+            # Loss function stores raw scores in last_raw_scores attribute
+            if (
+                hasattr(self.loss_function, "last_raw_scores")
+                and self.loss_function.last_raw_scores is not None
+            ):
+                raw_scores = self.loss_function.last_raw_scores
+                self.training_state.raw_task_auc.append(raw_scores)
+
+                # Log for debugging (matches legacy print statement)
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.info(
+                    f"--- raw task AUC scores: {[round(s, 4) for s in raw_scores]}"
+                )
+
             # 4. Track best performance (legacy didn't do this explicitly)
             # Use first metric as primary (typically mean_auc)
             if len(env.evaluation_result_list) > 0:

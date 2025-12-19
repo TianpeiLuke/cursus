@@ -47,7 +47,24 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
 
     main_task_index: int = Field(
         ge=0,
-        description="Index of the main task in the task list (e.g., 0 = first task, 1 = second task)",
+        description=(
+            "Index of the main task within task_label_names list (0-based indexing). "
+            "The main task is used for:\n"
+            "- Early stopping evaluation (primary optimization target)\n"
+            "- Similarity-based weight computation in adaptive losses\n"
+            "- Primary metrics reporting in model evaluation\n\n"
+            "CRITICAL: Must align with task_label_names ordering.\n\n"
+            "Examples:\n"
+            "- task_label_names=['isFraud', 'isCCfrd', 'isDDfrd'], main_task_index=0 → 'isFraud' is main\n"
+            "- task_label_names=['isCCfrd', 'isDDfrd', 'isFraud'], main_task_index=2 → 'isFraud' is main\n"
+            "- task_label_names=['isCCfrd', 'isFraud', 'isDDfrd'], main_task_index=1 → 'isFraud' is main\n\n"
+            "Data Structure Contract:\n"
+            "- Labels passed to lightgbmmt.Dataset must have shape [N_samples, N_tasks]\n"
+            "- Column order MUST match task_label_names order exactly\n"
+            "- Loss functions use main_task_index to identify which column is the primary task\n"
+            "- No enforcement by lightgbmmt library - this is a loss function convention\n\n"
+            "Legacy Behavior: main_task_index=0 (first task is main task)"
+        ),
     )
 
     # ========================================================================
@@ -208,9 +225,9 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     )
 
     loss_weight_update_frequency: int = Field(
-        default=50,
+        default=10,
         ge=1,
-        description="Iterations between weight updates (used with 'tenIters' method)",
+        description="Iterations between weight updates (used with 'tenIters' method). Legacy default: 10",
     )
 
     loss_delta_lr: float = Field(
@@ -268,6 +285,34 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
             "- False allows: ||w|| != 1 (weights may have different magnitudes)\n\n"
             "Recommendation: Use True (default) for improved numerical stability. "
             "Set False only when exact legacy behavior required for validation/migration."
+        ),
+    )
+
+    loss_delta_normalize: bool = Field(
+        default=False,
+        description=(
+            "Apply normalization to weights after delta updates when loss_weight_method='delta'. "
+            "Controls numerical stability vs exact legacy behavior trade-off.\n\n"
+            "Algorithm impact on delta method:\n"
+            "- False (legacy, default): w = w_old + delta_lr * (w_raw - w_cached) - No post-processing\n"
+            "- True (enhanced): w = normalize(max(w_old + delta, epsilon)) - Ensures positive & normalized\n\n"
+            "When False (exact legacy behavior, default):\n"
+            "- Matches original customLossNoKD implementation exactly\n"
+            "- No normalization or clamping after delta application\n"
+            "- Weights may drift away from sum=1.0 over iterations\n"
+            "- May produce negative weights in extreme cases\n"
+            "- Use for exact legacy reproduction\n\n"
+            "When True (enhanced stability):\n"
+            "- Applies epsilon clamping to prevent negative weights\n"
+            "- Normalizes to maintain consistent weight scale (sum=1.0)\n"
+            "- More numerically stable for long training runs\n"
+            "- Prevents gradual weight drift and ensures valid probability distribution\n"
+            "- Recommended for production use with delta method\n\n"
+            "Impact on Training:\n"
+            "- False: Direct delta updates, may be less stable but matches legacy exactly\n"
+            "- True: Controlled delta updates with safety constraints, more stable\n\n"
+            "Recommendation: Use False (default) to match legacy. "
+            "Set True if experiencing numerical instability or negative weights with delta method."
         ),
     )
 

@@ -40,6 +40,7 @@ This analysis verifies the functional equivalence between the legacy PFW (Paymen
 **Verdict:** The refactoring is a **successful modernization** that preserves all functionality while delivering substantial improvements in code quality, flexibility, and maintainability.
 
 ## Related Documents
+- **⚠️ [MTGBM Refactoring: Critical Bugs Fixed](./2025-12-18_mtgbm_refactoring_critical_bugs_fixed.md)** - **IMPORTANT: 7 critical bugs found and fixed in original refactoring (Dec 2025)**
 - **[MTGBM Multi-Task Learning Design](../1_design/mtgbm_multi_task_learning_design.md)** - Design specification
 - **[LightGBMMT Package Correspondence Analysis](./2025-12-10_lightgbmmt_package_correspondence_analysis.md)** - Training script architecture analysis
 - **[LightGBMMT Implementation Analysis](./2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)** - Framework analysis

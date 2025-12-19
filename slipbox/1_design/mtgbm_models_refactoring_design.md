@@ -34,9 +34,10 @@ The design introduces fundamental software engineering patterns including abstra
 
 ## Related Documents
 
+- **⚠️ [MTGBM Refactoring: Critical Bugs Fixed](../4_analysis/2025-12-18_mtgbm_refactoring_critical_bugs_fixed.md)** - **CRITICAL: 7 bugs discovered during implementation (Dec 2025)**
+- **[MTGBM Multi-Task Learning Design](./mtgbm_multi_task_learning_design.md)** - **Updated with critical implementation details**
 - **[MTGBM Model Classes Refactoring Design](./mtgbm_model_classes_refactoring_design.md)** - Companion design for model class refactoring
 - **[MTGBM Models Optimization Analysis](../4_analysis/2025-11-11_mtgbm_models_optimization_analysis.md)** - Detailed analysis identifying optimization opportunities
-- **[MTGBM Multi-Task Learning Design](./mtgbm_multi_task_learning_design.md)** - Original MTGBM architecture and design
 - **[MTGBM Missing Features Recovery](../4_analysis/2025-11-13_mtgbm_missing_features_recovery.md)** - Recovery of missing implementation features
 - **[LightGBMMT Multi-Task Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)** - Framework analysis
 - **[Best Practices](../0_developer_guide/best_practices.md)** - Development standards
@@ -357,8 +358,8 @@ class LossConfig(BaseModel):
     
     # Advanced options
     cache_predictions: bool = Field(
-        default=True,
-        description="Enable prediction caching for performance"
+        default=False,  # ⚠️ CRITICAL: Must be False due to LightGBM array reuse (Bug #2)
+        description="Enable prediction caching for performance (DEPRECATED - causes stale data)"
     )
     precompute_indices: bool = Field(
         default=True,

@@ -238,9 +238,14 @@ class MtgbmModel(BaseMultiTaskModel):
         """Create evaluation function for LightGBM."""
 
         def eval_func(preds, train_data):
-            """Custom evaluation function wrapper."""
-            task_scores, mean_score = self.loss_function.evaluate(preds, train_data)
-            return "mean_auc", mean_score, True  # (name, value, is_higher_better)
+            """
+            Custom evaluation function wrapper.
+
+            Loss function returns 3-tuple (name, value, is_higher_better)
+            in LightGBM feval format, so just pass through directly.
+            """
+            # Bug #8 fix: evaluate() returns 3-tuple, not 2-tuple
+            return self.loss_function.evaluate(preds, train_data)
 
         return eval_func
 
