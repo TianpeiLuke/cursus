@@ -61,6 +61,10 @@ class FixedWeightLoss(BaseLossFunction):
         grad_i = self.grad(labels_mat, preds_mat)
         hess_i = self.hess(preds_mat)
 
+        # Apply gradient normalization if enabled (disabled by default for fixed weights)
+        if self.normalize_gradients_flag:
+            grad_i = self.normalize_gradients(grad_i)
+
         # Weight and aggregate
         weights = self.weights.reshape(1, -1)
         grad = (grad_i * weights).sum(axis=1)

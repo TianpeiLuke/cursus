@@ -253,6 +253,10 @@ class AdaptiveWeightLoss(BaseLossFunction):
         grad_i = self.grad(labels_mat, preds_mat)
         hess_i = self.hess(preds_mat)
 
+        # Apply gradient normalization if enabled (enabled by default for adaptive weights)
+        if self.normalize_gradients_flag:
+            grad_i = self.normalize_gradients(grad_i)
+
         # Use actual iteration count (not hardcoded 0!)
         # Use ep if provided (legacy compatibility), otherwise use internal counter
         iteration = ep if ep is not None else self._objective_call_count

@@ -186,6 +186,13 @@ class MtgbmModel(BaseMultiTaskModel):
         # Get number of tasks
         num_tasks = self.lgb_params["num_labels"]
 
+        # Create callback to update training state
+        from ..base.training_state_callback import TrainingStateCallback
+
+        state_callback = TrainingStateCallback(
+            training_state=self.training_state, loss_function=self.loss_function
+        )
+
         # Train with custom train() function (supports epoch passing)
         self.model = train(
             self.lgb_params,
@@ -199,10 +206,14 @@ class MtgbmModel(BaseMultiTaskModel):
             if self.hyperparams.early_stopping_rounds
             else None,
             verbose_eval=10,
+            callbacks=[state_callback],  # Wire up training state updates
         )
 
         # CRITICAL: Set number of labels for multi-task predictions
         self.model.set_num_labels(num_tasks)
+
+        # Post-training: Finalize training state
+        self.training_state.current_epoch = self.model.num_trees()
 
         # Extract training metrics
         metrics = {
@@ -210,10 +221,15 @@ class MtgbmModel(BaseMultiTaskModel):
             "best_iteration": self.model.best_iteration,
             "feature_importance": self.model.feature_importance().tolist(),
             "num_tasks": num_tasks,
+            "final_weights": self.loss_function.weights.tolist()
+            if hasattr(self.loss_function, "weights")
+            else None,
         }
 
         self.logger.info(
-            f"Training completed: {metrics['num_iterations']} trees, {num_tasks} tasks"
+            f"Training completed: {metrics['num_iterations']} trees, "
+            f"best iteration: {self.model.best_iteration}, "
+            f"{num_tasks} tasks"
         )
 
         return metrics

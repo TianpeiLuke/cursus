@@ -177,6 +177,10 @@ class KnowledgeDistillationLoss(AdaptiveWeightLoss):
         grad_i = self.grad(labels_mat, preds_mat)
         hess_i = self.hess(preds_mat)
 
+        # Apply gradient normalization if enabled (enabled by default for KD)
+        if self.normalize_gradients_flag:
+            grad_i = self.normalize_gradients(grad_i)
+
         # Compute adaptive weights
         weights = self.compute_weights(labels_mat, preds_mat, self.current_iteration)
 

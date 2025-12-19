@@ -271,16 +271,42 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
         ),
     )
 
-    # Performance optimization
-    loss_cache_predictions: bool = Field(
+    loss_normalize_gradients: bool = Field(
         default=True,
-        description="Enable prediction caching for 30-50% performance improvement",
+        description=(
+            "Apply z-score normalization to per-task gradients before weighting. "
+            "Critical for matching legacy adaptive loss behavior.\n\n"
+            "Algorithm: grad_normalized = (grad - mean) / std\n"
+            "Applied per-task before weighted aggregation.\n\n"
+            "Legacy Behavior Mapping:\n"
+            "- True (default): Matches legacy customLossNoKD and customLossKDswap behavior\n"
+            "  These adaptive weight losses normalize gradients before task weighting\n"
+            "- False: Matches legacy baseLoss behavior (fixed weights, no normalization)\n\n"
+            "When True (adaptive losses):\n"
+            "- Normalizes gradient magnitudes across tasks\n"
+            "- Prevents tasks with larger gradients from dominating\n"
+            "- Essential for fair multi-task learning with adaptive weights\n"
+            "- Stabilizes training by equalizing gradient scales\n\n"
+            "When False (fixed weights):\n"
+            "- Uses raw gradients without normalization\n"
+            "- Tasks with naturally larger gradients have more influence\n"
+            "- Simpler objective function computation\n"
+            "- Appropriate when using fixed, pre-determined task weights\n\n"
+            "Impact on Training:\n"
+            "- True: More stable, balanced task learning, slower convergence\n"
+            "- False: Faster convergence, but may be dominated by high-gradient tasks\n\n"
+            "Recommendation by Loss Type:\n"
+            "- loss_type='fixed': Set False (matches legacy baseLoss)\n"
+            "- loss_type='adaptive': Set True (matches legacy customLossNoKD)\n"
+            "- loss_type='adaptive_kd': Set True (matches legacy customLossKDswap)\n\n"
+            "Note: This is a CRITICAL parameter for reproducing legacy behavior. "
+            "Incorrect setting will cause significant training differences."
+        ),
     )
 
-    loss_precompute_indices: bool = Field(
-        default=True,
-        description="Precompute index arrays for faster task-specific access",
-    )
+    # Note: Prediction caching was removed due to LightGBM array reuse causing
+    # frozen weights/AUC. If performance optimization is needed in the future,
+    # implement iteration-aware cache keys: (id(preds), iteration)
 
     # Logging
     loss_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(

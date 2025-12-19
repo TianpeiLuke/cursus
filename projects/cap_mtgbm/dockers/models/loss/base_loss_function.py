@@ -25,10 +25,12 @@ class BaseLossFunction(ABC):
     - Data preprocessing (sigmoid, clipping, reshaping)
     - Utility methods (normalization, gradient computation)
     - Input validation
-    - Caching mechanisms
     - Logging infrastructure
 
     Design Pattern: Template Method + Strategy
+
+    Note: Prediction caching was removed to prevent frozen weights/AUC caused by
+    LightGBM array reuse across iterations. See hyperparameters_lightgbmmt.py for details.
     """
 
     def __init__(
@@ -80,13 +82,8 @@ class BaseLossFunction(ABC):
         self.weight_method = hyperparams.loss_weight_method
         self.weight_update_frequency = hyperparams.loss_weight_update_frequency
         self.delta_lr = hyperparams.loss_delta_lr
-        self.cache_predictions = hyperparams.loss_cache_predictions
-        self.precompute_indices = hyperparams.loss_precompute_indices
         self.log_level = hyperparams.loss_log_level
-
-        # Setup caching if enabled
-        self._pred_cache: Dict[int, np.ndarray] = {} if self.cache_predictions else {}
-        self._label_cache: Dict[int, np.ndarray] = {} if self.cache_predictions else {}
+        self.normalize_gradients_flag = hyperparams.loss_normalize_gradients
 
         # Setup logging
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -100,7 +97,7 @@ class BaseLossFunction(ABC):
         self, preds: np.ndarray, num_col: int, epsilon: Optional[float] = None
     ) -> np.ndarray:
         """
-        Transform and clip predictions with caching.
+        Transform and clip predictions.
 
         Parameters
         ----------
@@ -116,11 +113,6 @@ class BaseLossFunction(ABC):
         preds_mat : np.ndarray
             Preprocessed predictions [N_samples, N_tasks]
         """
-        # Check cache
-        cache_key = id(preds)
-        if self.cache_predictions and cache_key in self._pred_cache:
-            return self._pred_cache[cache_key]
-
         # Reshape from flattened [T*N] to matrix [N, T]
         # LightGBM flattens as: transpose then reshape
         # So we reverse: reshape to [T, N] then transpose to [N, T]
@@ -132,10 +124,6 @@ class BaseLossFunction(ABC):
         # Clip for numerical stability
         eps = epsilon if epsilon is not None else self.epsilon
         preds_mat = np.clip(preds_mat, eps, 1 - eps)
-
-        # Cache result
-        if self.cache_predictions:
-            self._pred_cache[cache_key] = preds_mat
 
         return preds_mat
 
@@ -158,11 +146,6 @@ class BaseLossFunction(ABC):
         labels_mat : np.ndarray
             Reshaped labels [N_samples, N_tasks]
         """
-        # Check cache
-        cache_key = id(train_data)
-        if self.cache_predictions and cache_key in self._label_cache:
-            return self._label_cache[cache_key]
-
         # Get multi-task labels directly from Dataset
         # Dataset stores the 2D label array passed during creation
         labels = train_data.get_label()
@@ -175,10 +158,6 @@ class BaseLossFunction(ABC):
         # Validate
         if labels_mat.shape[1] != num_col:
             raise ValueError(f"Expected {num_col} tasks, got {labels_mat.shape[1]}")
-
-        # Cache result
-        if self.cache_predictions:
-            self._label_cache[cache_key] = labels_mat
 
         return labels_mat
 
@@ -199,6 +178,34 @@ class BaseLossFunction(ABC):
         if norm < eps:
             return np.ones_like(vec) / np.sqrt(len(vec))
         return vec / norm
+
+    def normalize_gradients(
+        self, grad_i: np.ndarray, epsilon: Optional[float] = None
+    ) -> np.ndarray:
+        """
+        Z-score normalization for gradients (legacy compatibility).
+
+        Normalizes per-task gradients: (grad - mean) / std
+        Matches legacy customLossNoKD and customLossKDswap behavior.
+
+        Parameters
+        ----------
+        grad_i : np.ndarray
+            Per-task gradients [N_samples, N_tasks]
+        epsilon : float, optional
+            Minimum std threshold for stability
+
+        Returns
+        -------
+        grad_normalized : np.ndarray
+            Normalized gradients [N_samples, N_tasks]
+        """
+        eps = epsilon if epsilon is not None else self.epsilon_norm
+        mean = np.mean(grad_i, axis=0)
+        std = np.std(grad_i, axis=0)
+        # Protect against zero std
+        std = np.where(std < eps, 1.0, std)
+        return (grad_i - mean) / std
 
     def grad(self, y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
         """Calculate gradients for binary cross-entropy."""
@@ -233,12 +240,6 @@ class BaseLossFunction(ABC):
                 task_scores[i] = 0.5
 
         return task_scores, task_scores.mean()
-
-    def clear_cache(self) -> None:
-        """Clear prediction and label caches."""
-        if self.cache_predictions:
-            self._pred_cache.clear()
-            self._label_cache.clear()
 
     @abstractmethod
     def compute_weights(
