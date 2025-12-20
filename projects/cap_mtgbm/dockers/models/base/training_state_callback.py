@@ -145,12 +145,23 @@ class TrainingStateCallback:
 
         # 6. Update KD replacement tracking (for KD loss only)
         if hasattr(self.loss_function, "replaced"):
-            # Store which tasks have been replaced
-            replaced_tasks = [
-                task_id
-                for task_id, is_replaced in self.loss_function.replaced.items()
-                if is_replaced
-            ]
+            # Handle both dict and numpy array formats for replaced attribute
+            # Legacy KD uses numpy array, but we support both for flexibility
+            if isinstance(self.loss_function.replaced, dict):
+                # Dictionary format: {task_id: bool}
+                replaced_tasks = [
+                    task_id
+                    for task_id, is_replaced in self.loss_function.replaced.items()
+                    if is_replaced
+                ]
+            else:
+                # Numpy array format (legacy KD): [bool, bool, ...]
+                replaced_tasks = [
+                    task_id
+                    for task_id, is_replaced in enumerate(self.loss_function.replaced)
+                    if is_replaced
+                ]
+
             if replaced_tasks:
                 # Store in training_state for persistence
                 # Note: This is an enhancement over legacy (which didn't persist this)

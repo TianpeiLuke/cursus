@@ -163,15 +163,36 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     )
 
     loss_epsilon_norm: float = Field(
-        default=1e-10,
-        gt=0,
-        description="Epsilon for safe division in normalization operations",
+        default=0.0,
+        ge=0,
+        description=(
+            "Epsilon for safe division in normalization operations (L2 norm, std, sum). "
+            "Prevents division by zero and NaN propagation in edge cases.\n\n"
+            "Default 0.0 disables epsilon protection (matches legacy behavior without normalization). "
+            "Set to small positive value (e.g., 1e-10) to enable safe normalization.\n\n"
+            "Used in:\n"
+            "- Weight L2 normalization: w / (||w|| + epsilon_norm)\n"
+            "- Gradient std normalization: (g - mean) / (std + epsilon_norm)\n"
+            "- Sum normalization: w / (sum(w) + epsilon_norm)\n\n"
+            "Recommendation: Use 0.0 unless experiencing NaN issues, then try 1e-10"
+        ),
     )
 
-    loss_clip_similarity_inverse: float = Field(
-        default=1e10,
-        gt=0,
-        description="Maximum value for inverse similarity to prevent inf (adaptive loss)",
+    loss_similarity_min_distance: float = Field(
+        default=0.0,
+        ge=0,
+        description=(
+            "Minimum Jensen-Shannon divergence between task distributions. "
+            "Prevents zero divergence which would cause infinite task weights.\n\n"
+            "When JS divergence < min_distance, tasks are treated as identical. "
+            "Default 0.0 disables protection (matches exact legacy behavior, may produce inf).\n\n"
+            "Used in adaptive loss functions to clip JS divergence before computing reciprocal:\n"
+            "  js_div_safe = max(js_div, min_distance)\n"
+            "  weight = 1 / js_div_safe  # Now guaranteed finite if min_distance > 0\n\n"
+            "Set to small positive value (e.g., 1e-10) to enable protection against inf.\n\n"
+            "Recommendation: Use default 0.0 unless experiencing inf/NaN issues, "
+            "then set to 1e-10. Increase to 1e-8 if tasks are too similar."
+        ),
     )
 
     # Weight configuration
@@ -219,9 +240,9 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     )
 
     # Weight update strategy
-    loss_weight_method: Optional[Literal["tenIters", "sqrt", "delta"]] = Field(
+    loss_weight_method: Optional[Literal["tenIters", "sqrt", "delta", "ema"]] = Field(
         default=None,
-        description="Weight update strategy: None (every iteration), 'tenIters' (periodic), 'sqrt' (sqrt transform), 'delta' (incremental)",
+        description="Weight update strategy: None (every iteration), 'tenIters' (periodic), 'sqrt' (sqrt transform), 'delta' (incremental), 'ema' (exponential moving average)",
     )
 
     loss_weight_update_frequency: int = Field(
@@ -261,61 +282,6 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
         ),
     )
 
-    loss_sqrt_normalize: bool = Field(
-        default=True,
-        description=(
-            "Apply L2 normalization after square root dampening when loss_weight_method='sqrt'. "
-            "Controls numerical stability vs exact legacy behavior trade-off.\n\n"
-            "Algorithm impact on sqrt method:\n"
-            "- True (default): w = normalize(sqrt(w_raw)) - Ensures weights sum to 1.0\n"
-            "- False (legacy): w = sqrt(w_raw) - No re-normalization after sqrt\n\n"
-            "When True (enhanced, default):\n"
-            "- Maintains consistent weight interpretation across iterations\n"
-            "- Prevents numerical drift over many iterations\n"
-            "- More numerically stable for long training runs\n"
-            "- sqrt dampening effect preserved, just normalized to sum=1.0\n\n"
-            "When False (exact legacy behavior):\n"
-            "- Matches original implementation exactly\n"
-            "- Weights may not sum to 1.0 after sqrt transformation\n"
-            "- Potential for gradual numerical drift\n"
-            "- Use only for exact legacy reproduction or validation\n\n"
-            "Mathematical difference:\n"
-            "- Both apply sqrt dampening: reduces extreme weight values\n"
-            "- True additionally ensures: ||w|| = 1 (L2 norm equals 1)\n"
-            "- False allows: ||w|| != 1 (weights may have different magnitudes)\n\n"
-            "Recommendation: Use True (default) for improved numerical stability. "
-            "Set False only when exact legacy behavior required for validation/migration."
-        ),
-    )
-
-    loss_delta_normalize: bool = Field(
-        default=False,
-        description=(
-            "Apply normalization to weights after delta updates when loss_weight_method='delta'. "
-            "Controls numerical stability vs exact legacy behavior trade-off.\n\n"
-            "Algorithm impact on delta method:\n"
-            "- False (legacy, default): w = w_old + delta_lr * (w_raw - w_cached) - No post-processing\n"
-            "- True (enhanced): w = normalize(max(w_old + delta, epsilon)) - Ensures positive & normalized\n\n"
-            "When False (exact legacy behavior, default):\n"
-            "- Matches original customLossNoKD implementation exactly\n"
-            "- No normalization or clamping after delta application\n"
-            "- Weights may drift away from sum=1.0 over iterations\n"
-            "- May produce negative weights in extreme cases\n"
-            "- Use for exact legacy reproduction\n\n"
-            "When True (enhanced stability):\n"
-            "- Applies epsilon clamping to prevent negative weights\n"
-            "- Normalizes to maintain consistent weight scale (sum=1.0)\n"
-            "- More numerically stable for long training runs\n"
-            "- Prevents gradual weight drift and ensures valid probability distribution\n"
-            "- Recommended for production use with delta method\n\n"
-            "Impact on Training:\n"
-            "- False: Direct delta updates, may be less stable but matches legacy exactly\n"
-            "- True: Controlled delta updates with safety constraints, more stable\n\n"
-            "Recommendation: Use False (default) to match legacy. "
-            "Set True if experiencing numerical instability or negative weights with delta method."
-        ),
-    )
-
     loss_normalize_gradients: bool = Field(
         default=True,
         description=(
@@ -352,11 +318,6 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
     # Note: Prediction caching was removed due to LightGBM array reuse causing
     # frozen weights/AUC. If performance optimization is needed in the future,
     # implement iteration-aware cache keys: (id(preds), iteration)
-
-    # Logging
-    loss_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
-        default="INFO", description="Logging level for loss function operations"
-    )
 
     # ===== Derived Fields (Tier 3) =====
     _enable_kd: Optional[bool] = PrivateAttr(default=None)
@@ -436,7 +397,7 @@ class LightGBMMtModelHyperparameters(ModelHyperparameters):
             )
 
         # Validate weight_method
-        valid_methods = [None, "tenIters", "sqrt", "delta"]
+        valid_methods = [None, "tenIters", "sqrt", "delta", "ema"]
         if self.loss_weight_method not in valid_methods:
             raise ValueError(
                 f"Invalid loss_weight_method: {self.loss_weight_method}. "

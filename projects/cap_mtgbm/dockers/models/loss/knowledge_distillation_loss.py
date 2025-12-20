@@ -99,6 +99,19 @@ class KnowledgeDistillationLoss(AdaptiveWeightLoss):
             self.update_frequency = 50  # NOT 10
             self.delta_lr = 0.01  # NOT 0.1
 
+        # NEW: Recreate weight strategy with KD-specific parameters
+        # (Parent already created strategy in __init__, but with wrong params for KD)
+        from .weight_strategies import WeightStrategyFactory
+
+        self.weight_strategy = WeightStrategyFactory.create(
+            weight_method=weight_method,
+            update_frequency=self.update_frequency,  # KD: 50
+            delta_lr=self.delta_lr,  # KD: 0.01
+        )
+        # Wire up state references (reuse parent's state containers)
+        self.weight_strategy.similar = self.similar
+        self.weight_strategy.w_trn_mat = self.w_trn_mat
+
     def self_obj(self, preds, train_data, ep):
         """
         Compute adaptive weighted gradients with KD.
@@ -164,46 +177,25 @@ class KnowledgeDistillationLoss(AdaptiveWeightLoss):
         grad_i = self.grad(labels_mat, preds_mat)
         hess_i = self.hess(preds_mat)
 
-        # LEGACY: Weight update strategies (inherited but repeated for clarity)
-        # NOTE: Uses KD-specific update_frequency=50 and delta_lr=0.01
-        if self.weight_method == "tenIters":
-            i = self.curr_obj_round - 1
-            if i % self.update_frequency == 0:  # KD: Every 50 iters (not 10!)
-                self.similar = self.similarity_vec(
-                    labels_mat[:, 0],
-                    preds_mat,
-                    self.num_col,
-                    self.trn_sublabel_idx,
-                    0.1,
-                )
-            w = self.similar
-            self.w_trn_mat.append(w)
-        elif self.weight_method == "sqrt":
-            w = self.similarity_vec(
-                labels_mat[:, 0], preds_mat, self.num_col, self.trn_sublabel_idx, 0.5
-            )
-            w = np.sqrt(w)
-            self.w_trn_mat.append(w)
-        elif self.weight_method == "delta":
-            simi = self.similarity_vec(
-                labels_mat[:, 0], preds_mat, self.num_col, self.trn_sublabel_idx, 0.1
-            )
-            self.similar.append(simi)
-            if self.curr_obj_round == 1:
-                w = self.similar[0]
-            else:
-                i = self.curr_obj_round - 1
-                diff = self.similar[i] - self.similar[i - 1]
-                w = self.w_trn_mat[i - 1] + diff * self.delta_lr  # KD: 0.01 (not 0.1!)
-            self.w_trn_mat.append(w)
-        else:
-            w = self.similarity_vec(
-                labels_mat[:, 0], preds_mat, self.num_col, self.trn_sublabel_idx, 0.1
-            )
-            self.w_trn_mat.append(w)
+        # NEW: Use strategy pattern (NO DUPLICATION - reuses parent's strategies)
+        # Strategy uses KD-specific parameters (update_frequency=50, delta_lr=0.01)
+        w = self.weight_strategy.compute_weight(
+            labels_mat=labels_mat,
+            preds_mat=preds_mat,
+            num_col=self.num_col,
+            trn_sublabel_idx=self.trn_sublabel_idx,
+            main_task_index=self.main_task_index,
+            curr_iteration=self.curr_obj_round,
+            similarity_vec_fn=self.similarity_vec,
+        )
 
-        # LEGACY: Normalize and aggregate
-        grad_n = self.normalize(grad_i)
+        # Conditional gradient normalization (inherited from parent, LEGACY: always True)
+        if self.normalize_gradients:
+            grad_n = self.normalize(grad_i)
+        else:
+            grad_n = grad_i  # Use raw gradients without normalization
+
+        # LEGACY: Weighted aggregation
         grad = np.sum(grad_n * np.array(w), axis=1)
         hess = np.sum(hess_i * np.array(w), axis=1)
 

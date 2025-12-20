@@ -28,6 +28,7 @@ import numpy as np
 from scipy.spatial.distance import jensenshannon
 
 from .base_loss_function import BaseLossFunction
+from .weight_strategies import WeightStrategyFactory
 
 if TYPE_CHECKING:
     from ...hyperparams.hyperparameters_lightgbmmt import (
@@ -84,12 +85,31 @@ class AdaptiveWeightLoss(BaseLossFunction):
         if hyperparams is not None:
             self.update_frequency = hyperparams.loss_weight_update_frequency
             self.delta_lr = hyperparams.loss_delta_lr
+            self.weight_lr = hyperparams.loss_weight_lr
             self.main_task_index = hyperparams.main_task_index
+            self.epsilon_norm = hyperparams.loss_epsilon_norm
+            self.similarity_min_distance = hyperparams.loss_similarity_min_distance
+            self.normalize_gradients = hyperparams.loss_normalize_gradients
         else:
-            # LEGACY DEFAULTS: update_frequency=10, delta_lr=0.1, main_task_index=0
+            # LEGACY DEFAULTS: update_frequency=10, delta_lr=0.1, weight_lr=1.0, main_task_index=0, epsilon_norm=0.0, similarity_min_distance=0.0, normalize_gradients=True
             self.update_frequency = 10
             self.delta_lr = 0.1
+            self.weight_lr = 1.0
             self.main_task_index = 0
+            self.epsilon_norm = 0.0
+            self.similarity_min_distance = 0.0
+            self.normalize_gradients = True
+
+        # NEW: Create weight strategy (encapsulates weight update logic)
+        self.weight_strategy = WeightStrategyFactory.create(
+            weight_method=weight_method,
+            update_frequency=self.update_frequency,
+            delta_lr=self.delta_lr,
+            weight_lr=self.weight_lr,
+        )
+        # Wire up state references to strategy for mutation (legacy equivalence)
+        self.weight_strategy.similar = self.similar
+        self.weight_strategy.w_trn_mat = self.w_trn_mat
 
     def self_obj(self, preds, train_data, ep=None):
         """
@@ -132,62 +152,23 @@ class AdaptiveWeightLoss(BaseLossFunction):
         grad_i = self.grad(labels_mat, preds_mat)
         hess_i = self.hess(preds_mat)
 
-        # LEGACY: Weight update strategies (PRESERVED, now configurable)
-        if self.weight_method == "tenIters":
-            i = self.curr_obj_round - 1
-            if i % self.update_frequency == 0:  # Configurable update frequency
-                self.similar = self.similarity_vec(
-                    labels_mat[:, self.main_task_index],
-                    preds_mat,
-                    self.num_col,
-                    self.trn_sublabel_idx,
-                    0.1,
-                )
-            w = self.similar
-            self.w_trn_mat.append(w)
+        # NEW: Use strategy pattern for weight computation (EXACT functional equivalence)
+        # Strategy mutates self.similar and self.w_trn_mat exactly as original inline code
+        w = self.weight_strategy.compute_weight(
+            labels_mat=labels_mat,
+            preds_mat=preds_mat,
+            num_col=self.num_col,
+            trn_sublabel_idx=self.trn_sublabel_idx,
+            main_task_index=self.main_task_index,
+            curr_iteration=self.curr_obj_round,
+            similarity_vec_fn=self.similarity_vec,
+        )
 
-        elif self.weight_method == "sqrt":
-            w = self.similarity_vec(
-                labels_mat[:, self.main_task_index],
-                preds_mat,
-                self.num_col,
-                self.trn_sublabel_idx,
-                0.5,  # LEGACY: lr=0.5 for sqrt
-            )
-            w = np.sqrt(w)
-            self.w_trn_mat.append(w)
-
-        elif self.weight_method == "delta":
-            simi = self.similarity_vec(
-                labels_mat[:, self.main_task_index],
-                preds_mat,
-                self.num_col,
-                self.trn_sublabel_idx,
-                0.1,
-            )
-            self.similar.append(simi)
-            if self.curr_obj_round == 1:
-                w = self.similar[0]
-            else:
-                i = self.curr_obj_round - 1
-                diff = self.similar[i] - self.similar[i - 1]
-                w = (
-                    self.w_trn_mat[i - 1] + diff * self.delta_lr
-                )  # Configurable delta_lr
-            self.w_trn_mat.append(w)
-
-        else:  # LEGACY: Standard method (weight_method=None)
-            w = self.similarity_vec(
-                labels_mat[:, self.main_task_index],
-                preds_mat,
-                self.num_col,
-                self.trn_sublabel_idx,
-                0.1,
-            )
-            self.w_trn_mat.append(w)
-
-        # LEGACY: Normalize gradients (PRESERVED - NO epsilon protection)
-        grad_n = self.normalize(grad_i)
+        # Conditional gradient normalization (LEGACY: always True)
+        if self.normalize_gradients:
+            grad_n = self.normalize(grad_i)
+        else:
+            grad_n = grad_i  # Use raw gradients without normalization
 
         # LEGACY: Weighted aggregation (PRESERVED)
         grad = np.sum(grad_n * np.array(w), axis=1)
@@ -203,10 +184,13 @@ class AdaptiveWeightLoss(BaseLossFunction):
         """
         Compute similarity-based weights using JS divergence.
 
-        LEGACY: customLossNoKD.similarity_vec() - PRESERVED with configurable main_task_index
+        LEGACY: customLossNoKD.similarity_vec() - PRESERVED with zero-distance protection
 
         Critical: Uses main task LABELS vs subtask PREDICTIONS
         (NOT predictions vs predictions)
+
+        Protection: Clips JS divergence to minimum distance before reciprocal
+        to prevent infinite weights when tasks are identical.
 
         Parameters
         ----------
@@ -230,12 +214,18 @@ class AdaptiveWeightLoss(BaseLossFunction):
         for j in range(num_col):
             if j == self.main_task_index:
                 continue  # Skip main task
+
             # JS divergence between main task LABELS and subtask j PREDICTIONS
-            dis.append(
-                jensenshannon(main_label[ind_dic[j]], sub_predmat[ind_dic[j], j])
-            )
+            js_div = jensenshannon(main_label[ind_dic[j]], sub_predmat[ind_dic[j], j])
+
+            # Protect against zero divergence (prevents inf after reciprocal)
+            if self.similarity_min_distance > 0:
+                js_div = max(js_div, self.similarity_min_distance)
+
+            dis.append(js_div)
 
         # Inverse + L2 normalization + learning rate
+        # Safe: dis values are >= similarity_min_distance, so reciprocal won't produce inf
         dis_norm = self.unit_scale(np.reciprocal(dis)) * lr
 
         # Insert main task weight (1.0) at correct position
@@ -246,10 +236,11 @@ class AdaptiveWeightLoss(BaseLossFunction):
         """
         Z-score normalization for gradients.
 
-        LEGACY: customLossNoKD.normalize() - PRESERVED EXACTLY
+        LEGACY: customLossNoKD.normalize() - PRESERVED with optional epsilon protection
 
-        Note: NO epsilon protection (legacy quirk)
-        Will divide by zero if std=0 (legacy behavior)
+        Uses self.epsilon_norm for safe division (default 0.0 for legacy behavior).
+        When epsilon_norm=0.0: Will divide by zero if std=0 (exact legacy behavior)
+        When epsilon_norm>0.0: Protected division prevents NaN propagation
 
         Parameters
         ----------
@@ -261,17 +252,24 @@ class AdaptiveWeightLoss(BaseLossFunction):
         norm_vec : np.ndarray
             Normalized vector [N_samples, N_tasks]
         """
-        norm_vec = (vec - np.mean(vec, axis=0)) / np.std(vec, axis=0)
+        if self.epsilon_norm > 0:
+            norm_vec = (vec - np.mean(vec, axis=0)) / (
+                np.std(vec, axis=0) + self.epsilon_norm
+            )
+        else:
+            # LEGACY: NO epsilon protection
+            norm_vec = (vec - np.mean(vec, axis=0)) / np.std(vec, axis=0)
         return norm_vec
 
     def unit_scale(self, vec):
         """
         L2 normalization.
 
-        LEGACY: customLossNoKD.unit_scale() - PRESERVED EXACTLY
+        LEGACY: customLossNoKD.unit_scale() - PRESERVED with optional epsilon protection
 
-        Note: NO zero-norm protection (legacy quirk)
-        Will divide by zero if norm=0 (legacy behavior)
+        Uses self.epsilon_norm for safe division (default 0.0 for legacy behavior).
+        When epsilon_norm=0.0: Will divide by zero if norm=0 (exact legacy behavior)
+        When epsilon_norm>0.0: Protected division prevents NaN propagation
 
         Parameters
         ----------
@@ -283,7 +281,11 @@ class AdaptiveWeightLoss(BaseLossFunction):
         scaled : np.ndarray
             L2-normalized vector
         """
-        return vec / np.linalg.norm(vec)
+        if self.epsilon_norm > 0:
+            return vec / (np.linalg.norm(vec) + self.epsilon_norm)
+        else:
+            # LEGACY: NO zero-norm protection
+            return vec / np.linalg.norm(vec)
 
     def self_eval(self, preds, train_data):
         """

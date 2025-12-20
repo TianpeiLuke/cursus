@@ -128,6 +128,7 @@ Model Architecture Designs
 **Related Analysis:**
 - [LightGBMMT Package Architecture Critical Analysis](../4_analysis/2025-12-12_lightgbmmt_package_architecture_critical_analysis.md) - **🚨 CRITICAL** - Custom LightGBM fork dependency
 - [Legacy LightGBMMT Package Integration Analysis](../4_analysis/2025-12-12_legacy_lightgbmmt_package_integration_analysis.md) - **NEW** - C++ modifications, Python wrapper extensions, and integration strategy
+- [MTGBM Hyperparameters Usage Analysis](../4_analysis/2025-12-19_mtgbm_hyperparameters_usage_analysis.md) - **NEW** - Comprehensive field-by-field hyperparameter usage analysis
 - [MTGBM Training and Evaluation Line-by-Line Comparison](../4_analysis/2025-12-19_mtgbm_training_evaluation_line_by_line_comparison.md) - **NEW** - Comprehensive line-by-line comparison of training, evaluation, and metric reporting
 - [MTGBM Refactoring Critical Bugs Fixed](../4_analysis/2025-12-18_mtgbm_refactoring_critical_bugs_fixed.md) - **NEW** - Critical bug fixes in refactored implementation
 - [MTGBM Implementation Analysis](../4_analysis/2025-11-10_lightgbmmt_multi_task_implementation_analysis.md)
