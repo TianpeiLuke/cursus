@@ -126,6 +126,7 @@ Model Architecture Designs
 - [LightGBM-MT Model Inference Design](../1_design/lightgbmmt_model_inference_design.md)
 
 **Related Analysis:**
+- [MTGBM Refactoring COE](../4_analysis/2025-12-19_mtgbm_refactoring_coe.md) - **📋 COE** - Comprehensive Correction of Error document analyzing complete refactoring failure (2 failure classes: dependency + 12 bugs)
 - [LightGBMMT Package Architecture Critical Analysis](../4_analysis/2025-12-12_lightgbmmt_package_architecture_critical_analysis.md) - **🚨 CRITICAL** - Custom LightGBM fork dependency
 - [Legacy LightGBMMT Package Integration Analysis](../4_analysis/2025-12-12_legacy_lightgbmmt_package_integration_analysis.md) - **NEW** - C++ modifications, Python wrapper extensions, and integration strategy
 - [MTGBM Hyperparameters Usage Analysis](../4_analysis/2025-12-19_mtgbm_hyperparameters_usage_analysis.md) - **NEW** - Comprehensive field-by-field hyperparameter usage analysis
