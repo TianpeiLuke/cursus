@@ -28,9 +28,7 @@ date of note: 2025-12-19
 
 ## Purpose
 
-This document summarizes best practices from Amazon's internal Correction of Error (COE) process. These practices complement the [COE Documentation Guide](./coe_documentation_guide.md) with Amazon-specific standards and cultural expectations.
-
-**Source**: [Amazon Internal COE Best Practices Wiki](https://w.amazon.com/index.php/COE/UserGuide/BestPractices)
+This document summarizes best practices for Correction of Error (COE) process based on industry-leading incident analysis methodologies. These practices complement the [COE Documentation Guide](./coe_documentation_guide.md) with specific standards and cultural expectations for writing high-quality post-incident analyses.
 
 ## Core Philosophy
 
@@ -424,16 +422,15 @@ A: No. Take AI for replacement ensuring it prevents repeat incidents.
 
 ## Additional Resources
 
-### Amazon Internal
-- [Amazon COE Best Practices Wiki](https://w.amazon.com/index.php/COE/UserGuide/BestPractices)
-- [COE User Guide](https://w.amazon.com/bin/view/NewCOE/UserGuide/)
-- [COE Tool](https://coe.a2z.com)
-- NewCOE Team: For questions and support
+### Related Documentation
+- **[COE Documentation Guide](./coe_documentation_guide.md)** - Detailed COE structure and templates
+- **[Algorithm-Preserving Refactoring SOP](./algorithm_preserving_refactoring_sop.md)** - Technical refactoring guidance
+- **[Pytest Best Practices](./pytest_best_practices_and_troubleshooting_guide.md)** - Testing best practices
 
-### Example COEs (Internal)
-- https://www.coe.a2z.com/coe/231795/content
-- https://www.coe.a2z.com/coe/232159/content
-- https://www.coe.a2z.com/coe/213051/content
+### External Resources
+- Norm Kerth, "Project Retrospectives: A Handbook for Team Review" - Retrospective Prime Directive
+- Five Whys Method: Wikipedia article on root cause analysis technique
+- Site Reliability Engineering (Google): Chapter on postmortem culture
 
 ---
 
@@ -443,4 +440,4 @@ A: No. Take AI for replacement ensuring it prevents repeat incidents.
 
 ---
 
-*This document summarizes Amazon's internal COE best practices. For detailed structure and templates, see the [COE Documentation Guide](./coe_documentation_guide.md). For algorithm-specific refactoring guidance, see the [Algorithm-Preserving Refactoring SOP](./algorithm_preserving_refactoring_sop.md).*
+*This document summarizes best practices for Correction of Error analysis based on industry-leading incident management methodologies. For detailed structure and templates, see the [COE Documentation Guide](./coe_documentation_guide.md). For algorithm-specific refactoring guidance, see the [Algorithm-Preserving Refactoring SOP](./algorithm_preserving_refactoring_sop.md).*
