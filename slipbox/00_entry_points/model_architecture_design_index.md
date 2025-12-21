@@ -271,10 +271,12 @@ Model Architecture Designs
 **Code Locations:**
 - `projects/temporal_self_attention_pytorch/` - Current TSA implementation
 - `projects/tsa/` - Legacy Time Series Attention models
+- `projects/rnr_pytorch_bedrock/dockers/lightning_models/temporal/` - **NEW** - Refactored Lightning modules
 
 **Related Design Docs:**
 - [Temporal Self-Attention Model Design](../1_design/temporal_self_attention_model_design.md) - **PRIMARY** - TSA architecture
-- [PyTorch Lightning Temporal Self-Attention Design](../1_design/pytorch_lightning_temporal_self_attention_design.md)
+- [PyTorch Lightning Temporal Self-Attention Design](../1_design/pytorch_lightning_temporal_self_attention_design.md) - Target Lightning architecture
+- [TSA Lightning Refactoring Design](../1_design/tsa_lightning_refactoring_design.md) - **NEW** - Algorithm-preserving refactoring plan and implementation status
 
 **Related Analysis:**
 - [Temporal Self-Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Comprehensive TSA implementation analysis
@@ -286,6 +288,8 @@ Model Architecture Designs
 - Sequence modeling
 - Long-range dependencies
 - Time-aware representations
+- Algorithm-preserving refactoring (Phase 1 complete)
+- 9 focal loss variants for training flexibility
 
 ---
 
