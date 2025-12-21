@@ -282,6 +282,7 @@ Model Architecture Designs
 - [Temporal Self-Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Comprehensive TSA implementation analysis
 - [TSA Cursus Step Equivalency Analysis](../4_analysis/2025-10-20_tsa_cursus_step_equivalency_analysis.md) - TSA pipeline vs Cursus framework comparison
 - [TSA SageMaker Pipeline DAG Analysis](../4_analysis/2025-10-20_tsa_sagemaker_pipeline_dag_analysis.md) - TSA pipeline DAG structure and execution
+- [TSA Lightning Refactoring Line-by-Line Comparison](../4_analysis/2025-12-20_tsa_lightning_refactoring_line_by_line_comparison.md) - **NEW** - Comprehensive line-by-line comparison of legacy vs refactored implementations
 
 **Key Features:**
 - Temporal attention mechanisms
