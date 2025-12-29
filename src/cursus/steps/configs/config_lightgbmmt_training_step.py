@@ -132,6 +132,17 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         "Can be overridden at runtime via USE_NATIVE_CATEGORICAL environment variable.",
     )
 
+    # Semi-supervised learning support
+    job_type: Optional[str] = Field(
+        default=None,
+        description=(
+            "Training job type for semi-supervised learning workflows:\n"
+            "• None (default): Standard supervised learning - no step name suffix\n"
+            "• 'pretrain': SSL pretraining phase - adds '-Pretrain' suffix\n"
+            "• 'finetune': SSL fine-tuning phase - adds '-Finetune' suffix"
+        ),
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields, stored in private attributes
     # with public read-only properties for access
@@ -156,6 +167,22 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         # Add derived properties to output
         data["hyperparameter_file"] = self.hyperparameter_file
         return data
+
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: Optional[str]) -> Optional[str]:
+        """Validate job_type is one of allowed values."""
+        if v is None:
+            return None  # Standard supervised learning
+
+        allowed = {"pretrain", "finetune"}
+        if v not in allowed:
+            raise ValueError(
+                f"job_type must be None (standard) or one of {allowed}, got '{v}'. "
+                f"Use None for standard training, 'pretrain' for SSL pretraining, "
+                f"'finetune' for SSL fine-tuning."
+            )
+        return v
 
     # Initialize derived fields at creation time to avoid potential validation loops
     @model_validator(mode="after")
@@ -279,6 +306,7 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
             "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
             "use_precomputed_features": self.use_precomputed_features,
             "use_native_categorical": self.use_native_categorical,
+            "job_type": self.job_type,
         }
 
         # Combine base fields and training fields (training fields take precedence if overlap)
