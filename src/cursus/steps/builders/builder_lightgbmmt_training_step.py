@@ -5,7 +5,7 @@ Builds SageMaker Training steps for multi-task LightGBM models using
 custom LightGBMMT framework with refactored loss functions and model architecture.
 """
 
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 import logging
 
 from sagemaker.workflow.steps import TrainingStep
