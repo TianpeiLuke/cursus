@@ -292,6 +292,32 @@ Model Architecture Designs
 - Algorithm-preserving refactoring (Phase 1 complete)
 - 9 focal loss variants for training flexibility
 
+### 3.3 Names3Risk Model (Fraud Detection)
+
+**Code Locations:**
+- `projects/names3risk/fetch_data.py` - Data collection via Secure AI Sandbox
+- `projects/names3risk/train.py` - Main training loop
+- `projects/names3risk/lstm2risk.py` - LSTM-based architecture (default)
+- `projects/names3risk/transformer2risk.py` - Transformer-based architecture (alternative)
+- `projects/names3risk/tokenizer.py` - Custom BPE tokenizer with compression tuning
+- `projects/names3risk/dataset.py` - PyTorch dataset implementations
+
+**Related Design Docs:**
+- [Names3Risk Model Design](../1_design/names3risk_model_design.md) - **PRIMARY** - Multi-modal fraud detection architecture
+
+**Related Analysis:**
+- [Names3Risk Cursus Step Equivalency Analysis](../4_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md) - **NEW** - Names3Risk pipeline vs Cursus framework comparison
+
+**Key Features:**
+- Multi-modal architecture (text + tabular fusion)
+- First-time buyer fraud detection
+- Two model variants: LSTM2Risk and Transformer2Risk
+- Custom BPE tokenizer with automatic vocab size tuning
+- Attention pooling for text representation
+- Multi-region support (NA, EU, FE)
+- Binary classification with AUC-ROC optimization
+- Late fusion strategy for modality integration
+
 ---
 
 ## 4. Data Processing & Datasets
