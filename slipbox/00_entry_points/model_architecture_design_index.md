@@ -295,12 +295,12 @@ Model Architecture Designs
 ### 3.3 Names3Risk Model (Fraud Detection)
 
 **Code Locations:**
-- `projects/names3risk/fetch_data.py` - Data collection via Secure AI Sandbox
-- `projects/names3risk/train.py` - Main training loop
-- `projects/names3risk/lstm2risk.py` - LSTM-based architecture (default)
-- `projects/names3risk/transformer2risk.py` - Transformer-based architecture (alternative)
-- `projects/names3risk/tokenizer.py` - Custom BPE tokenizer with compression tuning
-- `projects/names3risk/dataset.py` - PyTorch dataset implementations
+- `projects/names3risk_legacy/fetch_data.py` - Data collection via Secure AI Sandbox
+- `projects/names3risk_legacy/train.py` - Main training loop
+- `projects/names3risk_legacy/lstm2risk.py` - LSTM-based architecture (default)
+- `projects/names3risk_legacy/transformer2risk.py` - Transformer-based architecture (alternative)
+- `projects/names3risk_legacy/tokenizer.py` - Custom BPE tokenizer with compression tuning
+- `projects/names3risk_legacy/dataset.py` - PyTorch dataset implementations
 
 **Related Design Docs:**
 - [Names3Risk Model Design](../1_design/names3risk_model_design.md) - **PRIMARY** - Multi-modal fraud detection architecture

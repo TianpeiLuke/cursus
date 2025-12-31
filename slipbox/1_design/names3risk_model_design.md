@@ -33,12 +33,12 @@ date of note: 2025-12-31
 Names3Risk is a specialized multi-modal deep learning system designed for fraud detection in first-time buyer transactions. The model combines textual information from customer names, addresses, and payment details with numerical risk indicators to predict fraud probability. It addresses the critical challenge of assessing risk for customers with no historical transaction data, where traditional behavior-based fraud detection models cannot be applied.
 
 ## Related Documents
-- **[Data Collection Script](../../projects/names3risk/fetch_data.py)** - MDS/Andes data fetching via Secure AI Sandbox
-- **[Training Framework](../../projects/names3risk/train.py)** - Main training loop with metrics tracking
-- **[LSTM Model](../../projects/names3risk/lstm2risk.py)** - LSTM-based architecture implementation
-- **[Transformer Model](../../projects/names3risk/transformer2risk.py)** - Transformer-based architecture implementation
-- **[Tokenizer](../../projects/names3risk/tokenizer.py)** - Custom BPE tokenizer with compression tuning
-- **[Dataset](../../projects/names3risk/dataset.py)** - PyTorch dataset implementations
+- **[Data Collection Script](../../projects/names3risk_legacy/fetch_data.py)** - MDS/Andes data fetching via Secure AI Sandbox
+- **[Training Framework](../../projects/names3risk_legacy/train.py)** - Main training loop with metrics tracking
+- **[LSTM Model](../../projects/names3risk_legacy/lstm2risk.py)** - LSTM-based architecture implementation
+- **[Transformer Model](../../projects/names3risk_legacy/transformer2risk.py)** - Transformer-based architecture implementation
+- **[Tokenizer](../../projects/names3risk_legacy/tokenizer.py)** - Custom BPE tokenizer with compression tuning
+- **[Dataset](../../projects/names3risk_legacy/dataset.py)** - PyTorch dataset implementations
 
 ## Core Principles
 
@@ -583,7 +583,7 @@ scores, ensemble = model(batch)
 ### Code Organization
 
 ```
-projects/names3risk/
+projects/names3risk_legacy/
 ├── fetch_data.py           # Data collection via SAIS
 ├── train.py                # Main training script
 ├── tokenizer.py            # BPE tokenizer implementation
@@ -907,9 +907,9 @@ Traditional fraud detection models rely on transaction history and behavioral pa
 - **[Config-Driven Design](./config_driven_design.md)** - Configuration management patterns
 
 ### Implementation Files
-- **[Fetch Data Script](../../projects/names3risk/fetch_data.py)** - Data collection implementation
-- **[Training Script](../../projects/names3risk/train.py)** - Training loop and metrics
-- **[LSTM Model](../../projects/names3risk/lstm2risk.py)** - BiLSTM with attention pooling architecture
-- **[Transformer Model](../../projects/names3risk/transformer2risk.py)** - Multi-head self-attention architecture
-- **[Tokenizer](../../projects/names3risk/tokenizer.py)** - Custom BPE tokenizer with compression tuning
-- **[Dataset Classes](../../projects/names3risk/dataset.py)** - PyTorch dataset implementations
+- **[Fetch Data Script](../../projects/names3risk_legacy/fetch_data.py)** - Data collection implementation
+- **[Training Script](../../projects/names3risk_legacy/train.py)** - Training loop and metrics
+- **[LSTM Model](../../projects/names3risk_legacy/lstm2risk.py)** - BiLSTM with attention pooling architecture
+- **[Transformer Model](../../projects/names3risk_legacy/transformer2risk.py)** - Multi-head self-attention architecture
+- **[Tokenizer](../../projects/names3risk_legacy/tokenizer.py)** - Custom BPE tokenizer with compression tuning
+- **[Dataset Classes](../../projects/names3risk_legacy/dataset.py)** - PyTorch dataset implementations

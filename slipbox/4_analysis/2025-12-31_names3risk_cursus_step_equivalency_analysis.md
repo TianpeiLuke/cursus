@@ -1043,11 +1043,11 @@ The Names3Risk pipeline demonstrates **65% compatibility** with existing Cursus 
 - [Names3Risk Model Design](../1_design/names3risk_model_design.md): Comprehensive model architecture documentation
 
 **Names3Risk Source Code**:
-- `projects/names3risk/fetch_data.py`: Data loading and Cradle job configuration
-- `projects/names3risk/train.py`: Model training and evaluation
-- `projects/names3risk/tokenizer.py`: Character-level tokenization
-- `projects/names3risk/lstm2risk.py`: LSTM model architecture
-- `projects/names3risk/transformer2risk.py`: Transformer model architecture
+- `projects/names3risk_legacy/fetch_data.py`: Data loading and Cradle job configuration
+- `projects/names3risk_legacy/train.py`: Model training and evaluation
+- `projects/names3risk_legacy/tokenizer.py`: Character-level tokenization
+- `projects/names3risk_legacy/lstm2risk.py`: LSTM model architecture
+- `projects/names3risk_legacy/transformer2risk.py`: Transformer model architecture
 
 **Cursus Framework Documentation**:
 - `slipbox/0_developer_guide/`: Developer guides and best practices
