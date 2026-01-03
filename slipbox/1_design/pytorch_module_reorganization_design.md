@@ -37,8 +37,8 @@ This document outlines the systematic reorganization of PyTorch neural network m
 ## Related Documents
 
 ### Foundational Principles
-- **[Zettelkasten Knowledge Management Principles](../7_resources/zettelkasten_knowledge_management_principles.md)** - Core organizational principles guiding this design
-- **[Core Design Principles](../7_resources/core_design_principles.md)** - General design principles for the Athelas codebase
+- **[Zettelkasten Knowledge Management Principles](../6_resources/zettelkasten_knowledge_management_principles.md)** - Core organizational principles guiding this design
+- **[Core Design Principles](../6_resources/core_design_principles.md)** - General design principles for the Athelas codebase
 
 ### Related Model Architectures
 - **[Temporal Self-Attention Model Design](temporal_self_attention_model_design.md)** - Uses many components targeted for extraction
@@ -46,8 +46,8 @@ This document outlines the systematic reorganization of PyTorch neural network m
 - **[TSA Lightning Refactoring Design](tsa_lightning_refactoring_design.md)** - Modern Lightning-based implementations
 
 ### Implementation Analysis
-- **[TSA Lightning Line-by-Line Comparison](../3_analysis/2025-12-20_tsa_lightning_refactoring_line_by_line_comparison.md)** - Detailed analysis of model implementations
-- **[Names3Risk Cursus Step Equivalency Analysis](../3_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md)** - Understanding legacy model flows
+- **[TSA Lightning Line-by-Line Comparison](../4_analysis/2025-12-20_tsa_lightning_refactoring_line_by_line_comparison.md)** - Detailed analysis of model implementations
+- **[Names3Risk Cursus Step Equivalency Analysis](../4_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md)** - Understanding legacy model flows
 
 ## Core Principles
 
@@ -1137,7 +1137,7 @@ output = temporal_attn(sequence, time_encoding)
 
 ## 📖 Design Philosophy
 
-This component library follows [Zettelkasten Principles](../../slipbox/7_resources/zettelkasten_knowledge_management_principles.md):
+This component library follows [Zettelkasten Principles](../../slipbox/6_resources/zettelkasten_knowledge_management_principles.md):
 
 1. **Atomicity**: Each module = one concept
 2. **Connectivity**: Explicit dependencies via imports
@@ -1388,7 +1388,7 @@ model = ComponentBuilder() \
 ## References and Related Work
 
 ### Zettelkasten Methodology
-- **[Zettelkasten Knowledge Management Principles](../7_resources/zettelkasten_knowledge_management_principles.md)** - Foundational principles applied in this design
+- **[Zettelkasten Knowledge Management Principles](../6_resources/zettelkasten_knowledge_management_principles.md)** - Foundational principles applied in this design
 - "How to Take Smart Notes" by Sönke Ahrens - Zettelkasten method in practice
 - [Zettelkasten.de](https://zettelkasten.de/) - Comprehensive resource on the method
 
@@ -1416,16 +1416,16 @@ model = ComponentBuilder() \
 - **[Temporal Self-Attention Model Design](temporal_self_attention_model_design.md)** - Models using these components
 - **[Names3Risk Model Design](names3risk_model_design.md)** - Legacy models to be refactored
 - **[TSA Lightning Refactoring Design](tsa_lightning_refactoring_design.md)** - Modern implementations
-- **[Core Design Principles](../7_resources/core_design_principles.md)** - General design guidelines
+- **[Core Design Principles](../6_resources/core_design_principles.md)** - General design guidelines
 
 ### Implementation Analysis
-- **[TSA Lightning Line-by-Line Comparison](../3_analysis/2025-12-20_tsa_lightning_refactoring_line_by_line_comparison.md)** - Detailed component analysis
-- **[Names3Risk Cursus Equivalency Analysis](../3_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md)** - Understanding model flows
+- **[TSA Lightning Line-by-Line Comparison](../4_analysis/2025-12-20_tsa_lightning_refactoring_line_by_line_comparison.md)** - Detailed component analysis
+- **[Names3Risk Cursus Equivalency Analysis](../4_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md)** - Understanding model flows
 
 ### Resources
-- **[Algorithm Preserving Refactoring SOP](../7_resources/algorithm_preserving_refactoring_sop.md)** - Safe refactoring procedures
-- **[Code Redundancy Evaluation Guide](../7_resources/code_redundancy_evaluation_guide.md)** - Identifying duplicates
-- **[Standardization Rules](../7_resources/standardization_rules.md)** - Coding standards
+- **[Algorithm Preserving Refactoring SOP](../6_resources/algorithm_preserving_refactoring_sop.md)** - Safe refactoring procedures
+- **[Code Redundancy Evaluation Guide](../6_resources/code_redundancy_evaluation_guide.md)** - Identifying duplicates
+- **[Standardization Rules](../6_resources/standardization_rules.md)** - Coding standards
 
 ## Appendix A: Complete Component List
 
