@@ -304,6 +304,7 @@ Model Architecture Designs
 
 **Related Design Docs:**
 - [Names3Risk Model Design](../1_design/names3risk_model_design.md) - **PRIMARY** - Multi-modal fraud detection architecture
+- [Names3Risk PyTorch Reorganization Design](../1_design/names3risk_pytorch_reorganization_design.md) - **NEW** - Code reorganization into atomic components
 
 **Related Analysis:**
 - [Names3Risk Cursus Step Equivalency Analysis](../4_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md) - **NEW** - Names3Risk pipeline vs Cursus framework comparison
