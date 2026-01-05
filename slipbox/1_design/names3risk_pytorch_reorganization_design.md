@@ -116,7 +116,7 @@ from projects.names3risk_legacy.lstm2risk import AttentionPooling
 **Desired Import Pattern:**
 ```python
 # Clean, atomic import
-from projects.names3risk_pytorch.pytorch.pooling import AttentionPooling
+from projects.names3risk_pytorch.dockers.pytorch.pooling import AttentionPooling
 
 # Clear: Only imports the attention pooling component
 # Reusable: Can be used in LSTM, Transformer, or any future model
@@ -147,60 +147,82 @@ from projects.names3risk_pytorch.pytorch.pooling import AttentionPooling
 projects/names3risk_pytorch/
 ├── __init__.py                          # Project-level public API
 ├── README.md                            # Project overview and quick start
+├── pipeline_configs/                    # Pipeline configurations
+│   └── ...
 │
-├── pytorch/                             # Atomic, reusable PyTorch components
-│   ├── __init__.py                     # Component library public API
-│   │
-│   ├── attention/                       # Attention mechanisms
-│   │   ├── __init__.py
-│   │   ├── attention_head.py           # Single attention head (from Head)
-│   │   └── multihead_attention.py      # Multi-head attention (from MultiHeadAttention)
-│   │
-│   ├── embeddings/                      # Embedding layers
-│   │   ├── __init__.py
-│   │   ├── token_embedding.py          # Token embeddings (extracted from TextProjection)
-│   │   └── positional_encoding.py      # Positional embeddings (extracted from TextProjection)
-│   │
-│   ├── feedforward/                     # Feedforward networks
-│   │   ├── __init__.py
-│   │   ├── mlp_block.py                # Standard MLP (from FeedForward)
-│   │   └── residual_block.py           # Unified residual block (merge both versions)
-│   │
-│   ├── pooling/                         # Pooling mechanisms
-│   │   ├── __init__.py
-│   │   └── attention_pooling.py        # Unified attention pooling (merge both versions)
-│   │
-│   ├── blocks/                          # Composite building blocks
-│   │   ├── __init__.py
-│   │   ├── transformer_block.py        # Complete transformer layer (from Block)
-│   │   ├── lstm_encoder.py             # LSTM-based text encoder (from LSTM TextProjection)
-│   │   └── transformer_encoder.py      # Transformer-based text encoder (from Transformer TextProjection)
-│   │
-│   └── fusion/                          # Multi-modal fusion mechanisms
-│       ├── __init__.py
-│       └── bimodal_concat.py           # Text + Tabular concatenation fusion
-│
-├── preprocessing/                       # Data preprocessing components
-│   ├── __init__.py
-│   ├── tokenizers/
-│   │   ├── __init__.py
-│   │   └── bpe_tokenizer.py            # BPE with compression tuning (from OrderTextTokenizer)
-│   │
-│   └── datasets/
-│       ├── __init__.py
-│       ├── text_dataset.py             # Text dataset wrapper (from TextDataset)
-│       ├── tabular_dataset.py          # Tabular dataset wrapper (from TabularDataset)
-│       └── bimodal_dataset.py          # NEW: Combined text+tabular dataset
-│
-├── models/                              # Application-specific fraud detection models
-│   ├── __init__.py
-│   ├── configs.py                      # LSTMConfig, TransformerConfig
-│   ├── lstm2risk.py                    # Refactored LSTM-based model
-│   └── transformer2risk.py             # Refactored Transformer-based model
-│
-└── utils/                               # Utility functions
+└── dockers/                             # Docker container code (training/inference scripts)
     ├── __init__.py
-    └── collate.py                      # Collate functions (from create_collate_fn methods)
+    │
+    ├── pytorch/                         # Atomic, reusable PyTorch components
+    │   ├── __init__.py                 # Component library public API
+    │   │
+    │   ├── attention/                   # Attention mechanisms
+    │   │   ├── __init__.py
+    │   │   ├── attention_head.py       # Single attention head (from Head)
+    │   │   └── multihead_attention.py  # Multi-head attention (from MultiHeadAttention)
+    │   │
+    │   ├── embeddings/                  # Embedding layers
+    │   │   ├── __init__.py
+    │   │   ├── token_embedding.py      # Token embeddings (extracted from TextProjection)
+    │   │   └── positional_encoding.py  # Positional embeddings (extracted from TextProjection)
+    │   │
+    │   ├── feedforward/                 # Feedforward networks
+    │   │   ├── __init__.py
+    │   │   ├── mlp_block.py            # Standard MLP (from FeedForward)
+    │   │   └── residual_block.py       # Unified residual block (merge both versions)
+    │   │
+    │   ├── pooling/                     # Pooling mechanisms
+    │   │   ├── __init__.py
+    │   │   └── attention_pooling.py    # Unified attention pooling (merge both versions)
+    │   │
+    │   ├── blocks/                      # Composite building blocks
+    │   │   ├── __init__.py
+    │   │   ├── transformer_block.py    # Complete transformer layer (from Block)
+    │   │   ├── lstm_encoder.py         # LSTM-based text encoder (from LSTM TextProjection)
+    │   │   └── transformer_encoder.py  # Transformer-based text encoder (from Transformer TextProjection)
+    │   │
+    │   └── fusion/                      # Multi-modal fusion mechanisms
+    │       ├── __init__.py
+    │       └── bimodal_concat.py       # Text + Tabular concatenation fusion
+    │
+    ├── hyperparams/                     # Hyperparameter classes (Cursus three-tier pattern)
+    │   ├── __init__.py
+    │   ├── hyperparameters_base.py     # Base hyperparameters (already exists)
+    │   ├── hyperparameters_bimodal.py  # Bimodal base (already exists)
+    │   ├── hyperparameters_lstm2risk.py     # LSTM2Risk-specific hyperparameters
+    │   └── hyperparameters_transformer2risk.py  # Transformer2Risk-specific hyperparameters
+    │
+    ├── lightning_models/                # PyTorch Lightning model modules
+    │   ├── __init__.py
+    │   ├── bimodal/                     # Bimodal models (text + tabular fraud detection)
+    │   │   ├── __init__.py
+    │   │   ├── pl_bimodal_bert.py      # Existing BERT-based bimodal (already exists)
+    │   │   ├── pl_lstm2risk.py         # NEW: LSTM2Risk Lightning module
+    │   │   └── pl_transformer2risk.py  # NEW: Transformer2Risk Lightning module
+    │   ├── tabular/                     # Tabular-only models
+    │   ├── text/                        # Text-only models
+    │   ├── trimodal/                    # Three-modality models
+    │   └── utils/                       # Lightning utilities
+    │
+    ├── tokenizers/                      # Tokenization components (at dockers level)
+    │   ├── __init__.py
+    │   └── bpe_tokenizer.py            # BPE with compression tuning (from OrderTextTokenizer)
+    │
+    ├── processing/                      # Data processing components
+    │   ├── __init__.py
+    │   ├── processors.py               # Existing processor implementations
+    │   │
+    │   ├── dataloaders/                # DataLoader and collate functions
+    │   │   ├── __init__.py
+    │   │   ├── pipeline_dataloader.py  # Existing: build_collate_batch for pipelines
+    │   │   └── names3risk_collate.py   # NEW: Names3Risk model collate functions
+    │   │
+    │   └── datasets/                    # Dataset implementations
+    │       ├── __init__.py
+    │       ├── pipeline_datasets.py    # Existing pipeline datasets
+    │       ├── text_dataset.py         # Text dataset wrapper (from TextDataset)
+    │       ├── tabular_dataset.py      # Tabular dataset wrapper (from TabularDataset)
+    │       └── bimodal_dataset.py      # NEW: Combined text+tabular dataset
 ```
 
 ### Design Principles Applied
@@ -295,8 +317,8 @@ Output:
 - torch.nn.functional.softmax → Score normalization
 
 **Used By:**
-- names3risk_pytorch.pytorch.blocks.lstm_encoder → LSTM sequence summarization
-- names3risk_pytorch.pytorch.blocks.transformer_encoder → Transformer sequence summarization
+- names3risk_pytorch.dockers.pytorch.blocks.lstm_encoder → LSTM sequence summarization
+- names3risk_pytorch.dockers.pytorch.blocks.transformer_encoder → Transformer sequence summarization
 
 **Alternative Approaches:**
 - Mean pooling → Simpler but weights all tokens equally
@@ -467,8 +489,8 @@ Output:
 - torch.nn.Dropout → Optional dropout
 
 **Used By:**
-- names3risk_pytorch.models.lstm2risk → LSTM2Risk classifier
-- names3risk_pytorch.models.transformer2risk → Transformer2Risk classifier
+- names3risk_pytorch.dockers.lightning_models.bimodal.pl_lstm2risk → LSTM2Risk Lightning module
+- names3risk_pytorch.dockers.lightning_models.bimodal.pl_transformer2risk → Transformer2Risk Lightning module
 
 **Alternative Approaches:**
 - Plain FFN → No residual, harder to train deep networks
@@ -623,7 +645,7 @@ Output:
 - torch.nn.Dropout → Regularization
 
 **Used By:**
-- names3risk_pytorch.pytorch.blocks.transformer_block → Transformer FFN component
+- names3risk_pytorch.dockers.pytorch.blocks.transformer_block → Transformer FFN component
 
 **Alternative Approaches:**
 - names3risk_pytorch.pytorch.feedforward.residual_block → With skip connection
@@ -719,7 +741,7 @@ Output:
 - torch.nn.functional.softmax → Attention weight normalization
 
 **Used By:**
-- names3risk_pytorch.pytorch.attention.multihead_attention → Combines multiple heads
+- names3risk_pytorch.dockers.pytorch.attention.multihead_attention → Combines multiple heads
 
 **Alternative Approaches:**
 - Additive attention (Bahdanau) → Concat Q,K then MLP instead of dot product
@@ -863,10 +885,10 @@ Output:
   - output: (B, L, D)
 
 **Dependencies:**
-- names3risk_pytorch.pytorch.attention.attention_head → Individual attention heads
+- names3risk_pytorch.dockers.pytorch.attention.attention_head → Individual attention heads
 
 **Used By:**
-- names3risk_pytorch.pytorch.blocks.transformer_block → Self-attention component
+- names3risk_pytorch.dockers.pytorch.blocks.transformer_block → Self-attention component
 
 **Usage Example:**
 ```python
@@ -984,11 +1006,11 @@ Output:
   - output: (B, L, D)
 
 **Dependencies:**
-- names3risk_pytorch.pytorch.attention.multihead_attention → Self-attention
-- names3risk_pytorch.pytorch.feedforward.mlp_block → Feedforward network
+- names3risk_pytorch.dockers.pytorch.attention.multihead_attention → Self-attention
+- names3risk_pytorch.dockers.pytorch.feedforward.mlp_block → Feedforward network
 
 **Used By:**
-- names3risk_pytorch.pytorch.blocks.transformer_encoder → Stacked transformer layers
+- names3risk_pytorch.dockers.pytorch.blocks.transformer_encoder → Stacked transformer layers
 
 **Usage Example:**
 ```python
@@ -1113,10 +1135,10 @@ Output:
   - encoded: (B, 2*hidden_dim) - Encoded representations (2x for bidirectional)
 
 **Dependencies:**
-- names3risk_pytorch.pytorch.pooling.attention_pooling → Sequence pooling
+- names3risk_pytorch.dockers.pytorch.pooling.attention_pooling → Sequence pooling
 
 **Used By:**
-- names3risk_pytorch.models.lstm2risk → Text encoder for LSTM2Risk model
+- names3risk_pytorch.dockers.lightning_models.bimodal.pl_lstm2risk → Text encoder for LSTM2Risk Lightning module
 
 **Usage Example:**
 ```python
@@ -1284,11 +1306,11 @@ Output:
   - encoded: (B, 2*hidden_dim) - Encoded representations
 
 **Dependencies:**
-- names3risk_pytorch.pytorch.blocks.transformer_block → Transformer layers
-- names3risk_pytorch.pytorch.pooling.attention_pooling → Sequence pooling
+- names3risk_pytorch.dockers.pytorch.blocks.transformer_block → Transformer layers
+- names3risk_pytorch.dockers.pytorch.pooling.attention_pooling → Sequence pooling
 
 **Used By:**
-- names3risk_pytorch.models.transformer2risk → Text encoder
+- names3risk_pytorch.dockers.lightning_models.bimodal.pl_transformer2risk → Text encoder for Transformer2Risk Lightning module
 
 **Usage Example:**
 ```python
@@ -1423,14 +1445,14 @@ class TransformerEncoder(nn.Module):
 
 ### Phase 4: Extract Preprocessing Components
 
-#### 4.1 BPE Tokenizer → `preprocessing/tokenizers/bpe_tokenizer.py`
+#### 4.1 BPE Tokenizer → `tokenizers/bpe_tokenizer.py`
 
 **Current Location:** `tokenizer.py` `OrderTextTokenizer` class
 
 **Extraction Strategy:** Rename for clarity, maintain all functionality
 
 ```python
-# preprocessing/tokenizers/bpe_tokenizer.py
+# tokenizers/bpe_tokenizer.py
 """
 Compression-Tuned BPE Tokenizer
 
@@ -1460,11 +1482,11 @@ rate on validation set (e.g., 2.5 chars per token).
 - unicodedata → Text normalization
 
 **Used By:**
-- names3risk_pytorch.preprocessing.datasets → Tokenize names/emails during preprocessing
+- names3risk_pytorch.dockers.processing.datasets → Tokenize names/emails during preprocessing
 
 **Usage Example:**
 ```python
-from names3risk_pytorch.preprocessing.tokenizers import CompressionBPETokenizer
+from names3risk_pytorch.dockers.tokenizers import CompressionBPETokenizer
 
 # Train tokenizer
 tokenizer = CompressionBPETokenizer(min_frequency=25)
@@ -1728,12 +1750,12 @@ class CompressionBPETokenizer:
 **Goal**: Complete preprocessing extraction and refactor application models
 
 **Tasks**:
-- [ ] Extract `OrderTextTokenizer` → `preprocessing/tokenizers/bpe_tokenizer.py`
-- [ ] Extract `TextDataset`, `TabularDataset` → `preprocessing/datasets/`
+- [ ] Extract `OrderTextTokenizer` → `tokenizers/bpe_tokenizer.py`
+- [ ] Extract `TextDataset`, `TabularDataset` → `processing/datasets/`
 - [ ] Create new `BimodalDataset` combining text + tabular
+- [ ] Create `processing/dataloaders/names3risk_collate.py` for Names3Risk model collate functions
 - [ ] Refactor `LSTM2Risk` to use atomic components
 - [ ] Refactor `Transformer2Risk` to use atomic components
-- [ ] Create `utils/collate.py` for collate functions
 - [ ] End-to-end tests for refactored models
 
 **Success Metrics**:
@@ -1767,19 +1789,19 @@ To ensure smooth migration without breaking existing code:
 ```python
 # In legacy lstm2risk.py - add deprecation warnings
 import warnings
-from names3risk_pytorch.pytorch.pooling import AttentionPooling as _AttentionPooling
-from names3risk_pytorch.pytorch.feedforward import ResidualBlock as _ResidualBlock
+from names3risk_pytorch.dockers.pytorch.pooling import AttentionPooling as _AttentionPooling
+from names3risk_pytorch.dockers.pytorch.feedforward import ResidualBlock as _ResidualBlock
 
 class AttentionPooling(_AttentionPooling):
     """
-    Deprecated: Use names3risk_pytorch.pytorch.pooling.AttentionPooling instead.
+    Deprecated: Use names3risk_pytorch.dockers.pytorch.pooling.AttentionPooling instead.
     
     This wrapper is provided for backward compatibility and will be removed in v2.0.
     """
     def __init__(self, config):
         warnings.warn(
             "AttentionPooling from lstm2risk.py is deprecated. "
-            "Use 'from names3risk_pytorch.pytorch.pooling import AttentionPooling' instead. "
+            "Use 'from names3risk_pytorch.dockers.pytorch.pooling import AttentionPooling' instead. "
             "This compatibility wrapper will be removed in v2.0.",
             DeprecationWarning,
             stacklevel=2
@@ -1789,12 +1811,12 @@ class AttentionPooling(_AttentionPooling):
 
 class ResidualBlock(_ResidualBlock):
     """
-    Deprecated: Use names3risk_pytorch.pytorch.feedforward.ResidualBlock instead.
+    Deprecated: Use names3risk_pytorch.dockers.pytorch.feedforward.ResidualBlock instead.
     """
     def __init__(self, config):
         warnings.warn(
             "ResidualBlock from lstm2risk.py is deprecated. "
-            "Use 'from names3risk_pytorch.pytorch.feedforward import ResidualBlock' instead. "
+            "Use 'from names3risk_pytorch.dockers.pytorch.feedforward import ResidualBlock' instead. "
             "This compatibility wrapper will be removed in v2.0.",
             DeprecationWarning,
             stacklevel=2
