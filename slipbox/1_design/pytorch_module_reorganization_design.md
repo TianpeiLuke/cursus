@@ -1388,7 +1388,7 @@ model = ComponentBuilder() \
 ## References and Related Work
 
 ### Zettelkasten Methodology
-- **[Zettelkasten Knowledge Management Principles](../6_resources/zettelkasten_knowledge_management_principles.md)** - Foundational principles applied in this design
+- **[Zettelkasten Knowledge Management Principles](../7_resources/zettelkasten_knowledge_management_principles.md)** - Foundational principles applied in this design
 - "How to Take Smart Notes" by Sönke Ahrens - Zettelkasten method in practice
 - [Zettelkasten.de](https://zettelkasten.de/) - Comprehensive resource on the method
 
