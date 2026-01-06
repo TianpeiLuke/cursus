@@ -1,118 +1,171 @@
-#!/usr/bin/env python3
-"""
-PyTorch Lightning TSA Models Package
+"""PyTorch Lightning models organized by modality type.
 
-This package provides PyTorch Lightning implementations of Temporal Self-Attention (TSA) models
-for fraud detection and sequential classification tasks.
+This package contains PyTorch Lightning model implementations organized into
+subdirectories by modality type:
+- text: Text-only models (BERT, LSTM, CNN)
+- bimodal: 2-modality fusion models (text + tabular)
+- trimodal: 3-modality fusion models
+- tabular: Tabular-only models
+- utils: Shared utilities and training infrastructure
 
-The package is organized into modular components:
-- Core TSA components (shared building blocks)
-- Sequential attention module (temporal sequence processing)
-- Feature attention module (current transaction processing)
-- Main Lightning module (complete TSA classifier)
-- Metrics, losses, and utilities
+For backward compatibility, all models are also exported at the top level.
 """
 
-# Main Lightning modules
-from .pl_temporal_self_attention_classification import (
-    TemporalSelfAttentionClassification,
+# Text models
+from .text import (
+    TextBertBase,
+    TextBertBaseConfig,
+    TextBertClassification,
+    TextBertClassificationConfig,
+    TextLSTM,
+    TextCNN,
 )
-from .pl_dual_sequence_tsa import DualSequenceTSA
 
-# TSA component modules
-from .pl_sequential_attention import SequentialAttentionModule
-from .pl_feature_attention import FeatureAttentionModule
-
-# Core shared components
-from .pl_tsa_components import (
-    TimeEncode,
-    FeatureAggregation,
+# Bimodal models (2-modality: text + tabular)
+from .bimodal import (
+    BimodalBert,
+    BimodalCNN,
+    BimodalBertCrossAttn,
+    CrossAttentionFusion,
+    BimodalBertGateFusion,
+    GateFusion,
+    BimodalBertMoE,
     MixtureOfExperts,
-    TemporalMultiheadAttention,
-    AttentionLayer,
-    AttentionLayerPreNorm,
-    compute_fm_parallel,
 )
 
-# Metrics and evaluation
-from .pl_tsa_metrics import compute_tsa_metrics, TSAMetrics, plot_tsa_curves
+# Backward compatibility aliases
+MultimodalBert = BimodalBert
+MultimodalCNN = BimodalCNN
+MultimodalBertCrossAttn = BimodalBertCrossAttn
+MultimodalBertGateFusion = BimodalBertGateFusion
+MultimodalBertMoE = BimodalBertMoE
 
-# Loss functions
-from .pl_tsa_losses import (
-    FocalLoss,
-    CyclicalFocalLoss,
-    WeightedCrossEntropyLoss,
-    LabelSmoothingCrossEntropyLoss,
-    AsymmetricLoss,
-    get_loss_function,
+# Trimodal models
+from .trimodal import (
+    TrimodalBert,
+    TrimodalCrossAttentionBert,
+    BidirectionalCrossAttention,
+    TrimodalGateFusionBert,
+    TrimodalGateFusion,
 )
 
-# Distributed utilities
-from .dist_utils import (
-    all_gather,
-    all_gather_object,
-    get_rank,
+# Tabular models
+from .tabular import (
+    TabAE,
+    TabularEmbeddingConfig,
+    TabularEmbeddingModule,
+)
+
+# Utilities
+from .utils import (
+    # dist_utils
     get_world_size,
+    get_rank,
     is_main_process,
-    barrier,
-    reduce_tensor,
-    broadcast_object,
-    DistributedContext,
-)
-
-# Native PyTorch schedulers
-from .pl_schedulers import (
-    get_linear_schedule_with_warmup,
-    get_constant_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_polynomial_decay_schedule_with_warmup,
-    get_inverse_sqrt_schedule_with_warmup,
-    get_scheduler,
-    SCHEDULER_REGISTRY,
+    synchronize,
+    get_local_process_group,
+    get_local_rank,
+    get_local_size,
+    create_local_process_group,
+    all_gather,
+    gather,
+    shared_random_seed,
+    reduce_dict,
+    print_gpu_memory_usage,
+    print_gpu_memory_stats,
+    # pl_model_plots
+    compute_metrics,
+    plot_to_tensorboard,
+    roc_metric_plot,
+    pr_metric_plot,
+    # pl_train
+    setup_logger,
+    my_auto_wrap_policy,
+    is_fsdp_available,
+    model_train,
+    extract_preds_and_labels,
+    model_inference,
+    model_online_inference,
+    predict_stack_transform,
+    unwrap_fsdp_model,
+    save_prediction,
+    save_model,
+    save_artifacts,
+    load_artifacts,
+    load_model,
+    load_checkpoint,
+    load_onnx_model,
 )
 
 __all__ = [
-    # Main Lightning modules
-    "TemporalSelfAttentionClassification",
-    "DualSequenceTSA",
-    # TSA component modules
-    "SequentialAttentionModule",
-    "FeatureAttentionModule",
-    # Core shared components
-    "TimeEncode",
-    "FeatureAggregation",
+    # Text models
+    "TextBertBase",
+    "TextBertBaseConfig",
+    "TextBertClassification",
+    "TextBertClassificationConfig",
+    "TextLSTM",
+    "TextCNN",
+    # Bimodal models (new naming)
+    "BimodalBert",
+    "BimodalCNN",
+    "BimodalBertCrossAttn",
+    "BimodalBertGateFusion",
+    "BimodalBertMoE",
+    # Multimodal models (backward compatibility aliases)
+    "MultimodalBert",
+    "MultimodalCNN",
+    "MultimodalBertCrossAttn",
+    "MultimodalBertGateFusion",
+    "MultimodalBertMoE",
+    # Fusion modules
+    "CrossAttentionFusion",
+    "GateFusion",
     "MixtureOfExperts",
-    "TemporalMultiheadAttention",
-    "AttentionLayer",
-    "AttentionLayerPreNorm",
-    "compute_fm_parallel",
-    # Metrics and evaluation
-    "compute_tsa_metrics",
-    "TSAMetrics",
-    "plot_tsa_curves",
-    # Loss functions
-    "FocalLoss",
-    "CyclicalFocalLoss",
-    "WeightedCrossEntropyLoss",
-    "LabelSmoothingCrossEntropyLoss",
-    "AsymmetricLoss",
-    "get_loss_function",
-    # Distributed utilities
-    "all_gather",
-    "all_gather_object",
-    "get_rank",
+    # Trimodal models
+    "TrimodalBert",
+    "TrimodalCrossAttentionBert",
+    "BidirectionalCrossAttention",
+    "TrimodalGateFusionBert",
+    "TrimodalGateFusion",
+    # Tabular models
+    "TabAE",
+    "TabularEmbeddingConfig",
+    "TabularEmbeddingModule",
+    # Utilities - dist_utils
     "get_world_size",
+    "get_rank",
     "is_main_process",
-    "barrier",
-    "reduce_tensor",
-    "broadcast_object",
-    "DistributedContext",
-    # Native PyTorch schedulers
-    "get_linear_schedule_with_warmup",
-    "get_constant_schedule_with_warmup",
-    "get_cosine_schedule_with_warmup",
-    "get_polynomial_decay_schedule_with_warmup",
-    "get_inverse_sqrt_schedule_with_warmup",
-    "get_scheduler",
-    "SCHEDULER_REGISTRY",
+    "synchronize",
+    "get_local_process_group",
+    "get_local_rank",
+    "get_local_size",
+    "create_local_process_group",
+    "all_gather",
+    "gather",
+    "shared_random_seed",
+    "reduce_dict",
+    "print_gpu_memory_usage",
+    "print_gpu_memory_stats",
+    # Utilities - pl_model_plots
+    "compute_metrics",
+    "plot_to_tensorboard",
+    "roc_metric_plot",
+    "pr_metric_plot",
+    # Utilities - pl_train
+    "setup_logger",
+    "my_auto_wrap_policy",
+    "is_fsdp_available",
+    "model_train",
+    "extract_preds_and_labels",
+    "model_inference",
+    "model_online_inference",
+    "predict_stack_transform",
+    "unwrap_fsdp_model",
+    "save_prediction",
+    "save_model",
+    "save_artifacts",
+    "load_artifacts",
+    "load_model",
+    "load_checkpoint",
+    "load_onnx_model",
 ]
