@@ -80,7 +80,6 @@ class SAISEDXLoadJob:
         self.region = region
 
     def submit(self):
-
         mds_vars = {
             "objectId",
             "customerId",
@@ -210,7 +209,6 @@ class SAISEDXLoadJob:
         return cradle_data_load_job
 
     def run(self, **kwargs):
-
         sandbox_session = Session(
             session_folder="/home/ec2-user/SageMaker/cradle_output"
         )

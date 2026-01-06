@@ -3,7 +3,6 @@ import torch.utils.data as data
 
 
 class TextDataset(data.Dataset):
-
     def __init__(self, texts, tokenizer):
         super().__init__()
         self.texts = texts

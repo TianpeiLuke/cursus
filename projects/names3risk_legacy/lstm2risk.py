@@ -53,7 +53,6 @@ class ResidualBlock(nn.Module):
 
 
 class TextProjection(nn.Module):
-
     def __init__(self, config):
         super().__init__()
         self.token_embedding_table = nn.Embedding(config.n_embed, config.embedding_size)
@@ -94,7 +93,6 @@ class TextProjection(nn.Module):
 
 
 class LSTM2Risk(nn.Module):
-
     def __init__(self, config: LSTMConfig):
         super().__init__()
 

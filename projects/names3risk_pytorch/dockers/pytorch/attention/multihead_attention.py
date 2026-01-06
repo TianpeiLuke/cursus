@@ -23,7 +23,7 @@ email structure, name length, special characters, etc.
 Input:
   - x: (B, L, D) - Input sequence
   - attn_mask: (B, L) - Attention mask (optional)
-  
+
 Output:
   - output: (B, L, D)
 
@@ -57,54 +57,46 @@ from .attention_head import AttentionHead
 
 class MultiHeadAttention(nn.Module):
     """Multi-head self-attention mechanism."""
-    
-    def __init__(
-        self,
-        embedding_dim: int,
-        n_heads: int,
-        dropout: float = 0.0
-    ):
+
+    def __init__(self, embedding_dim: int, n_heads: int, dropout: float = 0.0):
         """
         Initialize MultiHeadAttention.
-        
+
         Args:
             embedding_dim: Input embedding dimension (must be divisible by n_heads)
             n_heads: Number of attention heads
             dropout: Dropout probability for attention weights and output projection
         """
         super().__init__()
-        
+
         # Create attention heads
-        self.heads = nn.ModuleList([
-            AttentionHead(embedding_dim, n_heads, dropout)
-            for _ in range(n_heads)
-        ])
-        
+        self.heads = nn.ModuleList(
+            [AttentionHead(embedding_dim, n_heads, dropout) for _ in range(n_heads)]
+        )
+
         # Output projection
         self.proj = nn.Linear(embedding_dim, embedding_dim)
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-    
+
     def forward(
-        self,
-        x: torch.Tensor,
-        attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Forward pass through multi-head attention.
-        
+
         Args:
             x: (B, L, D) - Input sequence
             attn_mask: (B, L) - Attention mask (optional)
-            
+
         Returns:
             output: (B, L, D)
         """
         # Compute attention for each head and concatenate
         head_outputs = [head(x, attn_mask) for head in self.heads]
         concatenated = torch.cat(head_outputs, dim=-1)  # (B, L, D)
-        
+
         # Project back to embedding dimension
         output = self.proj(concatenated)
         output = self.dropout(output)
-        
+
         return output

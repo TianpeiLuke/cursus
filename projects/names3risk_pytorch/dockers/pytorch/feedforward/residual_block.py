@@ -22,7 +22,7 @@ Names3Risk multi-layer classifier to learn complex fraud patterns.
 **Forward Signature:**
 Input:
   - x: (B, D) - Input features
-  
+
 Output:
   - output: (B, D) - x + FFN(x) or x + FFN(LayerNorm(x))
 
@@ -76,22 +76,22 @@ from typing import Literal
 class ResidualBlock(nn.Module):
     """
     Feedforward block with residual connection.
-    
+
     Supports both pre-norm and post-norm variants, configurable activation
     and expansion factor.
     """
-    
+
     def __init__(
         self,
         dim: int,
         expansion_factor: int = 4,
         dropout: float = 0.0,
-        activation: Literal['relu', 'gelu', 'silu'] = 'relu',
-        norm_first: bool = True
+        activation: Literal["relu", "gelu", "silu"] = "relu",
+        norm_first: bool = True,
     ):
         """
         Initialize ResidualBlock.
-        
+
         Args:
             dim: Input/output dimension
             expansion_factor: Hidden layer size = dim * expansion_factor
@@ -102,38 +102,38 @@ class ResidualBlock(nn.Module):
         super().__init__()
         self.norm_first = norm_first
         hidden_dim = dim * expansion_factor
-        
+
         # Activation function
-        if activation == 'relu':
+        if activation == "relu":
             act_fn = nn.ReLU()
-        elif activation == 'gelu':
+        elif activation == "gelu":
             act_fn = nn.GELU()
-        elif activation == 'silu':
+        elif activation == "silu":
             act_fn = nn.SiLU()
         else:
             raise ValueError(f"Unsupported activation: {activation}")
-        
+
         # Optional pre-norm
         if norm_first:
             self.norm = nn.LayerNorm(dim)
         else:
             self.norm = nn.Identity()
-        
+
         # Feedforward network
         self.ffn = nn.Sequential(
             nn.Linear(dim, hidden_dim),
             act_fn,
             nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout) if dropout > 0 else nn.Identity()
+            nn.Dropout(dropout) if dropout > 0 else nn.Identity(),
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass with residual connection.
-        
+
         Args:
             x: (B, D) - Input features
-            
+
         Returns:
             output: (B, D) - x + FFN(x) or x + FFN(LayerNorm(x))
         """

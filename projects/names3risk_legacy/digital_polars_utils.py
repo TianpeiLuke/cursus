@@ -99,7 +99,6 @@ def my_bucket():
 
 
 def upload_s3(filepath, s3_path=None):
-
     s3_path = s3_path or os.path.basename(filepath)
 
     assert "s3:" not in s3_path
@@ -111,7 +110,6 @@ def upload_s3(filepath, s3_path=None):
 
 
 def ks_test(df, target):
-
     df = df.lazy()
 
     ks_stats = []
@@ -119,7 +117,6 @@ def ks_test(df, target):
     for col in (
         df.select(pl.selectors.numeric().exclude(target)).collect_schema().names()
     ):
-
         df_col = df.select(col, target).drop_nulls().collect()
 
         df_good = df_col.filter(pl.col(target) == 0)
@@ -161,7 +158,6 @@ def evaluate_rule(
     return_orders: bool = True,
     true: pl.Expr = pl.col("IS_FRD") == 1,
 ) -> pl.LazyFrame:
-    
     df = df.lazy()
 
     usd_name = (
@@ -199,9 +195,16 @@ def evaluate_rule(
 
 
 def infer_schema(filename: str):
+    DTYPE_HIERARCHY = [
+        pl.Int8,
+        pl.Int16,
+        pl.Int32,
+        pl.Int64,
+        pl.Float32,
+        pl.Float64,
+        pl.Boolean,
+    ]
 
-    DTYPE_HIERARCHY = [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.Float32, pl.Float64, pl.Boolean]
-    
     def _infer_column_type(s: pl.Series):
         for dtype in DTYPE_HIERARCHY:
             try:
@@ -211,30 +214,26 @@ def infer_schema(filename: str):
                 pass
 
         return pl.String
-    
+
     possible_schemas = defaultdict(set)
 
     with ParquetFile(filename) as parquet_file:
         for batch in parquet_file.iter_batches(batch_size=10_000):
-
             df = pl.from_arrow(batch)
 
             for s in df:
                 dtype = _infer_column_type(s)
                 possible_schemas[s.name].add(dtype)
-                
+
     return {
         col: next(
-            dtype
-            for dtype in [pl.String] + DTYPE_HIERARCHY[::-1]
-            if dtype in dtypes
+            dtype for dtype in [pl.String] + DTYPE_HIERARCHY[::-1] if dtype in dtypes
         )
         for col, dtypes in possible_schemas.items()
     }
 
 
 def download_parquet_s3(s3_glob, output_file, infer=True):
-
     if "s3:" not in s3_glob:
         s3_glob = os.path.join(my_bucket(), s3_glob)
 
@@ -249,18 +248,14 @@ def download_parquet_s3(s3_glob, output_file, infer=True):
     tmp_file = f"/tmp/{uuid.uuid4()}.parquet"
 
     try:
-        (
-            pl.scan_parquet(s3_glob)
-            .cast({pl.Decimal: pl.Float64})
-            .sink_parquet(tmp_file)
-        )
+        (pl.scan_parquet(s3_glob).cast({pl.Decimal: pl.Float64}).sink_parquet(tmp_file))
 
         schema = infer_schema(tmp_file)
         transforms = {}
-            
+
         if "IS_FRD" in schema:
             schema["IS_FRD"] = pl.Int8
-            
+
         if "orderDate" in schema:
             schema["orderDate"] = pl.String
             transforms["orderDate"] = (

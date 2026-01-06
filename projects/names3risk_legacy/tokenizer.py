@@ -9,7 +9,6 @@ from tokenizers.trainers import BpeTrainer
 
 
 class OrderTextTokenizer:
-
     def __init__(self, min_frequency: int = 25):
         self._tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
         self._tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
@@ -17,8 +16,7 @@ class OrderTextTokenizer:
         self.pad_token = None
         self.cls_token = None
 
-    def calculate_compression_rate(self, texts, sample_size = 10000):
-
+    def calculate_compression_rate(self, texts, sample_size=10000):
         if len(texts) > sample_size:
             sample_texts = random.sample(texts, sample_size)
         else:
@@ -92,7 +90,9 @@ class OrderTextTokenizer:
             )
 
             # Calculate compression on validation set
-            self._tokenizer = temp_tokenizer  # Temporarily set for compression calculation
+            self._tokenizer = (
+                temp_tokenizer  # Temporarily set for compression calculation
+            )
             compression = self.calculate_compression_rate(validation_texts)
             actual_vocab_size = temp_tokenizer.get_vocab_size()
 
@@ -100,7 +100,9 @@ class OrderTextTokenizer:
             print(f"  Actual vocab size: {actual_vocab_size}")
 
             # Save best result
-            if abs(compression - target_compression) < abs(best_compression - target_compression):
+            if abs(compression - target_compression) < abs(
+                best_compression - target_compression
+            ):
                 best_compression = compression
                 best_tokenizer = temp_tokenizer
                 best_vocab_size = actual_vocab_size

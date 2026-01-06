@@ -22,7 +22,7 @@ position-wise feedforward transformation.
 Input:
   - x: (B, L, D) - Input sequence
   - attn_mask: (B, L) - Attention mask (optional)
-  
+
 Output:
   - output: (B, L, D)
 
@@ -64,17 +64,13 @@ from ..feedforward import MLPBlock
 
 class TransformerBlock(nn.Module):
     """Complete transformer encoder layer with pre-norm architecture."""
-    
+
     def __init__(
-        self,
-        embedding_dim: int,
-        n_heads: int,
-        ff_hidden_dim: int,
-        dropout: float = 0.0
+        self, embedding_dim: int, n_heads: int, ff_hidden_dim: int, dropout: float = 0.0
     ):
         """
         Initialize TransformerBlock.
-        
+
         Args:
             embedding_dim: Model dimension
             n_heads: Number of attention heads
@@ -82,34 +78,32 @@ class TransformerBlock(nn.Module):
             dropout: Dropout probability
         """
         super().__init__()
-        
+
         # Self-attention with pre-norm
         self.ln1 = nn.LayerNorm(embedding_dim)
         self.self_attn = MultiHeadAttention(embedding_dim, n_heads, dropout)
-        
+
         # Feedforward with pre-norm
         self.ln2 = nn.LayerNorm(embedding_dim)
         self.ffn = MLPBlock(embedding_dim, ff_hidden_dim, dropout)
-    
+
     def forward(
-        self,
-        x: torch.Tensor,
-        attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Forward pass through transformer block.
-        
+
         Args:
             x: (B, L, D) - Input sequence
             attn_mask: (B, L) - Attention mask (optional)
-            
+
         Returns:
             output: (B, L, D)
         """
         # Self-attention with residual
         x = x + self.self_attn(self.ln1(x), attn_mask)
-        
+
         # Feedforward with residual
         x = x + self.ffn(self.ln2(x))
-        
+
         return x

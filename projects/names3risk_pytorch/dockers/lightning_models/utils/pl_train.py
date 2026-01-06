@@ -504,6 +504,8 @@ def load_model(
     from ..bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
     from ..bimodal.pl_bimodal_moe import BimodalBertMoE
     from ..bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
+    from ..bimodal.pl_lstm2risk import LSTM2RiskLightning
+    from ..bimodal.pl_transformer2risk import Transformer2RiskLightning
     from ..trimodal.pl_trimodal_bert import TrimodalBert
     from ..trimodal.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
     from ..trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
@@ -519,6 +521,8 @@ def load_model(
         "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config),
         "bimodal_moe": lambda: BimodalBertMoE(config),
         "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config),
+        "lstm2risk": lambda: LSTM2RiskLightning(config),
+        "transformer2risk": lambda: Transformer2RiskLightning(config),
         # Trimodal models
         "trimodal": lambda: TrimodalBert(config),  # Default trimodal
         "trimodal_bert": lambda: TrimodalBert(config),
@@ -559,6 +563,8 @@ def load_checkpoint(
     from ..bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
     from ..bimodal.pl_bimodal_moe import BimodalBertMoE
     from ..bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
+    from ..bimodal.pl_lstm2risk import LSTM2RiskLightning
+    from ..bimodal.pl_transformer2risk import Transformer2RiskLightning
 
     logger.info("Loading checkpoint.")
     model_fn = {
@@ -569,6 +575,8 @@ def load_checkpoint(
         "bimodal_gate_fusion": BimodalBertGateFusion,
         "bimodal_moe": BimodalBertMoE,
         "bimodal_cross_attn": BimodalBertCrossAttn,
+        "lstm2risk": LSTM2RiskLightning,
+        "transformer2risk": Transformer2RiskLightning,
         # Backward compatibility
         "multimodal_cnn": BimodalCNN,
         "multimodal_bert": BimodalBert,

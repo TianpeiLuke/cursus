@@ -87,17 +87,20 @@ def test_loop(model, dataloader):
 
 
 def main():
-
     tabular_features = set()
 
     with open("features/DigitalModelNA.txt") as file:
         tabular_features.update(line.strip() for line in file)
 
     with open("features/DigitalModelEU.txt") as file:
-        tabular_features = tabular_features.intersection({line.strip() for line in file})
+        tabular_features = tabular_features.intersection(
+            {line.strip() for line in file}
+        )
 
     with open("features/DigitalModelJP.txt") as file:
-        tabular_features = tabular_features.intersection({line.strip() for line in file})
+        tabular_features = tabular_features.intersection(
+            {line.strip() for line in file}
+        )
 
     features = REQUIRED_FEATURES.union(tabular_features)
 
@@ -114,7 +117,7 @@ def main():
                 .with_columns(region=pl.lit("EU")),
                 pl.scan_parquet("data/2025-08-20T00-50-46_FE.parquet")
                 .select(features)
-                .with_columns(region=pl.lit("FE")),            
+                .with_columns(region=pl.lit("FE")),
             ],
             how="vertical_relaxed",
         )
@@ -148,21 +151,19 @@ def main():
     )
 
     print(
-        df
-        .lazy()
+        df.lazy()
         .group_by("marketplaceCountryCode")
         .agg(pl.len())
-        .with_columns(ratio=pl.col("len")/pl.sum("len"))
+        .with_columns(ratio=pl.col("len") / pl.sum("len"))
         .sort("len", descending=True)
         .collect()
     )
 
     print(
-        df
-        .lazy()
+        df.lazy()
         .group_by("label")
         .agg(pl.len())
-        .with_columns(ratio=pl.col("len")/pl.sum("len"))
+        .with_columns(ratio=pl.col("len") / pl.sum("len"))
         .collect()
     )
 
@@ -178,11 +179,8 @@ def main():
 
     config = lstm2risk.LSTMConfig(n_tab_features=len(tabular_features))
     # config = transformer2risk.TransformerConfig(n_tab_features=len(tabular_features))
-    
-    tokenizer = OrderTextTokenizer().train(
-        df_train
-        .get_column("text").to_list()
-    )
+
+    tokenizer = OrderTextTokenizer().train(df_train.get_column("text").to_list())
 
     config.n_embed = tokenizer.vocab_size
 
@@ -237,14 +235,13 @@ def main():
 
     logger = JSONLogger()
 
-    logger.log_params(
-        dataclasses.asdict(config)
+    logger.log_params(dataclasses.asdict(config))
+
+    print(
+        f"Number of Parameters: {sum(p.numel() for p in model.parameters()):,} (Text proj: {sum(p.numel() for p in model.text_projection.parameters()):,}, Tabular proj: {sum(p.numel() for p in model.tab_projection.parameters()):,})"
     )
 
-    print(f"Number of Parameters: {sum(p.numel() for p in model.parameters()):,} (Text proj: {sum(p.numel() for p in model.text_projection.parameters()):,}, Tabular proj: {sum(p.numel() for p in model.tab_projection.parameters()):,})")
-
     for epoch in range(EPOCHS):
-
         train_auc = train_loop(
             model, training_dataloader, loss_fn, optimizer, scheduler
         )
@@ -254,7 +251,6 @@ def main():
         torch.save(model.state_dict(), f"models/model_{epoch}.pt")
 
         print(f"Epoch {epoch}: {train_auc:.4f} {test_auc:.4f}, {lr:.1e}")
-
 
         mp_auc = {}
         for (mp,), df_mp in df_test.group_by("marketplaceCountryCode"):
@@ -278,11 +274,7 @@ def main():
             mp_auc[f"{mp}_auc"] = test_loop(model, dataloader).item()
 
         logger.log_metrics(
-            epoch,
-            lr=lr,
-            train_auc=train_auc.item(),
-            test_auc=test_auc.item(),
-            **mp_auc
+            epoch, lr=lr, train_auc=train_auc.item(), test_auc=test_auc.item(), **mp_auc
         )
 
 

@@ -17,7 +17,7 @@ each character/subword embedding to capture non-linear patterns.
 **Forward Signature:**
 Input:
   - x: (B, L, D) or (B, D) - Input features
-  
+
 Output:
   - output: Same shape as input
 
@@ -49,32 +49,32 @@ from typing import Literal
 
 class MLPBlock(nn.Module):
     """Multi-layer perceptron block."""
-    
+
     def __init__(
         self,
         input_dim: int,
         hidden_dim: int,
         dropout: float = 0.0,
-        activation: Literal['relu', 'gelu', 'silu'] = 'relu'
+        activation: Literal["relu", "gelu", "silu"] = "relu",
     ):
         super().__init__()
-        
-        if activation == 'relu':
+
+        if activation == "relu":
             act_fn = nn.ReLU()
-        elif activation == 'gelu':
+        elif activation == "gelu":
             act_fn = nn.GELU()
-        elif activation == 'silu':
+        elif activation == "silu":
             act_fn = nn.SiLU()
         else:
             raise ValueError(f"Unsupported activation: {activation}")
-        
+
         self.net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             act_fn,
             nn.Dropout(dropout) if dropout > 0 else nn.Identity(),
             nn.Linear(hidden_dim, input_dim),
-            nn.Dropout(dropout) if dropout > 0 else nn.Identity()
+            nn.Dropout(dropout) if dropout > 0 else nn.Identity(),
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)

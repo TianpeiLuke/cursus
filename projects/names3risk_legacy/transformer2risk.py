@@ -35,7 +35,6 @@ class FeedForward(nn.Module):
 
 
 class Head(nn.Module):
-
     def __init__(self, config):
         super().__init__()
 
@@ -62,7 +61,6 @@ class Head(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-
     def __init__(self, config):
         super().__init__()
         self.heads = nn.ModuleList([Head(config) for _ in range(config.n_heads)])
@@ -76,7 +74,6 @@ class MultiHeadAttention(nn.Module):
 
 
 class Block(nn.Module):
-
     def __init__(self, config):
         super().__init__()
         self.sa = MultiHeadAttention(config)
@@ -122,11 +119,12 @@ class AttentionPooling(nn.Module):
 
 
 class TextProjection(nn.Module):
-
     def __init__(self, config):
         super().__init__()
         self.token_embedding_table = nn.Embedding(config.n_embed, config.embedding_size)
-        self.position_embedding_table = nn.Embedding(config.block_size, config.embedding_size)
+        self.position_embedding_table = nn.Embedding(
+            config.block_size, config.embedding_size
+        )
 
         self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_blocks)])
 
@@ -150,7 +148,6 @@ class TextProjection(nn.Module):
 
 
 class Transformer2Risk(nn.Module):
-
     def __init__(self, config):
         super().__init__()
         self.block_size = config.block_size
@@ -197,7 +194,6 @@ class Transformer2Risk(nn.Module):
 
     def create_collate_fn(self, pad_token):
         def collate_fn(batch):
-
             texts = [item["text"][: self.block_size] for item in batch]
             tabs = [item["tabular"] for item in batch]
             labels = [item["label"] for item in batch]

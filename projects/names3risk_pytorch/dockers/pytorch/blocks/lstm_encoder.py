@@ -26,7 +26,7 @@ learned attention weights.
 Input:
   - tokens: (B, L) - Token IDs
   - lengths: (B,) - Actual sequence lengths (optional, for packing)
-  
+
 Output:
   - encoded: (B, 2*hidden_dim) - Encoded representations (2x for bidirectional)
 
@@ -68,10 +68,10 @@ from ..pooling import AttentionPooling
 class LSTMEncoder(nn.Module):
     """
     LSTM-based text sequence encoder with attention pooling.
-    
+
     Encodes variable-length token sequences into fixed-size representations.
     """
-    
+
     def __init__(
         self,
         vocab_size: int,
@@ -79,11 +79,11 @@ class LSTMEncoder(nn.Module):
         hidden_dim: int,
         num_layers: int = 4,
         dropout: float = 0.0,
-        bidirectional: bool = True
+        bidirectional: bool = True,
     ):
         """
         Initialize LSTMEncoder.
-        
+
         Args:
             vocab_size: Size of token vocabulary
             embedding_dim: Dimension of token embeddings
@@ -93,10 +93,10 @@ class LSTMEncoder(nn.Module):
             bidirectional: Whether to use bidirectional LSTM
         """
         super().__init__()
-        
+
         # Token embeddings
         self.token_embedding = nn.Embedding(vocab_size, embedding_dim)
-        
+
         # Bidirectional LSTM
         self.lstm = nn.LSTM(
             embedding_dim,
@@ -104,56 +104,50 @@ class LSTMEncoder(nn.Module):
             num_layers=num_layers,
             batch_first=True,
             bidirectional=bidirectional,
-            dropout=dropout if num_layers > 1 else 0
+            dropout=dropout if num_layers > 1 else 0,
         )
-        
+
         # Attention pooling (input_dim = 2*hidden_dim for bidirectional)
         lstm_output_dim = 2 * hidden_dim if bidirectional else hidden_dim
         self.pooling = AttentionPooling(input_dim=lstm_output_dim)
-        
+
         # Output normalization
         self.norm = nn.LayerNorm(lstm_output_dim)
-    
+
     def forward(
-        self,
-        tokens: torch.Tensor,
-        lengths: Optional[torch.Tensor] = None
+        self, tokens: torch.Tensor, lengths: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Encode token sequences.
-        
+
         Args:
             tokens: (B, L) - Token IDs
             lengths: (B,) - Actual sequence lengths before padding (optional)
-            
+
         Returns:
             encoded: (B, 2*hidden_dim) - Encoded representations
         """
         # Token embeddings: (B, L, embedding_dim)
         embeddings = self.token_embedding(tokens)
-        
+
         # LSTM encoding
         if lengths is not None:
             # Pack padded sequences for efficiency
             packed_emb = nn.utils.rnn.pack_padded_sequence(
-                embeddings,
-                lengths.cpu(),
-                batch_first=True,
-                enforce_sorted=True
+                embeddings, lengths.cpu(), batch_first=True, enforce_sorted=True
             )
             packed_output, _ = self.lstm(packed_emb)
             # Unpack
             lstm_output, _ = nn.utils.rnn.pad_packed_sequence(
-                packed_output,
-                batch_first=True
+                packed_output, batch_first=True
             )
         else:
             lstm_output, _ = self.lstm(embeddings)
-        
+
         # Attention pooling: (B, 2*hidden_dim)
         pooled = self.pooling(lstm_output, lengths)
-        
+
         # Layer normalization
         encoded = self.norm(pooled)
-        
+
         return encoded

@@ -24,7 +24,7 @@ indicative of fraud patterns.
 Input:
   - x: (B, L, D) - Input sequence
   - attn_mask: (B, L) - Attention mask (optional, True = attend, False = ignore)
-  
+
 Output:
   - output: (B, L, head_size) where head_size = embedding_dim // n_heads
 
@@ -63,68 +63,62 @@ from typing import Optional
 class AttentionHead(nn.Module):
     """
     Single scaled dot-product attention head.
-    
+
     Computes Q, K, V projections and attention for one head.
     """
-    
-    def __init__(
-        self,
-        embedding_dim: int,
-        n_heads: int,
-        dropout: float = 0.0
-    ):
+
+    def __init__(self, embedding_dim: int, n_heads: int, dropout: float = 0.0):
         """
         Initialize AttentionHead.
-        
+
         Args:
             embedding_dim: Input embedding dimension (must be divisible by n_heads)
             n_heads: Number of heads in parent MultiHeadAttention (for dimension calculation)
             dropout: Dropout probability for attention weights
         """
         super().__init__()
-        
-        assert embedding_dim % n_heads == 0, \
+
+        assert embedding_dim % n_heads == 0, (
             f"embedding_dim ({embedding_dim}) must be divisible by n_heads ({n_heads})"
-        
+        )
+
         self.head_size = embedding_dim // n_heads
-        
+
         # Single linear layer projects to Q, K, V (concatenated)
         self.qkv = nn.Linear(embedding_dim, 3 * self.head_size, bias=False)
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-    
+
     def forward(
-        self,
-        x: torch.Tensor,
-        attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Compute attention for this head.
-        
+
         Args:
             x: (B, L, D) - Input sequence
             attn_mask: (B, L) - Attention mask, True = attend, False = ignore
-            
+
         Returns:
             output: (B, L, head_size)
         """
         B, L, D = x.shape
-        
+
         # Project to Q, K, V and split: (B, L, 3 * head_size)
         q, k, v = self.qkv(x).chunk(3, dim=-1)
-        
+
         # Compute attention scores: (B, L, L)
-        scores = q @ k.transpose(-2, -1) * (self.head_size ** -0.5)
-        
+        scores = q @ k.transpose(-2, -1) * (self.head_size**-0.5)
+
         # Apply mask if provided
         if attn_mask is not None:
             # attn_mask shape: (B, L) -> expand to (B, 1, L) for broadcasting
-            scores = scores.masked_fill(~attn_mask.unsqueeze(1), float('-inf'))
-        
+            scores = scores.masked_fill(~attn_mask.unsqueeze(1), float("-inf"))
+
         # Normalize and apply dropout
         weights = F.softmax(scores, dim=-1)
         weights = self.dropout(weights)
-        
+
         # Apply attention to values: (B, L, head_size)
         output = weights @ v
-        
+
         return output

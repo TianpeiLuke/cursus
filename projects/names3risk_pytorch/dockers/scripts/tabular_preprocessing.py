@@ -287,6 +287,92 @@ def combine_shards(
         raise RuntimeError(f"Failed to read or concatenate shards: {e}")
 
 
+# --- Names3Risk Preprocessing Functions ---
+
+
+def detect_and_apply_names3risk_preprocessing(
+    df: pd.DataFrame, log_func
+) -> pd.DataFrame:
+    """
+    Auto-detect and apply Names3Risk-specific preprocessing.
+
+    Applies transformations matching legacy train.py behavior (EXACT ORDER):
+    1. Amazon email filtering: Remove amazon.com emails (FIRST - reduces volume)
+    2. Create label from status field (F/I→1, N→0, filter invalid)
+    3. Text concatenation: email|billing|customer|payment → 'text' field
+    4. Sort by orderDate (before deduplication for consistency)
+    5. Customer deduplication: Keep first occurrence by customerId
+
+    Zero configuration required - smart defaults based on data shape.
+
+    Args:
+        df: Input DataFrame
+        log_func: Logging function (e.g., print or logger.info)
+
+    Returns:
+        Preprocessed DataFrame
+    """
+    # 1. Amazon email filtering (FIRST - reduces data volume early, matches legacy)
+    if "emailDomain" in df.columns:
+        initial_count = len(df)
+        df = df[~df["emailDomain"].str.lower().str.contains("amazon.", na=False)]
+        filtered = initial_count - len(df)
+        if filtered > 0:
+            log_func(
+                f"[INFO] Filtered {filtered} amazon.com emails ({filtered / initial_count * 100:.2f}%)"
+            )
+
+    # 2. Create label from status field (if exists and no label field)
+    if "status" in df.columns and "label" not in df.columns:
+        log_func("[INFO] Creating label from status field (F/I→1, N→0)...")
+        initial_count = len(df)
+
+        # Map status to label: F/I (fraud/investigation) → 1, N (normal) → 0, others → NaN
+        status_map = {"F": 1, "I": 1, "N": 0}
+        df["label"] = df["status"].map(status_map)
+
+        # Filter out records with invalid status (label is NaN)
+        df = df[df["label"].notna()]
+        filtered = initial_count - len(df)
+
+        if filtered > 0:
+            log_func(
+                f"[INFO] Filtered {filtered} records with invalid status ({filtered / initial_count * 100:.2f}%)"
+            )
+
+        log_func(f"[INFO] Label distribution: {df['label'].value_counts().to_dict()}")
+
+    # 3. Text concatenation (if all 4 fields exist)
+    text_fields = [
+        "emailAddress",
+        "billingAddressName",
+        "customerName",
+        "paymentAccountHolderName",
+    ]
+
+    if all(field in df.columns for field in text_fields):
+        log_func("[INFO] Detected Names3Risk text fields, concatenating...")
+        df["text"] = df[text_fields].fillna("[MISSING]").agg("|".join, axis=1)
+        log_func(f"[INFO] Created 'text' field from {len(text_fields)} columns")
+
+    # 4. Sort by orderDate (BEFORE deduplication to ensure "first" is chronologically first)
+    if "orderDate" in df.columns:
+        log_func("[INFO] Sorting by orderDate for temporal consistency...")
+        df = df.sort_values("orderDate").reset_index(drop=True)
+
+    # 5. Deduplication by customerId (if exists)
+    if "customerId" in df.columns:
+        initial_count = len(df)
+        df = df.drop_duplicates(subset=["customerId"], keep="first")
+        removed = initial_count - len(df)
+        if removed > 0:
+            log_func(
+                f"[INFO] Removed {removed} duplicate customerIds ({removed / initial_count * 100:.2f}%)"
+            )
+
+    return df
+
+
 # --- Main Processing Logic ---
 
 
@@ -342,6 +428,33 @@ def main(
     # 4. Process columns and labels (conditional based on label_field availability)
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
 
+    # 4.5. Auto-apply Names3Risk preprocessing if data matches pattern
+    df = detect_and_apply_names3risk_preprocessing(df, log)
+
+    # 4.6. Filter to numeric features only (Names3Risk requirement)
+    # Keep only numeric columns + text field + label field (if present)
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    # Always preserve these critical columns if they exist
+    preserve_cols = []
+    if "text" in df.columns:
+        preserve_cols.append("text")
+    if "label" in df.columns:
+        preserve_cols.append("label")
+
+    # Combine numeric columns with preserved columns
+    keep_cols = list(set(numeric_cols + preserve_cols))
+
+    if len(keep_cols) < len(df.columns):
+        dropped_cols = set(df.columns) - set(keep_cols)
+        log(
+            f"[INFO] Filtering to numeric features only. Dropped {len(dropped_cols)} non-numeric columns"
+        )
+        log(
+            f"[INFO] Kept {len(keep_cols)} columns: {len(numeric_cols)} numeric + {len(preserve_cols)} preserved"
+        )
+        df = df[keep_cols]
+
     # Only process labels if label_field is provided and exists
     if label_field:
         if label_field not in df.columns:
@@ -365,25 +478,39 @@ def main(
 
     # 5. Split data if training, otherwise use the job_type as the single split
     if job_type == "training":
-        # Use stratified splits if label_field is available, otherwise use random splits
-        if label_field:
-            train_df, holdout_df = train_test_split(
-                df, train_size=train_ratio, random_state=42, stratify=df[label_field]
+        # Time-based split (matching legacy behavior)
+        # Sort by temporal column for time-based split
+        temporal_col = None
+        if "transactionDate" in df.columns:
+            temporal_col = "transactionDate"
+        elif "orderDate" in df.columns:
+            temporal_col = "orderDate"
+
+        if temporal_col:
+            log(
+                f"[INFO] Using time-based split sorted by '{temporal_col}' (shuffle=False)"
             )
-            test_df, val_df = train_test_split(
-                holdout_df,
-                test_size=test_val_ratio,
-                random_state=42,
-                stratify=holdout_df[label_field],
-            )
+            df = df.sort_values(temporal_col).reset_index(drop=True)
         else:
-            # Non-stratified splits when no labels are available
-            train_df, holdout_df = train_test_split(
-                df, train_size=train_ratio, random_state=42
+            log(
+                "[WARNING] No temporal column found (transactionDate/orderDate), using sequential split"
             )
-            test_df, val_df = train_test_split(
-                holdout_df, test_size=test_val_ratio, random_state=42
-            )
+
+        # Time-based split with shuffle=False (oldest data first)
+        # Legacy uses 95/5, but we'll support configurable ratios
+        train_df, holdout_df = train_test_split(
+            df, train_size=train_ratio, shuffle=False, random_state=42
+        )
+        test_df, val_df = train_test_split(
+            holdout_df, test_size=test_val_ratio, shuffle=False, random_state=42
+        )
+
+        log(
+            f"[INFO] Time-based split: train={len(train_df)} ({len(train_df) / len(df) * 100:.1f}%), "
+            f"val={len(val_df)} ({len(val_df) / len(df) * 100:.1f}%), "
+            f"test={len(test_df)} ({len(test_df) / len(df) * 100:.1f}%)"
+        )
+
         splits = {"train": train_df, "test": test_df, "val": val_df}
     else:
         splits = {job_type: df}

@@ -22,7 +22,7 @@ critical fraud indicators.
 Input:
   - sequence: (B, L, D) - Batch of sequences
   - lengths: (B,) - Actual lengths before padding (optional)
-  
+
 Output:
   - pooled: (B, D) - Pooled representations
 
@@ -68,19 +68,15 @@ from typing import Optional
 class AttentionPooling(nn.Module):
     """
     Attention-weighted sequence pooling.
-    
+
     Learns to weight sequence elements by importance, then computes weighted sum.
     Handles variable-length sequences via masking.
     """
-    
-    def __init__(
-        self,
-        input_dim: int,
-        dropout: float = 0.0
-    ):
+
+    def __init__(self, input_dim: int, dropout: float = 0.0):
         """
         Initialize AttentionPooling.
-        
+
         Args:
             input_dim: Dimension of input sequence elements (e.g., 256 for LSTM output,
                       128 for transformer embeddings)
@@ -89,38 +85,38 @@ class AttentionPooling(nn.Module):
         super().__init__()
         self.attention = nn.Linear(input_dim, 1)
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-    
+
     def forward(
-        self,
-        sequence: torch.Tensor,
-        lengths: Optional[torch.Tensor] = None
+        self, sequence: torch.Tensor, lengths: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Pool sequence using learned attention weights.
-        
+
         Args:
             sequence: (B, L, D) - Input sequences
             lengths: (B,) - Actual sequence lengths before padding (optional)
                     If None, assumes all sequences have same length
-            
+
         Returns:
             pooled: (B, D) - Pooled representations
         """
         # Compute attention scores: (B, L, 1)
         scores = self.attention(sequence)
-        
+
         # Apply mask to ignore padding if lengths provided
         if lengths is not None:
             # Create mask: (B, L) where True = valid token, False = padding
-            mask = torch.arange(sequence.size(1), device=sequence.device).unsqueeze(0) < lengths.unsqueeze(1)
+            mask = torch.arange(sequence.size(1), device=sequence.device).unsqueeze(
+                0
+            ) < lengths.unsqueeze(1)
             # Mask out padding tokens by setting their scores to -inf
-            scores = scores.masked_fill(~mask.unsqueeze(-1), float('-inf'))
-        
+            scores = scores.masked_fill(~mask.unsqueeze(-1), float("-inf"))
+
         # Normalize scores with softmax: (B, L, 1)
         weights = F.softmax(scores, dim=1)
         weights = self.dropout(weights)
-        
+
         # Weighted sum: (B, D)
         pooled = torch.sum(weights * sequence, dim=1)
-        
+
         return pooled

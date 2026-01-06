@@ -28,7 +28,7 @@ Uses learned positional encodings and attention pooling for final representation
 Input:
   - tokens: (B, L) - Token IDs
   - attn_mask: (B, L) - Attention mask (optional, True = attend, False = ignore)
-  
+
 Output:
   - encoded: (B, 2*hidden_dim) - Encoded representations
 
@@ -75,10 +75,10 @@ from ..pooling import AttentionPooling
 class TransformerEncoder(nn.Module):
     """
     Transformer-based text encoder with attention pooling.
-    
+
     Stacks transformer blocks and pools sequence to fixed representation.
     """
-    
+
     def __init__(
         self,
         vocab_size: int,
@@ -88,11 +88,11 @@ class TransformerEncoder(nn.Module):
         n_heads: int = 8,
         ff_hidden_dim: Optional[int] = None,
         max_seq_len: int = 512,
-        dropout: float = 0.0
+        dropout: float = 0.0,
     ):
         """
         Initialize TransformerEncoder.
-        
+
         Args:
             vocab_size: Size of token vocabulary
             embedding_dim: Dimension of token/position embeddings
@@ -104,67 +104,67 @@ class TransformerEncoder(nn.Module):
             dropout: Dropout probability
         """
         super().__init__()
-        
+
         if ff_hidden_dim is None:
             ff_hidden_dim = 4 * embedding_dim
-        
+
         # Token and position embeddings
         self.token_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.position_embedding = nn.Embedding(max_seq_len, embedding_dim)
-        
+
         # Transformer blocks
-        self.blocks = nn.ModuleList([
-            TransformerBlock(
-                embedding_dim=embedding_dim,
-                n_heads=n_heads,
-                ff_hidden_dim=ff_hidden_dim,
-                dropout=dropout
-            )
-            for _ in range(n_blocks)
-        ])
-        
+        self.blocks = nn.ModuleList(
+            [
+                TransformerBlock(
+                    embedding_dim=embedding_dim,
+                    n_heads=n_heads,
+                    ff_hidden_dim=ff_hidden_dim,
+                    dropout=dropout,
+                )
+                for _ in range(n_blocks)
+            ]
+        )
+
         # Attention pooling
         self.pooling = AttentionPooling(input_dim=embedding_dim)
-        
+
         # Output projection to match desired hidden_dim
         self.proj = nn.Linear(embedding_dim, 2 * hidden_dim)
-    
+
     def forward(
-        self,
-        tokens: torch.Tensor,
-        attn_mask: Optional[torch.Tensor] = None
+        self, tokens: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Encode token sequences.
-        
+
         Args:
             tokens: (B, L) - Token IDs
             attn_mask: (B, L) - Attention mask (optional)
-            
+
         Returns:
             encoded: (B, 2*hidden_dim) - Encoded representations
         """
         B, L = tokens.shape
-        
+
         # Token embeddings: (B, L, embedding_dim)
         token_emb = self.token_embedding(tokens)
-        
+
         # Position embeddings: (L, embedding_dim) broadcast to (B, L, embedding_dim)
         positions = torch.arange(L, device=tokens.device)
         pos_emb = self.position_embedding(positions)
-        
+
         # Combined embeddings
         x = token_emb + pos_emb
-        
+
         # Apply transformer blocks
         for block in self.blocks:
             x = block(x, attn_mask)
-        
+
         # Attention pooling: (B, embedding_dim)
         # Note: attn_mask not used in pooling (could add if needed)
         pooled = self.pooling(x)
-        
+
         # Project to output dimension: (B, 2*hidden_dim)
         encoded = self.proj(pooled)
-        
+
         return encoded
