@@ -75,6 +75,7 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
             required=False,  # Optional - used for pre-computed preprocessing artifacts or pretrained models
             compatible_sources=[
                 "PyTorchTraining",
+                "TokenizerTraining",
                 "MissingValueImputation",
                 "RiskTableMapping",
                 "FeatureSelection",
@@ -90,9 +91,11 @@ PYTORCH_TRAINING_SPEC = StepSpecification(
                 "model_artifacts_output",
                 "pretrain",
                 "pretrained",
+                "tokenizer",
+                "trained_tokenizer",
             ],
             data_type="S3Uri",
-            description="Optional pre-computed preprocessing artifacts (impute_dict.pkl, risk_table_map.pkl, selected_features.json). When provided with USE_PRECOMPUTED_* environment variables, skips inline computation and uses pre-computed artifacts.",
+            description="Optional pre-computed preprocessing artifacts (impute_dict.pkl, risk_table_map.pkl, selected_features.json, tokenizer artifacts). When provided with USE_PRECOMPUTED_* environment variables, skips inline computation and uses pre-computed artifacts.",
         ),
     ],
     outputs=[

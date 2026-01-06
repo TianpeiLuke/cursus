@@ -61,6 +61,7 @@ TOKENIZER_TRAINING_SPEC = StepSpecification(
                 "bpe_tokenizer",
                 "trained_tokenizer",
                 "tokenizer_model",
+                "model_artifacts_input",
             ],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri",
