@@ -94,6 +94,7 @@ from .stratified_sampling_spec import STRATIFIED_SAMPLING_SPEC
 
 # Preprocessing specifications
 from .tabular_preprocessing_spec import TABULAR_PREPROCESSING_SPEC
+from .tokenizer_training_spec import TOKENIZER_TRAINING_SPEC
 
 # Risk Table Mapping specifications
 from .risk_table_mapping_calibration_spec import RISK_TABLE_MAPPING_CALIBRATION_SPEC
@@ -197,6 +198,7 @@ __all__ = [
     "STRATIFIED_SAMPLING_SPEC",
     # Preprocessing specifications
     "TABULAR_PREPROCESSING_SPEC",
+    "TOKENIZER_TRAINING_SPEC",
     # Risk Table Mapping specifications
     "RISK_TABLE_MAPPING_CALIBRATION_SPEC",
     "RISK_TABLE_MAPPING_TESTING_SPEC",

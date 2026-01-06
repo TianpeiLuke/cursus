@@ -45,6 +45,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Tabular data preprocessing step",
     },
+    "TokenizerTraining": {
+        "config_class": "TokenizerTrainingConfig",
+        "builder_step_name": "TokenizerTrainingStepBuilder",
+        "spec_type": "TokenizerTraining",
+        "sagemaker_step_type": "Processing",
+        "description": "BPE tokenizer training step for customer name data with automatic vocabulary size tuning",
+    },
     "TemporalSplitPreprocessing": {
         "config_class": "TemporalSplitPreprocessingConfig",
         "builder_step_name": "TemporalSplitPreprocessingStepBuilder",
