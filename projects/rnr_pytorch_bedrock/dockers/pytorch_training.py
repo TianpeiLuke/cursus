@@ -451,6 +451,8 @@ class Config(BaseModel):
     secondary_text_processing_steps: Optional[List[str]] = (
         None  # Processing steps for secondary text (trimodal)
     )
+    # Runtime path for model output (set at execution time, not from hyperparameters)
+    model_path: Optional[str] = None
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -1439,6 +1441,10 @@ def main(
             "USE_PRECOMPUTED_RISK_TABLES", False
         ),
     )
+
+    # Set runtime model_path directly on config object
+    config.model_path = paths["output"]
+    log_once(logger, f"Set runtime model_path: {paths['output']}")
 
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
         build_model_and_optimizer(config, tokenizer, datasets)

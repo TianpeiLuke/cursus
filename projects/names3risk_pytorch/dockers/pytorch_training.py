@@ -440,6 +440,7 @@ class Config(BaseModel):
         None  # Secondary text field for trimodal (e.g., "shiptrack")
     )
     embed_size: Optional[int] = None  # Added for type consistency
+    n_embed: Optional[int] = None  # Vocabulary size for embedding layer
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
     _input_format: Optional[str] = None  # Added: input data format for preservation
@@ -457,6 +458,8 @@ class Config(BaseModel):
     secondary_text_processing_steps: Optional[List[str]] = (
         None  # Processing steps for secondary text (trimodal)
     )
+    # Runtime path for model output (set at execution time, not from hyperparameters)
+    model_path: Optional[str] = None
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -841,36 +844,34 @@ def data_preprocess_pipeline(
 ) -> Tuple[Union[AutoTokenizer, "Tokenizer"], Dict[str, Processor]]:
     """
     Build text preprocessing pipelines based on config.
-    
+
     For Names3Risk models (lstm2risk, transformer2risk), loads custom BPE tokenizer.
     For other models (bimodal_bert, etc.), uses pretrained BERT tokenizer.
 
     For bimodal: Uses text_name with default or configured steps
     For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
-    
+
     Args:
         config: Configuration object
         model_artifacts_input: Optional path to model artifacts containing tokenizer
-        
+
     Returns:
         Tuple of (tokenizer, preprocessing_pipelines)
     """
     # Determine if custom tokenizer is needed
-    needs_custom_tokenizer = config.model_class in [
-        "lstm2risk", 
-        "transformer2risk"
-    ]
-    
+    needs_custom_tokenizer = config.model_class in ["lstm2risk", "transformer2risk"]
+
     if needs_custom_tokenizer and model_artifacts_input:
         # Load custom BPE tokenizer from model artifacts
         tokenizer_path = os.path.join(model_artifacts_input, "tokenizer.json")
-        
+
         if os.path.exists(tokenizer_path):
             from tokenizers import Tokenizer
+
             tokenizer = Tokenizer.from_file(tokenizer_path)
             log_once(logger, f"✓ Loaded custom BPE tokenizer from {tokenizer_path}")
             log_once(logger, f"  Vocabulary size: {tokenizer.get_vocab_size()}")
-            
+
             # Get PAD token ID for collate function
             pad_token_id = tokenizer.token_to_id("[PAD]")
             config.pad_token_id = pad_token_id if pad_token_id is not None else 0
@@ -884,12 +885,12 @@ def data_preprocess_pipeline(
         # Default: Load pretrained BERT tokenizer for other models
         if not config.tokenizer:
             config.tokenizer = "bert-base-multilingual-cased"
-        
+
         log_once(logger, f"Constructing pretrained tokenizer: {config.tokenizer}")
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
         config.pad_token_id = tokenizer.pad_token_id
         log_once(logger, f"  PAD token ID: {config.pad_token_id}")
-    
+
     pipelines = {}
 
     # BIMODAL: Single text pipeline
@@ -983,10 +984,16 @@ def data_preprocess_pipeline(
 
 # ----------------- Model Selection -----------------------
 def model_select(
-    model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
+    model_class: str, config_dict: Dict, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
     """
     Select and instantiate a model based on model_class string.
+
+    Args:
+        model_class: String identifier for model type
+        config_dict: Configuration dictionary (includes hyperparameters + runtime paths)
+        vocab_size: Vocabulary size for embedding layer
+        embedding_mat: Pretrained embedding matrix
 
     Supports:
     - General categories: "bimodal", "trimodal"
@@ -997,39 +1004,33 @@ def model_select(
     """
     model_map = {
         # General categories (default to bert variants)
-        "bimodal": lambda: BimodalBert(config.model_dump()),
-        "trimodal": lambda: TrimodalBert(config.model_dump()),
+        "bimodal": lambda: BimodalBert(config_dict),
+        "trimodal": lambda: TrimodalBert(config_dict),
         # Specific bimodal models
-        "bimodal_cnn": lambda: BimodalCNN(
-            config.model_dump(), vocab_size, embedding_mat
-        ),
-        "bimodal_bert": lambda: BimodalBert(config.model_dump()),
-        "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
-        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
-        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        "bimodal_cnn": lambda: BimodalCNN(config_dict, vocab_size, embedding_mat),
+        "bimodal_bert": lambda: BimodalBert(config_dict),
+        "bimodal_moe": lambda: BimodalBertMoE(config_dict),
+        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
+        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
         # Names3Risk models (custom BPE tokenizer + specific architectures)
-        "lstm2risk": lambda: LSTM2Risk(config.model_dump(), vocab_size, embedding_mat),
-        "transformer2risk": lambda: Transformer2Risk(config.model_dump(), vocab_size, embedding_mat),
+        "lstm2risk": lambda: LSTM2Risk(config_dict),
+        "transformer2risk": lambda: Transformer2Risk(config_dict),
         # Specific trimodal models
-        "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
-        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
-        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config.model_dump()),
+        "trimodal_bert": lambda: TrimodalBert(config_dict),
+        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config_dict),
+        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config_dict),
         # Text-only models
-        "bert": lambda: TextBertClassification(config.model_dump()),
-        "lstm": lambda: TextLSTM(config.model_dump(), vocab_size, embedding_mat),
+        "bert": lambda: TextBertClassification(config_dict),
+        "lstm": lambda: TextLSTM(config_dict, vocab_size, embedding_mat),
         # Backward compatibility (multimodal -> bimodal)
-        "multimodal_cnn": lambda: BimodalCNN(
-            config.model_dump(), vocab_size, embedding_mat
-        ),
-        "multimodal_bert": lambda: BimodalBert(config.model_dump()),
-        "multimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
-        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
-        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        "multimodal_cnn": lambda: BimodalCNN(config_dict, vocab_size, embedding_mat),
+        "multimodal_bert": lambda: BimodalBert(config_dict),
+        "multimodal_moe": lambda: BimodalBertMoE(config_dict),
+        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
+        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
     }
 
-    return model_map.get(
-        model_class, lambda: TextBertClassification(config.model_dump())
-    )()
+    return model_map.get(model_class, lambda: TextBertClassification(config_dict))()
 
 
 # ----------------- Training Setup -----------------------
@@ -1091,8 +1092,7 @@ def load_and_preprocess_data(
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(
-        config,
-        model_artifacts_input=model_artifacts_dir
+        config, model_artifacts_input=model_artifacts_dir
     )
 
     # Add pipelines for each text field
@@ -1166,79 +1166,139 @@ def load_and_preprocess_data(
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, 
-    tokenizer: Union[AutoTokenizer, "Tokenizer"],  # Updated type hint
-    datasets: List[PipelineDataset]
+    config_dict: Dict,
+    tokenizer: Union[AutoTokenizer, "Tokenizer"],
+    datasets: List[PipelineDataset],
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    
+    """
+    Build model, dataloaders, and extract embedding matrix.
+
+    Args:
+        config_dict: Configuration dictionary with hyperparameters and runtime paths
+        tokenizer: Trained tokenizer (AutoTokenizer or custom Tokenizer)
+        datasets: List of [train, val, test] PipelineDatasets
+
+    Returns:
+        Tuple of (model, train_loader, val_loader, test_loader, embedding_mat)
+    """
+
     # Select collate function based on model type
-    if config.model_class in ["lstm2risk", "bimodal_lstm"]:
+    model_class = config_dict.get("model_class", "bimodal_bert")
+
+    if model_class in ["lstm2risk", "bimodal_lstm"]:
         # LSTM models: Need length sorting for pack_padded_sequence
-        pad_token = getattr(config, 'pad_token_id', 0)
+        pad_token = config_dict.get("pad_token_id", 0)
         collate_batch = build_lstm2risk_collate_fn(pad_token=pad_token)
         logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
         logger.info("  - Sequences sorted by length (descending)")
         logger.info("  - Includes text_length for pack_padded_sequence")
-    
-    elif config.model_class in ["transformer2risk", "bimodal_transformer"]:
+
+    elif model_class in ["transformer2risk", "bimodal_transformer"]:
         # Transformer models: Need attention masking and block_size truncation
-        pad_token = getattr(config, 'pad_token_id', 0)
-        block_size = getattr(config, 'max_sen_len', 100)
+        pad_token = config_dict.get("pad_token_id", 0)
+        block_size = config_dict.get("max_sen_len", 100)
         collate_batch = build_transformer2risk_collate_fn(
-            pad_token=pad_token,
-            block_size=block_size
+            pad_token=pad_token, block_size=block_size
         )
         logger.info(f"✓ Using Transformer2Risk collate function")
         logger.info(f"  - Block size: {block_size}")
         logger.info(f"  - Includes attention mask (pad_token={pad_token})")
-    
+
     else:
         # Default: BERT-based models use unified collate
         collate_batch = build_collate_batch(
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
+            input_ids_key=config_dict.get("text_input_ids_key", "input_ids"),
+            attention_mask_key=config_dict.get(
+                "text_attention_mask_key", "attention_mask"
+            ),
         )
-        logger.info(f"✓ Using default BERT collate function for {config.model_class}")
+        logger.info(f"✓ Using default BERT collate function for {model_class}")
 
     train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
+    batch_size = config_dict.get("batch_size", 32)
 
     train_dataloader = DataLoader(
         train_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=config.batch_size,
+        batch_size=batch_size,
         shuffle=True,
     )
     val_dataloader = DataLoader(
-        val_pipeline_dataset, collate_fn=collate_batch, batch_size=config.batch_size
+        val_pipeline_dataset, collate_fn=collate_batch, batch_size=batch_size
     )
     test_dataloader = DataLoader(
         test_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=config.batch_size,
+        batch_size=batch_size,
     )
 
-    # Extract vocabulary size based on tokenizer type
-    if hasattr(tokenizer, 'vocab_size'):
-        # AutoTokenizer (BERT models)
-        vocab_size = tokenizer.vocab_size
-    elif hasattr(tokenizer, 'get_vocab_size'):
-        # Custom HuggingFace Tokenizer (Names3Risk models)
-        vocab_size = tokenizer.get_vocab_size()
+    log_once(logger, "=" * 70)
+    log_once(logger, "EMBEDDING CONFIGURATION")
+    log_once(logger, "=" * 70)
+
+    # === BRANCH 1: Custom Tokenizer Models (Names3Risk) ===
+    if model_class in ["lstm2risk", "transformer2risk"]:
+        log_once(logger, f"Using custom tokenizer configuration for {model_class}")
+
+        # Extract vocab size from custom tokenizer
+        if hasattr(tokenizer, "get_vocab_size"):
+            vocab_size = tokenizer.get_vocab_size()  # HuggingFace Tokenizer
+        else:
+            raise AttributeError(
+                f"Custom tokenizer missing get_vocab_size() method. "
+                f"Tokenizer type: {type(tokenizer)}"
+            )
+
+        # Get embedding dimension from config (e.g., 16 for LSTM2Risk)
+        embed_size = config_dict.get("embed_size", 16)
+
+        # Create dummy embedding matrix (models create their own nn.Embedding layers)
+        # This is just for parameter passing compatibility
+        embedding_mat = torch.zeros(vocab_size, embed_size)
+
+        log_once(logger, f"  Model class: {model_class}")
+        log_once(logger, f"  Vocabulary size: {vocab_size}")
+        log_once(logger, f"  Embedding dimension: {embed_size}")
+        log_once(logger, f"  Embedding matrix: Dummy ({vocab_size}, {embed_size})")
+        log_once(logger, "  Note: Model will create trainable embeddings from scratch")
+
+    # === BRANCH 2: BERT-based Models ===
     else:
-        raise AttributeError(f"Tokenizer type {type(tokenizer)} doesn't have vocab_size or get_vocab_size() method")
-    
-    log_once(logger, f"Vocabulary Size: {vocab_size}")
-    
-    # Extract pretrained embedding from BERT model (used for initialization)
-    log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
-    embedding_model = AutoModel.from_pretrained(config.tokenizer)
-    embedding_mat = embedding_model.embeddings.word_embeddings.weight
-    log_once(
-        logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]"
-    )
-    config.embed_size = embedding_mat.shape[1]
-    log_once(logger, f"Model choice: {config.model_class}")
-    model = model_select(config.model_class, config, vocab_size, embedding_mat)
+        log_once(logger, f"Using BERT tokenizer configuration for {model_class}")
+
+        # Extract vocab size from BERT tokenizer
+        if hasattr(tokenizer, "vocab_size"):
+            vocab_size = tokenizer.vocab_size  # AutoTokenizer
+        else:
+            raise AttributeError(
+                f"BERT tokenizer missing vocab_size attribute. "
+                f"Tokenizer type: {type(tokenizer)}"
+            )
+
+        # Load pretrained BERT embeddings
+        tokenizer_name = config_dict.get("tokenizer", "bert-base-multilingual-cased")
+        log_once(logger, f"  Loading pretrained BERT embeddings from: {tokenizer_name}")
+        embedding_model = AutoModel.from_pretrained(tokenizer_name)
+        embedding_mat = embedding_model.embeddings.word_embeddings.weight
+        embed_size = embedding_mat.shape[1]
+
+        log_once(logger, f"  Model class: {model_class}")
+        log_once(logger, f"  Vocabulary size: {vocab_size}")
+        log_once(logger, f"  Embedding dimension: {embed_size}")
+        log_once(logger, f"  Embedding matrix shape: {embedding_mat.shape}")
+
+    # === Common: Update config with derived parameters ===
+    config_dict["n_embed"] = vocab_size
+    config_dict["embed_size"] = embed_size
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "Final embedding configuration:")
+    log_once(logger, f"  n_embed (vocab_size): {vocab_size}")
+    log_once(logger, f"  embed_size (dimension): {embed_size}")
+    log_once(logger, "=" * 70)
+
+    log_once(logger, f"Model choice: {model_class}")
+    model = model_select(model_class, config_dict, vocab_size, embedding_mat)
     return model, train_dataloader, val_dataloader, test_dataloader, embedding_mat
 
 
@@ -1527,19 +1587,27 @@ def main(
         ),
     )
 
+    # Set runtime model_path directly on config object
+    config.model_path = paths["output"]
+    log_once(logger, f"Set runtime model_path: {paths['output']}")
+
+    # Convert config to dict for model building
+    config_dict = config.model_dump()
+
     (
         model,
         train_dataloader,
         val_dataloader,
         test_dataloader,
         embedding_mat,
-    ) = build_model_and_optimizer(config, tokenizer, datasets)
+    ) = build_model_and_optimizer(config_dict, tokenizer, datasets)
+
     # update tab dimension
     config.input_tab_dim = len(config.tab_field_list)
     log_once(logger, "Training starts using pytorch.lightning ...")
     trainer = model_train(
         model,
-        config.model_dump(),
+        config_dict,
         train_dataloader,
         val_dataloader,
         device="auto",
@@ -1572,6 +1640,29 @@ def main(
         onnx_path = os.path.join(paths["model"], "model.onnx")
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
+
+        # ------------------ Save Tokenizer ------------------
+        logger.info("Saving tokenizer to model directory...")
+        model_class = config.model_class
+
+        if model_class in ["lstm2risk", "transformer2risk"]:
+            # Save custom BPE tokenizer
+            tokenizer_file = os.path.join(paths["model"], "tokenizer.json")
+            tokenizer.save(tokenizer_file)
+            logger.info(f"✓ Saved custom tokenizer to {tokenizer_file}")
+
+            # Also save vocabulary for compatibility
+            vocab = tokenizer.get_vocab()
+            vocab_file = os.path.join(paths["model"], "vocab.json")
+            with open(vocab_file, "w") as f:
+                json.dump(vocab, f, indent=2)
+            logger.info(f"✓ Saved vocabulary ({len(vocab)} tokens) to {vocab_file}")
+        else:
+            # Save BERT tokenizer using save_pretrained
+            tokenizer_dir = os.path.join(paths["model"], "tokenizer")
+            os.makedirs(tokenizer_dir, exist_ok=True)
+            tokenizer.save_pretrained(tokenizer_dir)
+            logger.info(f"✓ Saved BERT tokenizer to {tokenizer_dir}")
 
         # ------------------ Save Hyperparameters Configuration ------------------
         hyperparameters_file = os.path.join(paths["model"], "hyperparameters.json")

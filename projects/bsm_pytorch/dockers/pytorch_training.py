@@ -451,6 +451,8 @@ class Config(BaseModel):
     secondary_text_processing_steps: Optional[List[str]] = (
         None  # Processing steps for secondary text (trimodal)
     )
+    # Runtime path for model output (set at execution time, not from hyperparameters)
+    model_path: Optional[str] = None
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -936,10 +938,16 @@ def data_preprocess_pipeline(
 
 # ----------------- Model Selection -----------------------
 def model_select(
-    model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
+    model_class: str, config_dict: Dict, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
     """
     Select and instantiate a model based on model_class string.
+
+    Args:
+        model_class: String identifier for model type
+        config_dict: Configuration dictionary (includes hyperparameters + runtime paths)
+        vocab_size: Vocabulary size for embedding layer
+        embedding_mat: Pretrained embedding matrix
 
     Supports:
     - General categories: "bimodal", "trimodal"
@@ -950,36 +958,30 @@ def model_select(
     """
     model_map = {
         # General categories (default to bert variants)
-        "bimodal": lambda: BimodalBert(config.model_dump()),
-        "trimodal": lambda: TrimodalBert(config.model_dump()),
+        "bimodal": lambda: BimodalBert(config_dict),
+        "trimodal": lambda: TrimodalBert(config_dict),
         # Specific bimodal models
-        "bimodal_cnn": lambda: BimodalCNN(
-            config.model_dump(), vocab_size, embedding_mat
-        ),
-        "bimodal_bert": lambda: BimodalBert(config.model_dump()),
-        "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
-        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
-        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        "bimodal_cnn": lambda: BimodalCNN(config_dict, vocab_size, embedding_mat),
+        "bimodal_bert": lambda: BimodalBert(config_dict),
+        "bimodal_moe": lambda: BimodalBertMoE(config_dict),
+        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
+        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
         # Specific trimodal models
-        "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
-        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
-        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config.model_dump()),
+        "trimodal_bert": lambda: TrimodalBert(config_dict),
+        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config_dict),
+        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config_dict),
         # Text-only models
-        "bert": lambda: TextBertClassification(config.model_dump()),
-        "lstm": lambda: TextLSTM(config.model_dump(), vocab_size, embedding_mat),
+        "bert": lambda: TextBertClassification(config_dict),
+        "lstm": lambda: TextLSTM(config_dict, vocab_size, embedding_mat),
         # Backward compatibility (multimodal -> bimodal)
-        "multimodal_cnn": lambda: BimodalCNN(
-            config.model_dump(), vocab_size, embedding_mat
-        ),
-        "multimodal_bert": lambda: BimodalBert(config.model_dump()),
-        "multimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
-        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
-        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        "multimodal_cnn": lambda: BimodalCNN(config_dict, vocab_size, embedding_mat),
+        "multimodal_bert": lambda: BimodalBert(config_dict),
+        "multimodal_moe": lambda: BimodalBertMoE(config_dict),
+        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
+        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
     }
 
-    return model_map.get(
-        model_class, lambda: TextBertClassification(config.model_dump())
-    )()
+    return model_map.get(model_class, lambda: TextBertClassification(config_dict))()
 
 
 # ----------------- Training Setup -----------------------
@@ -1113,45 +1115,60 @@ def load_and_preprocess_data(
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset]
+    config_dict: Dict, tokenizer: AutoTokenizer, datasets: List[PipelineDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    # Use unified collate function for all model types
-    logger.info(f"Using collate batch for model: {config.model_class}")
+    """
+    Build model, dataloaders, and extract embedding matrix.
+
+    Args:
+        config_dict: Configuration dictionary with hyperparameters and runtime paths
+        tokenizer: Trained tokenizer
+        datasets: List of [train, val, test] PipelineDatasets
+
+    Returns:
+        Tuple of (model, train_loader, val_loader, test_loader, embedding_mat)
+    """
+    model_class = config_dict.get("model_class", "bimodal_bert")
+    logger.info(f"Using collate batch for model: {model_class}")
 
     # Use unified keys for all models (single tokenizer design)
     collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
+        input_ids_key=config_dict.get("text_input_ids_key", "input_ids"),
+        attention_mask_key=config_dict.get("text_attention_mask_key", "attention_mask"),
     )
 
     train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
+    batch_size = config_dict.get("batch_size", 32)
 
     train_dataloader = DataLoader(
         train_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=config.batch_size,
+        batch_size=batch_size,
         shuffle=True,
     )
     val_dataloader = DataLoader(
-        val_pipeline_dataset, collate_fn=collate_batch, batch_size=config.batch_size
+        val_pipeline_dataset, collate_fn=collate_batch, batch_size=batch_size
     )
     test_dataloader = DataLoader(
         test_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=config.batch_size,
+        batch_size=batch_size,
     )
 
-    log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
-    embedding_model = AutoModel.from_pretrained(config.tokenizer)
+    tokenizer_name = config_dict.get("tokenizer", "bert-base-multilingual-cased")
+    log_once(logger, f"Extract pretrained embedding from model: {tokenizer_name}")
+    embedding_model = AutoModel.from_pretrained(tokenizer_name)
     embedding_mat = embedding_model.embeddings.word_embeddings.weight
     log_once(
         logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]"
     )
-    config.embed_size = embedding_mat.shape[1]
+
+    # Update embed_size in config_dict for consistency
+    config_dict["embed_size"] = embedding_mat.shape[1]
     vocab_size = tokenizer.vocab_size
     log_once(logger, f"Vocabulary Size: {vocab_size}")
-    log_once(logger, f"Model choice: {config.model_class}")
-    model = model_select(config.model_class, config, vocab_size, embedding_mat)
+    log_once(logger, f"Model choice: {model_class}")
+    model = model_select(model_class, config_dict, vocab_size, embedding_mat)
     return model, train_dataloader, val_dataloader, test_dataloader, embedding_mat
 
 
@@ -1440,19 +1457,27 @@ def main(
         ),
     )
 
+    # Set runtime model_path directly on config object
+    config.model_path = paths["output"]
+    log_once(logger, f"Set runtime model_path: {paths['output']}")
+
+    # Convert config to dict for model building
+    config_dict = config.model_dump()
+
     (
         model,
         train_dataloader,
         val_dataloader,
         test_dataloader,
         embedding_mat,
-    ) = build_model_and_optimizer(config, tokenizer, datasets)
+    ) = build_model_and_optimizer(config_dict, tokenizer, datasets)
+
     # update tab dimension
     config.input_tab_dim = len(config.tab_field_list)
     log_once(logger, "Training starts using pytorch.lightning ...")
     trainer = model_train(
         model,
-        config.model_dump(),
+        config_dict,
         train_dataloader,
         val_dataloader,
         device="auto",
