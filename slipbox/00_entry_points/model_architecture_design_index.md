@@ -307,7 +307,11 @@ Model Architecture Designs
 - [Names3Risk Model Design](../1_design/names3risk_model_design.md) - **PRIMARY** - Multi-modal fraud detection architecture
 - [Names3Risk PyTorch Reorganization Design](../1_design/names3risk_pytorch_reorganization_design.md) - **NEW** - Code reorganization into atomic components
 
+**Related Implementation Plans:**
+- [Names3Risk PyTorch Training Modifications](../2_project_planning/2026-01-07_names3risk_pytorch_training_modifications.md) - **NEW** - Implementation plan for pytorch_training.py modifications to support pretrained tokenizer and preprocessed data
+
 **Related Analysis:**
+- [Names3Risk PyTorch Training End-to-End Analysis](../4_analysis/2026-01-07_names3risk_pytorch_training_end_to_end_analysis.md) - **NEW** - Comprehensive verification of pytorch_training.py with complete tokenizer flow and config validation
 - [Names3Risk PyTorch Component Correspondence Analysis](../4_analysis/2026-01-05_names3risk_pytorch_component_correspondence_analysis.md) - **NEW** - Legacy vs refactored component mapping with layer-by-layer verification
 - [Names3Risk Training Gap Analysis](../4_analysis/2026-01-05_names3risk_training_gap_analysis.md) - **NEW** - Training infrastructure comparison identifying missing tokenizer training and data preprocessing
 - [Names3Risk Cursus Step Equivalency Analysis](../4_analysis/2025-12-31_names3risk_cursus_step_equivalency_analysis.md) - **NEW** - Names3Risk pipeline vs Cursus framework comparison
