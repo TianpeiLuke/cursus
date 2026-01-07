@@ -13,9 +13,13 @@ from ..hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
 from ..hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
 from ..hyperparams.hyperparameters_xgboost import XGBoostModelHyperparameters
 from ..hyperparams.hyperparameters_tsa import TemporalSelfAttentionHyperparameters
-from ..hyperparams.hyperparameters_dual_sequence_tsa import DualSequenceTSAHyperparameters
+from ..hyperparams.hyperparameters_dual_sequence_tsa import (
+    DualSequenceTSAHyperparameters,
+)
 from ..hyperparams.hyperparameters_lstm2risk import LSTM2RiskHyperparameters
-from ..hyperparams.hyperparameters_transformer2risk import Transformer2RiskHyperparameters
+from ..hyperparams.hyperparameters_transformer2risk import (
+    Transformer2RiskHyperparameters,
+)
 
 __all__ = [
     "ModelHyperparameters",

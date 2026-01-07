@@ -31,194 +31,166 @@ class TemporalSelfAttentionHyperparameters(ModelHyperparameters):
         description="Number of numerical/continuous features per timestep in the sequence"
     )
 
-    seq_len: int = Field(
-        description="Maximum sequence length (number of timesteps)"
-    )
+    seq_len: int = Field(description="Maximum sequence length (number of timesteps)")
 
     # ===== System Inputs with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
     # Override model_class from base
     model_class: str = Field(
-        default="temporal_self_attention",
-        description="Model class identifier"
+        default="temporal_self_attention", description="Model class identifier"
     )
 
     # Data field key names (consistent seq_* naming)
     seq_cat_key: str = Field(
         default="x_seq_cat",
-        description="Key name for categorical sequence features in batch dictionary"
+        description="Key name for categorical sequence features in batch dictionary",
     )
 
     seq_num_key: str = Field(
         default="x_seq_num",
-        description="Key name for numerical sequence features in batch dictionary"
+        description="Key name for numerical sequence features in batch dictionary",
     )
 
     seq_time_key: str = Field(
         default="time_seq",
-        description="Key name for temporal/time sequence features in batch dictionary"
+        description="Key name for temporal/time sequence features in batch dictionary",
     )
 
     engineered_key: str = Field(
         default="x_engineered",
-        description="Key name for engineered features in batch dictionary"
+        description="Key name for engineered features in batch dictionary",
     )
 
     # Architecture - Embedding dimensions
     dim_embedding_table: int = Field(
-        default=128,
-        gt=0,
-        description="Embedding dimension for categorical features"
+        default=128, gt=0, description="Embedding dimension for categorical features"
     )
 
     dim_attn_feedforward: int = Field(
-        default=512,
-        gt=0,
-        description="Feedforward dimension in attention layers"
+        default=512, gt=0, description="Feedforward dimension in attention layers"
     )
 
     num_heads: int = Field(
-        default=8,
-        ge=1,
-        description="Number of attention heads in multi-head attention"
+        default=8, ge=1, description="Number of attention heads in multi-head attention"
     )
 
     # Architecture - Model depth
     n_layers_order: int = Field(
         default=2,
         ge=1,
-        description="Number of order attention layers (temporal sequence processing)"
+        description="Number of order attention layers (temporal sequence processing)",
     )
 
     n_layers_feature: int = Field(
         default=2,
         ge=1,
-        description="Number of feature attention layers (current transaction processing)"
+        description="Number of feature attention layers (current transaction processing)",
     )
 
     # Regularization
     dropout: float = Field(
-        default=0.1,
-        ge=0.0,
-        le=0.5,
-        description="Dropout rate for regularization"
+        default=0.1, ge=0.0, le=0.5, description="Dropout rate for regularization"
     )
 
     # Mixture of Experts (MoE) parameters
     use_moe: bool = Field(
-        default=False,
-        description="Enable Mixture of Experts in feedforward layers"
+        default=False, description="Enable Mixture of Experts in feedforward layers"
     )
 
     num_experts: int = Field(
         default=4,
         ge=1,
-        description="Number of experts in MoE layer (when use_moe=True)"
+        description="Number of experts in MoE layer (when use_moe=True)",
     )
 
     expert_capacity_factor: float = Field(
         default=1.25,
         ge=1.0,
-        description="Capacity factor for expert assignment (affects load balancing)"
+        description="Capacity factor for expert assignment (affects load balancing)",
     )
 
     expert_dropout: float = Field(
-        default=0.1,
-        ge=0.0,
-        le=0.5,
-        description="Dropout rate for expert outputs"
+        default=0.1, ge=0.0, le=0.5, description="Dropout rate for expert outputs"
     )
 
     # Temporal encoding
     use_time_seq: bool = Field(
-        default=True,
-        description="Enable temporal encoding for sequences"
+        default=True, description="Enable temporal encoding for sequences"
     )
 
     time_encoding_dim: int = Field(
-        default=32,
-        ge=1,
-        description="Dimension for temporal encoding"
+        default=32, ge=1, description="Dimension for temporal encoding"
     )
 
     # Attention output control
     return_seq: bool = Field(
         default=False,
-        description="Return full sequence from order attention (True) or pooled output (False)"
+        description="Return full sequence from order attention (True) or pooled output (False)",
     )
 
     # Padding
     use_key_padding_mask: bool = Field(
-        default=True,
-        description="Use padding mask for variable-length sequences"
+        default=True, description="Use padding mask for variable-length sequences"
     )
 
     # Loss function configuration
     loss: str = Field(
         default="CrossEntropyLoss",
-        description="Loss function type: CrossEntropyLoss, FocalLoss, or CyclicalFocalLoss"
+        description="Loss function type: CrossEntropyLoss, FocalLoss, or CyclicalFocalLoss",
     )
 
     loss_alpha: float = Field(
         default=0.25,
         ge=0.0,
         le=1.0,
-        description="Alpha parameter for Focal Loss (class balance weight)"
+        description="Alpha parameter for Focal Loss (class balance weight)",
     )
 
     loss_gamma: float = Field(
         default=2.0,
         ge=0.0,
-        description="Gamma parameter for Focal Loss (focusing parameter)"
+        description="Gamma parameter for Focal Loss (focusing parameter)",
     )
 
     loss_gamma_min: float = Field(
-        default=1.0,
-        ge=0.0,
-        description="Minimum gamma for Cyclical Focal Loss"
+        default=1.0, ge=0.0, description="Minimum gamma for Cyclical Focal Loss"
     )
 
     loss_gamma_max: float = Field(
-        default=3.0,
-        ge=0.0,
-        description="Maximum gamma for Cyclical Focal Loss"
+        default=3.0, ge=0.0, description="Maximum gamma for Cyclical Focal Loss"
     )
 
     loss_cycle_length: int = Field(
         default=1000,
         ge=1,
-        description="Cycle length for Cyclical Focal Loss (in steps)"
+        description="Cycle length for Cyclical Focal Loss (in steps)",
     )
 
     loss_reduction: str = Field(
-        default="mean",
-        description="Loss reduction method: mean, sum, or none"
+        default="mean", description="Loss reduction method: mean, sum, or none"
     )
 
     # Training and Optimization parameters
     weight_decay: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Weight decay for optimizer (L2 penalty)"
+        default=0.0, ge=0.0, description="Weight decay for optimizer (L2 penalty)"
     )
 
     adam_epsilon: float = Field(
         default=1e-8,
         gt=0.0,
-        description="Epsilon for Adam optimizer (numerical stability)"
+        description="Epsilon for Adam optimizer (numerical stability)",
     )
 
     warmup_steps: int = Field(
         default=300,
         ge=0,
         le=10000,
-        description="Warmup steps for learning rate scheduler"
+        description="Warmup steps for learning rate scheduler",
     )
 
     run_scheduler: bool = Field(
-        default=True,
-        description="Run learning rate scheduler flag"
+        default=True, description="Run learning rate scheduler flag"
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -244,13 +216,11 @@ class TemporalSelfAttentionHyperparameters(ModelHyperparameters):
                 "n_cat_features": self.n_cat_features,
                 "n_num_features": self.n_num_features,
                 "seq_len": self.seq_len,
-                
                 # Data field key names
                 "seq_cat_key": self.seq_cat_key,
                 "seq_num_key": self.seq_num_key,
                 "seq_time_key": self.seq_time_key,
                 "engineered_key": self.engineered_key,
-                
                 # Architecture
                 "dim_embedding_table": self.dim_embedding_table,
                 "dim_attn_feedforward": self.dim_attn_feedforward,
@@ -258,19 +228,16 @@ class TemporalSelfAttentionHyperparameters(ModelHyperparameters):
                 "n_layers_order": self.n_layers_order,
                 "n_layers_feature": self.n_layers_feature,
                 "dropout": self.dropout,
-                
                 # Mixture of Experts
                 "use_moe": self.use_moe,
                 "num_experts": self.num_experts,
                 "expert_capacity_factor": self.expert_capacity_factor,
                 "expert_dropout": self.expert_dropout,
-                
                 # Temporal encoding
                 "use_time_seq": self.use_time_seq,
                 "time_encoding_dim": self.time_encoding_dim,
                 "return_seq": self.return_seq,
                 "use_key_padding_mask": self.use_key_padding_mask,
-                
                 # Loss function
                 "loss": self.loss,
                 "loss_alpha": self.loss_alpha,
@@ -279,13 +246,11 @@ class TemporalSelfAttentionHyperparameters(ModelHyperparameters):
                 "loss_gamma_max": self.loss_gamma_max,
                 "loss_cycle_length": self.loss_cycle_length,
                 "loss_reduction": self.loss_reduction,
-                
                 # Training
                 "weight_decay": self.weight_decay,
                 "adam_epsilon": self.adam_epsilon,
                 "warmup_steps": self.warmup_steps,
                 "run_scheduler": self.run_scheduler,
-                
                 # From base class (inherited from ModelHyperparameters)
                 "id_name": self.id_name,
                 "label_name": self.label_name,

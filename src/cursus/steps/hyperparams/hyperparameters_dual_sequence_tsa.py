@@ -23,59 +23,58 @@ class DualSequenceTSAHyperparameters(TemporalSelfAttentionHyperparameters):
 
     # Override model_class from parent
     model_class: str = Field(
-        default="dual_sequence_tsa",
-        description="Model class identifier"
+        default="dual_sequence_tsa", description="Model class identifier"
     )
 
     # Dual sequence field key names (consistent seq* naming with seq1/seq2)
     seq1_cat_key: str = Field(
         default="x_seq_cat_primary",
-        description="Key for primary sequence categorical features in batch dictionary"
+        description="Key for primary sequence categorical features in batch dictionary",
     )
 
     seq1_num_key: str = Field(
         default="x_seq_num_primary",
-        description="Key for primary sequence numerical features in batch dictionary"
+        description="Key for primary sequence numerical features in batch dictionary",
     )
 
     seq1_time_key: str = Field(
         default="time_seq_primary",
-        description="Key for primary sequence temporal features in batch dictionary"
+        description="Key for primary sequence temporal features in batch dictionary",
     )
 
     seq2_cat_key: str = Field(
         default="x_seq_cat_secondary",
-        description="Key for secondary sequence categorical features in batch dictionary"
+        description="Key for secondary sequence categorical features in batch dictionary",
     )
 
     seq2_num_key: str = Field(
         default="x_seq_num_secondary",
-        description="Key for secondary sequence numerical features in batch dictionary"
+        description="Key for secondary sequence numerical features in batch dictionary",
     )
 
     seq2_time_key: str = Field(
         default="time_seq_secondary",
-        description="Key for secondary sequence temporal features in batch dictionary"
+        description="Key for secondary sequence temporal features in batch dictionary",
     )
 
     # Gate function parameters
     gate_embedding_dim: int = Field(
         default=16,
         ge=1,
-        description="Embedding dimension for gate function (typically smaller than main embedding)"
+        description="Embedding dimension for gate function (typically smaller than main embedding)",
     )
 
     gate_hidden_dim: int = Field(
         default=256,
         ge=1,
-        description="Hidden dimension for gate score computation network"
+        description="Hidden dimension for gate score computation network",
     )
 
     gate_threshold: float = Field(
         default=0.05,
         ge=0.0,
         le=1.0,
-        description="Threshold for secondary sequence filtering (sequences with gate score below this are skipped)"
+        description="Threshold for secondary sequence filtering (sequences with gate score below this are skipped)",
     )
 
     @property
@@ -88,25 +87,28 @@ class DualSequenceTSAHyperparameters(TemporalSelfAttentionHyperparameters):
         config = super().model_config_dict
 
         # Add dual-sequence specific fields
-        config.update({
-            # Dual sequence field keys
-            "seq1_cat_key": self.seq1_cat_key,
-            "seq1_num_key": self.seq1_num_key,
-            "seq1_time_key": self.seq1_time_key,
-            "seq2_cat_key": self.seq2_cat_key,
-            "seq2_num_key": self.seq2_num_key,
-            "seq2_time_key": self.seq2_time_key,
-            
-            # Gate function parameters
-            "gate_embedding_dim": self.gate_embedding_dim,
-            "gate_hidden_dim": self.gate_hidden_dim,
-            "gate_threshold": self.gate_threshold,
-        })
+        config.update(
+            {
+                # Dual sequence field keys
+                "seq1_cat_key": self.seq1_cat_key,
+                "seq1_num_key": self.seq1_num_key,
+                "seq1_time_key": self.seq1_time_key,
+                "seq2_cat_key": self.seq2_cat_key,
+                "seq2_num_key": self.seq2_num_key,
+                "seq2_time_key": self.seq2_time_key,
+                # Gate function parameters
+                "gate_embedding_dim": self.gate_embedding_dim,
+                "gate_hidden_dim": self.gate_hidden_dim,
+                "gate_threshold": self.gate_threshold,
+            }
+        )
 
         return config
 
     @model_validator(mode="after")
-    def validate_dual_sequence_hyperparameters(self) -> "DualSequenceTSAHyperparameters":
+    def validate_dual_sequence_hyperparameters(
+        self,
+    ) -> "DualSequenceTSAHyperparameters":
         """
         Validate dual-sequence specific hyperparameters.
         Calls parent validator first, then adds dual-sequence specific checks.
