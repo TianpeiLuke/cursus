@@ -239,6 +239,10 @@ from processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
+from processing.dataloaders.names3risk_collate import (
+    build_lstm2risk_collate_fn,
+    build_transformer2risk_collate_fn,
+)
 from lightning_models.tabular.pl_tab_ae import TabAE
 from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
@@ -251,6 +255,8 @@ from lightning_models.trimodal.pl_trimodal_cross_attn import TrimodalCrossAttent
 from lightning_models.trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
 from lightning_models.text.pl_bert_classification import TextBertClassification
 from lightning_models.text.pl_lstm import TextLSTM
+from lightning_models.bimodal.pl_lstm2risk import LSTM2Risk
+from lightning_models.bimodal.pl_transformer2risk import Transformer2Risk
 from lightning_models.utils.pl_train import (
     model_train,
     model_inference,
@@ -831,18 +837,59 @@ def load_data_module(file_dir, filename, config: Config) -> PipelineDataset:
 # ----------------- Updated Data Preprocessing Pipeline ------------------
 def data_preprocess_pipeline(
     config: Config,
-) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    model_artifacts_input: Optional[str] = None,
+) -> Tuple[Union[AutoTokenizer, "Tokenizer"], Dict[str, Processor]]:
     """
     Build text preprocessing pipelines based on config.
+    
+    For Names3Risk models (lstm2risk, transformer2risk), loads custom BPE tokenizer.
+    For other models (bimodal_bert, etc.), uses pretrained BERT tokenizer.
 
     For bimodal: Uses text_name with default or configured steps
     For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
+    
+    Args:
+        config: Configuration object
+        model_artifacts_input: Optional path to model artifacts containing tokenizer
+        
+    Returns:
+        Tuple of (tokenizer, preprocessing_pipelines)
     """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-multilingual-cased"
-
-    log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
-    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+    # Determine if custom tokenizer is needed
+    needs_custom_tokenizer = config.model_class in [
+        "lstm2risk", 
+        "transformer2risk"
+    ]
+    
+    if needs_custom_tokenizer and model_artifacts_input:
+        # Load custom BPE tokenizer from model artifacts
+        tokenizer_path = os.path.join(model_artifacts_input, "tokenizer.json")
+        
+        if os.path.exists(tokenizer_path):
+            from tokenizers import Tokenizer
+            tokenizer = Tokenizer.from_file(tokenizer_path)
+            log_once(logger, f"✓ Loaded custom BPE tokenizer from {tokenizer_path}")
+            log_once(logger, f"  Vocabulary size: {tokenizer.get_vocab_size()}")
+            
+            # Get PAD token ID for collate function
+            pad_token_id = tokenizer.token_to_id("[PAD]")
+            config.pad_token_id = pad_token_id if pad_token_id is not None else 0
+            log_once(logger, f"  PAD token ID: {config.pad_token_id}")
+        else:
+            raise FileNotFoundError(
+                f"Custom tokenizer required for {config.model_class} but not found at {tokenizer_path}. "
+                f"Please run tokenizer_training step first."
+            )
+    else:
+        # Default: Load pretrained BERT tokenizer for other models
+        if not config.tokenizer:
+            config.tokenizer = "bert-base-multilingual-cased"
+        
+        log_once(logger, f"Constructing pretrained tokenizer: {config.tokenizer}")
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+        config.pad_token_id = tokenizer.pad_token_id
+        log_once(logger, f"  PAD token ID: {config.pad_token_id}")
+    
     pipelines = {}
 
     # BIMODAL: Single text pipeline
@@ -960,6 +1007,9 @@ def model_select(
         "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
         "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
         "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        # Names3Risk models (custom BPE tokenizer + specific architectures)
+        "lstm2risk": lambda: LSTM2Risk(config.model_dump(), vocab_size, embedding_mat),
+        "transformer2risk": lambda: Transformer2Risk(config.model_dump(), vocab_size, embedding_mat),
         # Specific trimodal models
         "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
         "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
@@ -1040,7 +1090,10 @@ def load_and_preprocess_data(
     test_pipeline_dataset = load_data_module(paths["test"], test_filename, config)
 
     # === Build tokenizer and preprocessing pipelines ===
-    tokenizer, pipelines = data_preprocess_pipeline(config)
+    tokenizer, pipelines = data_preprocess_pipeline(
+        config,
+        model_artifacts_input=model_artifacts_dir
+    )
 
     # Add pipelines for each text field
     log_once(logger, "=" * 70)
@@ -1113,16 +1166,39 @@ def load_and_preprocess_data(
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset]
+    config: Config, 
+    tokenizer: Union[AutoTokenizer, "Tokenizer"],  # Updated type hint
+    datasets: List[PipelineDataset]
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    # Use unified collate function for all model types
-    logger.info(f"Using collate batch for model: {config.model_class}")
-
-    # Use unified keys for all models (single tokenizer design)
-    collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
-    )
+    
+    # Select collate function based on model type
+    if config.model_class in ["lstm2risk", "bimodal_lstm"]:
+        # LSTM models: Need length sorting for pack_padded_sequence
+        pad_token = getattr(config, 'pad_token_id', 0)
+        collate_batch = build_lstm2risk_collate_fn(pad_token=pad_token)
+        logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
+        logger.info("  - Sequences sorted by length (descending)")
+        logger.info("  - Includes text_length for pack_padded_sequence")
+    
+    elif config.model_class in ["transformer2risk", "bimodal_transformer"]:
+        # Transformer models: Need attention masking and block_size truncation
+        pad_token = getattr(config, 'pad_token_id', 0)
+        block_size = getattr(config, 'max_sen_len', 100)
+        collate_batch = build_transformer2risk_collate_fn(
+            pad_token=pad_token,
+            block_size=block_size
+        )
+        logger.info(f"✓ Using Transformer2Risk collate function")
+        logger.info(f"  - Block size: {block_size}")
+        logger.info(f"  - Includes attention mask (pad_token={pad_token})")
+    
+    else:
+        # Default: BERT-based models use unified collate
+        collate_batch = build_collate_batch(
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(f"✓ Using default BERT collate function for {config.model_class}")
 
     train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
 
@@ -1141,6 +1217,19 @@ def build_model_and_optimizer(
         batch_size=config.batch_size,
     )
 
+    # Extract vocabulary size based on tokenizer type
+    if hasattr(tokenizer, 'vocab_size'):
+        # AutoTokenizer (BERT models)
+        vocab_size = tokenizer.vocab_size
+    elif hasattr(tokenizer, 'get_vocab_size'):
+        # Custom HuggingFace Tokenizer (Names3Risk models)
+        vocab_size = tokenizer.get_vocab_size()
+    else:
+        raise AttributeError(f"Tokenizer type {type(tokenizer)} doesn't have vocab_size or get_vocab_size() method")
+    
+    log_once(logger, f"Vocabulary Size: {vocab_size}")
+    
+    # Extract pretrained embedding from BERT model (used for initialization)
     log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
     embedding_model = AutoModel.from_pretrained(config.tokenizer)
     embedding_mat = embedding_model.embeddings.word_embeddings.weight
@@ -1148,8 +1237,6 @@ def build_model_and_optimizer(
         logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]"
     )
     config.embed_size = embedding_mat.shape[1]
-    vocab_size = tokenizer.vocab_size
-    log_once(logger, f"Vocabulary Size: {vocab_size}")
     log_once(logger, f"Model choice: {config.model_class}")
     model = model_select(config.model_class, config, vocab_size, embedding_mat)
     return model, train_dataloader, val_dataloader, test_dataloader, embedding_mat

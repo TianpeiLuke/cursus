@@ -19,7 +19,7 @@ Supports:
 
 Usage:
 ```python
-from names3risk_pytorch.dockers.lightning_models.bimodal import Transformer2RiskLightning
+from names3risk_pytorch.dockers.lightning_models.bimodal import Transformer2Risk
 from names3risk_pytorch.dockers.hyperparams import Transformer2RiskHyperparameters
 
 hyperparams = Transformer2RiskHyperparameters(
@@ -33,7 +33,7 @@ hyperparams = Transformer2RiskHyperparameters(
     ...
 )
 
-model = Transformer2RiskLightning(hyperparams)
+model = Transformer2Risk(hyperparams)
 trainer = pl.Trainer(max_epochs=10)
 trainer.fit(model, train_dataloader, val_dataloader)
 ```
@@ -91,7 +91,7 @@ logger.addHandler(handler)
 logger.propagate = False
 
 
-class Transformer2RiskLightning(pl.LightningModule):
+class Transformer2Risk(pl.LightningModule):
     """
     PyTorch Lightning module for Transformer2Risk bimodal fraud detection.
 
@@ -502,7 +502,7 @@ class Transformer2RiskLightning(pl.LightningModule):
             Returns probabilities (not logits) for production use.
             """
 
-            def __init__(self, model: Transformer2RiskLightning):
+            def __init__(self, model: Transformer2Risk):
                 super().__init__()
                 self.model = model
 

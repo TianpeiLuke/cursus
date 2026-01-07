@@ -19,7 +19,7 @@ Supports:
 
 Usage:
 ```python
-from names3risk_pytorch.dockers.lightning_models.bimodal import LSTM2RiskLightning
+from names3risk_pytorch.dockers.lightning_models.bimodal import LSTM2Risk
 from names3risk_pytorch.dockers.hyperparams import LSTM2RiskHyperparameters
 
 hyperparams = LSTM2RiskHyperparameters(
@@ -31,7 +31,7 @@ hyperparams = LSTM2RiskHyperparameters(
     ...
 )
 
-model = LSTM2RiskLightning(hyperparams)
+model = LSTM2Risk(hyperparams)
 trainer = pl.Trainer(max_epochs=10)
 trainer.fit(model, train_dataloader, val_dataloader)
 ```
@@ -87,7 +87,7 @@ logger.addHandler(handler)
 logger.propagate = False
 
 
-class LSTM2RiskLightning(pl.LightningModule):
+class LSTM2Risk(pl.LightningModule):
     """
     PyTorch Lightning module for LSTM2Risk bimodal fraud detection.
 
@@ -518,7 +518,7 @@ class LSTM2RiskLightning(pl.LightningModule):
             - Handles variable-length sequences via attention masking
             """
 
-            def __init__(self, model: LSTM2RiskLightning):
+            def __init__(self, model: LSTM2Risk):
                 super().__init__()
                 self.model = model
 
