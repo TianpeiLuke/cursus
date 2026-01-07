@@ -16,15 +16,18 @@ import lightning.pytorch as pl
 
 import onnx
 
-from .dist_utils import all_gather, get_rank
+from ..utils.dist_utils import all_gather, get_rank
 from .pl_tsa_metrics import compute_tsa_metrics
-from .pl_tsa_losses import FocalLoss, CyclicalFocalLoss
-from .pl_sequential_attention import SequentialAttentionModule
-from .pl_feature_attention import FeatureAttentionModule
 from .pl_schedulers import (
     get_linear_schedule_with_warmup,
     get_constant_schedule_with_warmup,
 )
+
+# Import TSA components from pytorch submodule
+from ...pytorch.blocks import OrderAttentionModule, FeatureAttentionModule
+from ...pytorch.feedforward import MLPProjection
+from ...pytorch.losses import FocalLoss, CyclicalFocalLoss
+from ...pytorch.fusion import ConcatenationFusion
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
@@ -52,11 +55,11 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
         self.id_name = config.get("id_name", None)
         self.label_name = config.get("label_name", "label")
 
-        # TSA-specific field names
-        self.x_cat_key = config.get("x_cat_key", "x_seq_cat")
-        self.x_num_key = config.get("x_num_key", "x_seq_num")
-        self.x_engineered_key = config.get("x_engineered_key", "x_engineered")
-        self.time_seq_key = config.get("time_seq_key", "time_to_last")
+        # TSA-specific field names (aligned with hyperparameters naming convention)
+        self.seq_cat_key = config.get("seq_cat_key", "x_seq_cat")
+        self.seq_num_key = config.get("seq_num_key", "x_seq_num")
+        self.seq_time_key = config.get("seq_time_key", "time_seq")
+        self.engineered_key = config.get("engineered_key", "x_engineered")
 
         self.is_binary = config.get("is_binary", True)
         self.task = "binary" if self.is_binary else "multiclass"
@@ -84,10 +87,10 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
         self.test_has_label = False
 
         # === TSA Model Components ===
-        # Sequential attention for temporal sequence processing
-        self.sequential_attention = SequentialAttentionModule(config)
+        # Order attention for temporal sequence processing (imported from pytorch/blocks/)
+        self.sequential_attention = OrderAttentionModule(config)
 
-        # Feature attention for current transaction processing
+        # Feature attention for current transaction processing (imported from pytorch/blocks/)
         self.feature_attention = FeatureAttentionModule(config)
 
         # Final classifier
@@ -96,36 +99,73 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
         use_mlp = config.get("use_mlp", 0)
 
         if use_mlp:
-            # MLP for additional numerical features
-            self.mlp = nn.Sequential(
-                nn.Linear(
-                    config["n_num_features"]
-                    + config.get("n_engineered_num_features", 0),
-                    1024,
-                ),
-                nn.ReLU(),
-                nn.Dropout(config.get("dropout", 0.1)),
-                nn.Linear(1024, embedding_table_dim),
+            # MLP for additional numerical features using MLPProjection
+            mlp_input_dim = config["n_num_features"] + config.get(
+                "n_engineered_num_features", 0
+            )
+            mlp_hidden_dim = config.get("mlp_hidden_dim", 1024)
+
+            # Use MLPProjection for feature transformation with dimension change
+            self.mlp = MLPProjection(
+                input_dim=mlp_input_dim,
+                hidden_dim=mlp_hidden_dim,
+                output_dim=embedding_table_dim,
+                dropout=config.get("dropout", 0.1),
+                activation="relu",
+                output_dropout=False,
             )
             self.layer_norm_mlp = nn.LayerNorm(embedding_table_dim)
 
-            # Final classifier with MLP
-            self.classifier = nn.Sequential(
-                nn.Linear(dim_embed + embedding_table_dim + embedding_table_dim, 1024),
-                nn.ReLU(),
-                nn.Dropout(config.get("dropout", 0.1)),
-                nn.Linear(1024, self.num_classes),
+            # Fusion layer: combine sequential + feature + mlp outputs
+            fusion_input_dims = [dim_embed, embedding_table_dim, embedding_table_dim]
+            fusion_output_dim = config.get(
+                "fusion_output_dim",
+                dim_embed + embedding_table_dim + embedding_table_dim,
+            )
+
+            self.fusion = ConcatenationFusion(
+                input_dims=fusion_input_dims,
+                output_dim=fusion_output_dim,
+                use_activation=config.get("fusion_use_activation", False),
+            )
+
+            # Final classifier from fusion output
+            classifier_hidden_dim = config.get("classifier_hidden_dim", 1024)
+
+            self.classifier = MLPProjection(
+                input_dim=fusion_output_dim,
+                hidden_dim=classifier_hidden_dim,
+                output_dim=self.num_classes,
+                dropout=config.get("dropout", 0.1),
+                activation="relu",
+                output_dropout=False,
             )
         else:
             self.mlp = None
             self.layer_norm_mlp = None
 
-            # Final classifier without MLP
-            self.classifier = nn.Sequential(
-                nn.Linear(dim_embed + embedding_table_dim, 1024),
-                nn.ReLU(),
-                nn.Dropout(config.get("dropout", 0.1)),
-                nn.Linear(1024, self.num_classes),
+            # Fusion layer: combine sequential + feature outputs only
+            fusion_input_dims = [dim_embed, embedding_table_dim]
+            fusion_output_dim = config.get(
+                "fusion_output_dim", dim_embed + embedding_table_dim
+            )
+
+            self.fusion = ConcatenationFusion(
+                input_dims=fusion_input_dims,
+                output_dim=fusion_output_dim,
+                use_activation=config.get("fusion_use_activation", False),
+            )
+
+            # Final classifier from fusion output
+            classifier_hidden_dim = config.get("classifier_hidden_dim", 1024)
+
+            self.classifier = MLPProjection(
+                input_dim=fusion_output_dim,
+                hidden_dim=classifier_hidden_dim,
+                output_dim=self.num_classes,
+                dropout=config.get("dropout", 0.1),
+                activation="relu",
+                output_dropout=False,
             )
 
         # === Loss function ===
@@ -169,17 +209,17 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
         return self._forward_impl(batch)
 
     def _forward_impl(self, batch) -> torch.Tensor:
-        """Forward implementation using refactored TSA components."""
-        # Extract TSA inputs from batch
-        x_cat = batch[self.x_cat_key].float()
-        x_num = batch[self.x_num_key].float()
+        """Forward implementation using refactored TSA components with configurable keys."""
+        # Extract TSA inputs from batch using configurable key names
+        x_cat = batch[self.seq_cat_key].float()
+        x_num = batch[self.seq_num_key].float()
         x_engineered = batch.get(
-            self.x_engineered_key, torch.zeros(x_cat.size(0), 0, device=x_cat.device)
+            self.engineered_key, torch.zeros(x_cat.size(0), 0, device=x_cat.device)
         ).float()
 
         # Handle time sequence
-        if self.time_seq_key in batch:
-            time_seq = batch[self.time_seq_key].float()
+        if self.seq_time_key in batch:
+            time_seq = batch[self.seq_time_key].float()
             if time_seq.dim() == 2:  # Add feature dimension if needed
                 time_seq = time_seq.unsqueeze(-1)
         else:
@@ -206,23 +246,21 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
             x_cat=x_cat, x_num=x_num, x_engineered=x_engineered
         )  # [B, embedding_table_dim]
 
-        # Optional MLP processing
+        # Optional MLP processing and fusion
         if self.mlp is not None:
             # Combine numerical and engineered features for MLP
             mlp_input = torch.cat([x_num[:, -1, :], x_engineered], dim=-1)
             mlp_output = self.mlp(mlp_input)
             mlp_output = self.layer_norm_mlp(mlp_output)
 
-            # Combine all outputs
-            ensemble = torch.cat(
-                [sequential_output, feature_output, mlp_output], dim=-1
-            )
+            # Fusion: combine all three outputs using ConcatenationFusion
+            fused = self.fusion(sequential_output, feature_output, mlp_output)
         else:
-            # Combine sequential and feature outputs
-            ensemble = torch.cat([sequential_output, feature_output], dim=-1)
+            # Fusion: combine sequential and feature outputs using ConcatenationFusion
+            fused = self.fusion(sequential_output, feature_output)
 
         # Final classification
-        scores = self.classifier(ensemble)
+        scores = self.classifier(fused)
 
         return scores
 
@@ -379,10 +417,11 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
             def __init__(self, model: TemporalSelfAttentionClassification):
                 super().__init__()
                 self.model = model
-                self.x_cat_key = model.x_cat_key
-                self.x_num_key = model.x_num_key
-                self.x_engineered_key = model.x_engineered_key
-                self.time_seq_key = model.time_seq_key
+                # Use configurable key names from model
+                self.seq_cat_key = model.seq_cat_key
+                self.seq_num_key = model.seq_num_key
+                self.engineered_key = model.engineered_key
+                self.seq_time_key = model.seq_time_key
 
             def forward(
                 self,
@@ -392,10 +431,10 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
                 time_seq: torch.Tensor,
             ):
                 batch = {
-                    self.x_cat_key: x_cat,
-                    self.x_num_key: x_num,
-                    self.x_engineered_key: x_engineered,
-                    self.time_seq_key: time_seq,
+                    self.seq_cat_key: x_cat,
+                    self.seq_num_key: x_num,
+                    self.engineered_key: x_engineered,
+                    self.seq_time_key: time_seq,
                 }
                 # output probability scores instead of logits
                 logits = self.model(batch)
@@ -410,18 +449,18 @@ class TemporalSelfAttentionClassification(pl.LightningModule):
 
         # === Prepare input tensor list ===
         input_names = [
-            self.x_cat_key,
-            self.x_num_key,
-            self.x_engineered_key,
-            self.time_seq_key,
+            self.seq_cat_key,
+            self.seq_num_key,
+            self.engineered_key,
+            self.seq_time_key,
         ]
         input_tensors = []
 
-        # Handle TSA inputs
-        x_cat_tensor = sample_batch.get(self.x_cat_key)
-        x_num_tensor = sample_batch.get(self.x_num_key)
-        x_engineered_tensor = sample_batch.get(self.x_engineered_key)
-        time_seq_tensor = sample_batch.get(self.time_seq_key)
+        # Handle TSA inputs using configurable key names
+        x_cat_tensor = sample_batch.get(self.seq_cat_key)
+        x_num_tensor = sample_batch.get(self.seq_num_key)
+        x_engineered_tensor = sample_batch.get(self.engineered_key)
+        time_seq_tensor = sample_batch.get(self.seq_time_key)
 
         if not all(isinstance(t, torch.Tensor) for t in [x_cat_tensor, x_num_tensor]):
             raise ValueError("x_cat and x_num must be torch.Tensor in sample_batch.")

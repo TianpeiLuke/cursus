@@ -2,11 +2,11 @@
 """
 Dual Sequence TSA Lightning Module
 
-This module implements the PyTorch Lightning version of the TwoSeqMoEOrderFeatureAttentionClassifier
-for dual-sequence temporal self-attention processing with gate function.
+This module implements the PyTorch Lightning version of dual-sequence
+temporal self-attention processing with adaptive gate function.
 
 Key Features:
-- Dual sequence processing (CID and CCID sequences)
+- Dual sequence processing (primary and auxiliary sequences)
 - Gate function for dynamic sequence importance weighting
 - Lightning integration with full training/validation/test pipeline
 - ONNX export and TorchScript support
@@ -30,15 +30,21 @@ import lightning.pytorch as pl
 
 import onnx
 
-from .dist_utils import all_gather, get_rank
+from ..utils.dist_utils import all_gather, get_rank
 from .pl_tsa_metrics import compute_tsa_metrics
-from .pl_tsa_losses import FocalLoss, CyclicalFocalLoss
-from .pl_sequential_attention import SequentialAttentionModule
-from .pl_feature_attention import FeatureAttentionModule
 from .pl_schedulers import (
     get_linear_schedule_with_warmup,
     get_constant_schedule_with_warmup,
 )
+
+# Import TSA components from pytorch submodule (Phase 1 & 2 complete)
+from ...pytorch.blocks import (
+    OrderAttentionModule,
+    FeatureAttentionModule,
+    DualSequenceGate,
+)
+from ...pytorch.losses import FocalLoss, CyclicalFocalLoss
+from ...pytorch.fusion import WeightedEnsembleFusion
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
@@ -52,136 +58,14 @@ logger.addHandler(handler)
 logger.propagate = False
 
 
-class GateFunction(nn.Module):
-    """
-    Gate function for dual sequence importance weighting.
-
-    This module implements the gate function from TwoSeqMoEOrderFeatureAttentionClassifier
-    that dynamically weights the importance of CID vs CCID sequences.
-    """
-
-    def __init__(self, config: Dict[str, Union[int, float, str, bool]]):
-        super().__init__()
-
-        # Gate-specific configuration
-        self.n_cat_features = config["n_cat_features"]
-        self.n_num_features = config["n_num_features"]
-        self.n_embedding = config["n_embedding"]
-        self.seq_len = config.get("seq_len", 51)
-        self.gate_embedding_dim = config.get("gate_embedding_dim", 16)
-        self.gate_hidden_dim = config.get("gate_hidden_dim", 256)
-        self.dropout = config.get("dropout", 0.1)
-
-        # Gate embedding table (smaller than main embedding)
-        self.embedding_gate = nn.Embedding(
-            self.n_embedding + 2, self.gate_embedding_dim, padding_idx=0
-        )
-
-        # Gate attention module (simplified configuration)
-        gate_config = config.copy()
-        gate_config.update(
-            {
-                "dim_embedding_table": self.gate_embedding_dim,
-                "dim_attn_feedforward": 128,
-                "num_heads": 1,
-                "n_layers_order": 1,
-                "use_moe": False,
-                "num_experts": 1,
-                "use_time_seq": False,
-                "return_seq": False,
-            }
-        )
-
-        self.gate_attention = SequentialAttentionModule(gate_config)
-
-        # Override the embedding in gate attention
-        self.gate_attention.embedding = self.embedding_gate
-
-        # Gate score computation
-        gate_input_dim = 2 * (2 * self.gate_embedding_dim)  # CID + CCID embeddings
-        self.gate_score = nn.Sequential(
-            nn.Linear(gate_input_dim, self.gate_hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(self.dropout),
-            nn.Linear(self.gate_hidden_dim, 2),
-            nn.Softmax(dim=1),
-        )
-
-        # Gate threshold for CCID filtering
-        self.gate_threshold = config.get("gate_threshold", 0.05)
-
-    def forward(
-        self,
-        x_seq_cat_cid: torch.Tensor,
-        x_seq_num_cid: torch.Tensor,
-        time_seq_cid: Optional[torch.Tensor],
-        x_seq_cat_ccid: torch.Tensor,
-        x_seq_num_ccid: torch.Tensor,
-        time_seq_ccid: Optional[torch.Tensor],
-        key_padding_mask_cid: Optional[torch.Tensor] = None,
-        key_padding_mask_ccid: Optional[torch.Tensor] = None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Compute gate scores for CID and CCID sequences.
-
-        Args:
-            x_seq_cat_cid: CID categorical features [B, L, n_cat_features]
-            x_seq_num_cid: CID numerical features [B, L, n_num_features]
-            time_seq_cid: CID time sequence [B, L, 1]
-            x_seq_cat_ccid: CCID categorical features [B, L, n_cat_features]
-            x_seq_num_ccid: CCID numerical features [B, L, n_num_features]
-            time_seq_ccid: CCID time sequence [B, L, 1]
-            key_padding_mask_cid: CID padding mask [B, L]
-            key_padding_mask_ccid: CCID padding mask [B, L]
-
-        Returns:
-            gate_scores: Gate scores [B, 2] (CID, CCID)
-            ccid_keep_idx: Indices where CCID should be processed
-        """
-        # Compute gate embeddings for both sequences
-        gate_emb_cid = self.gate_attention(
-            x_seq_cat_cid,
-            x_seq_num_cid,
-            time_seq_cid,
-            attn_mask=None,
-            key_padding_mask=key_padding_mask_cid,
-        )
-
-        gate_emb_ccid = self.gate_attention(
-            x_seq_cat_ccid,
-            x_seq_num_ccid,
-            time_seq_ccid,
-            attn_mask=None,
-            key_padding_mask=key_padding_mask_ccid,
-        )
-
-        # Compute raw gate scores
-        gate_input = torch.cat([gate_emb_cid, gate_emb_ccid], dim=-1)
-        gate_scores_raw = self.gate_score(gate_input)
-
-        # Apply CCID filtering based on padding
-        gate_scores = gate_scores_raw.clone()
-
-        # Set CCID gate score to 0 for sequences that are fully padded
-        if key_padding_mask_ccid is not None:
-            # Check if CCID sequence is fully padded (all positions are padded)
-            fully_padded_ccid = key_padding_mask_ccid.sum(dim=1) >= (self.seq_len - 1)
-            gate_scores[fully_padded_ccid, 1] = 0.0
-            # Renormalize gate scores
-            gate_scores = F.softmax(gate_scores, dim=1)
-
-        # Find indices where CCID should be processed (gate score > threshold)
-        ccid_keep_idx = (gate_scores[:, 1] > self.gate_threshold).nonzero().squeeze(-1)
-
-        return gate_scores, ccid_keep_idx
-
-
 class DualSequenceTSA(pl.LightningModule):
     """
     Dual Sequence Temporal Self-Attention Lightning Module.
 
-    This module implements the Lightning version of TwoSeqMoEOrderFeatureAttentionClassifier
-    with dual sequence processing (CID and CCID) and gate function for dynamic weighting.
+    This module implements dual-sequence temporal self-attention with
+    adaptive gate function for dynamic sequence importance weighting.
+    Suitable for any application requiring dual-sequence modeling with
+    selective processing based on sequence relevance.
     """
 
     def __init__(
@@ -198,13 +82,13 @@ class DualSequenceTSA(pl.LightningModule):
         self.label_name = config.get("label_name", "label")
 
         # Dual sequence field names
-        self.x_cid_cat_key = config.get("x_cid_cat_key", "x_seq_cat_cid")
-        self.x_cid_num_key = config.get("x_cid_num_key", "x_seq_num_cid")
-        self.x_ccid_cat_key = config.get("x_ccid_cat_key", "x_seq_cat_ccid")
-        self.x_ccid_num_key = config.get("x_ccid_num_key", "x_seq_num_ccid")
-        self.x_engineered_key = config.get("x_engineered_key", "x_engineered")
-        self.time_cid_key = config.get("time_cid_key", "time_seq_cid")
-        self.time_ccid_key = config.get("time_ccid_key", "time_seq_ccid")
+        self.seq1_cat_key = config.get("seq1_cat_key", "x_seq_cat_cid")
+        self.seq1_num_key = config.get("seq1_num_key", "x_seq_num_cid")
+        self.seq2_cat_key = config.get("seq2_cat_key", "x_seq_cat_ccid")
+        self.seq2_num_key = config.get("seq2_num_key", "x_seq_num_ccid")
+        self.engineered_key = config.get("engineered_key", "x_engineered")
+        self.seq1_time_key = config.get("seq1_time_key", "time_seq_cid")
+        self.seq2_time_key = config.get("seq2_time_key", "time_seq_ccid")
 
         self.is_binary = config.get("is_binary", True)
         self.task = "binary" if self.is_binary else "multiclass"
@@ -233,21 +117,25 @@ class DualSequenceTSA(pl.LightningModule):
 
         # === Dual Sequence TSA Components ===
         # Gate function for sequence importance weighting
-        self.gate_function = GateFunction(config)
+        self.gate_function = DualSequenceGate(config)
 
-        # Sequential attention modules for both sequences
-        self.sequential_attention_cid = SequentialAttentionModule(config)
-        self.sequential_attention_ccid = SequentialAttentionModule(config)
+        # Order attention modules for both sequences (imported from pytorch/blocks/)
+        self.sequential_attention_seq1 = OrderAttentionModule(config)
+        self.sequential_attention_seq2 = OrderAttentionModule(config)
 
-        # Feature attention for current transaction processing
+        # Feature attention for current observation processing
         self.feature_attention = FeatureAttentionModule(config)
 
         # Dimensions
         dim_embed = 2 * config["dim_embedding_table"]
         embedding_table_dim = config["dim_embedding_table"]
 
-        # Layer normalization for ensemble
-        self.layer_norm_ensemble = nn.LayerNorm(dim_embed)
+        # Weighted ensemble fusion for dual sequences
+        self.ensemble_fusion = WeightedEnsembleFusion(
+            embed_dim=dim_embed,
+            num_sources=2,
+            normalize=True,
+        )
 
         # Final classifier
         self.classifier = nn.Sequential(
@@ -300,104 +188,103 @@ class DualSequenceTSA(pl.LightningModule):
     def _forward_impl(self, batch) -> torch.Tensor:
         """Forward implementation using dual sequence TSA components."""
         # Extract dual sequence inputs from batch
-        x_seq_cat_cid = batch[self.x_cid_cat_key].float()
-        x_seq_num_cid = batch[self.x_cid_num_key].float()
-        x_seq_cat_ccid = batch[self.x_ccid_cat_key].float()
-        x_seq_num_ccid = batch[self.x_ccid_num_key].float()
-        x_engineered = batch.get(
-            self.x_engineered_key,
-            torch.zeros(x_seq_cat_cid.size(0), 0, device=x_seq_cat_cid.device),
+        seq1_cat = batch[self.seq1_cat_key].float()
+        seq1_num = batch[self.seq1_num_key].float()
+        seq2_cat = batch[self.seq2_cat_key].float()
+        seq2_num = batch[self.seq2_num_key].float()
+        engineered = batch.get(
+            self.engineered_key,
+            torch.zeros(seq1_cat.size(0), 0, device=seq1_cat.device),
         ).float()
 
-        B = x_seq_cat_cid.size(0)
+        B = seq1_cat.size(0)
 
         # Handle time sequences
-        if self.time_cid_key in batch:
-            time_seq_cid = batch[self.time_cid_key].float()
-            if time_seq_cid.dim() == 2:
-                time_seq_cid = time_seq_cid.unsqueeze(-1)
+        if self.seq1_time_key in batch:
+            time_seq1 = batch[self.seq1_time_key].float()
+            if time_seq1.dim() == 2:
+                time_seq1 = time_seq1.unsqueeze(-1)
         else:
-            time_seq_cid = torch.zeros(
-                x_seq_cat_cid.size(0),
-                x_seq_cat_cid.size(1),
+            time_seq1 = torch.zeros(
+                seq1_cat.size(0),
+                seq1_cat.size(1),
                 1,
-                device=x_seq_cat_cid.device,
+                device=seq1_cat.device,
             )
 
-        if self.time_ccid_key in batch:
-            time_seq_ccid = batch[self.time_ccid_key].float()
-            if time_seq_ccid.dim() == 2:
-                time_seq_ccid = time_seq_ccid.unsqueeze(-1)
+        if self.seq2_time_key in batch:
+            time_seq2 = batch[self.seq2_time_key].float()
+            if time_seq2.dim() == 2:
+                time_seq2 = time_seq2.unsqueeze(-1)
         else:
-            time_seq_ccid = torch.zeros(
-                x_seq_cat_ccid.size(0),
-                x_seq_cat_ccid.size(1),
+            time_seq2 = torch.zeros(
+                seq2_cat.size(0),
+                seq2_cat.size(1),
                 1,
-                device=x_seq_cat_ccid.device,
+                device=seq2_cat.device,
             )
 
         # Generate attention masks
         attn_mask = None
-        key_padding_mask_cid = batch.get("key_padding_mask_cid", None)
-        key_padding_mask_ccid = batch.get("key_padding_mask_ccid", None)
+        key_padding_mask_seq1 = batch.get("key_padding_mask_seq1", None)
+        key_padding_mask_seq2 = batch.get("key_padding_mask_seq2", None)
 
-        if key_padding_mask_cid is None and self.config.get(
+        if key_padding_mask_seq1 is None and self.config.get(
             "use_key_padding_mask", True
         ):
-            key_padding_mask_cid = (x_seq_cat_cid == 0).all(dim=-1)  # [B, L]
+            key_padding_mask_seq1 = (seq1_cat == 0).all(dim=-1)  # [B, L]
 
-        if key_padding_mask_ccid is None and self.config.get(
+        if key_padding_mask_seq2 is None and self.config.get(
             "use_key_padding_mask", True
         ):
-            key_padding_mask_ccid = (x_seq_cat_ccid == 0).all(dim=-1)  # [B, L]
+            key_padding_mask_seq2 = (seq2_cat == 0).all(dim=-1)  # [B, L]
 
         # Gate function - compute sequence importance weights
-        gate_scores, ccid_keep_idx = self.gate_function(
-            x_seq_cat_cid,
-            x_seq_num_cid,
-            time_seq_cid,
-            x_seq_cat_ccid,
-            x_seq_num_ccid,
-            time_seq_ccid,
-            key_padding_mask_cid,
-            key_padding_mask_ccid,
+        gate_scores, seq2_keep_idx = self.gate_function(
+            seq1_cat=seq1_cat,
+            seq1_num=seq1_num,
+            time_seq1=time_seq1,
+            seq2_cat=seq2_cat,
+            seq2_num=seq2_num,
+            time_seq2=time_seq2,
+            key_padding_mask_seq1=key_padding_mask_seq1,
+            key_padding_mask_seq2=key_padding_mask_seq2,
         )
 
-        # Sequential attention - CID sequence (always processed)
-        x_cid = self.sequential_attention_cid(
-            x_cat=x_seq_cat_cid,
-            x_num=x_seq_num_cid,
-            time_seq=time_seq_cid,
+        # Sequential attention - Sequence 1 (always processed)
+        seq1_embed = self.sequential_attention_seq1(
+            x_cat=seq1_cat,
+            x_num=seq1_num,
+            time_seq=time_seq1,
             attn_mask=attn_mask,
-            key_padding_mask=key_padding_mask_cid,
+            key_padding_mask=key_padding_mask_seq1,
         )  # [B, dim_embed]
 
-        # Sequential attention - CCID sequence (conditionally processed)
-        x_ccid = torch.zeros([B, x_cid.size(-1)], device=x_seq_cat_cid.device)
+        # Sequential attention - Sequence 2 (conditionally processed)
+        seq2_embed = torch.zeros([B, seq1_embed.size(-1)], device=seq1_cat.device)
 
-        if len(ccid_keep_idx) > 0:
-            x_ccid[ccid_keep_idx, :] = self.sequential_attention_ccid(
-                x_cat=x_seq_cat_ccid[ccid_keep_idx, :, :],
-                x_num=x_seq_num_ccid[ccid_keep_idx, :, :],
-                time_seq=time_seq_ccid[ccid_keep_idx, :, :]
-                if time_seq_ccid is not None
+        if len(seq2_keep_idx) > 0:
+            seq2_embed[seq2_keep_idx, :] = self.sequential_attention_seq2(
+                x_cat=seq2_cat[seq2_keep_idx, :, :],
+                x_num=seq2_num[seq2_keep_idx, :, :],
+                time_seq=time_seq2[seq2_keep_idx, :, :]
+                if time_seq2 is not None
                 else None,
                 attn_mask=attn_mask,
-                key_padding_mask=key_padding_mask_ccid[ccid_keep_idx, :]
-                if key_padding_mask_ccid is not None
+                key_padding_mask=key_padding_mask_seq2[seq2_keep_idx, :]
+                if key_padding_mask_seq2 is not None
                 else None,
             )
 
-        # Feature attention - current transaction processing (uses CID sequence as reference)
+        # Feature attention - current observation processing (uses sequence 1 as reference)
         feature_output = self.feature_attention(
-            x_cat=x_seq_cat_cid, x_num=x_seq_num_cid, x_engineered=x_engineered
+            x_cat=seq1_cat, x_num=seq1_num, x_engineered=engineered
         )  # [B, embedding_table_dim]
 
-        # Ensemble order embeddings using gate scores
-        ensemble_order = torch.einsum(
-            "i,ij->ij", gate_scores[:, 0], x_cid
-        ) + torch.einsum("i,ij->ij", gate_scores[:, 1], x_ccid)
-        ensemble_order = self.layer_norm_ensemble(ensemble_order)
+        # Ensemble order embeddings using weighted fusion
+        ensemble_order = self.ensemble_fusion(
+            embeddings=[seq1_embed, seq2_embed], weights=gate_scores
+        )
 
         # Combine order and feature outputs
         ensemble = torch.cat([ensemble_order, feature_output], dim=-1)
@@ -560,32 +447,32 @@ class DualSequenceTSA(pl.LightningModule):
             def __init__(self, model: DualSequenceTSA):
                 super().__init__()
                 self.model = model
-                self.x_cid_cat_key = model.x_cid_cat_key
-                self.x_cid_num_key = model.x_cid_num_key
-                self.x_ccid_cat_key = model.x_ccid_cat_key
-                self.x_ccid_num_key = model.x_ccid_num_key
-                self.x_engineered_key = model.x_engineered_key
-                self.time_cid_key = model.time_cid_key
-                self.time_ccid_key = model.time_ccid_key
+                self.seq1_cat_key = model.seq1_cat_key
+                self.seq1_num_key = model.seq1_num_key
+                self.seq2_cat_key = model.seq2_cat_key
+                self.seq2_num_key = model.seq2_num_key
+                self.engineered_key = model.engineered_key
+                self.seq1_time_key = model.seq1_time_key
+                self.seq2_time_key = model.seq2_time_key
 
             def forward(
                 self,
-                x_seq_cat_cid: torch.Tensor,
-                x_seq_num_cid: torch.Tensor,
-                time_seq_cid: torch.Tensor,
-                x_seq_cat_ccid: torch.Tensor,
-                x_seq_num_ccid: torch.Tensor,
-                time_seq_ccid: torch.Tensor,
-                x_engineered: torch.Tensor,
+                seq1_cat: torch.Tensor,
+                seq1_num: torch.Tensor,
+                seq1_time: torch.Tensor,
+                seq2_cat: torch.Tensor,
+                seq2_num: torch.Tensor,
+                seq2_time: torch.Tensor,
+                engineered: torch.Tensor,
             ):
                 batch = {
-                    self.x_cid_cat_key: x_seq_cat_cid,
-                    self.x_cid_num_key: x_seq_num_cid,
-                    self.time_cid_key: time_seq_cid,
-                    self.x_ccid_cat_key: x_seq_cat_ccid,
-                    self.x_ccid_num_key: x_seq_num_ccid,
-                    self.time_ccid_key: time_seq_ccid,
-                    self.x_engineered_key: x_engineered,
+                    self.seq1_cat_key: seq1_cat,
+                    self.seq1_num_key: seq1_num,
+                    self.seq1_time_key: seq1_time,
+                    self.seq2_cat_key: seq2_cat,
+                    self.seq2_num_key: seq2_num,
+                    self.seq2_time_key: seq2_time,
+                    self.engineered_key: engineered,
                 }
                 # output probability scores instead of logits
                 logits = self.model(batch)
@@ -600,76 +487,76 @@ class DualSequenceTSA(pl.LightningModule):
 
         # === Prepare input tensor list ===
         input_names = [
-            self.x_cid_cat_key,
-            self.x_cid_num_key,
-            self.time_cid_key,
-            self.x_ccid_cat_key,
-            self.x_ccid_num_key,
-            self.time_ccid_key,
-            self.x_engineered_key,
+            self.seq1_cat_key,
+            self.seq1_num_key,
+            self.seq1_time_key,
+            self.seq2_cat_key,
+            self.seq2_num_key,
+            self.seq2_time_key,
+            self.engineered_key,
         ]
         input_tensors = []
 
         # Handle dual sequence inputs
-        x_seq_cat_cid_tensor = sample_batch.get(self.x_cid_cat_key)
-        x_seq_num_cid_tensor = sample_batch.get(self.x_cid_num_key)
-        x_seq_cat_ccid_tensor = sample_batch.get(self.x_ccid_cat_key)
-        x_seq_num_ccid_tensor = sample_batch.get(self.x_ccid_num_key)
-        x_engineered_tensor = sample_batch.get(self.x_engineered_key)
-        time_seq_cid_tensor = sample_batch.get(self.time_cid_key)
-        time_seq_ccid_tensor = sample_batch.get(self.time_ccid_key)
+        seq1_cat_tensor = sample_batch.get(self.seq1_cat_key)
+        seq1_num_tensor = sample_batch.get(self.seq1_num_key)
+        seq2_cat_tensor = sample_batch.get(self.seq2_cat_key)
+        seq2_num_tensor = sample_batch.get(self.seq2_num_key)
+        engineered_tensor = sample_batch.get(self.engineered_key)
+        time_seq1_tensor = sample_batch.get(self.seq1_time_key)
+        time_seq2_tensor = sample_batch.get(self.seq2_time_key)
 
         if not all(
             isinstance(t, torch.Tensor)
             for t in [
-                x_seq_cat_cid_tensor,
-                x_seq_num_cid_tensor,
-                x_seq_cat_ccid_tensor,
-                x_seq_num_ccid_tensor,
+                seq1_cat_tensor,
+                seq1_num_tensor,
+                seq2_cat_tensor,
+                seq2_num_tensor,
             ]
         ):
             raise ValueError(
-                "CID and CCID sequence tensors must be torch.Tensor in sample_batch."
+                "Sequence 1 and Sequence 2 tensors must be torch.Tensor in sample_batch."
             )
 
         # Convert to CPU and float
-        x_seq_cat_cid_tensor = x_seq_cat_cid_tensor.to("cpu").float()
-        x_seq_num_cid_tensor = x_seq_num_cid_tensor.to("cpu").float()
-        x_seq_cat_ccid_tensor = x_seq_cat_ccid_tensor.to("cpu").float()
-        x_seq_num_ccid_tensor = x_seq_num_ccid_tensor.to("cpu").float()
+        seq1_cat_tensor = seq1_cat_tensor.to("cpu").float()
+        seq1_num_tensor = seq1_num_tensor.to("cpu").float()
+        seq2_cat_tensor = seq2_cat_tensor.to("cpu").float()
+        seq2_num_tensor = seq2_num_tensor.to("cpu").float()
 
-        batch_size = x_seq_cat_cid_tensor.shape[0]
-        seq_len = x_seq_cat_cid_tensor.shape[1]
+        batch_size = seq1_cat_tensor.shape[0]
+        seq_len = seq1_cat_tensor.shape[1]
 
         # Handle engineered features
-        if x_engineered_tensor is None:
-            x_engineered_tensor = torch.zeros(batch_size, 0).to("cpu").float()
+        if engineered_tensor is None:
+            engineered_tensor = torch.zeros(batch_size, 0).to("cpu").float()
         else:
-            x_engineered_tensor = x_engineered_tensor.to("cpu").float()
+            engineered_tensor = engineered_tensor.to("cpu").float()
 
         # Handle time sequences
-        if time_seq_cid_tensor is None:
-            time_seq_cid_tensor = torch.zeros(batch_size, seq_len, 1).to("cpu").float()
+        if time_seq1_tensor is None:
+            time_seq1_tensor = torch.zeros(batch_size, seq_len, 1).to("cpu").float()
         else:
-            time_seq_cid_tensor = time_seq_cid_tensor.to("cpu").float()
-            if time_seq_cid_tensor.dim() == 2:
-                time_seq_cid_tensor = time_seq_cid_tensor.unsqueeze(-1)
+            time_seq1_tensor = time_seq1_tensor.to("cpu").float()
+            if time_seq1_tensor.dim() == 2:
+                time_seq1_tensor = time_seq1_tensor.unsqueeze(-1)
 
-        if time_seq_ccid_tensor is None:
-            time_seq_ccid_tensor = torch.zeros(batch_size, seq_len, 1).to("cpu").float()
+        if time_seq2_tensor is None:
+            time_seq2_tensor = torch.zeros(batch_size, seq_len, 1).to("cpu").float()
         else:
-            time_seq_ccid_tensor = time_seq_ccid_tensor.to("cpu").float()
-            if time_seq_ccid_tensor.dim() == 2:
-                time_seq_ccid_tensor = time_seq_ccid_tensor.unsqueeze(-1)
+            time_seq2_tensor = time_seq2_tensor.to("cpu").float()
+            if time_seq2_tensor.dim() == 2:
+                time_seq2_tensor = time_seq2_tensor.unsqueeze(-1)
 
         input_tensors = [
-            x_seq_cat_cid_tensor,
-            x_seq_num_cid_tensor,
-            time_seq_cid_tensor,
-            x_seq_cat_ccid_tensor,
-            x_seq_num_ccid_tensor,
-            time_seq_ccid_tensor,
-            x_engineered_tensor,
+            seq1_cat_tensor,
+            seq1_num_tensor,
+            time_seq1_tensor,
+            seq2_cat_tensor,
+            seq2_num_tensor,
+            time_seq2_tensor,
+            engineered_tensor,
         ]
 
         # Dynamic axes
@@ -695,39 +582,3 @@ class DualSequenceTSA(pl.LightningModule):
             logger.info(f"ONNX model exported and verified at {save_path}")
         except Exception as e:
             logger.warning(f"ONNX export failed: {e}")
-
-    def export_to_torchscript(
-        self,
-        save_path: Union[str, Path],
-        sample_batch: Dict[str, Union[torch.Tensor, List]],
-    ):
-        self.eval()
-
-        # Clean the sample batch: remove list of strings, convert list of numbers to tensors
-        sample_batch_tensorized = {}
-        for k, v in sample_batch.items():
-            if isinstance(v, list):
-                if all(isinstance(x, str) for x in v):
-                    continue  # Skip string list
-                sample_batch_tensorized[k] = torch.tensor(v).to("cpu")
-            elif isinstance(v, torch.Tensor):
-                sample_batch_tensorized[k] = v.to("cpu")
-
-        # Unwrap from FSDP if needed
-        model_to_export = self
-        if isinstance(self, FSDP):
-            model_to_export = self.module  # Unwrap the actual LightningModule
-
-        model_to_export = model_to_export.to("cpu")
-        model_to_export.eval()
-
-        # Trace the forward method using the cleaned sample batch
-        try:
-            scripted_model = torch.jit.trace(
-                model_to_export, (sample_batch_tensorized,)
-            )
-        except Exception as e:
-            logger.warning(f"Trace failed: {e}. Trying script...")
-            scripted_model = torch.jit.script(model_to_export)
-        scripted_model.save(str(save_path))
-        logger.info(f"TorchScript model saved to: {save_path}")

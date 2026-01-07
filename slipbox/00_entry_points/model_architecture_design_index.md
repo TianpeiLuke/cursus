@@ -277,6 +277,7 @@ Model Architecture Designs
 - [Temporal Self-Attention Model Design](../1_design/temporal_self_attention_model_design.md) - **PRIMARY** - TSA architecture
 - [PyTorch Lightning Temporal Self-Attention Design](../1_design/pytorch_lightning_temporal_self_attention_design.md) - Target Lightning architecture
 - [TSA Lightning Refactoring Design](../1_design/tsa_lightning_refactoring_design.md) - **NEW** - Algorithm-preserving refactoring plan and implementation status
+- [TSA PyTorch Reorganization Design](../1_design/tsa_pytorch_reorganization_design.md) - **NEW** - PyTorch submodule reorganization with atomic components
 
 **Related Analysis:**
 - [Temporal Self-Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Comprehensive TSA implementation analysis
