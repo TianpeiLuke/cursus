@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2026-01-07
+
+### Added
+- **Tokenizer Training Support** - Added new tokenizer training step and related components
+  - **Tokenizer Training Step** - New processing step for training tokenizers
+  - **BPE Tokenizer Implementation** - Complete implementation of BPE tokenizer for NLP workflows
+  - **Tokenizer Training Integration** - Integration with PyTorch training workflows
+
+- **Semi-Supervised Learning Framework** - Enhanced support for semi-supervised learning workflows
+  - **PyTorch SSL Support** - Extended PyTorch training to support semi-supervised learning
+  - **LightGBM SSL Support** - Added semi-supervised learning capabilities to LightGBM training
+  - **SSL Pipeline Integration** - Integrated SSL workflows into existing pipeline templates
+
+### Enhanced
+- **PyTorch Training Improvements** - Major enhancements to PyTorch training capabilities
+  - **Model Path Configuration** - Added model path to Lightning models for testing data saving
+  - **Name3risk Training Updates** - Updated PyTorch training specifically for names3risk models
+  - **Tokenizer Training Alignment** - Updated tokenizer training to fit PyTorch training patterns
+
+- **Model Architecture Refactoring** - Significant improvements to model organization and structure
+  - **Name3risk Model Updates** - Renamed and reorganized lstm2risk and transformer2risk models
+  - **Common Structure Extraction** - Extracted common structures from TSA, names3risk, and bimodal BERT models
+  - **PyTorch Module Expansion** - Expanded PyTorch modules under TSA for better modularity
+
+- **Folder and Code Organization** - Major improvements to project structure and organization
+  - **Model Reorganization** - Multiple reorganization efforts for better code structure
+  - **Name3risk Model Structure** - Reorganized folder structure for names3risk models
+  - **PyTorch Design Reorganization** - Reorganized design for PyTorch models for better maintainability
+
+### Fixed
+- **MTGBM Legacy Cleanup** - Removed redundant legacy implementations
+  - **MTGBM Redundancy Removal** - Removed redundant legacy implementation of MTGBM
+  - **Code Cleanup** - General code cleanup and organization improvements
+
+### Technical Details
+- **Tokenizer Training Architecture** - Complete tokenizer training framework with BPE implementation
+- **SSL Integration** - Full integration of semi-supervised learning across multiple frameworks
+- **PyTorch Training Enhancements** - Enhanced PyTorch training with better model path handling and testing support
+- **Model Organization** - Improved model organization through restructuring and common pattern extraction
+- **Code Quality** - Enhanced code quality through refactoring and cleanup efforts
+
+### Quality Assurance
+- **Enhanced Testing** - Improved testing for tokenizer training and SSL workflows
+- **Integration Testing** - Comprehensive integration testing for model reorganization
+- **Code Quality Validation** - Validation of code quality improvements through refactoring
+
+### Performance Improvements
+- **Training Performance** - Improved training performance with better model path handling
+- **Tokenizer Training Efficiency** - Optimized tokenizer training workflows
+- **Model Loading** - Enhanced model loading and saving capabilities for testing data
+
 ## [1.4.6] - 2025-12-11
 
 ### Added
