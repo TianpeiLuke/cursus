@@ -1,5 +1,5 @@
 from pydantic import Field
-from .hyperparameters_base import ModelHyperparameters
+from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
 class LSTM2RiskHyperparameters(ModelHyperparameters):

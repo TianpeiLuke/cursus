@@ -227,10 +227,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Import processing modules from bsm_pytorch
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "../../../projects/bsm_pytorch/docker")
-)
 
 from processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
@@ -251,6 +247,10 @@ from processing.datasets.pipeline_datasets import PipelineDataset
 from processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
+)
+from processing.dataloaders.names3risk_collate import (
+    build_lstm2risk_collate_fn,
+    build_transformer2risk_collate_fn,
 )
 
 from lightning_models.utils.pl_train import (
@@ -537,10 +537,37 @@ def load_model_artifacts(
     config, embedding_mat, vocab, model_class = load_artifacts(artifact_path)
     logger.info("Loaded model_artifacts.pth")
 
-    # Reconstruct tokenizer
-    tokenizer_name = config.get("tokenizer", "bert-base-multilingual-cased")
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    logger.info(f"Reconstructed tokenizer: {tokenizer_name}")
+    # Reconstruct tokenizer - branch based on model class
+    model_class_str = config.get("model_class", "bimodal_bert")
+    logger.info(f"Loading tokenizer for model class: {model_class_str}")
+
+    if model_class_str in ["lstm2risk", "transformer2risk"]:
+        # BRANCH 1: Load custom BPE tokenizer from saved artifacts
+        tokenizer_path = os.path.join(model_dir, "tokenizer.json")
+
+        if os.path.exists(tokenizer_path):
+            from tokenizers import Tokenizer
+
+            tokenizer = Tokenizer.from_file(tokenizer_path)
+            logger.info(f"✓ Loaded custom BPE tokenizer from {tokenizer_path}")
+            logger.info(f"  Vocabulary size: {tokenizer.get_vocab_size()}")
+
+            # Extract PAD token ID for collate function
+            pad_token_id = tokenizer.token_to_id("[PAD]")
+            config["pad_token_id"] = pad_token_id if pad_token_id is not None else 0
+            logger.info(f"  PAD token ID: {config['pad_token_id']}")
+        else:
+            raise FileNotFoundError(
+                f"Custom tokenizer required for {model_class_str} but not found at {tokenizer_path}. "
+                f"Please ensure the model was trained with pytorch_training.py which saves tokenizer.json."
+            )
+    else:
+        # BRANCH 2: Load BERT tokenizer for other models (existing behavior)
+        tokenizer_name = config.get("tokenizer", "bert-base-multilingual-cased")
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        config["pad_token_id"] = tokenizer.pad_token_id
+        logger.info(f"✓ Loaded BERT tokenizer: {tokenizer_name}")
+        logger.info(f"  PAD token ID: {config['pad_token_id']}")
 
     # Load trained model
     model_path = os.path.join(model_dir, "model.pth")
@@ -851,7 +878,10 @@ def create_dataloader(
     """
     Create DataLoader with appropriate collate function.
 
-    Uses unified collate function for all model types.
+    Supports:
+    - LSTM models: Length-sorted batches for pack_padded_sequence
+    - Transformer models: Attention masking and block_size truncation
+    - BERT models: Standard BERT batching
 
     Args:
         pipeline_dataset: Dataset to create DataLoader for
@@ -860,16 +890,35 @@ def create_dataloader(
     Returns:
         Configured DataLoader
     """
-    # Use unified collate function for all model types
-    logger.info(
-        f"Using collate batch for model: {config.get('model_class', 'bimodal')}"
-    )
+    model_class = config.get("model_class", "bimodal_bert")
+    logger.info(f"Selecting collate function for model: {model_class}")
 
-    # Use unified keys for all models (single tokenizer design)
-    collate_batch = build_collate_batch(
-        input_ids_key=config.get("text_input_ids_key", "input_ids"),
-        attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
-    )
+    if model_class in ["lstm2risk", "bimodal_lstm"]:
+        # LSTM models: Need length sorting for pack_padded_sequence
+        pad_token = config.get("pad_token_id", 0)
+        collate_batch = build_lstm2risk_collate_fn(pad_token=pad_token)
+        logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
+        logger.info("  - Sequences sorted by length (descending)")
+        logger.info("  - Includes text_length for pack_padded_sequence")
+
+    elif model_class in ["transformer2risk", "bimodal_transformer"]:
+        # Transformer models: Need attention masking and block_size truncation
+        pad_token = config.get("pad_token_id", 0)
+        block_size = config.get("max_sen_len", 100)
+        collate_batch = build_transformer2risk_collate_fn(
+            pad_token=pad_token, block_size=block_size
+        )
+        logger.info(f"✓ Using Transformer2Risk collate function")
+        logger.info(f"  - Block size: {block_size}")
+        logger.info(f"  - Includes attention mask (pad_token={pad_token})")
+
+    else:
+        # Default: BERT-based models
+        collate_batch = build_collate_batch(
+            input_ids_key=config.get("text_input_ids_key", "input_ids"),
+            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+        )
+        logger.info(f"✓ Using default BERT collate function for {model_class}")
 
     batch_size = config.get("batch_size", 32)
     dataloader = DataLoader(

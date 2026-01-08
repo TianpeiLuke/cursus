@@ -99,6 +99,7 @@ class TokenizerTrainingConfig(ProcessingStepConfigBase):
                 "TARGET_COMPRESSION": str(self.target_compression),
                 "MIN_FREQUENCY": str(self.min_frequency),
                 "MAX_VOCAB_SIZE": str(self.max_vocab_size),
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
             }
 
         return self._environment_variables

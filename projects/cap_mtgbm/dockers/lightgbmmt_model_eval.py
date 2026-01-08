@@ -121,6 +121,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 required_packages = [
     "pyarrow>=10.0.0",
     "lightgbm>=3.3.0",
+    "pydantic>=2.0.0",  # Required for TrainingState in model classes
 ]
 
 install_packages(required_packages)

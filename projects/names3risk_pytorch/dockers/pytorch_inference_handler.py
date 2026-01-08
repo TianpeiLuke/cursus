@@ -325,6 +325,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
+from tokenizers import Tokenizer  # HuggingFace tokenizers for custom BPE
 
 from processing.processors import (
     Processor,
@@ -346,6 +347,10 @@ from processing.numerical.numerical_imputation_processor import (
 from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.pipeline_datasets import PipelineDataset
 from processing.dataloaders.pipeline_dataloader import build_collate_batch
+from processing.dataloaders.names3risk_collate import (
+    build_lstm2risk_collate_fn,
+    build_transformer2risk_collate_fn,
+)
 
 from lightning_models.utils.pl_train import (
     model_inference,
@@ -731,38 +736,23 @@ def create_numerical_processors(
 
 def data_preprocess_pipeline(
     config: Config,
+    tokenizer: Union[Tokenizer, AutoTokenizer],
     hyperparameters: Optional[Dict[str, Any]] = None,
-) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+) -> Tuple[Union[Tokenizer, AutoTokenizer], Dict[str, Processor]]:
     """
-    Build text preprocessing pipelines based on config and hyperparameters.
+    Build text preprocessing pipelines using provided tokenizer.
 
     For bimodal: Uses text_name with default or configured steps
     For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
 
     Args:
         config: Configuration object
+        tokenizer: Pre-loaded tokenizer (HuggingFace Tokenizer or AutoTokenizer)
         hyperparameters: Optional hyperparameters dict loaded from hyperparameters.json
 
     Returns:
         Tuple of (tokenizer, pipelines_dict)
     """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-multilingual-cased"
-
-    logger.info(f"Constructing tokenizer: {config.tokenizer}")
-
-    # ============================================================================
-    # DYNAMIC PADDING OPTIMIZATION
-    # ============================================================================
-    # Configure tokenizer with dynamic padding for better performance
-    # - use_fast=True: Uses fast Rust-based tokenizer (2-3x faster)
-    # - Dynamic padding: Controlled by config.fixed_tokenizer_length
-    #   * fixed_tokenizer_length=True: Always pad to max_sen_len (default, more memory)
-    #   * fixed_tokenizer_length=False: Pad to longest sequence in batch (recommended, saves 10-20ms)
-    # ============================================================================
-
-    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer, use_fast=True)
-
     # Log padding strategy
     padding_strategy = (
         "fixed (max_sen_len)" if config.fixed_tokenizer_length else "dynamic (longest)"
@@ -1410,8 +1400,42 @@ def model_fn(model_dir, context=None):
         create_numerical_processors(impute_dict) if impute_dict else {}
     )
 
-    # Reconstruct pipelines with hyperparameter-driven steps
-    tokenizer, pipelines = data_preprocess_pipeline(config, hyperparameters)
+    # ============================================================================
+    # LOAD TOKENIZER FROM MODEL ARTIFACTS
+    # ============================================================================
+    # Priority order:
+    # 1. Custom BPE tokenizer (lstm2risk/transformer2risk) from tokenizer.json
+    # 2. BERT tokenizer from saved tokenizer/ directory
+    # 3. Download from HuggingFace using config.tokenizer name
+    # ============================================================================
+    logger.info("Loading tokenizer...")
+
+    custom_tokenizer_file = os.path.join(model_dir, "tokenizer.json")
+    saved_tokenizer_dir = os.path.join(model_dir, "tokenizer")
+
+    if os.path.exists(custom_tokenizer_file):
+        # Load custom BPE tokenizer (lstm2risk/transformer2risk)
+        logger.info(f"Loading custom BPE tokenizer from {custom_tokenizer_file}")
+        tokenizer = Tokenizer.from_file(custom_tokenizer_file)
+        config.pad_token_id = tokenizer.token_to_id("[PAD]")
+        logger.info("✓ Loaded custom BPE tokenizer from model artifacts")
+
+    elif os.path.exists(saved_tokenizer_dir):
+        # Load saved BERT tokenizer
+        logger.info(f"Loading saved BERT tokenizer from {saved_tokenizer_dir}")
+        tokenizer = AutoTokenizer.from_pretrained(saved_tokenizer_dir, use_fast=True)
+        logger.info("✓ Loaded BERT tokenizer from model artifacts")
+
+    else:
+        # Fall back to HuggingFace download
+        if not config.tokenizer:
+            config.tokenizer = "bert-base-multilingual-cased"
+        logger.info(f"Loading tokenizer from HuggingFace: {config.tokenizer}")
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer, use_fast=True)
+        logger.info("✓ Loaded tokenizer from HuggingFace")
+
+    # Reconstruct pipelines with loaded tokenizer
+    tokenizer, pipelines = data_preprocess_pipeline(config, tokenizer, hyperparameters)
 
     # Add multiclass label processor if needed
     if not config.is_binary and config.num_classes > 2:
@@ -1642,10 +1666,32 @@ def predict_fn(input_object, model_data, context=None):
         ):
             dataset.add_pipeline(feature_name, processor)
 
-    collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
-    )
+    # Select appropriate collate function based on model class
+    model_class = config.model_class
+    logger.info(f"Selecting collate function for model: {model_class}")
+
+    if model_class in ["lstm2risk", "bimodal_lstm"]:
+        # LSTM models: Need length sorting for pack_padded_sequence
+        pad_token = config_predict.get("pad_token_id", 0)
+        collate_batch = build_lstm2risk_collate_fn(pad_token=pad_token)
+        logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
+
+    elif model_class in ["transformer2risk", "bimodal_transformer"]:
+        # Transformer models: Need attention masking and block_size truncation
+        pad_token = config_predict.get("pad_token_id", 0)
+        block_size = config.max_sen_len
+        collate_batch = build_transformer2risk_collate_fn(
+            pad_token=pad_token, block_size=block_size
+        )
+        logger.info(f"✓ Using Transformer2Risk collate function")
+
+    else:
+        # Default: BERT-based models
+        collate_batch = build_collate_batch(
+            input_ids_key=config.text_input_ids_key,
+            attention_mask_key=config.text_attention_mask_key,
+        )
+        logger.info(f"✓ Using default BERT collate function for {model_class}")
 
     batch_size = len(input_object)
     predict_dataloader = DataLoader(

@@ -1,5 +1,5 @@
 from pydantic import Field, model_validator
-from .hyperparameters_base import ModelHyperparameters
+from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
 class Transformer2RiskHyperparameters(ModelHyperparameters):
