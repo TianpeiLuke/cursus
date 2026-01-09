@@ -60,6 +60,11 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
     ```
     """
 
+    # ===== Essential User Inputs (Tier 1) =====
+    # These are fields that users must explicitly provide
+    # For text field specification
+    text_name: str = Field(description="Name of the primary text field to be processed")
+
     # ===== System Inputs with Defaults (Tier 2) =====
     # Override model_class from base to identify this as Transformer2Risk
 

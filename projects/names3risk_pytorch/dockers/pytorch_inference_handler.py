@@ -670,6 +670,50 @@ def get_text_field_names(config: Config) -> set:
     return text_fields
 
 
+def create_text_field_for_names3risk(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create 'text' field by concatenating 4 name fields for Names3Risk inference.
+    
+    Replicates the exact preprocessing logic from tabular_preprocessing.py
+    used during training data preparation.
+    
+    Args:
+        df: Input DataFrame with raw fields
+        
+    Returns:
+        DataFrame with 'text' field added (or original if text already exists)
+    """
+    text_fields = [
+        "emailAddress",
+        "billingAddressName",
+        "customerName",
+        "paymentAccountHolderName",
+    ]
+    
+    # Only create if text field doesn't already exist
+    if "text" not in df.columns:
+        # Check if all required fields exist
+        missing_fields = [f for f in text_fields if f not in df.columns]
+        if missing_fields:
+            logger.warning(
+                f"Missing fields for text creation: {missing_fields}. "
+                f"Creating empty text field as fallback."
+            )
+            # Create empty text field as fallback
+            df["text"] = ""
+        else:
+            # Replicate exact preprocessing logic from tabular_preprocessing.py
+            # Lines 349-353: df["text"] = df[text_fields].fillna("[MISSING]").agg("|".join, axis=1)
+            df["text"] = df[text_fields].fillna("[MISSING]").agg("|".join, axis=1)
+            logger.info(
+                f"✓ Created 'text' field by concatenating {len(text_fields)} name fields"
+            )
+    else:
+        logger.debug("'text' field already exists in input data, skipping creation")
+    
+    return df
+
+
 def load_risk_tables(model_dir: str) -> Dict[str, Any]:
     """Load risk tables from pickle file."""
     risk_file = os.path.join(model_dir, RISK_TABLE_FILE)
@@ -1595,6 +1639,18 @@ def predict_fn(input_object, model_data, context=None):
 
         # NOTE: Column reindexing removed for performance (was causing 600-700ms overhead)
         # PipelineDataset uses name-based column access, so column order doesn't matter
+
+    # ============================================================================
+    # NAMES3RISK PREPROCESSING: Create 'text' field from 4 name fields
+    # ============================================================================
+    # This replicates the preprocessing logic from tabular_preprocessing.py
+    # that concatenates emailAddress, billingAddressName, customerName, and
+    # paymentAccountHolderName into a single 'text' field for model input.
+    #
+    # During real-time inference, requests contain the raw 4 fields, but the
+    # model expects a pre-concatenated 'text' field (as created during training).
+    with log_timing("Names3Risk Text Field Creation"):
+        input_object = create_text_field_for_names3risk(input_object)
 
     # FAST PATH: Single-record inference optimization
     if len(input_object) == 1:

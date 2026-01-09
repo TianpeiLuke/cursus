@@ -21,6 +21,7 @@ TOKENIZER_TRAINING_CONTRACT = ScriptContract(
         "TARGET_COMPRESSION": "2.5",
         "MIN_FREQUENCY": "25",
         "MAX_VOCAB_SIZE": "50000",
+        "USE_SECURE_PYPI": "true",  # Controls PyPI source for package installation (default: secure CodeArtifact)
     },
     framework_requirements={
         "pandas": ">=1.3.0",
