@@ -485,12 +485,25 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
 
         # Create the training step
         try:
+            # Log what we're about to pass to TrainingStep
+            self.log_info(
+                f"[DEPENDS_ON] Creating TrainingStep '{step_name}' with {len(dependencies)} dependencies"
+            )
+            for dep in dependencies:
+                self.log_info(f"[DEPENDS_ON]   - {dep.name}")
+
             training_step = TrainingStep(
                 name=step_name,
                 estimator=estimator,
                 inputs=training_inputs,
                 depends_on=dependencies,
                 cache_config=self._get_cache_config(enable_caching),
+            )
+
+            # Verify depends_on was set correctly
+            step_depends_on = getattr(training_step, "depends_on", None) or []
+            self.log_info(
+                f"[DEPENDS_ON] TrainingStep created with depends_on: {[d.name for d in step_depends_on]}"
             )
 
             # Attach specification to the step for future reference

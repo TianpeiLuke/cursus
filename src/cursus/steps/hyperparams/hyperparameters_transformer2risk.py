@@ -1,4 +1,5 @@
 from pydantic import Field, model_validator
+from typing import List, Optional, Dict, Any
 from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
@@ -65,12 +66,52 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
     # For text field specification
     text_name: str = Field(description="Name of the primary text field to be processed")
 
+    # NEW: Track which fields were merged to create text field
+    text_source_fields: Optional[List[str]] = Field(
+        default=None,
+        description="Original field names that were merged to create text_name field. "
+        "These fields should be excluded from categorical processing in training "
+        "since they no longer exist after preprocessing. Used by pytorch_training to "
+        "filter cat_field_list before risk table processing.",
+    )
+
     # ===== System Inputs with Defaults (Tier 2) =====
     # Override model_class from base to identify this as Transformer2Risk
 
     model_class: str = Field(
         default="transformer2risk",
         description="Model class identifier for this hyperparameter configuration",
+    )
+
+    # For tokenizer settings
+    max_sen_len: int = Field(
+        default=512, description="Maximum sentence length for tokenizer"
+    )
+
+    fixed_tokenizer_length: bool = Field(
+        default=True, description="Use fixed tokenizer length"
+    )
+
+    text_input_ids_key: str = Field(
+        default="input_ids", description="Key name for input_ids from tokenizer output"
+    )
+
+    text_attention_mask_key: str = Field(
+        default="attention_mask",
+        description="Key name for attention_mask from tokenizer output",
+    )
+
+    # Text processing pipeline configuration
+    text_processing_steps: List[str] = Field(
+        default=[
+            "dialogue_splitter",
+            "html_normalizer",
+            "emoji_remover",
+            "text_normalizer",
+            "dialogue_chunker",
+            "tokenizer",
+        ],
+        description="Processing steps for text preprocessing pipeline",
     )
 
     # ===== Transformer-Specific Architecture Parameters (Tier 2) =====
@@ -147,6 +188,12 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
     # ===== Training and Optimization Parameters (Tier 2) =====
     # These parameters control the optimization process
 
+    lr_decay: float = Field(default=0.05, description="Learning rate decay")
+
+    momentum: float = Field(
+        default=0.9, description="Momentum for SGD optimizer (if SGD is chosen)"
+    )
+
     weight_decay: float = Field(
         default=0.0, description="Weight decay for optimizer (L2 penalty)"
     )
@@ -163,6 +210,77 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
     run_scheduler: bool = Field(
         default=True, description="Run learning rate scheduler flag"
     )
+
+    val_check_interval: float = Field(
+        default=0.25,
+        description="Validation check interval during training (float for fraction of epoch, int for steps)",
+    )
+
+    gradient_clip_val: float = Field(
+        default=1.0,
+        description="Value for gradient clipping to prevent exploding gradients",
+    )
+
+    fp16: bool = Field(
+        default=False,
+        description="Enable 16-bit mixed precision training (requires compatible hardware)",
+    )
+
+    use_gradient_checkpointing: bool = Field(
+        default=False,
+        description="Enable gradient checkpointing to reduce memory usage at the cost of ~20% slower training",
+    )
+
+    # Early stopping and Checkpointing parameters
+    early_stop_metric: str = Field(
+        default="val_loss", description="Metric for early stopping"
+    )
+
+    early_stop_patience: int = Field(
+        default=3, gt=0, le=10, description="Patience for early stopping"
+    )
+
+    load_ckpt: bool = Field(default=False, description="Load checkpoint flag")
+
+    # Preprocessing parameters
+    smooth_factor: float = Field(
+        default=0.0, description="Risk table smoothing factor for categorical encoding"
+    )
+
+    count_threshold: int = Field(
+        default=0, description="Risk table count threshold for categorical encoding"
+    )
+
+    # Text Preprocessing and Tokenization parameters
+    text_field_overwrite: bool = Field(
+        default=False,
+        description="Overwrite text field if it exists (e.g. during feature engineering)",
+    )
+
+    # For chunking long texts
+    chunk_trancate: bool = Field(
+        default=True, description="Chunk truncation flag for long texts"
+    )  # Typo 'trancate' kept as per original
+
+    max_total_chunks: int = Field(
+        default=3, description="Maximum total chunks for processing long texts"
+    )
+
+    def get_public_init_fields(self) -> Dict[str, Any]:
+        """
+        Override get_public_init_fields to include bimodal-specific derived fields.
+        Gets a dictionary of public fields suitable for initializing a child config.
+        """
+        # Get fields from parent class
+        base_fields = super().get_public_init_fields()
+
+        # Add derived fields that should be exposed
+        derived_fields = {
+            # If you need to expose any derived fields, add them here
+        }
+
+        # Combine (derived fields take precedence if overlap)
+        return {**base_fields, **derived_fields}
 
     @model_validator(mode="after")
     def validate_transformer_hyperparameters(self) -> "Transformer2RiskHyperparameters":

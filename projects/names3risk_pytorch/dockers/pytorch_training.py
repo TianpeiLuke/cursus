@@ -390,6 +390,11 @@ class Config(BaseModel):
     text_name: Optional[str] = (
         None  # Optional for trimodal (uses primary/secondary instead)
     )
+    # NEW: Track which fields were merged to create text field
+    text_source_fields: Optional[List[str]] = Field(
+        default=None,
+        description="Original field names that were merged to create text_name field",
+    )
     label_name: str = "label"
     batch_size: int = 32
     full_field_list: List[str] = Field(default_factory=list)
@@ -774,6 +779,14 @@ def build_preprocessing_pipelines(
             text_fields.add(config.primary_text_name)
         if config.secondary_text_name:
             text_fields.add(config.secondary_text_name)
+
+        # NEW: Add source fields that were merged into text
+        if hasattr(config, "text_source_fields") and config.text_source_fields:
+            text_fields.update(config.text_source_fields)
+            log_once(
+                logger,
+                f"ℹ️  Excluding merged text source fields from risk table processing: {config.text_source_fields}",
+            )
 
         # Filter categorical fields to exclude text fields
         actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]

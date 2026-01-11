@@ -382,6 +382,9 @@ class PipelineTemplateBase(ABC):
         if hasattr(template, "step_instances"):
             self.pipeline_metadata["step_instances"] = template.step_instances
 
+        # Store assembler reference for analysis
+        self.assembler = template
+
     @classmethod
     def create_with_components(
         cls, config_path: str, context_name: Optional[str] = None, **kwargs: Any
@@ -455,6 +458,23 @@ class PipelineTemplateBase(ABC):
             **kwargs,
         )
         return template.generate_pipeline()
+
+    def analyze_pipeline_structure(self) -> None:
+        """
+        Analyze and print the complete pipeline structure.
+
+        Delegates to the PipelineAssembler's analyze_pipeline_structure method.
+        Must be called after generate_pipeline().
+
+        Raises:
+            AttributeError: If called before generate_pipeline()
+        """
+        if not hasattr(self, "assembler"):
+            raise AttributeError(
+                "Pipeline assembler not found. Call generate_pipeline() first."
+            )
+
+        self.assembler.analyze_pipeline_structure()
 
     # Note: fill_execution_document() method removed as part of Phase 2 cleanup
     # Execution document generation is now handled by the standalone execution document generator

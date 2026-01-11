@@ -398,9 +398,11 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
         Args:
             assembler: PipelineAssembler instance
         """
-        # Store general pipeline metadata (non-execution document related)
+        # Call parent method to ensure assembler reference is stored for analysis
+        super()._store_pipeline_metadata(assembler)
+
+        # Add DynamicPipelineTemplate-specific logging
         if hasattr(assembler, "step_instances"):
-            self.pipeline_metadata["step_instances"] = assembler.step_instances
             self.logger.info(f"Stored {len(assembler.step_instances)} step instances")
 
         # Note: Cradle data loading requests and registration configs storage removed

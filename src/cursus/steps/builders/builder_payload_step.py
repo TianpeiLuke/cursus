@@ -171,7 +171,7 @@ class PayloadStepBuilder(StepBuilderBase):
 
             env_vars["FIELD_DEFAULTS"] = json.dumps(self.config.field_defaults)
             self.log_info(
-                "Added FIELD_DEFAULTS for %d fields", len(self.config.field_defaults)
+                f"Added FIELD_DEFAULTS for {len(self.config.field_defaults)} fields"
             )
 
         self.log_info("Payload environment variables configured")

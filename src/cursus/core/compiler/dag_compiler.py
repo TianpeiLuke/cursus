@@ -641,6 +641,23 @@ class PipelineDAGCompiler:
         """
         return self._last_template
 
+    def analyze_pipeline_structure(self) -> None:
+        """
+        Analyze and print the complete pipeline structure.
+
+        Delegates to the template's analyze_pipeline_structure method.
+        Must be called after compile() or compile_with_report().
+
+        Raises:
+            AttributeError: If called before compilation
+        """
+        if self._last_template is None:
+            raise AttributeError(
+                "No template found. Call compile() or compile_with_report() first."
+            )
+
+        self._last_template.analyze_pipeline_structure()
+
     # Note: compile_and_fill_execution_doc() method removed as part of Phase 2 cleanup
     # Execution document generation is now handled by the standalone execution document generator
     # (ExecutionDocumentGenerator in cursus.mods.exe_doc.generator)

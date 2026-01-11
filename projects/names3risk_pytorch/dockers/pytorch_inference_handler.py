@@ -673,13 +673,13 @@ def get_text_field_names(config: Config) -> set:
 def create_text_field_for_names3risk(df: pd.DataFrame) -> pd.DataFrame:
     """
     Create 'text' field by concatenating 4 name fields for Names3Risk inference.
-    
+
     Replicates the exact preprocessing logic from tabular_preprocessing.py
     used during training data preparation.
-    
+
     Args:
         df: Input DataFrame with raw fields
-        
+
     Returns:
         DataFrame with 'text' field added (or original if text already exists)
     """
@@ -689,7 +689,7 @@ def create_text_field_for_names3risk(df: pd.DataFrame) -> pd.DataFrame:
         "customerName",
         "paymentAccountHolderName",
     ]
-    
+
     # Only create if text field doesn't already exist
     if "text" not in df.columns:
         # Check if all required fields exist
@@ -710,7 +710,7 @@ def create_text_field_for_names3risk(df: pd.DataFrame) -> pd.DataFrame:
             )
     else:
         logger.debug("'text' field already exists in input data, skipping creation")
-    
+
     return df
 
 
