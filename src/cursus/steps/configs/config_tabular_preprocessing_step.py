@@ -96,6 +96,12 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         description="Enable dtype optimization to reduce memory usage. Downcasts numeric types and converts low-cardinality columns. Default: True",
     )
 
+    streaming_batch_size: int = Field(
+        default=0,
+        ge=0,
+        description="Number of shards to process per batch for streaming mode. 0=disabled (load all shards), 15-20=moderate memory reduction, 5-10=maximum reduction. Default: 0 (disabled)",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
     # They are private with public read-only property access
@@ -162,6 +168,7 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
             env_vars["MAX_WORKERS"] = str(self.max_workers)
             env_vars["BATCH_SIZE"] = str(self.batch_size)
             env_vars["OPTIMIZE_MEMORY"] = "true" if self.optimize_memory else "false"
+            env_vars["STREAMING_BATCH_SIZE"] = str(self.streaming_batch_size)
 
             self._preprocessing_environment_variables = env_vars
 

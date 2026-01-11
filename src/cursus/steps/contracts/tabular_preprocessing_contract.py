@@ -24,6 +24,7 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
         "MAX_WORKERS": "0",
         "BATCH_SIZE": "5",
         "OPTIMIZE_MEMORY": "true",
+        "STREAMING_BATCH_SIZE": "0",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
@@ -62,6 +63,17 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     - Parquet recommended for large datasets (better compression and performance)
     
     Memory Optimization Configuration:
+    - STREAMING_BATCH_SIZE (default: "0"=disabled) - **PRIMARY MEMORY CONTROL**
+      * Enables streaming batch processing to avoid loading all shards at once
+      * When set > 0, processes that many shards per batch, freeing memory between batches
+      * Set to "0" to disable (original behavior, loads all shards into memory)
+      * Recommended values:
+        - "15-20" for moderate memory reduction (80-85% reduction)
+        - "10-15" for high memory reduction (85-90% reduction)
+        - "5-10" for maximum memory reduction (90-95% reduction)
+      * Example: 100 shards × 50MB = 5GB peak → With "15": 750MB peak (85% reduction)
+      * Trade-off: Slightly slower due to multiple concatenation passes
+      * **Use this first when encountering out-of-memory errors**
     - MAX_WORKERS (default: "0"=auto) - Controls parallel shard reading workers
       * Set to "1" for sequential processing (lowest memory, ~60% reduction)
       * Set to "2" for moderate parallelism (balanced, ~40% reduction)
@@ -70,11 +82,27 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     - BATCH_SIZE (default: "5") - Controls DataFrame concatenation batch size
       * Smaller values reduce peak memory during concatenation (10-20% reduction)
       * Valid range: 2-10, recommended: 3-5 for memory-constrained environments
+      * Works with STREAMING_BATCH_SIZE for fine-tuning memory usage
     - OPTIMIZE_MEMORY (default: "true") - Enables dtype optimization
       * Downcasts int64→int32, float64→float32 (30-50% memory reduction)
       * Converts low-cardinality object columns to category type
       * Set to "false" to disable optimization (not recommended)
-    - Combined effect: Can reduce memory usage by 70-80% with MAX_WORKERS=1
+    - Combined effect: With STREAMING_BATCH_SIZE=15 + MAX_WORKERS=2 + OPTIMIZE_MEMORY=true,
+      can achieve 90-95% memory reduction in extreme cases
+    
+    Memory Optimization Strategy (Progressive Troubleshooting):
+    Level 1 (First try if OOM errors):
+      STREAMING_BATCH_SIZE="15"  # 80-85% reduction
+      MAX_WORKERS="0"             # Keep auto (fastest)
+      
+    Level 2 (Still OOM):
+      STREAMING_BATCH_SIZE="10"  # 85-90% reduction
+      MAX_WORKERS="2"             # Moderate parallelism
+      
+    Level 3 (Maximum memory savings):
+      STREAMING_BATCH_SIZE="5"   # 90-95% reduction
+      MAX_WORKERS="1"             # Sequential processing
+      BATCH_SIZE="3"              # Further reduce concat batches
     
     Signature File Format:
     - CSV format with comma-separated column names

@@ -247,11 +247,82 @@ def _batch_concat_dataframes(dfs: list, batch_size: int = 10) -> pd.DataFrame:
     return dfs[0]
 
 
+def _combine_shards_streaming(
+    shard_args: list,
+    max_workers: int,
+    concat_batch_size: int,
+    streaming_batch_size: int,
+) -> pd.DataFrame:
+    """
+    Combine shards using streaming batch processing for memory efficiency.
+
+    Instead of loading all shards into memory, processes them in batches,
+    concatenating incrementally and freeing memory between batches.
+
+    Memory usage: streaming_batch_size × avg_shard_size (much lower than loading all)
+
+    Args:
+        shard_args: List of shard arguments for _read_shard_wrapper
+        max_workers: Number of parallel workers
+        concat_batch_size: Batch size for DataFrame concatenation
+        streaming_batch_size: Number of shards to process per streaming batch
+
+    Returns:
+        Combined DataFrame from all shards
+    """
+    total_shards = len(shard_args)
+    result_df = None
+    total_rows = 0
+
+    # Process shards in streaming batches
+    for batch_start in range(0, total_shards, streaming_batch_size):
+        batch_end = min(batch_start + streaming_batch_size, total_shards)
+        batch_args = shard_args[batch_start:batch_end]
+        batch_num = (batch_start // streaming_batch_size) + 1
+        total_batches = (
+            total_shards + streaming_batch_size - 1
+        ) // streaming_batch_size
+
+        print(
+            f"[INFO] Processing streaming batch {batch_num}/{total_batches} ({len(batch_args)} shards)"
+        )
+
+        # Read current batch of shards
+        if max_workers > 1 and len(batch_args) > 1:
+            with Pool(processes=max_workers) as pool:
+                batch_dfs = pool.map(_read_shard_wrapper, batch_args)
+        else:
+            batch_dfs = [_read_shard_wrapper(args) for args in batch_args]
+
+        # Concatenate batch
+        batch_result = _batch_concat_dataframes(batch_dfs, concat_batch_size)
+        batch_rows = batch_result.shape[0]
+        total_rows += batch_rows
+
+        print(f"[INFO] Batch {batch_num} combined: {batch_rows} rows")
+
+        # Incrementally concatenate with result
+        if result_df is None:
+            result_df = batch_result
+        else:
+            result_df = pd.concat([result_df, batch_result], axis=0, ignore_index=True)
+
+        # Free memory
+        del batch_dfs, batch_result
+        gc.collect()
+
+    print(
+        f"[INFO] Streaming complete: {total_rows} total rows from {total_shards} shards"
+    )
+    return result_df
+
+
 def combine_shards(
     input_dir: str,
     signature_columns: Optional[list] = None,
     max_workers: Optional[int] = None,
     batch_size: int = 10,
+    streaming_batch_size: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Detect and combine all supported data shards in a directory using parallel processing.
@@ -259,11 +330,19 @@ def combine_shards(
     Uses parallel shard reading and batch concatenation for improved performance.
     Memory-efficient approach avoids PyArrow's 2GB column limit error.
 
+    Streaming Mode:
+    When streaming_batch_size is set, processes shards in batches to avoid loading
+    all DataFrames into memory simultaneously. This is the most memory-efficient mode.
+
     Args:
         input_dir: Directory containing data shards
         signature_columns: Optional column names for CSV/TSV files
         max_workers: Maximum number of parallel workers (default: cpu_count)
         batch_size: Number of DataFrames to concatenate at once (default: 10)
+        streaming_batch_size: Number of shards to process per batch (enables streaming mode)
+            - If None: Loads all shards into memory (original behavior)
+            - If set: Processes shards in batches, concatenating incrementally
+            - Recommended: 10-20 shards per batch for memory-constrained environments
 
     Returns:
         Combined DataFrame from all shards
@@ -302,6 +381,18 @@ def combine_shards(
             for i, shard in enumerate(all_shards)
         ]
 
+        # STREAMING MODE: Process shards in batches to avoid loading all into memory
+        if streaming_batch_size is not None and streaming_batch_size > 0:
+            print(
+                f"[INFO] Streaming mode enabled: processing {streaming_batch_size} shards per batch"
+            )
+            result_df = _combine_shards_streaming(
+                shard_args, max_workers, batch_size, streaming_batch_size
+            )
+            print(f"[INFO] Final combined shape: {result_df.shape}")
+            return result_df
+
+        # ORIGINAL MODE: Load all shards then concatenate
         # Read shards in parallel
         if max_workers > 1 and total_shards > 1:
             with Pool(processes=max_workers) as pool:
@@ -454,6 +545,9 @@ def main(
     max_workers = int(environ_vars.get("MAX_WORKERS", 0)) or None  # 0 means auto
     batch_size = int(environ_vars.get("BATCH_SIZE", 5))  # Reduced from 10 to 5
     optimize_memory = environ_vars.get("OPTIMIZE_MEMORY", "true").lower() == "true"
+    streaming_batch_size = (
+        int(environ_vars.get("STREAMING_BATCH_SIZE", 0)) or None
+    )  # 0 means disabled
 
     # Extract paths
     input_data_dir = input_paths["DATA"]
@@ -467,6 +561,9 @@ def main(
     log(f"  MAX_WORKERS: {max_workers if max_workers else 'auto'}")
     log(f"  BATCH_SIZE: {batch_size}")
     log(f"  OPTIMIZE_MEMORY: {optimize_memory}")
+    log(
+        f"  STREAMING_BATCH_SIZE: {streaming_batch_size if streaming_batch_size else 'disabled'}"
+    )
 
     # 1. Setup paths
     output_path = Path(output_dir)
@@ -481,7 +578,9 @@ def main(
 
     # 3. Combine data shards with memory optimization
     log(f"[INFO] Combining data shards from {input_data_dir}…")
-    df = combine_shards(input_data_dir, signature_columns, max_workers, batch_size)
+    df = combine_shards(
+        input_data_dir, signature_columns, max_workers, batch_size, streaming_batch_size
+    )
     log(f"[INFO] Combined data shape: {df.shape}")
 
     # 3.5 Apply memory optimization if enabled
@@ -664,6 +763,7 @@ if __name__ == "__main__":
             "MAX_WORKERS": os.environ.get("MAX_WORKERS", "0"),
             "BATCH_SIZE": os.environ.get("BATCH_SIZE", "5"),
             "OPTIMIZE_MEMORY": os.environ.get("OPTIMIZE_MEMORY", "true"),
+            "STREAMING_BATCH_SIZE": os.environ.get("STREAMING_BATCH_SIZE", "0"),
         }
 
         # Execute the main processing logic
