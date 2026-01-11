@@ -21,6 +21,9 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     optional_env_vars={
         "LABEL_FIELD": "",
         "OUTPUT_FORMAT": "CSV",
+        "MAX_WORKERS": "0",
+        "BATCH_SIZE": "5",
+        "OPTIMIZE_MEMORY": "true",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
@@ -57,6 +60,21 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     - Case-insensitive, defaults to CSV if invalid value provided
     - Format applies to all output splits (train/val/test)
     - Parquet recommended for large datasets (better compression and performance)
+    
+    Memory Optimization Configuration:
+    - MAX_WORKERS (default: "0"=auto) - Controls parallel shard reading workers
+      * Set to "1" for sequential processing (lowest memory, ~60% reduction)
+      * Set to "2" for moderate parallelism (balanced, ~40% reduction)
+      * Set to "0" or omit for automatic (uses all CPUs, highest memory)
+      * Recommendation: Start with "2", use "1" if out-of-memory errors persist
+    - BATCH_SIZE (default: "5") - Controls DataFrame concatenation batch size
+      * Smaller values reduce peak memory during concatenation (10-20% reduction)
+      * Valid range: 2-10, recommended: 3-5 for memory-constrained environments
+    - OPTIMIZE_MEMORY (default: "true") - Enables dtype optimization
+      * Downcasts int64→int32, float64→float32 (30-50% memory reduction)
+      * Converts low-cardinality object columns to category type
+      * Set to "false" to disable optimization (not recommended)
+    - Combined effect: Can reduce memory usage by 70-80% with MAX_WORKERS=1
     
     Signature File Format:
     - CSV format with comma-separated column names

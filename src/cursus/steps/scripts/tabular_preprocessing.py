@@ -14,9 +14,53 @@ from typing import Dict, Optional, Callable, Any
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
+import gc
 from sklearn.model_selection import train_test_split
 
 # --- Helper Functions ---
+
+
+def optimize_dtypes(
+    df: pd.DataFrame, log_func: Optional[Callable] = None
+) -> pd.DataFrame:
+    """
+    Optimize DataFrame dtypes to reduce memory usage.
+
+    Applies the following optimizations:
+    - Downcast numeric types (int64->int32, float64->float32)
+    - Convert object columns with low cardinality to category
+
+    Args:
+        df: Input DataFrame
+        log_func: Optional logging function
+
+    Returns:
+        DataFrame with optimized dtypes
+    """
+    log = log_func or print
+    initial_memory = df.memory_usage(deep=True).sum() / 1024**2
+
+    # Downcast numeric columns
+    for col in df.select_dtypes(include=["int64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="integer")
+
+    for col in df.select_dtypes(include=["float64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="float")
+
+    # Convert low-cardinality object columns to category
+    for col in df.select_dtypes(include=["object"]).columns:
+        num_unique = df[col].nunique()
+        num_total = len(df[col])
+        if num_unique / num_total < 0.5:  # Less than 50% unique values
+            df[col] = df[col].astype("category")
+
+    final_memory = df.memory_usage(deep=True).sum() / 1024**2
+    reduction = (1 - final_memory / initial_memory) * 100
+    log(
+        f"[INFO] Memory optimization: {initial_memory:.2f} MB -> {final_memory:.2f} MB ({reduction:.1f}% reduction)"
+    )
+
+    return df
 
 
 def load_signature_columns(signature_path: str) -> Optional[list]:
@@ -278,6 +322,10 @@ def combine_shards(
         print(f"[INFO] Concatenating DataFrames with batch_size={batch_size}")
         result_df = _batch_concat_dataframes(dataframes, batch_size)
 
+        # Clear intermediate DataFrames to free memory
+        del dataframes
+        gc.collect()
+
         # Verify final shape
         print(f"[INFO] Final combined shape: {result_df.shape}")
 
@@ -316,12 +364,23 @@ def main(
     train_ratio = float(environ_vars.get("TRAIN_RATIO", 0.7))
     test_val_ratio = float(environ_vars.get("TEST_VAL_RATIO", 0.5))
 
+    # Memory optimization parameters
+    max_workers = int(environ_vars.get("MAX_WORKERS", 0)) or None  # 0 means auto
+    batch_size = int(environ_vars.get("BATCH_SIZE", 5))  # Reduced from 10 to 5
+    optimize_memory = environ_vars.get("OPTIMIZE_MEMORY", "true").lower() == "true"
+
     # Extract paths
     input_data_dir = input_paths["DATA"]
     input_signature_dir = input_paths["SIGNATURE"]
     output_dir = output_paths["processed_data"]
     # Use print function if no logger is provided
     log = logger or print
+
+    # Log memory optimization settings
+    log(f"[INFO] Memory optimization settings:")
+    log(f"  MAX_WORKERS: {max_workers if max_workers else 'auto'}")
+    log(f"  BATCH_SIZE: {batch_size}")
+    log(f"  OPTIMIZE_MEMORY: {optimize_memory}")
 
     # 1. Setup paths
     output_path = Path(output_dir)
@@ -334,10 +393,14 @@ def main(
     else:
         log("[INFO] No signature file found, using default column handling")
 
-    # 3. Combine data shards
+    # 3. Combine data shards with memory optimization
     log(f"[INFO] Combining data shards from {input_data_dir}…")
-    df = combine_shards(input_data_dir, signature_columns)
+    df = combine_shards(input_data_dir, signature_columns, max_workers, batch_size)
     log(f"[INFO] Combined data shape: {df.shape}")
+
+    # 3.5 Apply memory optimization if enabled
+    if optimize_memory:
+        df = optimize_dtypes(df, log)
 
     # 4. Process columns and labels (conditional based on label_field availability)
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
@@ -471,6 +534,9 @@ if __name__ == "__main__":
             "TRAIN_RATIO": str(TRAIN_RATIO),
             "TEST_VAL_RATIO": str(TEST_VAL_RATIO),
             "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "CSV"),
+            "MAX_WORKERS": os.environ.get("MAX_WORKERS", "0"),
+            "BATCH_SIZE": os.environ.get("BATCH_SIZE", "5"),
+            "OPTIMIZE_MEMORY": os.environ.get("OPTIMIZE_MEMORY", "true"),
         }
 
         # Execute the main processing logic

@@ -78,6 +78,24 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         description="Output format for processed data ('CSV', 'TSV', or 'Parquet'). Default: CSV",
     )
 
+    max_workers: int = Field(
+        default=0,
+        ge=0,
+        description="Maximum parallel workers for shard reading. 0=auto, 1=sequential (lowest memory), 2=moderate. Default: 0 (auto)",
+    )
+
+    batch_size: int = Field(
+        default=5,
+        ge=2,
+        le=10,
+        description="DataFrame concatenation batch size. Smaller values reduce peak memory. Range: 2-10. Default: 5",
+    )
+
+    optimize_memory: bool = Field(
+        default=False,
+        description="Enable dtype optimization to reduce memory usage. Downcasts numeric types and converts low-cardinality columns. Default: True",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
     # They are private with public read-only property access
@@ -139,6 +157,11 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
             # Add output format
             env_vars["OUTPUT_FORMAT"] = self.output_format
+
+            # Add memory optimization parameters
+            env_vars["MAX_WORKERS"] = str(self.max_workers)
+            env_vars["BATCH_SIZE"] = str(self.batch_size)
+            env_vars["OPTIMIZE_MEMORY"] = "true" if self.optimize_memory else "false"
 
             self._preprocessing_environment_variables = env_vars
 
