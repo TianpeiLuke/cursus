@@ -25,6 +25,8 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
         "BATCH_SIZE": "5",
         "OPTIMIZE_MEMORY": "true",
         "STREAMING_BATCH_SIZE": "0",
+        "ENABLE_TRUE_STREAMING": "false",
+        "SHARD_SIZE": "100000",
     },
     framework_requirements={
         "pandas": ">=1.3.0",

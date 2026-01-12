@@ -106,6 +106,22 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         description="Number of files to process per batch for streaming mode. 0=disabled (load all files), 15-20=moderate memory reduction, 5-10=maximum reduction. Default: 0 (disabled)",
     )
 
+    enable_true_streaming: bool = Field(
+        default=False,
+        description="Enable true streaming mode that never loads full DataFrame into memory. "
+        "Provides fixed ~2GB memory usage regardless of data size. "
+        "Requires write_data_shards=True (auto-enabled). "
+        "Recommended for datasets with 30M+ rows causing OOM errors. Default: False",
+    )
+
+    metadata_format: str = Field(
+        default="JSON",
+        description="Metadata output format. "
+        "'JSON': Detailed metadata with statistics (default). "
+        "'MODS': Lightweight 3-column CSV format (recommended for streaming mode). "
+        "Default: JSON",
+    )
+
     # Update to Pydantic V2 style model_config
     model_config = {
         "arbitrary_types_allowed": True,
@@ -134,6 +150,18 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         v_upper = v.upper()
         if v_upper not in allowed:
             raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
+        return v_upper
+
+    @field_validator("metadata_format")
+    @classmethod
+    def validate_metadata_format(cls, v: str) -> str:
+        """
+        Ensure metadata_format is one of the allowed values.
+        """
+        allowed = {"JSON", "MODS"}
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(f"metadata_format must be one of {allowed}, got '{v}'")
         return v_upper
 
     @model_validator(mode="after")
@@ -252,6 +280,10 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
                 "BATCH_SIZE": str(self.batch_size),
                 "OPTIMIZE_MEMORY": "true" if self.optimize_memory else "false",
                 "STREAMING_BATCH_SIZE": str(self.streaming_batch_size),
+                "ENABLE_TRUE_STREAMING": "true"
+                if self.enable_true_streaming
+                else "false",
+                "METADATA_FORMAT": self.metadata_format,
             }
         )
 

@@ -50,28 +50,52 @@ class DAGConfigFactory:
             dag: Pipeline DAG object to create configurations for
         """
         logger.info("🔧 Initializing DAGConfigFactory...")
-        
+
         self.dag = dag
         self.config_generator = None  # Initialized after base configs are set
 
         # EAGER initialization with progress feedback to avoid hanging
         logger.info("📊 Step 1/3: Mapping DAG nodes to config classes...")
         self._config_class_map = self._map_dag_to_config_classes_robust(dag)
-        logger.info(f"✅ Mapped {len(self._config_class_map)} DAG nodes to config classes")
-        
+        logger.info(
+            f"✅ Mapped {len(self._config_class_map)} DAG nodes to config classes"
+        )
+
         # Pre-compute processing config requirement (cache to avoid repeated expensive checks)
         logger.info("📊 Step 2/3: Checking processing config requirements...")
         self._needs_processing_config = self._check_if_needs_processing_config()
-        
+
         # Cache the actual field requirements to avoid expensive extraction on every call
         self._cached_processing_requirements = None
         if self._needs_processing_config:
-            logger.info("📊 Step 2b/3: Extracting processing config field requirements...")
-            self._cached_processing_requirements = self._extract_processing_requirements()
-            logger.info(f"✅ Cached {len(self._cached_processing_requirements)} processing config fields")
+            logger.info(
+                "📊 Step 2b/3: Extracting processing config field requirements..."
+            )
+            self._cached_processing_requirements = (
+                self._extract_processing_requirements()
+            )
+            logger.info(
+                f"✅ Cached {len(self._cached_processing_requirements)} processing config fields"
+            )
         else:
             logger.info("✅ Processing config not required")
-        
+
+        # Pre-compute and cache step-specific requirements for ALL steps to avoid hanging
+        logger.info("📊 Step 2c/3: Pre-computing step requirements for all steps...")
+        self._cached_step_requirements: Dict[str, List[Dict[str, Any]]] = {}
+        self._precompute_all_step_requirements()
+        logger.info(
+            f"✅ Cached requirements for {len(self._cached_step_requirements)} steps"
+        )
+
+        # Pre-compute and cache inheritance checks for all config classes
+        logger.info("📊 Step 2d/3: Pre-computing inheritance relationships...")
+        self._cached_inheritance_info: Dict[str, Dict[str, bool]] = {}
+        self._precompute_inheritance_checks()
+        logger.info(
+            f"✅ Cached inheritance info for {len(self._cached_inheritance_info)} steps"
+        )
+
         self.base_config = None  # BasePipelineConfig instance
         self.base_processing_config = None  # BaseProcessingStepConfig instance
         self.step_configs: Dict[
@@ -345,25 +369,25 @@ class DAGConfigFactory:
     def _check_if_needs_processing_config(self) -> bool:
         """
         Check if any step in the DAG requires processing configuration.
-        
+
         This method is called once during initialization and cached to avoid
         repeated expensive inheritance checks.
-        
+
         Returns:
             True if any step requires processing config, False otherwise
         """
         try:
             logger.debug("Checking if any step requires processing configuration...")
-            
+
             # Check if any step requires processing configuration
             for config_class in self._config_class_map.values():
                 if self._inherits_from_processing_config(config_class):
                     logger.debug("Found step requiring processing configuration")
                     return True
-            
+
             logger.debug("No steps require processing configuration")
             return False
-            
+
         except Exception as e:
             logger.warning(f"Error checking processing config requirement: {e}")
             return False
@@ -371,11 +395,11 @@ class DAGConfigFactory:
     def _extract_processing_requirements(self) -> List[Dict[str, Any]]:
         """
         Extract base processing configuration field requirements.
-        
+
         This expensive operation is called once during initialization and cached.
         Extracts the 9 base processing fields that ProcessingStepConfigBase adds
         on top of BasePipelineConfig.
-        
+
         Returns:
             List of field requirement dictionaries for processing-specific fields
         """
@@ -384,20 +408,130 @@ class DAGConfigFactory:
             from ...steps.configs.config_processing_step_base import (
                 ProcessingStepConfigBase,
             )
-            
+
             logger.debug("Extracting processing config field requirements...")
             requirements = extract_non_inherited_fields(
                 ProcessingStepConfigBase, BasePipelineConfig
             )
             logger.debug(f"Extracted {len(requirements)} processing config fields")
             return requirements
-            
+
         except ImportError as e:
             logger.warning(f"Could not import processing config classes: {e}")
             return []
         except Exception as e:
             logger.error(f"Error extracting processing requirements: {e}")
             return []
+
+    def _precompute_all_step_requirements(self) -> None:
+        """
+        Pre-compute and cache step-specific requirements for all steps.
+
+        This expensive operation runs once during initialization and caches results
+        for all steps in the DAG. Each step's requirements are computed by calling
+        _extract_step_specific_fields which performs ~200+ operations per step.
+
+        By caching all results upfront, subsequent calls to get_step_requirements(),
+        can_auto_configure_step(), and get_pending_steps() return instantly.
+        """
+        for step_name, config_class in self._config_class_map.items():
+            try:
+                logger.debug(f"Pre-computing requirements for {step_name}...")
+                requirements = self._extract_step_specific_fields(config_class)
+                self._cached_step_requirements[step_name] = requirements
+                logger.debug(f"  ✓ Cached {len(requirements)} fields for {step_name}")
+            except Exception as e:
+                logger.warning(f"Failed to extract requirements for {step_name}: {e}")
+                # Store empty list as fallback to avoid re-attempting
+                self._cached_step_requirements[step_name] = []
+
+    def _precompute_inheritance_checks(self) -> None:
+        """
+        Pre-compute and cache inheritance relationships for all config classes.
+
+        Computes once during initialization whether each config class inherits from
+        ProcessingStepConfigBase or BasePipelineConfig. This eliminates repeated
+        import and issubclass() calls during get_pending_steps() execution.
+
+        Cached results are stored per config class (not per step) since multiple
+        steps may use the same config class.
+        """
+        # Track which classes we've already checked to avoid duplicates
+        checked_classes = set()
+
+        for step_name, config_class in self._config_class_map.items():
+            class_name = config_class.__name__
+
+            # Skip if we've already checked this class
+            if class_name in checked_classes:
+                # Copy from existing entry
+                self._cached_inheritance_info[step_name] = (
+                    self._cached_inheritance_info[
+                        next(
+                            k
+                            for k, v in self._config_class_map.items()
+                            if v.__name__ == class_name
+                            and k in self._cached_inheritance_info
+                        )
+                    ]
+                )
+                continue
+
+            checked_classes.add(class_name)
+
+            try:
+                logger.debug(f"Checking inheritance for {class_name}...")
+
+                # Check both inheritance types
+                inherits_processing = self._check_processing_inheritance(config_class)
+                inherits_base = self._check_base_inheritance(config_class)
+
+                # Cache the results
+                self._cached_inheritance_info[step_name] = {
+                    "inherits_processing": inherits_processing,
+                    "inherits_base": inherits_base,
+                }
+
+                logger.debug(
+                    f"  ✓ {class_name}: processing={inherits_processing}, base={inherits_base}"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to check inheritance for {class_name}: {e}")
+                # Store False as safe fallback
+                self._cached_inheritance_info[step_name] = {
+                    "inherits_processing": False,
+                    "inherits_base": False,
+                }
+
+    def _check_processing_inheritance(self, config_class: Type[BaseModel]) -> bool:
+        """
+        Internal helper to check ProcessingStepConfigBase inheritance.
+
+        Used only during initialization for caching. After initialization,
+        use _inherits_from_processing_config() which returns cached results.
+        """
+        try:
+            from ...steps.configs.config_processing_step_base import (
+                ProcessingStepConfigBase,
+            )
+
+            return issubclass(config_class, ProcessingStepConfigBase)
+        except (ImportError, TypeError):
+            return False
+
+    def _check_base_inheritance(self, config_class: Type[BaseModel]) -> bool:
+        """
+        Internal helper to check BasePipelineConfig inheritance.
+
+        Used only during initialization for caching. After initialization,
+        use _inherits_from_base_config() which returns cached results.
+        """
+        try:
+            from ...core.base.config_base import BasePipelineConfig
+
+            return issubclass(config_class, BasePipelineConfig)
+        except (ImportError, TypeError):
+            return False
 
     def get_base_processing_config_requirements(self) -> List[Dict[str, Any]]:
         """
@@ -414,9 +548,11 @@ class DAGConfigFactory:
         # Return cached requirements (computed once during __init__)
         if self._cached_processing_requirements is not None:
             return self._cached_processing_requirements
-        
+
         # If somehow cache wasn't initialized (shouldn't happen), return empty list
-        logger.debug("Processing requirements cache not initialized, returning empty list")
+        logger.debug(
+            "Processing requirements cache not initialized, returning empty list"
+        )
         return []
 
     def set_base_config(self, **kwargs) -> None:
@@ -493,18 +629,26 @@ class DAGConfigFactory:
         Returns:
             List of step names that haven't been configured yet and require user input
         """
+        logger.debug("🔍 get_pending_steps() called")
         pending_steps = []
 
-        for step_name in self._config_class_map.keys():
+        for i, step_name in enumerate(self._config_class_map.keys(), 1):
+            logger.debug(f"  [{i}/11] Checking step: {step_name}")
+
             if step_name in self.step_configs:
+                logger.debug(f"    ✓ {step_name} already configured")
                 continue  # Already configured
 
             # Check if step can be auto-configured (only has tier 2+ fields)
+            logger.debug(f"    Checking if {step_name} can be auto-configured...")
             if self.can_auto_configure_step(step_name):
+                logger.debug(f"    ✓ {step_name} can be auto-configured")
                 continue  # Can be auto-configured, not pending
 
+            logger.debug(f"    → {step_name} needs configuration")
             pending_steps.append(step_name)
 
+        logger.debug(f"✅ get_pending_steps() complete: {len(pending_steps)} pending")
         return pending_steps
 
     def can_auto_configure_step(self, step_name: str) -> bool:
@@ -517,32 +661,45 @@ class DAGConfigFactory:
         Returns:
             True if step can be auto-configured, False if it requires user input
         """
+        logger.debug(f"    → can_auto_configure_step({step_name}) called")
+
         if step_name not in self._config_class_map:
+            logger.debug(f"      ✗ {step_name} not in config_class_map")
             return False
 
         config_class = self._config_class_map[step_name]
+        logger.debug(f"      Config class: {config_class.__name__}")
 
         # Check if prerequisites are met
+        logger.debug(f"      Validating prerequisites...")
         try:
             self._validate_prerequisites_for_step(step_name, config_class)
-        except ValueError:
+            logger.debug(f"      ✓ Prerequisites validated")
+        except ValueError as e:
+            logger.debug(f"      ✗ Prerequisites not met: {e}")
             return False  # Prerequisites not met, can't auto-configure
 
         # Get step-specific requirements (excluding inherited fields)
+        logger.debug(f"      Getting step requirements...")
         step_requirements = self.get_step_requirements(step_name)
+        logger.debug(f"      Got {len(step_requirements)} requirements")
+
         essential_step_fields = [
             req["name"] for req in step_requirements if req["required"]
         ]
+        logger.debug(f"      Found {len(essential_step_fields)} essential fields")
 
         # If there are no essential step-specific fields, it can be auto-configured
-        return len(essential_step_fields) == 0
+        result = len(essential_step_fields) == 0
+        logger.debug(f"    ← can_auto_configure_step({step_name}) = {result}")
+        return result
 
     def get_step_requirements(self, step_name: str) -> List[Dict[str, Any]]:
         """
         Get step-specific requirements excluding inherited base config fields.
 
-        Extracts step-specific fields only (excludes base config fields) from the
-        step's configuration class using Pydantic field definitions.
+        Uses cached field requirements computed during initialization for instant response.
+        This avoids the expensive field extraction process (~200+ operations) on every call.
 
         Args:
             step_name: Name of the step to get requirements for
@@ -553,10 +710,18 @@ class DAGConfigFactory:
         if step_name not in self._config_class_map:
             raise ValueError(f"Step '{step_name}' not found in DAG")
 
-        config_class = self._config_class_map[step_name]
+        # Return cached requirements (computed once during __init__)
+        if step_name in self._cached_step_requirements:
+            return self._cached_step_requirements[step_name]
 
-        # Extract step-specific fields (exclude base config fields)
-        return self._extract_step_specific_fields(config_class)
+        # Fallback: if somehow not cached (shouldn't happen), compute now
+        logger.warning(
+            f"Step requirements not cached for {step_name}, computing now..."
+        )
+        config_class = self._config_class_map[step_name]
+        requirements = self._extract_step_specific_fields(config_class)
+        self._cached_step_requirements[step_name] = requirements
+        return requirements
 
     def set_step_config(self, step_name: str, **kwargs) -> BaseModel:
         """
@@ -879,31 +1044,26 @@ class DAGConfigFactory:
         """
         Check if config class inherits from ProcessingStepConfigBase.
 
+        Uses cached inheritance information computed during initialization for instant response.
+
         Args:
             config_class: Configuration class to check
 
         Returns:
             True if class inherits from ProcessingStepConfigBase
         """
-        try:
-            from ...steps.configs.config_processing_step_base import (
-                ProcessingStepConfigBase,
-            )
+        # Find which step uses this config class and return cached result
+        class_name = config_class.__name__
+        for step_name, step_config_class in self._config_class_map.items():
+            if step_config_class.__name__ == class_name:
+                if step_name in self._cached_inheritance_info:
+                    return self._cached_inheritance_info[step_name][
+                        "inherits_processing"
+                    ]
 
-            return issubclass(config_class, ProcessingStepConfigBase)
-        except (ImportError, TypeError):
-            # Fallback to string matching if import fails
-            try:
-                mro = getattr(config_class, "__mro__", [])
-                for base_class in mro:
-                    if (
-                        hasattr(base_class, "__name__")
-                        and "ProcessingStepConfigBase" in base_class.__name__
-                    ):
-                        return True
-                return False
-            except Exception:
-                return False
+        # Fallback: if not cached (shouldn't happen after init), compute now
+        logger.warning(f"Inheritance not cached for {class_name}, computing now...")
+        return self._check_processing_inheritance(config_class)
 
     def get_factory_summary(self) -> Dict[str, Any]:
         """
@@ -997,7 +1157,11 @@ class DAGConfigFactory:
         Raises:
             ValueError: If required base configurations are missing
         """
+        logger.debug(f"        → _validate_prerequisites_for_step({step_name})")
+        logger.debug(f"          Checking if inherits from processing config...")
+
         if self._inherits_from_processing_config(config_class):
+            logger.debug(f"          ✓ Inherits from processing config")
             if not self.base_config:
                 raise ValueError(
                     f"Step '{step_name}' requires base config to be set first"
@@ -1006,12 +1170,18 @@ class DAGConfigFactory:
                 raise ValueError(
                     f"Step '{step_name}' requires base processing config to be set first"
                 )
+        else:
+            logger.debug(f"          Checking if inherits from base config...")
+            if self._inherits_from_base_config(config_class):
+                logger.debug(f"          ✓ Inherits from base config")
+                if not self.base_config:
+                    raise ValueError(
+                        f"Step '{step_name}' requires base config to be set first"
+                    )
+            else:
+                logger.debug(f"          Standalone config class")
 
-        elif self._inherits_from_base_config(config_class):
-            if not self.base_config:
-                raise ValueError(
-                    f"Step '{step_name}' requires base config to be set first"
-                )
+        logger.debug(f"        ← _validate_prerequisites_for_step() complete")
 
     def _create_config_instance_with_inheritance(
         self, config_class: Type[BaseModel], step_inputs: Dict[str, Any]
@@ -1120,29 +1290,24 @@ class DAGConfigFactory:
         """
         Check if config class inherits from BasePipelineConfig.
 
+        Uses cached inheritance information computed during initialization for instant response.
+
         Args:
             config_class: Configuration class to check
 
         Returns:
             True if class inherits from BasePipelineConfig
         """
-        try:
-            from ...core.base.config_base import BasePipelineConfig
+        # Find which step uses this config class and return cached result
+        class_name = config_class.__name__
+        for step_name, step_config_class in self._config_class_map.items():
+            if step_config_class.__name__ == class_name:
+                if step_name in self._cached_inheritance_info:
+                    return self._cached_inheritance_info[step_name]["inherits_base"]
 
-            return issubclass(config_class, BasePipelineConfig)
-        except (ImportError, TypeError):
-            # Fallback to string matching if import fails
-            try:
-                mro = getattr(config_class, "__mro__", [])
-                for base_class in mro:
-                    if (
-                        hasattr(base_class, "__name__")
-                        and "BasePipelineConfig" in base_class.__name__
-                    ):
-                        return True
-                return False
-            except Exception:
-                return False
+        # Fallback: if not cached (shouldn't happen after init), compute now
+        logger.warning(f"Inheritance not cached for {class_name}, computing now...")
+        return self._check_base_inheritance(config_class)
 
     def _build_error_context(
         self,

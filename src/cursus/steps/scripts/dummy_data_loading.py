@@ -9,6 +9,7 @@ processed data in the same format as the original Cradle data loading step.
 """
 
 import argparse
+import csv
 import json
 import logging
 import os
@@ -37,6 +38,11 @@ INPUT_DATA_DIR = "/opt/ml/processing/input/data"
 SIGNATURE_OUTPUT_DIR = "/opt/ml/processing/output/signature"
 METADATA_OUTPUT_DIR = "/opt/ml/processing/output/metadata"
 DATA_OUTPUT_DIR = "/opt/ml/processing/output/data"
+
+
+# ============================================================================
+# SHARED UTILITY FUNCTIONS (Used by both Batch and Streaming modes)
+# ============================================================================
 
 
 def ensure_directory(directory: Path) -> bool:
@@ -381,6 +387,44 @@ def generate_metadata(df: pd.DataFrame) -> Dict[str, Any]:
     return metadata
 
 
+def generate_mods_metadata(df: pd.DataFrame) -> List[List[str]]:
+    """
+    Generate MODS-compatible CSV metadata from a DataFrame.
+
+    MODS metadata format is a simple CSV with 3 columns:
+    - varname: Column name
+    - iscategory: "true" if string/object/category type, "false" otherwise
+    - datatype: pandas dtype as string
+
+    This lightweight format can be generated from the first batch only,
+    enabling true streaming mode without needing the full DataFrame.
+
+    Args:
+        df: DataFrame to analyze (typically first batch)
+
+    Returns:
+        List of lists representing CSV rows [header, row1, row2, ...]
+    """
+    logger.info("Generating MODS-compatible metadata")
+
+    # Header row
+    metadata = [["varname", "iscategory", "datatype"]]
+
+    # Data rows - one per column
+    for column in df.columns:
+        dtype_str = str(df[column].dtype)
+
+        # Determine if categorical based on dtype
+        # String, object, and category types are considered categorical
+        is_categorical = dtype_str in ["object", "string", "category"]
+        is_category_str = "true" if is_categorical else "false"
+
+        metadata.append([str(column), is_category_str, dtype_str])
+
+    logger.info(f"Generated MODS metadata for {len(metadata) - 1} columns")
+    return metadata
+
+
 def find_data_files(input_dir: Path) -> List[Path]:
     """
     Find all data files in the input directory.
@@ -555,27 +599,70 @@ def write_signature_file(signature: List[str], output_dir: Path) -> Path:
         raise
 
 
-def write_metadata_file(metadata: Dict[str, Any], output_dir: Path) -> Path:
+def write_metadata_file(
+    metadata: Union[Dict[str, Any], List[List[str]]],
+    output_dir: Path,
+    format: str = "JSON",
+) -> Path:
     """
-    Write the metadata file to the output directory.
+    Write the metadata file to the output directory in specified format.
+
+    Supports two formats:
+    - JSON: Detailed metadata with statistics (requires Dict input)
+    - MODS: Simple CSV with 3 columns (requires List[List[str]] input)
 
     Args:
-        metadata: Metadata dictionary
+        metadata: Metadata as Dict (JSON) or List[List[str]] (MODS CSV)
         output_dir: Output directory path
+        format: Output format - "JSON" or "MODS" (default: "JSON")
 
     Returns:
         Path to the written metadata file
+
+    Raises:
+        ValueError: If format is unsupported or metadata type doesn't match format
     """
     ensure_directory(output_dir)
     metadata_file = output_dir / "metadata"
 
-    logger.info(f"Writing metadata file: {metadata_file}")
+    logger.info(f"Writing metadata file in {format} format: {metadata_file}")
 
     try:
-        with open(metadata_file, "w") as f:
-            json.dump(metadata, f, indent=2)
+        if format == "MODS":
+            # Write MODS CSV format
+            if not isinstance(metadata, list):
+                raise ValueError(
+                    "MODS format requires metadata as List[List[str]], "
+                    f"got {type(metadata)}"
+                )
 
-        logger.info("Metadata file written successfully")
+            import csv
+
+            with open(metadata_file, "w", newline="") as f:
+                writer = csv.writer(
+                    f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+                )
+                writer.writerows(metadata)
+
+            logger.info(f"MODS metadata file written with {len(metadata) - 1} columns")
+
+        elif format == "JSON":
+            # Write JSON format (original behavior)
+            if not isinstance(metadata, dict):
+                raise ValueError(
+                    f"JSON format requires metadata as Dict, got {type(metadata)}"
+                )
+
+            with open(metadata_file, "w") as f:
+                json.dump(metadata, f, indent=2)
+
+            logger.info("JSON metadata file written successfully")
+
+        else:
+            raise ValueError(
+                f"Unsupported metadata format: {format}. Supported formats: JSON, MODS"
+            )
+
         return metadata_file
 
     except Exception as e:
@@ -760,6 +847,284 @@ def write_data_output(
     return write_data_shards(df, output_dir, shard_size, output_format)
 
 
+# ============================================================================
+# STREAMING MODE FUNCTIONS
+# ============================================================================
+
+
+def process_first_batch_for_metadata(
+    first_batch_files: List[Path],
+    metadata_format: str,
+    max_workers: Optional[int],
+    batch_size: int,
+) -> tuple:
+    """
+    Process first batch of files to generate signature and metadata.
+
+    Extracts signature and metadata from the first batch only, enabling
+    streaming mode to proceed without loading the full dataset.
+
+    Args:
+        first_batch_files: List of file paths in first batch
+        metadata_format: "JSON" or "MODS"
+        max_workers: Number of parallel workers
+        batch_size: DataFrame concat batch size
+
+    Returns:
+        Tuple of (signature, metadata, first_batch_df)
+    """
+    logger.info(f"[STREAMING] Reading first batch: {len(first_batch_files)} files")
+
+    # Read first batch
+    first_batch_df = combine_files(
+        first_batch_files,
+        max_workers=max_workers,
+        batch_size=batch_size,
+        streaming_batch_size=None,  # Disable streaming within first batch
+    )
+
+    logger.info(f"[STREAMING] First batch shape: {first_batch_df.shape}")
+
+    # Generate signature & metadata from first batch ONLY
+    signature = generate_schema_signature(first_batch_df)
+
+    if metadata_format == "MODS":
+        metadata = generate_mods_metadata(first_batch_df)
+        logger.info(
+            "[STREAMING] Using MODS metadata format (lightweight, batch-compatible)"
+        )
+    else:
+        # JSON format - warn that stats are from first batch only
+        logger.warning(
+            "[STREAMING] JSON metadata format in streaming mode: "
+            "statistics are computed from first batch only"
+        )
+        metadata = generate_metadata(first_batch_df)
+
+    return signature, metadata, first_batch_df
+
+
+def write_batch_as_shards(
+    df: pd.DataFrame,
+    output_dir: Path,
+    shard_counter: int,
+    shard_size: int,
+    output_format: str,
+) -> tuple:
+    """
+    Write DataFrame batch as shards with continuous numbering.
+
+    Args:
+        df: DataFrame to write as shards
+        output_dir: Output directory path
+        shard_counter: Starting shard index number
+        shard_size: Rows per shard
+        output_format: Output data format
+
+    Returns:
+        Tuple of (written_shard_paths, updated_counter)
+    """
+    written_shards = []
+    batch_rows = len(df)
+
+    for i in range(0, batch_rows, shard_size):
+        shard_df = df.iloc[i : i + shard_size]
+        shard_path = write_single_shard(
+            shard_df, output_dir, shard_counter, output_format
+        )
+        written_shards.append(shard_path)
+        shard_counter += 1
+
+    return written_shards, shard_counter
+
+
+def process_remaining_batches(
+    remaining_files: List[Path],
+    data_output_dir: Path,
+    shard_counter: int,
+    streaming_batch_size: int,
+    shard_size: int,
+    output_format: str,
+    max_workers: Optional[int],
+    batch_size: int,
+) -> tuple:
+    """
+    Stream and write remaining file batches.
+
+    Processes remaining files in batches, writing shards incrementally
+    without loading the full dataset into memory.
+
+    Args:
+        remaining_files: List of remaining file paths to process
+        data_output_dir: Output directory for data shards
+        shard_counter: Starting shard index number
+        streaming_batch_size: Number of files per batch
+        shard_size: Rows per shard
+        output_format: Output data format
+        max_workers: Number of parallel workers
+        batch_size: DataFrame concat batch size
+
+    Returns:
+        Tuple of (all_written_shards, total_rows_processed, final_counter)
+    """
+    written_shards = []
+    total_rows = 0
+
+    logger.info(f"[STREAMING] Processing {len(remaining_files)} remaining files")
+
+    for batch_start in range(0, len(remaining_files), streaming_batch_size):
+        batch_end = min(batch_start + streaming_batch_size, len(remaining_files))
+        batch_files = remaining_files[batch_start:batch_end]
+        batch_num = (batch_start // streaming_batch_size) + 2  # +2 because first is #1
+
+        logger.info(
+            f"[STREAMING] Processing batch {batch_num}: {len(batch_files)} files"
+        )
+
+        # Read batch
+        batch_df = combine_files(
+            batch_files,
+            max_workers=max_workers,
+            batch_size=batch_size,
+            streaming_batch_size=None,
+        )
+
+        # Write batch as shards
+        batch_shards, shard_counter = write_batch_as_shards(
+            batch_df, data_output_dir, shard_counter, shard_size, output_format
+        )
+        written_shards.extend(batch_shards)
+
+        batch_rows = len(batch_df)
+        total_rows += batch_rows
+
+        logger.info(
+            f"[STREAMING] Batch {batch_num} complete: "
+            f"{batch_rows} rows, {shard_counter} total shards"
+        )
+
+        # Free memory
+        del batch_df
+        gc.collect()
+
+    return written_shards, total_rows, shard_counter
+
+
+def process_streaming_mode(
+    data_files: List[Path],
+    signature_output_dir: Path,
+    metadata_output_dir: Path,
+    data_output_dir: Path,
+    metadata_format: str,
+    streaming_batch_size: int,
+    shard_size: int,
+    output_format: str,
+    max_workers: Optional[int],
+    batch_size: int,
+) -> Dict[str, Union[Path, List[Path]]]:
+    """
+    True streaming mode: Never loads full DataFrame into memory.
+
+    Process data files in batches, generating outputs incrementally:
+    1. First batch → signature & metadata (from first batch only)
+    2. All batches → write shards incrementally
+    3. Free memory after each batch
+
+    Memory usage: ~1-2GB per batch (not dependent on total data size)
+    Scales to: ANY data size (10GB, 100GB, 1TB+)
+
+    Args:
+        data_files: List of data file paths
+        signature_output_dir: Directory for signature output
+        metadata_output_dir: Directory for metadata output
+        data_output_dir: Directory for data shard output
+        metadata_format: "JSON" or "MODS"
+        streaming_batch_size: Number of files per batch
+        shard_size: Rows per output shard
+        output_format: Output data format
+        max_workers: Number of parallel workers
+        batch_size: DataFrame concat batch size
+
+    Returns:
+        Dictionary of output file paths
+    """
+    logger.info(
+        f"[STREAMING] Starting true streaming mode: "
+        f"{len(data_files)} files in batches of {streaming_batch_size}"
+    )
+
+    total_files = len(data_files)
+    shard_counter = 0
+    written_shards = []
+    total_rows_processed = 0
+
+    # STEP 1: Process first batch for signature & metadata
+    first_batch_size = min(streaming_batch_size, total_files)
+    first_batch_files = data_files[:first_batch_size]
+
+    signature, metadata, first_batch_df = process_first_batch_for_metadata(
+        first_batch_files, metadata_format, max_workers, batch_size
+    )
+
+    # Write signature & metadata
+    signature_file = write_signature_file(signature, signature_output_dir)
+    metadata_file = write_metadata_file(
+        metadata, metadata_output_dir, format=metadata_format
+    )
+
+    logger.info("[STREAMING] Signature and metadata written from first batch")
+
+    # STEP 2: Write first batch shards
+    first_shards, shard_counter = write_batch_as_shards(
+        first_batch_df, data_output_dir, shard_counter, shard_size, output_format
+    )
+    written_shards.extend(first_shards)
+
+    first_batch_rows = len(first_batch_df)
+    total_rows_processed += first_batch_rows
+    logger.info(
+        f"[STREAMING] First batch complete: {len(written_shards)} shards written, "
+        f"{first_batch_rows} rows"
+    )
+
+    # Free memory from first batch
+    del first_batch_df
+    gc.collect()
+
+    # STEP 3: Stream remaining batches
+    remaining_files = data_files[first_batch_size:]
+
+    if remaining_files:
+        remaining_shards, remaining_rows, shard_counter = process_remaining_batches(
+            remaining_files,
+            data_output_dir,
+            shard_counter,
+            streaming_batch_size,
+            shard_size,
+            output_format,
+            max_workers,
+            batch_size,
+        )
+        written_shards.extend(remaining_shards)
+        total_rows_processed += remaining_rows
+
+    logger.info(
+        f"[STREAMING] Complete: {shard_counter} shards, "
+        f"{total_rows_processed} total rows from {total_files} files"
+    )
+
+    return {
+        "signature": signature_file,
+        "metadata": metadata_file,
+        "data": written_shards,
+    }
+
+
+# ============================================================================
+# MAIN PROCESSING LOGIC
+# ============================================================================
+
+
 def main(
     input_paths: Dict[str, str],
     output_paths: Dict[str, str],
@@ -794,12 +1159,26 @@ def main(
             int(environ_vars.get("STREAMING_BATCH_SIZE", 0)) or None
         )  # 0 means disabled
 
+        # NEW: True streaming mode and metadata format
+        enable_true_streaming = (
+            environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+        )
+        metadata_format = environ_vars.get("METADATA_FORMAT", "JSON").upper()
+
         # Validate output format
         supported_formats = ["CSV", "JSON", "PARQUET"]
         if output_format not in supported_formats:
             raise ValueError(
                 f"Invalid OUTPUT_FORMAT: {output_format}. "
                 f"Supported formats: {supported_formats}"
+            )
+
+        # Validate metadata format
+        supported_metadata_formats = ["JSON", "MODS"]
+        if metadata_format not in supported_metadata_formats:
+            raise ValueError(
+                f"Invalid METADATA_FORMAT: {metadata_format}. "
+                f"Supported formats: {supported_metadata_formats}"
             )
 
         logger.info(
@@ -813,6 +1192,8 @@ def main(
         logger.info(
             f"  STREAMING_BATCH_SIZE: {streaming_batch_size if streaming_batch_size else 'disabled'}"
         )
+        logger.info(f"  ENABLE_TRUE_STREAMING: {enable_true_streaming}")
+        logger.info(f"  METADATA_FORMAT: {metadata_format}")
 
         # Get input and output directories
         input_data_dir = Path(input_paths["INPUT_DATA"])
@@ -825,44 +1206,85 @@ def main(
         logger.info(f"Metadata output directory: {metadata_output_dir}")
         logger.info(f"Data output directory: {data_output_dir}")
 
-        # Find and process data files
+        # Find data files
         data_files = find_data_files(input_data_dir)
         if not data_files:
             raise ValueError(f"No supported data files found in {input_data_dir}")
 
-        # Process all data files using optimized combine_files function
-        logger.info(f"[INFO] Combining data files...")
-        combined_df = combine_files(
-            data_files, max_workers, batch_size, streaming_batch_size
-        )
-        logger.info(f"[INFO] Combined data shape: {combined_df.shape}")
+        # ROUTING: Choose between TRUE STREAMING MODE or BATCH MODE
+        if enable_true_streaming:
+            # TRUE STREAMING MODE: Never loads full DataFrame
+            if not write_shards:
+                logger.warning(
+                    "[WARNING] ENABLE_TRUE_STREAMING=true requires WRITE_DATA_SHARDS=true. "
+                    "Enabling shard writing automatically."
+                )
+                write_shards = True
 
-        # Apply memory optimization if enabled
-        if optimize_memory:
-            combined_df = optimize_dtypes(combined_df, logger.info)
+            if streaming_batch_size is None:
+                # Auto-set streaming batch size if not provided
+                streaming_batch_size = 10
+                logger.info(
+                    f"[STREAMING] Auto-set STREAMING_BATCH_SIZE to {streaming_batch_size}"
+                )
 
-        # Generate signature and metadata
-        signature = generate_schema_signature(combined_df)
-        metadata = generate_metadata(combined_df)
+            logger.info("[STREAMING] Using TRUE STREAMING MODE")
+            result = process_streaming_mode(
+                data_files=data_files,
+                signature_output_dir=signature_output_dir,
+                metadata_output_dir=metadata_output_dir,
+                data_output_dir=data_output_dir,
+                metadata_format=metadata_format,
+                streaming_batch_size=streaming_batch_size,
+                shard_size=shard_size,
+                output_format=output_format,
+                max_workers=max_workers,
+                batch_size=batch_size,
+            )
 
-        # Write output files
-        signature_file = write_signature_file(signature, signature_output_dir)
-        metadata_file = write_metadata_file(metadata, metadata_output_dir)
+        else:
+            # BATCH MODE: Original behavior with optional memory optimizations
+            logger.info("[BATCH] Using BATCH MODE")
 
-        # Write data output (configurable: shards or placeholder)
-        data_output = write_data_output(
-            combined_df,
-            data_output_dir,
-            write_shards=write_shards,
-            shard_size=shard_size,
-            output_format=output_format,
-        )
+            # Process all data files using optimized combine_files function
+            logger.info(f"[INFO] Combining data files...")
+            combined_df = combine_files(
+                data_files, max_workers, batch_size, streaming_batch_size
+            )
+            logger.info(f"[INFO] Combined data shape: {combined_df.shape}")
 
-        result = {
-            "signature": signature_file,
-            "metadata": metadata_file,
-            "data": data_output,
-        }
+            # Apply memory optimization if enabled
+            if optimize_memory:
+                combined_df = optimize_dtypes(combined_df, logger.info)
+
+            # Generate signature and metadata
+            signature = generate_schema_signature(combined_df)
+
+            if metadata_format == "MODS":
+                metadata = generate_mods_metadata(combined_df)
+            else:
+                metadata = generate_metadata(combined_df)
+
+            # Write output files
+            signature_file = write_signature_file(signature, signature_output_dir)
+            metadata_file = write_metadata_file(
+                metadata, metadata_output_dir, format=metadata_format
+            )
+
+            # Write data output (configurable: shards or single file)
+            data_output = write_data_output(
+                combined_df,
+                data_output_dir,
+                write_shards=write_shards,
+                shard_size=shard_size,
+                output_format=output_format,
+            )
+
+            result = {
+                "signature": signature_file,
+                "metadata": metadata_file,
+                "data": data_output,
+            }
 
         logger.info("Dummy data loading completed successfully")
         return result
@@ -892,6 +1314,8 @@ if __name__ == "__main__":
             "BATCH_SIZE": os.environ.get("BATCH_SIZE", "5"),
             "OPTIMIZE_MEMORY": os.environ.get("OPTIMIZE_MEMORY", "false"),
             "STREAMING_BATCH_SIZE": os.environ.get("STREAMING_BATCH_SIZE", "0"),
+            "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
+            "METADATA_FORMAT": os.environ.get("METADATA_FORMAT", "JSON"),
         }
 
         # Log configuration for debugging
