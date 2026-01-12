@@ -49,186 +49,233 @@ class DAGConfigFactory:
         Args:
             dag: Pipeline DAG object to create configurations for
         """
+        logger.info("🔧 Initializing DAGConfigFactory...")
+        
         self.dag = dag
         self.config_generator = None  # Initialized after base configs are set
 
-        # Use robust canonical step name extraction instead of fuzzy matching
+        # EAGER initialization with progress feedback to avoid hanging
+        logger.info("📊 Step 1/3: Mapping DAG nodes to config classes...")
         self._config_class_map = self._map_dag_to_config_classes_robust(dag)
+        logger.info(f"✅ Mapped {len(self._config_class_map)} DAG nodes to config classes")
+        
+        # Pre-compute processing config requirement (cache to avoid repeated expensive checks)
+        logger.info("📊 Step 2/3: Checking processing config requirements...")
+        self._needs_processing_config = self._check_if_needs_processing_config()
+        
+        # Cache the actual field requirements to avoid expensive extraction on every call
+        self._cached_processing_requirements = None
+        if self._needs_processing_config:
+            logger.info("📊 Step 2b/3: Extracting processing config field requirements...")
+            self._cached_processing_requirements = self._extract_processing_requirements()
+            logger.info(f"✅ Cached {len(self._cached_processing_requirements)} processing config fields")
+        else:
+            logger.info("✅ Processing config not required")
+        
         self.base_config = None  # BasePipelineConfig instance
         self.base_processing_config = None  # BaseProcessingStepConfig instance
-        self.step_configs: Dict[str, Dict[str, Any]] = {}  # Raw inputs for serialization
+        self.step_configs: Dict[
+            str, Dict[str, Any]
+        ] = {}  # Raw inputs for serialization
         self.step_config_instances: Dict[str, BaseModel] = {}  # Validated instances
 
+        logger.info("📊 Step 3/3: Factory initialization complete")
         logger.info(
-            f"Initialized DAGConfigFactory for DAG with {len(self._config_class_map)} steps using robust step detection"
+            f"✅ DAGConfigFactory ready with {len(self._config_class_map)} steps"
         )
 
     def _map_dag_to_config_classes_robust(self, dag) -> Dict[str, Type[BaseModel]]:
         """
         Map DAG nodes to config classes using robust canonical step name extraction.
-        
+
         This method implements the pattern: node_name = "{canonical_step_name}_{job_type}"
         and uses the existing registry system to map canonical names to config classes.
-        
+
         Args:
             dag: Pipeline DAG object
-            
+
         Returns:
             Dictionary mapping node names to configuration classes
         """
         config_class_map = {}
-        
+
         # Get DAG nodes - handle different DAG implementations
         nodes = self._get_dag_nodes(dag)
-        
+
         # Get available config classes from the step catalog system
         available_config_classes = self._get_available_config_classes()
-        
+
         for node_name in nodes:
             try:
                 # Extract canonical step name from node name using the established pattern
                 canonical_step_name = self._extract_canonical_step_name(node_name)
-                
+
                 # Use registry system to map canonical name to config class
                 config_class = self._resolve_canonical_name_to_config_class(
                     canonical_step_name, available_config_classes
                 )
-                
+
                 if config_class:
                     config_class_map[node_name] = config_class
-                    logger.info(f"✅ Mapped '{node_name}' -> '{canonical_step_name}' -> {config_class.__name__}")
+                    logger.info(
+                        f"✅ Mapped '{node_name}' -> '{canonical_step_name}' -> {config_class.__name__}"
+                    )
                 else:
-                    logger.warning(f"❌ No config class found for canonical step name: {canonical_step_name} (from node: {node_name})")
-                    
+                    logger.warning(
+                        f"❌ No config class found for canonical step name: {canonical_step_name} (from node: {node_name})"
+                    )
+
             except Exception as e:
                 logger.error(f"❌ Failed to map node '{node_name}': {e}")
-                
-        logger.info(f"Successfully mapped {len(config_class_map)}/{len(nodes)} DAG nodes to config classes")
+
+        logger.info(
+            f"Successfully mapped {len(config_class_map)}/{len(nodes)} DAG nodes to config classes"
+        )
         return config_class_map
 
     def _extract_canonical_step_name(self, node_name: str) -> str:
         """
         Extract canonical step name from DAG node name using the established pattern.
-        
+
         Pattern: node_name = "{canonical_step_name}_{job_type}"
         Examples:
         - "XGBoostModelEval_calibration" -> "XGBoostModelEval"
         - "CradleDataLoading_training" -> "CradleDataLoading"
         - "TabularPreprocessing_training" -> "TabularPreprocessing"
-        
+
         Args:
             node_name: DAG node name
-            
+
         Returns:
             Canonical step name
         """
         # Split on the last underscore to separate canonical name from job_type
-        if '_' in node_name:
-            parts = node_name.rsplit('_', 1)
+        if "_" in node_name:
+            parts = node_name.rsplit("_", 1)
             canonical_name = parts[0]
             job_type = parts[1]
-            
-            logger.debug(f"Extracted canonical name '{canonical_name}' and job type '{job_type}' from '{node_name}'")
+
+            logger.debug(
+                f"Extracted canonical name '{canonical_name}' and job type '{job_type}' from '{node_name}'"
+            )
             return canonical_name
         else:
             # If no underscore, assume the whole name is the canonical step name
-            logger.debug(f"No job type suffix found in '{node_name}', using as canonical name")
+            logger.debug(
+                f"No job type suffix found in '{node_name}', using as canonical name"
+            )
             return node_name
 
-    def _resolve_canonical_name_to_config_class(self, canonical_step_name: str, available_config_classes: Dict[str, Type[BaseModel]]) -> Optional[Type[BaseModel]]:
+    def _resolve_canonical_name_to_config_class(
+        self,
+        canonical_step_name: str,
+        available_config_classes: Dict[str, Type[BaseModel]],
+    ) -> Optional[Type[BaseModel]]:
         """
         Resolve canonical step name to config class using registry system.
-        
+
         Args:
             canonical_step_name: Canonical step name (e.g., "XGBoostModelEval")
             available_config_classes: Available config classes from step catalog
-            
+
         Returns:
             Config class or None if not found
         """
         try:
             # Method 1: Try direct registry lookup using existing system
-            from ...registry.step_names import get_config_step_registry, CONFIG_STEP_REGISTRY
-            
+            from ...registry.step_names import (
+                get_config_step_registry,
+                CONFIG_STEP_REGISTRY,
+            )
+
             # Get the registry mapping
             config_registry = get_config_step_registry()
-            
+
             # Try to find config class by canonical step name
             for config_class_name, registered_step_name in config_registry.items():
                 if registered_step_name == canonical_step_name:
                     # Found a match, look for this config class in available classes
                     if config_class_name in available_config_classes:
                         return available_config_classes[config_class_name]
-            
+
             # Method 2: Fallback to legacy CONFIG_STEP_REGISTRY
             for config_class_name, registered_step_name in CONFIG_STEP_REGISTRY.items():
                 if registered_step_name == canonical_step_name:
                     if config_class_name in available_config_classes:
                         return available_config_classes[config_class_name]
-            
+
             # Method 3: Try pattern-based matching as final fallback
             expected_config_class_name = f"{canonical_step_name}Config"
             if expected_config_class_name in available_config_classes:
-                logger.debug(f"Found config class using pattern matching: {expected_config_class_name}")
+                logger.debug(
+                    f"Found config class using pattern matching: {expected_config_class_name}"
+                )
                 return available_config_classes[expected_config_class_name]
-            
+
             # Method 4: Try case-insensitive matching
             canonical_lower = canonical_step_name.lower()
             for class_name, config_class in available_config_classes.items():
                 if canonical_lower in class_name.lower():
-                    logger.debug(f"Found config class using case-insensitive matching: {class_name}")
+                    logger.debug(
+                        f"Found config class using case-insensitive matching: {class_name}"
+                    )
                     return config_class
-            
+
             return None
-            
+
         except Exception as e:
             logger.warning(f"Error in registry lookup for '{canonical_step_name}': {e}")
-            
+
             # Final fallback: pattern-based matching
             expected_config_class_name = f"{canonical_step_name}Config"
             if expected_config_class_name in available_config_classes:
                 return available_config_classes[expected_config_class_name]
-            
+
             return None
 
     def _get_available_config_classes(self) -> Dict[str, Type[BaseModel]]:
         """
         Get available config classes from the step catalog system.
-        
+
         Returns:
             Dictionary mapping config class names to config classes
         """
         try:
             # Use the unified config manager to get config classes
-            from ...core.config_fields.unified_config_manager import get_unified_config_manager
-            
+            from ...core.config_fields.unified_config_manager import (
+                get_unified_config_manager,
+            )
+
             unified_manager = get_unified_config_manager()
             config_classes = unified_manager.get_config_classes()
-            
-            logger.debug(f"Retrieved {len(config_classes)} config classes from unified config manager")
+
+            logger.debug(
+                f"Retrieved {len(config_classes)} config classes from unified config manager"
+            )
             return config_classes
-            
+
         except Exception as e:
             logger.warning(f"Failed to get config classes from unified manager: {e}")
-            
+
             # Fallback: use step catalog auto-discovery
             try:
                 from ...step_catalog.config_discovery import ConfigAutoDiscovery
                 from ...step_catalog import StepCatalog
-                
+
                 # Get package root from StepCatalog
                 temp_catalog = StepCatalog(workspace_dirs=None)
                 package_root = temp_catalog.package_root
-                
+
                 config_discovery = ConfigAutoDiscovery(
-                    package_root=package_root,
-                    workspace_dirs=[]
+                    package_root=package_root, workspace_dirs=[]
                 )
-                
+
                 discovered_classes = config_discovery.build_complete_config_classes()
-                logger.info(f"Discovered {len(discovered_classes)} config classes via auto-discovery")
+                logger.info(
+                    f"Discovered {len(discovered_classes)} config classes via auto-discovery"
+                )
                 return discovered_classes
-                
+
             except Exception as discovery_e:
                 logger.error(f"Failed to use config auto-discovery: {discovery_e}")
                 return {}
@@ -236,10 +283,10 @@ class DAGConfigFactory:
     def _get_dag_nodes(self, dag) -> List[str]:
         """
         Extract node names from DAG object, handling different DAG implementations.
-        
+
         Args:
             dag: Pipeline DAG object
-            
+
         Returns:
             List of node names in the DAG
         """
@@ -252,7 +299,11 @@ class DAGConfigFactory:
         elif hasattr(dag, "get_nodes"):
             return dag.get_nodes()
         elif hasattr(dag, "steps"):
-            return list(dag.steps.keys()) if isinstance(dag.steps, dict) else list(dag.steps)
+            return (
+                list(dag.steps.keys())
+                if isinstance(dag.steps, dict)
+                else list(dag.steps)
+            )
         else:
             logger.warning(f"Unknown DAG structure: {type(dag)}")
             return []
@@ -291,6 +342,63 @@ class DAGConfigFactory:
             logger.warning("BasePipelineConfig not found, returning empty requirements")
             return []
 
+    def _check_if_needs_processing_config(self) -> bool:
+        """
+        Check if any step in the DAG requires processing configuration.
+        
+        This method is called once during initialization and cached to avoid
+        repeated expensive inheritance checks.
+        
+        Returns:
+            True if any step requires processing config, False otherwise
+        """
+        try:
+            logger.debug("Checking if any step requires processing configuration...")
+            
+            # Check if any step requires processing configuration
+            for config_class in self._config_class_map.values():
+                if self._inherits_from_processing_config(config_class):
+                    logger.debug("Found step requiring processing configuration")
+                    return True
+            
+            logger.debug("No steps require processing configuration")
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Error checking processing config requirement: {e}")
+            return False
+
+    def _extract_processing_requirements(self) -> List[Dict[str, Any]]:
+        """
+        Extract base processing configuration field requirements.
+        
+        This expensive operation is called once during initialization and cached.
+        Extracts the 9 base processing fields that ProcessingStepConfigBase adds
+        on top of BasePipelineConfig.
+        
+        Returns:
+            List of field requirement dictionaries for processing-specific fields
+        """
+        try:
+            from ...core.base.config_base import BasePipelineConfig
+            from ...steps.configs.config_processing_step_base import (
+                ProcessingStepConfigBase,
+            )
+            
+            logger.debug("Extracting processing config field requirements...")
+            requirements = extract_non_inherited_fields(
+                ProcessingStepConfigBase, BasePipelineConfig
+            )
+            logger.debug(f"Extracted {len(requirements)} processing config fields")
+            return requirements
+            
+        except ImportError as e:
+            logger.warning(f"Could not import processing config classes: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error extracting processing requirements: {e}")
+            return []
+
     def get_base_processing_config_requirements(self) -> List[Dict[str, Any]]:
         """
         Get base processing configuration requirements.
@@ -298,29 +406,18 @@ class DAGConfigFactory:
         Returns only the non-inherited fields specific to BaseProcessingStepConfig.
         Inherited fields from BasePipelineConfig can be obtained by calling get_base_config_requirements().
 
+        Uses cached field requirements computed during initialization for instant response.
+
         Returns:
             List of field requirement dictionaries for processing-specific fields
         """
-        try:
-            # Import configuration classes using correct relative imports
-            from ...core.base.config_base import BasePipelineConfig
-            from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
-
-            # Check if any step requires processing configuration
-            needs_processing_config = any(
-                self._inherits_from_processing_config(config_class)
-                for config_class in self._config_class_map.values()
-            )
-
-            if not needs_processing_config:
-                return []
-
-            # Extract only non-inherited fields specific to ProcessingStepConfigBase
-            return extract_non_inherited_fields(ProcessingStepConfigBase, BasePipelineConfig)
-
-        except ImportError:
-            logger.warning("BaseProcessingStepConfig not found, returning empty requirements")
-            return []
+        # Return cached requirements (computed once during __init__)
+        if self._cached_processing_requirements is not None:
+            return self._cached_processing_requirements
+        
+        # If somehow cache wasn't initialized (shouldn't happen), return empty list
+        logger.debug("Processing requirements cache not initialized, returning empty list")
+        return []
 
     def set_base_config(self, **kwargs) -> None:
         """
@@ -336,7 +433,8 @@ class DAGConfigFactory:
 
             # Initialize config generator once base config is set
             self.config_generator = ConfigurationGenerator(
-                base_config=self.base_config, base_processing_config=self.base_processing_config
+                base_config=self.base_config,
+                base_processing_config=self.base_processing_config,
             )
 
             logger.info("Base configuration set successfully")
@@ -356,7 +454,9 @@ class DAGConfigFactory:
             **kwargs: Base processing configuration field values
         """
         try:
-            from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+            from ...steps.configs.config_processing_step_base import (
+                ProcessingStepConfigBase,
+            )
 
             # Combine base config values with processing-specific values
             combined_kwargs = {}
@@ -370,7 +470,9 @@ class DAGConfigFactory:
 
             # Update config generator with processing config
             if self.config_generator:
-                self.config_generator.base_processing_config = self.base_processing_config
+                self.config_generator.base_processing_config = (
+                    self.base_processing_config
+                )
 
             logger.info("Base processing configuration set successfully")
 
@@ -428,7 +530,9 @@ class DAGConfigFactory:
 
         # Get step-specific requirements (excluding inherited fields)
         step_requirements = self.get_step_requirements(step_name)
-        essential_step_fields = [req["name"] for req in step_requirements if req["required"]]
+        essential_step_fields = [
+            req["name"] for req in step_requirements if req["required"]
+        ]
 
         # If there are no essential step-specific fields, it can be auto-configured
         return len(essential_step_fields) == 0
@@ -481,20 +585,28 @@ class DAGConfigFactory:
 
         try:
             # Create instance immediately with validation using proper inheritance
-            config_instance = self._create_config_instance_with_inheritance(config_class, kwargs)
+            config_instance = self._create_config_instance_with_inheritance(
+                config_class, kwargs
+            )
 
             # Store both raw inputs (for serialization) and validated instance
             self.step_configs[step_name] = kwargs
             self.step_config_instances[step_name] = config_instance
 
-            logger.info(f"✅ {step_name} configured successfully using {config_class.__name__}")
+            logger.info(
+                f"✅ {step_name} configured successfully using {config_class.__name__}"
+            )
             return config_instance
 
         except Exception as e:
             # Enhanced error message with context for better debugging
-            error_context = self._build_error_context(step_name, config_class, kwargs, e)
+            error_context = self._build_error_context(
+                step_name, config_class, kwargs, e
+            )
             logger.error(f"❌ Configuration failed for {step_name}: {error_context}")
-            raise ValueError(f"Configuration validation failed for {step_name}: {error_context}")
+            raise ValueError(
+                f"Configuration validation failed for {step_name}: {error_context}"
+            )
 
     def auto_configure_step_if_possible(self, step_name: str) -> Optional[BaseModel]:
         """
@@ -522,7 +634,9 @@ class DAGConfigFactory:
 
         # Get step-specific requirements (excluding inherited fields)
         step_requirements = self.get_step_requirements(step_name)
-        essential_step_fields = [req["name"] for req in step_requirements if req["required"]]
+        essential_step_fields = [
+            req["name"] for req in step_requirements if req["required"]
+        ]
 
         # If there are essential step-specific fields, we can't auto-configure
         if essential_step_fields:
@@ -531,14 +645,17 @@ class DAGConfigFactory:
         # Try to auto-configure with empty step inputs (only inherited fields)
         try:
             config_instance = self._create_config_instance_with_inheritance(
-                config_class, {}  # Empty step inputs - only use inherited fields
+                config_class,
+                {},  # Empty step inputs - only use inherited fields
             )
 
             # Store the auto-configured instance
             self.step_configs[step_name] = {}
             self.step_config_instances[step_name] = config_instance
 
-            logger.info(f"✅ {step_name} auto-configured successfully (only tier 2+ fields)")
+            logger.info(
+                f"✅ {step_name} auto-configured successfully (only tier 2+ fields)"
+            )
             return config_instance
 
         except Exception as e:
@@ -577,7 +694,9 @@ class DAGConfigFactory:
         # Auto-configure steps that only have tier 2+ fields
         auto_configured_count = self._auto_configure_eligible_steps()
         if auto_configured_count > 0:
-            logger.info(f"✅ Auto-configured {auto_configured_count} steps with only tier 2+ fields")
+            logger.info(
+                f"✅ Auto-configured {auto_configured_count} steps with only tier 2+ fields"
+            )
 
         # Check that all steps are configured (after auto-configuration)
         missing_steps = self.get_pending_steps()
@@ -587,19 +706,24 @@ class DAGConfigFactory:
         # If we have pre-validated instances for all steps, return them
         if len(self.step_config_instances) == len(self._config_class_map):
             configs = list(self.step_config_instances.values())
-            logger.info(f"✅ Returning {len(configs)} pre-validated configuration instances")
+            logger.info(
+                f"✅ Returning {len(configs)} pre-validated configuration instances"
+            )
             return configs
 
         # Fallback: generate instances using the traditional approach
         # This handles cases where configs were loaded from state or set via old API
-        logger.warning("Some configs not pre-validated, falling back to traditional generation")
+        logger.warning(
+            "Some configs not pre-validated, falling back to traditional generation"
+        )
 
         if not self.base_config:
             raise ValueError("Base configuration must be set before generating configs")
 
         if not self.config_generator:
             self.config_generator = ConfigurationGenerator(
-                base_config=self.base_config, base_processing_config=self.base_processing_config
+                base_config=self.base_config,
+                base_processing_config=self.base_processing_config,
             )
 
         try:
@@ -607,7 +731,9 @@ class DAGConfigFactory:
                 config_class_map=self._config_class_map, step_configs=self.step_configs
             )
 
-            logger.info(f"Successfully generated {len(configs)} configuration instances")
+            logger.info(
+                f"Successfully generated {len(configs)} configuration instances"
+            )
             return configs
 
         except Exception as e:
@@ -649,11 +775,15 @@ class DAGConfigFactory:
 
         # 1. Validate base configuration essential fields
         if not self.base_config:
-            validation_errors.append("Base pipeline configuration is required but not set")
+            validation_errors.append(
+                "Base pipeline configuration is required but not set"
+            )
         else:
             # Check if all essential fields in base config are provided
             base_requirements = self.get_base_config_requirements()
-            essential_base_fields = [req["name"] for req in base_requirements if req["required"]]
+            essential_base_fields = [
+                req["name"] for req in base_requirements if req["required"]
+            ]
 
             for field_name in essential_base_fields:
                 field_value = getattr(self.base_config, field_name, None)
@@ -668,7 +798,9 @@ class DAGConfigFactory:
         processing_requirements = self.get_base_processing_config_requirements()
         if processing_requirements:  # Processing config is needed
             if not self.base_processing_config:
-                validation_errors.append("Base processing configuration is required but not set")
+                validation_errors.append(
+                    "Base processing configuration is required but not set"
+                )
             else:
                 essential_processing_fields = [
                     req["name"] for req in processing_requirements if req["required"]
@@ -690,7 +822,9 @@ class DAGConfigFactory:
                 continue
 
             step_requirements = self.get_step_requirements(step_name)
-            essential_step_fields = [req["name"] for req in step_requirements if req["required"]]
+            essential_step_fields = [
+                req["name"] for req in step_requirements if req["required"]
+            ]
             provided_step_fields = self.step_configs[step_name]
 
             for field_name in essential_step_fields:
@@ -709,7 +843,9 @@ class DAGConfigFactory:
 
         return validation_errors
 
-    def _extract_step_specific_fields(self, config_class: Type[BaseModel]) -> List[Dict[str, Any]]:
+    def _extract_step_specific_fields(
+        self, config_class: Type[BaseModel]
+    ) -> List[Dict[str, Any]]:
         """
         Extract step-specific fields excluding inherited base config fields.
 
@@ -721,7 +857,9 @@ class DAGConfigFactory:
         """
         try:
             from ...core.base.config_base import BasePipelineConfig
-            from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+            from ...steps.configs.config_processing_step_base import (
+                ProcessingStepConfigBase,
+            )
 
             # Determine the appropriate base class to exclude fields from
             if self._inherits_from_processing_config(config_class):
@@ -748,7 +886,9 @@ class DAGConfigFactory:
             True if class inherits from ProcessingStepConfigBase
         """
         try:
-            from ...steps.configs.config_processing_step_base import ProcessingStepConfigBase
+            from ...steps.configs.config_processing_step_base import (
+                ProcessingStepConfigBase,
+            )
 
             return issubclass(config_class, ProcessingStepConfigBase)
         except (ImportError, TypeError):
@@ -778,7 +918,9 @@ class DAGConfigFactory:
             "dag_steps": len(self._config_class_map),
             "mapped_config_classes": list(self._config_class_map.keys()),
             "configuration_status": status,
-            "completed_steps": len([k for k, v in status.items() if k.startswith("step_") and v]),
+            "completed_steps": len(
+                [k for k, v in status.items() if k.startswith("step_") and v]
+            ),
             "pending_steps": self.get_pending_steps(),
             "base_config_set": self.base_config is not None,
             "processing_config_set": self.base_processing_config is not None,
@@ -797,7 +939,9 @@ class DAGConfigFactory:
 
         state = {
             "step_configs": self.step_configs,
-            "base_config_dict": self.config_generator._extract_config_values(self.base_config)
+            "base_config_dict": self.config_generator._extract_config_values(
+                self.base_config
+            )
             if self.base_config
             else None,
             "base_processing_config_dict": self.config_generator._extract_config_values(
@@ -805,7 +949,9 @@ class DAGConfigFactory:
             )
             if self.base_processing_config
             else None,
-            "config_class_map": {k: v.__name__ for k, v in self._config_class_map.items()},
+            "config_class_map": {
+                k: v.__name__ for k, v in self._config_class_map.items()
+            },
         }
 
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
@@ -853,7 +999,9 @@ class DAGConfigFactory:
         """
         if self._inherits_from_processing_config(config_class):
             if not self.base_config:
-                raise ValueError(f"Step '{step_name}' requires base config to be set first")
+                raise ValueError(
+                    f"Step '{step_name}' requires base config to be set first"
+                )
             if not self.base_processing_config:
                 raise ValueError(
                     f"Step '{step_name}' requires base processing config to be set first"
@@ -861,7 +1009,9 @@ class DAGConfigFactory:
 
         elif self._inherits_from_base_config(config_class):
             if not self.base_config:
-                raise ValueError(f"Step '{step_name}' requires base config to be set first")
+                raise ValueError(
+                    f"Step '{step_name}' requires base config to be set first"
+                )
 
     def _create_config_instance_with_inheritance(
         self, config_class: Type[BaseModel], step_inputs: Dict[str, Any]
@@ -879,7 +1029,8 @@ class DAGConfigFactory:
         # Ensure config generator is available
         if not self.config_generator:
             self.config_generator = ConfigurationGenerator(
-                base_config=self.base_config, base_processing_config=self.base_processing_config
+                base_config=self.base_config,
+                base_processing_config=self.base_processing_config,
             )
 
         # Determine inheritance strategy and create instance
@@ -907,18 +1058,26 @@ class DAGConfigFactory:
         # Try from_base_config first (preferred method)
         if hasattr(config_class, "from_base_config"):
             try:
-                return config_class.from_base_config(self.base_processing_config, **step_inputs)
+                return config_class.from_base_config(
+                    self.base_processing_config, **step_inputs
+                )
             except Exception as e:
-                logger.warning(f"from_base_config failed for {config_class.__name__}: {e}")
+                logger.warning(
+                    f"from_base_config failed for {config_class.__name__}: {e}"
+                )
                 # Fall through to manual combination
 
         # Fallback: combine all inputs manually
         combined_inputs = {}
         if self.base_config:
-            combined_inputs.update(self.config_generator._extract_config_values(self.base_config))
+            combined_inputs.update(
+                self.config_generator._extract_config_values(self.base_config)
+            )
         if self.base_processing_config:
             combined_inputs.update(
-                self.config_generator._extract_config_values(self.base_processing_config)
+                self.config_generator._extract_config_values(
+                    self.base_processing_config
+                )
             )
         combined_inputs.update(step_inputs)
 
@@ -942,13 +1101,17 @@ class DAGConfigFactory:
             try:
                 return config_class.from_base_config(self.base_config, **step_inputs)
             except Exception as e:
-                logger.warning(f"from_base_config failed for {config_class.__name__}: {e}")
+                logger.warning(
+                    f"from_base_config failed for {config_class.__name__}: {e}"
+                )
                 # Fall through to manual combination
 
         # Fallback: combine inputs manually
         combined_inputs = {}
         if self.base_config:
-            combined_inputs.update(self.config_generator._extract_config_values(self.base_config))
+            combined_inputs.update(
+                self.config_generator._extract_config_values(self.base_config)
+            )
         combined_inputs.update(step_inputs)
 
         return config_class(**combined_inputs)
@@ -1027,7 +1190,9 @@ class DAGConfigFactory:
             ValueError: If step not configured yet or update fails
         """
         if step_name not in self.step_configs:
-            raise ValueError(f"Step '{step_name}' not configured yet. Use set_step_config first.")
+            raise ValueError(
+                f"Step '{step_name}' not configured yet. Use set_step_config first."
+            )
 
         # Merge with existing configuration
         updated_inputs = {**self.step_configs[step_name], **kwargs}
