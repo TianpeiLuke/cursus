@@ -15,9 +15,12 @@ import os
 import shutil
 import sys
 import traceback
+import gc
 from pathlib import Path
-from typing import Dict, Optional, List, Any, Union
+from typing import Dict, Optional, List, Any, Union, Callable
+from multiprocessing import Pool, cpu_count
 import pandas as pd
+import numpy as np
 import boto3
 from botocore.exceptions import ClientError
 
@@ -45,6 +48,177 @@ def ensure_directory(directory: Path) -> bool:
     except Exception as e:
         logger.error(f"Failed to create directory {directory}: {str(e)}", exc_info=True)
         return False
+
+
+# --- Memory Optimization Functions ---
+
+
+def optimize_dtypes(
+    df: pd.DataFrame, log_func: Optional[Callable] = None
+) -> pd.DataFrame:
+    """
+    Optimize DataFrame dtypes to reduce memory usage.
+
+    Applies the following optimizations:
+    - Downcast numeric types (int64->int32, float64->float32)
+    - Convert object columns with low cardinality to category
+
+    Args:
+        df: Input DataFrame
+        log_func: Optional logging function
+
+    Returns:
+        DataFrame with optimized dtypes
+    """
+    log = log_func or print
+    initial_memory = df.memory_usage(deep=True).sum() / 1024**2
+
+    # Downcast numeric columns
+    for col in df.select_dtypes(include=["int64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="integer")
+
+    for col in df.select_dtypes(include=["float64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="float")
+
+    # Convert low-cardinality object columns to category
+    for col in df.select_dtypes(include=["object"]).columns:
+        num_unique = df[col].nunique()
+        num_total = len(df[col])
+        if num_unique / num_total < 0.5:  # Less than 50% unique values
+            df[col] = df[col].astype("category")
+
+    final_memory = df.memory_usage(deep=True).sum() / 1024**2
+    reduction = (1 - final_memory / initial_memory) * 100
+    log(
+        f"[INFO] Memory optimization: {initial_memory:.2f} MB -> {final_memory:.2f} MB ({reduction:.1f}% reduction)"
+    )
+
+    return df
+
+
+def _read_file_wrapper(args: tuple) -> pd.DataFrame:
+    """
+    Wrapper function for parallel file reading.
+
+    Args:
+        args: Tuple of (file_path, file_index, total_files)
+
+    Returns:
+        DataFrame from the file
+    """
+    file_path, idx, total = args
+    try:
+        file_format = detect_file_format(file_path)
+        if file_format == "unknown":
+            raise ValueError(f"Unknown file format for {file_path}")
+
+        df = read_data_file(file_path, file_format)
+        # Log progress
+        logger.info(
+            f"[INFO] Processed file {idx + 1}/{total}: {file_path.name} ({df.shape[0]} rows)"
+        )
+        return df
+    except Exception as e:
+        raise RuntimeError(f"Failed to read file {file_path.name}: {e}")
+
+
+def _batch_concat_dataframes(dfs: list, batch_size: int = 10) -> pd.DataFrame:
+    """
+    Concatenate DataFrames in batches to minimize memory copies.
+
+    Args:
+        dfs: List of DataFrames to concatenate
+        batch_size: Number of DataFrames to concatenate at once
+
+    Returns:
+        Single concatenated DataFrame
+    """
+    if not dfs:
+        raise ValueError("No DataFrames to concatenate")
+
+    if len(dfs) == 1:
+        return dfs[0]
+
+    # Process in batches to reduce intermediate copies
+    while len(dfs) > 1:
+        batch_results = []
+        for i in range(0, len(dfs), batch_size):
+            batch = dfs[i : i + batch_size]
+            if len(batch) == 1:
+                batch_results.append(batch[0])
+            else:
+                batch_results.append(pd.concat(batch, axis=0, ignore_index=True))
+        dfs = batch_results
+
+    return dfs[0]
+
+
+def _combine_files_streaming(
+    file_args: list,
+    max_workers: int,
+    concat_batch_size: int,
+    streaming_batch_size: int,
+) -> pd.DataFrame:
+    """
+    Combine files using streaming batch processing for memory efficiency.
+
+    Instead of loading all files into memory, processes them in batches,
+    concatenating incrementally and freeing memory between batches.
+
+    Memory usage: streaming_batch_size × avg_file_size (much lower than loading all)
+
+    Args:
+        file_args: List of file arguments for _read_file_wrapper
+        max_workers: Number of parallel workers
+        concat_batch_size: Batch size for DataFrame concatenation
+        streaming_batch_size: Number of files to process per streaming batch
+
+    Returns:
+        Combined DataFrame from all files
+    """
+    total_files = len(file_args)
+    result_df = None
+    total_rows = 0
+
+    # Process files in streaming batches
+    for batch_start in range(0, total_files, streaming_batch_size):
+        batch_end = min(batch_start + streaming_batch_size, total_files)
+        batch_args = file_args[batch_start:batch_end]
+        batch_num = (batch_start // streaming_batch_size) + 1
+        total_batches = (total_files + streaming_batch_size - 1) // streaming_batch_size
+
+        logger.info(
+            f"[INFO] Processing streaming batch {batch_num}/{total_batches} ({len(batch_args)} files)"
+        )
+
+        # Read current batch of files
+        if max_workers > 1 and len(batch_args) > 1:
+            with Pool(processes=max_workers) as pool:
+                batch_dfs = pool.map(_read_file_wrapper, batch_args)
+        else:
+            batch_dfs = [_read_file_wrapper(args) for args in batch_args]
+
+        # Concatenate batch
+        batch_result = _batch_concat_dataframes(batch_dfs, concat_batch_size)
+        batch_rows = batch_result.shape[0]
+        total_rows += batch_rows
+
+        logger.info(f"[INFO] Batch {batch_num} combined: {batch_rows} rows")
+
+        # Incrementally concatenate with result
+        if result_df is None:
+            result_df = batch_result
+        else:
+            result_df = pd.concat([result_df, batch_result], axis=0, ignore_index=True)
+
+        # Free memory
+        del batch_dfs, batch_result
+        gc.collect()
+
+    logger.info(
+        f"[INFO] Streaming complete: {total_rows} total rows from {total_files} files"
+    )
+    return result_df
 
 
 def detect_file_format(file_path: Path) -> str:
@@ -235,8 +409,102 @@ def find_data_files(input_dir: Path) -> List[Path]:
     return data_files
 
 
+def combine_files(
+    data_files: List[Path],
+    max_workers: Optional[int] = None,
+    batch_size: int = 10,
+    streaming_batch_size: Optional[int] = None,
+) -> pd.DataFrame:
+    """
+    Combine multiple data files using parallel processing and optional streaming.
+
+    Uses parallel file reading and batch concatenation for improved performance.
+    Memory-efficient approach with optional streaming mode.
+
+    Streaming Mode:
+    When streaming_batch_size is set, processes files in batches to avoid loading
+    all DataFrames into memory simultaneously. This is the most memory-efficient mode.
+
+    Args:
+        data_files: List of data file paths
+        max_workers: Maximum number of parallel workers (default: cpu_count)
+        batch_size: Number of DataFrames to concatenate at once (default: 10)
+        streaming_batch_size: Number of files to process per batch (enables streaming mode)
+            - If None: Loads all files into memory (original behavior)
+            - If set: Processes files in batches, concatenating incrementally
+            - Recommended: 10-20 files per batch for memory-constrained environments
+
+    Returns:
+        Combined DataFrame from all files
+    """
+    if not data_files:
+        raise ValueError("No data files found to process")
+
+    total_files = len(data_files)
+    logger.info(f"[INFO] Found {total_files} files to process")
+
+    try:
+        # Determine optimal number of workers
+        if max_workers is None:
+            max_workers = min(cpu_count(), total_files)
+
+        logger.info(f"[INFO] Using {max_workers} parallel workers for file reading")
+
+        # Prepare arguments for parallel processing
+        file_args = [(file, i, total_files) for i, file in enumerate(data_files)]
+
+        # STREAMING MODE: Process files in batches to avoid loading all into memory
+        if streaming_batch_size is not None and streaming_batch_size > 0:
+            logger.info(
+                f"[INFO] Streaming mode enabled: processing {streaming_batch_size} files per batch"
+            )
+            result_df = _combine_files_streaming(
+                file_args, max_workers, batch_size, streaming_batch_size
+            )
+            logger.info(f"[INFO] Final combined shape: {result_df.shape}")
+            return result_df
+
+        # ORIGINAL MODE: Load all files then concatenate
+        # Read files in parallel
+        if max_workers > 1 and total_files > 1:
+            with Pool(processes=max_workers) as pool:
+                dataframes = pool.map(_read_file_wrapper, file_args)
+        else:
+            # Fall back to sequential processing for single file or single worker
+            logger.info(
+                "[INFO] Using sequential processing (single worker or single file)"
+            )
+            dataframes = [_read_file_wrapper(args) for args in file_args]
+
+        if not dataframes:
+            raise RuntimeError("No data was loaded from any files")
+
+        # Log total rows before concatenation
+        total_rows = sum(df.shape[0] for df in dataframes)
+        logger.info(f"[INFO] Loaded {total_rows} total rows from {total_files} files")
+
+        # Concatenate using batch approach
+        logger.info(f"[INFO] Concatenating DataFrames with batch_size={batch_size}")
+        result_df = _batch_concat_dataframes(dataframes, batch_size)
+
+        # Clear intermediate DataFrames to free memory
+        del dataframes
+        gc.collect()
+
+        # Verify final shape
+        logger.info(f"[INFO] Final combined shape: {result_df.shape}")
+
+        return result_df
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to read or concatenate files: {e}")
+
+
 def process_data_files(data_files: List[Path]) -> pd.DataFrame:
     """
+    DEPRECATED: Legacy function for backward compatibility.
+    Use combine_files() instead for better performance and memory efficiency.
+
     Process multiple data files and combine them into a single DataFrame.
 
     Args:
@@ -244,47 +512,13 @@ def process_data_files(data_files: List[Path]) -> pd.DataFrame:
 
     Returns:
         Combined DataFrame
-
-    Raises:
-        ValueError: If no valid data files found
-        Exception: If processing fails
     """
-    if not data_files:
-        raise ValueError("No data files found to process")
-
-    logger.info(f"Processing {len(data_files)} data files")
-
-    combined_df = None
-
-    for file_path in data_files:
-        try:
-            file_format = detect_file_format(file_path)
-            if file_format == "unknown":
-                logger.warning(f"Skipping file with unknown format: {file_path}")
-                continue
-
-            df = read_data_file(file_path, file_format)
-
-            if combined_df is None:
-                combined_df = df
-            else:
-                # Combine DataFrames (concatenate rows)
-                combined_df = pd.concat([combined_df, df], ignore_index=True)
-
-            logger.info(f"Processed file: {file_path} ({len(df)} rows)")
-
-        except Exception as e:
-            logger.error(f"Error processing file {file_path}: {str(e)}")
-            # Continue with other files instead of failing completely
-            continue
-
-    if combined_df is None:
-        raise ValueError("No valid data could be processed from input files")
-
-    logger.info(
-        f"Combined data: {len(combined_df)} rows, {len(combined_df.columns)} columns"
+    logger.warning(
+        "[WARNING] Using deprecated process_data_files(). Consider using combine_files() for better performance."
     )
-    return combined_df
+    return combine_files(
+        data_files, max_workers=1, batch_size=5, streaming_batch_size=None
+    )
 
 
 def write_signature_file(signature: List[str], output_dir: Path) -> Path:
@@ -552,6 +786,14 @@ def main(
         shard_size = int(environ_vars.get("SHARD_SIZE", "10000"))
         output_format = environ_vars.get("OUTPUT_FORMAT", "CSV").upper()
 
+        # Memory optimization parameters
+        max_workers = int(environ_vars.get("MAX_WORKERS", 0)) or None  # 0 means auto
+        batch_size = int(environ_vars.get("BATCH_SIZE", 5))
+        optimize_memory = environ_vars.get("OPTIMIZE_MEMORY", "true").lower() == "true"
+        streaming_batch_size = (
+            int(environ_vars.get("STREAMING_BATCH_SIZE", 0)) or None
+        )  # 0 means disabled
+
         # Validate output format
         supported_formats = ["CSV", "JSON", "PARQUET"]
         if output_format not in supported_formats:
@@ -563,6 +805,13 @@ def main(
         logger.info(
             f"Configuration: WRITE_DATA_SHARDS={write_shards}, "
             f"SHARD_SIZE={shard_size}, OUTPUT_FORMAT={output_format}"
+        )
+        logger.info(f"Memory optimization settings:")
+        logger.info(f"  MAX_WORKERS: {max_workers if max_workers else 'auto'}")
+        logger.info(f"  BATCH_SIZE: {batch_size}")
+        logger.info(f"  OPTIMIZE_MEMORY: {optimize_memory}")
+        logger.info(
+            f"  STREAMING_BATCH_SIZE: {streaming_batch_size if streaming_batch_size else 'disabled'}"
         )
 
         # Get input and output directories
@@ -581,8 +830,16 @@ def main(
         if not data_files:
             raise ValueError(f"No supported data files found in {input_data_dir}")
 
-        # Process all data files
-        combined_df = process_data_files(data_files)
+        # Process all data files using optimized combine_files function
+        logger.info(f"[INFO] Combining data files...")
+        combined_df = combine_files(
+            data_files, max_workers, batch_size, streaming_batch_size
+        )
+        logger.info(f"[INFO] Combined data shape: {combined_df.shape}")
+
+        # Apply memory optimization if enabled
+        if optimize_memory:
+            combined_df = optimize_dtypes(combined_df, logger.info)
 
         # Generate signature and metadata
         signature = generate_schema_signature(combined_df)
@@ -631,6 +888,10 @@ if __name__ == "__main__":
             "WRITE_DATA_SHARDS": os.environ.get("WRITE_DATA_SHARDS", "false"),
             "SHARD_SIZE": os.environ.get("SHARD_SIZE", "10000"),
             "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "CSV"),
+            "MAX_WORKERS": os.environ.get("MAX_WORKERS", "0"),
+            "BATCH_SIZE": os.environ.get("BATCH_SIZE", "5"),
+            "OPTIMIZE_MEMORY": os.environ.get("OPTIMIZE_MEMORY", "false"),
+            "STREAMING_BATCH_SIZE": os.environ.get("STREAMING_BATCH_SIZE", "0"),
         }
 
         # Log configuration for debugging

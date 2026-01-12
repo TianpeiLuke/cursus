@@ -81,6 +81,31 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         default="CSV", description="Output format for data shards (CSV, JSON, PARQUET)"
     )
 
+    # Memory optimization parameters
+    max_workers: int = Field(
+        default=0,
+        ge=0,
+        description="Maximum parallel workers for file reading. 0=auto, 1=sequential (lowest memory), 2=moderate. Default: 0 (auto)",
+    )
+
+    batch_size: int = Field(
+        default=5,
+        ge=2,
+        le=10,
+        description="DataFrame concatenation batch size. Smaller values reduce peak memory. Range: 2-10. Default: 5",
+    )
+
+    optimize_memory: bool = Field(
+        default=False,
+        description="Enable dtype optimization to reduce memory usage. Downcasts numeric types and converts low-cardinality columns. Default: False (preserves precision)",
+    )
+
+    streaming_batch_size: int = Field(
+        default=0,
+        ge=0,
+        description="Number of files to process per batch for streaming mode. 0=disabled (load all files), 15-20=moderate memory reduction, 5-10=maximum reduction. Default: 0 (disabled)",
+    )
+
     # Update to Pydantic V2 style model_config
     model_config = {
         "arbitrary_types_allowed": True,
@@ -223,6 +248,10 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
                 "WRITE_DATA_SHARDS": str(self.write_data_shards).lower(),
                 "SHARD_SIZE": str(self.shard_size),
                 "OUTPUT_FORMAT": self.output_format,
+                "MAX_WORKERS": str(self.max_workers),
+                "BATCH_SIZE": str(self.batch_size),
+                "OPTIMIZE_MEMORY": "true" if self.optimize_memory else "false",
+                "STREAMING_BATCH_SIZE": str(self.streaming_batch_size),
             }
         )
 
