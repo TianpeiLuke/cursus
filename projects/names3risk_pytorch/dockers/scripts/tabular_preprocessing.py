@@ -746,6 +746,163 @@ def process_batch_mode_preprocessing(
 # ============================================================================
 
 
+def collect_temporal_split_boundaries(
+    all_shards: List[Path],
+    signature_columns: Optional[list],
+    temporal_col: str,
+    train_ratio: float,
+    test_val_ratio: float,
+    log_func: Callable,
+) -> tuple:
+    """
+    Pass 1 (Temporal Splits): Scan all data to collect orderDate values for split boundaries.
+
+    Memory-efficient: Only loads temporal column, not full data.
+    Collects ALL temporal values to compute exact split thresholds.
+
+    Args:
+        all_shards: List of all input shard paths
+        signature_columns: Optional column names
+        temporal_col: Name of temporal column (e.g., "orderDate")
+        train_ratio: Training set ratio (e.g., 0.7)
+        test_val_ratio: Test/val split ratio (e.g., 0.5)
+        log_func: Logging function
+
+    Returns:
+        Tuple of (train_cutoff_date, test_cutoff_date)
+    """
+    log_func(f"[PASS 1 - TEMPORAL] Scanning all shards for '{temporal_col}' values...")
+
+    all_dates = []
+
+    for i, shard in enumerate(all_shards):
+        try:
+            # Read only the temporal column (very low memory)
+            suffix = shard.suffix.lower()
+
+            if suffix.endswith(".parquet") or suffix.endswith(".snappy.parquet"):
+                df = pd.read_parquet(shard, columns=[temporal_col])
+            else:
+                # For CSV/JSON, read full but keep only temporal column
+                df = _read_file_to_df(shard, signature_columns)
+                df = df[[temporal_col]]
+
+            all_dates.extend(df[temporal_col].tolist())
+            del df
+            gc.collect()
+
+            if (i + 1) % 100 == 0:
+                log_func(
+                    f"[PASS 1 - TEMPORAL] Processed {i + 1}/{len(all_shards)} shards, collected {len(all_dates)} dates"
+                )
+
+        except Exception as e:
+            log_func(
+                f"[PASS 1 - TEMPORAL WARNING] Failed to read temporal column from {shard.name}: {e}"
+            )
+            continue
+
+    if not all_dates:
+        raise RuntimeError(f"No temporal data collected from '{temporal_col}' column")
+
+    log_func(f"[PASS 1 - TEMPORAL] Collected {len(all_dates)} total dates")
+
+    # Sort all dates to find split boundaries
+    log_func("[PASS 1 - TEMPORAL] Sorting dates to compute split boundaries...")
+    all_dates.sort()
+
+    # Calculate split thresholds based on position
+    total_rows = len(all_dates)
+    train_cutoff_idx = int(total_rows * train_ratio)
+    val_ratio = (1 - train_ratio) * test_val_ratio
+    test_cutoff_idx = train_cutoff_idx + int(total_rows * val_ratio)
+
+    train_cutoff_date = all_dates[train_cutoff_idx]
+    test_cutoff_date = all_dates[test_cutoff_idx]
+
+    log_func(f"[PASS 1 - TEMPORAL] Split boundaries computed:")
+    log_func(f"  Train cutoff: {train_cutoff_date} (oldest {train_ratio * 100:.1f}%)")
+    log_func(f"  Test cutoff: {test_cutoff_date} (next {val_ratio * 100:.1f}%)")
+    log_func(f"  Val: remaining {(1 - train_ratio - val_ratio) * 100:.1f}% (newest)")
+
+    return train_cutoff_date, test_cutoff_date
+
+
+def collect_customer_dedup_tracking(
+    all_shards: List[Path],
+    signature_columns: Optional[list],
+    temporal_col: str,
+    log_func: Callable,
+) -> Dict[str, Any]:
+    """
+    Pass 1 (Deduplication): Determine which customerIds to keep (first occurrence by temporal order).
+
+    Memory: O(unique_customers) - typically manageable (e.g., 1M customers = ~16MB)
+    Scans all data to track the earliest temporal value for each customerId.
+
+    Args:
+        all_shards: List of all input shard paths
+        signature_columns: Optional column names
+        temporal_col: Name of temporal column for ordering
+        log_func: Logging function
+
+    Returns:
+        Dictionary mapping customerId -> earliest temporal value
+    """
+    log_func(
+        "[PASS 1 - DEDUP] Scanning all shards to track first customer occurrences..."
+    )
+
+    # Dictionary: customerId -> earliest temporal value
+    customer_first_date = {}
+
+    for i, shard in enumerate(all_shards):
+        try:
+            # Read only customerId + temporal columns (very low memory)
+            suffix = shard.suffix.lower()
+
+            if suffix.endswith(".parquet") or suffix.endswith(".snappy.parquet"):
+                df = pd.read_parquet(shard, columns=["customerId", temporal_col])
+            else:
+                # For CSV/JSON, read full but keep only needed columns
+                df = _read_file_to_df(shard, signature_columns)
+                df = df[["customerId", temporal_col]]
+
+            # Update tracking dictionary
+            for _, row in df.iterrows():
+                cust_id = row["customerId"]
+                order_date = row[temporal_col]
+
+                if cust_id not in customer_first_date:
+                    customer_first_date[cust_id] = order_date
+                else:
+                    # Keep earliest date
+                    customer_first_date[cust_id] = min(
+                        customer_first_date[cust_id], order_date
+                    )
+
+            del df
+            gc.collect()
+
+            if (i + 1) % 100 == 0:
+                log_func(
+                    f"[PASS 1 - DEDUP] Processed {i + 1}/{len(all_shards)} shards, tracking {len(customer_first_date)} unique customers"
+                )
+
+        except Exception as e:
+            log_func(
+                f"[PASS 1 - DEDUP WARNING] Failed to read dedup columns from {shard.name}: {e}"
+            )
+            continue
+
+    log_func(f"[PASS 1 - DEDUP] Tracked {len(customer_first_date)} unique customers")
+    log_func(
+        f"[PASS 1 - DEDUP] Memory usage: ~{len(customer_first_date) * 16 / 1024 / 1024:.2f} MB"
+    )
+
+    return customer_first_date
+
+
 def write_single_shard(
     df: pd.DataFrame,
     output_dir: Path,
@@ -953,9 +1110,18 @@ def process_training_splits_streaming(
     log_func: Callable,
 ) -> None:
     """
-    Process training data with time-based splits in streaming mode.
+    Process training data with time-based splits in streaming mode (TWO-PASS STRATEGY).
 
-    Uses temporal ordering instead of random splits to match batch mode behavior.
+    PASS 1: Scan all data to collect:
+      - Temporal split boundaries (exact train/test/val cutoff dates)
+      - Customer deduplication tracking (first occurrence per customer)
+
+    PASS 2: Process batches with global knowledge from Pass 1:
+      - Apply global deduplication filter
+      - Apply global temporal split boundaries
+      - Write to correct split directories
+
+    This ensures exact match with batch mode behavior while maintaining streaming memory efficiency.
 
     Args:
         all_shards: List of all input shard paths
@@ -972,7 +1138,7 @@ def process_training_splits_streaming(
         log_func: Logging function
     """
     log_func(
-        "[STREAMING] Training mode: Using time-based split for Names3Risk compatibility"
+        "[STREAMING] Training mode: Using TWO-PASS streaming for exact batch mode match"
     )
 
     split_counters = {"train": 0, "test": 0, "val": 0}
@@ -983,17 +1149,57 @@ def process_training_splits_streaming(
         col.replace("__DOT__", ".") for col in first_shard_df.columns
     ]
     temporal_col = get_temporal_column(first_shard_df)
+    has_customer_id = "customerId" in first_shard_df.columns
     del first_shard_df
     gc.collect()
 
-    if temporal_col:
-        log_func(
-            f"[STREAMING] Using temporal column '{temporal_col}' for time-based splits"
+    if not temporal_col:
+        raise RuntimeError(
+            "No temporal column found for time-based splits. "
+            "Expected 'orderDate' or 'transactionDate' column."
         )
-    else:
-        log_func(
-            "[STREAMING WARNING] No temporal column found, using sequential position"
+
+    log_func(f"[STREAMING] Detected temporal column: '{temporal_col}'")
+    log_func(
+        f"[STREAMING] Customer deduplication: {'enabled' if has_customer_id else 'disabled'}"
+    )
+
+    # ========================================================================
+    # PASS 1: Collect Global Statistics
+    # ========================================================================
+
+    log_func("[STREAMING] ===== STARTING PASS 1: Collecting global statistics =====")
+
+    # Pass 1a: Collect temporal split boundaries
+    train_cutoff_date, test_cutoff_date = collect_temporal_split_boundaries(
+        all_shards,
+        signature_columns,
+        temporal_col,
+        train_ratio,
+        test_val_ratio,
+        log_func,
+    )
+
+    # Pass 1b: Collect customer deduplication tracking (if applicable)
+    customer_first_date = None
+    if has_customer_id:
+        customer_first_date = collect_customer_dedup_tracking(
+            all_shards,
+            signature_columns,
+            temporal_col,
+            log_func,
         )
+
+    log_func("[STREAMING] ===== PASS 1 COMPLETE =====")
+    log_func("")
+
+    # ========================================================================
+    # PASS 2: Process Batches with Global Knowledge
+    # ========================================================================
+
+    log_func(
+        "[STREAMING] ===== STARTING PASS 2: Processing batches with global knowledge ====="
+    )
 
     # Process all batches
     for batch_start in range(0, len(all_shards), streaming_batch_size):
@@ -1001,11 +1207,9 @@ def process_training_splits_streaming(
         batch_shards = all_shards[batch_start:batch_end]
         batch_num = (batch_start // streaming_batch_size) + 1
 
-        log_func(
-            f"[STREAMING] Processing batch {batch_num} ({len(batch_shards)} shards)"
-        )
+        log_func(f"[PASS 2] Processing batch {batch_num} ({len(batch_shards)} shards)")
 
-        # Process batch
+        # Process batch (applies Names3Risk preprocessing but NOT dedup yet)
         batch_df = process_single_batch(
             batch_shards,
             signature_columns,
@@ -1015,10 +1219,39 @@ def process_training_splits_streaming(
             log_func,
         )
 
-        # Assign to splits and write
-        batch_df = assign_temporal_splits(
-            batch_df, train_ratio, test_val_ratio, temporal_col
-        )
+        # CRITICAL: Apply global deduplication filter
+        if has_customer_id and customer_first_date:
+            initial_rows = len(batch_df)
+
+            # Keep only rows where this is the FIRST occurrence globally
+            def should_keep_row(row):
+                cust_id = row["customerId"]
+                order_date = row[temporal_col]
+                # Keep only if this customer's first date matches this row's date
+                return customer_first_date.get(cust_id) == order_date
+
+            batch_df = batch_df[batch_df.apply(should_keep_row, axis=1)]
+
+            filtered_rows = initial_rows - len(batch_df)
+            if filtered_rows > 0:
+                log_func(
+                    f"[PASS 2] Filtered {filtered_rows} duplicate customers in batch "
+                    f"({filtered_rows / initial_rows * 100:.2f}%)"
+                )
+
+        # Assign to splits using GLOBAL temporal boundaries
+        def assign_split_global(row):
+            order_date = row[temporal_col]
+            if order_date < train_cutoff_date:
+                return "train"
+            elif order_date < test_cutoff_date:
+                return "test"
+            else:
+                return "val"
+
+        batch_df["_split"] = batch_df.apply(assign_split_global, axis=1)
+
+        # Write to split directories
         write_splits_to_shards(
             batch_df, output_path, split_counters, shard_size, output_format, log_func
         )
@@ -1026,8 +1259,9 @@ def process_training_splits_streaming(
         del batch_df
         gc.collect()
 
+    log_func("[STREAMING] ===== PASS 2 COMPLETE =====")
     log_func(
-        f"[STREAMING] Complete: train={split_counters['train']}, "
+        f"[STREAMING] Final results: train={split_counters['train']}, "
         f"test={split_counters['test']}, val={split_counters['val']} shards"
     )
 

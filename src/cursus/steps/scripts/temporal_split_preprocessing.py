@@ -22,8 +22,9 @@ import argparse
 import logging
 import sys
 import traceback
+import gc
 from pathlib import Path
-from typing import Dict, Optional, Callable, Any
+from typing import Dict, Optional, Callable, Any, List
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
@@ -31,7 +32,9 @@ import random
 from sklearn.model_selection import train_test_split
 
 
-# --- Helper Functions ---
+# ============================================================================
+# SHARED UTILITY FUNCTIONS (Used by both Batch and Streaming modes)
+# ============================================================================
 
 
 def load_signature_columns(signature_path: str) -> Optional[list]:
@@ -472,7 +475,616 @@ def temporal_customer_split(
     return {"train": train_df, "val": val_df, "oot": oot_df}
 
 
-# --- Main Processing Logic ---
+# ============================================================================
+# BATCH MODE FUNCTIONS
+# ============================================================================
+
+
+def process_batch_mode_temporal_split(
+    input_data_dir: str,
+    signature_columns: Optional[list],
+    date_column: str,
+    group_id_column: str,
+    split_date: str,
+    train_ratio: float,
+    random_seed: int,
+    targets_str: Optional[str],
+    main_task_index: Optional[int],
+    label_field: Optional[str],
+    output_format: str,
+    max_workers: int,
+    batch_size: int,
+    output_paths: Dict[str, str],
+    log_func: Callable,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Process temporal split in batch mode.
+
+    Loads all data into memory, applies temporal split logic, and saves outputs.
+
+    Args:
+        input_data_dir: Input data directory
+        signature_columns: Optional signature columns
+        date_column: Name of date column
+        group_id_column: Name of group ID column
+        split_date: Temporal split date
+        train_ratio: Train/val ratio
+        random_seed: Random seed
+        targets_str: Optional targets string for multi-task
+        main_task_index: Optional main task index
+        label_field: Optional label field
+        output_format: Output format
+        max_workers: Max parallel workers
+        batch_size: Batch concatenation size
+        output_paths: Output path dictionary
+        log_func: Logging function
+
+    Returns:
+        Dictionary with training_data and oot_data DataFrames
+    """
+    log_func("[BATCH] Starting batch mode temporal split preprocessing")
+
+    # Combine data shards
+    log_func(f"[BATCH] Combining data shards from {input_data_dir}…")
+    df = combine_shards(
+        input_data_dir,
+        signature_columns=signature_columns,
+        max_workers=max_workers,
+        batch_size=batch_size,
+    )
+    log_func(f"[BATCH] Combined data shape: {df.shape}")
+
+    # Process columns
+    df.columns = [col.replace("__DOT__", ".") for col in df.columns]
+
+    # Validate required columns exist
+    if date_column not in df.columns:
+        raise RuntimeError(
+            f"Date column '{date_column}' not found in data. Available: {df.columns.tolist()}"
+        )
+    if group_id_column not in df.columns:
+        raise RuntimeError(
+            f"Group ID column '{group_id_column}' not found in data. Available: {df.columns.tolist()}"
+        )
+
+    # Main task label generation (if targets are provided)
+    if targets_str and main_task_index is not None:
+        try:
+            # Parse targets from string
+            if targets_str.startswith("[") and targets_str.endswith("]"):
+                import ast
+
+                targets = ast.literal_eval(targets_str)
+            else:
+                targets = [t.strip().strip("'\"") for t in targets_str.split(",")]
+
+            log_func(f"[BATCH] Generating main task labels with targets: {targets}")
+            log_func(f"[BATCH] Main task index: {main_task_index}")
+
+            df = generate_main_task_label(
+                df=df, targets=targets, main_task_index=main_task_index, logger=log_func
+            )
+        except Exception as e:
+            log_func(f"[BATCH WARNING] Failed to generate main task labels: {e}")
+            log_func("[BATCH WARNING] Continuing without main task label generation")
+
+    # Optional label processing
+    if label_field:
+        if label_field not in df.columns:
+            raise RuntimeError(
+                f"Label field '{label_field}' not found in columns: {df.columns.tolist()}"
+            )
+
+        if not pd.api.types.is_numeric_dtype(df[label_field]):
+            unique_labels = sorted(df[label_field].dropna().unique())
+            label_map = {val: idx for idx, val in enumerate(unique_labels)}
+            df[label_field] = df[label_field].map(label_map)
+
+        df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype(
+            "Int64"
+        )
+        df.dropna(subset=[label_field], inplace=True)
+        df[label_field] = df[label_field].astype(int)
+        log_func(f"[BATCH] Data shape after cleaning labels: {df.shape}")
+
+    # Temporal split
+    log_func(f"[BATCH] Performing temporal split at date: {split_date}")
+    splits = temporal_customer_split(
+        df=df,
+        date_column=date_column,
+        group_id_column=group_id_column,
+        split_date=split_date,
+        train_ratio=train_ratio,
+        random_seed=random_seed,
+        logger=log_func,
+    )
+
+    # Validate output format
+    if output_format not in ["csv", "tsv", "parquet"]:
+        log_func(
+            f"[BATCH WARNING] Invalid OUTPUT_FORMAT '{output_format}', defaulting to CSV"
+        )
+        output_format = "csv"
+
+    # Extract training data and OOT data
+    training_data = pd.concat(
+        [splits["train"], splits["val"]], axis=0, ignore_index=True
+    )
+    oot_data = splits["oot"]
+
+    log_func(f"[BATCH] Training data shape (train + val): {training_data.shape}")
+    log_func(f"[BATCH] OOT data shape: {oot_data.shape}")
+
+    # Save outputs
+    training_output_dir = output_paths.get(
+        "training_data",
+        output_paths.get("processed_data", "/opt/ml/processing/output/training_data"),
+    )
+    training_output_path = Path(training_output_dir)
+    training_output_path.mkdir(parents=True, exist_ok=True)
+
+    # Create split subdirectories
+    for split_name in ["train", "val", "test"]:
+        split_dir = training_output_path / split_name
+        split_dir.mkdir(exist_ok=True)
+
+    # Save splits
+    for split_name, split_df in [
+        ("train", splits["train"]),
+        ("val", splits["val"]),
+        ("test", splits["oot"]),
+    ]:
+        split_dir = training_output_path / split_name
+
+        if output_format == "csv":
+            proc_path = split_dir / f"{split_name}_processed_data.csv"
+            split_df.to_csv(proc_path, index=False)
+        elif output_format == "tsv":
+            proc_path = split_dir / f"{split_name}_processed_data.tsv"
+            split_df.to_csv(proc_path, sep="\t", index=False)
+        elif output_format == "parquet":
+            proc_path = split_dir / f"{split_name}_processed_data.parquet"
+            split_df.to_parquet(proc_path, index=False)
+
+        log_func(f"[BATCH] Saved {proc_path} (shape={split_df.shape})")
+
+    # Save OOT data separately
+    oot_output_dir = output_paths.get(
+        "oot_data",
+        output_paths.get("processed_data", "/opt/ml/processing/output/oot_data"),
+    )
+    oot_output_path = Path(oot_output_dir)
+    oot_output_path.mkdir(parents=True, exist_ok=True)
+
+    if output_format == "csv":
+        oot_proc_path = oot_output_path / "oot_data.csv"
+        oot_data.to_csv(oot_proc_path, index=False)
+    elif output_format == "tsv":
+        oot_proc_path = oot_output_path / "oot_data.tsv"
+        oot_data.to_csv(oot_proc_path, sep="\t", index=False)
+    elif output_format == "parquet":
+        oot_proc_path = oot_output_path / "oot_data.parquet"
+        oot_data.to_parquet(oot_proc_path, index=False)
+
+    log_func(f"[BATCH] Saved OOT {oot_proc_path} (shape={oot_data.shape})")
+    log_func("[BATCH] Temporal split preprocessing complete in batch mode")
+
+    return {"training_data": training_data, "oot_data": oot_data}
+
+
+# ============================================================================
+# STREAMING MODE FUNCTIONS
+# ============================================================================
+
+
+def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
+    """Find all input shards in directory."""
+    input_path = Path(input_dir)
+    patterns = [
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
+    ]
+    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
+
+    if not all_shards:
+        raise RuntimeError(f"No shards found in {input_dir}")
+
+    log_func(f"[STREAMING] Found {len(all_shards)} input shards")
+    return all_shards
+
+
+def collect_customer_allocation(
+    all_shards: List[Path],
+    signature_columns: Optional[list],
+    date_column: str,
+    group_id_column: str,
+    split_date: str,
+    train_ratio: float,
+    random_seed: int,
+    log_func: Callable,
+) -> tuple:
+    """
+    Pass 1: Scan pre-split data to collect and allocate customers.
+
+    Memory: O(unique_customers) - typically ~8MB for 1M customers
+    Scans all shards to collect unique customer IDs from pre-split period,
+    then randomly allocates them to train vs validation sets.
+
+    Args:
+        all_shards: List of all input shard paths
+        signature_columns: Optional column names
+        date_column: Name of date column for temporal filtering
+        group_id_column: Name of customer/group ID column
+        split_date: Date string for temporal cutoff (YYYY-MM-DD)
+        train_ratio: Proportion of customers for training
+        random_seed: Random seed for reproducibility
+        log_func: Logging function
+
+    Returns:
+        Tuple of (train_customers_set, val_customers_set)
+    """
+    log_func("[PASS 1 - CUSTOMER ALLOCATION] Scanning pre-split data...")
+
+    split_date_dt = pd.to_datetime(split_date)
+    all_customers = set()
+
+    for i, shard in enumerate(all_shards):
+        try:
+            # Read only date + group_id columns (very low memory)
+            suffix = shard.suffix.lower()
+
+            if suffix.endswith(".parquet") or suffix.endswith(".snappy.parquet"):
+                df = pd.read_parquet(shard, columns=[date_column, group_id_column])
+            else:
+                # For CSV/JSON, read full but keep only needed columns
+                df = _read_file_to_df(shard, signature_columns)
+                df = df[[date_column, group_id_column]]
+
+            # Convert date column
+            df[date_column] = pd.to_datetime(df[date_column])
+
+            # Filter to pre-split data only
+            pre_split_df = df[df[date_column] < split_date_dt]
+
+            # Collect unique customers
+            all_customers.update(pre_split_df[group_id_column].unique())
+
+            del df, pre_split_df
+            gc.collect()
+
+            if (i + 1) % 100 == 0:
+                log_func(
+                    f"[PASS 1] Processed {i + 1}/{len(all_shards)} shards, "
+                    f"found {len(all_customers)} unique customers"
+                )
+
+        except Exception as e:
+            log_func(f"[PASS 1 WARNING] Failed to read {shard.name}: {e}")
+            continue
+
+    if not all_customers:
+        raise RuntimeError("No customers found in pre-split data")
+
+    log_func(f"[PASS 1] Total unique customers in pre-split data: {len(all_customers)}")
+
+    # Shuffle and allocate customers to train/val
+    customer_list = list(all_customers)
+    random.seed(random_seed)
+    random.shuffle(customer_list)
+
+    train_size = int(len(customer_list) * train_ratio)
+    train_customers = set(customer_list[:train_size])
+    val_customers = set(customer_list[train_size:])
+
+    log_func(
+        f"[PASS 1] Allocated {len(train_customers)} train customers ({train_ratio * 100:.1f}%)"
+    )
+    log_func(
+        f"[PASS 1] Allocated {len(val_customers)} val customers ({(1 - train_ratio) * 100:.1f}%)"
+    )
+    log_func(f"[PASS 1] Memory usage: ~{len(all_customers) * 8 / 1024 / 1024:.2f} MB")
+
+    return train_customers, val_customers
+
+
+def write_single_shard(
+    df: pd.DataFrame,
+    output_dir: Path,
+    shard_number: int,
+    output_format: str = "csv",
+) -> Path:
+    """Write a single data shard in the specified format."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if output_format == "csv":
+        shard_path = output_dir / f"part-{shard_number:05d}.csv"
+        df.to_csv(shard_path, index=False)
+    elif output_format == "tsv":
+        shard_path = output_dir / f"part-{shard_number:05d}.tsv"
+        df.to_csv(shard_path, sep="\t", index=False)
+    elif output_format == "parquet":
+        shard_path = output_dir / f"part-{shard_number:05d}.parquet"
+        df.to_parquet(shard_path, index=False)
+    else:
+        raise ValueError(f"Unsupported output format: {output_format}")
+
+    return shard_path
+
+
+def write_splits_to_shards(
+    df: pd.DataFrame,
+    output_base: Path,
+    split_counters: Dict[str, int],
+    shard_size: int,
+    output_format: str,
+    log_func: Callable,
+) -> None:
+    """Write DataFrame to separate split directories based on '_split' column."""
+    for split_name in ["train", "val", "oot"]:
+        split_data = df[df["_split"] == split_name].drop("_split", axis=1)
+
+        if len(split_data) == 0:
+            continue
+
+        split_dir = output_base / split_name
+        split_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write in shards
+        for i in range(0, len(split_data), shard_size):
+            shard_df = split_data.iloc[i : i + shard_size]
+            write_single_shard(
+                shard_df, split_dir, split_counters[split_name], output_format
+            )
+            split_counters[split_name] += 1
+
+
+def process_single_batch(
+    shard_files: List[Path],
+    signature_columns: Optional[list],
+    batch_size: int,
+    label_field: Optional[str],
+    log_func: Callable,
+) -> pd.DataFrame:
+    """Process a single batch of shards."""
+    # Read batch
+    batch_dfs = []
+    for shard in shard_files:
+        df = _read_file_to_df(shard, signature_columns)
+        batch_dfs.append(df)
+
+    batch_df = _batch_concat_dataframes(batch_dfs, batch_size)
+    del batch_dfs
+    gc.collect()
+
+    # Process columns
+    batch_df.columns = [col.replace("__DOT__", ".") for col in batch_df.columns]
+
+    # Optional label processing
+    if label_field and label_field in batch_df.columns:
+        if not pd.api.types.is_numeric_dtype(batch_df[label_field]):
+            unique_labels = sorted(batch_df[label_field].dropna().unique())
+            label_map = {val: idx for idx, val in enumerate(unique_labels)}
+            batch_df[label_field] = batch_df[label_field].map(label_map)
+
+        batch_df[label_field] = pd.to_numeric(
+            batch_df[label_field], errors="coerce"
+        ).astype("Int64")
+        batch_df.dropna(subset=[label_field], inplace=True)
+        batch_df[label_field] = batch_df[label_field].astype(int)
+
+    return batch_df
+
+
+def process_streaming_temporal_split(
+    all_shards: List[Path],
+    training_output_path: Path,
+    signature_columns: Optional[list],
+    date_column: str,
+    group_id_column: str,
+    split_date: str,
+    train_customers: set,
+    val_customers: set,
+    targets: Optional[list],
+    main_task_index: Optional[int],
+    label_field: Optional[str],
+    output_format: str,
+    streaming_batch_size: int,
+    shard_size: int,
+    batch_size: int,
+    log_func: Callable,
+) -> None:
+    """
+    Pass 2: Process batches with customer allocation knowledge (TWO-PASS STRATEGY).
+
+    For each batch:
+    1. Determine if pre-split or post-split based on date_column
+    2. Pre-split: Assign to train/val based on customer membership
+    3. Post-split: Assign to OOT only if NOT in train_customers
+    4. Apply multi-task label generation if needed
+    5. Write to appropriate split directories
+
+    Args:
+        all_shards: List of all input shard paths
+        training_output_path: Base output directory for training data
+        signature_columns: Optional column names
+        date_column: Name of date column
+        group_id_column: Name of customer/group ID column
+        split_date: Date string for temporal cutoff
+        train_customers: Set of customer IDs allocated to training
+        val_customers: Set of customer IDs allocated to validation
+        targets: Optional list of target columns for multi-task
+        main_task_index: Optional index of main task in targets list
+        label_field: Optional label field name
+        output_format: Output format ("csv", "tsv", "parquet")
+        streaming_batch_size: Number of shards per batch
+        shard_size: Rows per output shard
+        batch_size: Batch size for concatenation
+        log_func: Logging function
+    """
+    log_func(
+        "[STREAMING] ===== STARTING PASS 2: Processing batches with customer allocation ====="
+    )
+
+    split_date_dt = pd.to_datetime(split_date)
+    split_counters = {"train": 0, "val": 0, "oot": 0}
+
+    for batch_start in range(0, len(all_shards), streaming_batch_size):
+        batch_end = min(batch_start + streaming_batch_size, len(all_shards))
+        batch_shards = all_shards[batch_start:batch_end]
+        batch_num = (batch_start // streaming_batch_size) + 1
+
+        log_func(f"[PASS 2] Processing batch {batch_num} ({len(batch_shards)} shards)")
+
+        # Process batch
+        batch_df = process_single_batch(
+            batch_shards,
+            signature_columns,
+            batch_size,
+            label_field,
+            log_func,
+        )
+
+        # Apply multi-task label generation if needed
+        if targets and main_task_index is not None:
+            batch_df = generate_main_task_label(
+                batch_df, targets, main_task_index, log_func
+            )
+
+        # Convert date column
+        batch_df[date_column] = pd.to_datetime(batch_df[date_column])
+
+        # Assign splits using GLOBAL customer allocation
+        def assign_split_global(row):
+            customer = row[group_id_column]
+            is_pre_split = row[date_column] < split_date_dt
+
+            if is_pre_split:
+                # Pre-split: assign based on customer allocation
+                if customer in train_customers:
+                    return "train"
+                elif customer in val_customers:
+                    return "val"
+                else:
+                    # Customer not in allocation (shouldn't happen, but handle gracefully)
+                    return None
+            else:
+                # Post-split: assign to OOT only if NOT in train
+                if customer not in train_customers:
+                    return "oot"
+                else:
+                    return None  # Filter out train customers from OOT
+
+        batch_df["_split"] = batch_df.apply(assign_split_global, axis=1)
+
+        # Filter out None assignments (customers not in allocation or train customers in OOT)
+        initial_rows = len(batch_df)
+        batch_df = batch_df[batch_df["_split"].notna()]
+        filtered_rows = initial_rows - len(batch_df)
+
+        if filtered_rows > 0:
+            log_func(
+                f"[PASS 2] Filtered {filtered_rows} rows in batch "
+                f"({filtered_rows / initial_rows * 100:.2f}%)"
+            )
+
+        # Write to split directories
+        write_splits_to_shards(
+            batch_df,
+            training_output_path,
+            split_counters,
+            shard_size,
+            output_format,
+            log_func,
+        )
+
+        del batch_df
+        gc.collect()
+
+    log_func("[STREAMING] ===== PASS 2 COMPLETE =====")
+    log_func(
+        f"[STREAMING] Final results: train={split_counters['train']}, "
+        f"val={split_counters['val']}, oot={split_counters['oot']} shards"
+    )
+
+
+def consolidate_shards_to_single_files(
+    training_output_path: Path, output_format: str, log_func: Callable
+) -> Dict[str, pd.DataFrame]:
+    """Consolidate temporary shards into single files per split."""
+    log_func("[STREAMING] Consolidating shards into single files per split...")
+
+    result = {}
+
+    for split_name in ["train", "val", "oot"]:
+        split_dir = training_output_path / split_name
+        if not split_dir.exists():
+            log_func(
+                f"[STREAMING WARNING] {split_name} directory does not exist, skipping"
+            )
+            result[split_name] = pd.DataFrame()
+            continue
+
+        # Find all shards for this split
+        shard_files = sorted(split_dir.glob(f"part-*.{output_format}"))
+        if not shard_files:
+            log_func(
+                f"[STREAMING WARNING] No {split_name} shards found, creating empty DataFrame"
+            )
+            result[split_name] = pd.DataFrame()
+            continue
+
+        log_func(f"[STREAMING] Consolidating {len(shard_files)} {split_name} shards...")
+
+        # Read and concatenate all shards
+        shard_dfs = []
+        for shard_file in shard_files:
+            if output_format == "csv":
+                shard_df = pd.read_csv(shard_file)
+            elif output_format == "tsv":
+                shard_df = pd.read_csv(shard_file, sep="\t")
+            elif output_format == "parquet":
+                shard_df = pd.read_parquet(shard_file)
+            shard_dfs.append(shard_df)
+
+        # Concatenate all shards
+        consolidated_df = pd.concat(shard_dfs, axis=0, ignore_index=True)
+        del shard_dfs
+        gc.collect()
+
+        # Save as "test" for OOT split (for consistency with batch mode)
+        save_name = "test" if split_name == "oot" else split_name
+
+        # Write consolidated file
+        if output_format == "csv":
+            output_file = split_dir / f"{save_name}_processed_data.csv"
+            consolidated_df.to_csv(output_file, index=False)
+        elif output_format == "tsv":
+            output_file = split_dir / f"{save_name}_processed_data.tsv"
+            consolidated_df.to_csv(output_file, sep="\t", index=False)
+        elif output_format == "parquet":
+            output_file = split_dir / f"{save_name}_processed_data.parquet"
+            consolidated_df.to_parquet(output_file, index=False)
+
+        log_func(f"[STREAMING] Wrote {output_file} (shape={consolidated_df.shape})")
+
+        result[split_name] = consolidated_df
+
+        # Delete shard files
+        for shard_file in shard_files:
+            shard_file.unlink()
+        log_func(f"[STREAMING] Cleaned up {len(shard_files)} temporary shards")
+
+    return result
+
+
+# ============================================================================
+# MAIN PROCESSING LOGIC
+# ============================================================================
 
 
 def main(
@@ -518,6 +1130,13 @@ def main(
     else:
         max_workers = 4  # Default to 4 workers
     batch_size = int(environ_vars.get("BATCH_SIZE", 10))
+
+    # Streaming mode parameters
+    streaming_batch_size = int(environ_vars.get("STREAMING_BATCH_SIZE", 0)) or None
+    shard_size = int(environ_vars.get("SHARD_SIZE", 100000))
+    enable_true_streaming = (
+        environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+    )
 
     # Optional label processing (for compatibility with standard preprocessing)
     label_field_raw = environ_vars.get("LABEL_FIELD")
@@ -586,6 +1205,116 @@ def main(
             log("[INFO] No signature file found, using default column handling")
     else:
         log("[INFO] No signature directory provided, using default column handling")
+
+    # ========================================================================
+    # MODE ROUTING: Simple if/else switch between streaming and batch modes
+    # ========================================================================
+
+    if enable_true_streaming:
+        # ==================================================================
+        # STREAMING MODE
+        # ==================================================================
+        log("[INFO] Using TRUE STREAMING MODE for temporal split")
+        log(f"[STREAMING] Streaming batch size: {streaming_batch_size or 10} shards")
+        log(f"[STREAMING] Shard size: {shard_size} rows")
+
+        # Find input shards
+        all_shards = find_input_shards(input_data_dir, log)
+
+        # Parse targets if needed
+        targets = None
+        if targets_str and main_task_index is not None:
+            if targets_str.startswith("["):
+                import ast
+
+                targets = ast.literal_eval(targets_str)
+            else:
+                targets = [t.strip().strip("'\"") for t in targets_str.split(",")]
+            log(f"[STREAMING] Multi-task targets: {targets}")
+
+        # PASS 1: Collect customer allocation
+        log("[STREAMING] ===== STARTING PASS 1: Customer allocation =====")
+        train_customers, val_customers = collect_customer_allocation(
+            all_shards,
+            signature_columns,
+            date_column,
+            group_id_column,
+            split_date,
+            train_ratio,
+            random_seed,
+            log,
+        )
+        log("[STREAMING] ===== PASS 1 COMPLETE =====")
+        log("")
+
+        # PASS 2: Process batches
+        training_output_dir = output_paths.get(
+            "training_data",
+            output_paths.get(
+                "processed_data", "/opt/ml/processing/output/training_data"
+            ),
+        )
+        training_output_path = Path(training_output_dir)
+        training_output_path.mkdir(parents=True, exist_ok=True)
+
+        process_streaming_temporal_split(
+            all_shards,
+            training_output_path,
+            signature_columns,
+            date_column,
+            group_id_column,
+            split_date,
+            train_customers,
+            val_customers,
+            targets,
+            main_task_index,
+            label_field,
+            output_format,
+            streaming_batch_size or 10,
+            shard_size,
+            batch_size,
+            log,
+        )
+
+        # Consolidate shards
+        splits = consolidate_shards_to_single_files(
+            training_output_path, output_format, log
+        )
+
+        # Save OOT data separately
+        oot_output_dir = output_paths.get(
+            "oot_data",
+            output_paths.get("processed_data", "/opt/ml/processing/output/oot_data"),
+        )
+        oot_output_path = Path(oot_output_dir)
+        oot_output_path.mkdir(parents=True, exist_ok=True)
+
+        oot_data = splits.get("oot", pd.DataFrame())
+        if output_format == "csv":
+            oot_proc_path = oot_output_path / "oot_data.csv"
+            oot_data.to_csv(oot_proc_path, index=False)
+        elif output_format == "tsv":
+            oot_proc_path = oot_output_path / "oot_data.tsv"
+            oot_data.to_csv(oot_proc_path, sep="\t", index=False)
+        elif output_format == "parquet":
+            oot_proc_path = oot_output_path / "oot_data.parquet"
+            oot_data.to_parquet(oot_proc_path, index=False)
+
+        log(f"[STREAMING] Saved OOT {oot_proc_path} (shape={oot_data.shape})")
+
+        training_data = pd.concat(
+            [splits.get("train", pd.DataFrame()), splits.get("val", pd.DataFrame())],
+            ignore_index=True,
+        )
+        log("[STREAMING] Temporal split preprocessing complete in streaming mode")
+
+        return {"training_data": training_data, "oot_data": oot_data}
+
+    # ========================================================================
+    # BATCH MODE (existing code continues)
+    # ========================================================================
+
+    log("[INFO] Using BATCH MODE for temporal split")
 
     # 3. Combine data shards with advanced features
     log(f"[INFO] Combining data shards from {input_data_dir}…")
@@ -863,6 +1592,27 @@ if __name__ == "__main__":
                 f"Invalid BATCH_SIZE value: {os.environ.get('BATCH_SIZE')}. Error: {e}"
             )
 
+        # Streaming mode parameters
+        try:
+            STREAMING_BATCH_SIZE = (
+                int(os.environ.get("STREAMING_BATCH_SIZE", 0)) or None
+            )
+        except ValueError as e:
+            raise RuntimeError(
+                f"Invalid STREAMING_BATCH_SIZE value: {os.environ.get('STREAMING_BATCH_SIZE')}. Error: {e}"
+            )
+
+        try:
+            SHARD_SIZE = int(os.environ.get("SHARD_SIZE", 100000))
+        except ValueError as e:
+            raise RuntimeError(
+                f"Invalid SHARD_SIZE value: {os.environ.get('SHARD_SIZE')}. Error: {e}"
+            )
+
+        ENABLE_TRUE_STREAMING = (
+            os.environ.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+        )
+
         # Optional label processing (for compatibility with standard preprocessing)
         LABEL_FIELD_RAW = os.environ.get("LABEL_FIELD")
         if (
@@ -970,6 +1720,11 @@ if __name__ == "__main__":
             "OUTPUT_FORMAT": OUTPUT_FORMAT,
             "MAX_WORKERS": str(MAX_WORKERS),
             "BATCH_SIZE": str(BATCH_SIZE),
+            "STREAMING_BATCH_SIZE": str(STREAMING_BATCH_SIZE)
+            if STREAMING_BATCH_SIZE
+            else "0",
+            "SHARD_SIZE": str(SHARD_SIZE),
+            "ENABLE_TRUE_STREAMING": str(ENABLE_TRUE_STREAMING).lower(),
             "LABEL_FIELD": LABEL_FIELD,
             "TARGETS": TARGETS,
             "MAIN_TASK_INDEX": MAIN_TASK_INDEX,

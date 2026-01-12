@@ -30,6 +30,10 @@ TEMPORAL_SPLIT_PREPROCESSING_CONTRACT = ScriptContract(
         "LABEL_FIELD": "",
         "TARGETS": "",
         "MAIN_TASK_INDEX": "",
+        # Streaming mode parameters
+        "ENABLE_TRUE_STREAMING": "false",
+        "STREAMING_BATCH_SIZE": "0",
+        "SHARD_SIZE": "100000",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
@@ -46,6 +50,20 @@ TEMPORAL_SPLIT_PREPROCESSING_CONTRACT = ScriptContract(
     6. Memory-efficient batch concatenation
     7. Multiple output formats (CSV, TSV, Parquet)
     8. Main task label generation from subtasks
+    9. Streaming mode for memory-efficient processing
+    
+    Streaming Mode (Memory-Efficient Processing):
+    - Enable with ENABLE_TRUE_STREAMING=true environment variable
+    - Two-pass strategy:
+      * Pass 1: Collects customer allocation globally (~8MB memory for 1M customers)
+      * Pass 2: Processes batches with global knowledge (~2GB/batch fixed memory)
+    - Fixed memory footprint regardless of data size (scales to TB+ datasets)
+    - Exact semantic equivalence with batch mode (same outputs, same format, same data)
+    - Configuration parameters:
+      * STREAMING_BATCH_SIZE: Number of shards per batch (default: 0, auto becomes 10)
+      * SHARD_SIZE: Rows per output shard during incremental writing (default: 100000)
+    - Use when: Input data size > available memory or OOM (Out of Memory) errors occur
+    - Benefits: Enables processing arbitrarily large datasets on memory-constrained instances
     
     Contract aligned with actual script implementation following cursus alignment rules:
     - Arguments: Single job-type argument with CLI-style hyphens, argparse converts to Python underscores

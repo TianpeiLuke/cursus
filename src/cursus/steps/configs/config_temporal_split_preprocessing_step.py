@@ -96,6 +96,31 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
         description="Batch size for DataFrame concatenation (default: 10).",
     )
 
+    # Streaming mode configuration
+    enable_true_streaming: bool = Field(
+        default=False,
+        description="Enable true streaming mode for memory-efficient processing. "
+        "Uses two-pass strategy: Pass 1 collects customer allocation (~8MB), "
+        "Pass 2 processes batches with global knowledge (~2GB/batch). "
+        "Provides exact semantic equivalence with batch mode. Default: False",
+    )
+
+    streaming_batch_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Number of shards to process per batch in streaming mode. "
+        "None means auto (defaults to 10 when streaming enabled). "
+        "Only used when enable_true_streaming=True.",
+    )
+
+    shard_size: int = Field(
+        default=100000,
+        ge=1,
+        description="Rows per output shard in streaming mode. "
+        "Controls output granularity during incremental writing. "
+        "Default: 100000. Only used when enable_true_streaming=True.",
+    )
+
     # Task configuration - single task vs multitask
     label_field: Optional[str] = Field(
         default=None,
@@ -195,6 +220,16 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
             if self.main_task_index is not None:
                 env_vars["MAIN_TASK_INDEX"] = str(self.main_task_index)
+
+            # Streaming mode configuration
+            env_vars["ENABLE_TRUE_STREAMING"] = str(self.enable_true_streaming).lower()
+
+            if self.streaming_batch_size is not None:
+                env_vars["STREAMING_BATCH_SIZE"] = str(self.streaming_batch_size)
+            else:
+                env_vars["STREAMING_BATCH_SIZE"] = "0"  # 0 means auto/disabled
+
+            env_vars["SHARD_SIZE"] = str(self.shard_size)
 
             self._temporal_split_environment_variables = env_vars
 
@@ -411,6 +446,14 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
         if self.main_task_index is not None:
             temporal_fields["main_task_index"] = self.main_task_index
+
+        # Add streaming mode fields
+        temporal_fields["enable_true_streaming"] = self.enable_true_streaming
+
+        if self.streaming_batch_size is not None:
+            temporal_fields["streaming_batch_size"] = self.streaming_batch_size
+
+        temporal_fields["shard_size"] = self.shard_size
 
         # Combine fields (temporal fields take precedence if overlap)
         init_fields = {**base_fields, **temporal_fields}

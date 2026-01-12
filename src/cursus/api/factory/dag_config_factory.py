@@ -61,15 +61,23 @@ class DAGConfigFactory:
             f"✅ Mapped {len(self._config_class_map)} DAG nodes to config classes"
         )
 
-        # Pre-compute processing config requirement (cache to avoid repeated expensive checks)
-        logger.info("📊 Step 2/3: Checking processing config requirements...")
+        # Pre-compute and cache inheritance checks FIRST (before checking processing config needs)
+        logger.info("📊 Step 2/3: Pre-computing inheritance relationships...")
+        self._cached_inheritance_info: Dict[str, Dict[str, bool]] = {}
+        self._precompute_inheritance_checks()
+        logger.info(
+            f"✅ Cached inheritance info for {len(self._cached_inheritance_info)} steps"
+        )
+
+        # Pre-compute processing config requirement (now can use inheritance cache)
+        logger.info("📊 Step 3/3: Checking processing config requirements...")
         self._needs_processing_config = self._check_if_needs_processing_config()
 
         # Cache the actual field requirements to avoid expensive extraction on every call
         self._cached_processing_requirements = None
         if self._needs_processing_config:
             logger.info(
-                "📊 Step 2b/3: Extracting processing config field requirements..."
+                "📊 Step 3a/3: Extracting processing config field requirements..."
             )
             self._cached_processing_requirements = (
                 self._extract_processing_requirements()
@@ -81,19 +89,11 @@ class DAGConfigFactory:
             logger.info("✅ Processing config not required")
 
         # Pre-compute and cache step-specific requirements for ALL steps to avoid hanging
-        logger.info("📊 Step 2c/3: Pre-computing step requirements for all steps...")
+        logger.info("📊 Step 3b/3: Pre-computing step requirements for all steps...")
         self._cached_step_requirements: Dict[str, List[Dict[str, Any]]] = {}
         self._precompute_all_step_requirements()
         logger.info(
             f"✅ Cached requirements for {len(self._cached_step_requirements)} steps"
-        )
-
-        # Pre-compute and cache inheritance checks for all config classes
-        logger.info("📊 Step 2d/3: Pre-computing inheritance relationships...")
-        self._cached_inheritance_info: Dict[str, Dict[str, bool]] = {}
-        self._precompute_inheritance_checks()
-        logger.info(
-            f"✅ Cached inheritance info for {len(self._cached_inheritance_info)} steps"
         )
 
         self.base_config = None  # BasePipelineConfig instance
