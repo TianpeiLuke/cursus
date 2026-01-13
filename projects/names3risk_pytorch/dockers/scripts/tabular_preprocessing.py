@@ -310,7 +310,7 @@ def detect_and_apply_names3risk_preprocessing(
     # 1. Amazon email filtering (FIRST - reduces data volume early, matches legacy)
     if "emailDomain" in df.columns:
         initial_count = len(df)
-        df = df[~df["emailDomain"].str.lower().str.contains("amazon.", na=False)]
+        df = df[~df["emailDomain"].str.lower().str.contains("amazon.", na=False)].copy()
         filtered = initial_count - len(df)
         if filtered > 0:
             log_func(
@@ -324,7 +324,7 @@ def detect_and_apply_names3risk_preprocessing(
 
         # Map status to label: F/I (fraud/investigation) → 1, N (normal) → 0, others → NaN
         status_map = {"F": 1, "I": 1, "N": 0}
-        df["label"] = df["status"].map(status_map)
+        df.loc[:, "label"] = df["status"].map(status_map)
 
         # Filter out records with invalid status (label is NaN)
         df = df[df["label"].notna()]
@@ -368,15 +368,20 @@ def detect_and_apply_names3risk_preprocessing(
     return df
 
 
-def filter_to_numeric_features(df: pd.DataFrame, log_func: Callable) -> pd.DataFrame:
+def filter_to_numeric_features(
+    df: pd.DataFrame,
+    log_func: Callable,
+    preserve_additional: Optional[List[str]] = None,
+) -> pd.DataFrame:
     """
     Filter DataFrame to numeric features only (Names3Risk requirement).
 
-    Preserves: numeric columns + 'text' field + 'label' field
+    Preserves: numeric columns + 'text' field + 'label' field + optional additional columns
 
     Args:
         df: Input DataFrame
         log_func: Logging function
+        preserve_additional: Optional list of additional column names to preserve
 
     Returns:
         Filtered DataFrame with only numeric features and preserved columns
@@ -389,6 +394,12 @@ def filter_to_numeric_features(df: pd.DataFrame, log_func: Callable) -> pd.DataF
         preserve_cols.append("text")
     if "label" in df.columns:
         preserve_cols.append("label")
+
+    # Add additional columns to preserve (e.g., customerId, temporal column for dedup)
+    if preserve_additional:
+        for col in preserve_additional:
+            if col in df.columns and col not in preserve_cols:
+                preserve_cols.append(col)
 
     # Combine numeric columns with preserved columns
     keep_cols = list(set(numeric_cols + preserve_cols))
@@ -703,7 +714,8 @@ def process_batch_mode_preprocessing(
         train_df, holdout_df = train_test_split(
             df, train_size=train_ratio, shuffle=False, random_state=42
         )
-        test_df, val_df = train_test_split(
+        # Split holdout into val (middle) and test (newest)
+        val_df, test_df = train_test_split(
             holdout_df, test_size=test_val_ratio, shuffle=False, random_state=42
         )
 
@@ -822,8 +834,8 @@ def collect_temporal_split_boundaries(
 
     log_func(f"[PASS 1 - TEMPORAL] Split boundaries computed:")
     log_func(f"  Train cutoff: {train_cutoff_date} (oldest {train_ratio * 100:.1f}%)")
-    log_func(f"  Test cutoff: {test_cutoff_date} (next {val_ratio * 100:.1f}%)")
-    log_func(f"  Val: remaining {(1 - train_ratio - val_ratio) * 100:.1f}% (newest)")
+    log_func(f"  Val cutoff: {test_cutoff_date} (next {val_ratio * 100:.1f}%)")
+    log_func(f"  Test: remaining {(1 - train_ratio - val_ratio) * 100:.1f}% (newest)")
 
     return train_cutoff_date, test_cutoff_date
 
@@ -1020,6 +1032,245 @@ def write_splits_to_shards(
             split_counters[split_name] += 1
 
 
+# ============================================================================
+# DIRECT WRITE FUNCTIONS (Streaming Optimization)
+# ============================================================================
+
+
+def _init_csv_writers_training(
+    output_path: Path, output_format: str, log_func: Callable
+) -> Dict[str, Any]:
+    """Initialize CSV/TSV file writers for direct streaming write."""
+    log_func("[STREAMING] Initializing CSV/TSV writers for direct write...")
+
+    writers = {}
+    for split_name in ["train", "test", "val"]:
+        split_dir = output_path / split_name
+        split_dir.mkdir(parents=True, exist_ok=True)
+
+        if output_format == "csv":
+            filepath = split_dir / f"{split_name}_processed_data.csv"
+        else:  # tsv
+            filepath = split_dir / f"{split_name}_processed_data.tsv"
+
+        writers[split_name] = {
+            "path": filepath,
+            "handle": open(filepath, "w", newline="", encoding="utf-8"),
+        }
+
+    return writers
+
+
+def _write_splits_to_csv(
+    batch_df: pd.DataFrame,
+    writers: Dict[str, Any],
+    first_batch: bool,
+    output_format: str,
+    log_func: Callable,
+) -> None:
+    """Write batch data directly to CSV/TSV files."""
+    sep = "\t" if output_format == "tsv" else ","
+
+    for split_name in ["train", "test", "val"]:
+        split_data = batch_df[batch_df["_split"] == split_name].drop("_split", axis=1)
+
+        if len(split_data) > 0:
+            split_data.to_csv(
+                writers[split_name]["handle"],
+                index=False,
+                header=first_batch,
+                sep=sep,
+            )
+            writers[split_name]["handle"].flush()
+
+
+def _close_csv_writers(writers: Dict[str, Any], log_func: Callable) -> None:
+    """Close CSV/TSV file handles and log final file sizes."""
+    log_func("[STREAMING] Closing CSV/TSV writers...")
+
+    for split_name, writer_info in writers.items():
+        writer_info["handle"].close()
+
+        filepath = writer_info["path"]
+        if filepath.exists():
+            file_size_mb = filepath.stat().st_size / (1024 * 1024)
+            log_func(f"[STREAMING] Wrote {filepath} ({file_size_mb:.2f} MB)")
+
+
+def _init_parquet_writers_training(
+    output_path: Path, log_func: Callable
+) -> Dict[str, Any]:
+    """Initialize PyArrow Parquet writers for direct streaming write."""
+    log_func("[STREAMING] Initializing Parquet writers for direct write...")
+
+    writers = {}
+    for split_name in ["train", "test", "val"]:
+        split_dir = output_path / split_name
+        split_dir.mkdir(parents=True, exist_ok=True)
+
+        filepath = split_dir / f"{split_name}_processed_data.parquet"
+
+        writers[split_name] = {
+            "path": filepath,
+            "writer": None,
+            "schema": None,
+        }
+
+    return writers
+
+
+def _write_splits_to_parquet(
+    batch_df: pd.DataFrame,
+    writers: Dict[str, Any],
+    first_batch: bool,
+    log_func: Callable,
+) -> None:
+    """Write batch data directly to Parquet files using PyArrow."""
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except ImportError:
+        raise RuntimeError(
+            "PyArrow is required for Parquet streaming. Install with: pip install pyarrow"
+        )
+
+    for split_name in ["train", "test", "val"]:
+        split_data = batch_df[batch_df["_split"] == split_name].drop("_split", axis=1)
+
+        if len(split_data) > 0:
+            table = pa.Table.from_pandas(split_data)
+
+            if writers[split_name]["writer"] is None:
+                writers[split_name]["schema"] = table.schema
+                writers[split_name]["writer"] = pq.ParquetWriter(
+                    writers[split_name]["path"],
+                    table.schema,
+                    compression="snappy",
+                )
+
+            writers[split_name]["writer"].write_table(table)
+
+            del table
+            gc.collect()
+
+
+def _close_parquet_writers(writers: Dict[str, Any], log_func: Callable) -> None:
+    """Close PyArrow Parquet writers and log final file sizes."""
+    log_func("[STREAMING] Closing Parquet writers...")
+
+    for split_name, writer_info in writers.items():
+        if writer_info["writer"] is not None:
+            writer_info["writer"].close()
+
+            filepath = writer_info["path"]
+            if filepath.exists():
+                file_size_mb = filepath.stat().st_size / (1024 * 1024)
+                log_func(f"[STREAMING] Wrote {filepath} ({file_size_mb:.2f} MB)")
+
+
+def _init_csv_writer_single_split(
+    split_dir: Path, split_name: str, output_format: str, log_func: Callable
+) -> Dict[str, Any]:
+    """Initialize CSV/TSV writer for single split direct write."""
+    log_func(f"[STREAMING] Initializing CSV/TSV writer for {split_name}...")
+
+    if output_format == "csv":
+        filepath = split_dir / f"{split_name}_processed_data.csv"
+    else:  # tsv
+        filepath = split_dir / f"{split_name}_processed_data.tsv"
+
+    return {
+        "path": filepath,
+        "handle": open(filepath, "w", newline="", encoding="utf-8"),
+    }
+
+
+def _write_to_csv_single(
+    batch_df: pd.DataFrame,
+    writer: Dict[str, Any],
+    first_batch: bool,
+    output_format: str,
+    log_func: Callable,
+) -> None:
+    """Write batch data to single CSV/TSV file."""
+    sep = "\t" if output_format == "tsv" else ","
+
+    batch_df.to_csv(
+        writer["handle"],
+        index=False,
+        header=first_batch,
+        sep=sep,
+    )
+    writer["handle"].flush()
+
+
+def _close_csv_writer_single(writer: Dict[str, Any], log_func: Callable) -> None:
+    """Close single CSV/TSV writer and log file size."""
+    writer["handle"].close()
+
+    filepath = writer["path"]
+    if filepath.exists():
+        file_size_mb = filepath.stat().st_size / (1024 * 1024)
+        log_func(f"[STREAMING] Wrote {filepath} ({file_size_mb:.2f} MB)")
+
+
+def _init_parquet_writer_single_split(
+    split_dir: Path, split_name: str, log_func: Callable
+) -> Dict[str, Any]:
+    """Initialize PyArrow Parquet writer for single split direct write."""
+    log_func(f"[STREAMING] Initializing Parquet writer for {split_name}...")
+
+    filepath = split_dir / f"{split_name}_processed_data.parquet"
+
+    return {
+        "path": filepath,
+        "writer": None,
+        "schema": None,
+    }
+
+
+def _write_to_parquet_single(
+    batch_df: pd.DataFrame,
+    writer: Dict[str, Any],
+    first_batch: bool,
+    log_func: Callable,
+) -> None:
+    """Write batch data to single Parquet file using PyArrow."""
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except ImportError:
+        raise RuntimeError(
+            "PyArrow is required for Parquet streaming. Install with: pip install pyarrow"
+        )
+
+    table = pa.Table.from_pandas(batch_df)
+
+    if writer["writer"] is None:
+        writer["schema"] = table.schema
+        writer["writer"] = pq.ParquetWriter(
+            writer["path"],
+            table.schema,
+            compression="snappy",
+        )
+
+    writer["writer"].write_table(table)
+
+    del table
+    gc.collect()
+
+
+def _close_parquet_writer_single(writer: Dict[str, Any], log_func: Callable) -> None:
+    """Close single PyArrow Parquet writer and log file size."""
+    if writer["writer"] is not None:
+        writer["writer"].close()
+
+        filepath = writer["path"]
+        if filepath.exists():
+            file_size_mb = filepath.stat().st_size / (1024 * 1024)
+            log_func(f"[STREAMING] Wrote {filepath} ({file_size_mb:.2f} MB)")
+
+
 def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
     """Find all input shards in directory."""
     input_path = Path(input_dir)
@@ -1048,6 +1299,7 @@ def process_single_batch(
     optimize_memory: bool,
     label_field: Optional[str],
     log_func: Callable,
+    preserve_columns: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
     Process a single batch of shards with Names3Risk preprocessing.
@@ -1059,6 +1311,7 @@ def process_single_batch(
         optimize_memory: Whether to optimize dtypes
         label_field: Name of label column (optional)
         log_func: Logging function
+        preserve_columns: Optional columns to preserve during filtering (e.g., customerId, temporal col)
 
     Returns:
         Processed DataFrame from batch
@@ -1083,8 +1336,8 @@ def process_single_batch(
     # Apply Names3Risk-specific preprocessing
     batch_df = detect_and_apply_names3risk_preprocessing(batch_df, log_func)
 
-    # Filter to numeric features only
-    batch_df = filter_to_numeric_features(batch_df, log_func)
+    # Filter to numeric features only (preserve additional columns for global dedup)
+    batch_df = filter_to_numeric_features(batch_df, log_func, preserve_columns)
 
     # Process labels if provided
     if label_field:
@@ -1194,12 +1447,21 @@ def process_training_splits_streaming(
     log_func("")
 
     # ========================================================================
-    # PASS 2: Process Batches with Global Knowledge
+    # PASS 2: Process Batches with Global Knowledge (DIRECT WRITE)
     # ========================================================================
 
     log_func(
-        "[STREAMING] ===== STARTING PASS 2: Processing batches with global knowledge ====="
+        "[STREAMING] ===== STARTING PASS 2: Processing batches with direct write ====="
     )
+
+    # Initialize writers based on format
+    if output_format == "parquet":
+        writers = _init_parquet_writers_training(output_path, log_func)
+    else:
+        writers = _init_csv_writers_training(output_path, output_format, log_func)
+
+    first_batch = True
+    total_rows = {"train": 0, "test": 0, "val": 0}
 
     # Process all batches
     for batch_start in range(0, len(all_shards), streaming_batch_size):
@@ -1209,7 +1471,12 @@ def process_training_splits_streaming(
 
         log_func(f"[PASS 2] Processing batch {batch_num} ({len(batch_shards)} shards)")
 
-        # Process batch (applies Names3Risk preprocessing but NOT dedup yet)
+        # Prepare columns to preserve for global dedup
+        preserve_cols = []
+        if has_customer_id:
+            preserve_cols.extend(["customerId", temporal_col])
+
+        # Process batch (applies Names3Risk preprocessing but preserves dedup columns)
         batch_df = process_single_batch(
             batch_shards,
             signature_columns,
@@ -1217,6 +1484,7 @@ def process_training_splits_streaming(
             optimize_memory,
             label_field,
             log_func,
+            preserve_columns=preserve_cols,
         )
 
         # CRITICAL: Apply global deduplication filter
@@ -1243,26 +1511,40 @@ def process_training_splits_streaming(
         def assign_split_global(row):
             order_date = row[temporal_col]
             if order_date < train_cutoff_date:
-                return "train"
+                return "train"  # Oldest 70%
             elif order_date < test_cutoff_date:
-                return "test"
+                return "val"  # Middle 15%
             else:
-                return "val"
+                return "test"  # Newest 15%
 
         batch_df["_split"] = batch_df.apply(assign_split_global, axis=1)
 
-        # Write to split directories
-        write_splits_to_shards(
-            batch_df, output_path, split_counters, shard_size, output_format, log_func
-        )
+        # Write directly to final files (no temp shards!)
+        if output_format == "parquet":
+            _write_splits_to_parquet(batch_df, writers, first_batch, log_func)
+        else:
+            _write_splits_to_csv(
+                batch_df, writers, first_batch, output_format, log_func
+            )
 
+        # Track progress
+        for split_name in ["train", "test", "val"]:
+            total_rows[split_name] += len(batch_df[batch_df["_split"] == split_name])
+
+        first_batch = False
         del batch_df
         gc.collect()
 
+    # Close writers
+    if output_format == "parquet":
+        _close_parquet_writers(writers, log_func)
+    else:
+        _close_csv_writers(writers, log_func)
+
     log_func("[STREAMING] ===== PASS 2 COMPLETE =====")
     log_func(
-        f"[STREAMING] Final results: train={split_counters['train']}, "
-        f"test={split_counters['test']}, val={split_counters['val']} shards"
+        f"[STREAMING] Final results: train={total_rows['train']}, "
+        f"test={total_rows['test']}, val={total_rows['val']} rows"
     )
 
 
@@ -1279,12 +1561,29 @@ def process_single_split_streaming(
     optimize_memory: bool,
     log_func: Callable,
 ) -> None:
-    """Process non-training data as single split in streaming mode."""
-    log_func(f"[STREAMING] {job_type.capitalize()} mode: Single split")
+    """
+    Process non-training data as single split in streaming mode using DIRECT WRITE.
 
-    split_counter = 0
+    Optimized version that writes directly to final file, eliminating the need
+    to re-read temporary shards for consolidation.
+    """
+    log_func(
+        f"[STREAMING] {job_type.capitalize()} mode: Using direct write (no temp shards)"
+    )
+
     split_dir = output_path / job_type
     split_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize writer based on format
+    if output_format == "parquet":
+        writer = _init_parquet_writer_single_split(split_dir, job_type, log_func)
+    else:
+        writer = _init_csv_writer_single_split(
+            split_dir, job_type, output_format, log_func
+        )
+
+    first_batch = True
+    total_rows = 0
 
     # Process all batches
     for batch_start in range(0, len(all_shards), streaming_batch_size):
@@ -1306,16 +1605,24 @@ def process_single_split_streaming(
             log_func,
         )
 
-        # Write shards
-        for i in range(0, len(batch_df), shard_size):
-            shard_df = batch_df.iloc[i : i + shard_size]
-            write_single_shard(shard_df, split_dir, split_counter, output_format)
-            split_counter += 1
+        # Write directly to final file (no temp shards!)
+        if output_format == "parquet":
+            _write_to_parquet_single(batch_df, writer, first_batch, log_func)
+        else:
+            _write_to_csv_single(batch_df, writer, first_batch, output_format, log_func)
 
+        total_rows += len(batch_df)
+        first_batch = False
         del batch_df
         gc.collect()
 
-    log_func(f"[STREAMING] Complete: {split_counter} shards written to {job_type}")
+    # Close writer
+    if output_format == "parquet":
+        _close_parquet_writer_single(writer, log_func)
+    else:
+        _close_csv_writer_single(writer, log_func)
+
+    log_func(f"[STREAMING] Complete: {total_rows} rows written to {job_type}")
 
 
 def consolidate_shards_to_single_files(

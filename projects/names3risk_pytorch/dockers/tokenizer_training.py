@@ -230,10 +230,13 @@ def load_train_texts(
     log: Optional[Callable[[str], None]] = None,
 ) -> List[str]:
     """
-    Load training texts from parquet file.
+    Load training texts from data file(s) (parquet, csv, or tsv).
+
+    If the input path contains subdirectories with data files, all files from
+    all subdirectories will be loaded and concatenated.
 
     Args:
-        train_data_path: Path to training data directory or parquet file
+        train_data_path: Path to training data directory or data file
         text_field: Name of text field (default: "text")
         log: Optional logging function
 
@@ -245,31 +248,97 @@ def load_train_texts(
 
     train_path = Path(train_data_path)
 
-    # Handle directory or file
+    # Supported extensions
+    extensions = [".parquet", ".csv", ".tsv"]
+
+    def load_file(file_path: Path) -> pd.DataFrame:
+        """Load a single data file."""
+        suffix = file_path.suffix.lower()
+        log(f"Loading file: {file_path.name} (format: {suffix})")
+
+        if suffix == ".parquet":
+            return pd.read_parquet(file_path)
+        elif suffix == ".csv":
+            return pd.read_csv(file_path)
+        elif suffix == ".tsv":
+            return pd.read_csv(file_path, sep="\t")
+        else:
+            raise ValueError(f"Unsupported file format: {suffix}")
+
+    # Handle single file
+    if train_path.is_file():
+        df = load_file(train_path)
+        if text_field not in df.columns:
+            raise ValueError(
+                f"Column '{text_field}' not found. Available: {df.columns.tolist()}"
+            )
+        texts = df[text_field].dropna().tolist()
+        log(f"Loaded {len(texts):,} texts from single file")
+        return texts
+
+    # Handle directory: collect all data files from all subdirectories
     if train_path.is_dir():
-        parquet_files = list(train_path.glob("*.parquet"))
-        if not parquet_files:
-            raise FileNotFoundError(f"No parquet files found in {train_data_path}")
-        train_file = parquet_files[0]
-    else:
-        train_file = train_path
+        all_files = []
 
-    # Load data
-    df = pd.read_parquet(train_file)
+        # Check for subdirectories
+        subdirs = [d for d in train_path.iterdir() if d.is_dir()]
 
-    if text_field not in df.columns:
-        raise ValueError(
-            f"Column '{text_field}' not found in data. Available: {df.columns.tolist()}"
-        )
+        if subdirs:
+            # Has subdirectories - collect files from all of them
+            log(f"Found {len(subdirs)} subdirectories: {[d.name for d in subdirs]}")
+            for subdir in sorted(subdirs):
+                for fname in sorted(os.listdir(subdir)):
+                    file_path = subdir / fname
+                    if file_path.is_file() and any(
+                        fname.lower().endswith(ext) for ext in extensions
+                    ):
+                        all_files.append(file_path)
+                        log(f"Found file in {subdir.name}/: {fname}")
+        else:
+            # No subdirectories - look for files in root directory
+            log("No subdirectories found, searching in root directory")
+            for fname in sorted(os.listdir(train_path)):
+                file_path = train_path / fname
+                if file_path.is_file() and any(
+                    fname.lower().endswith(ext) for ext in extensions
+                ):
+                    all_files.append(file_path)
+                    log(f"Found file: {fname}")
 
-    # Extract texts and remove nulls
-    texts = df[text_field].dropna().tolist()
+        if not all_files:
+            raise FileNotFoundError(
+                f"No supported data files (.parquet, .csv, .tsv) found in {train_data_path}"
+            )
 
-    log(f"Loaded {len(texts):,} training texts")
-    if texts:
-        log(f"Sample text: {texts[0][:100]}...")
+        # Load and concatenate all files
+        log(f"Loading and concatenating {len(all_files)} file(s)...")
+        all_texts = []
 
-    return texts
+        for file_path in all_files:
+            df = load_file(file_path)
+
+            if text_field not in df.columns:
+                log(
+                    f"Warning: Column '{text_field}' not found in {file_path.name}, skipping"
+                )
+                continue
+
+            texts = df[text_field].dropna().tolist()
+            all_texts.extend(texts)
+            log(
+                f"  Loaded {len(texts):,} texts from {file_path.parent.name}/{file_path.name}"
+            )
+
+        if not all_texts:
+            raise ValueError(f"No texts found with field '{text_field}' in any files")
+
+        log(f"Total texts loaded: {len(all_texts):,}")
+        if all_texts:
+            log(f"Sample text: {all_texts[0][:100]}...")
+
+        return all_texts
+
+    raise ValueError(f"Invalid path: {train_data_path}")
 
 
 def save_tokenizer_artifacts(
@@ -421,7 +490,7 @@ if __name__ == "__main__":
         MAX_VOCAB_SIZE = os.environ.get("MAX_VOCAB_SIZE", "50000")
 
         # Define standard SageMaker paths as constants
-        INPUT_TRAIN_DATA_DIR = "/opt/ml/processing/input/train"
+        INPUT_TRAIN_DATA_DIR = "/opt/ml/processing/input"
         OUTPUT_TOKENIZER_DIR = "/opt/ml/processing/output"
 
         # Log key parameters

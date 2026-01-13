@@ -10,7 +10,7 @@ from ...core.base.contract_base import ScriptContract
 TOKENIZER_TRAINING_CONTRACT = ScriptContract(
     entry_point="tokenizer_training.py",
     expected_input_paths={
-        "input_data": "/opt/ml/processing/input/train",
+        "input_data": "/opt/ml/processing/input",
     },
     expected_output_paths={"model_artifacts_output": "/opt/ml/processing/output"},
     expected_arguments={
