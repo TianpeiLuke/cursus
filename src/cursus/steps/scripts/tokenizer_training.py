@@ -212,7 +212,7 @@ except Exception as e:
 import pandas as pd
 
 # Import custom tokenizer from cursus processing module (relative import)
-from ...processing.tokenizers import CompressionBPETokenizer
+from ...processing.custom_tokenizers import CompressionBPETokenizer
 
 # Configure logging
 logging.basicConfig(

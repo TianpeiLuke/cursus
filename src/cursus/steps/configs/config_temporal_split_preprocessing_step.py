@@ -105,11 +105,11 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
         "Provides exact semantic equivalence with batch mode. Default: False",
     )
 
-    streaming_batch_size: Optional[int] = Field(
-        default=None,
-        ge=1,
+    streaming_batch_size: int = Field(
+        default=0,
+        ge=0,
         description="Number of shards to process per batch in streaming mode. "
-        "None means auto (defaults to 10 when streaming enabled). "
+        "0 means auto (defaults to 10 when streaming enabled). "
         "Only used when enable_true_streaming=True.",
     )
 
@@ -223,12 +223,7 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
             # Streaming mode configuration
             env_vars["ENABLE_TRUE_STREAMING"] = str(self.enable_true_streaming).lower()
-
-            if self.streaming_batch_size is not None:
-                env_vars["STREAMING_BATCH_SIZE"] = str(self.streaming_batch_size)
-            else:
-                env_vars["STREAMING_BATCH_SIZE"] = "0"  # 0 means auto/disabled
-
+            env_vars["STREAMING_BATCH_SIZE"] = str(self.streaming_batch_size)
             env_vars["SHARD_SIZE"] = str(self.shard_size)
 
             self._temporal_split_environment_variables = env_vars
@@ -449,10 +444,7 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
         # Add streaming mode fields
         temporal_fields["enable_true_streaming"] = self.enable_true_streaming
-
-        if self.streaming_batch_size is not None:
-            temporal_fields["streaming_batch_size"] = self.streaming_batch_size
-
+        temporal_fields["streaming_batch_size"] = self.streaming_batch_size
         temporal_fields["shard_size"] = self.shard_size
 
         # Combine fields (temporal fields take precedence if overlap)

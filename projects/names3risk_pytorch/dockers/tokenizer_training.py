@@ -210,7 +210,7 @@ except Exception as e:
 import pandas as pd
 
 # Import custom tokenizer from project tokenizers module
-from tokenizers.bpe_tokenizer import CompressionBPETokenizer
+from custom_tokenizers.bpe_tokenizer import CompressionBPETokenizer
 
 # Configure logging
 logging.basicConfig(
