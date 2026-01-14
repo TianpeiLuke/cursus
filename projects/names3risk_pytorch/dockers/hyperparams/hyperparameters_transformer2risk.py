@@ -103,15 +103,10 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
 
     # Text processing pipeline configuration
     text_processing_steps: List[str] = Field(
-        default=[
-            "dialogue_splitter",
-            "html_normalizer",
-            "emoji_remover",
-            "text_normalizer",
-            "dialogue_chunker",
-            "tokenizer",
-        ],
-        description="Processing steps for text preprocessing pipeline",
+        default=["custom_bpe_tokenizer"],
+        description="Processing steps for text preprocessing pipeline. "
+        "For Transformer2Risk, text is concatenated risk scores (e.g., '0.5|0.3|0.8|0.2') "
+        "that only need tokenization with custom BPE tokenizer - no dialogue/HTML/emoji cleaning required.",
     )
 
     # ===== Transformer-Specific Architecture Parameters (Tier 2) =====

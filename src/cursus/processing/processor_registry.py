@@ -52,6 +52,17 @@ if HAS_TRANSFORMERS:
     from .text.dialogue_processor import DialogueChunkerProcessor
     from .text.bert_tokenize_processor import BertTokenizeProcessor
 
+# Custom BPE Tokenizer (requires tokenizers library - part of transformers)
+try:
+    from tokenizers import Tokenizer
+    from .text.custom_bpe_tokenize_processor import CustomBPETokenizeProcessor
+
+    HAS_CUSTOM_BPE = True
+except ImportError:
+    Tokenizer = None
+    CustomBPETokenizeProcessor = None
+    HAS_CUSTOM_BPE = False
+
 # Optional imports that require gensim
 if HAS_GENSIM:
     from .text.gensim_tokenize_processor import GensimTokenizeProcessor
@@ -170,6 +181,25 @@ def build_text_pipeline_from_steps(
                 max_length=max_sen_len,
                 truncation=True,  # Explicitly enable truncation
                 padding="max_length",  # CRITICAL FIX: Force padding to max_length instead of "longest"
+                input_ids_key=input_ids_key,
+                attention_mask_key=attention_mask_key,
+            )
+
+        elif step_name == "custom_bpe_tokenizer":
+            if not HAS_CUSTOM_BPE:
+                raise ImportError(
+                    "custom_bpe_tokenizer processor requires tokenizers library. "
+                    "Install with: pip install tokenizers"
+                )
+            if tokenizer is None:
+                raise ValueError(
+                    "custom_bpe_tokenizer processor requires a tokenizer argument"
+                )
+            processor = CustomBPETokenizeProcessor(
+                tokenizer=tokenizer,
+                add_special_tokens=True,
+                max_length=max_sen_len,
+                padding=True,  # Pad to max_length for consistent tensor sizes
                 input_ids_key=input_ids_key,
                 attention_mask_key=attention_mask_key,
             )

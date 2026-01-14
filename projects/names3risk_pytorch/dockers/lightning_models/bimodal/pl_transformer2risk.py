@@ -152,6 +152,12 @@ class Transformer2Risk(pl.LightningModule):
         self.num_classes = 2 if self.is_binary else config.get("num_classes", 2)
         self.metric_choices = config.get("metric_choices", ["accuracy", "f1_score"])
 
+        # === Configurable batch key names ===
+        self.text_input_ids_key = config.get("text_input_ids_key", "input_ids")
+        self.text_attention_mask_key = config.get(
+            "text_attention_mask_key", "attention_mask"
+        )
+
         # === Training configuration ===
         self.model_path = config.get("model_path", "")
         self.lr = config.get("lr", 2e-5)
@@ -252,16 +258,16 @@ class Transformer2Risk(pl.LightningModule):
 
         Args:
             batch: Dictionary containing:
-                - "text": (B, L) token IDs
-                - "attn_mask": (B, L) attention mask (optional)
+                - text_input_ids_key (configurable): (B, L) token IDs
+                - text_attention_mask_key (configurable): (B, L) attention mask (optional)
                 - "tabular": (B, F) tabular features
 
         Returns:
             logits: (B, num_classes) classification logits
         """
-        # Extract inputs
-        text_tokens = batch["text"]  # (B, L)
-        attn_mask = batch.get("attn_mask")  # (B, L) or None
+        # Extract inputs using configurable key names
+        text_tokens = batch[self.text_input_ids_key]  # (B, L)
+        attn_mask = batch.get(self.text_attention_mask_key)  # (B, L) or None
         tab_data = batch["tabular"].float()  # (B, F)
 
         # Text encoding: Transformer + attention pooling + projection

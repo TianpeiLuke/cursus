@@ -786,6 +786,9 @@ def data_preprocess_pipeline(
     """
     Build text preprocessing pipelines using provided tokenizer.
 
+    For Names3Risk models (lstm2risk, transformer2risk), uses custom BPE tokenizer.
+    For other models (bimodal_bert, etc.), uses pretrained BERT tokenizer.
+
     For bimodal: Uses text_name with default or configured steps
     For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
 
@@ -797,6 +800,10 @@ def data_preprocess_pipeline(
     Returns:
         Tuple of (tokenizer, pipelines_dict)
     """
+    # Determine if custom tokenizer is being used
+    model_class = config.model_class
+    needs_custom_tokenizer = model_class in ["lstm2risk", "transformer2risk"]
+
     # Log padding strategy
     padding_strategy = (
         "fixed (max_sen_len)" if config.fixed_tokenizer_length else "dynamic (longest)"
@@ -832,19 +839,26 @@ def data_preprocess_pipeline(
         if hyperparameters:
             steps = hyperparameters.get("text_processing_steps")
         if steps is None:
-            # Fallback to config attribute or default
+            # Fallback to config attribute
             steps = getattr(config, "text_processing_steps", None)
         if steps is None:
-            # Default steps
-            # NOTE: html_normalizer disabled for performance (can add 50-100ms per request)
-            steps = [
-                "dialogue_splitter",
-                # "html_normalizer",  # Disabled - very time consuming
-                "emoji_remover",
-                "text_normalizer",
-                "dialogue_chunker",
-                "tokenizer",
-            ]
+            # Use smart defaults based on tokenizer type
+            # For Names3Risk models with custom BPE tokenizer: use custom_bpe_tokenizer
+            # For BERT models: use standard tokenizer
+            if needs_custom_tokenizer:
+                steps = [
+                    "custom_bpe_tokenizer"
+                ]  # Custom BPE for lstm2risk/transformer2risk
+            else:
+                # NOTE: html_normalizer disabled for performance (can add 50-100ms per request)
+                steps = [
+                    "dialogue_splitter",
+                    # "html_normalizer",  # Disabled - very time consuming
+                    "emoji_remover",
+                    "text_normalizer",
+                    "dialogue_chunker",
+                    "tokenizer",
+                ]
 
         if text_name:
             pipelines[text_name] = build_text_pipeline_from_steps(
@@ -857,6 +871,9 @@ def data_preprocess_pipeline(
                 attention_mask_key=config.text_attention_mask_key,
             )
             logger.info(f"Built bimodal pipeline for '{text_name}' with steps: {steps}")
+            logger.info(
+                f"  Output keys: input_ids={config.text_input_ids_key}, attention_mask={config.text_attention_mask_key}"
+            )
 
     # TRIMODAL: Dual text pipelines
     else:
@@ -1729,17 +1746,29 @@ def predict_fn(input_object, model_data, context=None):
     if model_class in ["lstm2risk", "bimodal_lstm"]:
         # LSTM models: Need length sorting for pack_padded_sequence
         pad_token = config_predict.get("pad_token_id", 0)
-        collate_batch = build_lstm2risk_collate_fn(pad_token=pad_token)
+        input_ids_key = config.text_input_ids_key
+        collate_batch = build_lstm2risk_collate_fn(
+            pad_token=pad_token,
+            input_ids_key=input_ids_key,
+        )
         logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
+        logger.info(f"  - Input IDs key: {input_ids_key}")
 
     elif model_class in ["transformer2risk", "bimodal_transformer"]:
         # Transformer models: Need attention masking and block_size truncation
         pad_token = config_predict.get("pad_token_id", 0)
         block_size = config.max_sen_len
+        input_ids_key = config.text_input_ids_key
+        attention_mask_key = config.text_attention_mask_key
         collate_batch = build_transformer2risk_collate_fn(
-            pad_token=pad_token, block_size=block_size
+            pad_token=pad_token,
+            block_size=block_size,
+            input_ids_key=input_ids_key,
+            attention_mask_key=attention_mask_key,
         )
         logger.info(f"✓ Using Transformer2Risk collate function")
+        logger.info(f"  - Input IDs key: {input_ids_key}")
+        logger.info(f"  - Attention mask key: {attention_mask_key}")
 
     else:
         # Default: BERT-based models

@@ -151,6 +151,12 @@ class LSTM2Risk(pl.LightningModule):
         self.num_classes = 2 if self.is_binary else config.get("num_classes", 2)
         self.metric_choices = config.get("metric_choices", ["accuracy", "f1_score"])
 
+        # === Configurable batch key names ===
+        self.text_input_ids_key = config.get("text_input_ids_key", "input_ids")
+        self.text_length_key = (
+            "text_length"  # LSTM always needs text_length for pack_padded_sequence
+        )
+
         # === Training configuration ===
         self.model_path = config.get("model_path", "")
         self.lr = config.get("lr", 2e-5)
@@ -262,16 +268,16 @@ class LSTM2Risk(pl.LightningModule):
 
         Args:
             batch: Dictionary containing:
-                - "text": (B, L) token IDs
+                - text_input_ids_key (configurable): (B, L) token IDs
                 - "text_length": (B,) sequence lengths (optional)
                 - "tabular": (B, F) tabular features
 
         Returns:
             logits: (B, num_classes) classification logits
         """
-        # Extract inputs
-        text_tokens = batch["text"]  # (B, L)
-        text_lengths = batch.get("text_length")  # (B,) or None
+        # Extract inputs using configurable key names
+        text_tokens = batch[self.text_input_ids_key]  # (B, L)
+        text_lengths = batch.get(self.text_length_key)  # (B,) or None
         tab_data = batch["tabular"].float()  # (B, F)
 
         # Text encoding: LSTM + attention pooling
