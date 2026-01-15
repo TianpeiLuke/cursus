@@ -239,10 +239,7 @@ from processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
-from processing.dataloaders.names3risk_collate import (
-    build_lstm2risk_collate_fn,
-    build_transformer2risk_collate_fn,
-)
+from processing.dataloaders.pipeline_dataloader import build_collate_batch
 from lightning_models.tabular.pl_tab_ae import TabAE
 from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
@@ -438,6 +435,7 @@ class Config(BaseModel):
     warmup_steps: int = 300
     text_input_ids_key: str = "input_ids"  # Configurable text input key
     text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
+    pad_token_id: Optional[int] = None  # PAD token ID from tokenizer
     primary_text_name: Optional[str] = (
         None  # Primary text field for trimodal (e.g., "chat")
     )
@@ -734,12 +732,45 @@ def build_preprocessing_pipelines(
         )
         log_once(logger, "✓ Numerical field type validation passed")
 
-    if not use_precomputed_risk_tables and config.cat_field_list:
+    # === FILTER CATEGORICAL FIELDS BEFORE VALIDATION ===
+    # Filter out text fields from categorical processing to prevent overwriting tokenized text
+    text_fields = set()
+    if config.text_name:
+        text_fields.add(config.text_name)
+    if config.primary_text_name:
+        text_fields.add(config.primary_text_name)
+    if config.secondary_text_name:
+        text_fields.add(config.secondary_text_name)
+
+    # NEW: Add source fields that were merged into text field during preprocessing
+    if hasattr(config, "text_source_fields") and config.text_source_fields:
+        text_fields.update(config.text_source_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding merged text source fields from categorical processing: {config.text_source_fields}",
+        )
+
+    # Filter categorical fields to exclude text fields
+    actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
+
+    if text_fields and actual_cat_fields != config.cat_field_list:
+        excluded_count = len(config.cat_field_list) - len(actual_cat_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding {excluded_count} text-related fields from categorical processing: {text_fields}",
+        )
+    log_once(
+        logger,
+        f"ℹ️  Actual categorical fields for processing: {len(actual_cat_fields)} fields",
+    )
+
+    # Validate categorical fields AFTER filtering
+    if not use_precomputed_risk_tables and actual_cat_fields:
         log_once(
             logger, "Validating categorical field types before risk table mapping..."
         )
         validate_categorical_fields(
-            train_dataset.DataReader, config.cat_field_list, "train"
+            train_dataset.DataReader, actual_cat_fields, "train"
         )
         log_once(logger, "✓ Categorical field type validation passed")
 
@@ -755,19 +786,55 @@ def build_preprocessing_pipelines(
                 )
                 pipelines[field] = proc
             log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
-        else:
-            # Fit inline
-            log_once(logger, "Fitting numerical imputation inline...")
-            for field in config.tab_field_list:
-                proc = NumericalVariableImputationProcessor(
-                    column_name=field, strategy="mean"
-                )
-                proc.fit(train_dataset.DataReader[field])
-                pipelines[field] = proc
-                imputation_dict[field] = proc.get_imputation_value()
-            log_once(
-                logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields"
+    else:
+        # Fit inline
+        log_once(logger, "Fitting numerical imputation inline...")
+
+        # Track conversion statistics
+        converted_fields = []
+        already_numeric_fields = []
+
+        for field in config.tab_field_list:
+            field_data = train_dataset.DataReader[field]
+
+            # Check if already numeric (fast check, no data copy)
+            if pd.api.types.is_numeric_dtype(field_data):
+                # Already numeric - use as-is
+                already_numeric_fields.append(field)
+            else:
+                # Need conversion from string to numeric
+                field_data = pd.to_numeric(field_data, errors="coerce")
+                converted_fields.append(field)
+
+            # Fit processor with (possibly converted) data
+            proc = NumericalVariableImputationProcessor(
+                column_name=field, strategy="mean"
             )
+            proc.fit(field_data)
+            pipelines[field] = proc
+            imputation_dict[field] = proc.get_imputation_value()
+
+        # Log conversion statistics
+        log_once(logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields")
+        if already_numeric_fields:
+            log_once(
+                logger,
+                f"  ℹ️  Already numeric: {len(already_numeric_fields)} fields (no conversion needed)",
+            )
+        if converted_fields:
+            log_once(
+                logger, f"  ⚠️  Converted to numeric: {len(converted_fields)} fields"
+            )
+            # Show first 10 converted fields as diagnostic
+            sample_fields = converted_fields[:10]
+            more_count = len(converted_fields) - len(sample_fields)
+            if more_count > 0:
+                log_once(
+                    logger,
+                    f"  Sample converted fields: {sample_fields} ... and {more_count} more",
+                )
+            else:
+                log_once(logger, f"  Converted fields: {sample_fields}")
 
     # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
     if config.cat_field_list:
@@ -883,12 +950,41 @@ def data_preprocess_pipeline(
 
             tokenizer = Tokenizer.from_file(tokenizer_path)
             log_once(logger, f"✓ Loaded custom BPE tokenizer from {tokenizer_path}")
-            log_once(logger, f"  Vocabulary size: {tokenizer.get_vocab_size()}")
+
+            # DEBUG: Comprehensive tokenizer validation
+            vocab_size = tokenizer.get_vocab_size()
+            log_once(logger, "=" * 70)
+            log_once(logger, "TOKENIZER VALIDATION")
+            log_once(logger, "=" * 70)
+            log_once(logger, f"Tokenizer vocab_size: {vocab_size}")
+            log_once(logger, f"Tokenizer type: {type(tokenizer)}")
+
+            # Check special tokens
+            pad_id = tokenizer.token_to_id("[PAD]")
+            cls_id = tokenizer.token_to_id("[CLS]")
+            unk_id = tokenizer.token_to_id("[UNK]")
+            log_once(
+                logger, f"Special tokens - PAD: {pad_id}, CLS: {cls_id}, UNK: {unk_id}"
+            )
+
+            # Sample encoding to verify tokenizer behavior
+            sample_text = "john.smith@email.com"
+            sample_encoding = tokenizer.encode(sample_text)
+            sample_ids = sample_encoding.ids
+            log_once(logger, f"Sample encode '{sample_text}' -> {sample_ids}")
+            if sample_ids:
+                log_once(logger, f"Sample max token ID: {max(sample_ids)}")
+                if max(sample_ids) >= vocab_size:
+                    log_once(
+                        logger,
+                        f"⚠️  WARNING: Sample token ID {max(sample_ids)} >= vocab_size {vocab_size}!",
+                    )
+            log_once(logger, "=" * 70)
 
             # Get PAD token ID for collate function
-            pad_token_id = tokenizer.token_to_id("[PAD]")
-            config.pad_token_id = pad_token_id if pad_token_id is not None else 0
-            log_once(logger, f"  PAD token ID: {config.pad_token_id}")
+            pad_token_id = pad_id if pad_id is not None else 0
+            config.pad_token_id = pad_token_id
+            log_once(logger, f"  PAD token ID set to: {config.pad_token_id}")
         else:
             raise FileNotFoundError(
                 f"Custom tokenizer required for {config.model_class} but not found at {tokenizer_path}. "
@@ -1197,51 +1293,21 @@ def build_model_and_optimizer(
         Tuple of (model, train_loader, val_loader, test_loader, embedding_mat)
     """
 
-    # Select collate function based on model type
+    # Use unified collate function for all models (BSM-style)
     model_class = config_dict.get("model_class", "bimodal_bert")
 
-    if model_class in ["lstm2risk", "bimodal_lstm"]:
-        # LSTM models: Need length sorting for pack_padded_sequence
-        pad_token = config_dict.get("pad_token_id", 0)
-        input_ids_key = config_dict.get("text_input_ids_key", "input_ids")
-        collate_batch = build_lstm2risk_collate_fn(
-            pad_token=pad_token,
-            input_ids_key=input_ids_key,
-        )
-        logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
-        logger.info(f"  - Input IDs key: {input_ids_key}")
-        logger.info("  - Sequences sorted by length (descending)")
-        logger.info("  - Includes text_length for pack_padded_sequence")
-
-    elif model_class in ["transformer2risk", "bimodal_transformer"]:
-        # Transformer models: Need attention masking and block_size truncation
-        pad_token = config_dict.get("pad_token_id", 0)
-        block_size = config_dict.get("max_sen_len", 100)
-        input_ids_key = config_dict.get("text_input_ids_key", "input_ids")
-        attention_mask_key = config_dict.get(
-            "text_attention_mask_key", "attention_mask"
-        )
-        collate_batch = build_transformer2risk_collate_fn(
-            pad_token=pad_token,
-            block_size=block_size,
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
-        )
-        logger.info(f"✓ Using Transformer2Risk collate function")
-        logger.info(f"  - Block size: {block_size}")
-        logger.info(f"  - Input IDs key: {input_ids_key}")
-        logger.info(f"  - Attention mask key: {attention_mask_key}")
-        logger.info(f"  - Includes attention mask (pad_token={pad_token})")
-
-    else:
-        # Default: BERT-based models use unified collate
-        collate_batch = build_collate_batch(
-            input_ids_key=config_dict.get("text_input_ids_key", "input_ids"),
-            attention_mask_key=config_dict.get(
-                "text_attention_mask_key", "attention_mask"
-            ),
-        )
-        logger.info(f"✓ Using default BERT collate function for {model_class}")
+    collate_batch = build_collate_batch(
+        input_ids_key=config_dict.get("text_input_ids_key", "input_ids"),
+        attention_mask_key=config_dict.get("text_attention_mask_key", "attention_mask"),
+    )
+    logger.info(f"✓ Using unified collate function for {model_class}")
+    logger.info(
+        f"  - Input IDs key: {config_dict.get('text_input_ids_key', 'input_ids')}"
+    )
+    logger.info(
+        f"  - Attention mask key: {config_dict.get('text_attention_mask_key', 'attention_mask')}"
+    )
+    logger.info("  - Handles text fields automatically via pipeline_dataloader")
 
     train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
     batch_size = config_dict.get("batch_size", 32)
@@ -1261,6 +1327,58 @@ def build_model_and_optimizer(
         batch_size=batch_size,
     )
 
+    # DEBUG: Inspect first batch to check token ID ranges
+    log_once(logger, "=" * 70)
+    log_once(logger, "FIRST BATCH INSPECTION")
+    log_once(logger, "=" * 70)
+    try:
+        first_batch = next(iter(train_dataloader))
+        log_once(logger, f"First batch keys: {list(first_batch.keys())}")
+
+        # Check text token IDs (construct prefixed key like Lightning model does)
+        text_name = config_dict.get("text_name", "text_field")
+        text_input_ids_key = config_dict.get("text_input_ids_key", "input_ids")
+        text_key = f"{text_name}_{text_input_ids_key}"  # e.g., "text_input_ids"
+
+        log_once(logger, f"Looking for text tokens under key: '{text_key}'")
+        if text_key in first_batch:
+            text_tokens = first_batch[text_key]
+            if text_tokens is not None and text_tokens.numel() > 0:
+                min_token = text_tokens.min().item()
+                max_token = text_tokens.max().item()
+                log_once(logger, f"Text tokens (key='{text_key}'):")
+                log_once(logger, f"  Shape: {text_tokens.shape}")
+                log_once(logger, f"  Token ID range: [{min_token}, {max_token}]")
+
+                # Compare with tokenizer vocab_size
+                if hasattr(tokenizer, "get_vocab_size"):
+                    vocab_size = tokenizer.get_vocab_size()
+                    log_once(logger, f"  Tokenizer vocab_size: {vocab_size}")
+                    if max_token >= vocab_size:
+                        log_once(
+                            logger,
+                            f"⚠️  WARNING: Found token ID {max_token} >= vocab_size {vocab_size}!",
+                        )
+                        log_once(
+                            logger, f"⚠️  This will cause CUDA index out of range error!"
+                        )
+                elif hasattr(tokenizer, "vocab_size"):
+                    vocab_size = tokenizer.vocab_size
+                    log_once(logger, f"  Tokenizer vocab_size: {vocab_size}")
+                    if max_token >= vocab_size:
+                        log_once(
+                            logger,
+                            f"⚠️  WARNING: Found token ID {max_token} >= vocab_size {vocab_size}!",
+                        )
+        else:
+            log_once(logger, f"No text tokens found under key '{text_key}'")
+
+    except StopIteration:
+        log_once(logger, "Could not inspect first batch (dataloader empty)")
+    except Exception as e:
+        log_once(logger, f"Error inspecting first batch: {e}")
+    log_once(logger, "=" * 70)
+
     log_once(logger, "=" * 70)
     log_once(logger, "EMBEDDING CONFIGURATION")
     log_once(logger, "=" * 70)
@@ -1278,17 +1396,17 @@ def build_model_and_optimizer(
                 f"Tokenizer type: {type(tokenizer)}"
             )
 
-        # Get embedding dimension from config (e.g., 16 for LSTM2Risk)
-        embed_size = config_dict.get("embed_size", 16)
+        # Get embedding dimension from config (e.g., 128 for transformer2risk, 16 for LSTM2Risk)
+        embedding_size = config_dict.get("embedding_size", 128)
 
         # Create dummy embedding matrix (models create their own nn.Embedding layers)
         # This is just for parameter passing compatibility
-        embedding_mat = torch.zeros(vocab_size, embed_size)
+        embedding_mat = torch.zeros(vocab_size, embedding_size)
 
         log_once(logger, f"  Model class: {model_class}")
         log_once(logger, f"  Vocabulary size: {vocab_size}")
-        log_once(logger, f"  Embedding dimension: {embed_size}")
-        log_once(logger, f"  Embedding matrix: Dummy ({vocab_size}, {embed_size})")
+        log_once(logger, f"  Embedding dimension: {embedding_size}")
+        log_once(logger, f"  Embedding matrix: Dummy ({vocab_size}, {embedding_size})")
         log_once(logger, "  Note: Model will create trainable embeddings from scratch")
 
     # === BRANCH 2: BERT-based Models ===
@@ -1309,21 +1427,21 @@ def build_model_and_optimizer(
         log_once(logger, f"  Loading pretrained BERT embeddings from: {tokenizer_name}")
         embedding_model = AutoModel.from_pretrained(tokenizer_name)
         embedding_mat = embedding_model.embeddings.word_embeddings.weight
-        embed_size = embedding_mat.shape[1]
+        embedding_size = embedding_mat.shape[1]
 
         log_once(logger, f"  Model class: {model_class}")
         log_once(logger, f"  Vocabulary size: {vocab_size}")
-        log_once(logger, f"  Embedding dimension: {embed_size}")
+        log_once(logger, f"  Embedding dimension: {embedding_size}")
         log_once(logger, f"  Embedding matrix shape: {embedding_mat.shape}")
 
     # === Common: Update config with derived parameters ===
     config_dict["n_embed"] = vocab_size
-    config_dict["embed_size"] = embed_size
+    config_dict["embedding_size"] = embedding_size
 
     log_once(logger, "=" * 70)
     log_once(logger, "Final embedding configuration:")
     log_once(logger, f"  n_embed (vocab_size): {vocab_size}")
-    log_once(logger, f"  embed_size (dimension): {embed_size}")
+    log_once(logger, f"  embedding_size (dimension): {embedding_size}")
     log_once(logger, "=" * 70)
 
     log_once(logger, f"Model choice: {model_class}")
@@ -1623,6 +1741,26 @@ def main(
     # Convert config to dict for model building
     config_dict = config.model_dump()
 
+    # Add derived fields (these are @property fields not included in model_dump)
+    # CRITICAL: Must add these BEFORE model initialization to avoid dimension mismatches
+    config_dict["input_tab_dim"] = len(
+        config.tab_field_list
+    )  # Compute from actual number of tabular fields
+    config_dict["is_binary"] = config.is_binary  # Auto-derives from num_classes
+    config_dict["num_classes"] = (
+        config.num_classes
+    )  # Auto-derives from multiclass_categories
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "DERIVED FIELDS ADDED TO CONFIG:")
+    log_once(
+        logger,
+        f"  input_tab_dim: {config_dict['input_tab_dim']} (derived from {len(config.tab_field_list)} tabular fields)",
+    )
+    log_once(logger, f"  num_classes: {config_dict['num_classes']}")
+    log_once(logger, f"  is_binary: {config_dict['is_binary']}")
+    log_once(logger, "=" * 70)
+
     (
         model,
         train_dataloader,
@@ -1631,8 +1769,6 @@ def main(
         embedding_mat,
     ) = build_model_and_optimizer(config_dict, tokenizer, datasets)
 
-    # update tab dimension
-    config.input_tab_dim = len(config.tab_field_list)
     log_once(logger, "Training starts using pytorch.lightning ...")
     trainer = model_train(
         model,

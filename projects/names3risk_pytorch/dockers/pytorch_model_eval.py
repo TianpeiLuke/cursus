@@ -244,14 +244,7 @@ from processing.numerical.numerical_imputation_processor import (
 from processing.validation import validate_categorical_fields, validate_numerical_fields
 from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.pipeline_datasets import PipelineDataset
-from processing.dataloaders.pipeline_dataloader import (
-    build_collate_batch,
-    build_trimodal_collate_batch,
-)
-from processing.dataloaders.names3risk_collate import (
-    build_lstm2risk_collate_fn,
-    build_transformer2risk_collate_fn,
-)
+from processing.dataloaders.pipeline_dataloader import build_collate_batch
 
 from lightning_models.utils.pl_train import (
     model_inference,
@@ -885,12 +878,12 @@ def create_dataloader(
     pipeline_dataset: PipelineDataset, config: Dict[str, Any]
 ) -> DataLoader:
     """
-    Create DataLoader with appropriate collate function.
+    Create DataLoader with unified collate function.
 
-    Supports:
-    - LSTM models: Length-sorted batches for pack_padded_sequence
-    - Transformer models: Attention masking and block_size truncation
-    - BERT models: Standard BERT batching
+    Uses the same collate function pattern as pytorch_training.py:
+    - Unified build_collate_batch for all model classes
+    - Automatically handles text fields via pipeline_dataloader
+    - Works with LSTM, Transformer, and BERT models
 
     Args:
         pipeline_dataset: Dataset to create DataLoader for
@@ -900,46 +893,19 @@ def create_dataloader(
         Configured DataLoader
     """
     model_class = config.get("model_class", "bimodal_bert")
-    logger.info(f"Selecting collate function for model: {model_class}")
+    logger.info(f"Creating DataLoader for model: {model_class}")
 
-    if model_class in ["lstm2risk", "bimodal_lstm"]:
-        # LSTM models: Need length sorting for pack_padded_sequence
-        pad_token = config.get("pad_token_id", 0)
-        input_ids_key = config.get("text_input_ids_key", "input_ids")
-        collate_batch = build_lstm2risk_collate_fn(
-            pad_token=pad_token,
-            input_ids_key=input_ids_key,
-        )
-        logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
-        logger.info(f"  - Input IDs key: {input_ids_key}")
-        logger.info("  - Sequences sorted by length (descending)")
-        logger.info("  - Includes text_length for pack_padded_sequence")
-
-    elif model_class in ["transformer2risk", "bimodal_transformer"]:
-        # Transformer models: Need attention masking and block_size truncation
-        pad_token = config.get("pad_token_id", 0)
-        block_size = config.get("max_sen_len", 100)
-        input_ids_key = config.get("text_input_ids_key", "input_ids")
-        attention_mask_key = config.get("text_attention_mask_key", "attention_mask")
-        collate_batch = build_transformer2risk_collate_fn(
-            pad_token=pad_token,
-            block_size=block_size,
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
-        )
-        logger.info(f"✓ Using Transformer2Risk collate function")
-        logger.info(f"  - Block size: {block_size}")
-        logger.info(f"  - Input IDs key: {input_ids_key}")
-        logger.info(f"  - Attention mask key: {attention_mask_key}")
-        logger.info(f"  - Includes attention mask (pad_token={pad_token})")
-
-    else:
-        # Default: BERT-based models
-        collate_batch = build_collate_batch(
-            input_ids_key=config.get("text_input_ids_key", "input_ids"),
-            attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
-        )
-        logger.info(f"✓ Using default BERT collate function for {model_class}")
+    # Use unified collate function for all models (matches pytorch_training.py)
+    collate_batch = build_collate_batch(
+        input_ids_key=config.get("text_input_ids_key", "input_ids"),
+        attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
+    )
+    logger.info(f"✓ Using unified collate function for {model_class}")
+    logger.info(f"  - Input IDs key: {config.get('text_input_ids_key', 'input_ids')}")
+    logger.info(
+        f"  - Attention mask key: {config.get('text_attention_mask_key', 'attention_mask')}"
+    )
+    logger.info("  - Handles text fields automatically via pipeline_dataloader")
 
     batch_size = config.get("batch_size", 32)
     dataloader = DataLoader(

@@ -347,10 +347,6 @@ from processing.numerical.numerical_imputation_processor import (
 from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.pipeline_datasets import PipelineDataset
 from processing.dataloaders.pipeline_dataloader import build_collate_batch
-from processing.dataloaders.names3risk_collate import (
-    build_lstm2risk_collate_fn,
-    build_transformer2risk_collate_fn,
-)
 
 from lightning_models.utils.pl_train import (
     model_inference,
@@ -1739,44 +1735,18 @@ def predict_fn(input_object, model_data, context=None):
         ):
             dataset.add_pipeline(feature_name, processor)
 
-    # Select appropriate collate function based on model class
+    # Use unified collate function for all models (matches pytorch_training.py and pytorch_model_eval.py)
     model_class = config.model_class
-    logger.info(f"Selecting collate function for model: {model_class}")
+    logger.info(f"Creating DataLoader for model: {model_class}")
 
-    if model_class in ["lstm2risk", "bimodal_lstm"]:
-        # LSTM models: Need length sorting for pack_padded_sequence
-        pad_token = config_predict.get("pad_token_id", 0)
-        input_ids_key = config.text_input_ids_key
-        collate_batch = build_lstm2risk_collate_fn(
-            pad_token=pad_token,
-            input_ids_key=input_ids_key,
-        )
-        logger.info(f"✓ Using LSTM2Risk collate function (pad_token={pad_token})")
-        logger.info(f"  - Input IDs key: {input_ids_key}")
-
-    elif model_class in ["transformer2risk", "bimodal_transformer"]:
-        # Transformer models: Need attention masking and block_size truncation
-        pad_token = config_predict.get("pad_token_id", 0)
-        block_size = config.max_sen_len
-        input_ids_key = config.text_input_ids_key
-        attention_mask_key = config.text_attention_mask_key
-        collate_batch = build_transformer2risk_collate_fn(
-            pad_token=pad_token,
-            block_size=block_size,
-            input_ids_key=input_ids_key,
-            attention_mask_key=attention_mask_key,
-        )
-        logger.info(f"✓ Using Transformer2Risk collate function")
-        logger.info(f"  - Input IDs key: {input_ids_key}")
-        logger.info(f"  - Attention mask key: {attention_mask_key}")
-
-    else:
-        # Default: BERT-based models
-        collate_batch = build_collate_batch(
-            input_ids_key=config.text_input_ids_key,
-            attention_mask_key=config.text_attention_mask_key,
-        )
-        logger.info(f"✓ Using default BERT collate function for {model_class}")
+    collate_batch = build_collate_batch(
+        input_ids_key=config.text_input_ids_key,
+        attention_mask_key=config.text_attention_mask_key,
+    )
+    logger.info(f"✓ Using unified collate function for {model_class}")
+    logger.info(f"  - Input IDs key: {config.text_input_ids_key}")
+    logger.info(f"  - Attention mask key: {config.text_attention_mask_key}")
+    logger.info("  - Handles text fields automatically via pipeline_dataloader")
 
     batch_size = len(input_object)
     predict_dataloader = DataLoader(

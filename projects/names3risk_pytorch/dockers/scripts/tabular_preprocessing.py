@@ -684,8 +684,18 @@ def process_batch_mode_preprocessing(
     # Apply Names3Risk-specific preprocessing
     df = detect_and_apply_names3risk_preprocessing(df, log)
 
-    # Filter to numeric features only
-    df = filter_to_numeric_features(df, log)
+    # OPTIMIZATION: Keep ALL columns as-is (no conversion, no filtering)
+    # This eliminates the 3+ hour conversion bottleneck and preserves all features
+    # The model training code will handle feature selection and dtype conversion as needed
+    log("[BATCH] Keeping all columns with original dtypes (no conversion or filtering)")
+
+    # Log output schema after all preprocessing
+    log("[BATCH] Output schema after preprocessing:")
+    log(f"  Total columns: {len(df.columns)}")
+    log(f"  Column dtypes: {df.dtypes.value_counts().to_dict()}")
+    log(f"  Column names (first 50): {df.columns.tolist()[:50]}")
+    if len(df.columns) > 50:
+        log(f"  ... and {len(df.columns) - 50} more columns")
 
     # Process labels if provided
     if label_field:
@@ -1336,8 +1346,12 @@ def process_single_batch(
     # Apply Names3Risk-specific preprocessing
     batch_df = detect_and_apply_names3risk_preprocessing(batch_df, log_func)
 
-    # Filter to numeric features only (preserve additional columns for global dedup)
-    batch_df = filter_to_numeric_features(batch_df, log_func, preserve_columns)
+    # OPTIMIZATION: Keep ALL columns as-is (no conversion, no filtering)
+    # This eliminates the 3+ hour conversion bottleneck and preserves all features
+    # The model training code will handle feature selection and dtype conversion as needed
+    log_func(
+        "[STREAMING] Keeping all columns with original dtypes (no conversion or filtering)"
+    )
 
     # Process labels if provided
     if label_field:

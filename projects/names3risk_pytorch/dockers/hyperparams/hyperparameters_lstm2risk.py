@@ -77,7 +77,13 @@ class LSTM2RiskHyperparameters(ModelHyperparameters):
 
     # For tokenizer settings
     max_sen_len: int = Field(
-        default=512, description="Maximum sentence length for tokenizer"
+        default=100,
+        description="Maximum sentence length for tokenizer truncation. "
+        "This parameter serves dual purpose: "
+        "(1) Controls tokenizer truncation during preprocessing "
+        "(2) Not directly used in LSTM architecture (unlike Transformer which needs it for position embeddings) "
+        "but kept consistent for preprocessing pipeline uniformity. "
+        "Default 100 matches legacy behavior and is sufficient for concatenated name fields.",
     )
 
     fixed_tokenizer_length: bool = Field(
@@ -95,10 +101,11 @@ class LSTM2RiskHyperparameters(ModelHyperparameters):
 
     # Text processing pipeline configuration
     text_processing_steps: List[str] = Field(
-        default=["custom_bpe_tokenizer"],
+        default=[],
         description="Processing steps for text preprocessing pipeline. "
         "For LSTM2Risk, text is concatenated risk scores (e.g., '0.5|0.3|0.8|0.2') "
-        "that only need tokenization with custom BPE tokenizer - no dialogue/HTML/emoji cleaning required.",
+        "that only need tokenization with custom BPE tokenizer - no dialogue/HTML/emoji cleaning required. "
+        "Empty list allows pytorch_training.py to determine appropriate default based on model type.",
     )
 
     # ===== LSTM-Specific Architecture Parameters (Tier 2) =====
