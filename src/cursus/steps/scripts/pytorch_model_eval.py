@@ -254,6 +254,7 @@ from ...processing.validation import (
 )
 from ...processing.processor_registry import build_text_pipeline_from_steps
 from ...processing.datasets.pipeline_datasets import PipelineDataset
+from ...processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
 from ...processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
@@ -630,29 +631,67 @@ def load_model_artifacts(
 
 
 def create_pipeline_dataset(
-    config: Dict[str, Any], eval_data_dir: str, filename: str
-) -> PipelineDataset:
+    config: Dict[str, Any],
+    eval_data_dir: str,
+    filename: str,
+    use_streaming: bool = False,
+) -> Union[PipelineDataset, PipelineIterableDataset]:
     """
-    Create and initialize PipelineDataset with missing value handling.
+    Create PipelineDataset or PipelineIterableDataset based on streaming mode.
+
+    Streaming mode is enabled when:
+    - use_streaming parameter is True
+    - Input directory contains shards (part-*.parquet files)
 
     Args:
         config: Model configuration
         eval_data_dir: Directory containing evaluation data
-        filename: Name of evaluation data file
+        filename: Name of evaluation data file (unused in streaming mode)
+        use_streaming: Whether to enable streaming mode (default: False)
 
     Returns:
-        Initialized PipelineDataset
+        PipelineDataset for batch mode or PipelineIterableDataset for streaming mode
     """
+    from pathlib import Path
+
+    # Check if directory contains shards
+    data_path = Path(eval_data_dir)
+    has_shards = any(data_path.glob("part-*.parquet")) or any(
+        data_path.glob("part-*.csv")
+    )
+
+    if use_streaming and has_shards:
+        logger.info(f"[STREAMING] Loading PipelineIterableDataset from {eval_data_dir}")
+        logger.info(f"[STREAMING] Found sharded data - using incremental loading")
+        pipeline_dataset = PipelineIterableDataset(
+            config=config,
+            file_dir=eval_data_dir,
+            shuffle_shards=False,  # No shuffling for evaluation
+        )
+        logger.info(f"[STREAMING] Streaming dataset created (memory-efficient mode)")
+        return pipeline_dataset
+    elif use_streaming and not has_shards:
+        logger.warning(
+            f"[WARNING] ENABLE_TRUE_STREAMING=true but no shards found in {eval_data_dir}"
+        )
+        logger.warning(
+            f"[WARNING] Falling back to batch mode with single file: {filename}"
+        )
+
+    # Default: Batch mode
+    logger.info(
+        f"[BATCH] Loading PipelineDataset from {filename} in folder {eval_data_dir}"
+    )
     pipeline_dataset = PipelineDataset(
         config=config, file_dir=eval_data_dir, filename=filename
     )
 
-    # Fill missing values
+    # Fill missing values (only for batch mode)
+    logger.info(f"[BATCH] Filling missing values in dataset {filename}")
     pipeline_dataset.fill_missing_value(
         label_name=config["label_name"],
         column_cat_name=config.get("cat_field_list", []),
     )
-    logger.info("Created PipelineDataset and filled missing values")
 
     return pipeline_dataset
 
@@ -928,6 +967,7 @@ def preprocess_eval_data(
     processors: Dict[str, Any],
     eval_data_dir: str,
     filename: str,
+    enable_streaming: bool = False,
 ) -> Tuple[PipelineDataset, DataLoader]:
     """
     Apply complete preprocessing pipeline to evaluation data.
@@ -940,6 +980,7 @@ def preprocess_eval_data(
         processors: Preprocessing processors
         eval_data_dir: Directory containing evaluation data
         filename: Name of evaluation data file
+        enable_streaming: Whether to enable streaming mode (default: False)
 
     Returns:
         Tuple of (PipelineDataset, DataLoader)
@@ -949,7 +990,9 @@ def preprocess_eval_data(
     logger.info("=" * 70)
 
     # Step 1: Create and initialize dataset
-    pipeline_dataset = create_pipeline_dataset(config, eval_data_dir, filename)
+    pipeline_dataset = create_pipeline_dataset(
+        config, eval_data_dir, filename, enable_streaming
+    )
 
     # Step 2: Build and add text preprocessing pipelines (bimodal or trimodal)
     tokenizer, text_pipelines = data_preprocess_pipeline(config, tokenizer)
@@ -1455,6 +1498,7 @@ def evaluate_model(
     output_metrics_dir: str,
     input_format: str = "csv",
     device: Union[str, int, List[int]] = "auto",
+    enable_streaming: bool = False,
 ) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
@@ -1477,12 +1521,13 @@ def evaluate_model(
         output_metrics_dir: Directory to save metrics
         input_format: Input data format
         device: Device to use for inference
+        enable_streaming: Whether to enable streaming mode (default: False)
     """
     logger.info("Starting model evaluation")
 
     # Preprocess data and create DataLoader
     pipeline_dataset, dataloader = preprocess_eval_data(
-        df, config, tokenizer, processors, eval_data_dir, filename
+        df, config, tokenizer, processors, eval_data_dir, filename, enable_streaming
     )
 
     # Setup device environment
@@ -1590,10 +1635,14 @@ def main(
         logger.warning(f"Failed to parse DEVICE='{device_str}', using 'auto'")
         device = "auto"
 
+    # Parse streaming mode setting
+    enable_streaming = environ_vars.get("ENABLE_TRUE_STREAMING", False)
+
     # Log job info
     job_type = job_args.job_type
     logger.info(f"Running PyTorch model evaluation with job_type: {job_type}")
     logger.info(f"Device setting: {device}")
+    logger.info(f"Streaming mode: {enable_streaming}")
 
     # Ensure output directories exist
     os.makedirs(output_eval_dir, exist_ok=True)
@@ -1625,6 +1674,7 @@ def main(
         output_metrics_dir,
         input_format,
         device,
+        enable_streaming,
     )
 
     logger.info("PyTorch model evaluation script complete")
@@ -1662,6 +1712,11 @@ if __name__ == "__main__":
         "ACCELERATOR": os.environ.get("ACCELERATOR", "auto"),
         "BATCH_SIZE": os.environ.get("BATCH_SIZE", "32"),
         "NUM_WORKERS": os.environ.get("NUM_WORKERS", "0"),
+        # Streaming mode support
+        "ENABLE_TRUE_STREAMING": os.environ.get(
+            "ENABLE_TRUE_STREAMING", "false"
+        ).lower()
+        == "true",
     }
 
     try:

@@ -616,10 +616,28 @@ class LSTM2Risk(pl.LightningModule):
         model_to_export = model_to_export.to("cpu")
         wrapper = LSTM2RiskONNXWrapper(model_to_export).to("cpu").eval()
 
-        # Prepare inputs
-        text_tokens = sample_batch["text"].to("cpu")
-        text_lengths = sample_batch["text_length"].to("cpu")
-        tabular = sample_batch["tabular"].to("cpu").float()
+        # Construct prefixed keys (same pattern as forward() method)
+        text_input_ids_key = f"{self.text_name}_{self.text_input_ids_key}"
+
+        # Prepare inputs using config-driven keys
+        text_tokens = sample_batch[text_input_ids_key].to("cpu")
+
+        # Squeeze chunk dimension if present (pipeline_dataloader adds it)
+        if len(text_tokens.shape) == 3:
+            text_tokens = text_tokens.squeeze(1)  # (B, 1, L) → (B, L)
+
+        # Get text lengths (LSTM needs this)
+        text_lengths = sample_batch[self.text_length_key].to("cpu")
+
+        # Handle tabular data: stack individual fields
+        device = torch.device("cpu")
+        tabular = torch.stack(
+            [
+                torch.tensor(sample_batch[field], device=device, dtype=torch.float32)
+                for field in self.tab_field_list
+            ],
+            dim=1,
+        )  # (B, num_features)
 
         # Verify batch consistency
         batch_size = text_tokens.shape[0]

@@ -907,25 +907,24 @@ def build_preprocessing_pipelines(
 
 # ----------------- Dataset Loading -------------------------
 def load_data_module(
-    file_dir, filename, config: Config
+    file_dir, filename, config: Config, use_streaming: bool = False
 ) -> Union[PipelineDataset, PipelineIterableDataset]:
     """
     Load dataset using either PipelineDataset (batch mode) or PipelineIterableDataset (streaming mode).
 
     Streaming mode is enabled when:
-    - USE_STREAMING_DATASET environment variable is set to "true"
+    - use_streaming parameter is True
     - Input directory contains shards (part-*.parquet files)
 
     Args:
         file_dir: Directory containing data files
         filename: Filename for batch mode (unused in streaming mode)
         config: Configuration object
+        use_streaming: Whether to enable streaming mode (default: False)
 
     Returns:
         PipelineDataset for batch mode or PipelineIterableDataset for streaming mode
     """
-    # Check for streaming mode
-    use_streaming = os.environ.get("USE_STREAMING_DATASET", "false").lower() == "true"
 
     # Check if directory contains shards
     from pathlib import Path
@@ -952,7 +951,7 @@ def load_data_module(
     elif use_streaming and not has_shards:
         log_once(
             logger,
-            f"[WARNING] USE_STREAMING_DATASET=true but no shards found in {file_dir}",
+            f"[WARNING] ENABLE_TRUE_STREAMING=true but no shards found in {file_dir}",
         )
         log_once(
             logger, f"[WARNING] Falling back to batch mode with single file: {filename}"
@@ -1217,6 +1216,7 @@ def load_and_preprocess_data(
     model_artifacts_dir: Optional[str] = None,
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
+    use_streaming: bool = False,
 ) -> Tuple[List[PipelineDataset], AutoTokenizer, Dict]:
     """
     Loads and preprocesses the train/val/test datasets according to the provided config.
@@ -1227,6 +1227,7 @@ def load_and_preprocess_data(
         model_artifacts_dir: Optional directory with pre-computed artifacts
         use_precomputed_imputation: Whether to use pre-computed imputation
         use_precomputed_risk_tables: Whether to use pre-computed risk tables
+        use_streaming: Whether to enable streaming mode (default: False)
 
     Returns:
         Tuple of ([train_dataset, val_dataset, test_dataset], tokenizer, config)
@@ -1252,9 +1253,15 @@ def load_and_preprocess_data(
     config._input_format = detected_format
 
     # === Load raw datasets ===
-    train_pipeline_dataset = load_data_module(paths["train"], train_filename, config)
-    val_pipeline_dataset = load_data_module(paths["val"], val_filename, config)
-    test_pipeline_dataset = load_data_module(paths["test"], test_filename, config)
+    train_pipeline_dataset = load_data_module(
+        paths["train"], train_filename, config, use_streaming
+    )
+    val_pipeline_dataset = load_data_module(
+        paths["val"], val_filename, config, use_streaming
+    )
+    test_pipeline_dataset = load_data_module(
+        paths["test"], test_filename, config, use_streaming
+    )
 
     # === Build tokenizer and preprocessing pipelines ===
     tokenizer, pipelines = data_preprocess_pipeline(
@@ -1787,6 +1794,7 @@ def main(
         use_precomputed_risk_tables=environ_vars.get(
             "USE_PRECOMPUTED_RISK_TABLES", False
         ),
+        use_streaming=environ_vars.get("ENABLE_TRUE_STREAMING", False),
     )
 
     # Set runtime model_path directly on config object

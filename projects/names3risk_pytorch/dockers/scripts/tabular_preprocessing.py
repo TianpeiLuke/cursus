@@ -1374,6 +1374,7 @@ def process_training_splits_streaming(
     shard_size: int,
     batch_size: int,
     optimize_memory: bool,
+    consolidate_shards: bool,
     log_func: Callable,
 ) -> None:
     """
@@ -1461,20 +1462,26 @@ def process_training_splits_streaming(
     log_func("")
 
     # ========================================================================
-    # PASS 2: Process Batches with Global Knowledge (DIRECT WRITE)
+    # PASS 2: Process Batches with Global Knowledge
     # ========================================================================
 
-    log_func(
-        "[STREAMING] ===== STARTING PASS 2: Processing batches with direct write ====="
-    )
+    log_func("[STREAMING] ===== STARTING PASS 2: Processing batches =====")
 
-    # Initialize writers based on format
-    if output_format == "parquet":
-        writers = _init_parquet_writers_training(output_path, log_func)
+    # Initialize writers or counters based on consolidation mode
+    if consolidate_shards:
+        # CONSOLIDATE MODE: Direct write to single files
+        log_func("[STREAMING] Training mode: Consolidate mode (single file per split)")
+        if output_format == "parquet":
+            writers = _init_parquet_writers_training(output_path, log_func)
+        else:
+            writers = _init_csv_writers_training(output_path, output_format, log_func)
+        first_batch = True
     else:
-        writers = _init_csv_writers_training(output_path, output_format, log_func)
-
-    first_batch = True
+        # SHARD MODE: Write to multiple shard files
+        log_func(
+            "[STREAMING] Training mode: Shard mode (multiple part files per split)"
+        )
+        split_counters = {"train": 0, "test": 0, "val": 0}
     total_rows = {"train": 0, "test": 0, "val": 0}
 
     # Process all batches
@@ -1533,27 +1540,44 @@ def process_training_splits_streaming(
 
         batch_df["_split"] = batch_df.apply(assign_split_global, axis=1)
 
-        # Write directly to final files (no temp shards!)
-        if output_format == "parquet":
-            _write_splits_to_parquet(batch_df, writers, first_batch, log_func)
+        # Write based on consolidation mode
+        if consolidate_shards:
+            # CONSOLIDATE MODE: Write to single file per split
+            if output_format == "parquet":
+                _write_splits_to_parquet(batch_df, writers, first_batch, log_func)
+            else:
+                _write_splits_to_csv(
+                    batch_df, writers, first_batch, output_format, log_func
+                )
+            first_batch = False
         else:
-            _write_splits_to_csv(
-                batch_df, writers, first_batch, output_format, log_func
+            # SHARD MODE: Write to multiple shard files
+            write_splits_to_shards(
+                batch_df,
+                output_path,
+                split_counters,
+                shard_size,
+                output_format,
+                log_func,
             )
 
         # Track progress
         for split_name in ["train", "test", "val"]:
             total_rows[split_name] += len(batch_df[batch_df["_split"] == split_name])
-
-        first_batch = False
         del batch_df
         gc.collect()
 
-    # Close writers
-    if output_format == "parquet":
-        _close_parquet_writers(writers, log_func)
+    # Close writers (only in consolidate mode)
+    if consolidate_shards:
+        if output_format == "parquet":
+            _close_parquet_writers(writers, log_func)
+        else:
+            _close_csv_writers(writers, log_func)
     else:
-        _close_csv_writers(writers, log_func)
+        log_func(
+            f"[STREAMING] Wrote shards: train={split_counters['train']}, "
+            f"val={split_counters['val']}, test={split_counters['test']}"
+        )
 
     log_func("[STREAMING] ===== PASS 2 COMPLETE =====")
     log_func(
@@ -1573,6 +1597,7 @@ def process_single_split_streaming(
     shard_size: int,
     batch_size: int,
     optimize_memory: bool,
+    consolidate_shards: bool,
     log_func: Callable,
 ) -> None:
     """
@@ -1588,15 +1613,24 @@ def process_single_split_streaming(
     split_dir = output_path / job_type
     split_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initialize writer based on format
-    if output_format == "parquet":
-        writer = _init_parquet_writer_single_split(split_dir, job_type, log_func)
-    else:
-        writer = _init_csv_writer_single_split(
-            split_dir, job_type, output_format, log_func
+    # Initialize writer or counter based on consolidation mode
+    if consolidate_shards:
+        log_func(
+            f"[STREAMING] {job_type.capitalize()} mode: Consolidate mode (single file)"
         )
+        if output_format == "parquet":
+            writer = _init_parquet_writer_single_split(split_dir, job_type, log_func)
+        else:
+            writer = _init_csv_writer_single_split(
+                split_dir, job_type, output_format, log_func
+            )
+        first_batch = True
+    else:
+        log_func(
+            f"[STREAMING] {job_type.capitalize()} mode: Shard mode (multiple part files)"
+        )
+        shard_counter = 0
 
-    first_batch = True
     total_rows = 0
 
     # Process all batches
@@ -1619,22 +1653,35 @@ def process_single_split_streaming(
             log_func,
         )
 
-        # Write directly to final file (no temp shards!)
-        if output_format == "parquet":
-            _write_to_parquet_single(batch_df, writer, first_batch, log_func)
+        # Write based on consolidation mode
+        if consolidate_shards:
+            # CONSOLIDATE MODE: Write to single file
+            if output_format == "parquet":
+                _write_to_parquet_single(batch_df, writer, first_batch, log_func)
+            else:
+                _write_to_csv_single(
+                    batch_df, writer, first_batch, output_format, log_func
+                )
+            first_batch = False
         else:
-            _write_to_csv_single(batch_df, writer, first_batch, output_format, log_func)
+            # SHARD MODE: Write to multiple shard files
+            for i in range(0, len(batch_df), shard_size):
+                shard_df = batch_df.iloc[i : i + shard_size]
+                write_single_shard(shard_df, split_dir, shard_counter, output_format)
+                shard_counter += 1
 
         total_rows += len(batch_df)
-        first_batch = False
         del batch_df
         gc.collect()
 
-    # Close writer
-    if output_format == "parquet":
-        _close_parquet_writer_single(writer, log_func)
+    # Close writer (only in consolidate mode)
+    if consolidate_shards:
+        if output_format == "parquet":
+            _close_parquet_writer_single(writer, log_func)
+        else:
+            _close_csv_writer_single(writer, log_func)
     else:
-        _close_csv_writer_single(writer, log_func)
+        log_func(f"[STREAMING] Wrote {shard_counter} shards for {job_type}")
 
     log_func(f"[STREAMING] Complete: {total_rows} rows written to {job_type}")
 
@@ -1784,6 +1831,7 @@ def process_streaming_mode_preprocessing(
             shard_size,
             batch_size,
             optimize_memory,
+            consolidate_shards,
             log,
         )
     else:
@@ -1798,6 +1846,7 @@ def process_streaming_mode_preprocessing(
             shard_size,
             batch_size,
             optimize_memory,
+            consolidate_shards,
             log,
         )
 
@@ -1805,7 +1854,7 @@ def process_streaming_mode_preprocessing(
     # This is controlled by CONSOLIDATE_SHARDS environment variable
     # For streaming training, set CONSOLIDATE_SHARDS=false to keep shards
     log("[STREAMING] Preprocessing complete in streaming mode")
-    return {}
+
     # Optionally consolidate temporary shards into single files
     # For streaming training, keep shards separate for incremental loading
     if consolidate_shards:

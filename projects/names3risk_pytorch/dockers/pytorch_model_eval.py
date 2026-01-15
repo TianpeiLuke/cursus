@@ -244,6 +244,7 @@ from processing.numerical.numerical_imputation_processor import (
 from processing.validation import validate_categorical_fields, validate_numerical_fields
 from processing.processor_registry import build_text_pipeline_from_steps
 from processing.datasets.pipeline_datasets import PipelineDataset
+from processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
 from processing.dataloaders.pipeline_dataloader import build_collate_batch
 
 from lightning_models.utils.pl_train import (
@@ -612,29 +613,60 @@ def load_model_artifacts(
 
 
 def create_pipeline_dataset(
-    config: Dict[str, Any], eval_data_dir: str, filename: str
-) -> PipelineDataset:
+    config: Dict[str, Any],
+    eval_data_dir: str,
+    filename: str,
+    use_streaming: bool = False,
+) -> Union[PipelineDataset, PipelineIterableDataset]:
     """
-    Create and initialize PipelineDataset with missing value handling.
+    Create dataset using either batch or streaming mode.
+
+    Batch mode (use_streaming=False):
+        - Uses PipelineDataset with single file
+        - Loads entire file into memory
+        - Original behavior
+
+    Streaming mode (use_streaming=True):
+        - Uses PipelineIterableDataset with sharded inputs
+        - Memory-efficient incremental loading
+        - Assumes input directory contains shards (part-*.parquet)
 
     Args:
         config: Model configuration
         eval_data_dir: Directory containing evaluation data
-        filename: Name of evaluation data file
+        filename: Name of evaluation data file (unused in streaming mode)
+        use_streaming: Whether to use streaming mode (default: False)
 
     Returns:
-        Initialized PipelineDataset
+        PipelineDataset (batch mode) or PipelineIterableDataset (streaming mode)
     """
-    pipeline_dataset = PipelineDataset(
-        config=config, file_dir=eval_data_dir, filename=filename
-    )
+    if use_streaming:
+        # STREAMING MODE: Load from directory with shards
+        logger.info(f"[EVAL] Creating PipelineIterableDataset (streaming mode)")
+        logger.info(f"[EVAL] Loading sharded data from: {eval_data_dir}")
 
-    # Fill missing values
-    pipeline_dataset.fill_missing_value(
-        label_name=config["label_name"],
-        column_cat_name=config.get("cat_field_list", []),
-    )
-    logger.info("Created PipelineDataset and filled missing values")
+        pipeline_dataset = PipelineIterableDataset(
+            config=config,
+            file_dir=eval_data_dir,
+            shuffle_shards=False,  # No shuffling for evaluation
+        )
+        logger.info("[EVAL] Streaming dataset created (memory-efficient mode)")
+
+    else:
+        # BATCH MODE: Load single file
+        logger.info(f"[EVAL] Creating PipelineDataset (batch mode)")
+        logger.info(f"[EVAL] Loading file: {filename}")
+
+        pipeline_dataset = PipelineDataset(
+            config=config, file_dir=eval_data_dir, filename=filename
+        )
+
+        # Fill missing values (only needed for batch mode)
+        pipeline_dataset.fill_missing_value(
+            label_name=config["label_name"],
+            column_cat_name=config.get("cat_field_list", []),
+        )
+        logger.info("[EVAL] Created PipelineDataset and filled missing values")
 
     return pipeline_dataset
 
@@ -926,10 +958,13 @@ def preprocess_eval_data(
     processors: Dict[str, Any],
     eval_data_dir: str,
     filename: str,
-) -> Tuple[PipelineDataset, DataLoader]:
+    enable_streaming: bool = False,
+) -> Tuple[Union[PipelineDataset, PipelineIterableDataset], DataLoader]:
     """
     Apply complete preprocessing pipeline to evaluation data.
-    Orchestrates the creation of PipelineDataset and DataLoader.
+    Orchestrates the creation of PipelineDataset or PipelineIterableDataset and DataLoader.
+
+    Supports both batch mode (single file) and streaming mode (sharded input).
 
     Args:
         df: Input DataFrame
@@ -938,16 +973,26 @@ def preprocess_eval_data(
         processors: Preprocessing processors
         eval_data_dir: Directory containing evaluation data
         filename: Name of evaluation data file
+        enable_streaming: Whether to use streaming mode (default: False)
 
     Returns:
-        Tuple of (PipelineDataset, DataLoader)
+        Tuple of (PipelineDataset or PipelineIterableDataset, DataLoader)
     """
     logger.info("=" * 70)
     logger.info(f"PREPROCESSING EVALUATION DATA: {filename}")
     logger.info("=" * 70)
 
-    # Step 1: Create and initialize dataset
-    pipeline_dataset = create_pipeline_dataset(config, eval_data_dir, filename)
+    # Log streaming mode selection
+    if enable_streaming:
+        logger.info("[EVAL] Streaming mode enabled - using PipelineIterableDataset")
+        logger.info("[EVAL] Assuming input directory contains sharded data")
+    else:
+        logger.info("[EVAL] Batch mode enabled - using PipelineDataset")
+
+    # Step 1: Create and initialize dataset (adaptive based on streaming setting)
+    pipeline_dataset = create_pipeline_dataset(
+        config, eval_data_dir, filename, use_streaming=enable_streaming
+    )
 
     # Step 2: Build and add text preprocessing pipelines (bimodal or trimodal)
     tokenizer, text_pipelines = data_preprocess_pipeline(config, tokenizer)
@@ -1453,6 +1498,7 @@ def evaluate_model(
     output_metrics_dir: str,
     input_format: str = "csv",
     device: Union[str, int, List[int]] = "auto",
+    enable_streaming: bool = False,
 ) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
@@ -1475,12 +1521,13 @@ def evaluate_model(
         output_metrics_dir: Directory to save metrics
         input_format: Input data format
         device: Device to use for inference
+        enable_streaming: Whether to use streaming mode (default: False)
     """
     logger.info("Starting model evaluation")
 
     # Preprocess data and create DataLoader
     pipeline_dataset, dataloader = preprocess_eval_data(
-        df, config, tokenizer, processors, eval_data_dir, filename
+        df, config, tokenizer, processors, eval_data_dir, filename, enable_streaming
     )
 
     # Setup device environment
@@ -1572,6 +1619,12 @@ def main(
     id_field = environ_vars.get("ID_FIELD", "order_id")
     label_field = environ_vars.get("LABEL_FIELD", "label")
 
+    # Parse streaming mode setting
+    enable_streaming = (
+        environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+    )
+    logger.info(f"Streaming mode: {'ENABLED' if enable_streaming else 'DISABLED'}")
+
     # Parse device setting - support multiple formats
     device_str = environ_vars.get("DEVICE", "auto")
     try:
@@ -1623,6 +1676,7 @@ def main(
         output_metrics_dir,
         input_format,
         device,
+        enable_streaming,
     )
 
     logger.info("PyTorch model evaluation script complete")
@@ -1660,6 +1714,8 @@ if __name__ == "__main__":
         "ACCELERATOR": os.environ.get("ACCELERATOR", "auto"),
         "BATCH_SIZE": os.environ.get("BATCH_SIZE", "32"),
         "NUM_WORKERS": os.environ.get("NUM_WORKERS", "0"),
+        # Data loading mode
+        "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
     }
 
     try:

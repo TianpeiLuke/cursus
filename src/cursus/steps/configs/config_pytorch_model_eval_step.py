@@ -112,6 +112,11 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
         description="Enable comparison visualizations (side-by-side ROC/PR curves, scatter plots, distributions)",
     )
 
+    enable_true_streaming: bool = Field(
+        default=False,
+        description="Enable true streaming mode with PipelineIterableDataset for memory-efficient processing of sharded data",
+    )
+
     model_config = ProcessingStepConfigBase.model_config
 
     # ===== Derived Fields (Tier 3) =====
@@ -219,6 +224,7 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
                 "COMPARISON_METRICS": self.comparison_metrics,
                 "STATISTICAL_TESTS": str(self.statistical_tests).lower(),
                 "COMPARISON_PLOTS": str(self.comparison_plots).lower(),
+                "ENABLE_TRUE_STREAMING": str(self.enable_true_streaming).lower(),
             }
         )
 
@@ -267,6 +273,7 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
             "comparison_metrics": self.comparison_metrics,
             "statistical_tests": self.statistical_tests,
             "comparison_plots": self.comparison_plots,
+            "enable_true_streaming": self.enable_true_streaming,
         }
 
         # Add eval_metric_choices if set to non-default value

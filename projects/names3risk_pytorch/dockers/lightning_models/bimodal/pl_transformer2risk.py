@@ -595,12 +595,34 @@ class Transformer2Risk(pl.LightningModule):
         model_to_export = model_to_export.to("cpu")
         wrapper = Transformer2RiskONNXWrapper(model_to_export).to("cpu").eval()
 
-        # Prepare inputs
-        text_tokens = sample_batch["text"].to("cpu")
+        # Construct prefixed keys (same pattern as forward() method)
+        text_input_ids_key = f"{self.text_name}_{self.text_input_ids_key}"
+        text_attention_mask_key = f"{self.text_name}_{self.text_attention_mask_key}"
+
+        # Prepare inputs using config-driven keys
+        text_tokens = sample_batch[text_input_ids_key].to("cpu")
+
+        # Squeeze chunk dimension if present (pipeline_dataloader adds it)
+        if len(text_tokens.shape) == 3:
+            text_tokens = text_tokens.squeeze(1)  # (B, 1, L) → (B, L)
+
         attn_mask = sample_batch.get(
-            "attn_mask", torch.ones_like(text_tokens).bool()
+            text_attention_mask_key, torch.ones_like(text_tokens).bool()
         ).to("cpu")
-        tabular = sample_batch["tabular"].to("cpu").float()
+
+        # Squeeze chunk dimension for attention mask if present
+        if attn_mask is not None and len(attn_mask.shape) == 3:
+            attn_mask = attn_mask.squeeze(1)  # (B, 1, L) → (B, L)
+
+        # Handle tabular data: stack individual fields
+        device = torch.device("cpu")
+        tabular = torch.stack(
+            [
+                torch.tensor(sample_batch[field], device=device, dtype=torch.float32)
+                for field in self.tab_field_list
+            ],
+            dim=1,
+        )  # (B, num_features)
 
         # Verify batch consistency
         batch_size = text_tokens.shape[0]

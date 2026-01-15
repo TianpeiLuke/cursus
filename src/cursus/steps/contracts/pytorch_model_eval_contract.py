@@ -27,6 +27,7 @@ PYTORCH_MODEL_EVAL_CONTRACT = ScriptContract(
         "COMPARISON_METRICS": "all",
         "STATISTICAL_TESTS": "true",
         "COMPARISON_PLOTS": "true",
+        "ENABLE_TRUE_STREAMING": "false",
     },
     framework_requirements={
         "torch": "==2.1.2",
