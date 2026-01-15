@@ -1725,6 +1725,7 @@ def process_streaming_mode_preprocessing(
     max_workers: Optional[int],
     batch_size: int,
     optimize_memory: bool,
+    consolidate_shards: bool = False,
     logger: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
@@ -1750,6 +1751,7 @@ def process_streaming_mode_preprocessing(
         max_workers: Max parallel workers
         batch_size: Batch size for concatenation
         optimize_memory: Whether to optimize dtypes
+        consolidate_shards: Whether to consolidate output shards into single files (default: False)
         logger: Optional logging function
 
     Returns:
@@ -1799,8 +1801,21 @@ def process_streaming_mode_preprocessing(
             log,
         )
 
-    # Consolidate temporary shards into single files
-    consolidate_shards_to_single_files(output_path, job_type, output_format, log)
+    # Consolidate temporary shards into single files (optional)
+    # This is controlled by CONSOLIDATE_SHARDS environment variable
+    # For streaming training, set CONSOLIDATE_SHARDS=false to keep shards
+    log("[STREAMING] Preprocessing complete in streaming mode")
+    return {}
+    # Optionally consolidate temporary shards into single files
+    # For streaming training, keep shards separate for incremental loading
+    if consolidate_shards:
+        consolidate_shards_to_single_files(output_path, job_type, output_format, log)
+        log("[STREAMING] Consolidated shards into single files per split")
+    else:
+        log("[STREAMING] Keeping shards for streaming training/evaluation")
+        log(
+            f"[STREAMING] Output structure: {job_type}/ with part-*.{output_format} shards"
+        )
 
     log("[STREAMING] Preprocessing complete in streaming mode")
     return {}
@@ -1887,7 +1902,11 @@ def main(
 
     # 4. ROUTING: Choose between batch mode and streaming mode
     if enable_true_streaming:
+        consolidate_shards = (
+            environ_vars.get("CONSOLIDATE_SHARDS", "false").lower() == "true"
+        )
         log("[INFO] Using TRUE STREAMING MODE (never loads full DataFrame)")
+        log(f"[INFO] Consolidate shards: {consolidate_shards}")
         return process_streaming_mode_preprocessing(
             input_dir=input_data_dir,
             output_dir=output_dir,
@@ -1902,6 +1921,7 @@ def main(
             max_workers=max_workers,
             batch_size=batch_size,
             optimize_memory=optimize_memory,
+            consolidate_shards=consolidate_shards,
             logger=log,
         )
     else:
@@ -1983,6 +2003,7 @@ if __name__ == "__main__":
             "STREAMING_BATCH_SIZE": os.environ.get("STREAMING_BATCH_SIZE", "0"),
             "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
             "SHARD_SIZE": os.environ.get("SHARD_SIZE", "100000"),
+            "CONSOLIDATE_SHARDS": os.environ.get("CONSOLIDATE_SHARDS", "false"),
         }
 
         # Execute the main processing logic

@@ -1070,25 +1070,35 @@ def process_training_splits_streaming(
     shard_size: int,
     batch_size: int,
     optimize_memory: bool,
+    consolidate_shards: bool,
     log_func: Callable,
 ) -> None:
     """
-    Process training data with random splits in streaming mode using DIRECT WRITE.
+    Process training data with random splits in streaming mode.
 
-    Optimized version that writes directly to final files, eliminating the need
-    to re-read temporary shards for consolidation. This provides 2-3x speedup.
+    Supports two output modes via consolidate_shards parameter:
+    - consolidate_shards=True: Direct write to single files (train/val/test_processed_data.*)
+    - consolidate_shards=False: Write to shards (train/part-*.*, val/part-*.*, test/part-*.*)
     """
-    log_func(
-        "[STREAMING] Training mode: Using direct write (no temp shards, no consolidation)"
-    )
-
-    # Initialize writers based on format
-    if output_format == "parquet":
-        writers = _init_parquet_writers_training(output_path, log_func)
+    if consolidate_shards:
+        log_func("[STREAMING] Training mode: Consolidate mode (single file per split)")
     else:
-        writers = _init_csv_writers_training(output_path, output_format, log_func)
+        log_func(
+            "[STREAMING] Training mode: Shard mode (multiple part files per split)"
+        )
 
-    first_batch = True
+    # Initialize writers or counters based on consolidation mode
+    if consolidate_shards:
+        # Consolidate mode: Direct write to single files
+        if output_format == "parquet":
+            writers = _init_parquet_writers_training(output_path, log_func)
+        else:
+            writers = _init_csv_writers_training(output_path, output_format, log_func)
+        first_batch = True
+    else:
+        # Shard mode: Track shard counters
+        split_counters = {"train": 0, "test": 0, "val": 0}
+
     total_rows = {"train": 0, "test": 0, "val": 0}
 
     # Process all batches
@@ -1114,27 +1124,39 @@ def process_training_splits_streaming(
         # Assign to splits
         batch_df = assign_random_splits(batch_df, train_ratio, test_val_ratio)
 
-        # Write directly to final files (no temp shards!)
-        if output_format == "parquet":
-            _write_splits_to_parquet(batch_df, writers, first_batch, log_func)
+        if consolidate_shards:
+            # Consolidate mode: Write to single file per split
+            if output_format == "parquet":
+                _write_splits_to_parquet(batch_df, writers, first_batch, log_func)
+            else:
+                _write_splits_to_csv(
+                    batch_df, writers, first_batch, output_format, log_func
+                )
+            first_batch = False
         else:
-            _write_splits_to_csv(
-                batch_df, writers, first_batch, output_format, log_func
+            # Shard mode: Write to multiple shard files
+            write_splits_to_shards(
+                batch_df,
+                output_path,
+                split_counters,
+                shard_size,
+                output_format,
+                log_func,
             )
 
         # Track progress
         for split_name in ["train", "test", "val"]:
             total_rows[split_name] += len(batch_df[batch_df["_split"] == split_name])
 
-        first_batch = False
         del batch_df
         gc.collect()
 
-    # Close writers
-    if output_format == "parquet":
-        _close_parquet_writers(writers, log_func)
-    else:
-        _close_csv_writers(writers, log_func)
+    # Close writers (only in consolidate mode)
+    if consolidate_shards:
+        if output_format == "parquet":
+            _close_parquet_writers(writers, log_func)
+        else:
+            _close_csv_writers(writers, log_func)
 
     log_func(
         f"[STREAMING] Complete: train={total_rows['train']}, "
@@ -1311,6 +1333,7 @@ def process_streaming_mode_preprocessing(
     max_workers: Optional[int],
     batch_size: int,
     optimize_memory: bool,
+    consolidate_shards: bool = True,
     logger: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
@@ -1336,6 +1359,7 @@ def process_streaming_mode_preprocessing(
         max_workers: Max parallel workers
         batch_size: Batch size for concatenation
         optimize_memory: Whether to optimize dtypes
+        consolidate_shards: Whether to consolidate output into single files (default: True)
         logger: Optional logging function
 
     Returns:
@@ -1346,6 +1370,7 @@ def process_streaming_mode_preprocessing(
     log("[STREAMING] Starting true streaming mode preprocessing")
     log(f"[STREAMING] Job type: {job_type}")
     log(f"[STREAMING] Streaming batch size: {streaming_batch_size}")
+    log(f"[STREAMING] Consolidate shards: {consolidate_shards}")
 
     # Setup
     output_path = Path(output_dir)
@@ -1368,6 +1393,7 @@ def process_streaming_mode_preprocessing(
             shard_size,
             batch_size,
             optimize_memory,
+            consolidate_shards,
             log,
         )
     else:
@@ -1469,9 +1495,15 @@ def main(
         log(f"[WARNING] Invalid OUTPUT_FORMAT '{output_format}', defaulting to CSV")
         output_format = "csv"
 
-    # 4. ROUTING: Choose between batch mode and streaming mode
+    # 4. Get consolidate_shards setting
+    consolidate_shards = (
+        environ_vars.get("CONSOLIDATE_SHARDS", "true").lower() == "true"
+    )
+
+    # 5. ROUTING: Choose between batch mode and streaming mode
     if enable_true_streaming:
         log("[INFO] Using TRUE STREAMING MODE (never loads full DataFrame)")
+        log(f"[INFO] Consolidate shards: {consolidate_shards}")
         return process_streaming_mode_preprocessing(
             input_dir=input_data_dir,
             output_dir=output_dir,
@@ -1486,6 +1518,7 @@ def main(
             max_workers=max_workers,
             batch_size=batch_size,
             optimize_memory=optimize_memory,
+            consolidate_shards=consolidate_shards,
             logger=log,
         )
     else:
@@ -1567,6 +1600,7 @@ if __name__ == "__main__":
             "STREAMING_BATCH_SIZE": os.environ.get("STREAMING_BATCH_SIZE", "0"),
             "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
             "SHARD_SIZE": os.environ.get("SHARD_SIZE", "100000"),
+            "CONSOLIDATE_SHARDS": os.environ.get("CONSOLIDATE_SHARDS", "true"),
         }
 
         # Execute the main processing logic

@@ -86,6 +86,15 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         "If False (default), uses all features without selection.",
     )
 
+    enable_true_streaming: bool = Field(
+        default=False,
+        description="Controls whether to enable streaming mode with PipelineIterableDataset for memory-efficient data loading. "
+        "If True, uses PipelineIterableDataset which loads data incrementally from sharded files (part-*.parquet), enabling constant memory usage. "
+        "If False (default), uses PipelineDataset which loads entire dataset into memory. "
+        "Requires preprocessing to output sharded data (CONSOLIDATE_SHARDS=false). "
+        "Automatically falls back to batch mode if no shards detected.",
+    )
+
     # Semi-supervised learning support
     job_type: Optional[str] = Field(
         default=None,
@@ -163,6 +172,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
                     self.use_precomputed_risk_tables
                 ).lower(),
                 "USE_PRECOMPUTED_FEATURES": str(self.use_precomputed_features).lower(),
+                "ENABLE_TRUE_STREAMING": str(self.enable_true_streaming).lower(),
             }
         )
 
@@ -193,6 +203,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "use_precomputed_imputation": self.use_precomputed_imputation,
             "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
             "use_precomputed_features": self.use_precomputed_features,
+            "enable_true_streaming": self.enable_true_streaming,
             "job_type": self.job_type,
         }
 

@@ -242,6 +242,7 @@ from ...processing.validation import (
 )
 from ...processing.processor_registry import build_text_pipeline_from_steps
 from ...processing.datasets.pipeline_datasets import PipelineDataset
+from ...processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
 from ...processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
@@ -823,12 +824,66 @@ def build_preprocessing_pipelines(
 
 
 # ----------------- Dataset Loading -------------------------
-def load_data_module(file_dir, filename, config: Config) -> PipelineDataset:
-    log_once(logger, f"Loading pipeline dataset from {filename} in folder {file_dir}")
+def load_data_module(
+    file_dir, filename, config: Config
+) -> Union[PipelineDataset, PipelineIterableDataset]:
+    """
+    Load dataset using either PipelineDataset (batch mode) or PipelineIterableDataset (streaming mode).
+
+    Streaming mode is enabled when:
+    - ENABLE_TRUE_STREAMING environment variable is set to "true"
+    - Input directory contains shards (part-*.parquet files)
+
+    Args:
+        file_dir: Directory containing data files
+        filename: Filename for batch mode (unused in streaming mode)
+        config: Configuration object
+
+    Returns:
+        PipelineDataset for batch mode or PipelineIterableDataset for streaming mode
+    """
+    # Check for streaming mode
+    use_streaming = os.environ.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+
+    # Check if directory contains shards
+    from pathlib import Path
+
+    data_path = Path(file_dir)
+    has_shards = any(data_path.glob("part-*.parquet")) or any(
+        data_path.glob("part-*.csv")
+    )
+
+    if use_streaming and has_shards:
+        log_once(logger, f"[STREAMING] Loading PipelineIterableDataset from {file_dir}")
+        log_once(logger, f"[STREAMING] Found sharded data - using incremental loading")
+        pipeline_dataset = PipelineIterableDataset(
+            config=config.model_dump(),
+            file_dir=file_dir,
+            shuffle_shards=True
+            if "train" in file_dir
+            else False,  # Shuffle for training only
+        )
+        log_once(
+            logger, f"[STREAMING] Streaming dataset created (memory-efficient mode)"
+        )
+        return pipeline_dataset
+    elif use_streaming and not has_shards:
+        log_once(
+            logger,
+            f"[WARNING] ENABLE_TRUE_STREAMING=true but no shards found in {file_dir}",
+        )
+        log_once(
+            logger, f"[WARNING] Falling back to batch mode with single file: {filename}"
+        )
+
+    # Default: Batch mode
+    log_once(
+        logger, f"[BATCH] Loading PipelineDataset from {filename} in folder {file_dir}"
+    )
     pipeline_dataset = PipelineDataset(
         config=config.model_dump(), file_dir=file_dir, filename=filename
-    )  # Pass as dict
-    log_once(logger, f"Filling missing values in dataset {filename}")
+    )
+    log_once(logger, f"[BATCH] Filling missing values in dataset {filename}")
     pipeline_dataset.fill_missing_value(
         label_name=config.label_name, column_cat_name=config.cat_field_list
     )
@@ -1594,6 +1649,10 @@ if __name__ == "__main__":
         == "true",
         "USE_PRECOMPUTED_RISK_TABLES": os.environ.get(
             "USE_PRECOMPUTED_RISK_TABLES", "false"
+        ).lower()
+        == "true",
+        "ENABLE_TRUE_STREAMING": os.environ.get(
+            "ENABLE_TRUE_STREAMING", "false"
         ).lower()
         == "true",
         "REGION": os.environ.get("REGION", "NA"),

@@ -113,6 +113,11 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         description="Rows per output shard in streaming mode. Larger values = fewer files but more memory during consolidation. Default: 100000",
     )
 
+    consolidate_shards: bool = Field(
+        default=True,
+        description="Whether to consolidate output shards into single files per split. True=single files (train/val/test_processed_data.*), False=multiple shard files (train/part-*.*, val/part-*.*, test/part-*.*). Default: True",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
     # They are private with public read-only property access
@@ -186,6 +191,9 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
                 "true" if self.enable_true_streaming else "false"
             )
             env_vars["SHARD_SIZE"] = str(self.shard_size)
+            env_vars["CONSOLIDATE_SHARDS"] = (
+                "true" if self.consolidate_shards else "false"
+            )
 
             self._preprocessing_environment_variables = env_vars
 
