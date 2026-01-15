@@ -1,41 +1,76 @@
-"""
-Custom BPE Tokenization Processor
+"""Custom BPE Tokenization Processor.
 
-Tokenization processor compatible with HuggingFace tokenizers.Tokenizer
-(custom BPE tokenizers from tokenizer_training step).
+This module provides a tokenization processor compatible with HuggingFace's
+tokenizers.Tokenizer library for custom BPE tokenizers trained via the
+tokenizer_training step.
 
-This processor is specifically designed for lstm2risk/transformer2risk models
-that use custom BPE tokenizers. Outputs token IDs, attention masks, and
-text lengths required by bimodal models.
+Module: processing.text.custom_bpe_tokenize_processor
+Purpose: Tokenize text inputs using custom BPE tokenizers for bimodal models
+Compatible Models: lstm2risk, transformer2risk
+
+Type Definitions:
+    - Input: Union[Dict[str, Any], str, float, int, None]
+        * Dict: {"field_name": "text_value"} - extracts first string value
+        * str: "pipe|separated|text" - direct text input
+        * float/int: Numeric values - converted to string or empty
+        * None/NaN: Missing values - returns empty tensors
+
+    - Output: List[Dict[str, Any]]
+        * Returns list with single dict containing:
+            - input_ids_key: torch.Tensor(dtype=long) - Token IDs
+            - attention_mask_key: torch.Tensor(dtype=long) - Mask (1=real, 0=pad)
+            - text_length_key: int - Sequence length before padding
+        * List format required for pipeline_dataloader compatibility
 
 Key Features:
-- Uses tokenizers.Tokenizer.encode() for BPE tokenization
-- Outputs attention_mask for Transformer2Risk (masks padding tokens)
-- Outputs text_length for LSTM2Risk (enables pack_padded_sequence)
-- Configurable output key names for flexibility
-- Padding applied when max_length is specified
+    - Uses tokenizers.Tokenizer.encode() for BPE tokenization
+    - Outputs attention_mask for Transformer2Risk (masks padding tokens)
+    - Outputs text_length for LSTM2Risk (enables pack_padded_sequence)
+    - Configurable output key names for flexibility
+    - Padding applied when max_length is specified
+    - Handles missing/NaN values gracefully
 
-Usage:
-    from tokenizers import Tokenizer
-    from processing.text.custom_bpe_tokenize_processor import CustomBPETokenizeProcessor
+Input Handling:
+    - Pipe-separated text: "email|name|address|phone" → tokenized
+    - Missing values: float('nan'), None → empty tensors
+    - Numeric values: 0.5, 123 → converted to string then tokenized
+    - Empty/whitespace: "", "   " → empty tensors
 
-    tokenizer = Tokenizer.from_file("tokenizer.json")
-    processor = CustomBPETokenizeProcessor(
-        tokenizer=tokenizer,
-        add_special_tokens=True,
-        max_length=100,
-        padding=True  # Pads to max_length
-    )
+Example:
+    Basic usage with custom BPE tokenizer:
 
-    data = processor({"text_field": "0.5|0.3|0.8|0.2"})
-    # Returns: {
-    #   "text": tensor([101, 15, 234, 45, 102, 0, 0, ...]),  # Padded to max_length
-    #   "attn_mask": tensor([1, 1, 1, 1, 1, 0, 0, ...]),    # 1=real, 0=padding
-    #   "text_length": 5                                     # Real token count
-    # }
+    >>> from tokenizers import Tokenizer
+    >>> from processing.text.custom_bpe_tokenize_processor import CustomBPETokenizeProcessor
+    >>>
+    >>> # Load custom BPE tokenizer
+    >>> tokenizer = Tokenizer.from_file("tokenizer.json")
+    >>>
+    >>> # Create processor with padding
+    >>> processor = CustomBPETokenizeProcessor(
+    ...     tokenizer=tokenizer,
+    ...     add_special_tokens=True,
+    ...     max_length=100,
+    ...     padding=True
+    ... )
+    >>>
+    >>> # Process pipe-separated text
+    >>> result = processor("alice@email.com|Alice|123 Main St|555-1234")
+    >>> result.keys()
+    dict_keys(['input_ids', 'attention_mask', 'text_length'])
+    >>>
+    >>> # Handle missing values
+    >>> result_nan = processor(float('nan'))
+    >>> result_nan['text_length']
+    0
+
+Notes:
+    - Sequence length always reflects real tokens (before padding)
+    - Special tokens ([CLS], [SEP]) added if add_special_tokens=True
+    - Truncation applied if sequence exceeds max_length
+    - Padding applied to max_length if padding=True
 """
 
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 import torch
 from tokenizers import Tokenizer  # HuggingFace tokenizers library
 
@@ -49,17 +84,29 @@ class CustomBPETokenizeProcessor(Processor):
     Outputs token IDs, attention masks, and sequence lengths for lstm2risk/transformer2risk.
 
     Args:
-        tokenizer: HuggingFace Tokenizer instance (from tokenizers library)
-        add_special_tokens: Whether to add special tokens like [CLS], [SEP]
-        max_length: Maximum sequence length (truncates if longer, pads if padding=True)
-        padding: Whether to pad sequences to max_length (default: True if max_length set)
-        pad_token_id: Token ID for padding (default: 0)
-        input_ids_key: Key name for token IDs in output dict (default: "text")
-        attention_mask_key: Key name for attention mask (default: "attn_mask")
-        text_length_key: Key name for text length (default: "text_length")
+        tokenizer (Tokenizer): HuggingFace Tokenizer instance (from tokenizers library)
+        add_special_tokens (bool): Whether to add special tokens like [CLS], [SEP].
+            Default: True
+        max_length (Optional[int]): Maximum sequence length (truncates if longer,
+            pads if padding=True).
+            ⚠️ CRITICAL: This MUST match the model's max_sen_len/block_size parameter!
+            - Transformer2Risk: Set to model's max_sen_len (typically 100)
+            - LSTM2Risk: Set to model's block_size (typically 100)
+            - If not set, sequences may exceed model's position embedding size
+            Default: None (WARNING: Will cause errors if not set!)
+        padding (Optional[bool]): Whether to pad sequences to max_length.
+            Default: True if max_length is set, otherwise False
+        pad_token_id (int): Token ID for padding. Default: 0
+        input_ids_key (str): Key name for token IDs in output dict.
+            Default: "input_ids"
+        attention_mask_key (str): Key name for attention mask in output dict.
+            Default: "attention_mask"
+        text_length_key (str): Key name for text length in output dict.
+            Default: "text_length"
 
     Returns:
-        Dictionary with token IDs, attention mask, and text length
+        List[Dict[str, Any]]: List containing single dictionary with token IDs,
+            attention mask, and text length (list format required for pipeline_dataloader)
 
     Example:
         >>> from tokenizers import Tokenizer
@@ -93,39 +140,66 @@ class CustomBPETokenizeProcessor(Processor):
         self.attention_mask_key = attention_mask_key
         self.text_length_key = text_length_key
 
-    def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(
+        self, data: Union[Dict[str, Any], str, float, int, None]
+    ) -> List[Dict[str, Any]]:
         """
         Tokenize input text using custom BPE tokenizer.
 
         Args:
-            data: Dictionary containing input text (expects string under some key)
+            data: Input data - can be:
+                - Dictionary containing text field
+                - String value directly (e.g., "email|name|...")
+                - Numeric value (float, int) - converted to string or empty
+                - None/NaN - treated as empty string
 
         Returns:
-            Updated data dictionary with added keys:
-                - input_ids_key: token IDs tensor (B, L)
-                - attention_mask_key: attention mask (B, L) - 1=real, 0=padding
+            List containing single dictionary with tokenization outputs:
+                - input_ids_key: token IDs tensor (L,)
+                - attention_mask_key: attention mask (L,) - 1=real, 0=padding
                 - text_length_key: sequence length (scalar) - count before padding
 
+            List format is required for pipeline_dataloader compatibility,
+            even though names3risk only uses single-sequence (not multi-chunk).
+
         Note:
-            - Returns empty tensors for empty/whitespace-only input
+            - Returns list with empty tensors for empty/whitespace-only/missing input
             - Applies truncation if max_length is set
             - Applies padding if padding=True and max_length is set
             - Text length always reflects real tokens (before padding)
         """
-        # Get input text from data (first string value found)
-        input_text = None
-        for value in data.values():
-            if isinstance(value, str):
-                input_text = value
-                break
+        # Extract input text from various input formats
+        if isinstance(data, dict):
+            # Dict input: extract first string value
+            input_text = None
+            for value in data.values():
+                if isinstance(value, str):
+                    input_text = value
+                    break
+        elif isinstance(data, str):
+            # String input: use directly
+            input_text = data
+        else:
+            # Handle numeric/missing values (float, int, None, NaN)
+            # Convert to string, or empty string if None
+            try:
+                input_text = str(data) if data is not None else ""
+                # Handle NaN case (str(float('nan')) = 'nan')
+                if input_text.lower() == "nan":
+                    input_text = ""
+            except:
+                input_text = ""
+
+        # Prepare chunk dictionary
+        chunk = {}
 
         # Handle empty input
         if not input_text or not input_text.strip():
-            # Return empty tensors
-            data[self.input_ids_key] = torch.tensor([], dtype=torch.long)
-            data[self.attention_mask_key] = torch.tensor([], dtype=torch.long)
-            data[self.text_length_key] = 0
-            return data
+            # Return empty tensors in list format
+            chunk[self.input_ids_key] = torch.tensor([], dtype=torch.long)
+            chunk[self.attention_mask_key] = torch.tensor([], dtype=torch.long)
+            chunk[self.text_length_key] = 0
+            return [chunk]  # Return as list for pipeline_dataloader compatibility
 
         # Encode using custom tokenizer
         # tokenizer.encode() returns Encoding object with .ids attribute
@@ -141,9 +215,16 @@ class CustomBPETokenizeProcessor(Processor):
         text_length = len(ids)
 
         # Apply truncation if max_length is specified
-        if self.max_length and len(ids) > self.max_length:
-            ids = ids[: self.max_length]
-            text_length = self.max_length  # Update length after truncation
+        # CRITICAL: This prevents IndexError in position embeddings
+        # The model's TransformerEncoder/LSTMEncoder expects sequences ≤ max_sen_len
+        if self.max_length is not None:
+            if len(ids) > self.max_length:
+                ids = ids[: self.max_length]
+                text_length = self.max_length  # Update length after truncation
+        else:
+            # WARNING: No max_length set - sequences may be too long for model!
+            # This will cause IndexError if sequence > model's position embedding size
+            pass
 
         # Apply padding if enabled
         if self.padding and self.max_length:
@@ -159,9 +240,10 @@ class CustomBPETokenizeProcessor(Processor):
             if padding_length > 0:
                 attention_mask = attention_mask + [0] * padding_length
 
-        # Convert to tensors and store in data dictionary
-        data[self.input_ids_key] = torch.tensor(ids, dtype=torch.long)
-        data[self.attention_mask_key] = torch.tensor(attention_mask, dtype=torch.long)
-        data[self.text_length_key] = text_length
+        # Convert to tensors and store in chunk dictionary
+        chunk[self.input_ids_key] = torch.tensor(ids, dtype=torch.long)
+        chunk[self.attention_mask_key] = torch.tensor(attention_mask, dtype=torch.long)
+        chunk[self.text_length_key] = text_length
 
-        return data
+        # Return as list (single chunk) for pipeline_dataloader compatibility
+        return [chunk]

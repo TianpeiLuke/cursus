@@ -1,6 +1,6 @@
 from pydantic import Field, model_validator
 from typing import List, Optional, Dict, Any
-from .hyperparameters_base import ModelHyperparameters
+from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
 class Transformer2RiskHyperparameters(ModelHyperparameters):
@@ -83,9 +83,11 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
         description="Model class identifier for this hyperparameter configuration",
     )
 
-    # For tokenizer settings
+    # For tokenizer settings AND model architecture (position embeddings)
     max_sen_len: int = Field(
-        default=512, description="Maximum sentence length for tokenizer"
+        default=100,
+        description="Maximum sequence length for both tokenizer truncation and model position embeddings. "
+        "Controls both data preprocessing (tokenizer) and model architecture (position embedding table size).",
     )
 
     fixed_tokenizer_length: bool = Field(
@@ -103,10 +105,11 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
 
     # Text processing pipeline configuration
     text_processing_steps: List[str] = Field(
-        default=["custom_bpe_tokenizer"],
+        default=[],
         description="Processing steps for text preprocessing pipeline. "
         "For Transformer2Risk, text is concatenated risk scores (e.g., '0.5|0.3|0.8|0.2') "
-        "that only need tokenization with custom BPE tokenizer - no dialogue/HTML/emoji cleaning required.",
+        "that only need tokenization with custom BPE tokenizer - no dialogue/HTML/emoji cleaning required. "
+        "Empty list allows pytorch_training.py to determine appropriate default based on model type.",
     )
 
     # ===== Transformer-Specific Architecture Parameters (Tier 2) =====
@@ -168,16 +171,6 @@ class Transformer2RiskHyperparameters(ModelHyperparameters):
         "Must divide embedding_size evenly (head_size = embedding_size / n_heads). "
         "Multiple heads allow model to attend to different representation subspaces. "
         "Common values: 8, 12, 16 for standard architectures.",
-    )
-
-    block_size: int = Field(
-        default=100,
-        gt=0,
-        le=512,
-        description="Maximum sequence length for positional embeddings. "
-        "Sequences longer than this will be truncated. "
-        "Determines the size of the learned position embedding table. "
-        "Should be set based on typical input text lengths (names/emails).",
     )
 
     # ===== Training and Optimization Parameters (Tier 2) =====
