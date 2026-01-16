@@ -135,6 +135,8 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "ml.g4dn.16xlarge",
             "ml.g5.12xlarge",
             "ml.g5.16xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
             "ml.p3.8xlarge",
             "ml.p3.16xlarge",
             "ml.p4d.24xlarge",
