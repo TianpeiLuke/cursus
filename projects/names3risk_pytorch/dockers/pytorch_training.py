@@ -807,18 +807,26 @@ def build_preprocessing_pipelines(
                 pipelines[field] = proc
             log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
         elif is_streaming:
-            # Fit inline using STREAMING processors
-            log_once(logger, "Fitting numerical imputation inline (streaming mode)...")
-            for field in config.tab_field_list:
-                proc = StreamingNumericalImputationProcessor(
-                    column_name=field, strategy="mean"
-                )
-                proc.fit_streaming(train_dataset)
-                pipelines[field] = proc
-                imputation_dict[field] = proc.get_imputation_value()
+            # Use fixed imputation value (no data scanning)
             log_once(
                 logger,
-                f"✓ Fitted streaming imputation for {len(config.tab_field_list)} fields",
+                "⚠️  Streaming mode: Using fixed imputation value = 0.0 for all numerical fields",
+            )
+            for field in config.tab_field_list:
+                # Use fixed value from config or default to 0.0
+                impute_value = (
+                    config.imputation_dict.get(field, 0.0)
+                    if config.imputation_dict
+                    else 0.0
+                )
+                proc = StreamingNumericalImputationProcessor(
+                    column_name=field, imputation_value=impute_value
+                )
+                pipelines[field] = proc
+                imputation_dict[field] = impute_value
+            log_once(
+                logger,
+                f"✓ Created streaming imputation processors for {len(config.tab_field_list)} fields (imputation_value=0.0)",
             )
         else:
             # Fit inline using BATCH processors
@@ -886,22 +894,64 @@ def build_preprocessing_pipelines(
                     pipelines[field] = proc
             log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
         elif is_streaming:
-            # Fit inline using STREAMING processors
-            log_once(logger, "Fitting risk tables inline (streaming mode)...")
-            for field in actual_cat_fields:
-                proc = StreamingRiskTableProcessor(
-                    column_name=field,
+            # Use pre-computed risk tables OR fit in batch mode (single pass)
+            if config.risk_tables:
+                log_once(logger, "✓ Using pre-computed risk tables from config")
+                log_once(
+                    logger, f"  Loading risk tables for {len(actual_cat_fields)} fields"
+                )
+                for field in actual_cat_fields:
+                    if field in config.risk_tables:
+                        proc = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=config.risk_tables[field],
+                        )
+                        pipelines[field] = proc
+                        risk_tables[field] = config.risk_tables[field]
+            elif actual_cat_fields:
+                # Fit risk tables in BATCH mode (single pass through data)
+                log_once(
+                    logger, "⚠️  No pre-computed risk tables - fitting in streaming mode"
+                )
+                log_once(
+                    logger,
+                    f"  Fitting risk tables for {len(actual_cat_fields)} fields in ONE pass...",
+                )
+
+                # Use unified fit_streaming() interface for batch fitting
+                # Create dummy processor instance to access the method
+                dummy_proc = StreamingRiskTableProcessor(
+                    column_name="dummy",  # Not used in batch mode
                     label_name=config.label_name,
                     smooth_factor=config.smooth_factor,
                     count_threshold=config.count_threshold,
                 )
-                proc.fit_streaming(train_dataset)
-                pipelines[field] = proc
-                risk_tables[field] = proc.get_risk_tables()
-            log_once(
-                logger,
-                f"✓ Fitted streaming risk tables for {len(actual_cat_fields)} fields",
-            )
+
+                # Batch fit ALL fields at once (10x faster than individual fitting)
+                risk_tables = dummy_proc.fit_streaming(
+                    dataset=train_dataset,
+                    field_names=actual_cat_fields,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                    show_progress=True,
+                )
+
+                # Create processors with fitted risk tables
+                for field in actual_cat_fields:
+                    if field in risk_tables:
+                        proc = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=risk_tables[field],
+                        )
+                        pipelines[field] = proc
+
+                log_once(
+                    logger,
+                    f"✓ Batch streaming fit completed for {len(actual_cat_fields)} fields",
+                )
         else:
             # Fit inline using BATCH processors
             log_once(logger, "Fitting risk tables inline (batch mode)...")
