@@ -1233,7 +1233,7 @@ def load_and_preprocess_data(
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset]
+    config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset], use_streaming: bool = False
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
     logger.info(f"Using collate batch for model: {config.model_class}")
@@ -1250,7 +1250,7 @@ def build_model_and_optimizer(
         train_pipeline_dataset,
         collate_fn=collate_batch,
         batch_size=config.batch_size,
-        shuffle=True,
+        shuffle=False if use_streaming else True,
     )
     val_dataloader = DataLoader(
         val_pipeline_dataset, collate_fn=collate_batch, batch_size=config.batch_size
@@ -1563,8 +1563,11 @@ def main(
         use_streaming=environ_vars.get("ENABLE_TRUE_STREAMING", False),
     )
 
+    # Extract use_streaming flag from environ_vars
+    use_streaming = environ_vars.get("ENABLE_TRUE_STREAMING", False)
+    
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
-        build_model_and_optimizer(config, tokenizer, datasets)
+        build_model_and_optimizer(config, tokenizer, datasets, use_streaming)
     )
     # update tab dimension
     config.input_tab_dim = len(config.tab_field_list)

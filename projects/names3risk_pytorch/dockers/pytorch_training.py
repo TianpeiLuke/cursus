@@ -696,60 +696,50 @@ def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> 
     log_once(logger, f"Saved risk table artifacts to {output_dir}")
 
 
-# ----------------- Preprocessing Pipeline Builder (Imputation + Risk Tables) ------------------
-def build_preprocessing_pipelines(
+# ----------------- Batch Mode Preprocessing (PipelineDataset) ------------------
+def build_batch_preprocessing_pipelines(
     config: Config,
-    datasets: List[Union[PipelineDataset, PipelineIterableDataset]],
+    train_dataset: PipelineDataset,
     model_artifacts_dir: Optional[str] = None,
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
 ) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
     """
-    Build preprocessing pipelines for numerical imputation and risk table mapping.
-
-    Supports both batch mode (PipelineDataset) and streaming mode (PipelineIterableDataset).
-    For streaming mode, uses StreamingNumericalImputationProcessor and
-    StreamingRiskTableProcessor to fit statistics incrementally.
-
+    Build preprocessing pipelines for BATCH mode (PipelineDataset).
+    
+    Batch mode characteristics:
+    - Has DataReader attribute (full DataFrame)
+    - Can validate field types before processing
+    - Can fit statistics from complete data
+    - Uses NumericalVariableImputationProcessor and RiskTableMappingProcessor
+    
     Args:
         config: Configuration object
-        datasets: List of [train, val, test] datasets (PipelineDataset or PipelineIterableDataset)
+        train_dataset: PipelineDataset with DataReader attribute
         model_artifacts_dir: Optional directory with pre-computed artifacts
         use_precomputed_imputation: Whether to use pre-computed imputation
         use_precomputed_risk_tables: Whether to use pre-computed risk tables
-
+    
     Returns:
         Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
     """
     pipelines = {}
     imputation_dict = {}
     risk_tables = {}
-
-    train_dataset = datasets[0]
-
+    
     log_once(logger, "=" * 70)
-    log_once(logger, "PREPROCESSING PIPELINE BUILDER")
+    log_once(logger, "BATCH MODE PREPROCESSING")
     log_once(logger, "=" * 70)
-    log_once(logger, f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
-    log_once(logger, f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
-    log_once(logger, f"Model artifacts directory: {model_artifacts_dir}")
-    log_once(logger, "=" * 70)
-
-    # Detect streaming mode
-    is_streaming = isinstance(train_dataset, PipelineIterableDataset)
-
-    # === FIELD TYPE VALIDATION (Skip for streaming mode) ===
-    if not use_precomputed_imputation and config.tab_field_list and not is_streaming:
+    
+    # === FIELD TYPE VALIDATION (Batch mode only) ===
+    if not use_precomputed_imputation and config.tab_field_list:
         log_once(logger, "Validating numerical field types before imputation...")
         validate_numerical_fields(
             train_dataset.DataReader, config.tab_field_list, "train"
         )
         log_once(logger, "✓ Numerical field type validation passed")
-    elif is_streaming and config.tab_field_list:
-        log_once(logger, "⚠️  Skipping field type validation in streaming mode")
-
-    # === FILTER CATEGORICAL FIELDS BEFORE VALIDATION ===
-    # Filter out text fields from categorical processing to prevent overwriting tokenized text
+    
+    # Filter categorical fields (exclude text fields)
     text_fields = set()
     if config.text_name:
         text_fields.add(config.text_name)
@@ -757,31 +747,19 @@ def build_preprocessing_pipelines(
         text_fields.add(config.primary_text_name)
     if config.secondary_text_name:
         text_fields.add(config.secondary_text_name)
-
-    # NEW: Add source fields that were merged into text field during preprocessing
     if hasattr(config, "text_source_fields") and config.text_source_fields:
         text_fields.update(config.text_source_fields)
-        log_once(
-            logger,
-            f"ℹ️  Excluding merged text source fields from categorical processing: {config.text_source_fields}",
-        )
-
-    # Filter categorical fields to exclude text fields
+    
     actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
-
+    
     if text_fields and actual_cat_fields != config.cat_field_list:
         excluded_count = len(config.cat_field_list) - len(actual_cat_fields)
         log_once(
             logger,
-            f"ℹ️  Excluding {excluded_count} text-related fields from categorical processing: {text_fields}",
+            f"ℹ️  Excluding {excluded_count} text-related fields from categorical processing",
         )
-    log_once(
-        logger,
-        f"ℹ️  Actual categorical fields for processing: {len(actual_cat_fields)} fields",
-    )
-
-    # Validate categorical fields AFTER filtering (Skip for streaming mode)
-    if not use_precomputed_risk_tables and actual_cat_fields and not is_streaming:
+    
+    if not use_precomputed_risk_tables and actual_cat_fields:
         log_once(
             logger, "Validating categorical field types before risk table mapping..."
         )
@@ -789,171 +767,80 @@ def build_preprocessing_pipelines(
             train_dataset.DataReader, actual_cat_fields, "train"
         )
         log_once(logger, "✓ Categorical field type validation passed")
-    elif is_streaming and actual_cat_fields:
-        log_once(
-            logger, "⚠️  Skipping categorical field type validation in streaming mode"
-        )
-
+    
     # === 1. NUMERICAL IMPUTATION ===
     if config.tab_field_list:
+        imputation_loaded = False
         if use_precomputed_imputation and model_artifacts_dir:
-            # Load pre-computed imputation
-            log_once(logger, "Loading pre-computed imputation artifacts...")
-            imputation_dict = load_imputation_artifacts(model_artifacts_dir)
-            for field, value in imputation_dict.items():
-                proc = NumericalVariableImputationProcessor(
-                    column_name=field, imputation_value=value
-                )
-                pipelines[field] = proc
-            log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
-        elif is_streaming:
-            # Use fixed imputation value (no data scanning)
-            log_once(
-                logger,
-                "⚠️  Streaming mode: Using fixed imputation value = 0.0 for all numerical fields",
-            )
-            for field in config.tab_field_list:
-                # Use fixed value from config or default to 0.0
-                impute_value = (
-                    config.imputation_dict.get(field, 0.0)
-                    if config.imputation_dict
-                    else 0.0
-                )
-                proc = StreamingNumericalImputationProcessor(
-                    column_name=field, imputation_value=impute_value
-                )
-                pipelines[field] = proc
-                imputation_dict[field] = impute_value
-            log_once(
-                logger,
-                f"✓ Created streaming imputation processors for {len(config.tab_field_list)} fields (imputation_value=0.0)",
-            )
-        else:
-            # Fit inline using BATCH processors
-            log_once(logger, "Fitting numerical imputation inline (batch mode)...")
-
-        # Track conversion statistics
-        converted_fields = []
-        already_numeric_fields = []
-
-        for field in config.tab_field_list:
-            field_data = train_dataset.DataReader[field]
-
-            # Check if already numeric (fast check, no data copy)
-            if pd.api.types.is_numeric_dtype(field_data):
-                # Already numeric - use as-is
-                already_numeric_fields.append(field)
-            else:
-                # Need conversion from string to numeric
-                field_data = pd.to_numeric(field_data, errors="coerce")
-                converted_fields.append(field)
-
-            # Fit processor with (possibly converted) data
-            proc = NumericalVariableImputationProcessor(
-                column_name=field, strategy="mean"
-            )
-            proc.fit(field_data)
-            pipelines[field] = proc
-            imputation_dict[field] = proc.get_imputation_value()
-
-        # Log conversion statistics
-        log_once(logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields")
-        if already_numeric_fields:
-            log_once(
-                logger,
-                f"  ℹ️  Already numeric: {len(already_numeric_fields)} fields (no conversion needed)",
-            )
-        if converted_fields:
-            log_once(
-                logger, f"  ⚠️  Converted to numeric: {len(converted_fields)} fields"
-            )
-            # Show first 10 converted fields as diagnostic
-            sample_fields = converted_fields[:10]
-            more_count = len(converted_fields) - len(sample_fields)
-            if more_count > 0:
-                log_once(
-                    logger,
-                    f"  Sample converted fields: {sample_fields} ... and {more_count} more",
-                )
-            else:
-                log_once(logger, f"  Converted fields: {sample_fields}")
-
-    # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
-    if actual_cat_fields:
-        if use_precomputed_risk_tables and model_artifacts_dir:
-            # Load pre-computed risk tables
-            log_once(logger, "Loading pre-computed risk table artifacts...")
-            risk_tables = load_risk_table_artifacts(model_artifacts_dir)
-            for field, tables in risk_tables.items():
-                if field in actual_cat_fields:  # Only process filtered fields
-                    proc = RiskTableMappingProcessor(
-                        column_name=field,
-                        label_name=config.label_name,
-                        risk_tables=tables,
+            try:
+                log_once(logger, "Loading pre-computed imputation artifacts...")
+                imputation_dict = load_imputation_artifacts(model_artifacts_dir)
+                for field, value in imputation_dict.items():
+                    proc = NumericalVariableImputationProcessor(
+                        column_name=field, imputation_value=value
                     )
                     pipelines[field] = proc
-            log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
-        elif is_streaming:
-            # Use pre-computed risk tables OR fit in batch mode (single pass)
-            if config.risk_tables:
-                log_once(logger, "✓ Using pre-computed risk tables from config")
-                log_once(
-                    logger, f"  Loading risk tables for {len(actual_cat_fields)} fields"
+                log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
+                imputation_loaded = True
+            except FileNotFoundError as e:
+                log_once(logger, f"⚠️  {e}")
+                log_once(logger, "⚠️  Falling back to fitting imputation from data")
+        
+        if not imputation_loaded:
+            log_once(logger, "Fitting numerical imputation inline (batch mode)...")
+            
+            converted_fields = []
+            already_numeric_fields = []
+            
+            for field in config.tab_field_list:
+                field_data = train_dataset.DataReader[field]
+                
+                if pd.api.types.is_numeric_dtype(field_data):
+                    already_numeric_fields.append(field)
+                else:
+                    field_data = pd.to_numeric(field_data, errors="coerce")
+                    converted_fields.append(field)
+                
+                proc = NumericalVariableImputationProcessor(
+                    column_name=field, strategy="mean"
                 )
-                for field in actual_cat_fields:
-                    if field in config.risk_tables:
-                        proc = StreamingRiskTableProcessor(
-                            column_name=field,
-                            label_name=config.label_name,
-                            risk_tables=config.risk_tables[field],
-                        )
-                        pipelines[field] = proc
-                        risk_tables[field] = config.risk_tables[field]
-            elif actual_cat_fields:
-                # Fit risk tables in BATCH mode (single pass through data)
-                log_once(
-                    logger, "⚠️  No pre-computed risk tables - fitting in streaming mode"
-                )
-                log_once(
-                    logger,
-                    f"  Fitting risk tables for {len(actual_cat_fields)} fields in ONE pass...",
-                )
-
-                # Use unified fit_streaming() interface for batch fitting
-                # Create dummy processor instance to access the method
-                dummy_proc = StreamingRiskTableProcessor(
-                    column_name="dummy",  # Not used in batch mode
-                    label_name=config.label_name,
-                    smooth_factor=config.smooth_factor,
-                    count_threshold=config.count_threshold,
-                )
-
-                # Batch fit ALL fields at once (10x faster than individual fitting)
-                risk_tables = dummy_proc.fit_streaming(
-                    dataset=train_dataset,
-                    field_names=actual_cat_fields,
-                    label_name=config.label_name,
-                    smooth_factor=config.smooth_factor,
-                    count_threshold=config.count_threshold,
-                    show_progress=True,
-                )
-
-                # Create processors with fitted risk tables
-                for field in actual_cat_fields:
-                    if field in risk_tables:
-                        proc = StreamingRiskTableProcessor(
-                            column_name=field,
-                            label_name=config.label_name,
-                            risk_tables=risk_tables[field],
-                        )
-                        pipelines[field] = proc
-
+                proc.fit(field_data)
+                pipelines[field] = proc
+                imputation_dict[field] = proc.get_imputation_value()
+            
+            log_once(logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields")
+            if already_numeric_fields:
                 log_once(
                     logger,
-                    f"✓ Batch streaming fit completed for {len(actual_cat_fields)} fields",
+                    f"  ℹ️  Already numeric: {len(already_numeric_fields)} fields",
                 )
-        else:
-            # Fit inline using BATCH processors
+            if converted_fields:
+                log_once(
+                    logger, f"  ⚠️  Converted to numeric: {len(converted_fields)} fields"
+                )
+    
+    # === 2. RISK TABLE MAPPING ===
+    if actual_cat_fields:
+        risk_tables_loaded = False
+        if use_precomputed_risk_tables and model_artifacts_dir:
+            try:
+                log_once(logger, "Loading pre-computed risk table artifacts...")
+                risk_tables = load_risk_table_artifacts(model_artifacts_dir)
+                for field, tables in risk_tables.items():
+                    if field in actual_cat_fields:
+                        proc = RiskTableMappingProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=tables,
+                        )
+                        pipelines[field] = proc
+                log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+                risk_tables_loaded = True
+            except FileNotFoundError as e:
+                log_once(logger, f"⚠️  {e}")
+                log_once(logger, "⚠️  Falling back to fitting risk tables from data")
+        
+        if not risk_tables_loaded:
             log_once(logger, "Fitting risk tables inline (batch mode)...")
             for field in actual_cat_fields:
                 proc = RiskTableMappingProcessor(
@@ -968,12 +855,226 @@ def build_preprocessing_pipelines(
             log_once(
                 logger, f"✓ Fitted risk tables for {len(actual_cat_fields)} fields"
             )
-
+    
     log_once(logger, "=" * 70)
     log_once(logger, f"Total preprocessing pipelines created: {len(pipelines)}")
     log_once(logger, "=" * 70)
-
+    
     return pipelines, imputation_dict, risk_tables
+
+
+# ----------------- Streaming Mode Preprocessing (PipelineIterableDataset) ------------------
+def build_streaming_preprocessing_pipelines(
+    config: Config,
+    train_dataset: PipelineIterableDataset,
+    model_artifacts_dir: Optional[str] = None,
+    use_precomputed_imputation: bool = False,
+    use_precomputed_risk_tables: bool = False,
+) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
+    """
+    Build preprocessing pipelines for STREAMING mode (PipelineIterableDataset).
+    
+    Streaming mode characteristics:
+    - NO DataReader attribute (doesn't exist)
+    - Skips field type validation (can't scan all data upfront)
+    - Uses fixed imputation values (no data scanning)
+    - Uses StreamingRiskTableProcessor for batch fitting (single pass)
+    
+    Args:
+        config: Configuration object
+        train_dataset: PipelineIterableDataset (NO DataReader)
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
+    
+    Returns:
+        Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
+    """
+    pipelines = {}
+    imputation_dict = {}
+    risk_tables = {}
+    
+    log_once(logger, "=" * 70)
+    log_once(logger, "STREAMING MODE PREPROCESSING")
+    log_once(logger, "=" * 70)
+    log_once(logger, "⚠️  Skipping field type validation in streaming mode")
+    
+    # Filter categorical fields (exclude text fields)
+    text_fields = set()
+    if config.text_name:
+        text_fields.add(config.text_name)
+    if config.primary_text_name:
+        text_fields.add(config.primary_text_name)
+    if config.secondary_text_name:
+        text_fields.add(config.secondary_text_name)
+    if hasattr(config, "text_source_fields") and config.text_source_fields:
+        text_fields.update(config.text_source_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding merged text source fields: {config.text_source_fields}",
+        )
+    
+    actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
+    
+    if text_fields and actual_cat_fields != config.cat_field_list:
+        excluded_count = len(config.cat_field_list) - len(actual_cat_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding {excluded_count} text-related fields from categorical processing",
+        )
+    
+    # === 1. NUMERICAL IMPUTATION ===
+    if config.tab_field_list:
+        imputation_loaded = False
+        if use_precomputed_imputation and model_artifacts_dir:
+            try:
+                log_once(logger, "Loading pre-computed imputation artifacts...")
+                imputation_dict = load_imputation_artifacts(model_artifacts_dir)
+                for field, value in imputation_dict.items():
+                    proc = StreamingNumericalImputationProcessor(
+                        column_name=field, imputation_value=value
+                    )
+                    pipelines[field] = proc
+                log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
+                imputation_loaded = True
+            except FileNotFoundError as e:
+                log_once(logger, f"⚠️  {e}")
+                log_once(logger, "⚠️  Falling back to fixed imputation values")
+        
+        if not imputation_loaded:
+            # Use fixed imputation value (no data scanning)
+            log_once(logger, "Using fixed imputation value = 0.0 for all numerical fields")
+            for field in config.tab_field_list:
+                impute_value = (
+                    config.imputation_dict.get(field, 0.0)
+                    if config.imputation_dict
+                    else 0.0
+                )
+                proc = StreamingNumericalImputationProcessor(
+                    column_name=field, imputation_value=impute_value
+                )
+                pipelines[field] = proc
+                imputation_dict[field] = impute_value
+            log_once(
+                logger,
+                f"✓ Created {len(config.tab_field_list)} streaming imputation processors",
+            )
+    
+    # === 2. RISK TABLE MAPPING ===
+    if actual_cat_fields:
+        risk_tables_loaded = False
+        if use_precomputed_risk_tables and model_artifacts_dir:
+            try:
+                log_once(logger, "Loading pre-computed risk table artifacts...")
+                risk_tables = load_risk_table_artifacts(model_artifacts_dir)
+                for field, tables in risk_tables.items():
+                    if field in actual_cat_fields:
+                        proc = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=tables,
+                        )
+                        pipelines[field] = proc
+                log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+                risk_tables_loaded = True
+            except FileNotFoundError as e:
+                log_once(logger, f"⚠️  {e}")
+                log_once(logger, "⚠️  Falling back to fitting risk tables from data")
+        
+        if not risk_tables_loaded:
+            # Batch fit in single pass
+            if config.risk_tables:
+                log_once(logger, "✓ Using pre-computed risk tables from config")
+                for field in actual_cat_fields:
+                    if field in config.risk_tables:
+                        proc = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=config.risk_tables[field],
+                        )
+                        pipelines[field] = proc
+                        risk_tables[field] = config.risk_tables[field]
+            elif actual_cat_fields:
+                log_once(logger, "⚠️  No pre-computed risk tables - fitting in streaming mode")
+                log_once(logger, f"  Fitting {len(actual_cat_fields)} fields in ONE pass...")
+                
+                dummy_proc = StreamingRiskTableProcessor(
+                    column_name="dummy",
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                )
+                
+                risk_tables = dummy_proc.fit_streaming(
+                    dataset=train_dataset,
+                    field_names=actual_cat_fields,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                    show_progress=True,
+                )
+                
+                for field in actual_cat_fields:
+                    if field in risk_tables:
+                        proc = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=risk_tables[field],
+                        )
+                        pipelines[field] = proc
+                
+                log_once(logger, f"✓ Batch fit completed for {len(actual_cat_fields)} fields")
+    
+    log_once(logger, "=" * 70)
+    log_once(logger, f"Total preprocessing pipelines created: {len(pipelines)}")
+    log_once(logger, "=" * 70)
+    
+    return pipelines, imputation_dict, risk_tables
+
+
+# ----------------- Router Function ------------------
+def build_preprocessing_pipelines(
+    config: Config,
+    datasets: List[Union[PipelineDataset, PipelineIterableDataset]],
+    model_artifacts_dir: Optional[str] = None,
+    use_precomputed_imputation: bool = False,
+    use_precomputed_risk_tables: bool = False,
+    use_streaming: bool = False,
+) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
+    """
+    Router function that delegates to batch or streaming preprocessing based on use_streaming flag.
+    
+    Args:
+        config: Configuration object
+        datasets: List of [train, val, test] datasets
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
+        use_streaming: Explicit flag from ENABLE_TRUE_STREAMING env var
+    
+    Returns:
+        Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
+    """
+    train_dataset = datasets[0]
+    
+    log_once(logger, "=" * 70)
+    log_once(logger, "PREPROCESSING PIPELINE BUILDER")
+    log_once(logger, f"Mode: {'STREAMING' if use_streaming else 'BATCH'}")
+    log_once(logger, f"Dataset type: {type(train_dataset).__name__}")
+    log_once(logger, f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
+    log_once(logger, f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
+    log_once(logger, "=" * 70)
+    
+    if use_streaming:
+        return build_streaming_preprocessing_pipelines(
+            config, train_dataset, model_artifacts_dir,
+            use_precomputed_imputation, use_precomputed_risk_tables
+        )
+    else:
+        return build_batch_preprocessing_pipelines(
+            config, train_dataset, model_artifacts_dir,
+            use_precomputed_imputation, use_precomputed_risk_tables
+        )
 
 
 # ----------------- Dataset Loading -------------------------
@@ -1360,6 +1461,7 @@ def load_and_preprocess_data(
             model_artifacts_dir=model_artifacts_dir,
             use_precomputed_imputation=use_precomputed_imputation,
             use_precomputed_risk_tables=use_precomputed_risk_tables,
+            use_streaming=use_streaming,
         )
     )
 
@@ -1413,6 +1515,7 @@ def build_model_and_optimizer(
     config_dict: Dict,
     tokenizer: Union[AutoTokenizer, "Tokenizer"],
     datasets: List[PipelineDataset],
+    use_streaming: bool = False,
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     """
     Build model, dataloaders, and extract embedding matrix.
@@ -1449,7 +1552,7 @@ def build_model_and_optimizer(
         train_pipeline_dataset,
         collate_fn=collate_batch,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False if use_streaming else True,
     )
     val_dataloader = DataLoader(
         val_pipeline_dataset, collate_fn=collate_batch, batch_size=batch_size
@@ -1895,13 +1998,16 @@ def main(
     log_once(logger, f"  is_binary: {config_dict['is_binary']}")
     log_once(logger, "=" * 70)
 
+    # Extract use_streaming flag from environ_vars
+    use_streaming = environ_vars.get("ENABLE_TRUE_STREAMING", False)
+    
     (
         model,
         train_dataloader,
         val_dataloader,
         test_dataloader,
         embedding_mat,
-    ) = build_model_and_optimizer(config_dict, tokenizer, datasets)
+    ) = build_model_and_optimizer(config_dict, tokenizer, datasets, use_streaming)
 
     log_once(logger, "Training starts using pytorch.lightning ...")
     trainer = model_train(
