@@ -229,8 +229,14 @@ from processing.text.bert_tokenize_processor import BertTokenizeProcessor
 from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.categorical.streaming_risk_table_processor import (
+    StreamingRiskTableProcessor,
+)
 from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
+)
+from processing.numerical.streaming_numerical_imputation_processor import (
+    StreamingNumericalImputationProcessor,
 )
 from processing.validation import validate_categorical_fields, validate_numerical_fields
 from processing.processor_registry import build_text_pipeline_from_steps
@@ -693,7 +699,7 @@ def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> 
 # ----------------- Preprocessing Pipeline Builder (Imputation + Risk Tables) ------------------
 def build_preprocessing_pipelines(
     config: Config,
-    datasets: List[PipelineDataset],
+    datasets: List[Union[PipelineDataset, PipelineIterableDataset]],
     model_artifacts_dir: Optional[str] = None,
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
@@ -701,9 +707,13 @@ def build_preprocessing_pipelines(
     """
     Build preprocessing pipelines for numerical imputation and risk table mapping.
 
+    Supports both batch mode (PipelineDataset) and streaming mode (PipelineIterableDataset).
+    For streaming mode, uses StreamingNumericalImputationProcessor and
+    StreamingRiskTableProcessor to fit statistics incrementally.
+
     Args:
         config: Configuration object
-        datasets: List of [train, val, test] datasets
+        datasets: List of [train, val, test] datasets (PipelineDataset or PipelineIterableDataset)
         model_artifacts_dir: Optional directory with pre-computed artifacts
         use_precomputed_imputation: Whether to use pre-computed imputation
         use_precomputed_risk_tables: Whether to use pre-computed risk tables
@@ -725,13 +735,18 @@ def build_preprocessing_pipelines(
     log_once(logger, f"Model artifacts directory: {model_artifacts_dir}")
     log_once(logger, "=" * 70)
 
-    # === FIELD TYPE VALIDATION ===
-    if not use_precomputed_imputation and config.tab_field_list:
+    # Detect streaming mode
+    is_streaming = isinstance(train_dataset, PipelineIterableDataset)
+
+    # === FIELD TYPE VALIDATION (Skip for streaming mode) ===
+    if not use_precomputed_imputation and config.tab_field_list and not is_streaming:
         log_once(logger, "Validating numerical field types before imputation...")
         validate_numerical_fields(
             train_dataset.DataReader, config.tab_field_list, "train"
         )
         log_once(logger, "✓ Numerical field type validation passed")
+    elif is_streaming and config.tab_field_list:
+        log_once(logger, "⚠️  Skipping field type validation in streaming mode")
 
     # === FILTER CATEGORICAL FIELDS BEFORE VALIDATION ===
     # Filter out text fields from categorical processing to prevent overwriting tokenized text
@@ -765,8 +780,8 @@ def build_preprocessing_pipelines(
         f"ℹ️  Actual categorical fields for processing: {len(actual_cat_fields)} fields",
     )
 
-    # Validate categorical fields AFTER filtering
-    if not use_precomputed_risk_tables and actual_cat_fields:
+    # Validate categorical fields AFTER filtering (Skip for streaming mode)
+    if not use_precomputed_risk_tables and actual_cat_fields and not is_streaming:
         log_once(
             logger, "Validating categorical field types before risk table mapping..."
         )
@@ -774,6 +789,10 @@ def build_preprocessing_pipelines(
             train_dataset.DataReader, actual_cat_fields, "train"
         )
         log_once(logger, "✓ Categorical field type validation passed")
+    elif is_streaming and actual_cat_fields:
+        log_once(
+            logger, "⚠️  Skipping categorical field type validation in streaming mode"
+        )
 
     # === 1. NUMERICAL IMPUTATION ===
     if config.tab_field_list:
@@ -787,9 +806,23 @@ def build_preprocessing_pipelines(
                 )
                 pipelines[field] = proc
             log_once(logger, f"✓ Loaded imputation for {len(imputation_dict)} fields")
-    else:
-        # Fit inline
-        log_once(logger, "Fitting numerical imputation inline...")
+        elif is_streaming:
+            # Fit inline using STREAMING processors
+            log_once(logger, "Fitting numerical imputation inline (streaming mode)...")
+            for field in config.tab_field_list:
+                proc = StreamingNumericalImputationProcessor(
+                    column_name=field, strategy="mean"
+                )
+                proc.fit_streaming(train_dataset)
+                pipelines[field] = proc
+                imputation_dict[field] = proc.get_imputation_value()
+            log_once(
+                logger,
+                f"✓ Fitted streaming imputation for {len(config.tab_field_list)} fields",
+            )
+        else:
+            # Fit inline using BATCH processors
+            log_once(logger, "Fitting numerical imputation inline (batch mode)...")
 
         # Track conversion statistics
         converted_fields = []
@@ -838,36 +871,7 @@ def build_preprocessing_pipelines(
                 log_once(logger, f"  Converted fields: {sample_fields}")
 
     # === 2. RISK TABLE MAPPING (replaces categorical label encoding) ===
-    if config.cat_field_list:
-        # Filter out text fields from categorical processing to prevent overwriting tokenized text
-        text_fields = set()
-        if config.text_name:
-            text_fields.add(config.text_name)
-        if config.primary_text_name:
-            text_fields.add(config.primary_text_name)
-        if config.secondary_text_name:
-            text_fields.add(config.secondary_text_name)
-
-        # NEW: Add source fields that were merged into text
-        if hasattr(config, "text_source_fields") and config.text_source_fields:
-            text_fields.update(config.text_source_fields)
-            log_once(
-                logger,
-                f"ℹ️  Excluding merged text source fields from risk table processing: {config.text_source_fields}",
-            )
-
-        # Filter categorical fields to exclude text fields
-        actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
-
-        if text_fields:
-            log_once(
-                logger,
-                f"ℹ️  Excluding text fields from risk table mapping: {text_fields}",
-            )
-        log_once(
-            logger, f"ℹ️  Actual categorical fields for risk table: {actual_cat_fields}"
-        )
-
+    if actual_cat_fields:
         if use_precomputed_risk_tables and model_artifacts_dir:
             # Load pre-computed risk tables
             log_once(logger, "Loading pre-computed risk table artifacts...")
@@ -880,11 +884,28 @@ def build_preprocessing_pipelines(
                         risk_tables=tables,
                     )
                     pipelines[field] = proc
-            log_once(logger, f"✓ Loaded risk tables for {len(pipelines)} fields")
+            log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
+        elif is_streaming:
+            # Fit inline using STREAMING processors
+            log_once(logger, "Fitting risk tables inline (streaming mode)...")
+            for field in actual_cat_fields:
+                proc = StreamingRiskTableProcessor(
+                    column_name=field,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                )
+                proc.fit_streaming(train_dataset)
+                pipelines[field] = proc
+                risk_tables[field] = proc.get_risk_tables()
+            log_once(
+                logger,
+                f"✓ Fitted streaming risk tables for {len(actual_cat_fields)} fields",
+            )
         else:
-            # Fit inline
-            log_once(logger, "Fitting risk tables inline...")
-            for field in actual_cat_fields:  # Use filtered list
+            # Fit inline using BATCH processors
+            log_once(logger, "Fitting risk tables inline (batch mode)...")
+            for field in actual_cat_fields:
                 proc = RiskTableMappingProcessor(
                     column_name=field,
                     label_name=config.label_name,

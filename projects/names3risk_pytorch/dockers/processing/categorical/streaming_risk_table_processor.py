@@ -215,14 +215,14 @@ class StreamingRiskTableProcessor(RiskTableMappingProcessor):
     ) -> "StreamingRiskTableProcessor":
         """
         Fit risk tables from data.
-        
+
         Automatically detects input type and delegates to appropriate method:
         - IterableDataset: uses fit_streaming()
         - DataFrame: uses parent class fit()
-        
+
         Args:
             data: DataFrame or IterableDataset
-        
+
         Returns:
             self (for method chaining)
         """
