@@ -1632,12 +1632,23 @@ def main(
                         apply_percentile_mapping(score, calibrated_score_map)
                     )
 
-            # Add calibrated column to output dataframe
-            df_calibrated[f"{score_field}_percentile"] = calibrated_field_values
+            # Add calibrated column to output dataframe (align naming with model_calibration)
+            df_calibrated[f"calibrated_{score_field}"] = calibrated_field_values
 
         logger.info(f"\n{'=' * 60}")
         logger.info(f"Calibration complete for all tasks")
         logger.info(f"{'=' * 60}\n")
+
+        # Save unified calibration dictionary file (PRIMARY - aligns with model_calibration.py)
+        if task_calibrations:
+            calibration_dict_path = os.path.join(
+                calibration_output_dir, "calibration_models_dict.pkl"
+            )
+            with open(calibration_dict_path, "wb") as f:
+                pkl.dump(task_calibrations, f)
+            logger.info(
+                f"Saved unified calibration dictionary with {len(task_calibrations)} tasks to {calibration_dict_path}"
+            )
 
         # Save aggregated metrics
         metrics = {
@@ -1696,7 +1707,13 @@ def main(
             "calibrated_data": calibrated_data_path,
         }
 
-        # Add per-task percentile score files
+        # Add unified calibration dictionary (PRIMARY - aligns with model_calibration.py)
+        if task_calibrations:
+            output_files["calibration_models_dict"] = os.path.join(
+                calibration_output_dir, "calibration_models_dict.pkl"
+            )
+
+        # Add per-task percentile score files (BACKWARD COMPAT)
         for score_field in task_calibrations.keys():
             output_files[f"percentile_score_{score_field}"] = os.path.join(
                 calibration_output_dir, f"percentile_score_{score_field}.pkl"

@@ -434,6 +434,10 @@ def load_multitask_calibration_models(
     Load per-task calibration models from single dictionary file.
     Uses hyperparameters.task_label_names to ensure correct task ordering.
 
+    Supports BOTH calibration types with auto-detection:
+    - Model-based calibration (GAM, Isotonic, Platt)
+    - Percentile calibration (lookup tables)
+
     Expected structure:
     calibration/
       calibration_models_dict.pkl  # Dictionary with {score_field: calibrator}
@@ -443,8 +447,8 @@ def load_multitask_calibration_models(
         hyperparams: Model hyperparameters containing task_label_names
 
     Returns:
-        Dictionary with 'type': 'multitask' and 'data': {task_idx: model}
-        or None if no calibration models found
+        Dictionary with 'type': 'percentile_multitask' or 'regular_multitask'
+        and 'data': {task_idx: calibrator}, or None if no calibration models found
 
     Raises:
         ValueError: If calibrators don't match expected tasks
@@ -465,6 +469,15 @@ def load_multitask_calibration_models(
         try:
             with open(dict_file, "rb") as f:
                 calibrators_dict = pkl.load(f)
+
+            # Auto-detect calibration type from first calibrator
+            first_calibrator = next(iter(calibrators_dict.values()))
+            if isinstance(first_calibrator, list):
+                calib_type = "percentile_multitask"  # Lookup table format
+                logger.info("Detected percentile calibration (lookup tables)")
+            else:
+                calib_type = "regular_multitask"  # Model object format
+                logger.info("Detected model-based calibration (GAM/Isotonic/Platt)")
 
             # Map tasks to calibrators using task names (NOT alphabetical sorting)
             calibrators = {}
@@ -490,9 +503,9 @@ def load_multitask_calibration_models(
                         f"got {len(calibrators)}. Proceeding with available calibrators."
                     )
                 logger.info(
-                    f"Loaded {len(calibrators)} calibration models from dictionary file"
+                    f"Loaded {len(calibrators)} {calib_type} calibrators from dictionary file"
                 )
-                return {"type": "multitask", "data": calibrators}
+                return {"type": calib_type, "data": calibrators}
         except Exception as e:
             logger.warning(f"Failed to load calibration dictionary: {e}")
 
@@ -514,7 +527,12 @@ def load_multitask_calibration_models(
         logger.info("No calibration models found in calibration directory")
         return None
 
-    return {"type": "multitask", "data": calibrators}
+    # Auto-detect type for legacy format
+    first_calibrator = next(iter(calibrators.values()))
+    if isinstance(first_calibrator, list):
+        return {"type": "percentile_multitask", "data": calibrators}
+    else:
+        return {"type": "regular_multitask", "data": calibrators}
 
 
 def apply_multitask_calibration(
