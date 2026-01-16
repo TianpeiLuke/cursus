@@ -12,6 +12,7 @@ from .categorical_imputation_processor import CategoricalImputationProcessor
 from .numerical_categorical_processor import NumericalCategoricalProcessor
 from .categorical_validation_processor import CategoricalValidationProcessor
 from .risk_table_processor import RiskTableMappingProcessor
+from .streaming_risk_table_processor import StreamingRiskTableProcessor
 
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "NumericalCategoricalProcessor",
     "CategoricalValidationProcessor",
     "RiskTableMappingProcessor",
+    "StreamingRiskTableProcessor",
 ]
