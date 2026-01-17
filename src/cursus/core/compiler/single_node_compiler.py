@@ -6,11 +6,13 @@ by providing manual input overrides, eliminating the need to re-run expensive
 upstream steps when pipeline failures occur.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from dataclasses import dataclass, field
 from pathlib import Path
 import logging
 import re
+
+from sagemaker.workflow.parameters import ParameterString
 
 from ...api.dag.base_dag import PipelineDAG
 from ..assembler.pipeline_assembler import PipelineAssembler
@@ -155,6 +157,7 @@ class SingleNodeCompiler:
         sagemaker_session: Optional[Any] = None,
         role: Optional[str] = None,
         step_catalog: Optional[StepCatalog] = None,
+        pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         **kwargs: Any,
     ):
         """
@@ -165,6 +168,8 @@ class SingleNodeCompiler:
             sagemaker_session: SageMaker session
             role: IAM role ARN
             step_catalog: Optional custom step catalog
+            pipeline_parameters: Pipeline parameters to pass to assembler.
+                If None, uses default parameters (EXECUTION_S3_PREFIX, KMS_KEY, etc.)
             **kwargs: Additional arguments
         """
         self.config_path = config_path
@@ -173,7 +178,36 @@ class SingleNodeCompiler:
         self.step_catalog = step_catalog or StepCatalog()
         self.kwargs = kwargs
 
-        logger.info(f"Initialized SingleNodeCompiler with config: {config_path}")
+        # Store pipeline parameters with default fallback (same as PipelineDAGCompiler)
+        if pipeline_parameters is None:
+            # Import default parameters
+            try:
+                from mods_workflow_core.utils.constants import (
+                    PIPELINE_EXECUTION_TEMP_DIR,
+                    KMS_ENCRYPTION_KEY_PARAM,
+                    SECURITY_GROUP_ID,
+                    VPC_SUBNET,
+                )
+
+                self.pipeline_parameters = [
+                    PIPELINE_EXECUTION_TEMP_DIR,
+                    KMS_ENCRYPTION_KEY_PARAM,
+                    SECURITY_GROUP_ID,
+                    VPC_SUBNET,
+                ]
+            except ImportError:
+                logger.warning(
+                    "Could not import default parameters from mods_workflow_core, "
+                    "using empty list"
+                )
+                self.pipeline_parameters = []
+        else:
+            self.pipeline_parameters = pipeline_parameters
+
+        logger.info(
+            f"Initialized SingleNodeCompiler with config: {config_path}, "
+            f"pipeline_parameters: {len(self.pipeline_parameters)} params"
+        )
 
     def validate_node_and_inputs(
         self, dag: PipelineDAG, target_node: str, manual_inputs: Dict[str, str]
@@ -401,6 +435,7 @@ class SingleNodeCompiler:
             step_catalog=self.step_catalog,
             sagemaker_session=self.sagemaker_session,
             role=self.role,
+            pipeline_parameters=self.pipeline_parameters,  # Pass parameters
             **assembler_kwargs,
         )
 
@@ -426,6 +461,7 @@ def compile_single_node_to_pipeline(
     pipeline_name: Optional[str] = None,
     validate_inputs: bool = True,
     config_map: Optional[Dict] = None,
+    pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
     **kwargs: Any,
 ) -> Any:
     """
@@ -452,6 +488,8 @@ def compile_single_node_to_pipeline(
             Checks: S3 URI format, node existence (default: True)
         config_map: Optional pre-loaded config map for advanced use cases
             If None (default), automatically loaded from config_path
+        pipeline_parameters: Pipeline parameters to pass to compiler.
+            If None, uses default parameters (EXECUTION_S3_PREFIX, KMS_KEY, etc.)
         **kwargs: Additional arguments passed to SingleNodeCompiler
 
     Returns:
@@ -503,6 +541,7 @@ def compile_single_node_to_pipeline(
         config_path=config_path,
         sagemaker_session=sagemaker_session,
         role=role,
+        pipeline_parameters=pipeline_parameters,  # Pass parameters to compiler
         **kwargs,
     )
 
