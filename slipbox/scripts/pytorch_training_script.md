@@ -114,13 +114,58 @@ None strictly required - all configuration via hyperparameters.json
 
 ### Optional Environment Variables
 
+#### Enterprise Package Installation
+| Variable | Default | Description | Use Case |
+|----------|---------|-------------|----------|
+| `USE_SECURE_PYPI` | `"false"` | Use secure AWS CodeArtifact PyPI instead of public PyPI | Enterprise deployments requiring secure package sources for compliance |
+
+**Secure PyPI Configuration**:
+- When `USE_SECURE_PYPI=true`, script uses AWS CodeArtifact at `amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com`
+- Automatically retrieves access token via AWS STS role assumption
+- Falls back to public PyPI if token retrieval fails
+- Reads package list from `requirements-secure.txt`
+
+#### Streaming Mode Control
+| Variable | Default | Description | Use Case |
+|----------|---------|-------------|----------|
+| `ENABLE_TRUE_STREAMING` | `"false"` | Enable memory-efficient streaming mode for large datasets | Datasets >100GB that don't fit in memory |
+
+**Streaming Mode Behavior**:
+- Automatically detects sharded data files (part-*.parquet, part-*.csv)
+- Uses `PipelineIterableDataset` instead of `PipelineDataset`
+- No full DataReader - incremental loading only
+- Falls back to batch mode if no shards detected
+- Requires pre-computed preprocessing artifacts or config defaults
+
+#### Multi-Region Deployment
+| Variable | Default | Description | Use Case |
+|----------|---------|-------------|----------|
+| `REGION` | `""` | Region identifier for loading region-specific hyperparameters | Multi-region deployments with different configurations per region |
+
+**Region-Specific Configuration**:
+- `REGION=NA` → loads `hyperparameters_NA.json`
+- `REGION=EU` → loads `hyperparameters_EU.json`  
+- `REGION=FE` → loads `hyperparameters_FE.json`
+- No REGION or unknown value → loads `hyperparameters.json`
+- Use for region-specific regulations (GDPR), features, or model architectures
+
 #### Preprocessing Artifact Control
 | Variable | Default | Description | Use Case |
 |----------|---------|-------------|----------|
 | `USE_PRECOMPUTED_IMPUTATION` | `"false"` | Use pre-computed imputation artifacts from model_artifacts_input | When numerical imputation done upstream (e.g., in separate imputation step) |
 | `USE_PRECOMPUTED_RISK_TABLES` | `"false"` | Use pre-computed risk table artifacts from model_artifacts_input | When risk table mapping done upstream (e.g., in separate risk table step) |
 
-**Note**: When these flags are true, the script loads pre-computed artifacts from `/opt/ml/input/data/model_artifacts_input/` instead of fitting them inline during training. This enables decoupled preprocessing workflows.
+**Artifact Loading Workflow**:
+1. When flags are true, script loads pre-computed artifacts from `/opt/ml/input/data/model_artifacts_input/`
+2. Enables decoupled preprocessing where preprocessing is done in separate upstream steps
+3. Required for streaming mode with no DataReader access
+4. Artifacts must exist in expected location or script will fall back to inline computation
+
+**Artifact File Formats**:
+- `impute_dict.pkl`: Binary pickle format for fast loading
+- `impute_dict.json`: Human-readable JSON for inspection
+- `risk_table_map.pkl`: Binary pickle format for fast loading
+- `risk_table_map.json`: Human-readable JSON for inspection
 
 ### Job Arguments
 
@@ -143,10 +188,104 @@ None strictly required - all configuration via hyperparameters.json
 | `val_filename` | `str` | No | Explicit validation file name | `"val.csv"` |
 | `test_filename` | `str` | No | Explicit test file name | `"test.csv"` |
 
-**Note on Text Field Configuration**:
-- **Bimodal**: Use `text_name` only (single text field)
-- **Trimodal**: Use `primary_text_name` AND `secondary_text_name` (dual text fields with independent processing)
-- These are mutually exclusive - use one approach or the other
+**Text Field Configuration Modes**:
+
+The script supports two distinct text input modes:
+
+**Bimodal (Single Text Field)**:
+```python
+{
+    "text_name": "dialogue",  # Single text field
+    "text_processing_steps": [  # Optional: custom pipeline
+        "dialogue_splitter",
+        "html_normalizer", 
+        "emoji_remover",
+        "text_normalizer",
+        "dialogue_chunker",
+        "tokenizer"
+    ]
+}
+```
+- Use when: Single text source (e.g., chat messages only)
+- Processing: One unified text processing pipeline
+- Model inputs: One set of input_ids and attention_mask
+
+**Trimodal (Dual Text Fields)**:
+```python
+{
+    "primary_text_name": "chat",      # First text field
+    "secondary_text_name": "events",  # Second text field
+    "primary_text_processing_steps": [  # Optional: custom pipeline for primary
+        "dialogue_splitter",
+        "html_normalizer",
+        "emoji_remover", 
+        "text_normalizer",
+        "dialogue_chunker",
+        "tokenizer"
+    ],
+    "secondary_text_processing_steps": [  # Optional: custom pipeline for secondary
+        "dialogue_splitter",
+        "text_normalizer",
+        "dialogue_chunker",
+        "tokenizer"
+    ]
+}
+```
+- Use when: Two distinct text sources (e.g., chat + event logs, product description + reviews)
+- Processing: Independent pipelines per text field with different processing steps
+- Model inputs: Two sets of input_ids and attention_masks
+- Key advantage: Different preprocessing for different text types
+
+**Configuration Rules**:
+- These modes are **mutually exclusive** - use one approach or the other
+- `text_name` conflicts with `primary_text_name`/`secondary_text_name`
+- Trimodal requires BOTH `primary_text_name` AND `secondary_text_name`
+- Missing text processing steps defaults to standard full pipeline
+
+**Use Case Examples**:
+
+**Bimodal Use Case** - Customer Support:
+```python
+{
+    "text_name": "customer_message",
+    "text_processing_steps": [  # Full cleaning for customer text
+        "dialogue_splitter",
+        "html_normalizer",
+        "emoji_remover",
+        "text_normalizer",
+        "dialogue_chunker",
+        "tokenizer"
+    ]
+}
+```
+
+**Trimodal Use Case** - E-commerce Risk:
+```python
+{
+    "primary_text_name": "product_description",  # Rich HTML content
+    "secondary_text_name": "shipment_events",    # Structured event logs
+    "primary_text_processing_steps": [
+        "dialogue_splitter",
+        "html_normalizer",    # Clean HTML in descriptions
+        "emoji_remover",      # Remove marketing emojis
+        "text_normalizer",
+        "dialogue_chunker",
+        "tokenizer"
+    ],
+    "secondary_text_processing_steps": [
+        "dialogue_splitter",
+        "text_normalizer",    # Minimal - events are clean
+        "dialogue_chunker",
+        "tokenizer"
+    ]
+}
+```
+
+**Why Different Processing Pipelines?**:
+- **Primary text** (chat/descriptions): Often contains HTML, emojis, formatting → needs full cleaning
+- **Secondary text** (events/logs): Structured, machine-generated → minimal cleaning needed
+- **Performance**: Skip unnecessary processing steps for clean text
+- **Accuracy**: Preserve important structure in different text types
 
 #### Model Architecture
 | Parameter | Type | Required | Description | Options |
@@ -243,6 +382,497 @@ None strictly required - all configuration via hyperparameters.json
 | Parameter | Type | Required | Description | Default |
 |-----------|------|----------|-------------|---------|
 | `fp16` | `bool` | No | Use mixed precision training | `false` |
+
+## Advanced Features
+
+### Streaming Mode for Large Datasets
+
+**Purpose**: Enable memory-efficient training on datasets larger than available RAM (>100GB) by loading data incrementally in chunks rather than loading the entire dataset into memory.
+
+#### When to Use Streaming Mode
+
+**Use streaming mode when**:
+- Dataset size exceeds available RAM (typically >100GB)
+- Training on memory-constrained instances
+- Working with very large corpora that would cause OOM errors in batch mode
+- Processing sharded/partitioned data from distributed storage
+
+**Use batch mode when**:
+- Dataset fits comfortably in memory (<100GB typically)
+- Need to compute statistics from full training data
+- Require random access to any sample
+- Working with single data files
+
+#### Enabling Streaming Mode
+
+Set the environment variable:
+```bash
+export ENABLE_TRUE_STREAMING=true
+```
+
+#### Data Requirements for Streaming
+
+**Sharded Data Format**:
+```
+/opt/ml/input/data/train/
+├── part-00000.parquet
+├── part-00001.parquet
+├── part-00002.parquet
+└── ...
+```
+
+**Supported Shard Patterns**:
+- `part-*.parquet` (recommended for performance)
+- `part-*.csv` (slower I/O but more compatible)
+
+**Shard Size Recommendations**:
+- Individual shard size: 100MB - 1GB per shard
+- Total shards: 10-1000 shards depending on dataset size
+- Balance: More shards = better streaming, fewer shards = less overhead
+
+#### Streaming vs Batch Mode Differences
+
+| Aspect | Batch Mode | Streaming Mode |
+|--------|-----------|----------------|
+| **Dataset Class** | `PipelineDataset` | `PipelineIterableDataset` |
+| **Data Loading** | Load all data into memory | Load shards incrementally |
+| **DataReader** | Full DataReader with random access | No DataReader, sequential only |
+| **Memory Usage** | O(dataset_size) | O(shard_size) |
+| **Preprocessing** | Fit on full training data | Use pre-computed artifacts |
+| **Field Validation** | Validates all fields exist | Skips validation |
+| **Shuffling** | Shuffle all samples | Shuffle shards only |
+
+#### Streaming Mode Workflow
+
+```
+1. Check for sharded data (part-*.parquet)
+   ↓ (found shards)
+2. Create PipelineIterableDataset
+   ↓ (incremental loading)
+3. Load preprocessing artifacts
+   ↓ (no fitting on data)
+4. Train with shard-level shuffling
+   ↓ (memory-efficient)
+5. Complete training with minimal memory
+```
+
+#### Memory Optimization Comparison
+
+**Batch Mode Memory Usage**:
+```python
+Memory = Dataset Size + Model Size + Batch Size * Sample Size
+Example: 150GB dataset + 5GB model + 32 * 2MB = ~160GB RAM required
+```
+
+**Streaming Mode Memory Usage**:
+```python
+Memory = Shard Size + Model Size + Batch Size * Sample Size  
+Example: 500MB shard + 5GB model + 32 * 2MB = ~6GB RAM required
+```
+
+#### Preprocessing in Streaming Mode
+
+**Critical Requirement**: Streaming mode requires pre-computed preprocessing artifacts since there's no DataReader to compute statistics.
+
+**Required Artifacts**:
+1. `impute_dict.pkl`: Numerical imputation values
+2. `risk_table_map.pkl`: Categorical risk tables
+
+**Workflow**:
+```
+Step 1: NumericalImputation (batch mode)
+   ↓ outputs: impute_dict.pkl
+Step 2: RiskTableMapping (batch mode)  
+   ↓ outputs: risk_table_map.pkl
+Step 3: PyTorchTraining (streaming mode)
+   ↓ loads both artifacts, no DataReader needed
+```
+
+**Environment Variables**:
+```bash
+export ENABLE_TRUE_STREAMING=true
+export USE_PRECOMPUTED_IMPUTATION=true
+export USE_PRECOMPUTED_RISK_TABLES=true
+```
+
+#### Fallback Behavior
+
+If `ENABLE_TRUE_STREAMING=true` but no shards found:
+```
+[WARNING] ENABLE_TRUE_STREAMING=true but no shards found in /opt/ml/input/data/train
+[WARNING] Falling back to batch mode with single file: train.csv
+[BATCH] Loading PipelineDataset from train.csv
+```
+
+Script automatically falls back to batch mode for compatibility.
+
+#### Performance Characteristics
+
+| Dataset Size | Batch Mode RAM | Streaming Mode RAM | Speedup |
+|--------------|----------------|-------------------|---------|
+| 10GB | 12GB | 2GB | N/A |
+| 50GB | 55GB | 2GB | N/A |
+| 200GB | OOM ❌ | 2-3GB | ∞ (only option) |
+| 1TB | OOM ❌ | 2-3GB | ∞ (only option) |
+
+**Note**: Streaming mode is slightly slower per epoch due to I/O overhead, but enables training on datasets that would otherwise be impossible.
+
+---
+
+### Format Preservation
+
+**Purpose**: Automatically detect and preserve input data format (CSV/TSV/Parquet) throughout the training pipeline, ensuring output predictions match input format without manual configuration.
+
+#### Automatic Format Detection
+
+The script automatically detects format from file extension:
+
+```python
+# Automatic detection
+train.csv      → Format: CSV
+train.tsv      → Format: TSV  
+train.parquet  → Format: Parquet
+```
+
+**Detection Algorithm**:
+```python
+1. Extract file extension (.csv, .tsv, .parquet)
+2. Store format in config._input_format
+3. Use same format for all outputs
+```
+
+#### Format-Aware I/O Functions
+
+**Loading with Format Detection**:
+```python
+df, format = load_dataframe_with_format("/path/to/file.csv")
+# Returns: (DataFrame, "csv")
+```
+
+**Saving with Format Preservation**:
+```python
+save_dataframe_with_format(df, "/path/to/output", format_str="csv")
+# Saves: /path/to/output.csv
+```
+
+#### Supported Formats
+
+| Format | Extension | Read Performance | Write Performance | Compression | Best For |
+|--------|-----------|------------------|-------------------|-------------|----------|
+| CSV | `.csv` | Baseline | Baseline | None | Human-readable, compatibility |
+| TSV | `.tsv` | Baseline | Baseline | None | Tab-delimited data, Excel |
+| Parquet | `.parquet` | 3-10x faster | 3-10x faster | Built-in | Large datasets, production |
+
+#### Output Format Preservation
+
+**Prediction Files**:
+- Input: `train.parquet` → Output: `val_predictions.parquet`, `test_predictions.parquet`
+- Input: `train.csv` → Output: `val_predictions.csv`, `test_predictions.csv`
+- Input: `train.tsv` → Output: `val_predictions.tsv`, `test_predictions.tsv`
+
+**Benefits**:
+- No format conversion needed downstream
+- Maintains pipeline compatibility
+- Consistent data interchange format
+- Preserves metadata (for Parquet)
+
+#### Pipeline Compatibility
+
+```
+DataPreprocessing (outputs: train.parquet)
+   ↓ (format preserved)
+PyTorchTraining (outputs: predictions.parquet)
+   ↓ (format preserved)
+MetricsComputation (reads: predictions.parquet)
+   ↓ (format preserved)
+Downstream Analysis (reads: predictions.parquet)
+```
+
+#### Performance Impact
+
+**Format Conversion Overhead (Avoided)**:
+```
+Parquet → CSV conversion: ~30-60 seconds for 1GB
+CSV → Parquet conversion: ~45-90 seconds for 1GB
+
+With preservation: 0 seconds (no conversion)
+```
+
+#### Example Use Cases
+
+**Use Case 1: Production Pipeline with Parquet**
+```
+All pipeline steps use Parquet
+→ 3-10x faster I/O throughout
+→ Automatic compression reduces storage
+→ Maintains column types
+```
+
+**Use Case 2: Research Pipeline with CSV**
+```
+All pipeline steps use CSV
+→ Easy inspection with text editors
+→ Compatible with Excel/spreadsheets
+→ No special tools required
+```
+
+**Use Case 3: Mixed Format (Not Recommended)**
+```
+Input: CSV → Training → Output: CSV ✓
+(Avoid converting between formats mid-pipeline)
+```
+
+---
+
+### Preprocessing Artifact Workflows
+
+**Purpose**: Enable decoupled preprocessing where numerical imputation and categorical risk table mapping are computed in separate upstream steps and loaded during training, rather than being computed inline.
+
+#### Decoupled Preprocessing Architecture
+
+**Traditional Inline Preprocessing** (NOT decoupled):
+```
+PyTorchTraining:
+├── Load training data
+├── Compute imputation statistics from training data
+├── Compute risk tables from training data
+├── Apply preprocessing
+└── Train model
+```
+
+**Decoupled Preprocessing** (recommended for production):
+```
+Step 1: NumericalImputation
+├── Load training data
+├── Compute imputation statistics
+└── Save impute_dict.pkl
+
+Step 2: RiskTableMapping
+├── Load training data  
+├── Compute risk tables
+└── Save risk_table_map.pkl
+
+Step 3: PyTorchTraining
+├── Load impute_dict.pkl
+├── Load risk_table_map.pkl
+├── Apply preprocessing with loaded artifacts
+└── Train model
+```
+
+#### Benefits of Decoupled Preprocessing
+
+1. **Modularity**: Each preprocessing step is independent and reusable
+2. **Debugging**: Inspect artifacts before training to validate preprocessing
+3. **Efficiency**: Reuse same artifacts across multiple training runs
+4. **Streaming Compatible**: Required for streaming mode (no DataReader)
+5. **Reproducibility**: Artifacts provide exact preprocessing parameters used
+
+#### Artifact File Structure
+
+```
+/opt/ml/input/data/model_artifacts_input/
+├── impute_dict.pkl          # Binary format for fast loading
+├── impute_dict.json         # Human-readable format for inspection
+├── risk_table_map.pkl       # Binary format for fast loading
+├── risk_table_map.json      # Human-readable format for inspection
+└── selected_features.json   # Optional: feature selection results
+```
+
+#### Imputation Artifacts
+
+**impute_dict.pkl Content**:
+```python
+{
+    "price": 49.99,           # Mean imputation
+    "quantity": 1.0,          # Mean imputation
+    "rating": 4.2,            # Mean imputation
+    "response_time": 24.5     # Mean imputation
+}
+```
+
+**impute_dict.json Content** (human-readable):
+```json
+{
+  "price": 49.99,
+  "quantity": 1.0,
+  "rating": 4.2,
+  "response_time": 24.5
+}
+```
+
+#### Risk Table Artifacts
+
+**risk_table_map.pkl Content**:
+```python
+{
+    "marketplace": {
+        "bins": {
+            "US": 0.85,      # Risk score for US marketplace
+            "UK": 0.72,      # Risk score for UK marketplace
+            "DE": 0.68,      # Risk score for DE marketplace
+            "FR": 0.71       # Risk score for FR marketplace
+        },
+        "default_bin": 0.5    # Default for unknown values
+    },
+    "category": {
+        "bins": {
+            "electronics": 0.90,
+            "books": 0.45,
+            "clothing": 0.60
+        },
+        "default_bin": 0.5
+    }
+}
+```
+
+**risk_table_map.json Content** (human-readable):
+```json
+{
+  "marketplace": {
+    "bins": {
+      "US": 0.85,
+      "UK": 0.72,
+      "DE": 0.68,
+      "FR": 0.71
+    },
+    "default_bin": 0.5
+  }
+}
+```
+
+#### Environment Variable Configuration
+
+**For Training WITH Pre-computed Artifacts**:
+```bash
+export USE_PRECOMPUTED_IMPUTATION=true
+export USE_PRECOMPUTED_RISK_TABLES=true
+```
+
+**For Training WITHOUT Pre-computed Artifacts** (inline computation):
+```bash
+export USE_PRECOMPUTED_IMPUTATION=false  # Compute during training
+export USE_PRECOMPUTED_RISK_TABLES=false # Compute during training
+```
+
+#### Complete Workflow Examples
+
+**Example 1: Production Pipeline with Decoupled Preprocessing**
+
+```
+# Step 1: Numerical Imputation (upstream)
+PyTorchTraining (special run to generate artifacts):
+  Input: /opt/ml/input/data/train/
+  Output: /opt/ml/model/impute_dict.pkl
+  
+# Step 2: Risk Table Mapping (upstream)  
+PyTorchTraining (special run to generate artifacts):
+  Input: /opt/ml/input/data/train/
+  Output: /opt/ml/model/risk_table_map.pkl
+
+# Step 3: Model Training (uses pre-computed artifacts)
+export USE_PRECOMPUTED_IMPUTATION=true
+export USE_PRECOMPUTED_RISK_TABLES=true
+
+PyTorchTraining:
+  Input: /opt/ml/input/data/train/
+  Input: /opt/ml/input/data/model_artifacts_input/impute_dict.pkl
+  Input: /opt/ml/input/data/model_artifacts_input/risk_table_map.pkl
+  Output: /opt/ml/model/model.pth
+```
+
+**Example 2: Research Pipeline with Inline Preprocessing**
+
+```
+# Single step - everything inline
+PyTorchTraining:
+  Input: /opt/ml/input/data/train/
+  Computes imputation inline from training data
+  Computes risk tables inline from training data
+  Output: /opt/ml/model/model.pth
+  Output: /opt/ml/model/impute_dict.pkl (saved for inference)
+  Output: /opt/ml/model/risk_table_map.pkl (saved for inference)
+```
+
+#### Artifact Loading Logic
+
+```python
+# Batch Mode
+if USE_PRECOMPUTED_IMPUTATION:
+    imputation_dict = load_imputation_artifacts(model_artifacts_dir)
+else:
+    # Fit imputation on training data DataReader
+    for field in tab_field_list:
+        processor = NumericalVariableImputationProcessor(column_name=field)
+        processor.fit(train_dataset.DataReader[field])
+        imputation_dict[field] = processor.get_imputation_value()
+
+# Streaming Mode (REQUIRES pre-computed artifacts)
+if ENABLE_TRUE_STREAMING:
+    # MUST use pre-computed artifacts - no DataReader available
+    if not USE_PRECOMPUTED_IMPUTATION:
+        raise RuntimeError("Streaming mode requires USE_PRECOMPUTED_IMPUTATION=true")
+    imputation_dict = load_imputation_artifacts(model_artifacts_dir)
+```
+
+#### Validation and Debugging
+
+**Inspect Artifacts Before Training**:
+```python
+import json
+
+# Load and inspect imputation values
+with open("impute_dict.json") as f:
+    impute_dict = json.load(f)
+    print(f"Imputation values: {impute_dict}")
+
+# Load and inspect risk tables  
+with open("risk_table_map.json") as f:
+    risk_tables = json.load(f)
+    for field, table in risk_tables.items():
+        print(f"\nField: {field}")
+        print(f"  Bins: {table['bins']}")
+        print(f"  Default: {table['default_bin']}")
+```
+
+**Verify Artifacts Exist**:
+```bash
+ls -lh /opt/ml/input/data/model_artifacts_input/
+# Should show:
+# impute_dict.pkl
+# impute_dict.json
+# risk_table_map.pkl
+# risk_table_map.json
+```
+
+#### Troubleshooting
+
+**Issue**: Training fails with "Artifacts not found"
+```
+FileNotFoundError: Imputation artifacts not found: 
+/opt/ml/input/data/model_artifacts_input/impute_dict.pkl
+```
+
+**Solution**: Either:
+1. Provide artifacts in model_artifacts_input directory, OR
+2. Set `USE_PRECOMPUTED_IMPUTATION=false` to compute inline
+
+**Issue**: Streaming mode error
+```
+RuntimeError: Streaming mode requires USE_PRECOMPUTED_IMPUTATION=true
+```
+
+**Solution**: Cannot use streaming without pre-computed artifacts. Generate artifacts first:
+```bash
+# Step 1: Generate artifacts in batch mode
+export ENABLE_TRUE_STREAMING=false
+export USE_PRECOMPUTED_IMPUTATION=false
+
+# Step 2: Use artifacts in streaming mode  
+export ENABLE_TRUE_STREAMING=true
+export USE_PRECOMPUTED_IMPUTATION=true
+```
+
+---
 
 ## Input Data Structure
 
@@ -388,6 +1018,53 @@ None strictly required - all configuration via hyperparameters.json
     "y_true": torch.Tensor,      # True labels
     "y_pred": torch.Tensor       # Predicted probabilities
 }
+```
+
+**NEW: DataFrame Predictions with Original Data**:
+```
+/opt/ml/output/data/
+├── val_predictions.csv (or .tsv, .parquet)
+├── test_predictions.csv (or .tsv, .parquet)
+```
+
+**DataFrame Prediction Format**:
+The script now saves predictions as DataFrames that preserve all original data columns plus probability columns:
+
+```csv
+order_id,label,text,price,marketplace,prob_class_0,prob_class_1
+12345,1,"Sample text...",49.99,US,0.2341,0.7659
+67890,0,"Another text...",29.99,UK,0.8123,0.1877
+```
+
+**Columns Included**:
+- All original columns (IDs, features, labels)
+- `prob_class_0`, `prob_class_1`, ..., `prob_class_N`: Predicted probabilities for each class
+- Format preserved from input (CSV → CSV, Parquet → Parquet)
+
+**Benefits**:
+- No need to join predictions with original data
+- Preserves IDs for downstream tracking
+- Includes features for error analysis
+- Format preservation maintains pipeline compatibility
+
+**Accessing DataFrame Predictions**:
+```python
+# Binary classification example
+import pandas as pd
+
+predictions = pd.read_csv("/opt/ml/output/data/val_predictions.csv")
+
+# Analyze high-confidence predictions
+high_conf = predictions[predictions['prob_class_1'] > 0.9]
+
+# Identify prediction errors
+errors = predictions[
+    ((predictions['label'] == 1) & (predictions['prob_class_1'] < 0.5)) |
+    ((predictions['label'] == 0) & (predictions['prob_class_1'] >= 0.5))
+]
+
+# Analyze errors by feature
+error_distribution = errors.groupby('marketplace').size()
 ```
 
 **TensorBoard Logs**:

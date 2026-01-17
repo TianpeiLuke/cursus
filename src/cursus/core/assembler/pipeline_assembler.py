@@ -613,6 +613,123 @@ class PipelineAssembler:
 
         return pipeline
 
+    def generate_single_node_pipeline(
+        self, target_node: str, manual_inputs: Dict[str, str], pipeline_name: str
+    ) -> Pipeline:
+        """
+        Generate pipeline with single node and manual inputs.
+
+        This method bypasses normal message propagation and dependency resolution,
+        directly instantiating the target node with provided manual inputs.
+
+        **Backward Compatibility**: This method is completely isolated and does not
+        affect existing pipeline generation flow. The normal generate_pipeline()
+        method remains unchanged.
+
+        Args:
+            target_node: Name of node to execute in isolation
+            manual_inputs: Manual input paths (logical_name -> s3_uri)
+            pipeline_name: Name for generated pipeline
+
+        Returns:
+            Single-node Pipeline
+
+        Raises:
+            ValueError: If target node not found in step builders
+
+        Example:
+            >>> manual_inputs = {
+            ...     "input_path": "s3://bucket/run-123/preprocess/data/"
+            ... }
+            >>> pipeline = assembler.generate_single_node_pipeline(
+            ...     target_node="train",
+            ...     manual_inputs=manual_inputs,
+            ...     pipeline_name="train-debug-001"
+            ... )
+        """
+        logger.info(f"[SINGLE_NODE] Generating pipeline for: {target_node}")
+
+        # Validate target node exists
+        if target_node not in self.step_builders:
+            raise ValueError(
+                f"Target node '{target_node}' not found. "
+                f"Available: {list(self.step_builders.keys())}"
+            )
+
+        # Clear step instances to ensure clean state
+        self.step_instances = {}
+
+        # Instantiate only the target step with manual inputs
+        step = self._instantiate_step_with_manual_inputs(target_node, manual_inputs)
+        self.step_instances[target_node] = step
+
+        # Create minimal pipeline with single step
+        pipeline = Pipeline(
+            name=pipeline_name,
+            parameters=self.pipeline_parameters,
+            steps=[step],
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        logger.info(f"[SINGLE_NODE] Pipeline created: {pipeline_name}")
+        return pipeline
+
+    def _instantiate_step_with_manual_inputs(
+        self, step_name: str, manual_inputs: Dict[str, str]
+    ) -> Step:
+        """
+        Instantiate step with manually provided input paths.
+
+        This method bypasses message-based input resolution and directly uses
+        the provided manual input paths (S3 URIs). This is specifically for
+        single-node execution mode and does not affect normal pipeline flow.
+
+        **Backward Compatibility**: This is a new private method that does not
+        modify any existing methods or class state beyond what's necessary for
+        single-node execution.
+
+        Args:
+            step_name: Name of step to instantiate
+            manual_inputs: Manual input paths (logical_name -> s3_uri)
+
+        Returns:
+            Instantiated SageMaker Step
+
+        Raises:
+            ValueError: If step creation fails
+        """
+        builder = self.step_builders[step_name]
+
+        logger.info(f"[SINGLE_NODE] Instantiating '{step_name}' with manual inputs")
+        for input_name, s3_path in manual_inputs.items():
+            logger.info(f"[SINGLE_NODE]   {input_name}: {s3_path}")
+
+        # No dependencies for isolated execution
+        dependencies = []
+
+        # Manual inputs are already S3 URIs - use directly
+        inputs = dict(manual_inputs)
+
+        # Generate outputs using specification (same as normal flow)
+        outputs = self._generate_outputs(step_name)
+
+        # Create step with manual inputs
+        kwargs = {
+            "inputs": inputs,
+            "outputs": outputs,
+            "dependencies": dependencies,
+            "enable_caching": builder.config.enable_caching,
+        }
+
+        try:
+            step = builder.create_step(**kwargs)
+            logger.info(f"[SINGLE_NODE] Step created: {step_name}")
+            return step
+
+        except Exception as e:
+            logger.error(f"[SINGLE_NODE] Error creating step: {e}")
+            raise ValueError(f"Failed to create step '{step_name}': {e}") from e
+
     def analyze_pipeline_structure(self) -> None:
         """
         Analyze and print the complete pipeline structure including:

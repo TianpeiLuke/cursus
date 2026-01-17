@@ -450,6 +450,9 @@ class Config(BaseModel):
         None  # Secondary text field for trimodal (e.g., "shiptrack")
     )
     embed_size: Optional[int] = None  # Added for type consistency
+    embedding_size: Optional[int] = (
+        None  # Embedding dimension (used by transformer2risk)
+    )
     n_embed: Optional[int] = None  # Vocabulary size for embedding layer
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
@@ -2028,7 +2031,7 @@ def main(
         test_dataloader,
         embedding_mat,
     ) = build_model_and_optimizer(config_dict, tokenizer, datasets, use_streaming)
-    
+
     # CRITICAL FIX: Sync config object with updated config_dict after model building
     # build_model_and_optimizer updates config_dict["n_embed"] with actual vocab size
     # config_dict["input_tab_dim"] was set earlier from len(config.tab_field_list)

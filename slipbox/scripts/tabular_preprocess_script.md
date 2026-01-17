@@ -361,14 +361,39 @@ For the target variable (label field):
 
 ### 5. Output Generation
 
-Saves each split in the configured output format to the appropriate output directory:
+Saves each split in the configured output format to the appropriate output directory. The output structure depends on the processing mode and CONSOLIDATE_SHARDS setting.
+
+#### Batch Mode Output (Default)
+
+Always creates single consolidated files per split:
 
 **Output Formats:**
 - **CSV** (default): `/opt/ml/processing/output/{split_name}/{split_name}_processed_data.csv`
 - **TSV**: `/opt/ml/processing/output/{split_name}/{split_name}_processed_data.tsv`
 - **Parquet**: `/opt/ml/processing/output/{split_name}/{split_name}_processed_data.parquet`
 
-The output format is controlled by the `OUTPUT_FORMAT` environment variable. If an invalid format is specified, the script defaults to CSV with a warning message.
+#### Streaming Mode Output
+
+Output structure controlled by `CONSOLIDATE_SHARDS` environment variable:
+
+**Consolidated Output (CONSOLIDATE_SHARDS="true", default)**:
+- Single file per split (same as batch mode)
+- **CSV**: `/opt/ml/processing/output/{split_name}/{split_name}_processed_data.csv`
+- **TSV**: `/opt/ml/processing/output/{split_name}/{split_name}_processed_data.tsv`
+- **Parquet**: `/opt/ml/processing/output/{split_name}/{split_name}_processed_data.parquet`
+- **Recommended** for most use cases
+
+**Sharded Output (CONSOLIDATE_SHARDS="false")**:
+- Multiple shard files per split
+- **CSV**: `/opt/ml/processing/output/{split_name}/part-00000.csv`, `part-00001.csv`, ...
+- **TSV**: `/opt/ml/processing/output/{split_name}/part-00000.tsv`, `part-00001.tsv`, ...
+- **Parquet**: `/opt/ml/processing/output/{split_name}/part-00000.parquet`, `part-00001.parquet`, ...
+- Use only when downstream consumers explicitly require sharded input
+
+**Configuration:**
+- The output format is controlled by the `OUTPUT_FORMAT` environment variable
+- The output structure (consolidated vs sharded) is controlled by `CONSOLIDATE_SHARDS` (streaming mode only)
+- If an invalid format is specified, the script defaults to CSV with a warning message
 
 ## Configuration
 
@@ -410,9 +435,15 @@ The output format is controlled by the `OUTPUT_FORMAT` environment variable. If 
   - Never loads full DataFrame into memory
   - Processes data in batches, writes directly to final files
   - **Most important setting for large datasets**
+- **CONSOLIDATE_SHARDS**: Control output file format in streaming mode (default: `"true"`)
+  - Set to `"true"` for single file per split (e.g., `train_processed_data.csv`)
+  - Set to `"false"` for multiple shard files per split (e.g., `part-00000.csv`, `part-00001.csv`, ...)
+  - **Only applies when ENABLE_TRUE_STREAMING=true**
+  - **Recommended**: Use `"true"` (default) for compatibility with downstream steps
+  - Use `"false"` only when downstream consumers explicitly require sharded output
 - **SHARD_SIZE**: Rows per output shard in streaming mode (default: `100000`)
-  - Only used when ENABLE_TRUE_STREAMING=true
-  - Controls granularity of output sharding (currently not used with direct write)
+  - Only used when ENABLE_TRUE_STREAMING=true AND CONSOLIDATE_SHARDS=false
+  - Controls granularity of output sharding
 
 ### Standard SageMaker Paths
 

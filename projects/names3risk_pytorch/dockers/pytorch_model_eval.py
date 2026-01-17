@@ -802,49 +802,59 @@ def apply_batch_preprocessing_artifacts(
 ) -> None:
     """Apply preprocessing for BATCH mode (has DataReader)."""
     logger.info("BATCH MODE PREPROCESSING (EVAL)")
-    
+
     numerical_fields = config.get("tab_field_list", [])
     categorical_fields = config.get("cat_field_list", [])
-    
+
     # Validate fields
     if numerical_fields:
         logger.info("Validating numerical field types...")
         try:
-            validate_numerical_fields(pipeline_dataset.DataReader, numerical_fields, "eval")
+            validate_numerical_fields(
+                pipeline_dataset.DataReader, numerical_fields, "eval"
+            )
             logger.info("✓ Numerical field type validation passed")
         except Exception as e:
             logger.warning(f"Numerical field validation failed: {e}")
-    
-    text_fields = {config.get("text_name"), config.get("primary_text_name"), config.get("secondary_text_name")} - {None}
+
+    text_fields = {
+        config.get("text_name"),
+        config.get("primary_text_name"),
+        config.get("secondary_text_name"),
+    } - {None}
     actual_cat_fields = [f for f in categorical_fields if f not in text_fields]
-    
+
     if actual_cat_fields:
         logger.info("Validating categorical field types...")
         try:
-            validate_categorical_fields(pipeline_dataset.DataReader, actual_cat_fields, "eval")
+            validate_categorical_fields(
+                pipeline_dataset.DataReader, actual_cat_fields, "eval"
+            )
             logger.info("✓ Categorical field type validation passed")
         except Exception as e:
             logger.warning(f"Categorical field validation failed: {e}")
-    
+
     # Numerical imputation
     numerical_processors = processors.get("numerical_processors", {})
     if numerical_processors:
-        logger.info(f"Applying {len(numerical_processors)} numerical imputation processors...")
+        logger.info(
+            f"Applying {len(numerical_processors)} numerical imputation processors..."
+        )
         for feature, processor in numerical_processors.items():
             if feature in pipeline_dataset.DataReader.columns:
                 pipeline_dataset.add_pipeline(feature, processor)
         logger.info(f"✓ Applied {len(numerical_processors)} numerical processors")
-    
+
     # Risk tables (excluding text fields)
     if text_fields:
         logger.info(f"ℹ️  Text fields to exclude from risk tables: {text_fields}")
-    
+
     risk_processors = processors.get("risk_processors", {})
     if risk_processors:
         logger.info(f"Applying risk table mapping to categorical features...")
         excluded_count = 0
         applied_count = 0
-        
+
         for feature, processor in risk_processors.items():
             if feature in text_fields:
                 excluded_count += 1
@@ -852,7 +862,7 @@ def apply_batch_preprocessing_artifacts(
             if feature in pipeline_dataset.DataReader.columns:
                 pipeline_dataset.add_pipeline(feature, processor)
                 applied_count += 1
-        
+
         logger.info(f"✓ Applied {applied_count} risk table processors")
         if excluded_count > 0:
             logger.info(f"  Excluded {excluded_count} text fields from risk mapping")
@@ -867,34 +877,40 @@ def apply_streaming_preprocessing_artifacts(
     """Apply preprocessing for STREAMING mode (no DataReader)."""
     logger.info("STREAMING MODE PREPROCESSING (EVAL)")
     logger.info("⚠️  Skipping field validation in streaming mode")
-    
-    text_fields = {config.get("text_name"), config.get("primary_text_name"), config.get("secondary_text_name")} - {None}
-    
+
+    text_fields = {
+        config.get("text_name"),
+        config.get("primary_text_name"),
+        config.get("secondary_text_name"),
+    } - {None}
+
     # Numerical imputation (streaming processors already created with fixed values)
     numerical_processors = processors.get("numerical_processors", {})
     if numerical_processors:
-        logger.info(f"Applying {len(numerical_processors)} numerical imputation processors...")
+        logger.info(
+            f"Applying {len(numerical_processors)} numerical imputation processors..."
+        )
         for feature, processor in numerical_processors.items():
             pipeline_dataset.add_pipeline(feature, processor)
         logger.info(f"✓ Applied {len(numerical_processors)} numerical processors")
-    
+
     # Risk tables (streaming processors already created with fixed tables)
     if text_fields:
         logger.info(f"ℹ️  Text fields to exclude from risk tables: {text_fields}")
-    
+
     risk_processors = processors.get("risk_processors", {})
     if risk_processors:
         logger.info(f"Applying risk table mapping to categorical features...")
         excluded_count = 0
         applied_count = 0
-        
+
         for feature, processor in risk_processors.items():
             if feature in text_fields:
                 excluded_count += 1
                 continue
             pipeline_dataset.add_pipeline(feature, processor)
             applied_count += 1
-        
+
         logger.info(f"✓ Applied {applied_count} risk table processors")
         if excluded_count > 0:
             logger.info(f"  Excluded {excluded_count} text fields from risk mapping")
@@ -909,7 +925,7 @@ def apply_preprocessing_artifacts(
 ) -> None:
     """
     Router function that delegates to batch or streaming preprocessing.
-    
+
     Args:
         pipeline_dataset: Dataset to apply preprocessing to
         processors: Dictionary containing preprocessing processors
@@ -921,12 +937,12 @@ def apply_preprocessing_artifacts(
     logger.info(f"Mode: {'STREAMING' if use_streaming else 'BATCH'}")
     logger.info(f"Dataset type: {type(pipeline_dataset).__name__}")
     logger.info("=" * 70)
-    
+
     if use_streaming:
         apply_streaming_preprocessing_artifacts(pipeline_dataset, processors, config)
     else:
         apply_batch_preprocessing_artifacts(pipeline_dataset, processors, config)
-    
+
     logger.info("=" * 70)
 
 
@@ -1052,7 +1068,9 @@ def preprocess_eval_data(
     logger.info(f"✅ Registered {len(text_pipelines)} text processing pipelines")
 
     # Step 3: Apply preprocessing artifacts (numerical + categorical)
-    apply_preprocessing_artifacts(pipeline_dataset, processors, config, enable_streaming)
+    apply_preprocessing_artifacts(
+        pipeline_dataset, processors, config, enable_streaming
+    )
 
     # Step 4: Add label processor for multiclass if needed
     add_label_processor(pipeline_dataset, config, processors)

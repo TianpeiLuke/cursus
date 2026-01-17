@@ -72,6 +72,7 @@ The foundation of automatic pipeline generation through specification-driven des
 
 **Related Design Docs:**
 - [Pipeline Compiler Design](../1_design/pipeline_compiler.md) - Compilation architecture
+- [Single Node Execution API](../1_design/single_node_execution_api_design.md) - Debug and isolated node execution
 - [DAG to Template](../1_design/dag_to_template.md) - Transformation process
 - [Dynamic Template System](../1_design/dynamic_template_system.md) - Dynamic generation
 - [MODS DAG Compiler](../1_design/mods_dag_compiler_design.md) - MODS integration

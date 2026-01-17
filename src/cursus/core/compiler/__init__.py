@@ -6,6 +6,12 @@ directly into executable SageMaker pipelines without requiring custom template c
 """
 
 from .dag_compiler import compile_dag_to_pipeline, PipelineDAGCompiler
+from .single_node_compiler import (
+    compile_single_node_to_pipeline,
+    SingleNodeCompiler,
+    ValidationResult as SingleNodeValidationResult,
+    ExecutionPreview,
+)
 from ...step_catalog.adapters.config_resolver import (
     StepConfigResolverAdapter as StepConfigResolver,
 )
@@ -47,12 +53,16 @@ def __getattr__(name: str) -> type:
 __all__ = [
     # Main compilation functions
     "compile_dag_to_pipeline",
+    "compile_single_node_to_pipeline",  # NEW: Single-node execution
     # Compiler classes
     "PipelineDAGCompiler",
+    "SingleNodeCompiler",  # NEW: Single-node execution
     "DynamicPipelineTemplate",  # Available through lazy loading
     "StepConfigResolver",
     # Validation and reporting
     "ValidationResult",
+    "SingleNodeValidationResult",  # NEW: Single-node validation
+    "ExecutionPreview",  # NEW: Single-node preview
     "ResolutionPreview",
     "ConversionReport",
     "ValidationEngine",
