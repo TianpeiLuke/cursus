@@ -61,8 +61,9 @@ logger = logging.getLogger(__name__)
 
 
 def compile_dag_to_pipeline(
-    dag: PipelineDAG,
-    config_path: str,
+    dag: Optional[PipelineDAG] = None,
+    dag_path: Optional[str] = None,
+    config_path: str = None,
     sagemaker_session: Optional[PipelineSession] = None,
     role: Optional[str] = None,
     pipeline_name: Optional[str] = None,
@@ -75,7 +76,8 @@ def compile_dag_to_pipeline(
     compilation from DAG to pipeline.
 
     Args:
-        dag: PipelineDAG instance defining the pipeline structure
+        dag: PipelineDAG instance defining the pipeline structure (optional if dag_path provided)
+        dag_path: Path to serialized DAG JSON file (optional if dag provided)
         config_path: Path to configuration file containing step configs
         sagemaker_session: SageMaker session for pipeline execution
         role: IAM role for pipeline execution
@@ -86,11 +88,13 @@ def compile_dag_to_pipeline(
         Generated SageMaker Pipeline ready for execution
 
     Raises:
-        ValueError: If DAG nodes don't have corresponding configurations
+        ValueError: If neither dag nor dag_path provided, or if DAG is invalid
+        FileNotFoundError: If dag_path or config_path files not found
         ConfigurationError: If configuration validation fails
         RegistryError: If step builders not found for config types
 
     Example:
+        >>> # Option 1: Using PipelineDAG instance
         >>> dag = PipelineDAG()
         >>> dag.add_node("data_load")
         >>> dag.add_node("preprocess")
@@ -103,14 +107,39 @@ def compile_dag_to_pipeline(
         ...     role="arn:aws:iam::123456789012:role/SageMakerRole"
         ... )
         >>> pipeline.upsert()
+        >>>
+        >>> # Option 2: Loading DAG from file
+        >>> pipeline = compile_dag_to_pipeline(
+        ...     dag_path="saved_dags/my_pipeline.json",
+        ...     config_path="configs/my_pipeline.json",
+        ...     sagemaker_session=session,
+        ...     role="arn:aws:iam::123456789012:role/SageMakerRole"
+        ... )
     """
     try:
-        # Validate inputs first before accessing dag.nodes
+        # Load DAG from path if provided
+        if dag_path is not None:
+            from ...api.dag import import_dag_from_json
+
+            logger.info(f"Loading DAG from file: {dag_path}")
+            dag = import_dag_from_json(dag_path)
+            logger.info(
+                f"Successfully loaded DAG with {len(dag.nodes)} nodes from {dag_path}"
+            )
+
+        # Validate that we have a DAG
+        if dag is None:
+            raise ValueError("Must provide either 'dag' or 'dag_path' parameter")
+
+        # Validate inputs
         if not isinstance(dag, PipelineDAG):
             raise ValueError("dag must be a PipelineDAG instance")
 
         if not dag.nodes:
             raise ValueError("DAG must contain at least one node")
+
+        if config_path is None:
+            raise ValueError("config_path is required")
 
         logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
 
@@ -199,7 +228,9 @@ class PipelineDAGCompiler:
         if not config_path_obj.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    def validate_dag_compatibility(self, dag: PipelineDAG) -> ValidationResult:
+    def validate_dag_compatibility(
+        self, dag: Union[PipelineDAG, str]
+    ) -> ValidationResult:
         """
         Validate that DAG nodes have corresponding configurations.
 
@@ -210,11 +241,18 @@ class PipelineDAGCompiler:
         - Dependency resolution issues
 
         Args:
-            dag: PipelineDAG instance to validate
+            dag: PipelineDAG instance or path to serialized DAG file
 
         Returns:
             ValidationResult with detailed validation information
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            self.logger.info(f"Loading DAG from file for validation: {dag}")
+            dag = import_dag_from_json(dag)
+
         try:
             self.logger.info(f"Validating DAG compatibility for {len(dag.nodes)} nodes")
 
@@ -273,7 +311,7 @@ class PipelineDAGCompiler:
                 warnings=[],
             )
 
-    def preview_resolution(self, dag: PipelineDAG) -> ResolutionPreview:
+    def preview_resolution(self, dag: Union[PipelineDAG, str]) -> ResolutionPreview:
         """
         Preview how DAG nodes will be resolved to configs and builders.
 
@@ -284,11 +322,18 @@ class PipelineDAGCompiler:
         - Potential issues or ambiguities
 
         Args:
-            dag: PipelineDAG instance to preview
+            dag: PipelineDAG instance or path to serialized DAG file
 
         Returns:
             ResolutionPreview with detailed resolution information
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            self.logger.info(f"Loading DAG from file for resolution preview: {dag}")
+            dag = import_dag_from_json(dag)
+
         try:
             self.logger.info(f"Previewing resolution for {len(dag.nodes)} DAG nodes")
 
@@ -385,13 +430,16 @@ class PipelineDAGCompiler:
             )
 
     def compile(
-        self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs: Any
+        self,
+        dag: Union[PipelineDAG, str],
+        pipeline_name: Optional[str] = None,
+        **kwargs: Any,
     ) -> Pipeline:
         """
         Compile DAG to pipeline with full control.
 
         Args:
-            dag: PipelineDAG instance to compile
+            dag: PipelineDAG instance or path to serialized DAG file
             pipeline_name: Optional pipeline name override
             **kwargs: Additional arguments for template
 
@@ -401,6 +449,13 @@ class PipelineDAGCompiler:
         Raises:
             PipelineAPIError: If compilation fails
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            self.logger.info(f"Loading DAG from file for compilation: {dag}")
+            dag = import_dag_from_json(dag)
+
         try:
             self.logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
 
@@ -449,23 +504,35 @@ class PipelineDAGCompiler:
             raise PipelineAPIError(f"DAG compilation failed: {e}") from e
 
     def compile_with_report(
-        self, dag: PipelineDAG, pipeline_name: Optional[str] = None, **kwargs: Any
+        self,
+        dag: Union[PipelineDAG, str],
+        pipeline_name: Optional[str] = None,
+        **kwargs: Any,
     ) -> Tuple[Pipeline, ConversionReport]:
         """
         Compile DAG to pipeline and return detailed compilation report.
 
         Args:
-            dag: PipelineDAG instance to compile
+            dag: PipelineDAG instance or path to serialized DAG file
             pipeline_name: Optional pipeline name override
             **kwargs: Additional arguments for template
 
         Returns:
             Tuple of (Pipeline, ConversionReport)
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            self.logger.info(
+                f"Loading DAG from file for compilation with report: {dag}"
+            )
+            dag = import_dag_from_json(dag)
+
         try:
             self.logger.info(f"Compiling DAG with detailed reporting")
 
-            # Compile pipeline
+            # Compile pipeline with the loaded DAG instance
             pipeline = self.compile(dag, pipeline_name=pipeline_name, **kwargs)
 
             # Generate report
