@@ -8,7 +8,7 @@ to enable easy knowledge transfer and storage of pipeline topologies.
 import json
 from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from .base_dag import PipelineDAG
@@ -46,7 +46,7 @@ class PipelineDAGWriter:
             Dictionary with complete DAG representation including metadata
         """
         return {
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "metadata": self.metadata,
             "dag": {
                 "nodes": self.dag.nodes,
@@ -319,7 +319,6 @@ class PipelineDAGReader:
             data = json.load(f)
 
         return {
-            "version": data.get("version"),
             "created_at": data.get("created_at"),
             "metadata": data.get("metadata", {}),
             "statistics": data.get("statistics", {}),

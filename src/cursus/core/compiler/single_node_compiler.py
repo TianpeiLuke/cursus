@@ -210,19 +210,29 @@ class SingleNodeCompiler:
         )
 
     def validate_node_and_inputs(
-        self, dag: PipelineDAG, target_node: str, manual_inputs: Dict[str, str]
+        self,
+        dag: Union[PipelineDAG, str],
+        target_node: str,
+        manual_inputs: Dict[str, str],
     ) -> ValidationResult:
         """
         Validate target node and manual inputs before execution.
 
         Args:
-            dag: PipelineDAG containing the target node
+            dag: PipelineDAG instance or path to serialized DAG file
             target_node: Name of node to validate
             manual_inputs: Manual input paths to validate
 
         Returns:
             ValidationResult with detailed validation information
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            logger.info(f"Loading DAG from file for validation: {dag}")
+            dag = import_dag_from_json(dag)
+
         logger.info(f"Validating node '{target_node}' and inputs")
 
         errors = []
@@ -278,19 +288,29 @@ class SingleNodeCompiler:
         )
 
     def preview_execution(
-        self, dag: PipelineDAG, target_node: str, manual_inputs: Dict[str, str]
+        self,
+        dag: Union[PipelineDAG, str],
+        target_node: str,
+        manual_inputs: Dict[str, str],
     ) -> ExecutionPreview:
         """
         Preview execution without creating pipeline.
 
         Args:
-            dag: PipelineDAG containing the target node
+            dag: PipelineDAG instance or path to serialized DAG file
             target_node: Name of node to preview
             manual_inputs: Manual input paths
 
         Returns:
             ExecutionPreview with detailed execution information
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            logger.info(f"Loading DAG from file for preview: {dag}")
+            dag = import_dag_from_json(dag)
+
         logger.info(f"Generating execution preview for '{target_node}'")
 
         # Basic preview without full config loading (Phase 1)
@@ -367,7 +387,7 @@ class SingleNodeCompiler:
 
     def compile(
         self,
-        dag: PipelineDAG,
+        dag: Union[PipelineDAG, str],
         target_node: str,
         manual_inputs: Dict[str, str],
         pipeline_name: Optional[str] = None,
@@ -383,7 +403,7 @@ class SingleNodeCompiler:
         compile_dag_to_pipeline().
 
         Args:
-            dag: Original PipelineDAG (for node lookup)
+            dag: PipelineDAG instance or path to serialized DAG file
             target_node: Name of node to execute
             manual_inputs: Manual input paths (logical_name -> s3_uri)
             pipeline_name: Optional pipeline name
@@ -398,6 +418,13 @@ class SingleNodeCompiler:
             ValueError: If validation fails or compilation errors occur
             FileNotFoundError: If config file not found (when auto-loading)
         """
+        # Load DAG from file if path provided
+        if isinstance(dag, str):
+            from ...api.dag import import_dag_from_json
+
+            logger.info(f"Loading DAG from file for compilation: {dag}")
+            dag = import_dag_from_json(dag)
+
         logger.info(f"Compiling single-node pipeline for '{target_node}'")
 
         # Validate if requested
@@ -452,7 +479,7 @@ class SingleNodeCompiler:
 
 
 def compile_single_node_to_pipeline(
-    dag: PipelineDAG,
+    dag: Union[PipelineDAG, str],
     config_path: str,
     target_node: str,
     manual_inputs: Dict[str, str],
@@ -475,7 +502,7 @@ def compile_single_node_to_pipeline(
     method, providing a simple one-line API for single-node execution.
 
     Args:
-        dag: Original PipelineDAG (for node lookup)
+        dag: PipelineDAG instance or path to serialized DAG file
         config_path: Path to configuration JSON file
         target_node: Name of node to execute in isolation
         manual_inputs: Dict mapping logical input names to S3 URIs
