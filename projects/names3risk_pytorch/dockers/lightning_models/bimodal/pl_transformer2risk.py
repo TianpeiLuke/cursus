@@ -404,7 +404,7 @@ class Transformer2Risk(pl.LightningModule):
 
         Returns:
             loss: Scalar loss (None for pred stage)
-            preds: Predictions (probabilities or class probabilities)
+            preds: Predictions (full probability distribution for all classes)
             labels: Ground truth labels (None for pred stage)
         """
         # Get labels (if available)
@@ -423,9 +423,7 @@ class Transformer2Risk(pl.LightningModule):
 
         # Get predictions (probabilities)
         preds = torch.softmax(logits, dim=1)
-        if self.is_binary:
-            preds = preds[:, 1]  # Binary: return P(positive class)
-
+        preds = preds[:, 1] if self.is_binary else preds
         return loss, preds, labels
 
     def training_step(self, batch, batch_idx):

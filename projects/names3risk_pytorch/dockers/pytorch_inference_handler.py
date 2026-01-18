@@ -4,11 +4,16 @@ import traceback
 from io import StringIO, BytesIO
 from pathlib import Path
 import logging
-from typing import List, Union, Dict, Tuple, Optional, Any
+from typing import List, Union, Dict, Tuple, Optional, Any, TYPE_CHECKING
 import pickle as pkl
 import sys
 import time
 from contextlib import contextmanager
+
+# Type checking imports (not loaded at runtime)
+if TYPE_CHECKING:
+    from tokenizers import Tokenizer
+    from transformers import AutoTokenizer
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -324,8 +329,9 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
+
 from transformers import AutoTokenizer
-from tokenizers import Tokenizer  # HuggingFace tokenizers for custom BPE
+from tokenizers import Tokenizer
 
 from processing.processors import (
     Processor,
@@ -354,10 +360,9 @@ from lightning_models.utils.pl_train import (
     load_model,
     load_artifacts,
     load_onnx_model,
-    load_bert_optimized_model,
 )
 from lightning_models.utils.dist_utils import get_rank, is_main_process
-from pydantic import BaseModel, Field, ValidationError  # For Config Validation
+from pydantic import BaseModel, Field, model_validator
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)
@@ -370,6 +375,69 @@ if not logger.hasHandlers():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.propagate = False
+
+
+# ============================================================================
+# UNIVERSAL PROBABILITY NORMALIZATION
+# ============================================================================
+
+
+def normalize_probability_shape(
+    probs: np.ndarray,
+    is_binary: bool,
+    num_classes: int
+) -> np.ndarray:
+    """
+    Universal probability shape normalizer for inference.
+    
+    Ensures output is always (N, num_classes) regardless of model output format.
+    This solves the calibration compatibility issue where binary models may output
+    (N,) but calibration expects (N, 2).
+    
+    Supported input formats:
+    - Binary (N,): Single probability per sample → convert to (N, 2)
+    - Binary (N, 1): Single probability column → convert to (N, 2)
+    - Binary (N, 2): Full distribution → keep as-is
+    - Multiclass (N, K): Full distribution → keep as-is
+    
+    Args:
+        probs: Probability array from ONNX/PyTorch model
+        is_binary: Whether this is binary classification
+        num_classes: Total number of classes
+        
+    Returns:
+        Normalized probability array with shape (N, num_classes)
+        
+    Raises:
+        ValueError: If input shape cannot be normalized
+    """
+    # Case 1: Already correct shape (N, num_classes)
+    if len(probs.shape) == 2 and probs.shape[1] == num_classes:
+        logger.debug(f"Probabilities already in correct shape: {probs.shape}")
+        return probs
+    
+    # Case 2: Binary classification with single probability
+    if is_binary and num_classes == 2:
+        if len(probs.shape) == 1:
+            # (N,) → (N, 2)
+            logger.info(f"Converting binary probabilities from shape {probs.shape} to (N, 2)")
+            probs_class_1 = probs
+            probs_class_0 = 1.0 - probs_class_1
+            return np.column_stack([probs_class_0, probs_class_1])
+            
+        elif len(probs.shape) == 2 and probs.shape[1] == 1:
+            # (N, 1) → (N, 2)
+            logger.info(f"Converting binary probabilities from shape {probs.shape} to (N, 2)")
+            probs_class_1 = probs.squeeze()
+            probs_class_0 = 1.0 - probs_class_1
+            return np.column_stack([probs_class_0, probs_class_1])
+    
+    # Case 3: Unexpected configuration
+    raise ValueError(
+        f"Cannot normalize probabilities with shape={probs.shape}, "
+        f"is_binary={is_binary}, num_classes={num_classes}. "
+        f"Expected (N,), (N, 1), or (N, {num_classes})"
+    )
 
 
 # ============================================================================
@@ -438,7 +506,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ================================================================================
 class Config(BaseModel):
     id_name: str = "order_id"
-    text_name: Optional[str] = None  # Changed to Optional to match training
+    text_name: Optional[str] = None
+    # NEW: Track which fields were merged to create text field
+    text_source_fields: Optional[List[str]] = None
     label_name: str = "label"
     batch_size: int = 32
     full_field_list: List[str] = Field(default_factory=list)
@@ -475,30 +545,32 @@ class Config(BaseModel):
     val_check_interval: float = 0.25
     adam_epsilon: float = 1e-08
     fp16: bool = False
-    use_gradient_checkpointing: bool = False  # Added to match training
+    use_gradient_checkpointing: bool = False
     run_scheduler: bool = True
     reinit_pooler: bool = True
     reinit_layers: int = 2
     warmup_steps: int = 300
-    text_input_ids_key: str = "input_ids"  # Configurable text input key
-    text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
-    # Added fields for trimodal model support
+    text_input_ids_key: str = "input_ids"
+    text_attention_mask_key: str = "attention_mask"
+    pad_token_id: Optional[int] = None  # PAD token ID from tokenizer
     primary_text_name: Optional[str] = None
     secondary_text_name: Optional[str] = None
-    embed_size: Optional[int] = None  # Added for type consistency
-    label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
-    id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
-    # Added fields for text processing steps configuration
+    embed_size: Optional[int] = None
+    embedding_size: Optional[int] = (
+        None  # Embedding dimension (used by transformer2risk)
+    )
+    n_embed: Optional[int] = None  # Vocabulary size for embedding layer
+    label_to_id: Optional[Dict[str, int]] = None
+    id_to_label: Optional[List[str]] = None
     text_processing_steps: Optional[List[str]] = None
     primary_text_processing_steps: Optional[List[str]] = None
     secondary_text_processing_steps: Optional[List[str]] = None
-    # Added fields for preprocessing artifact storage
     imputation_dict: Optional[Dict[str, float]] = None
     risk_tables: Optional[Dict[str, Dict]] = None
-    # Added metadata fields
     _input_format: Optional[str] = None
     smooth_factor: float = 0.0
     count_threshold: int = 0
+    model_path: Optional[str] = None  # Runtime path for model output
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -776,9 +848,9 @@ def create_numerical_processors(
 
 def data_preprocess_pipeline(
     config: Config,
-    tokenizer: Union[Tokenizer, AutoTokenizer],
+    tokenizer: Union["Tokenizer", "AutoTokenizer"],
     hyperparameters: Optional[Dict[str, Any]] = None,
-) -> Tuple[Union[Tokenizer, AutoTokenizer], Dict[str, Processor]]:
+) -> Tuple[Union["Tokenizer", "AutoTokenizer"], Dict[str, Processor]]:
     """
     Build text preprocessing pipelines using provided tokenizer.
 
@@ -1350,78 +1422,102 @@ def preprocess_single_record_with_text(
 
 # =================== Model Function ======================
 def model_fn(model_dir, context=None):
+    """
+    Load model for inference with comprehensive error logging.
+
+    This function loads the PyTorch model, preprocessing artifacts, and tokenizers.
+    Extensive logging helps diagnose initialization failures in TorchServe workers.
+    """
+    logger.info("=" * 80)
+    logger.info("MODEL_FN: Starting model initialization")
+    logger.info(f"MODEL_FN: Model directory: {model_dir}")
+    logger.info("=" * 80)
+
     model_filename = "model.pth"
     model_artifact_name = "model_artifacts.pth"
     onnx_model_path = os.path.join(model_dir, "model.onnx")
 
-    load_config, embedding_mat, vocab, model_class = load_artifacts(
-        os.path.join(model_dir, model_artifact_name), device_l=device
-    )
+    try:
+        logger.info("MODEL_FN: Step 1/7 - Loading model artifacts...")
+        load_config, embedding_mat, vocab, model_class = load_artifacts(
+            os.path.join(model_dir, model_artifact_name), device_l=device
+        )
+        logger.info(
+            f"MODEL_FN: ✓ Model artifacts loaded successfully (model_class={model_class})"
+        )
+    except Exception as e:
+        logger.error(f"MODEL_FN: ✗ FAILED to load model artifacts: {e}", exc_info=True)
+        raise
 
-    config = Config(**load_config)
+    try:
+        logger.info("MODEL_FN: Step 2/7 - Creating config object...")
+        config = Config(**load_config)
+        logger.info(
+            f"MODEL_FN: ✓ Config created (model_class={config.model_class}, is_binary={config.is_binary})"
+        )
+    except Exception as e:
+        logger.error(f"MODEL_FN: ✗ FAILED to create config: {e}", exc_info=True)
+        raise
 
     # ============================================================================
     # ONNX RUNTIME OPTIMIZATION CONFIGURATION
     # ============================================================================
-    # Read optimization configuration from environment variables
-    enable_bert_fusion = os.environ.get("ENABLE_BERT_FUSION", "false").lower() == "true"
-    enable_profiling = (
-        os.environ.get("ENABLE_ONNX_PROFILING", "false").lower() == "true"
-    )
-    inter_op_threads = int(os.environ.get("ONNX_INTER_OP_THREADS", "1"))
-    intra_op_threads = int(os.environ.get("ONNX_INTRA_OP_THREADS", "4"))
+    # Names3Risk uses LSTM/Transformer models with custom BPE tokenizer
+    # No BERT-specific optimizations needed
+    try:
+        logger.info("MODEL_FN: Step 3/7 - Configuring ONNX runtime...")
+        enable_profiling = (
+            os.environ.get("ENABLE_ONNX_PROFILING", "false").lower() == "true"
+        )
+        inter_op_threads = int(os.environ.get("ONNX_INTER_OP_THREADS", "1"))
+        intra_op_threads = int(os.environ.get("ONNX_INTRA_OP_THREADS", "4"))
 
-    # ============================================================================
-    # GPU/CUDA SUPPORT CONFIGURATION
-    # ============================================================================
-    import onnxruntime as ort
+        # GPU/CUDA SUPPORT CONFIGURATION
+        import onnxruntime as ort
 
-    # Detect available execution providers
-    available_providers = ort.get_available_providers()
+        # Detect available execution providers
+        available_providers = ort.get_available_providers()
 
-    # Configure execution providers (try GPU first, fallback to CPU)
-    if "CUDAExecutionProvider" in available_providers:
-        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-        logger.info("✓ CUDA available, using GPU acceleration")
+        # Configure execution providers (try GPU first, fallback to CPU)
+        if "CUDAExecutionProvider" in available_providers:
+            providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+            logger.info("  ✓ CUDA available, using GPU acceleration")
 
-        # CUDA-specific optimization options
-        provider_options = [
-            {
-                "device_id": 0,
-                "arena_extend_strategy": "kSameAsRequested",
-                "cudnn_conv_algo_search": "DEFAULT",
-                "do_copy_in_default_stream": True,
-                "cudnn_conv_use_max_workspace": "1",
-            },
-            {},  # CPU options (empty)
-        ]
-    else:
-        providers = ["CPUExecutionProvider"]
-        provider_options = [{}]
-        logger.warning("CUDA not available, using CPU")
-
-    logger.info(f"Active execution providers: {providers}")
-
-    # Load model based on file type
-    if os.path.exists(onnx_model_path):
-        logger.info("Detected ONNX model.")
-
-        if enable_bert_fusion:
-            # ✅ Phase 1 + Phase 2: Full ONNX optimization with BERT fusion
-            logger.info(
-                "Loading with Phase 1 + Phase 2 optimizations (BERT fusion + SessionOptions)"
-            )
-            model = load_bert_optimized_model(
-                model_dir=model_dir,
-                enable_profiling=enable_profiling,
-                inter_op_threads=inter_op_threads,
-                intra_op_threads=intra_op_threads,
-                providers=providers,
-                provider_options=provider_options,
-            )
+            # CUDA-specific optimization options
+            provider_options = [
+                {
+                    "device_id": 0,
+                    "arena_extend_strategy": "kSameAsRequested",
+                    "cudnn_conv_algo_search": "DEFAULT",
+                    "do_copy_in_default_stream": True,
+                    "cudnn_conv_use_max_workspace": "1",
+                },
+                {},  # CPU options (empty)
+            ]
         else:
-            # Phase 1 only: SessionOptions optimization (no BERT fusion)
-            logger.info("Loading with Phase 1 optimizations only (SessionOptions)")
+            providers = ["CPUExecutionProvider"]
+            provider_options = [{}]
+            logger.info("  ✓ CUDA not available, using CPU")
+
+        logger.info(f"MODEL_FN: ✓ ONNX runtime configured (providers={providers})")
+    except Exception as e:
+        logger.error(
+            f"MODEL_FN: ✗ FAILED to configure ONNX runtime: {e}", exc_info=True
+        )
+        raise
+
+    # ============================================================================
+    # MODEL LOADING: PRIORITIZE ONNX OVER PYTORCH .PTH
+    # ============================================================================
+    try:
+        logger.info("MODEL_FN: Step 4/7 - Loading model...")
+        pytorch_model_path = os.path.join(model_dir, model_filename)
+
+        if os.path.exists(onnx_model_path):
+            # Load ONNX model (PREFERRED)
+            logger.info("  ✓ Detected ONNX model (preferred)")
+            logger.info(f"  Loading from: {onnx_model_path}")
+
             model = load_onnx_model(
                 onnx_path=onnx_model_path,
                 enable_profiling=enable_profiling,
@@ -1430,69 +1526,119 @@ def model_fn(model_dir, context=None):
                 providers=providers,
                 provider_options=provider_options,
             )
-    else:
-        logger.info("Detected PyTorch model.")
-        model = load_model(
-            os.path.join(model_dir, model_filename),
-            config.model_dump(),
-            embedding_mat,
-            model_class,
-            device_l=device,
-        )
-        model.eval()
+            logger.info("MODEL_FN: ✓ Loaded ONNX model")
+
+        elif os.path.exists(pytorch_model_path):
+            # Fall back to PyTorch model
+            logger.info("  ONNX model not found, falling back to PyTorch .pth model")
+            logger.info(f"  Loading from: {pytorch_model_path}")
+
+            model = load_model(
+                pytorch_model_path,
+                vars(config),
+                embedding_mat,
+                model_class,
+                device_l=device,
+            )
+            model.eval()
+            logger.info(
+                f"MODEL_FN: ✓ Loaded PyTorch model from {model_filename} as fallback"
+            )
+
+        else:
+            # Neither model found - raise error
+            error_msg = (
+                f"No model found in {model_dir}. "
+                f"Expected either 'model.onnx' (ONNX) or '{model_filename}' (PyTorch)"
+            )
+            logger.error(f"MODEL_FN: ✗ {error_msg}")
+            raise FileNotFoundError(error_msg)
+
+    except Exception as e:
+        logger.error(f"MODEL_FN: ✗ FAILED to load model: {e}", exc_info=True)
+        raise
 
     # Load feature columns if available (for alignment with XGBoost pattern)
-    feature_columns = read_feature_columns(model_dir)
+    try:
+        logger.info(
+            "MODEL_FN: Step 5/7 - Loading feature columns and preprocessing artifacts..."
+        )
+        feature_columns = read_feature_columns(model_dir)
+        if feature_columns:
+            logger.info(f"  ✓ Loaded {len(feature_columns)} feature columns")
 
-    # Load hyperparameters if available (for alignment with XGBoost pattern)
-    hyperparameters = load_hyperparameters(model_dir)
+        hyperparameters = load_hyperparameters(model_dir)
+        if hyperparameters:
+            logger.info(f"  ✓ Loaded hyperparameters ({len(hyperparameters)} keys)")
 
-    # Load preprocessing artifacts (NEW - similar to XGBoost handler)
-    logger.info("Loading preprocessing artifacts...")
-    risk_tables = load_risk_tables(model_dir)
-    risk_processors = create_risk_processors(risk_tables) if risk_tables else {}
+        risk_tables = load_risk_tables(model_dir)
+        risk_processors = create_risk_processors(risk_tables) if risk_tables else {}
+        if risk_processors:
+            logger.info(f"  ✓ Created {len(risk_processors)} risk processors")
 
-    impute_dict = load_imputation_dict(model_dir)
-    numerical_processors = (
-        create_numerical_processors(impute_dict) if impute_dict else {}
-    )
+        impute_dict = load_imputation_dict(model_dir)
+        numerical_processors = (
+            create_numerical_processors(impute_dict) if impute_dict else {}
+        )
+        if numerical_processors:
+            logger.info(f"  ✓ Created {len(numerical_processors)} numerical processors")
+
+        logger.info("MODEL_FN: ✓ Preprocessing artifacts loaded")
+    except Exception as e:
+        logger.error(
+            f"MODEL_FN: ✗ FAILED to load preprocessing artifacts: {e}", exc_info=True
+        )
+        raise
 
     # ============================================================================
     # LOAD TOKENIZER FROM MODEL ARTIFACTS
     # ============================================================================
-    # Priority order:
-    # 1. Custom BPE tokenizer (lstm2risk/transformer2risk) from tokenizer.json
-    # 2. BERT tokenizer from saved tokenizer/ directory
-    # 3. Download from HuggingFace using config.tokenizer name
-    # ============================================================================
-    logger.info("Loading tokenizer...")
+    try:
+        logger.info("MODEL_FN: Step 6/7 - Loading tokenizer...")
+        custom_tokenizer_file = os.path.join(model_dir, "tokenizer.json")
+        saved_tokenizer_dir = os.path.join(model_dir, "tokenizer")
 
-    custom_tokenizer_file = os.path.join(model_dir, "tokenizer.json")
-    saved_tokenizer_dir = os.path.join(model_dir, "tokenizer")
+        if os.path.exists(custom_tokenizer_file):
+            # Load custom BPE tokenizer (lstm2risk/transformer2risk)
+            logger.info(f"  Loading custom BPE tokenizer from {custom_tokenizer_file}")
+            tokenizer = Tokenizer.from_file(custom_tokenizer_file)
+            config.pad_token_id = tokenizer.token_to_id("[PAD]")
+            logger.info(
+                f"MODEL_FN: ✓ Loaded custom BPE tokenizer (pad_token_id={config.pad_token_id})"
+            )
 
-    if os.path.exists(custom_tokenizer_file):
-        # Load custom BPE tokenizer (lstm2risk/transformer2risk)
-        logger.info(f"Loading custom BPE tokenizer from {custom_tokenizer_file}")
-        tokenizer = Tokenizer.from_file(custom_tokenizer_file)
-        config.pad_token_id = tokenizer.token_to_id("[PAD]")
-        logger.info("✓ Loaded custom BPE tokenizer from model artifacts")
+        elif os.path.exists(saved_tokenizer_dir):
+            # Load saved BERT tokenizer
+            logger.info(f"  Loading saved BERT tokenizer from {saved_tokenizer_dir}")
+            tokenizer = AutoTokenizer.from_pretrained(
+                saved_tokenizer_dir, use_fast=True
+            )
+            logger.info("MODEL_FN: ✓ Loaded BERT tokenizer from model artifacts")
 
-    elif os.path.exists(saved_tokenizer_dir):
-        # Load saved BERT tokenizer
-        logger.info(f"Loading saved BERT tokenizer from {saved_tokenizer_dir}")
-        tokenizer = AutoTokenizer.from_pretrained(saved_tokenizer_dir, use_fast=True)
-        logger.info("✓ Loaded BERT tokenizer from model artifacts")
+        else:
+            # Fall back to HuggingFace download
+            if not config.tokenizer:
+                config.tokenizer = "bert-base-multilingual-cased"
+            logger.info(f"  Loading tokenizer from HuggingFace: {config.tokenizer}")
+            tokenizer = AutoTokenizer.from_pretrained(config.tokenizer, use_fast=True)
+            logger.info("MODEL_FN: ✓ Loaded tokenizer from HuggingFace")
 
-    else:
-        # Fall back to HuggingFace download
-        if not config.tokenizer:
-            config.tokenizer = "bert-base-multilingual-cased"
-        logger.info(f"Loading tokenizer from HuggingFace: {config.tokenizer}")
-        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer, use_fast=True)
-        logger.info("✓ Loaded tokenizer from HuggingFace")
+    except Exception as e:
+        logger.error(f"MODEL_FN: ✗ FAILED to load tokenizer: {e}", exc_info=True)
+        raise
 
     # Reconstruct pipelines with loaded tokenizer
-    tokenizer, pipelines = data_preprocess_pipeline(config, tokenizer, hyperparameters)
+    try:
+        logger.info("MODEL_FN: Step 7/7 - Building preprocessing pipelines...")
+        tokenizer, pipelines = data_preprocess_pipeline(
+            config, tokenizer, hyperparameters
+        )
+        logger.info(f"MODEL_FN: ✓ Built {len(pipelines)} preprocessing pipelines")
+        for pipeline_name in pipelines.keys():
+            logger.info(f"  - {pipeline_name}")
+    except Exception as e:
+        logger.error(f"MODEL_FN: ✗ FAILED to build pipelines: {e}", exc_info=True)
+        raise
 
     # Add multiclass label processor if needed
     if not config.is_binary and config.num_classes > 2:
@@ -1511,9 +1657,17 @@ def model_fn(model_dir, context=None):
             pipelines[config.label_name] = label_processor
 
     # Load calibration model if available
-    calibrator = load_calibration_model(model_dir)
-    if calibrator:
-        logger.info("Calibration model loaded successfully")
+    try:
+        calibrator = load_calibration_model(model_dir)
+        if calibrator:
+            logger.info(f"✓ Calibration model loaded (type={calibrator.get('type')})")
+    except Exception as e:
+        logger.warning(f"Could not load calibration model: {e}")
+        calibrator = None
+
+    logger.info("=" * 80)
+    logger.info("MODEL_FN: ✓ ALL INITIALIZATION STEPS COMPLETED SUCCESSFULLY")
+    logger.info("=" * 80)
 
     return {
         "model": model,
@@ -1632,7 +1786,7 @@ def predict_fn(input_object, model_data, context=None):
     calibrator = model_data.get("calibrator")
     feature_columns = model_data.get("feature_columns")
 
-    config_predict = config.model_dump()
+    config_predict = vars(config)
     label_field = config_predict.get("label_name", None)
 
     if label_field:
@@ -1685,6 +1839,19 @@ def predict_fn(input_object, model_data, context=None):
             logger.info("Model prediction...")
             with log_timing("Fast Path - Model Inference"):
                 raw_probs = model_online_inference(model, [batch_dict])
+
+            # ========================================================
+            # UNIVERSAL NORMALIZATION (NEW!)
+            # Ensures probs is always (N, num_classes) for calibration
+            # ========================================================
+            logger.info(f"Raw model output shape: {raw_probs.shape}")
+            with log_timing("Fast Path - Probability Normalization"):
+                raw_probs = normalize_probability_shape(
+                    raw_probs,
+                    is_binary=config.is_binary,
+                    num_classes=config.num_classes
+                )
+            logger.info(f"Normalized probability shape: {raw_probs.shape}")
 
             # Apply calibration if available
             if calibrator:
@@ -1756,6 +1923,18 @@ def predict_fn(input_object, model_data, context=None):
     try:
         logger.info("Model prediction...")
         raw_probs = model_online_inference(model, predict_dataloader)
+
+        # ========================================================
+        # UNIVERSAL NORMALIZATION (NEW!)
+        # Ensures probs is always (N, num_classes) for calibration
+        # ========================================================
+        logger.info(f"Raw model output shape: {raw_probs.shape}")
+        raw_probs = normalize_probability_shape(
+            raw_probs,
+            is_binary=config.is_binary,
+            num_classes=config.num_classes
+        )
+        logger.info(f"Normalized probability shape: {raw_probs.shape}")
 
         # Apply calibration if available
         if calibrator:
