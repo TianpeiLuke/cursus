@@ -654,25 +654,34 @@ def create_pipeline_dataset(
     """
     from pathlib import Path
 
-    # Check if directory contains shards
-    data_path = Path(eval_data_dir)
-    has_shards = any(data_path.glob("part-*.parquet")) or any(
-        data_path.glob("part-*.csv")
+    # Extract subdirectory from filename if present (e.g., "calibration/part-00000.parquet")
+    # This handles the case where preprocessing outputs to job_type subdirectories
+    if filename and "/" in filename:
+        shard_dir = Path(eval_data_dir) / Path(filename).parent
+        logger.info(
+            f"[STREAMING] Detected subdirectory in filename: {Path(filename).parent}"
+        )
+    else:
+        shard_dir = Path(eval_data_dir)
+
+    # Check if directory contains shards (check in the correct subdirectory)
+    has_shards = any(shard_dir.glob("part-*.parquet")) or any(
+        shard_dir.glob("part-*.csv")
     )
 
     if use_streaming and has_shards:
-        logger.info(f"[STREAMING] Loading PipelineIterableDataset from {eval_data_dir}")
+        logger.info(f"[STREAMING] Loading PipelineIterableDataset from {shard_dir}")
         logger.info(f"[STREAMING] Found sharded data - using incremental loading")
         pipeline_dataset = PipelineIterableDataset(
             config=config,
-            file_dir=eval_data_dir,
+            file_dir=str(shard_dir),
             shuffle_shards=False,  # No shuffling for evaluation
         )
         logger.info(f"[STREAMING] Streaming dataset created (memory-efficient mode)")
         return pipeline_dataset
     elif use_streaming and not has_shards:
         logger.warning(
-            f"[WARNING] ENABLE_TRUE_STREAMING=true but no shards found in {eval_data_dir}"
+            f"[WARNING] ENABLE_TRUE_STREAMING=true but no shards found in {shard_dir}"
         )
         logger.warning(
             f"[WARNING] Falling back to batch mode with single file: {filename}"

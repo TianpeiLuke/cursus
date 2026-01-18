@@ -643,11 +643,22 @@ def create_pipeline_dataset(
     if use_streaming:
         # STREAMING MODE: Load from directory with shards
         logger.info(f"[EVAL] Creating PipelineIterableDataset (streaming mode)")
-        logger.info(f"[EVAL] Loading sharded data from: {eval_data_dir}")
+
+        # Extract subdirectory from filename if present (e.g., "calibration/part-00000.parquet")
+        # This handles the case where preprocessing outputs to job_type subdirectories
+        if filename and "/" in filename:
+            shard_dir = os.path.join(eval_data_dir, os.path.dirname(filename))
+            logger.info(
+                f"[EVAL] Detected subdirectory in filename: {os.path.dirname(filename)}"
+            )
+        else:
+            shard_dir = eval_data_dir
+
+        logger.info(f"[EVAL] Loading sharded data from: {shard_dir}")
 
         pipeline_dataset = PipelineIterableDataset(
             config=config,
-            file_dir=eval_data_dir,
+            file_dir=shard_dir,
             shuffle_shards=False,  # No shuffling for evaluation
         )
         logger.info("[EVAL] Streaming dataset created (memory-efficient mode)")

@@ -289,38 +289,55 @@ def detect_and_apply_names3risk_preprocessing(
     df: pd.DataFrame, log_func: Callable
 ) -> pd.DataFrame:
     """
-    Simplified preprocessing - SQL Cradle query handles heavy lifting.
+    Auto-detect and apply Names3Risk-specific preprocessing.
 
-    SQL Cradle Query performs:
-    1. Amazon email filtering (emailDomain NOT LIKE '%amazon.%')
-    2. Label creation (F/I→1, N→0 via CASE statement)
-    3. Order deduplication (by objectId, ordered by orderDate)
-    4. Customer deduplication (by customerId, keep earliest orderDate)
-    5. Sampling (50% of normal status via MOD(ABS(HASH(objectId)), 100) < 50)
+    Applies transformations matching legacy train.py behavior (EXACT ORDER):
+    1. Amazon email filtering: Remove amazon.com emails (FIRST - reduces volume)
+    2. Create label from status field (F/I→1, N→0, filter invalid)
+    3. Text concatenation: email|billing|customer|payment → 'text' field
+    4. Sort by orderDate (before deduplication for consistency)
+    5. Customer deduplication: Keep first occurrence by customerId
 
-    Python only handles:
-    - Text concatenation (if all 4 name fields exist)
-    - Schema validation and logging
+    Zero configuration required - smart defaults based on data shape.
 
     Args:
-        df: Input DataFrame from Cradle SQL query
+        df: Input DataFrame
         log_func: Logging function (e.g., print or logger.info)
 
     Returns:
-        DataFrame with optional 'text' field added
+        Preprocessed DataFrame
     """
-    log_func("[INFO] SQL preprocessing already applied (filtering, dedup, labels)")
-    log_func(f"[INFO] Input shape: {df.shape}")
+    # 1. Amazon email filtering (FIRST - reduces data volume early, matches legacy)
+    if "emailDomain" in df.columns:
+        initial_count = len(df)
+        df = df[~df["emailDomain"].str.lower().str.contains("amazon.", na=False)].copy()
+        filtered = initial_count - len(df)
+        if filtered > 0:
+            log_func(
+                f"[INFO] Filtered {filtered} amazon.com emails ({filtered / initial_count * 100:.2f}%)"
+            )
 
-    # Validate label column exists (should come from SQL)
-    if "label" not in df.columns:
-        raise RuntimeError(
-            "Label column missing - ensure SQL CASE statement is correct"
-        )
+    # 2. Create label from status field (if exists and no label field)
+    if "status" in df.columns and "label" not in df.columns:
+        log_func("[INFO] Creating label from status field (F/I→1, N→0)...")
+        initial_count = len(df)
 
-    log_func(f"[INFO] Label distribution: {df['label'].value_counts().to_dict()}")
+        # Map status to label: F/I (fraud/investigation) → 1, N (normal) → 0, others → NaN
+        status_map = {"F": 1, "I": 1, "N": 0}
+        df.loc[:, "label"] = df["status"].map(status_map)
 
-    # Text concatenation (ONLY if all 4 fields exist)
+        # Filter out records with invalid status (label is NaN)
+        df = df[df["label"].notna()]
+        filtered = initial_count - len(df)
+
+        if filtered > 0:
+            log_func(
+                f"[INFO] Filtered {filtered} records with invalid status ({filtered / initial_count * 100:.2f}%)"
+            )
+
+        log_func(f"[INFO] Label distribution: {df['label'].value_counts().to_dict()}")
+
+    # 3. Text concatenation (if all 4 fields exist)
     text_fields = [
         "emailAddress",
         "billingAddressName",
@@ -332,9 +349,21 @@ def detect_and_apply_names3risk_preprocessing(
         log_func("[INFO] Detected Names3Risk text fields, concatenating...")
         df["text"] = df[text_fields].fillna("[MISSING]").agg("|".join, axis=1)
         log_func(f"[INFO] Created 'text' field from {len(text_fields)} columns")
-    else:
-        missing = [f for f in text_fields if f not in df.columns]
-        log_func(f"[INFO] Missing text fields {missing}, skipping concatenation")
+
+    # 4. Sort by orderDate (BEFORE deduplication to ensure "first" is chronologically first)
+    if "orderDate" in df.columns:
+        log_func("[INFO] Sorting by orderDate for temporal consistency...")
+        df = df.sort_values("orderDate").reset_index(drop=True)
+
+    # 5. Deduplication by customerId (if exists)
+    if "customerId" in df.columns:
+        initial_count = len(df)
+        df = df.drop_duplicates(subset=["customerId"], keep="first")
+        removed = initial_count - len(df)
+        if removed > 0:
+            log_func(
+                f"[INFO] Removed {removed} duplicate customerIds ({removed / initial_count * 100:.2f}%)"
+            )
 
     return df
 

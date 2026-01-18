@@ -703,19 +703,27 @@ def build_batch_preprocessing_pipelines(
     pipelines = {}
     imputation_dict = {}
     risk_tables = {}
-    
+
     log_once(logger, "BATCH MODE PREPROCESSING")
-    
+
     # Validate fields
     if not use_precomputed_imputation and config.tab_field_list:
-        validate_numerical_fields(train_dataset.DataReader, config.tab_field_list, "train")
-    
-    text_fields = {config.text_name, config.primary_text_name, config.secondary_text_name} - {None}
+        validate_numerical_fields(
+            train_dataset.DataReader, config.tab_field_list, "train"
+        )
+
+    text_fields = {
+        config.text_name,
+        config.primary_text_name,
+        config.secondary_text_name,
+    } - {None}
     actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
-    
+
     if not use_precomputed_risk_tables and actual_cat_fields:
-        validate_categorical_fields(train_dataset.DataReader, actual_cat_fields, "train")
-    
+        validate_categorical_fields(
+            train_dataset.DataReader, actual_cat_fields, "train"
+        )
+
     # Numerical imputation
     if config.tab_field_list:
         imputation_loaded = False
@@ -723,19 +731,23 @@ def build_batch_preprocessing_pipelines(
             try:
                 imputation_dict = load_imputation_artifacts(model_artifacts_dir)
                 for field, value in imputation_dict.items():
-                    pipelines[field] = NumericalVariableImputationProcessor(column_name=field, imputation_value=value)
+                    pipelines[field] = NumericalVariableImputationProcessor(
+                        column_name=field, imputation_value=value
+                    )
                 imputation_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fitting imputation from data")
-        
+
         if not imputation_loaded:
             for field in config.tab_field_list:
-                proc = NumericalVariableImputationProcessor(column_name=field, strategy="mean")
+                proc = NumericalVariableImputationProcessor(
+                    column_name=field, strategy="mean"
+                )
                 proc.fit(train_dataset.DataReader[field])
                 pipelines[field] = proc
                 imputation_dict[field] = proc.get_imputation_value()
-    
+
     # Risk tables
     if actual_cat_fields:
         risk_tables_loaded = False
@@ -744,19 +756,28 @@ def build_batch_preprocessing_pipelines(
                 risk_tables = load_risk_table_artifacts(model_artifacts_dir)
                 for field, tables in risk_tables.items():
                     if field in actual_cat_fields:
-                        pipelines[field] = RiskTableMappingProcessor(column_name=field, label_name=config.label_name, risk_tables=tables)
+                        pipelines[field] = RiskTableMappingProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=tables,
+                        )
                 risk_tables_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fitting risk tables from data")
-        
+
         if not risk_tables_loaded:
             for field in actual_cat_fields:
-                proc = RiskTableMappingProcessor(column_name=field, label_name=config.label_name, smooth_factor=config.smooth_factor, count_threshold=config.count_threshold)
+                proc = RiskTableMappingProcessor(
+                    column_name=field,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                )
                 proc.fit(train_dataset.DataReader)
                 pipelines[field] = proc
                 risk_tables[field] = proc.get_risk_tables()
-    
+
     return pipelines, imputation_dict, risk_tables
 
 
@@ -772,13 +793,17 @@ def build_streaming_preprocessing_pipelines(
     pipelines = {}
     imputation_dict = {}
     risk_tables = {}
-    
+
     log_once(logger, "STREAMING MODE PREPROCESSING")
     log_once(logger, "⚠️  Skipping field validation in streaming mode")
-    
-    text_fields = {config.text_name, config.primary_text_name, config.secondary_text_name} - {None}
+
+    text_fields = {
+        config.text_name,
+        config.primary_text_name,
+        config.secondary_text_name,
+    } - {None}
     actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
-    
+
     # Numerical imputation
     if config.tab_field_list:
         imputation_loaded = False
@@ -786,18 +811,26 @@ def build_streaming_preprocessing_pipelines(
             try:
                 imputation_dict = load_imputation_artifacts(model_artifacts_dir)
                 for field, value in imputation_dict.items():
-                    pipelines[field] = StreamingNumericalImputationProcessor(column_name=field, imputation_value=value)
+                    pipelines[field] = StreamingNumericalImputationProcessor(
+                        column_name=field, imputation_value=value
+                    )
                 imputation_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fixed imputation values")
-        
+
         if not imputation_loaded:
             for field in config.tab_field_list:
-                impute_value = config.imputation_dict.get(field, 0.0) if config.imputation_dict else 0.0
-                pipelines[field] = StreamingNumericalImputationProcessor(column_name=field, imputation_value=impute_value)
+                impute_value = (
+                    config.imputation_dict.get(field, 0.0)
+                    if config.imputation_dict
+                    else 0.0
+                )
+                pipelines[field] = StreamingNumericalImputationProcessor(
+                    column_name=field, imputation_value=impute_value
+                )
                 imputation_dict[field] = impute_value
-    
+
     # Risk tables
     if actual_cat_fields:
         risk_tables_loaded = False
@@ -806,25 +839,49 @@ def build_streaming_preprocessing_pipelines(
                 risk_tables = load_risk_table_artifacts(model_artifacts_dir)
                 for field, tables in risk_tables.items():
                     if field in actual_cat_fields:
-                        pipelines[field] = StreamingRiskTableProcessor(column_name=field, label_name=config.label_name, risk_tables=tables)
+                        pipelines[field] = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=tables,
+                        )
                 risk_tables_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fitting risk tables from data")
-        
+
         if not risk_tables_loaded:
             if config.risk_tables:
                 for field in actual_cat_fields:
                     if field in config.risk_tables:
-                        pipelines[field] = StreamingRiskTableProcessor(column_name=field, label_name=config.label_name, risk_tables=config.risk_tables[field])
+                        pipelines[field] = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=config.risk_tables[field],
+                        )
                         risk_tables[field] = config.risk_tables[field]
             elif actual_cat_fields:
-                dummy_proc = StreamingRiskTableProcessor(column_name="dummy", label_name=config.label_name, smooth_factor=config.smooth_factor, count_threshold=config.count_threshold)
-                risk_tables = dummy_proc.fit_streaming(dataset=train_dataset, field_names=actual_cat_fields, label_name=config.label_name, smooth_factor=config.smooth_factor, count_threshold=config.count_threshold, show_progress=True)
+                dummy_proc = StreamingRiskTableProcessor(
+                    column_name="dummy",
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                )
+                risk_tables = dummy_proc.fit_streaming(
+                    dataset=train_dataset,
+                    field_names=actual_cat_fields,
+                    label_name=config.label_name,
+                    smooth_factor=config.smooth_factor,
+                    count_threshold=config.count_threshold,
+                    show_progress=True,
+                )
                 for field in actual_cat_fields:
                     if field in risk_tables:
-                        pipelines[field] = StreamingRiskTableProcessor(column_name=field, label_name=config.label_name, risk_tables=risk_tables[field])
-    
+                        pipelines[field] = StreamingRiskTableProcessor(
+                            column_name=field,
+                            label_name=config.label_name,
+                            risk_tables=risk_tables[field],
+                        )
+
     return pipelines, imputation_dict, risk_tables
 
 
@@ -839,7 +896,7 @@ def build_preprocessing_pipelines(
 ) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
     """
     Router function that delegates to batch or streaming preprocessing.
-    
+
     Args:
         config: Configuration object
         datasets: List of [train, val, test] datasets
@@ -847,12 +904,12 @@ def build_preprocessing_pipelines(
         use_precomputed_imputation: Whether to use pre-computed imputation
         use_precomputed_risk_tables: Whether to use pre-computed risk tables
         use_streaming: Explicit flag from ENABLE_TRUE_STREAMING env var
-    
+
     Returns:
         Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
     """
     train_dataset = datasets[0]
-    
+
     log_once(logger, "=" * 70)
     log_once(logger, "PREPROCESSING PIPELINE BUILDER")
     log_once(logger, f"Mode: {'STREAMING' if use_streaming else 'BATCH'}")
@@ -860,16 +917,22 @@ def build_preprocessing_pipelines(
     log_once(logger, f"USE_PRECOMPUTED_IMPUTATION: {use_precomputed_imputation}")
     log_once(logger, f"USE_PRECOMPUTED_RISK_TABLES: {use_precomputed_risk_tables}")
     log_once(logger, "=" * 70)
-    
+
     if use_streaming:
         return build_streaming_preprocessing_pipelines(
-            config, train_dataset, model_artifacts_dir,
-            use_precomputed_imputation, use_precomputed_risk_tables
+            config,
+            train_dataset,
+            model_artifacts_dir,
+            use_precomputed_imputation,
+            use_precomputed_risk_tables,
         )
     else:
         return build_batch_preprocessing_pipelines(
-            config, train_dataset, model_artifacts_dir,
-            use_precomputed_imputation, use_precomputed_risk_tables
+            config,
+            train_dataset,
+            model_artifacts_dir,
+            use_precomputed_imputation,
+            use_precomputed_risk_tables,
         )
 
 
@@ -1233,7 +1296,10 @@ def load_and_preprocess_data(
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config, tokenizer: AutoTokenizer, datasets: List[PipelineDataset], use_streaming: bool = False
+    config: Config,
+    tokenizer: AutoTokenizer,
+    datasets: List[PipelineDataset],
+    use_streaming: bool = False,
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     # Use unified collate function for all model types
     logger.info(f"Using collate batch for model: {config.model_class}")
@@ -1565,7 +1631,7 @@ def main(
 
     # Extract use_streaming flag from environ_vars
     use_streaming = environ_vars.get("ENABLE_TRUE_STREAMING", False)
-    
+
     model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
         build_model_and_optimizer(config, tokenizer, datasets, use_streaming)
     )

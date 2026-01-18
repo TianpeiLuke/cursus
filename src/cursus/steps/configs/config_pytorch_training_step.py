@@ -140,7 +140,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "ml.p3.8xlarge",
             "ml.p3.16xlarge",
             "ml.p4d.24xlarge",
-	    "ml.p4de.24xlarge",
+            "ml.p4de.24xlarge",
         ]
         if v not in valid_instances:
             raise ValueError(
