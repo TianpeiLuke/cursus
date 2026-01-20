@@ -46,23 +46,61 @@ warnings.filterwarnings("ignore", category=UserWarning, module="bs4")
 
 class PipelineIterableDataset(IterableDataset):
     """
-    Streaming dataset for multimodal input with per-column processing pipelines.
+    Streaming dataset for multimodal input with distributed training support.
 
     Memory-efficient alternative to PipelineDataset that loads data incrementally
     from multiple shard files. Maintains the same pipeline injection API for
     backward compatibility.
 
+    **Distributed Training Support**:
+
+    The dataset implements two-tier sharding for distributed training:
+
+    1. **Rank-based sharding**: Shards are distributed across GPU ranks using
+       round-robin assignment (rank 0 gets shards [0, world_size, 2*world_size, ...]).
+       This ensures each GPU processes unique data in FSDP/DDP training.
+
+    2. **Worker-based sharding**: Within each rank, shards are further distributed
+       across DataLoader workers for parallel loading.
+
+    **Example Usage**:
+
+    Single GPU training:
+        >>> dataset = PipelineIterableDataset(
+        ...     config=config,
+        ...     file_dir="/data/train",
+        ... )
+        >>> loader = DataLoader(dataset, batch_size=32, num_workers=4)
+
+    Distributed training (FSDP):
+        >>> # Same code! Distribution happens automatically
+        >>> dataset = PipelineIterableDataset(
+        ...     config=config,
+        ...     file_dir="/data/train",
+        ... )
+        >>> loader = DataLoader(dataset, batch_size=32, num_workers=4)
+        >>>
+        >>> trainer = pl.Trainer(strategy=FSDPStrategy(), devices=8)
+        >>> trainer.fit(model, loader)
+
+    Epoch-aware shuffling:
+        >>> for epoch in range(num_epochs):
+        ...     dataset.set_epoch(epoch)  # Important for deterministic shuffling
+        ...     for batch in loader:
+        ...         # Training step
+
     Attributes:
         config: Configuration dictionary (same as PipelineDataset)
         processor_pipelines: Dictionary mapping field names to Processor pipelines
         shard_files: List of shard file paths to stream through
+        shuffle_shards: Whether to shuffle shard order per epoch
 
     Key Differences from PipelineDataset:
         - Inherits from IterableDataset (not Dataset)
         - Implements __iter__() instead of __getitem__()
         - Loads shards incrementally (not all at once)
         - No __len__() by default (optional estimate available)
-        - Automatic multi-worker shard distribution
+        - Automatic multi-GPU and multi-worker shard distribution
     """
 
     def __init__(
@@ -222,45 +260,94 @@ class PipelineIterableDataset(IterableDataset):
 
     def __iter__(self) -> Iterator[Dict]:
         """
-        Iterate through dataset, yielding one row at a time.
+        Iterate through dataset with proper distributed sharding.
 
-        Implements the core streaming logic:
-        1. Determine which shards this worker should process
-        2. Load each shard incrementally
-        3. Apply type conversions
-        4. Apply processor pipelines
-        5. Yield row dictionaries
-        6. Free memory after each shard
+        Implements two-tier sharding:
+        1. Rank-based sharding: Distribute shards across GPU ranks (FSDP/DDP)
+        2. Worker-based sharding: Distribute shards across DataLoader workers
 
-        Multi-GPU/Multi-Worker Support:
-            Automatically splits shards across workers using PyTorch's
-            get_worker_info(). Each worker gets every Nth shard where
-            N = total number of workers.
+        Example:
+            8 GPUs, 4 workers/GPU, 100 shards:
+            - Rank 0 gets shards [0, 8, 16, 24, ..., 96]
+            - Rank 0's worker 0 gets [0, 32, 64, 96]
+            - Rank 0's worker 1 gets [8, 40, 72]
+            - ...
+            - Rank 1 gets shards [1, 9, 17, 25, ..., 97]
+            - etc.
 
         Yields:
-            Dictionary representing one row with processed data
+            Dict: Processed row with applied pipelines
         """
-        # Get worker info for multi-process data loading
+        # ============================================================
+        # TIER 1: Rank-Based Sharding (NEW)
+        # ============================================================
+        if torch.distributed.is_initialized():
+            rank = torch.distributed.get_rank()
+            world_size = torch.distributed.get_world_size()
+
+            # Distribute shards across ranks using round-robin
+            shards_for_this_rank = self.shard_files[rank::world_size]
+
+            # Log distribution info (only once per rank)
+            if not hasattr(self, "_logged_rank_info"):
+                print(
+                    f"[IterableDataset] Rank {rank}/{world_size}: "
+                    f"Assigned {len(shards_for_this_rank)}/{len(self.shard_files)} shards"
+                )
+                self._logged_rank_info = True
+        else:
+            # Single GPU mode
+            shards_for_this_rank = self.shard_files
+            rank = 0
+            world_size = 1
+
+        # ============================================================
+        # TIER 2: Worker-Based Sharding (ENHANCED)
+        # ============================================================
         worker_info = torch.utils.data.get_worker_info()
 
         if worker_info is None:
-            # Single process: process all shards
-            shards_to_process = self.shard_files
+            # Single worker: process all shards for this rank
+            shards_to_process = shards_for_this_rank
             worker_id = 0
             num_workers = 1
         else:
-            # Multi-process: split shards across workers
+            # Multiple workers: distribute rank's shards across workers
             worker_id = worker_info.id
             num_workers = worker_info.num_workers
-            shards_to_process = self.shard_files[worker_id::num_workers]
+            shards_to_process = shards_for_this_rank[worker_id::num_workers]
 
-        # Shuffle shards if requested (per-worker shuffling)
+            if not hasattr(self, "_logged_worker_info"):
+                print(
+                    f"[IterableDataset] Rank {rank}, Worker {worker_id}/{num_workers}: "
+                    f"Processing {len(shards_to_process)} shards"
+                )
+                self._logged_worker_info = True
+
+        # ============================================================
+        # TIER 3: Shard Shuffling (ENHANCED)
+        # ============================================================
         if self.shuffle_shards and shards_to_process:
             shards_list = list(shards_to_process)
-            random.Random(42 + worker_id).shuffle(
-                shards_list
-            )  # Deterministic per worker
+
+            # Deterministic shuffle based on rank + worker + epoch
+            # This ensures reproducibility while maintaining randomness
+            shuffle_seed = (
+                42  # Base seed
+                + rank * 10000  # Rank offset
+                + worker_id * 100  # Worker offset
+                + getattr(self, "_current_epoch", 0)  # Epoch offset (set externally)
+            )
+
+            random.Random(shuffle_seed).shuffle(shards_list)
             shards_to_process = shards_list
+
+            if not hasattr(self, "_logged_shuffle_info"):
+                print(
+                    f"[IterableDataset] Rank {rank}, Worker {worker_id}: "
+                    f"Shuffled with seed {shuffle_seed}"
+                )
+                self._logged_shuffle_info = True
 
         # Handle DataFrame mode (for testing)
         if hasattr(self, "_dataframe_mode") and self._dataframe_mode:
@@ -339,6 +426,68 @@ class PipelineIterableDataset(IterableDataset):
                 return 0
 
         return 0
+
+    def set_epoch(self, epoch: int) -> None:
+        """
+        Set current epoch for deterministic shuffling.
+
+        Should be called at the start of each epoch, similar to
+        DistributedSampler.set_epoch().
+
+        Args:
+            epoch: Current epoch number
+
+        Example:
+            >>> dataset.set_epoch(epoch)
+            >>> for batch in dataloader:
+            >>>     # Training step
+        """
+        self._current_epoch = epoch
+
+    def get_shard_distribution_info(self) -> Dict[str, any]:
+        """
+        Get diagnostic information about shard distribution.
+
+        Returns:
+            Dict containing:
+                - total_shards: Total number of shards
+                - shards_per_rank: Number of shards assigned to this rank
+                - shards_per_worker: Number of shards per worker
+                - rank: Current rank
+                - world_size: Total number of ranks
+                - worker_id: Current worker ID (if available)
+                - num_workers: Total number of workers per rank
+                - assigned_shards: List of shard files assigned to this rank/worker
+        """
+        if torch.distributed.is_initialized():
+            rank = torch.distributed.get_rank()
+            world_size = torch.distributed.get_world_size()
+            shards_for_rank = self.shard_files[rank::world_size]
+        else:
+            rank = 0
+            world_size = 1
+            shards_for_rank = self.shard_files
+
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info:
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+            shards_for_worker = shards_for_rank[worker_id::num_workers]
+        else:
+            worker_id = 0
+            num_workers = 1
+            shards_for_worker = shards_for_rank
+
+        return {
+            "total_shards": len(self.shard_files),
+            "shards_per_rank": len(shards_for_rank),
+            "shards_per_worker": len(shards_for_worker),
+            "rank": rank,
+            "world_size": world_size,
+            "worker_id": worker_id,
+            "num_workers": num_workers,
+            "assigned_shards": [str(s) for s in shards_for_worker],
+        }
 
     # =========================================================================
     # Pipeline Injection API (IDENTICAL to PipelineDataset)

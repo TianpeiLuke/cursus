@@ -304,6 +304,36 @@ def log_once(logger, message, level=logging.INFO):
         logger.log(level, message)
 
 
+# =================== Streaming Dataset Epoch Callback =================================
+class StreamingEpochCallback(pl.Callback):
+    """
+    Callback to set epoch on streaming datasets for proper shuffling.
+
+    This ensures that each epoch has a different shuffle order while
+    maintaining deterministic shuffling for reproducibility.
+
+    Only works with datasets that have a set_epoch() method (e.g., PipelineIterableDataset).
+    """
+
+    def __init__(self, datasets: List):
+        """
+        Args:
+            datasets: List of datasets to set epoch on (typically [train_dataset])
+        """
+        self.datasets = datasets
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        """Called at the start of each training epoch."""
+        epoch = trainer.current_epoch
+        for dataset in self.datasets:
+            if hasattr(dataset, "set_epoch"):
+                dataset.set_epoch(epoch)
+                log_once(
+                    logger,
+                    f"[StreamingEpochCallback] Set epoch={epoch} on {type(dataset).__name__}",
+                )
+
+
 # -------------------------------------------------------------------------
 # FILE I/O HELPER FUNCTIONS WITH FORMAT PRESERVATION
 # -------------------------------------------------------------------------
@@ -401,6 +431,7 @@ class Config(BaseModel):
     )
     label_name: str = "label"
     batch_size: int = 32
+    eval_batch_size_multiplier: float = 2.0  # Multiplier for val/test batch sizes
     full_field_list: List[str] = Field(default_factory=list)
     cat_field_list: List[str] = Field(default_factory=list)
     tab_field_list: List[str] = Field(default_factory=list)
@@ -549,6 +580,7 @@ def load_parse_hyperparameters(hparam_path: str) -> Dict:
         "cat_field_list": safe_cast,
         "categorical_features_to_encode": safe_cast,
         "batch_size": safe_cast,
+        "eval_batch_size_multiplier": safe_cast,
         "max_sen_len": safe_cast,
         "chunk_trancate": safe_cast,
         "max_total_chunks": safe_cast,
@@ -1569,21 +1601,30 @@ def build_model_and_optimizer(
     logger.info("  - Handles text fields automatically via pipeline_dataloader")
 
     train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
-    batch_size = config_dict.get("batch_size", 32)
+    train_batch_size = config_dict.get("batch_size", 32)
+    eval_multiplier = config_dict.get("eval_batch_size_multiplier", 2.0)
+    eval_batch_size = int(train_batch_size * eval_multiplier)
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "BATCH SIZE CONFIGURATION")
+    log_once(logger, f"  Training batch size: {train_batch_size}")
+    log_once(logger, f"  Eval batch size multiplier: {eval_multiplier}x")
+    log_once(logger, f"  Val/Test batch size: {eval_batch_size}")
+    log_once(logger, "=" * 70)
 
     train_dataloader = DataLoader(
         train_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=batch_size,
+        batch_size=train_batch_size,
         shuffle=False if use_streaming else True,
     )
     val_dataloader = DataLoader(
-        val_pipeline_dataset, collate_fn=collate_batch, batch_size=batch_size
+        val_pipeline_dataset, collate_fn=collate_batch, batch_size=eval_batch_size
     )
     test_dataloader = DataLoader(
         test_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=batch_size,
+        batch_size=eval_batch_size,
     )
 
     # DEBUG: Inspect first batch to check token ID ranges
@@ -2046,6 +2087,16 @@ def main(
     log_once(logger, f"  config.input_tab_dim: {config.input_tab_dim}")
     log_once(logger, "=" * 70)
 
+    # Register StreamingEpochCallback if using streaming datasets
+    additional_callbacks = []
+    if use_streaming:
+        train_dataset = datasets[0]
+        epoch_callback = StreamingEpochCallback(datasets=[train_dataset])
+        additional_callbacks.append(epoch_callback)
+        log_once(
+            logger, "✓ Registered StreamingEpochCallback for epoch-aware shuffling"
+        )
+
     log_once(logger, "Training starts using pytorch.lightning ...")
     trainer = model_train(
         model,
@@ -2055,6 +2106,7 @@ def main(
         device="auto",
         model_log_path=paths["checkpoint"],
         early_stop_metric=config.early_stop_metric,
+        additional_callbacks=additional_callbacks if additional_callbacks else None,
     )
     log_once(logger, "Training Complete.")
     log_once(logger, "Evaluating final model.")

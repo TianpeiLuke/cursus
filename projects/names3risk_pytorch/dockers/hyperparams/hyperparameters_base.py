@@ -56,7 +56,14 @@ class ModelHyperparameters(BaseModel):
     lr: float = Field(default=3e-05, description="Learning rate.")
 
     batch_size: int = Field(
-        default=2, gt=0, le=256, description="Batch size for training."
+        default=2, gt=0, le=1024, description="Batch size for training."
+    )
+
+    eval_batch_size_multiplier: float = Field(
+        default=2.0,
+        gt=0,
+        le=10.0,
+        description="Multiplier for validation/test batch sizes (e.g., 2.0 = 2x training batch size).",
     )
 
     max_epochs: int = Field(

@@ -180,6 +180,7 @@ def model_train(
     device: Union[int, str, List[int]] = "auto",
     model_log_path: str = "./model_logs",
     early_stop_metric: str = "val/f1_score",
+    additional_callbacks: Optional[List[pl.Callback]] = None,
 ) -> pl.Trainer:
     max_epochs = config.get("max_epochs", 10)
     early_stop_patience = config.get("early_stop_patience", 10)
@@ -209,17 +210,24 @@ def model_train(
 
     device_stats_callback = DeviceStatsMonitor(cpu_stats=False)
 
+    # Combine default callbacks with additional callbacks
+    all_callbacks = [
+        earlystopping_callback,
+        checkpoint_callback,
+        device_stats_callback,
+        TQDMProgressBar(refresh_rate=10),
+        LearningRateMonitor(logging_interval="step"),
+    ]
+
+    if additional_callbacks:
+        all_callbacks.extend(additional_callbacks)
+        logger.info(f"Added {len(additional_callbacks)} additional callback(s)")
+
     trainer = pl.Trainer(
         max_epochs=max_epochs,
         logger=logger_tb,
         default_root_dir=model_log_path,
-        callbacks=[
-            earlystopping_callback,
-            checkpoint_callback,
-            device_stats_callback,
-            TQDMProgressBar(refresh_rate=10),
-            LearningRateMonitor(logging_interval="step"),
-        ],
+        callbacks=all_callbacks,
         val_check_interval=config.get("val_check_interval", 1.0),
         sync_batchnorm=True if torch.cuda.is_available() else False,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",

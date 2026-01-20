@@ -422,7 +422,7 @@ class Transformer2Risk(pl.LightningModule):
         loss = self.loss_fn(logits, labels) if labels is not None else None
 
         # Get predictions (probabilities)
-        preds = torch.softmax(logits, dim=1)
+        preds = torch.softmax(logits, dim=1)  # (B, num_classes)
         preds = preds[:, 1] if self.is_binary else preds
         return loss, preds, labels
 

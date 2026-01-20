@@ -1014,14 +1014,23 @@ def create_dataloader(
     )
     logger.info("  - Handles text fields automatically via pipeline_dataloader")
 
-    batch_size = config.get("batch_size", 32)
+    # Use eval batch size (training batch size × multiplier)
+    train_batch_size = config.get("batch_size", 32)
+    eval_multiplier = config.get("eval_batch_size_multiplier", 2.0)
+    eval_batch_size = int(train_batch_size * eval_multiplier)
+
+    logger.info(f"Batch size configuration:")
+    logger.info(f"  - Training batch size: {train_batch_size}")
+    logger.info(f"  - Eval multiplier: {eval_multiplier}x")
+    logger.info(f"  - Eval batch size: {eval_batch_size}")
+
     dataloader = DataLoader(
         pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=batch_size,
+        batch_size=eval_batch_size,
         shuffle=False,
     )
-    logger.info(f"Created DataLoader with batch_size={batch_size}")
+    logger.info(f"Created DataLoader with eval_batch_size={eval_batch_size}")
 
     return dataloader
 

@@ -383,31 +383,29 @@ if not logger.hasHandlers():
 
 
 def normalize_probability_shape(
-    probs: np.ndarray,
-    is_binary: bool,
-    num_classes: int
+    probs: np.ndarray, is_binary: bool, num_classes: int
 ) -> np.ndarray:
     """
     Universal probability shape normalizer for inference.
-    
+
     Ensures output is always (N, num_classes) regardless of model output format.
     This solves the calibration compatibility issue where binary models may output
     (N,) but calibration expects (N, 2).
-    
+
     Supported input formats:
     - Binary (N,): Single probability per sample → convert to (N, 2)
     - Binary (N, 1): Single probability column → convert to (N, 2)
     - Binary (N, 2): Full distribution → keep as-is
     - Multiclass (N, K): Full distribution → keep as-is
-    
+
     Args:
         probs: Probability array from ONNX/PyTorch model
         is_binary: Whether this is binary classification
         num_classes: Total number of classes
-        
+
     Returns:
         Normalized probability array with shape (N, num_classes)
-        
+
     Raises:
         ValueError: If input shape cannot be normalized
     """
@@ -415,23 +413,27 @@ def normalize_probability_shape(
     if len(probs.shape) == 2 and probs.shape[1] == num_classes:
         logger.debug(f"Probabilities already in correct shape: {probs.shape}")
         return probs
-    
+
     # Case 2: Binary classification with single probability
     if is_binary and num_classes == 2:
         if len(probs.shape) == 1:
             # (N,) → (N, 2)
-            logger.info(f"Converting binary probabilities from shape {probs.shape} to (N, 2)")
+            logger.info(
+                f"Converting binary probabilities from shape {probs.shape} to (N, 2)"
+            )
             probs_class_1 = probs
             probs_class_0 = 1.0 - probs_class_1
             return np.column_stack([probs_class_0, probs_class_1])
-            
+
         elif len(probs.shape) == 2 and probs.shape[1] == 1:
             # (N, 1) → (N, 2)
-            logger.info(f"Converting binary probabilities from shape {probs.shape} to (N, 2)")
+            logger.info(
+                f"Converting binary probabilities from shape {probs.shape} to (N, 2)"
+            )
             probs_class_1 = probs.squeeze()
             probs_class_0 = 1.0 - probs_class_1
             return np.column_stack([probs_class_0, probs_class_1])
-    
+
     # Case 3: Unexpected configuration
     raise ValueError(
         f"Cannot normalize probabilities with shape={probs.shape}, "
@@ -1849,7 +1851,7 @@ def predict_fn(input_object, model_data, context=None):
                 raw_probs = normalize_probability_shape(
                     raw_probs,
                     is_binary=config.is_binary,
-                    num_classes=config.num_classes
+                    num_classes=config.num_classes,
                 )
             logger.info(f"Normalized probability shape: {raw_probs.shape}")
 
@@ -1930,9 +1932,7 @@ def predict_fn(input_object, model_data, context=None):
         # ========================================================
         logger.info(f"Raw model output shape: {raw_probs.shape}")
         raw_probs = normalize_probability_shape(
-            raw_probs,
-            is_binary=config.is_binary,
-            num_classes=config.num_classes
+            raw_probs, is_binary=config.is_binary, num_classes=config.num_classes
         )
         logger.info(f"Normalized probability shape: {raw_probs.shape}")
 
