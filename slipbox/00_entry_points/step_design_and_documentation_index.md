@@ -119,6 +119,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Temporal Sequence Normalization Design](../1_design/temporal_sequence_normalization_design.md) - Design for temporal sequence normalization scripts
 - [Temporal Sequence Normalization Script](../scripts/temporal_sequence_normalization_script.md) - Script documentation for fixed-length sequence normalization with attention masks
 - [Temporal Self Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Detailed analysis of TSA scripts and preprocessing requirements
+- [Multi-Worker Streaming Preprocessing Design](../1_design/multi_worker_streaming_preprocessing_design.md) - **NEW** - Parallel shard loading in streaming mode for 5-10× throughput improvements with memory-safe two-level control
 
 **Implementation Documentation**
 - [Tabular Preprocessing Step Builder](../steps/tabular_preprocessing_step.md) - Step builder implementation
@@ -214,6 +215,7 @@ This index is organized to mirror the **actual pipeline execution order**, group
 
 **Deep Learning Training**
 - [Temporal Self Attention Model Design](../1_design/temporal_self_attention_model_design.md) - Design for temporal self-attention model architecture and training scripts
+- [Iterable Dataset Distributed Training Design](../1_design/iterable_dataset_distributed_training_design.md) - **NEW** - Memory-efficient distributed training with iterable datasets, streaming data loading, and multi-GPU support for large-scale datasets
 
 **Multi-Task Learning**
 - [LightGBM Multi-Task Training Step Design](../1_design/lightgbm_multi_task_training_step_design.md) - Design for LightGBM multi-task/multi-label training

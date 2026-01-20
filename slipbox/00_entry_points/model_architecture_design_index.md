@@ -306,6 +306,8 @@ Model Architecture Designs
 **Related Design Docs:**
 - [Names3Risk Model Design](../1_design/names3risk_model_design.md) - **PRIMARY** - Multi-modal fraud detection architecture
 - [Names3Risk PyTorch Reorganization Design](../1_design/names3risk_pytorch_reorganization_design.md) - **NEW** - Code reorganization into atomic components
+- [Iterable Dataset Distributed Training Design](../1_design/iterable_dataset_distributed_training_design.md) - **NEW** - Memory-efficient distributed training with iterable datasets and streaming data loading
+- [Multi-Worker Streaming Preprocessing Design](../1_design/multi_worker_streaming_preprocessing_design.md) - **NEW** - Parallel shard loading in streaming mode for 5-10× throughput improvements
 
 **Related Implementation Plans:**
 - [Names3Risk PyTorch Training Modifications](../2_project_planning/2026-01-07_names3risk_pytorch_training_modifications.md) - **NEW** - Implementation plan for pytorch_training.py modifications to support pretrained tokenizer and preprocessed data
