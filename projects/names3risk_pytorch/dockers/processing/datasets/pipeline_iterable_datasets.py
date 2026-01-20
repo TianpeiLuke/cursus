@@ -30,6 +30,9 @@ Example:
 import os
 import gc
 import random
+import queue
+import threading
+import logging
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -42,6 +45,8 @@ from ..processors import Processor
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="bs4")
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineIterableDataset(IterableDataset):
@@ -135,6 +140,11 @@ class PipelineIterableDataset(IterableDataset):
         Raises:
             TypeError: If neither file_dir nor dataframe is provided
             FileNotFoundError: If no shards found matching pattern
+
+        Note:
+            Data loading performance is optimized via DataLoader's num_workers
+            parameter, not dataset-level prefetching. For best performance:
+                loader = DataLoader(dataset, num_workers=4, prefetch_factor=2)
         """
         self.config = config
         self.header = config.get("header", 0)
@@ -371,7 +381,25 @@ class PipelineIterableDataset(IterableDataset):
 
             return
 
-        # Iterate through assigned shards
+        # ============================================================
+        # TIER 4: Sequential Shard Loading
+        # ============================================================
+        # Note: DataLoader's num_workers provides superior parallel loading.
+        # Dataset-level prefetching is redundant and causes thread conflicts.
+        yield from self._iterate_sequential(shards_to_process)
+
+    def _iterate_sequential(self, shards_to_process: List[Path]) -> Iterator[Dict]:
+        """
+        Sequential shard loading (original behavior).
+
+        Used when prefetching is disabled or only one shard to process.
+
+        Args:
+            shards_to_process: List of shard paths to load
+
+        Yields:
+            Dict: Processed row with applied pipelines
+        """
         for shard_idx, shard_path in enumerate(shards_to_process):
             # Load shard
             df = self._load_shard(shard_path)
@@ -383,7 +411,7 @@ class PipelineIterableDataset(IterableDataset):
             for idx in range(len(df)):
                 row = df.iloc[idx].to_dict()
 
-                # Apply processor pipelines (IDENTICAL to PipelineDataset.__getitem__)
+                # Apply processor pipelines
                 for field_name, pipeline in self.processor_pipelines.items():
                     if field_name in row:
                         row[field_name] = pipeline(row[field_name])

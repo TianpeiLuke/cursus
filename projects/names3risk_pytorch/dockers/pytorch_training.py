@@ -1164,16 +1164,16 @@ def load_data_module(
     if use_streaming and has_shards:
         log_once(logger, f"[STREAMING] Loading PipelineIterableDataset from {file_dir}")
         log_once(logger, f"[STREAMING] Found sharded data - using incremental loading")
+
         pipeline_dataset = PipelineIterableDataset(
             config=config.model_dump(),
             file_dir=file_dir,
-            shuffle_shards=True
-            if "train" in file_dir
-            else False,  # Shuffle for training only
+            shuffle_shards=True if "train" in file_dir else False,
         )
-        log_once(
-            logger, f"[STREAMING] Streaming dataset created (memory-efficient mode)"
-        )
+
+        log_once(logger, f"[STREAMING] Streaming dataset created (memory-efficient mode)")
+        log_once(logger, f"[STREAMING] Data loading optimized via DataLoader workers (num_workers=4, prefetch_factor=2)")
+
         return pipeline_dataset
     elif use_streaming and not has_shards:
         log_once(
@@ -1612,19 +1612,65 @@ def build_model_and_optimizer(
     log_once(logger, f"  Val/Test batch size: {eval_batch_size}")
     log_once(logger, "=" * 70)
 
+    # Configure DataLoader workers based on dataset mode
+    if use_streaming:
+        # STREAMING MODE: Use workers for parallel I/O from disk/S3
+        num_workers_per_rank = 4
+        use_persistent_workers = True
+        prefetch_factor = 2
+        
+        log_once(logger, "=" * 70)
+        log_once(logger, "DATALOADER CONFIGURATION: STREAMING MODE")
+        log_once(logger, f"  num_workers per rank: {num_workers_per_rank}")
+        log_once(logger, f"  persistent_workers: {use_persistent_workers}")
+        log_once(logger, f"  prefetch_factor: {prefetch_factor}")
+        log_once(logger, "  Rationale: Parallel shard loading for memory efficiency")
+        if torch.distributed.is_initialized():
+            world_size = torch.distributed.get_world_size()
+            log_once(
+                logger,
+                f"  Total workers: {world_size} ranks × {num_workers_per_rank} = {world_size * num_workers_per_rank}",
+            )
+        log_once(logger, "  Note: Each worker processes unique shards (no duplication)")
+        log_once(logger, "=" * 70)
+    else:
+        # BATCH MODE: No workers needed (data already loaded in memory)
+        num_workers_per_rank = 0
+        use_persistent_workers = False
+        prefetch_factor = None
+        
+        log_once(logger, "=" * 70)
+        log_once(logger, "DATALOADER CONFIGURATION: BATCH MODE")
+        log_once(logger, f"  num_workers: {num_workers_per_rank}")
+        log_once(logger, f"  persistent_workers: {use_persistent_workers}")
+        log_once(logger, "  Rationale: Data pre-loaded in memory (PipelineDataset)")
+        log_once(logger, "  Note: No parallel loading overhead, optimal for in-memory data")
+        log_once(logger, "=" * 70)
+
     train_dataloader = DataLoader(
         train_pipeline_dataset,
         collate_fn=collate_batch,
         batch_size=train_batch_size,
         shuffle=False if use_streaming else True,
+        num_workers=num_workers_per_rank,
+        persistent_workers=use_persistent_workers,
+        prefetch_factor=prefetch_factor if num_workers_per_rank > 0 else None,
     )
     val_dataloader = DataLoader(
-        val_pipeline_dataset, collate_fn=collate_batch, batch_size=eval_batch_size
+        val_pipeline_dataset,
+        collate_fn=collate_batch,
+        batch_size=eval_batch_size,
+        num_workers=num_workers_per_rank,
+        persistent_workers=use_persistent_workers,
+        prefetch_factor=prefetch_factor if num_workers_per_rank > 0 else None,
     )
     test_dataloader = DataLoader(
         test_pipeline_dataset,
         collate_fn=collate_batch,
         batch_size=eval_batch_size,
+        num_workers=num_workers_per_rank,
+        persistent_workers=use_persistent_workers,
+        prefetch_factor=prefetch_factor if num_workers_per_rank > 0 else None,
     )
 
     # DEBUG: Inspect first batch to check token ID ranges
