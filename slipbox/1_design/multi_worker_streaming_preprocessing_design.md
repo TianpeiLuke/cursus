@@ -23,6 +23,8 @@ date of note: 2026-01-20
 
 # Multi-Worker Streaming Preprocessing Design
 
+> **⚠️ NOTE**: This design describes an intermediate optimization (parallel I/O within batches) that has been **superseded** by the [Fully Parallel Streaming Preprocessing Design](./fully_parallel_streaming_preprocessing_design.md), which eliminates concatenation and achieves 8-10× better performance through end-to-end per-shard parallelism. This document is preserved for historical context and understanding the evolution of the architecture.
+
 ## 1. Executive Summary
 
 This document specifies the enhancement of the Names3Risk tabular preprocessing script to support **multi-worker parallel shard loading in streaming mode**. Currently, streaming mode loads shards sequentially, creating a significant I/O bottleneck. By adding multi-worker parallelization, we can achieve 5-10× throughput improvements while maintaining memory-efficient streaming behavior.

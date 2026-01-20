@@ -16,6 +16,7 @@ from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
 import gc
+import re
 from sklearn.model_selection import train_test_split
 
 # ============================================================================
@@ -1439,7 +1440,414 @@ def process_streaming_mode_preprocessing(
     return {}
 
 
-# --- Main Processing Logic ---
+# ============================================================================
+# FULLY PARALLEL STREAMING MODE (1:1 Shard Mapping)
+# ============================================================================
+
+
+def extract_shard_number(shard_path: Path) -> int:
+    """
+    Extract numeric shard number from filename.
+
+    Args:
+        shard_path: Path to shard file
+
+    Returns:
+        Shard number as integer
+
+    Examples:
+        part-00042.csv → 42
+        part-00042.csv.gz → 42
+        part-00000-68e1f319-...-c000.snappy.parquet → 0
+    """
+    stem = shard_path.stem
+    if (
+        stem.endswith(".csv")
+        or stem.endswith(".json")
+        or stem.endswith(".parquet")
+        or stem.endswith(".snappy")
+    ):
+        stem = Path(stem).stem
+    match = re.search(r"part-(\d+)", stem)
+    if match:
+        return int(match.group(1))
+    raise ValueError(f"Cannot extract shard number from {shard_path}")
+
+
+def write_shard_file(df: pd.DataFrame, output_path: Path, output_format: str) -> None:
+    """
+    Write DataFrame to file in specified format.
+
+    Args:
+        df: DataFrame to write
+        output_path: Full path to output file
+        output_format: "csv", "tsv", or "parquet"
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if output_format == "csv":
+        df.to_csv(output_path, index=False)
+    elif output_format == "tsv":
+        df.to_csv(output_path, sep="\t", index=False)
+    elif output_format == "parquet":
+        df.to_parquet(output_path, index=False)
+    else:
+        raise ValueError(f"Unsupported output format: {output_format}")
+
+
+def assign_stratified_splits_approximate(
+    df: pd.DataFrame, label_field: str, train_ratio: float, test_val_ratio: float
+) -> pd.DataFrame:
+    """
+    Approximate stratified split using per-label deterministic random assignment.
+
+    Each class gets the same split ratios independently, providing approximate
+    stratification without requiring global coordination.
+
+    Args:
+        df: Input DataFrame with label column
+        label_field: Name of label column
+        train_ratio: Proportion for training
+        test_val_ratio: Proportion of non-train for test vs val
+
+    Returns:
+        DataFrame with '_split' column added
+    """
+
+    def split_by_label(row):
+        # Use label value + fixed seed for deterministic per-class splitting
+        random.seed(hash(str(row[label_field])) + 42)
+        r = random.random()
+        random.seed()  # Reset seed
+
+        if r < train_ratio:
+            return "train"
+        elif r < train_ratio + (1 - train_ratio) * test_val_ratio:
+            return "val"
+        else:
+            return "test"
+
+    df["_split"] = df.apply(split_by_label, axis=1)
+    return df
+
+
+def process_shard_end_to_end_generic(args: tuple) -> Dict[str, int]:
+    """
+    Process a single shard completely: read → preprocess → split → write.
+
+    Generic version with approximate stratification or random splits.
+    No domain-specific preprocessing or global coordination required.
+
+    Args:
+        args: Tuple of (shard_path, shard_index, config_dict, output_base,
+                       signature_columns, label_field, optimize_memory, output_format,
+                       train_ratio, test_val_ratio)
+
+    Returns:
+        Statistics dict with row counts per split
+    """
+    (
+        shard_path,
+        shard_index,
+        config_dict,
+        output_base,
+        signature_columns,
+        label_field,
+        optimize_memory,
+        output_format,
+        train_ratio,
+        test_val_ratio,
+    ) = args
+
+    # Extract input shard number from filename
+    shard_num = extract_shard_number(shard_path)
+
+    # ============================================================
+    # STEP 1: Read Single Shard
+    # ============================================================
+    df = _read_file_to_df(shard_path, signature_columns)
+
+    # ============================================================
+    # STEP 2: Generic Preprocessing
+    # ============================================================
+    if optimize_memory:
+        df = optimize_dtypes(df, print)
+
+    df.columns = [col.replace("__DOT__", ".") for col in df.columns]
+
+    if label_field and label_field in df.columns:
+        df = process_label_column(df, label_field, print)
+
+    # ============================================================
+    # STEP 3: Assign Splits
+    # ============================================================
+    job_type = config_dict.get("job_type")
+
+    if job_type == "training":
+        # Choose split strategy based on label availability
+        if label_field and label_field in df.columns:
+            # Approximate stratified splits
+            df = assign_stratified_splits_approximate(
+                df, label_field, train_ratio, test_val_ratio
+            )
+        else:
+            # Pure random splits
+            df = assign_random_splits(df, train_ratio, test_val_ratio)
+
+    # ============================================================
+    # STEP 4: Write to Split Folders (Preserving Shard Number)
+    # ============================================================
+    stats = {}
+
+    if job_type == "training":
+        for split_name in ["train", "val", "test"]:
+            split_df = df[df["_split"] == split_name].drop("_split", axis=1)
+
+            if len(split_df) > 0:
+                output_path = (
+                    output_base / split_name / f"part-{shard_num:05d}.{output_format}"
+                )
+                write_shard_file(split_df, output_path, output_format)
+                stats[split_name] = len(split_df)
+            else:
+                stats[split_name] = 0
+    else:
+        # Single split mode
+        output_path = output_base / job_type / f"part-{shard_num:05d}.{output_format}"
+        write_shard_file(df, output_path, output_format)
+        stats[job_type] = len(df)
+
+    return stats
+
+
+def process_training_streaming_fully_parallel_generic(
+    all_shards: List[Path],
+    output_path: Path,
+    config_dict: Dict,
+    signature_columns: Optional[list],
+    label_field: Optional[str],
+    optimize_memory: bool,
+    output_format: str,
+    train_ratio: float,
+    test_val_ratio: float,
+    max_workers: int,
+    log_func: Callable,
+) -> None:
+    """
+    Fully parallel streaming preprocessing for training jobs.
+
+    Generic version with approximate stratification or random splits.
+    No global Pass 1 needed - each shard processes independently.
+
+    Args:
+        all_shards: List of all input shard paths
+        output_path: Base output directory
+        config_dict: Configuration dictionary
+        signature_columns: Optional column names
+        label_field: Name of label column
+        optimize_memory: Whether to optimize dtypes
+        output_format: Output format
+        train_ratio: Training set ratio
+        test_val_ratio: Test/val split ratio
+        max_workers: Number of parallel workers
+        log_func: Logging function
+    """
+    log_func("[FULLY_PARALLEL] Starting 1:1 shard mapping mode (generic)")
+    log_func(
+        f"[FULLY_PARALLEL] Processing {len(all_shards)} shards with {max_workers} workers"
+    )
+
+    if label_field:
+        log_func("[FULLY_PARALLEL] Using approximate stratified splits (label-based)")
+    else:
+        log_func("[FULLY_PARALLEL] Using random splits (no labels)")
+
+    # Prepare arguments for each shard
+    shard_args = [
+        (
+            shard,
+            i,
+            config_dict,
+            output_path,
+            signature_columns,
+            label_field,
+            optimize_memory,
+            output_format,
+            train_ratio,
+            test_val_ratio,
+        )
+        for i, shard in enumerate(all_shards)
+    ]
+
+    # Process ALL shards in parallel
+    with Pool(processes=max_workers) as pool:
+        results = pool.map(process_shard_end_to_end_generic, shard_args)
+
+    # Aggregate statistics
+    total_stats = {
+        "train": sum(r.get("train", 0) for r in results),
+        "val": sum(r.get("val", 0) for r in results),
+        "test": sum(r.get("test", 0) for r in results),
+    }
+
+    # Count non-empty output shards per split
+    shard_counts = {
+        "train": sum(1 for r in results if r.get("train", 0) > 0),
+        "val": sum(1 for r in results if r.get("val", 0) > 0),
+        "test": sum(1 for r in results if r.get("test", 0) > 0),
+    }
+
+    log_func(f"[FULLY_PARALLEL] Complete! Row distribution: {total_stats}")
+    log_func(
+        f"[FULLY_PARALLEL] Output shards: train={shard_counts['train']}, "
+        f"val={shard_counts['val']}, test={shard_counts['test']}"
+    )
+
+
+def process_single_split_streaming_fully_parallel_generic(
+    all_shards: List[Path],
+    output_path: Path,
+    job_type: str,
+    signature_columns: Optional[list],
+    label_field: Optional[str],
+    optimize_memory: bool,
+    output_format: str,
+    max_workers: int,
+    log_func: Callable,
+) -> None:
+    """
+    Fully parallel preprocessing for single split (validation/testing/calibration).
+
+    Args:
+        all_shards: List of all input shard paths
+        output_path: Base output directory
+        job_type: Job type (validation/testing/calibration)
+        signature_columns: Optional column names
+        label_field: Name of label column
+        optimize_memory: Whether to optimize dtypes
+        output_format: Output format
+        max_workers: Number of parallel workers
+        log_func: Logging function
+    """
+    log_func(f"[FULLY_PARALLEL] Processing {len(all_shards)} shards for {job_type}")
+
+    # Build minimal config
+    config_dict = {"job_type": job_type}
+
+    shard_args = [
+        (
+            shard,
+            i,
+            config_dict,
+            output_path,
+            signature_columns,
+            label_field,
+            optimize_memory,
+            output_format,
+            0.7,  # Unused for single split
+            0.5,  # Unused for single split
+        )
+        for i, shard in enumerate(all_shards)
+    ]
+
+    with Pool(processes=max_workers) as pool:
+        results = pool.map(process_shard_end_to_end_generic, shard_args)
+
+    total_rows = sum(r.get(job_type, 0) for r in results)
+    non_empty_shards = sum(1 for r in results if r.get(job_type, 0) > 0)
+
+    log_func(
+        f"[FULLY_PARALLEL] Complete! {total_rows} rows in {non_empty_shards} shards"
+    )
+
+
+def process_fully_parallel_mode_preprocessing_generic(
+    input_dir: str,
+    output_dir: str,
+    signature_columns: Optional[list],
+    job_type: str,
+    label_field: Optional[str],
+    train_ratio: float,
+    test_val_ratio: float,
+    output_format: str,
+    max_workers: Optional[int],
+    optimize_memory: bool,
+    logger: Optional[Callable[[str], None]] = None,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Fully parallel streaming mode with 1:1 shard mapping (generic version).
+
+    Uses approximate stratification when labels available, random splits otherwise.
+    No global coordination needed - each shard processes independently.
+
+    Args:
+        input_dir: Directory containing input shards
+        output_dir: Base output directory
+        signature_columns: Optional column names
+        job_type: Job type
+        label_field: Name of label column
+        train_ratio: Training set ratio
+        test_val_ratio: Test/val split ratio
+        output_format: Output format
+        max_workers: Max parallel workers
+        optimize_memory: Whether to optimize dtypes
+        logger: Optional logging function
+
+    Returns:
+        Empty dictionary (data written to disk)
+    """
+    log = logger or print
+    output_path = Path(output_dir)
+
+    log("[FULLY_PARALLEL] Starting fully parallel mode (1:1 shard mapping)")
+    log(f"[FULLY_PARALLEL] Job type: {job_type}")
+
+    # Find input shards
+    all_shards = find_input_shards(input_dir, log)
+
+    # Determine optimal workers
+    if max_workers is None:
+        max_workers = min(cpu_count(), len(all_shards))
+    log(f"[FULLY_PARALLEL] Using {max_workers} parallel workers")
+
+    # Build config dictionary
+    config_dict = {"job_type": job_type}
+
+    # Process shards
+    if job_type == "training":
+        process_training_streaming_fully_parallel_generic(
+            all_shards,
+            output_path,
+            config_dict,
+            signature_columns,
+            label_field,
+            optimize_memory,
+            output_format,
+            train_ratio,
+            test_val_ratio,
+            max_workers,
+            log,
+        )
+    else:
+        process_single_split_streaming_fully_parallel_generic(
+            all_shards,
+            output_path,
+            job_type,
+            signature_columns,
+            label_field,
+            optimize_memory,
+            output_format,
+            max_workers,
+            log,
+        )
+
+    log("[FULLY_PARALLEL] Fully parallel preprocessing complete!")
+    return {}
+
+
+# ============================================================================
+# MAIN PROCESSING LOGIC
+# ============================================================================
 
 
 def main(
@@ -1480,7 +1888,6 @@ def main(
     enable_true_streaming = (
         environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
     )
-    shard_size = int(environ_vars.get("SHARD_SIZE", 100000))
 
     # Extract paths
     input_data_dir = input_paths["DATA"]
@@ -1516,16 +1923,10 @@ def main(
         log(f"[WARNING] Invalid OUTPUT_FORMAT '{output_format}', defaulting to CSV")
         output_format = "csv"
 
-    # 4. Get consolidate_shards setting
-    consolidate_shards = (
-        environ_vars.get("CONSOLIDATE_SHARDS", "true").lower() == "true"
-    )
-
-    # 5. ROUTING: Choose between batch mode and streaming mode
+    # 4. ROUTING: Choose between batch mode and fully parallel streaming mode
     if enable_true_streaming:
-        log("[INFO] Using TRUE STREAMING MODE (never loads full DataFrame)")
-        log(f"[INFO] Consolidate shards: {consolidate_shards}")
-        return process_streaming_mode_preprocessing(
+        log("[INFO] Using FULLY PARALLEL STREAMING MODE (1:1 shard mapping)")
+        return process_fully_parallel_mode_preprocessing_generic(
             input_dir=input_data_dir,
             output_dir=output_dir,
             signature_columns=signature_columns,
@@ -1534,12 +1935,8 @@ def main(
             train_ratio=train_ratio,
             test_val_ratio=test_val_ratio,
             output_format=output_format,
-            streaming_batch_size=streaming_batch_size or 10,
-            shard_size=shard_size,
             max_workers=max_workers,
-            batch_size=batch_size,
             optimize_memory=optimize_memory,
-            consolidate_shards=consolidate_shards,
             logger=log,
         )
     else:
@@ -1620,8 +2017,6 @@ if __name__ == "__main__":
             "OPTIMIZE_MEMORY": os.environ.get("OPTIMIZE_MEMORY", "true"),
             "STREAMING_BATCH_SIZE": os.environ.get("STREAMING_BATCH_SIZE", "0"),
             "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
-            "SHARD_SIZE": os.environ.get("SHARD_SIZE", "100000"),
-            "CONSOLIDATE_SHARDS": os.environ.get("CONSOLIDATE_SHARDS", "true"),
         }
 
         # Execute the main processing logic

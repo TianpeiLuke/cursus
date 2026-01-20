@@ -26,8 +26,6 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
         "OPTIMIZE_MEMORY": "true",
         "STREAMING_BATCH_SIZE": "0",
         "ENABLE_TRUE_STREAMING": "false",
-        "SHARD_SIZE": "100000",
-        "CONSOLIDATE_SHARDS": "true",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
@@ -65,47 +63,57 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     - Format applies to all output splits (train/val/test)
     - Parquet recommended for large datasets (better compression and performance)
     
-    Memory Optimization Configuration:
-    - STREAMING_BATCH_SIZE (default: "0"=disabled) - **PRIMARY MEMORY CONTROL**
-      * Enables streaming batch processing to avoid loading all shards at once
-      * When set > 0, processes that many shards per batch, freeing memory between batches
-      * Set to "0" to disable (original behavior, loads all shards into memory)
-      * Recommended values:
-        - "15-20" for moderate memory reduction (80-85% reduction)
-        - "10-15" for high memory reduction (85-90% reduction)
-        - "5-10" for maximum memory reduction (90-95% reduction)
-      * Example: 100 shards × 50MB = 5GB peak → With "15": 750MB peak (85% reduction)
-      * Trade-off: Slightly slower due to multiple concatenation passes
-      * **Use this first when encountering out-of-memory errors**
-    - MAX_WORKERS (default: "0"=auto) - Controls parallel shard reading workers
-      * Set to "1" for sequential processing (lowest memory, ~60% reduction)
-      * Set to "2" for moderate parallelism (balanced, ~40% reduction)
-      * Set to "0" or omit for automatic (uses all CPUs, highest memory)
-      * Recommendation: Start with "2", use "1" if out-of-memory errors persist
-    - BATCH_SIZE (default: "5") - Controls DataFrame concatenation batch size
-      * Smaller values reduce peak memory during concatenation (10-20% reduction)
-      * Valid range: 2-10, recommended: 3-5 for memory-constrained environments
-      * Works with STREAMING_BATCH_SIZE for fine-tuning memory usage
-    - OPTIMIZE_MEMORY (default: "true") - Enables dtype optimization
-      * Downcasts int64→int32, float64→float32 (30-50% memory reduction)
-      * Converts low-cardinality object columns to category type
-      * Set to "false" to disable optimization (not recommended)
-    - Combined effect: With STREAMING_BATCH_SIZE=15 + MAX_WORKERS=2 + OPTIMIZE_MEMORY=true,
-      can achieve 90-95% memory reduction in extreme cases
+    Processing Modes:
+    - ENABLE_TRUE_STREAMING (default: "false") - **PRIMARY MODE SELECTOR**
+      * "false": Batch mode - loads full DataFrame into memory
+        - Single consolidated output file per split
+        - Uses stratified splits when labels available
+        - Best for smaller datasets that fit in memory
+      * "true": Fully parallel streaming mode - 1:1 shard mapping
+        - Each input shard processed independently in parallel
+        - Output preserves input shard numbers (part-00042 → part-00042)
+        - No consolidation - direct write to final sharded format
+        - 8-10× faster than batch mode
+        - Fixed memory usage regardless of dataset size
+        - Uses approximate stratification when labels available
+        - **Recommended for large datasets and distributed training**
     
-    Memory Optimization Strategy (Progressive Troubleshooting):
-    Level 1 (First try if OOM errors):
-      STREAMING_BATCH_SIZE="15"  # 80-85% reduction
-      MAX_WORKERS="0"             # Keep auto (fastest)
-      
-    Level 2 (Still OOM):
-      STREAMING_BATCH_SIZE="10"  # 85-90% reduction
-      MAX_WORKERS="2"             # Moderate parallelism
-      
-    Level 3 (Maximum memory savings):
-      STREAMING_BATCH_SIZE="5"   # 90-95% reduction
-      MAX_WORKERS="1"             # Sequential processing
-      BATCH_SIZE="3"              # Further reduce concat batches
+    Memory Optimization Configuration (Batch Mode Only):
+    - STREAMING_BATCH_SIZE (default: "0"=disabled) - Batch mode memory control
+      * Only applies when ENABLE_TRUE_STREAMING="false"
+      * Enables incremental loading to avoid loading all shards at once
+      * When set > 0, processes that many shards per batch
+      * Recommended values: 10-20 for 80-90% memory reduction
+      * Example: 100 shards × 50MB = 5GB peak → With "15": 750MB peak
+    - MAX_WORKERS (default: "0"=auto) - Parallel shard reading workers
+      * Controls parallelism in both batch and streaming modes
+      * "0" = auto-detect (uses all CPUs, fastest)
+      * "1" = sequential (lowest memory)
+      * "2-4" = moderate parallelism (balanced)
+    - BATCH_SIZE (default: "5") - DataFrame concatenation batch size
+      * Batch mode only: controls memory during concatenation
+      * Smaller values (3-5) reduce peak memory
+    - OPTIMIZE_MEMORY (default: "true") - Dtype optimization
+      * Both modes: downcasts numeric types, converts to category
+      * 30-50% memory reduction
+      * Recommended to keep enabled
+    
+    Recommended Configuration by Use Case:
+    
+    Small datasets (< 10GB):
+      ENABLE_TRUE_STREAMING="false"  # Use batch mode
+      STREAMING_BATCH_SIZE="0"        # Not needed
+      MAX_WORKERS="0"                 # Use all CPUs
+    
+    Large datasets (> 10GB) or distributed training:
+      ENABLE_TRUE_STREAMING="true"   # Use fully parallel mode
+      MAX_WORKERS="0"                 # Use all CPUs for 8-10× speedup
+      # Output ready for streaming consumption, no consolidation needed
+    
+    Memory-constrained batch mode:
+      ENABLE_TRUE_STREAMING="false"
+      STREAMING_BATCH_SIZE="15"      # Process 15 shards at a time
+      MAX_WORKERS="2"                 # Moderate parallelism
     
     Signature File Format:
     - CSV format with comma-separated column names

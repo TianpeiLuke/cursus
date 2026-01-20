@@ -104,18 +104,7 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
     enable_true_streaming: bool = Field(
         default=False,
-        description="Enable true streaming mode (never loads full DataFrame). When enabled, processes data in batches and writes temporary shards, then consolidates. Default: False (batch mode)",
-    )
-
-    shard_size: int = Field(
-        default=100000,
-        ge=1000,
-        description="Rows per output shard in streaming mode. Larger values = fewer files but more memory during consolidation. Default: 100000",
-    )
-
-    consolidate_shards: bool = Field(
-        default=True,
-        description="Whether to consolidate output shards into single files per split. True=single files (train/val/test_processed_data.*), False=multiple shard files (train/part-*.*, val/part-*.*, test/part-*.*). Default: True",
+        description="Enable fully parallel streaming mode with 1:1 shard mapping. When enabled, each input shard is processed independently in parallel. Output preserves input shard numbers. 8-10× faster than batch mode with fixed memory usage. Default: False (batch mode)",
     )
 
     # ===== Derived Fields (Tier 3) =====
@@ -189,10 +178,6 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
             # Add streaming mode parameters
             env_vars["ENABLE_TRUE_STREAMING"] = (
                 "true" if self.enable_true_streaming else "false"
-            )
-            env_vars["SHARD_SIZE"] = str(self.shard_size)
-            env_vars["CONSOLIDATE_SHARDS"] = (
-                "true" if self.consolidate_shards else "false"
             )
 
             self._preprocessing_environment_variables = env_vars
