@@ -863,6 +863,377 @@ def test_fsdp_with_streaming_dataset(temp_sharded_data, mock_model, config):
 
 ---
 
+## Phase 5: Prefetching Optimization
+
+### Objective
+
+Implement asynchronous shard prefetching to maximize GPU utilization by overlapping I/O with compute.
+
+**Problem**: Current implementation loads shards sequentially, causing GPU to sit idle 92% of the time waiting for I/O (see Section 9 in design doc for detailed analysis).
+
+**Solution**: Use background thread with prefetch queue to load next shard while GPU processes current shard.
+
+**Expected Impact**:
+- GPU utilization: 8% → 80% (10× improvement)
+- Training speed: 0.72 it/s → 8-10 it/s (11-14× faster)
+- Time per epoch: 14 hours → 1-1.5 hours
+- Cost per epoch: $448 → $32-48 ($400 savings)
+
+### Files to Modify
+
+**Primary File**:
+- `projects/names3risk_pytorch/dockers/processing/datasets/pipeline_iterable_datasets.py`
+
+### Implementation Steps
+
+#### Step 5.1: Add Required Imports
+
+Add at top of file:
+
+```python
+import queue
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
+```
+
+#### Step 5.2: Add Prefetching Configuration
+
+Add to `__init__()` method:
+
+```python
+def __init__(
+    self,
+    config: Dict[str, Union[str, List[str], int]],
+    file_dir: Optional[str] = None,
+    filename: Optional[str] = None,
+    dataframe: Optional[pd.DataFrame] = None,
+    processor_pipelines: Optional[Dict[str, Processor]] = None,
+    shard_pattern: str = "part-*.parquet",
+    shuffle_shards: bool = False,
+    enable_prefetch: bool = True,      # NEW
+    prefetch_buffer_size: int = 2,     # NEW
+) -> None:
+    """
+    Initialize streaming dataset.
+    
+    Args:
+        ...existing args...
+        enable_prefetch: Enable background shard loading (default: True)
+        prefetch_buffer_size: Number of shards to buffer (default: 2)
+    """
+    # ... existing init code ...
+    
+    self.enable_prefetch = enable_prefetch
+    self.prefetch_buffer_size = prefetch_buffer_size
+```
+
+#### Step 5.3: Implement Prefetching in `__iter__()`
+
+Replace the existing shard iteration logic with prefetching version:
+
+```python
+def __iter__(self) -> Iterator[Dict]:
+    """
+    Iterate with prefetching for maximum GPU utilization.
+    """
+    # ... existing rank/worker sharding code (Tiers 1-3) ...
+    
+    # ============================================================
+    # Handle DataFrame mode (for testing)
+    # ============================================================
+    if hasattr(self, "_dataframe_mode") and self._dataframe_mode:
+        # ... existing DataFrame code ...
+        return
+    
+    # ============================================================
+    # TIER 4: Prefetching or Sequential Loading
+    # ============================================================
+    if self.enable_prefetch and len(shards_to_process) > 1:
+        # Use prefetching for multiple shards
+        yield from self._iterate_with_prefetch(shards_to_process)
+    else:
+        # Use sequential loading (single shard or prefetch disabled)
+        yield from self._iterate_sequential(shards_to_process)
+
+
+def _iterate_sequential(self, shards_to_process: List[Path]) -> Iterator[Dict]:
+    """
+    Sequential shard loading (original behavior).
+    
+    Used when prefetching is disabled or only one shard to process.
+    """
+    for shard_idx, shard_path in enumerate(shards_to_process):
+        # Load shard
+        df = self._load_shard(shard_path)
+        
+        # Apply type conversions
+        df = self._postprocess_dataframe(df)
+        
+        # Yield rows from shard
+        for idx in range(len(df)):
+            row = df.iloc[idx].to_dict()
+            
+            # Apply processor pipelines
+            for field_name, pipeline in self.processor_pipelines.items():
+                if field_name in row:
+                    row[field_name] = pipeline(row[field_name])
+            
+            yield row
+        
+        # Free memory after processing shard
+        del df
+        gc.collect()
+
+
+def _iterate_with_prefetch(self, shards_to_process: List[Path]) -> Iterator[Dict]:
+    """
+    Asynchronous shard loading with prefetching.
+    
+    Uses background thread to load next shard while processing current shard,
+    maximizing GPU utilization by overlapping I/O with compute.
+    
+    Architecture:
+        Main Thread: Process rows, apply pipelines, yield to GPU
+        Background Thread: Load shards, put in queue
+        Queue: Buffer up to prefetch_buffer_size shards
+    
+    Performance:
+        - GPU idle time: 92% → 12% (sequential → prefetch)
+        - Training speed: 11-14× faster
+        - Cost: $400 savings per epoch
+    """
+    prefetch_queue = queue.Queue(maxsize=self.prefetch_buffer_size)
+    exception_holder = []  # Store exceptions from background thread
+    
+    def loader_thread():
+        """Background thread for async shard loading."""
+        try:
+            for shard_path in shards_to_process:
+                # Load and preprocess shard
+                df = self._load_shard(shard_path)
+                df = self._postprocess_dataframe(df)
+                
+                # Put in queue (blocks if queue full)
+                prefetch_queue.put(df)
+            
+            # Signal completion
+            prefetch_queue.put(None)
+        
+        except Exception as e:
+            logger.error(f"Loader thread error: {e}", exc_info=True)
+            exception_holder.append(e)
+            prefetch_queue.put(None)  # Signal termination
+    
+    # Start background loading
+    thread = threading.Thread(target=loader_thread, daemon=True, name="ShardLoader")
+    thread.start()
+    
+    try:
+        # Consume from prefetch queue
+        while True:
+            # Check for exceptions from loader thread
+            if exception_holder:
+                raise RuntimeError(f"Prefetch loader failed: {exception_holder[0]}")
+            
+            # Get next shard (blocks until available)
+            df = prefetch_queue.get()
+            
+            if df is None:
+                break  # No more data
+            
+            # Process rows (GPU now working while next shard loads!)
+            for idx in range(len(df)):
+                row = df.iloc[idx].to_dict()
+                
+                # Apply processor pipelines
+                for field_name, pipeline in self.processor_pipelines.items():
+                    if field_name in row:
+                        row[field_name] = pipeline(row[field_name])
+                
+                yield row
+            
+            # Clean up
+            del df
+            gc.collect()
+    
+    finally:
+        # Ensure background thread completes
+        thread.join(timeout=5.0)
+        if thread.is_alive():
+            logger.warning("Loader thread did not terminate cleanly")
+```
+
+#### Step 5.4: Add Prefetch Diagnostics
+
+Add method to report prefetch performance:
+
+```python
+def get_prefetch_stats(self) -> Dict[str, Any]:
+    """
+    Get prefetch configuration and status.
+    
+    Returns:
+        Dict with prefetch settings and recommendations
+    """
+    return {
+        "enabled": self.enable_prefetch,
+        "buffer_size": self.prefetch_buffer_size,
+        "total_shards": len(self.shard_files),
+        "recommended_buffer_size": min(3, max(2, len(self.shard_files) // 10)),
+        "performance_mode": "prefetch" if self.enable_prefetch else "sequential",
+    }
+```
+
+### Testing
+
+#### Test 5.1: Prefetch Correctness
+
+```python
+def test_prefetch_same_output_as_sequential(temp_sharded_data):
+    """Verify prefetch produces identical results to sequential."""
+    config = {"label_name": "label", "text_name": "text", ...}
+    
+    # Sequential mode
+    dataset_seq = PipelineIterableDataset(
+        config=config,
+        file_dir=str(temp_sharded_data),
+        enable_prefetch=False,
+    )
+    items_seq = [item["id"] for item in dataset_seq]
+    
+    # Prefetch mode
+    dataset_pf = PipelineIterableDataset(
+        config=config,
+        file_dir=str(temp_sharded_data),
+        enable_prefetch=True,
+    )
+    items_pf = [item["id"] for item in dataset_pf]
+    
+    # Should produce identical results
+    assert items_seq == items_pf
+```
+
+#### Test 5.2: Prefetch Performance
+
+```python
+import time
+
+def test_prefetch_performance_improvement(temp_large_sharded_data):
+    """Verify prefetch improves throughput."""
+    config = {...}
+    
+    # Benchmark sequential
+    dataset_seq = PipelineIterableDataset(
+        config=config,
+        file_dir=str(temp_large_sharded_data),
+        enable_prefetch=False,
+    )
+    
+    start = time.time()
+    count_seq = sum(1 for _ in dataset_seq)
+    time_seq = time.time() - start
+    
+    # Benchmark prefetch
+    dataset_pf = PipelineIterableDataset(
+        config=config,
+        file_dir=str(temp_large_sharded_data),
+        enable_prefetch=True,
+    )
+    
+    start = time.time()
+    count_pf = sum(1 for _ in dataset_pf)
+    time_pf = time.time() - start
+    
+    # Prefetch should be significantly faster
+    speedup = time_seq / time_pf
+    print(f"Speedup: {speedup:.2f}×")
+    
+    assert speedup > 1.5, f"Expected >1.5× speedup, got {speedup:.2f}×"
+    assert count_seq == count_pf, "Different number of items"
+```
+
+#### Test 5.3: Exception Handling
+
+```python
+def test_prefetch_handles_loader_exceptions():
+    """Verify exceptions in loader thread are propagated."""
+    
+    # Create dataset with corrupted shard
+    # ... setup code ...
+    
+    dataset = PipelineIterableDataset(
+        config=config,
+        file_dir=str(corrupted_data),
+        enable_prefetch=True,
+    )
+    
+    with pytest.raises(RuntimeError, match="Prefetch loader failed"):
+        list(dataset)  # Should raise exception from loader thread
+```
+
+### Validation Criteria
+
+- [ ] Prefetch produces identical output to sequential mode
+- [ ] Performance improvement: 5-10× speedup on real data
+- [ ] GPU utilization: 70-90% (up from 8%)
+- [ ] Memory usage: No significant increase (<10% overhead)
+- [ ] Exception handling: Loader errors propagate correctly
+- [ ] Thread cleanup: No thread leaks after iteration
+
+### Rollout Strategy
+
+1. **Phase 5.1**: Implement and test locally (1 day)
+2. **Phase 5.2**: Add feature flag `ENABLE_PREFETCH=true` (default: false initially)
+3. **Phase 5.3**: Benchmark on development jobs
+4. **Phase 5.4**: Enable for 10% of production jobs
+5. **Phase 5.5**: Monitor performance metrics
+6. **Phase 5.6**: Gradually increase to 100%
+
+### Performance Metrics to Monitor
+
+```python
+# Add to training logs
+prefetch_stats = dataset.get_prefetch_stats()
+logger.info(f"Prefetch config: {prefetch_stats}")
+
+# Monitor these metrics:
+# - Training throughput (samples/sec)
+# - GPU utilization (%)
+# - Time per epoch (hours)
+# - Memory usage per GPU (GB)
+# - Cost per training job ($)
+```
+
+### Expected Results
+
+**Before (Sequential)**:
+```
+GPU Utilization: 8%
+Training Speed: 0.72 it/s
+Time per Epoch: 14 hours
+Cost per Epoch: $448
+```
+
+**After (Prefetch)**:
+```
+GPU Utilization: 80%
+Training Speed: 8-10 it/s
+Time per Epoch: 1-1.5 hours
+Cost per Epoch: $32-48
+Savings: $400 per epoch
+```
+
+**Combined with other optimizations**:
+```
+Final Time per Epoch: 20-30 minutes
+Final Cost per Epoch: $11-16
+Total Savings: $432 per epoch (96% reduction)
+```
+
+---
+
 ## Phase 4: Documentation and Rollout
 
 ### Objective

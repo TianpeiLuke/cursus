@@ -31,6 +31,9 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
         "USE_PRECOMPUTED_RISK_TABLES": "false",  # If true, uses pre-computed risk table artifacts and skips inline computation
         "USE_PRECOMPUTED_FEATURES": "false",  # If true, uses pre-computed feature selection and skips inline computation
         "ENABLE_TRUE_STREAMING": "false",  # If true, enables streaming mode with PipelineIterableDataset for memory-efficient loading
+        "NUM_WORKERS_PER_RANK": "0",  # Number of DataLoader workers per GPU rank (default: 0 for batch mode, 4 recommended for streaming)
+        "PREFETCH_FACTOR": "None",  # Number of batches to prefetch per worker (default: None for batch mode, 2 recommended for streaming)
+        "USE_PERSISTENT_WORKERS": "false",  # Keep DataLoader workers alive between epochs (default: false for batch mode, true recommended for streaming)
         "REGION": "NA",  # Region identifier (NA/EU/FE) for loading region-specific hyperparameters
     },
     framework_requirements={
@@ -63,6 +66,10 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     6. Trains using PyTorch Lightning with early stopping and checkpointing
     7. Evaluates on validation and test sets with comprehensive metrics
     8. Exports trained model in multiple formats (PyTorch, ONNX)
+    9. Supports streaming mode with PipelineIterableDataset for memory-efficient loading
+    10. Loads sharded data incrementally (part-*.parquet) with configurable DataLoader workers
+    11. Enables parallel I/O with multi-worker data loading and prefetching
+    12. Automatically falls back to batch mode when sharded data is not detected
     
     Input Structure:
     - /opt/ml/input/data: Root directory containing train/val/test subdirectories
@@ -101,6 +108,11 @@ PYTORCH_TRAIN_CONTRACT = TrainingScriptContract(
     - USE_PRECOMPUTED_IMPUTATION: Use pre-computed imputation artifacts (default: false)
     - USE_PRECOMPUTED_RISK_TABLES: Use pre-computed risk table artifacts (default: false)
     - USE_PRECOMPUTED_FEATURES: Use pre-computed feature selection (default: false)
+    - ENABLE_TRUE_STREAMING: Enable streaming mode with PipelineIterableDataset (default: false)
+    - NUM_WORKERS_PER_RANK: DataLoader workers per GPU rank (default: 0 for batch, 4 recommended for streaming)
+    - PREFETCH_FACTOR: Batches to prefetch per worker (default: None for batch, 2 recommended for streaming)
+    - USE_PERSISTENT_WORKERS: Keep workers alive between epochs (default: false for batch, true recommended for streaming)
+    - REGION: Region identifier for hyperparameters (NA/EU/FE, default: NA)
     
     Hyperparameters (via JSON config):
     - Model architecture: model_class (multimodal_bert, multimodal_cnn, bert, lstm, etc.)

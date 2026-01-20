@@ -28,6 +28,9 @@ PYTORCH_MODEL_EVAL_CONTRACT = ScriptContract(
         "STATISTICAL_TESTS": "true",
         "COMPARISON_PLOTS": "true",
         "ENABLE_TRUE_STREAMING": "false",
+        "NUM_WORKERS_PER_RANK": "0",
+        "PREFETCH_FACTOR": "None",
+        "USE_PERSISTENT_WORKERS": "false",
     },
     framework_requirements={
         "torch": "==2.1.2",
@@ -93,6 +96,12 @@ PYTORCH_MODEL_EVAL_CONTRACT = ScriptContract(
     - COMPARISON_METRICS: Metrics to compute - "all" or "basic" (default: "all")
     - STATISTICAL_TESTS: Enable statistical significance tests (default: "true")
     - COMPARISON_PLOTS: Enable comparison visualizations (default: "true")
+    
+    Optional Environment Variables (Streaming Mode):
+    - ENABLE_TRUE_STREAMING: Enable streaming mode with PipelineIterableDataset (default: "false")
+    - NUM_WORKERS_PER_RANK: Number of DataLoader workers per GPU rank (default: "0", recommended: "4" for streaming)
+    - PREFETCH_FACTOR: Batches to prefetch per worker (default: "None", recommended: "2" for streaming)
+    - USE_PERSISTENT_WORKERS: Keep workers alive between epochs (default: "false", recommended: "true" for streaming)
     
     Arguments:
     - job_type: Type of evaluation job to perform (e.g., "evaluation", "validation")

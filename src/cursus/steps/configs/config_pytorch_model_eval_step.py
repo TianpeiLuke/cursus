@@ -117,6 +117,42 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
         description="Enable true streaming mode with PipelineIterableDataset for memory-efficient processing of sharded data",
     )
 
+    # DataLoader worker configuration (only used when enable_true_streaming=True)
+    # Defaults match batch mode (enable_true_streaming=False default)
+    num_workers_per_rank: int = Field(
+        default=0,
+        ge=0,
+        le=16,
+        description=(
+            "Number of DataLoader workers per GPU rank for parallel data loading. "
+            "Only used when enable_true_streaming=True. "
+            "Default: 0 (matches batch mode default). "
+            "Recommended for streaming mode: 2-8 depending on CPU cores."
+        ),
+    )
+
+    prefetch_factor: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description=(
+            "Number of batches to prefetch per DataLoader worker. "
+            "Only used when enable_true_streaming=True and num_workers_per_rank > 0. "
+            "Default: None (matches batch mode default). "
+            "Recommended for streaming mode: 2."
+        ),
+    )
+
+    use_persistent_workers: bool = Field(
+        default=False,
+        description=(
+            "Whether to keep DataLoader workers alive between data loading passes. "
+            "Only used when enable_true_streaming=True and num_workers_per_rank > 0. "
+            "Default: False (matches batch mode default). "
+            "Recommended for streaming mode: True (faster transitions)."
+        ),
+    )
+
     model_config = ProcessingStepConfigBase.model_config
 
     # ===== Derived Fields (Tier 3) =====
@@ -134,6 +170,37 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
         super().initialize_derived_fields()
 
         # No additional derived fields to initialize for now
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_dataloader_config(self) -> "PyTorchModelEvalConfig":
+        """
+        Validate DataLoader worker configuration (warnings only, no mutation).
+
+        Conditional logic is enforced in evaluation script, not here.
+        This validator only checks for potentially problematic values.
+        """
+        # Warn about very high worker counts
+        if self.num_workers_per_rank > 8:
+            logger.warning(
+                f"⚠️  WARNING: num_workers_per_rank={self.num_workers_per_rank} is high. "
+                f"Recommended: 2-8 for optimal performance."
+            )
+
+        # Warn if streaming enabled but no workers
+        if self.enable_true_streaming and self.num_workers_per_rank == 0:
+            logger.warning(
+                f"⚠️  WARNING: enable_true_streaming=True but num_workers_per_rank=0. "
+                f"Consider increasing for better parallel I/O performance."
+            )
+
+        # Warn about high prefetch factor (only check if not None)
+        if self.prefetch_factor is not None and self.prefetch_factor > 4:
+            logger.warning(
+                f"⚠️  WARNING: prefetch_factor={self.prefetch_factor} is high. "
+                f"May use excessive memory."
+            )
 
         return self
 
@@ -225,6 +292,10 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
                 "STATISTICAL_TESTS": str(self.statistical_tests).lower(),
                 "COMPARISON_PLOTS": str(self.comparison_plots).lower(),
                 "ENABLE_TRUE_STREAMING": str(self.enable_true_streaming).lower(),
+                # DataLoader worker configuration
+                "NUM_WORKERS_PER_RANK": str(self.num_workers_per_rank),
+                "PREFETCH_FACTOR": str(self.prefetch_factor),
+                "USE_PERSISTENT_WORKERS": str(self.use_persistent_workers).lower(),
             }
         )
 
@@ -274,6 +345,9 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
             "statistical_tests": self.statistical_tests,
             "comparison_plots": self.comparison_plots,
             "enable_true_streaming": self.enable_true_streaming,
+            "num_workers_per_rank": self.num_workers_per_rank,
+            "prefetch_factor": self.prefetch_factor,
+            "use_persistent_workers": self.use_persistent_workers,
         }
 
         # Add eval_metric_choices if set to non-default value

@@ -30,8 +30,6 @@ Example:
 import os
 import gc
 import random
-import queue
-import threading
 import logging
 from pathlib import Path
 import numpy as np

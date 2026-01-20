@@ -982,25 +982,36 @@ def add_label_processor(
 
 
 def create_dataloader(
-    pipeline_dataset: PipelineDataset, config: Dict[str, Any]
+    pipeline_dataset: Union[PipelineDataset, PipelineIterableDataset],
+    config: Dict[str, Any],
+    use_streaming: bool = False,
+    worker_config: Optional[Dict[str, Any]] = None,
 ) -> DataLoader:
     """
-    Create DataLoader with unified collate function.
+    Create DataLoader with unified collate function and configurable workers.
 
     Uses the same collate function pattern as pytorch_training.py:
     - Unified build_collate_batch for all model classes
     - Automatically handles text fields via pipeline_dataloader
     - Works with LSTM, Transformer, and BERT models
 
+    Worker Configuration (only used in streaming mode):
+    - num_workers_per_rank: Number of workers per GPU rank
+    - prefetch_factor: Batches to prefetch per worker
+    - use_persistent_workers: Keep workers alive between epochs
+
     Args:
         pipeline_dataset: Dataset to create DataLoader for
         config: Model configuration
+        use_streaming: Whether streaming mode is enabled
+        worker_config: Optional worker configuration dict
 
     Returns:
         Configured DataLoader
     """
     model_class = config.get("model_class", "bimodal_bert")
     logger.info(f"Creating DataLoader for model: {model_class}")
+    logger.info(f"Streaming mode: {'ENABLED' if use_streaming else 'DISABLED'}")
 
     # Use unified collate function for all models (matches pytorch_training.py)
     collate_batch = build_collate_batch(
@@ -1024,13 +1035,81 @@ def create_dataloader(
     logger.info(f"  - Eval multiplier: {eval_multiplier}x")
     logger.info(f"  - Eval batch size: {eval_batch_size}")
 
+    # ===================================================================
+    # WORKER CONFIGURATION (matches pytorch_training.py logic)
+    # ===================================================================
+    if worker_config is None:
+        worker_config = {}
+
+    # Extract worker settings with defaults
+    num_workers = worker_config.get("num_workers_per_rank", 0)
+    prefetch_factor = worker_config.get("prefetch_factor", None)
+    use_persistent = worker_config.get("use_persistent_workers", False)
+
+    if use_streaming:
+        # STREAMING MODE: Apply optimized defaults if config values are batch-mode defaults
+        if num_workers == 0:
+            num_workers = 4  # Default for streaming
+            logger.info(
+                f"ℹ️  Streaming mode detected with num_workers=0, applying default: {num_workers}"
+            )
+
+        if prefetch_factor is None:
+            prefetch_factor = 2  # Default for streaming
+            logger.info(
+                f"ℹ️  Streaming mode detected with prefetch_factor=None, applying default: {prefetch_factor}"
+            )
+
+        if not use_persistent and num_workers > 0:
+            use_persistent = True  # Default for streaming
+            logger.info(
+                f"ℹ️  Streaming mode detected with use_persistent_workers=False, applying default: {use_persistent}"
+            )
+
+        logger.info("DataLoader worker configuration (streaming mode):")
+        logger.info(f"  - num_workers: {num_workers}")
+        logger.info(f"  - prefetch_factor: {prefetch_factor}")
+        logger.info(f"  - persistent_workers: {use_persistent}")
+
+    else:
+        # BATCH MODE: Force to 0 workers regardless of config (safety)
+        if num_workers > 0:
+            logger.warning(
+                f"⚠️  Batch mode detected but num_workers={num_workers}. "
+                f"Forcing to 0 for compatibility."
+            )
+            num_workers = 0
+
+        if prefetch_factor is not None:
+            logger.warning(
+                f"⚠️  Batch mode detected but prefetch_factor={prefetch_factor}. "
+                f"Forcing to None for compatibility."
+            )
+            prefetch_factor = None
+
+        if use_persistent:
+            logger.warning(
+                f"⚠️  Batch mode detected but use_persistent_workers=True. "
+                f"Forcing to False for compatibility."
+            )
+            use_persistent = False
+
+        logger.info("DataLoader worker configuration (batch mode):")
+        logger.info(f"  - num_workers: {num_workers} (forced)")
+        logger.info(f"  - prefetch_factor: {prefetch_factor} (forced)")
+        logger.info(f"  - persistent_workers: {use_persistent} (forced)")
+
+    # Create DataLoader with worker configuration
     dataloader = DataLoader(
         pipeline_dataset,
         collate_fn=collate_batch,
         batch_size=eval_batch_size,
         shuffle=False,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor if num_workers > 0 else None,
+        persistent_workers=use_persistent if num_workers > 0 else False,
     )
-    logger.info(f"Created DataLoader with eval_batch_size={eval_batch_size}")
+    logger.info(f"✓ Created DataLoader with eval_batch_size={eval_batch_size}")
 
     return dataloader
 
@@ -1043,6 +1122,7 @@ def preprocess_eval_data(
     eval_data_dir: str,
     filename: str,
     enable_streaming: bool = False,
+    worker_config: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Union[PipelineDataset, PipelineIterableDataset], DataLoader]:
     """
     Apply complete preprocessing pipeline to evaluation data.
@@ -1058,6 +1138,7 @@ def preprocess_eval_data(
         eval_data_dir: Directory containing evaluation data
         filename: Name of evaluation data file
         enable_streaming: Whether to use streaming mode (default: False)
+        worker_config: Optional worker configuration for DataLoader
 
     Returns:
         Tuple of (PipelineDataset or PipelineIterableDataset, DataLoader)
@@ -1095,8 +1176,10 @@ def preprocess_eval_data(
     # Step 4: Add label processor for multiclass if needed
     add_label_processor(pipeline_dataset, config, processors)
 
-    # Step 5: Create DataLoader with appropriate collate function
-    dataloader = create_dataloader(pipeline_dataset, config)
+    # Step 5: Create DataLoader with appropriate collate function and worker config
+    dataloader = create_dataloader(
+        pipeline_dataset, config, enable_streaming, worker_config
+    )
 
     logger.info("=" * 70)
     logger.info("PREPROCESSING COMPLETE")
@@ -1585,6 +1668,7 @@ def evaluate_model(
     input_format: str = "csv",
     device: Union[str, int, List[int]] = "auto",
     enable_streaming: bool = False,
+    worker_config: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Run model prediction and evaluation, then save predictions and metrics.
@@ -1608,12 +1692,20 @@ def evaluate_model(
         input_format: Input data format
         device: Device to use for inference
         enable_streaming: Whether to use streaming mode (default: False)
+        worker_config: Optional worker configuration for DataLoader
     """
     logger.info("Starting model evaluation")
 
-    # Preprocess data and create DataLoader
+    # Preprocess data and create DataLoader with worker config
     pipeline_dataset, dataloader = preprocess_eval_data(
-        df, config, tokenizer, processors, eval_data_dir, filename, enable_streaming
+        df,
+        config,
+        tokenizer,
+        processors,
+        eval_data_dir,
+        filename,
+        enable_streaming,
+        worker_config,
     )
 
     # Setup device environment
@@ -1711,6 +1803,49 @@ def main(
     )
     logger.info(f"Streaming mode: {'ENABLED' if enable_streaming else 'DISABLED'}")
 
+    # ===================================================================
+    # WORKER CONFIGURATION (mirrors pytorch_training.py logic)
+    # ===================================================================
+    # Extract worker config from environment variables
+    num_workers = environ_vars.get("NUM_WORKERS_PER_RANK", "0")
+    prefetch = environ_vars.get("PREFETCH_FACTOR", "None")
+    persistent = environ_vars.get("USE_PERSISTENT_WORKERS", "false")
+
+    # Convert string values to proper types
+    try:
+        num_workers = (
+            0 if num_workers == "None" or num_workers is None else int(num_workers)
+        )
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid NUM_WORKERS_PER_RANK='{num_workers}', defaulting to 0")
+        num_workers = 0
+
+    try:
+        prefetch_factor = (
+            None if prefetch == "None" or prefetch is None else int(prefetch)
+        )
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid PREFETCH_FACTOR='{prefetch}', defaulting to None")
+        prefetch_factor = None
+
+    use_persistent = (
+        persistent.lower() == "true"
+        if isinstance(persistent, str)
+        else bool(persistent)
+    )
+
+    # Build worker config dict
+    worker_config = {
+        "num_workers_per_rank": num_workers,
+        "prefetch_factor": prefetch_factor,
+        "use_persistent_workers": use_persistent,
+    }
+
+    logger.info("DataLoader worker configuration from environment:")
+    logger.info(f"  - NUM_WORKERS_PER_RANK: {num_workers}")
+    logger.info(f"  - PREFETCH_FACTOR: {prefetch_factor}")
+    logger.info(f"  - USE_PERSISTENT_WORKERS: {use_persistent}")
+
     # Parse device setting - support multiple formats
     device_str = environ_vars.get("DEVICE", "auto")
     try:
@@ -1747,7 +1882,7 @@ def main(
     # Get ID and label columns
     id_col, label_col = get_id_label_columns(df, id_field, label_field)
 
-    # Evaluate model
+    # Evaluate model with worker config
     evaluate_model(
         model,
         df,
@@ -1763,6 +1898,7 @@ def main(
         input_format,
         device,
         enable_streaming,
+        worker_config,
     )
 
     logger.info("PyTorch model evaluation script complete")
@@ -1802,6 +1938,10 @@ if __name__ == "__main__":
         "NUM_WORKERS": os.environ.get("NUM_WORKERS", "0"),
         # Data loading mode
         "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
+        # DataLoader worker configuration (for streaming mode)
+        "NUM_WORKERS_PER_RANK": os.environ.get("NUM_WORKERS_PER_RANK", "0"),
+        "PREFETCH_FACTOR": os.environ.get("PREFETCH_FACTOR", "None"),
+        "USE_PERSISTENT_WORKERS": os.environ.get("USE_PERSISTENT_WORKERS", "false"),
     }
 
     try:

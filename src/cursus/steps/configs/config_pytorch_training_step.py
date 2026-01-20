@@ -95,6 +95,45 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         "Automatically falls back to batch mode if no shards detected.",
     )
 
+    # DataLoader worker configuration (only used when enable_true_streaming=True)
+    # Defaults match batch mode (enable_true_streaming=False default)
+    num_workers_per_rank: int = Field(
+        default=0,
+        ge=0,
+        le=16,
+        description=(
+            "Number of DataLoader workers per GPU rank for parallel data loading. "
+            "Only used when enable_true_streaming=True. "
+            "Default: 0 (matches batch mode default). "
+            "Recommended for streaming mode: 2-8 depending on CPU cores. "
+            "Set to 0 to disable workers even in streaming mode."
+        ),
+    )
+
+    prefetch_factor: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description=(
+            "Number of batches to prefetch per DataLoader worker. "
+            "Only used when enable_true_streaming=True and num_workers_per_rank > 0. "
+            "Default: None (matches batch mode default). "
+            "Recommended for streaming mode: 2. "
+            "Higher values use more memory but reduce waiting time."
+        ),
+    )
+
+    use_persistent_workers: bool = Field(
+        default=False,
+        description=(
+            "Whether to keep DataLoader workers alive between epochs. "
+            "Only used when enable_true_streaming=True and num_workers_per_rank > 0. "
+            "Default: False (matches batch mode default). "
+            "Recommended for streaming mode: True (faster epoch transitions). "
+            "False: Workers restart each epoch (slower, less memory)."
+        ),
+    )
+
     # Semi-supervised learning support
     job_type: Optional[str] = Field(
         default=None,
@@ -123,6 +162,37 @@ class PyTorchTrainingConfig(BasePipelineConfig):
                 f"'finetune' for SSL fine-tuning."
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_dataloader_config(self) -> "PyTorchTrainingConfig":
+        """
+        Validate DataLoader worker configuration (warnings only, no mutation).
+
+        Conditional logic is enforced in training script, not here.
+        This validator only checks for potentially problematic values.
+        """
+        # Warn about very high worker counts
+        if self.num_workers_per_rank > 8:
+            print(
+                f"⚠️  WARNING: num_workers_per_rank={self.num_workers_per_rank} is high. "
+                f"Recommended: 2-8 for optimal performance."
+            )
+
+        # Warn if streaming enabled but no workers
+        if self.enable_true_streaming and self.num_workers_per_rank == 0:
+            print(
+                f"⚠️  WARNING: enable_true_streaming=True but num_workers_per_rank=0. "
+                f"Consider increasing for better parallel I/O performance."
+            )
+
+        # Warn about high prefetch factor (only check if not None)
+        if self.prefetch_factor is not None and self.prefetch_factor > 4:
+            print(
+                f"⚠️  WARNING: prefetch_factor={self.prefetch_factor} is high. "
+                f"May use excessive memory."
+            )
+
+        return self
 
     @field_validator("training_instance_type")
     @classmethod
@@ -176,6 +246,10 @@ class PyTorchTrainingConfig(BasePipelineConfig):
                 ).lower(),
                 "USE_PRECOMPUTED_FEATURES": str(self.use_precomputed_features).lower(),
                 "ENABLE_TRUE_STREAMING": str(self.enable_true_streaming).lower(),
+                # DataLoader worker configuration
+                "NUM_WORKERS_PER_RANK": str(self.num_workers_per_rank),
+                "PREFETCH_FACTOR": str(self.prefetch_factor),
+                "USE_PERSISTENT_WORKERS": str(self.use_persistent_workers).lower(),
             }
         )
 
@@ -207,6 +281,9 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "use_precomputed_risk_tables": self.use_precomputed_risk_tables,
             "use_precomputed_features": self.use_precomputed_features,
             "enable_true_streaming": self.enable_true_streaming,
+            "num_workers_per_rank": self.num_workers_per_rank,
+            "prefetch_factor": self.prefetch_factor,
+            "use_persistent_workers": self.use_persistent_workers,
             "job_type": self.job_type,
         }
 

@@ -215,38 +215,45 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-from processing.processors import (
+from ...processing.processors import (
     Processor,
 )
-from processing.text.dialogue_processor import (
+from ...processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from processing.text.bert_tokenize_processor import BertTokenizeProcessor
-from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
-from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
-from processing.categorical.risk_table_processor import RiskTableMappingProcessor
-from processing.categorical.streaming_risk_table_processor import (
+from ...processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from ...processing.categorical.categorical_label_processor import (
+    CategoricalLabelProcessor,
+)
+from ...processing.categorical.multiclass_label_processor import (
+    MultiClassLabelProcessor,
+)
+from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from ...processing.categorical.streaming_risk_table_processor import (
     StreamingRiskTableProcessor,
 )
-from processing.numerical.numerical_imputation_processor import (
+from ...processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
-from processing.numerical.streaming_numerical_imputation_processor import (
+from ...processing.numerical.streaming_numerical_imputation_processor import (
     StreamingNumericalImputationProcessor,
 )
-from processing.validation import validate_categorical_fields, validate_numerical_fields
-from processing.processor_registry import build_text_pipeline_from_steps
-from processing.datasets.pipeline_datasets import PipelineDataset
-from processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
-from processing.dataloaders.pipeline_dataloader import (
+from ...processing.validation import (
+    validate_categorical_fields,
+    validate_numerical_fields,
+)
+from ...processing.processor_registry import build_text_pipeline_from_steps
+from ...processing.datasets.pipeline_datasets import PipelineDataset
+from ...processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
+from ...processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
-from processing.dataloaders.pipeline_dataloader import build_collate_batch
+from ...processing.dataloaders.pipeline_dataloader import build_collate_batch
 from lightning_models.tabular.pl_tab_ae import TabAE
 from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
@@ -1171,8 +1178,13 @@ def load_data_module(
             shuffle_shards=True if "train" in file_dir else False,
         )
 
-        log_once(logger, f"[STREAMING] Streaming dataset created (memory-efficient mode)")
-        log_once(logger, f"[STREAMING] Data loading optimized via DataLoader workers (num_workers=4, prefetch_factor=2)")
+        log_once(
+            logger, f"[STREAMING] Streaming dataset created (memory-efficient mode)"
+        )
+        log_once(
+            logger,
+            f"[STREAMING] Data loading optimized via DataLoader workers (num_workers=4, prefetch_factor=2)",
+        )
 
         return pipeline_dataset
     elif use_streaming and not has_shards:
@@ -1571,6 +1583,7 @@ def build_model_and_optimizer(
     tokenizer: Union[AutoTokenizer, "Tokenizer"],
     datasets: List[PipelineDataset],
     use_streaming: bool = False,
+    worker_config: Optional[Dict[str, Union[int, bool]]] = None,
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
     """
     Build model, dataloaders, and extract embedding matrix.
@@ -1579,6 +1592,11 @@ def build_model_and_optimizer(
         config_dict: Configuration dictionary with hyperparameters and runtime paths
         tokenizer: Trained tokenizer (AutoTokenizer or custom Tokenizer)
         datasets: List of [train, val, test] PipelineDatasets
+        use_streaming: Whether streaming mode is enabled
+        worker_config: Optional dict with DataLoader worker configuration:
+            - num_workers_per_rank: Number of workers per GPU rank
+            - prefetch_factor: Number of batches to prefetch
+            - use_persistent_workers: Whether to keep workers alive
 
     Returns:
         Tuple of (model, train_loader, val_loader, test_loader, embedding_mat)
@@ -1612,18 +1630,27 @@ def build_model_and_optimizer(
     log_once(logger, f"  Val/Test batch size: {eval_batch_size}")
     log_once(logger, "=" * 70)
 
-    # Configure DataLoader workers based on dataset mode
+    # Configure DataLoader workers based on dataset mode and worker_config
     if use_streaming:
-        # STREAMING MODE: Use workers for parallel I/O from disk/S3
-        num_workers_per_rank = 4
-        use_persistent_workers = True
-        prefetch_factor = 2
-        
+        # STREAMING MODE: Use config values or defaults
+        if worker_config:
+            num_workers_per_rank = worker_config.get("num_workers_per_rank", 4)
+            prefetch_factor = worker_config.get("prefetch_factor", 2)
+            use_persistent_workers = worker_config.get("use_persistent_workers", True)
+            config_source = "environment variables"
+        else:
+            # Fallback to defaults
+            num_workers_per_rank = 4
+            prefetch_factor = 2
+            use_persistent_workers = True
+            config_source = "defaults (no env vars)"
+
         log_once(logger, "=" * 70)
         log_once(logger, "DATALOADER CONFIGURATION: STREAMING MODE")
         log_once(logger, f"  num_workers per rank: {num_workers_per_rank}")
         log_once(logger, f"  persistent_workers: {use_persistent_workers}")
         log_once(logger, f"  prefetch_factor: {prefetch_factor}")
+        log_once(logger, f"  Configuration source: {config_source}")
         log_once(logger, "  Rationale: Parallel shard loading for memory efficiency")
         if torch.distributed.is_initialized():
             world_size = torch.distributed.get_world_size()
@@ -1634,17 +1661,27 @@ def build_model_and_optimizer(
         log_once(logger, "  Note: Each worker processes unique shards (no duplication)")
         log_once(logger, "=" * 70)
     else:
-        # BATCH MODE: No workers needed (data already loaded in memory)
+        # BATCH MODE: Force to 0 regardless of config
         num_workers_per_rank = 0
         use_persistent_workers = False
         prefetch_factor = None
-        
+
+        # Warn if user provided non-zero values
+        if worker_config and worker_config.get("num_workers_per_rank", 0) != 0:
+            log_once(
+                logger,
+                f"⚠️  WARNING: NUM_WORKERS_PER_RANK={worker_config.get('num_workers_per_rank')} "
+                f"but BATCH MODE active - forcing to 0",
+            )
+
         log_once(logger, "=" * 70)
         log_once(logger, "DATALOADER CONFIGURATION: BATCH MODE")
-        log_once(logger, f"  num_workers: {num_workers_per_rank}")
-        log_once(logger, f"  persistent_workers: {use_persistent_workers}")
+        log_once(logger, f"  num_workers: {num_workers_per_rank} (forced)")
+        log_once(logger, f"  persistent_workers: {use_persistent_workers} (forced)")
         log_once(logger, "  Rationale: Data pre-loaded in memory (PipelineDataset)")
-        log_once(logger, "  Note: No parallel loading overhead, optimal for in-memory data")
+        log_once(
+            logger, "  Note: No parallel loading overhead, optimal for in-memory data"
+        )
         log_once(logger, "=" * 70)
 
     train_dataloader = DataLoader(
@@ -2108,8 +2145,15 @@ def main(
     log_once(logger, f"  is_binary: {config_dict['is_binary']}")
     log_once(logger, "=" * 70)
 
-    # Extract use_streaming flag from environ_vars
+    # Extract use_streaming flag and worker config from environ_vars
     use_streaming = environ_vars.get("ENABLE_TRUE_STREAMING", False)
+
+    # Build worker_config dict from environ_vars
+    worker_config = {
+        "num_workers_per_rank": environ_vars.get("NUM_WORKERS_PER_RANK", 4),
+        "prefetch_factor": environ_vars.get("PREFETCH_FACTOR", 2),
+        "use_persistent_workers": environ_vars.get("USE_PERSISTENT_WORKERS", True),
+    }
 
     (
         model,
@@ -2117,7 +2161,9 @@ def main(
         val_dataloader,
         test_dataloader,
         embedding_mat,
-    ) = build_model_and_optimizer(config_dict, tokenizer, datasets, use_streaming)
+    ) = build_model_and_optimizer(
+        config_dict, tokenizer, datasets, use_streaming, worker_config
+    )
 
     # CRITICAL FIX: Sync config object with updated config_dict after model building
     # build_model_and_optimizer updates config_dict["n_embed"] with actual vocab size
@@ -2327,6 +2373,13 @@ if __name__ == "__main__":
         ).lower()
         == "true",
         "REGION": os.environ.get("REGION", "NA"),
+        # DataLoader worker configuration (only used when ENABLE_TRUE_STREAMING=true)
+        "NUM_WORKERS_PER_RANK": int(os.environ.get("NUM_WORKERS_PER_RANK", "4")),
+        "PREFETCH_FACTOR": int(os.environ.get("PREFETCH_FACTOR", "2")),
+        "USE_PERSISTENT_WORKERS": os.environ.get(
+            "USE_PERSISTENT_WORKERS", "true"
+        ).lower()
+        == "true",
     }
 
     # Create empty args namespace to maintain function signature
