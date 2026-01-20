@@ -215,44 +215,38 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-from ...processing.processors import (
+from processing.processors import (
     Processor,
 )
-from ...processing.text.dialogue_processor import (
+from processing.text.dialogue_processor import (
     HTMLNormalizerProcessor,
     EmojiRemoverProcessor,
     TextNormalizationProcessor,
     DialogueSplitterProcessor,
     DialogueChunkerProcessor,
 )
-from ...processing.text.bert_tokenize_processor import BertTokenizeProcessor
-from ...processing.categorical.categorical_label_processor import (
-    CategoricalLabelProcessor,
-)
-from ...processing.categorical.multiclass_label_processor import (
-    MultiClassLabelProcessor,
-)
-from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
-from ...processing.categorical.streaming_risk_table_processor import (
+from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
+from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
+from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.categorical.streaming_risk_table_processor import (
     StreamingRiskTableProcessor,
 )
-from ...processing.numerical.numerical_imputation_processor import (
+from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
-from ...processing.numerical.streaming_numerical_imputation_processor import (
+from processing.numerical.streaming_numerical_imputation_processor import (
     StreamingNumericalImputationProcessor,
 )
-from ...processing.validation import (
-    validate_categorical_fields,
-    validate_numerical_fields,
-)
-from ...processing.processor_registry import build_text_pipeline_from_steps
-from ...processing.datasets.pipeline_datasets import PipelineDataset
-from ...processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
-from ...processing.dataloaders.pipeline_dataloader import (
+from processing.validation import validate_categorical_fields, validate_numerical_fields
+from processing.processor_registry import build_text_pipeline_from_steps
+from processing.datasets.pipeline_datasets import PipelineDataset
+from processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
+from processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
+from processing.dataloaders.pipeline_dataloader import build_collate_batch
 from lightning_models.tabular.pl_tab_ae import TabAE
 from lightning_models.text.pl_text_cnn import TextCNN
 from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
@@ -265,6 +259,8 @@ from lightning_models.trimodal.pl_trimodal_cross_attn import TrimodalCrossAttent
 from lightning_models.trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
 from lightning_models.text.pl_bert_classification import TextBertClassification
 from lightning_models.text.pl_lstm import TextLSTM
+from lightning_models.bimodal.pl_lstm2risk import LSTM2Risk
+from lightning_models.bimodal.pl_transformer2risk import Transformer2Risk
 from lightning_models.utils.pl_train import (
     model_train,
     model_inference,
@@ -306,6 +302,36 @@ if is_main_process():
 def log_once(logger, message, level=logging.INFO):
     if is_main_process():
         logger.log(level, message)
+
+
+# =================== Streaming Dataset Epoch Callback =================================
+class StreamingEpochCallback(pl.Callback):
+    """
+    Callback to set epoch on streaming datasets for proper shuffling.
+
+    This ensures that each epoch has a different shuffle order while
+    maintaining deterministic shuffling for reproducibility.
+
+    Only works with datasets that have a set_epoch() method (e.g., PipelineIterableDataset).
+    """
+
+    def __init__(self, datasets: List):
+        """
+        Args:
+            datasets: List of datasets to set epoch on (typically [train_dataset])
+        """
+        self.datasets = datasets
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        """Called at the start of each training epoch."""
+        epoch = trainer.current_epoch
+        for dataset in self.datasets:
+            if hasattr(dataset, "set_epoch"):
+                dataset.set_epoch(epoch)
+                log_once(
+                    logger,
+                    f"[StreamingEpochCallback] Set epoch={epoch} on {type(dataset).__name__}",
+                )
 
 
 # -------------------------------------------------------------------------
@@ -398,8 +424,14 @@ class Config(BaseModel):
     text_name: Optional[str] = (
         None  # Optional for trimodal (uses primary/secondary instead)
     )
+    # NEW: Track which fields were merged to create text field
+    text_source_fields: Optional[List[str]] = Field(
+        default=None,
+        description="Original field names that were merged to create text_name field",
+    )
     label_name: str = "label"
     batch_size: int = 32
+    eval_batch_size_multiplier: float = 2.0  # Multiplier for val/test batch sizes
     full_field_list: List[str] = Field(default_factory=list)
     cat_field_list: List[str] = Field(default_factory=list)
     tab_field_list: List[str] = Field(default_factory=list)
@@ -441,6 +473,7 @@ class Config(BaseModel):
     warmup_steps: int = 300
     text_input_ids_key: str = "input_ids"  # Configurable text input key
     text_attention_mask_key: str = "attention_mask"  # Configurable attention mask key
+    pad_token_id: Optional[int] = None  # PAD token ID from tokenizer
     primary_text_name: Optional[str] = (
         None  # Primary text field for trimodal (e.g., "chat")
     )
@@ -448,6 +481,10 @@ class Config(BaseModel):
         None  # Secondary text field for trimodal (e.g., "shiptrack")
     )
     embed_size: Optional[int] = None  # Added for type consistency
+    embedding_size: Optional[int] = (
+        None  # Embedding dimension (used by transformer2risk)
+    )
+    n_embed: Optional[int] = None  # Vocabulary size for embedding layer
     label_to_id: Optional[Dict[str, int]] = None  # Added: label to ID mapping
     id_to_label: Optional[List[str]] = None  # Added: ID to label mapping
     _input_format: Optional[str] = None  # Added: input data format for preservation
@@ -465,6 +502,8 @@ class Config(BaseModel):
     secondary_text_processing_steps: Optional[List[str]] = (
         None  # Processing steps for secondary text (trimodal)
     )
+    # Runtime path for model output (set at execution time, not from hyperparameters)
+    model_path: Optional[str] = None
 
     def model_post_init(self, __context):
         # Validate consistency between multiclass_categories and num_classes
@@ -541,6 +580,7 @@ def load_parse_hyperparameters(hparam_path: str) -> Dict:
         "cat_field_list": safe_cast,
         "categorical_features_to_encode": safe_cast,
         "batch_size": safe_cast,
+        "eval_batch_size_multiplier": safe_cast,
         "max_sen_len": safe_cast,
         "chunk_trancate": safe_cast,
         "max_total_chunks": safe_cast,
@@ -691,7 +731,7 @@ def save_risk_table_artifacts(risk_tables: Dict[str, Dict], output_dir: str) -> 
     log_once(logger, f"Saved risk table artifacts to {output_dir}")
 
 
-# ----------------- Batch Mode Preprocessing ------------------
+# ----------------- Batch Mode Preprocessing (PipelineDataset) ------------------
 def build_batch_preprocessing_pipelines(
     config: Config,
     train_dataset: PipelineDataset,
@@ -699,74 +739,148 @@ def build_batch_preprocessing_pipelines(
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
 ) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
-    """Build preprocessing for BATCH mode (has DataReader)."""
+    """
+    Build preprocessing pipelines for BATCH mode (PipelineDataset).
+
+    Batch mode characteristics:
+    - Has DataReader attribute (full DataFrame)
+    - Can validate field types before processing
+    - Can fit statistics from complete data
+    - Uses NumericalVariableImputationProcessor and RiskTableMappingProcessor
+
+    Args:
+        config: Configuration object
+        train_dataset: PipelineDataset with DataReader attribute
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
+
+    Returns:
+        Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
+    """
     pipelines = {}
     imputation_dict = {}
     risk_tables = {}
 
+    log_once(logger, "=" * 70)
     log_once(logger, "BATCH MODE PREPROCESSING")
+    log_once(logger, "=" * 70)
 
-    # Validate fields
+    # === FIELD TYPE VALIDATION (Batch mode only) ===
     if not use_precomputed_imputation and config.tab_field_list:
+        log_once(logger, "Validating numerical field types before imputation...")
         validate_numerical_fields(
             train_dataset.DataReader, config.tab_field_list, "train"
         )
+        log_once(logger, "✓ Numerical field type validation passed")
 
-    text_fields = {
-        config.text_name,
-        config.primary_text_name,
-        config.secondary_text_name,
-    } - {None}
+    # Filter categorical fields (exclude text fields)
+    text_fields = set()
+    if config.text_name:
+        text_fields.add(config.text_name)
+    if config.primary_text_name:
+        text_fields.add(config.primary_text_name)
+    if config.secondary_text_name:
+        text_fields.add(config.secondary_text_name)
+    if hasattr(config, "text_source_fields") and config.text_source_fields:
+        text_fields.update(config.text_source_fields)
+
     actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
 
+    if text_fields and actual_cat_fields != config.cat_field_list:
+        excluded_count = len(config.cat_field_list) - len(actual_cat_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding {excluded_count} text-related fields from categorical processing",
+        )
+
     if not use_precomputed_risk_tables and actual_cat_fields:
+        log_once(
+            logger, "Validating categorical field types before risk table mapping..."
+        )
         validate_categorical_fields(
             train_dataset.DataReader, actual_cat_fields, "train"
         )
+        log_once(logger, "✓ Categorical field type validation passed")
 
-    # Numerical imputation
+    # === 1. NUMERICAL IMPUTATION ===
     if config.tab_field_list:
         imputation_loaded = False
         if use_precomputed_imputation and model_artifacts_dir:
             try:
+                log_once(logger, "Loading pre-computed imputation artifacts...")
                 imputation_dict = load_imputation_artifacts(model_artifacts_dir)
                 for field, value in imputation_dict.items():
-                    pipelines[field] = NumericalVariableImputationProcessor(
+                    proc = NumericalVariableImputationProcessor(
                         column_name=field, imputation_value=value
                     )
+                    pipelines[field] = proc
+                log_once(
+                    logger, f"✓ Loaded imputation for {len(imputation_dict)} fields"
+                )
                 imputation_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fitting imputation from data")
 
         if not imputation_loaded:
+            log_once(logger, "Fitting numerical imputation inline (batch mode)...")
+
+            converted_fields = []
+            already_numeric_fields = []
+
             for field in config.tab_field_list:
+                field_data = train_dataset.DataReader[field]
+
+                if pd.api.types.is_numeric_dtype(field_data):
+                    already_numeric_fields.append(field)
+                else:
+                    field_data = pd.to_numeric(field_data, errors="coerce")
+                    converted_fields.append(field)
+
                 proc = NumericalVariableImputationProcessor(
                     column_name=field, strategy="mean"
                 )
-                proc.fit(train_dataset.DataReader[field])
+                proc.fit(field_data)
                 pipelines[field] = proc
                 imputation_dict[field] = proc.get_imputation_value()
 
-    # Risk tables
+            log_once(
+                logger, f"✓ Fitted imputation for {len(config.tab_field_list)} fields"
+            )
+            if already_numeric_fields:
+                log_once(
+                    logger,
+                    f"  ℹ️  Already numeric: {len(already_numeric_fields)} fields",
+                )
+            if converted_fields:
+                log_once(
+                    logger, f"  ⚠️  Converted to numeric: {len(converted_fields)} fields"
+                )
+
+    # === 2. RISK TABLE MAPPING ===
     if actual_cat_fields:
         risk_tables_loaded = False
         if use_precomputed_risk_tables and model_artifacts_dir:
             try:
+                log_once(logger, "Loading pre-computed risk table artifacts...")
                 risk_tables = load_risk_table_artifacts(model_artifacts_dir)
                 for field, tables in risk_tables.items():
                     if field in actual_cat_fields:
-                        pipelines[field] = RiskTableMappingProcessor(
+                        proc = RiskTableMappingProcessor(
                             column_name=field,
                             label_name=config.label_name,
                             risk_tables=tables,
                         )
+                        pipelines[field] = proc
+                log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
                 risk_tables_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fitting risk tables from data")
 
         if not risk_tables_loaded:
+            log_once(logger, "Fitting risk tables inline (batch mode)...")
             for field in actual_cat_fields:
                 proc = RiskTableMappingProcessor(
                     column_name=field,
@@ -777,11 +891,18 @@ def build_batch_preprocessing_pipelines(
                 proc.fit(train_dataset.DataReader)
                 pipelines[field] = proc
                 risk_tables[field] = proc.get_risk_tables()
+            log_once(
+                logger, f"✓ Fitted risk tables for {len(actual_cat_fields)} fields"
+            )
+
+    log_once(logger, "=" * 70)
+    log_once(logger, f"Total preprocessing pipelines created: {len(pipelines)}")
+    log_once(logger, "=" * 70)
 
     return pipelines, imputation_dict, risk_tables
 
 
-# ----------------- Streaming Mode Preprocessing ------------------
+# ----------------- Streaming Mode Preprocessing (PipelineIterableDataset) ------------------
 def build_streaming_preprocessing_pipelines(
     config: Config,
     train_dataset: PipelineIterableDataset,
@@ -789,83 +910,148 @@ def build_streaming_preprocessing_pipelines(
     use_precomputed_imputation: bool = False,
     use_precomputed_risk_tables: bool = False,
 ) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
-    """Build preprocessing for STREAMING mode (no DataReader)."""
+    """
+    Build preprocessing pipelines for STREAMING mode (PipelineIterableDataset).
+
+    Streaming mode characteristics:
+    - NO DataReader attribute (doesn't exist)
+    - Skips field type validation (can't scan all data upfront)
+    - Uses fixed imputation values (no data scanning)
+    - Uses StreamingRiskTableProcessor for batch fitting (single pass)
+
+    Args:
+        config: Configuration object
+        train_dataset: PipelineIterableDataset (NO DataReader)
+        model_artifacts_dir: Optional directory with pre-computed artifacts
+        use_precomputed_imputation: Whether to use pre-computed imputation
+        use_precomputed_risk_tables: Whether to use pre-computed risk tables
+
+    Returns:
+        Tuple of (pipelines_dict, imputation_dict, risk_tables_dict)
+    """
     pipelines = {}
     imputation_dict = {}
     risk_tables = {}
 
+    log_once(logger, "=" * 70)
     log_once(logger, "STREAMING MODE PREPROCESSING")
-    log_once(logger, "⚠️  Skipping field validation in streaming mode")
+    log_once(logger, "=" * 70)
+    log_once(logger, "⚠️  Skipping field type validation in streaming mode")
 
-    text_fields = {
-        config.text_name,
-        config.primary_text_name,
-        config.secondary_text_name,
-    } - {None}
+    # Filter categorical fields (exclude text fields)
+    text_fields = set()
+    if config.text_name:
+        text_fields.add(config.text_name)
+    if config.primary_text_name:
+        text_fields.add(config.primary_text_name)
+    if config.secondary_text_name:
+        text_fields.add(config.secondary_text_name)
+    if hasattr(config, "text_source_fields") and config.text_source_fields:
+        text_fields.update(config.text_source_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding merged text source fields: {config.text_source_fields}",
+        )
+
     actual_cat_fields = [f for f in config.cat_field_list if f not in text_fields]
 
-    # Numerical imputation
+    if text_fields and actual_cat_fields != config.cat_field_list:
+        excluded_count = len(config.cat_field_list) - len(actual_cat_fields)
+        log_once(
+            logger,
+            f"ℹ️  Excluding {excluded_count} text-related fields from categorical processing",
+        )
+
+    # === 1. NUMERICAL IMPUTATION ===
     if config.tab_field_list:
         imputation_loaded = False
         if use_precomputed_imputation and model_artifacts_dir:
             try:
+                log_once(logger, "Loading pre-computed imputation artifacts...")
                 imputation_dict = load_imputation_artifacts(model_artifacts_dir)
                 for field, value in imputation_dict.items():
-                    pipelines[field] = StreamingNumericalImputationProcessor(
+                    proc = StreamingNumericalImputationProcessor(
                         column_name=field, imputation_value=value
                     )
+                    pipelines[field] = proc
+                log_once(
+                    logger, f"✓ Loaded imputation for {len(imputation_dict)} fields"
+                )
                 imputation_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fixed imputation values")
 
         if not imputation_loaded:
+            # Use fixed imputation value (no data scanning)
+            log_once(
+                logger, "Using fixed imputation value = 0.0 for all numerical fields"
+            )
             for field in config.tab_field_list:
                 impute_value = (
                     config.imputation_dict.get(field, 0.0)
                     if config.imputation_dict
                     else 0.0
                 )
-                pipelines[field] = StreamingNumericalImputationProcessor(
+                proc = StreamingNumericalImputationProcessor(
                     column_name=field, imputation_value=impute_value
                 )
+                pipelines[field] = proc
                 imputation_dict[field] = impute_value
+            log_once(
+                logger,
+                f"✓ Created {len(config.tab_field_list)} streaming imputation processors",
+            )
 
-    # Risk tables
+    # === 2. RISK TABLE MAPPING ===
     if actual_cat_fields:
         risk_tables_loaded = False
         if use_precomputed_risk_tables and model_artifacts_dir:
             try:
+                log_once(logger, "Loading pre-computed risk table artifacts...")
                 risk_tables = load_risk_table_artifacts(model_artifacts_dir)
                 for field, tables in risk_tables.items():
                     if field in actual_cat_fields:
-                        pipelines[field] = StreamingRiskTableProcessor(
+                        proc = StreamingRiskTableProcessor(
                             column_name=field,
                             label_name=config.label_name,
                             risk_tables=tables,
                         )
+                        pipelines[field] = proc
+                log_once(logger, f"✓ Loaded risk tables for {len(risk_tables)} fields")
                 risk_tables_loaded = True
             except FileNotFoundError as e:
                 log_once(logger, f"⚠️  {e}")
                 log_once(logger, "⚠️  Falling back to fitting risk tables from data")
 
         if not risk_tables_loaded:
+            # Batch fit in single pass
             if config.risk_tables:
+                log_once(logger, "✓ Using pre-computed risk tables from config")
                 for field in actual_cat_fields:
                     if field in config.risk_tables:
-                        pipelines[field] = StreamingRiskTableProcessor(
+                        proc = StreamingRiskTableProcessor(
                             column_name=field,
                             label_name=config.label_name,
                             risk_tables=config.risk_tables[field],
                         )
+                        pipelines[field] = proc
                         risk_tables[field] = config.risk_tables[field]
             elif actual_cat_fields:
+                log_once(
+                    logger, "⚠️  No pre-computed risk tables - fitting in streaming mode"
+                )
+                log_once(
+                    logger, f"  Fitting {len(actual_cat_fields)} fields in ONE pass..."
+                )
+
                 dummy_proc = StreamingRiskTableProcessor(
                     column_name="dummy",
                     label_name=config.label_name,
                     smooth_factor=config.smooth_factor,
                     count_threshold=config.count_threshold,
                 )
+
                 risk_tables = dummy_proc.fit_streaming(
                     dataset=train_dataset,
                     field_names=actual_cat_fields,
@@ -874,13 +1060,23 @@ def build_streaming_preprocessing_pipelines(
                     count_threshold=config.count_threshold,
                     show_progress=True,
                 )
+
                 for field in actual_cat_fields:
                     if field in risk_tables:
-                        pipelines[field] = StreamingRiskTableProcessor(
+                        proc = StreamingRiskTableProcessor(
                             column_name=field,
                             label_name=config.label_name,
                             risk_tables=risk_tables[field],
                         )
+                        pipelines[field] = proc
+
+                log_once(
+                    logger, f"✓ Batch fit completed for {len(actual_cat_fields)} fields"
+                )
+
+    log_once(logger, "=" * 70)
+    log_once(logger, f"Total preprocessing pipelines created: {len(pipelines)}")
+    log_once(logger, "=" * 70)
 
     return pipelines, imputation_dict, risk_tables
 
@@ -895,7 +1091,7 @@ def build_preprocessing_pipelines(
     use_streaming: bool = False,
 ) -> Tuple[Dict[str, Processor], Dict[str, float], Dict[str, Dict]]:
     """
-    Router function that delegates to batch or streaming preprocessing.
+    Router function that delegates to batch or streaming preprocessing based on use_streaming flag.
 
     Args:
         config: Configuration object
@@ -1005,35 +1201,101 @@ def load_data_module(
 # ----------------- Updated Data Preprocessing Pipeline ------------------
 def data_preprocess_pipeline(
     config: Config,
-) -> Tuple[AutoTokenizer, Dict[str, Processor]]:
+    model_artifacts_input: Optional[str] = None,
+) -> Tuple[Union[AutoTokenizer, "Tokenizer"], Dict[str, Processor]]:
     """
     Build text preprocessing pipelines based on config.
 
+    For Names3Risk models (lstm2risk, transformer2risk), loads custom BPE tokenizer.
+    For other models (bimodal_bert, etc.), uses pretrained BERT tokenizer.
+
     For bimodal: Uses text_name with default or configured steps
     For trimodal: Uses primary_text_name and secondary_text_name with separate step lists
-    """
-    if not config.tokenizer:
-        config.tokenizer = "bert-base-multilingual-cased"
 
-    log_once(logger, f"Constructing tokenizer: {config.tokenizer}")
-    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+    Args:
+        config: Configuration object
+        model_artifacts_input: Optional path to model artifacts containing tokenizer
+
+    Returns:
+        Tuple of (tokenizer, preprocessing_pipelines)
+    """
+    # Determine if custom tokenizer is needed
+    needs_custom_tokenizer = config.model_class in ["lstm2risk", "transformer2risk"]
+
+    if needs_custom_tokenizer and model_artifacts_input:
+        # Load custom BPE tokenizer from model artifacts
+        tokenizer_path = os.path.join(model_artifacts_input, "tokenizer.json")
+
+        if os.path.exists(tokenizer_path):
+            from tokenizers import Tokenizer
+
+            tokenizer = Tokenizer.from_file(tokenizer_path)
+            log_once(logger, f"✓ Loaded custom BPE tokenizer from {tokenizer_path}")
+
+            # DEBUG: Comprehensive tokenizer validation
+            vocab_size = tokenizer.get_vocab_size()
+            log_once(logger, "=" * 70)
+            log_once(logger, "TOKENIZER VALIDATION")
+            log_once(logger, "=" * 70)
+            log_once(logger, f"Tokenizer vocab_size: {vocab_size}")
+            log_once(logger, f"Tokenizer type: {type(tokenizer)}")
+
+            # Check special tokens
+            pad_id = tokenizer.token_to_id("[PAD]")
+            cls_id = tokenizer.token_to_id("[CLS]")
+            unk_id = tokenizer.token_to_id("[UNK]")
+            log_once(
+                logger, f"Special tokens - PAD: {pad_id}, CLS: {cls_id}, UNK: {unk_id}"
+            )
+
+            # Sample encoding to verify tokenizer behavior
+            sample_text = "john.smith@email.com"
+            sample_encoding = tokenizer.encode(sample_text)
+            sample_ids = sample_encoding.ids
+            log_once(logger, f"Sample encode '{sample_text}' -> {sample_ids}")
+            if sample_ids:
+                log_once(logger, f"Sample max token ID: {max(sample_ids)}")
+                if max(sample_ids) >= vocab_size:
+                    log_once(
+                        logger,
+                        f"⚠️  WARNING: Sample token ID {max(sample_ids)} >= vocab_size {vocab_size}!",
+                    )
+            log_once(logger, "=" * 70)
+
+            # Get PAD token ID for collate function
+            pad_token_id = pad_id if pad_id is not None else 0
+            config.pad_token_id = pad_token_id
+            log_once(logger, f"  PAD token ID set to: {config.pad_token_id}")
+        else:
+            raise FileNotFoundError(
+                f"Custom tokenizer required for {config.model_class} but not found at {tokenizer_path}. "
+                f"Please run tokenizer_training step first."
+            )
+    else:
+        # Default: Load pretrained BERT tokenizer for other models
+        if not config.tokenizer:
+            config.tokenizer = "bert-base-multilingual-cased"
+
+        log_once(logger, f"Constructing pretrained tokenizer: {config.tokenizer}")
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+        config.pad_token_id = tokenizer.pad_token_id
+        log_once(logger, f"  PAD token ID: {config.pad_token_id}")
+
     pipelines = {}
 
     # BIMODAL: Single text pipeline
     if not config.primary_text_name:
-        # Use configured steps or fallback to default
-        steps = getattr(
-            config,
-            "text_processing_steps",
-            [
-                "dialogue_splitter",
-                "html_normalizer",
-                "emoji_remover",
-                "text_normalizer",
-                "dialogue_chunker",
-                "tokenizer",
-            ],
-        )
+        # Use configured steps or fallback to default based on tokenizer type
+        # For Names3Risk models with custom BPE tokenizer: use custom_bpe_tokenizer
+        # For BERT models: use standard tokenizer
+        if needs_custom_tokenizer:
+            default_steps = [
+                "custom_bpe_tokenizer"
+            ]  # Custom BPE for lstm2risk/transformer2risk
+        else:
+            default_steps = ["tokenizer"]  # Standard BERT tokenizer
+
+        steps = getattr(config, "text_processing_steps", default_steps)
 
         pipelines[config.text_name] = build_text_pipeline_from_steps(
             processing_steps=steps,
@@ -1047,6 +1309,10 @@ def data_preprocess_pipeline(
         log_once(
             logger,
             f"Built bimodal pipeline for '{config.text_name}' with steps: {steps}",
+        )
+        log_once(
+            logger,
+            f"  Output keys: input_ids={config.text_input_ids_key}, attention_mask={config.text_attention_mask_key}",
         )
 
     # TRIMODAL: Dual text pipelines
@@ -1110,10 +1376,16 @@ def data_preprocess_pipeline(
 
 # ----------------- Model Selection -----------------------
 def model_select(
-    model_class: str, config: Config, vocab_size: int, embedding_mat: torch.Tensor
+    model_class: str, config_dict: Dict, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
     """
     Select and instantiate a model based on model_class string.
+
+    Args:
+        model_class: String identifier for model type
+        config_dict: Configuration dictionary (includes hyperparameters + runtime paths)
+        vocab_size: Vocabulary size for embedding layer
+        embedding_mat: Pretrained embedding matrix
 
     Supports:
     - General categories: "bimodal", "trimodal"
@@ -1124,36 +1396,33 @@ def model_select(
     """
     model_map = {
         # General categories (default to bert variants)
-        "bimodal": lambda: BimodalBert(config.model_dump()),
-        "trimodal": lambda: TrimodalBert(config.model_dump()),
+        "bimodal": lambda: BimodalBert(config_dict),
+        "trimodal": lambda: TrimodalBert(config_dict),
         # Specific bimodal models
-        "bimodal_cnn": lambda: BimodalCNN(
-            config.model_dump(), vocab_size, embedding_mat
-        ),
-        "bimodal_bert": lambda: BimodalBert(config.model_dump()),
-        "bimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
-        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
-        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        "bimodal_cnn": lambda: BimodalCNN(config_dict, vocab_size, embedding_mat),
+        "bimodal_bert": lambda: BimodalBert(config_dict),
+        "bimodal_moe": lambda: BimodalBertMoE(config_dict),
+        "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
+        "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
+        # Names3Risk models (custom BPE tokenizer + specific architectures)
+        "lstm2risk": lambda: LSTM2Risk(config_dict),
+        "transformer2risk": lambda: Transformer2Risk(config_dict),
         # Specific trimodal models
-        "trimodal_bert": lambda: TrimodalBert(config.model_dump()),
-        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config.model_dump()),
-        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config.model_dump()),
+        "trimodal_bert": lambda: TrimodalBert(config_dict),
+        "trimodal_cross_attn": lambda: TrimodalCrossAttentionBert(config_dict),
+        "trimodal_gate_fusion": lambda: TrimodalGateFusionBert(config_dict),
         # Text-only models
-        "bert": lambda: TextBertClassification(config.model_dump()),
-        "lstm": lambda: TextLSTM(config.model_dump(), vocab_size, embedding_mat),
+        "bert": lambda: TextBertClassification(config_dict),
+        "lstm": lambda: TextLSTM(config_dict, vocab_size, embedding_mat),
         # Backward compatibility (multimodal -> bimodal)
-        "multimodal_cnn": lambda: BimodalCNN(
-            config.model_dump(), vocab_size, embedding_mat
-        ),
-        "multimodal_bert": lambda: BimodalBert(config.model_dump()),
-        "multimodal_moe": lambda: BimodalBertMoE(config.model_dump()),
-        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config.model_dump()),
-        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config.model_dump()),
+        "multimodal_cnn": lambda: BimodalCNN(config_dict, vocab_size, embedding_mat),
+        "multimodal_bert": lambda: BimodalBert(config_dict),
+        "multimodal_moe": lambda: BimodalBertMoE(config_dict),
+        "multimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
+        "multimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
     }
 
-    return model_map.get(
-        model_class, lambda: TextBertClassification(config.model_dump())
-    )()
+    return model_map.get(model_class, lambda: TextBertClassification(config_dict))()
 
 
 # ----------------- Training Setup -----------------------
@@ -1222,7 +1491,9 @@ def load_and_preprocess_data(
     )
 
     # === Build tokenizer and preprocessing pipelines ===
-    tokenizer, pipelines = data_preprocess_pipeline(config)
+    tokenizer, pipelines = data_preprocess_pipeline(
+        config, model_artifacts_input=model_artifacts_dir
+    )
 
     # Add pipelines for each text field
     log_once(logger, "=" * 70)
@@ -1296,48 +1567,185 @@ def load_and_preprocess_data(
 
 # ----------------- Model Building -----------------------
 def build_model_and_optimizer(
-    config: Config,
-    tokenizer: AutoTokenizer,
+    config_dict: Dict,
+    tokenizer: Union[AutoTokenizer, "Tokenizer"],
     datasets: List[PipelineDataset],
     use_streaming: bool = False,
 ) -> Tuple[nn.Module, DataLoader, DataLoader, DataLoader, torch.Tensor]:
-    # Use unified collate function for all model types
-    logger.info(f"Using collate batch for model: {config.model_class}")
+    """
+    Build model, dataloaders, and extract embedding matrix.
 
-    # Use unified keys for all models (single tokenizer design)
+    Args:
+        config_dict: Configuration dictionary with hyperparameters and runtime paths
+        tokenizer: Trained tokenizer (AutoTokenizer or custom Tokenizer)
+        datasets: List of [train, val, test] PipelineDatasets
+
+    Returns:
+        Tuple of (model, train_loader, val_loader, test_loader, embedding_mat)
+    """
+
+    # Use unified collate function for all models (BSM-style)
+    model_class = config_dict.get("model_class", "bimodal_bert")
+
     collate_batch = build_collate_batch(
-        input_ids_key=config.text_input_ids_key,
-        attention_mask_key=config.text_attention_mask_key,
+        input_ids_key=config_dict.get("text_input_ids_key", "input_ids"),
+        attention_mask_key=config_dict.get("text_attention_mask_key", "attention_mask"),
     )
+    logger.info(f"✓ Using unified collate function for {model_class}")
+    logger.info(
+        f"  - Input IDs key: {config_dict.get('text_input_ids_key', 'input_ids')}"
+    )
+    logger.info(
+        f"  - Attention mask key: {config_dict.get('text_attention_mask_key', 'attention_mask')}"
+    )
+    logger.info("  - Handles text fields automatically via pipeline_dataloader")
 
     train_pipeline_dataset, val_pipeline_dataset, test_pipeline_dataset = datasets
+    train_batch_size = config_dict.get("batch_size", 32)
+    eval_multiplier = config_dict.get("eval_batch_size_multiplier", 2.0)
+    eval_batch_size = int(train_batch_size * eval_multiplier)
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "BATCH SIZE CONFIGURATION")
+    log_once(logger, f"  Training batch size: {train_batch_size}")
+    log_once(logger, f"  Eval batch size multiplier: {eval_multiplier}x")
+    log_once(logger, f"  Val/Test batch size: {eval_batch_size}")
+    log_once(logger, "=" * 70)
 
     train_dataloader = DataLoader(
         train_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=config.batch_size,
+        batch_size=train_batch_size,
         shuffle=False if use_streaming else True,
     )
     val_dataloader = DataLoader(
-        val_pipeline_dataset, collate_fn=collate_batch, batch_size=config.batch_size
+        val_pipeline_dataset, collate_fn=collate_batch, batch_size=eval_batch_size
     )
     test_dataloader = DataLoader(
         test_pipeline_dataset,
         collate_fn=collate_batch,
-        batch_size=config.batch_size,
+        batch_size=eval_batch_size,
     )
 
-    log_once(logger, f"Extract pretrained embedding from model: {config.tokenizer}")
-    embedding_model = AutoModel.from_pretrained(config.tokenizer)
-    embedding_mat = embedding_model.embeddings.word_embeddings.weight
-    log_once(
-        logger, f"Embedding shape: [{embedding_mat.shape[0]}, {embedding_mat.shape[1]}]"
-    )
-    config.embed_size = embedding_mat.shape[1]
-    vocab_size = tokenizer.vocab_size
-    log_once(logger, f"Vocabulary Size: {vocab_size}")
-    log_once(logger, f"Model choice: {config.model_class}")
-    model = model_select(config.model_class, config, vocab_size, embedding_mat)
+    # DEBUG: Inspect first batch to check token ID ranges
+    log_once(logger, "=" * 70)
+    log_once(logger, "FIRST BATCH INSPECTION")
+    log_once(logger, "=" * 70)
+    try:
+        first_batch = next(iter(train_dataloader))
+        log_once(logger, f"First batch keys: {list(first_batch.keys())}")
+
+        # Check text token IDs (construct prefixed key like Lightning model does)
+        text_name = config_dict.get("text_name", "text_field")
+        text_input_ids_key = config_dict.get("text_input_ids_key", "input_ids")
+        text_key = f"{text_name}_{text_input_ids_key}"  # e.g., "text_input_ids"
+
+        log_once(logger, f"Looking for text tokens under key: '{text_key}'")
+        if text_key in first_batch:
+            text_tokens = first_batch[text_key]
+            if text_tokens is not None and text_tokens.numel() > 0:
+                min_token = text_tokens.min().item()
+                max_token = text_tokens.max().item()
+                log_once(logger, f"Text tokens (key='{text_key}'):")
+                log_once(logger, f"  Shape: {text_tokens.shape}")
+                log_once(logger, f"  Token ID range: [{min_token}, {max_token}]")
+
+                # Compare with tokenizer vocab_size
+                if hasattr(tokenizer, "get_vocab_size"):
+                    vocab_size = tokenizer.get_vocab_size()
+                    log_once(logger, f"  Tokenizer vocab_size: {vocab_size}")
+                    if max_token >= vocab_size:
+                        log_once(
+                            logger,
+                            f"⚠️  WARNING: Found token ID {max_token} >= vocab_size {vocab_size}!",
+                        )
+                        log_once(
+                            logger, f"⚠️  This will cause CUDA index out of range error!"
+                        )
+                elif hasattr(tokenizer, "vocab_size"):
+                    vocab_size = tokenizer.vocab_size
+                    log_once(logger, f"  Tokenizer vocab_size: {vocab_size}")
+                    if max_token >= vocab_size:
+                        log_once(
+                            logger,
+                            f"⚠️  WARNING: Found token ID {max_token} >= vocab_size {vocab_size}!",
+                        )
+        else:
+            log_once(logger, f"No text tokens found under key '{text_key}'")
+
+    except StopIteration:
+        log_once(logger, "Could not inspect first batch (dataloader empty)")
+    except Exception as e:
+        log_once(logger, f"Error inspecting first batch: {e}")
+    log_once(logger, "=" * 70)
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "EMBEDDING CONFIGURATION")
+    log_once(logger, "=" * 70)
+
+    # === BRANCH 1: Custom Tokenizer Models (Names3Risk) ===
+    if model_class in ["lstm2risk", "transformer2risk"]:
+        log_once(logger, f"Using custom tokenizer configuration for {model_class}")
+
+        # Extract vocab size from custom tokenizer
+        if hasattr(tokenizer, "get_vocab_size"):
+            vocab_size = tokenizer.get_vocab_size()  # HuggingFace Tokenizer
+        else:
+            raise AttributeError(
+                f"Custom tokenizer missing get_vocab_size() method. "
+                f"Tokenizer type: {type(tokenizer)}"
+            )
+
+        # Get embedding dimension from config (e.g., 128 for transformer2risk, 16 for LSTM2Risk)
+        embedding_size = config_dict.get("embedding_size", 128)
+
+        # Create dummy embedding matrix (models create their own nn.Embedding layers)
+        # This is just for parameter passing compatibility
+        embedding_mat = torch.zeros(vocab_size, embedding_size)
+
+        log_once(logger, f"  Model class: {model_class}")
+        log_once(logger, f"  Vocabulary size: {vocab_size}")
+        log_once(logger, f"  Embedding dimension: {embedding_size}")
+        log_once(logger, f"  Embedding matrix: Dummy ({vocab_size}, {embedding_size})")
+        log_once(logger, "  Note: Model will create trainable embeddings from scratch")
+
+    # === BRANCH 2: BERT-based Models ===
+    else:
+        log_once(logger, f"Using BERT tokenizer configuration for {model_class}")
+
+        # Extract vocab size from BERT tokenizer
+        if hasattr(tokenizer, "vocab_size"):
+            vocab_size = tokenizer.vocab_size  # AutoTokenizer
+        else:
+            raise AttributeError(
+                f"BERT tokenizer missing vocab_size attribute. "
+                f"Tokenizer type: {type(tokenizer)}"
+            )
+
+        # Load pretrained BERT embeddings
+        tokenizer_name = config_dict.get("tokenizer", "bert-base-multilingual-cased")
+        log_once(logger, f"  Loading pretrained BERT embeddings from: {tokenizer_name}")
+        embedding_model = AutoModel.from_pretrained(tokenizer_name)
+        embedding_mat = embedding_model.embeddings.word_embeddings.weight
+        embedding_size = embedding_mat.shape[1]
+
+        log_once(logger, f"  Model class: {model_class}")
+        log_once(logger, f"  Vocabulary size: {vocab_size}")
+        log_once(logger, f"  Embedding dimension: {embedding_size}")
+        log_once(logger, f"  Embedding matrix shape: {embedding_mat.shape}")
+
+    # === Common: Update config with derived parameters ===
+    config_dict["n_embed"] = vocab_size
+    config_dict["embedding_size"] = embedding_size
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "Final embedding configuration:")
+    log_once(logger, f"  n_embed (vocab_size): {vocab_size}")
+    log_once(logger, f"  embedding_size (dimension): {embedding_size}")
+    log_once(logger, "=" * 70)
+
+    log_once(logger, f"Model choice: {model_class}")
+    model = model_select(model_class, config_dict, vocab_size, embedding_mat)
     return model, train_dataloader, val_dataloader, test_dataloader, embedding_mat
 
 
@@ -1565,7 +1973,7 @@ def main(
         job_args: Command line arguments
     """
     # Load hyperparameters with region-specific support
-    # Get region from environ_vars parameter (for testability)
+    # Get region from environment variable
     region = environ_vars.get("REGION", "").upper()
 
     if region in ["NA", "EU", "FE"]:
@@ -1580,11 +1988,9 @@ def main(
         else:
             logger.info("No REGION specified, using default hyperparameters.json")
 
-    hparam_dir = input_paths.get("hyperparameters_s3_uri")
-    if not hparam_dir.endswith(hparam_filename):
-        hparam_file = os.path.join(hparam_dir, hparam_filename)
-    else:
-        hparam_file = hparam_dir
+    hparam_file = input_paths.get("hyperparameters_s3_uri")
+    if not hparam_file.endswith(hparam_filename):
+        hparam_file = os.path.join(hparam_file, hparam_filename)
 
     logger.info(f"Loading hyperparameters from: {hparam_file}")
     hyperparameters = load_parse_hyperparameters(hparam_file)
@@ -1629,23 +2035,78 @@ def main(
         use_streaming=environ_vars.get("ENABLE_TRUE_STREAMING", False),
     )
 
+    # Set runtime model_path directly on config object
+    config.model_path = paths["output"]
+    log_once(logger, f"Set runtime model_path: {paths['output']}")
+
+    # Convert config to dict for model building
+    config_dict = config.model_dump()
+
+    # Add derived fields (these are @property fields not included in model_dump)
+    # CRITICAL: Must add these BEFORE model initialization to avoid dimension mismatches
+    config_dict["input_tab_dim"] = len(
+        config.tab_field_list
+    )  # Compute from actual number of tabular fields
+    config_dict["is_binary"] = config.is_binary  # Auto-derives from num_classes
+    config_dict["num_classes"] = (
+        config.num_classes
+    )  # Auto-derives from multiclass_categories
+
+    log_once(logger, "=" * 70)
+    log_once(logger, "DERIVED FIELDS ADDED TO CONFIG:")
+    log_once(
+        logger,
+        f"  input_tab_dim: {config_dict['input_tab_dim']} (derived from {len(config.tab_field_list)} tabular fields)",
+    )
+    log_once(logger, f"  num_classes: {config_dict['num_classes']}")
+    log_once(logger, f"  is_binary: {config_dict['is_binary']}")
+    log_once(logger, "=" * 70)
+
     # Extract use_streaming flag from environ_vars
     use_streaming = environ_vars.get("ENABLE_TRUE_STREAMING", False)
 
-    model, train_dataloader, val_dataloader, test_dataloader, embedding_mat = (
-        build_model_and_optimizer(config, tokenizer, datasets, use_streaming)
-    )
-    # update tab dimension
-    config.input_tab_dim = len(config.tab_field_list)
+    (
+        model,
+        train_dataloader,
+        val_dataloader,
+        test_dataloader,
+        embedding_mat,
+    ) = build_model_and_optimizer(config_dict, tokenizer, datasets, use_streaming)
+
+    # CRITICAL FIX: Sync config object with updated config_dict after model building
+    # build_model_and_optimizer updates config_dict["n_embed"] with actual vocab size
+    # config_dict["input_tab_dim"] was set earlier from len(config.tab_field_list)
+    # We need to sync these back to config object before saving artifacts
+    config.n_embed = config_dict.get("n_embed")
+    config.embedding_size = config_dict.get("embedding_size")
+    config.input_tab_dim = config_dict.get("input_tab_dim")
+    log_once(logger, "=" * 70)
+    log_once(logger, "SYNCED CONFIG OBJECT WITH ACTUAL MODEL DIMENSIONS:")
+    log_once(logger, f"  config.n_embed: {config.n_embed}")
+    log_once(logger, f"  config.embedding_size: {config.embedding_size}")
+    log_once(logger, f"  config.input_tab_dim: {config.input_tab_dim}")
+    log_once(logger, "=" * 70)
+
+    # Register StreamingEpochCallback if using streaming datasets
+    additional_callbacks = []
+    if use_streaming:
+        train_dataset = datasets[0]
+        epoch_callback = StreamingEpochCallback(datasets=[train_dataset])
+        additional_callbacks.append(epoch_callback)
+        log_once(
+            logger, "✓ Registered StreamingEpochCallback for epoch-aware shuffling"
+        )
+
     log_once(logger, "Training starts using pytorch.lightning ...")
     trainer = model_train(
         model,
-        config.model_dump(),
+        config_dict,
         train_dataloader,
         val_dataloader,
         device="auto",
         model_log_path=paths["checkpoint"],
         early_stop_metric=config.early_stop_metric,
+        additional_callbacks=additional_callbacks if additional_callbacks else None,
     )
     log_once(logger, "Training Complete.")
     log_once(logger, "Evaluating final model.")
@@ -1661,11 +2122,24 @@ def main(
         save_model(model_filename, model)
         artifact_filename = os.path.join(paths["model"], "model_artifacts.pth")
         logger.info(f"Saving model artifacts to {artifact_filename}")
+
+        # Extract vocabulary based on tokenizer type
+        if hasattr(tokenizer, "vocab"):
+            # BERT tokenizer (AutoTokenizer)
+            vocab = tokenizer.vocab
+        elif hasattr(tokenizer, "get_vocab"):
+            # Custom BPE tokenizer (tokenizers.Tokenizer)
+            vocab = tokenizer.get_vocab()
+        else:
+            raise AttributeError(
+                f"Tokenizer type {type(tokenizer)} has no vocab access method"
+            )
+
         save_artifacts(
             artifact_filename,
             config.model_dump(),
             embedding_mat,
-            tokenizer.vocab,
+            vocab,
             model_class=config.model_class,
         )
 
@@ -1673,6 +2147,29 @@ def main(
         onnx_path = os.path.join(paths["model"], "model.onnx")
         logger.info(f"Saving model as ONNX to {onnx_path}")
         export_model_to_onnx(model, trainer, val_dataloader, onnx_path)
+
+        # ------------------ Save Tokenizer ------------------
+        logger.info("Saving tokenizer to model directory...")
+        model_class = config.model_class
+
+        if model_class in ["lstm2risk", "transformer2risk"]:
+            # Save custom BPE tokenizer
+            tokenizer_file = os.path.join(paths["model"], "tokenizer.json")
+            tokenizer.save(tokenizer_file)
+            logger.info(f"✓ Saved custom tokenizer to {tokenizer_file}")
+
+            # Also save vocabulary for compatibility
+            vocab = tokenizer.get_vocab()
+            vocab_file = os.path.join(paths["model"], "vocab.json")
+            with open(vocab_file, "w") as f:
+                json.dump(vocab, f, indent=2)
+            logger.info(f"✓ Saved vocabulary ({len(vocab)} tokens) to {vocab_file}")
+        else:
+            # Save BERT tokenizer using save_pretrained
+            tokenizer_dir = os.path.join(paths["model"], "tokenizer")
+            os.makedirs(tokenizer_dir, exist_ok=True)
+            tokenizer.save_pretrained(tokenizer_dir)
+            logger.info(f"✓ Saved BERT tokenizer to {tokenizer_dir}")
 
         # ------------------ Save Hyperparameters Configuration ------------------
         hyperparameters_file = os.path.join(paths["model"], "hyperparameters.json")
