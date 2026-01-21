@@ -4,7 +4,7 @@ Command-line interface for the Unified Alignment Tester.
 
 This CLI provides comprehensive alignment validation across all four levels:
 1. Script ↔ Contract Alignment
-2. Contract ↔ Specification Alignment  
+2. Contract ↔ Specification Alignment
 3. Specification ↔ Dependencies Alignment
 4. Builder ↔ Configuration Alignment
 
@@ -93,30 +93,32 @@ def print_validation_summary(
     # Print level-by-level results - fix to match actual implementation structure
     level_names = [
         "Script ↔ Contract",
-        "Contract ↔ Specification", 
+        "Contract ↔ Specification",
         "Specification ↔ Dependencies",
         "Builder ↔ Configuration",
     ]
 
     # Get validation results from the actual structure
     validation_results = results.get("validation_results", {})
-    
+
     for level_num, level_name in enumerate(level_names, 1):
         level_key = f"level_{level_num}"  # Implementation uses level_1, level_2, etc.
         level_result = validation_results.get(level_key, {})
-        
+
         # Check level status - implementation uses "status" field
         level_status = level_result.get("status", "UNKNOWN")
         level_passed = level_status not in ["ERROR", "FAILED"]
-        
+
         # Get issues/errors from level result
         level_issues = []
         if level_result.get("error"):
-            level_issues.append({
-                "severity": "ERROR",
-                "message": level_result.get("error"),
-                "recommendation": "Check the validation logs for more details"
-            })
+            level_issues.append(
+                {
+                    "severity": "ERROR",
+                    "message": level_result.get("error"),
+                    "recommendation": "Check the validation logs for more details",
+                }
+            )
 
         level_emoji = "✅" if level_passed else "❌"
         issues_text = f" ({len(level_issues)} issues)" if level_issues else ""
@@ -309,8 +311,8 @@ def generate_html_report(script_name: str, results: Dict[str, Any]) -> str:
 
             issues_html += f"""
             <div class="issue {severity}">
-                <strong>{issue.get('severity', 'ERROR')}:</strong> {message}
-                {f'<br><em>Recommendation: {recommendation}</em>' if recommendation else ''}
+                <strong>{issue.get("severity", "ERROR")}:</strong> {message}
+                {f"<br><em>Recommendation: {recommendation}</em>" if recommendation else ""}
             </div>
             """
 
@@ -383,9 +385,9 @@ def generate_html_report(script_name: str, results: Dict[str, Any]) -> str:
     
     <div class="metadata">
         <h3>Metadata</h3>
-        <p><strong>Script Path:</strong> {results.get('metadata', {}).get('script_path', 'Unknown')}</p>
+        <p><strong>Script Path:</strong> {results.get("metadata", {}).get("script_path", "Unknown")}</p>
         <p><strong>Validation Timestamp:</strong> {timestamp}</p>
-        <p><strong>Validator Version:</strong> {results.get('metadata', {}).get('validator_version', 'Unknown')}</p>
+        <p><strong>Validator Version:</strong> {results.get("metadata", {}).get("validator_version", "Unknown")}</p>
     </div>
 </body>
 </html>"""
@@ -416,13 +418,13 @@ def alignment(ctx):
     "--workspace-dirs",
     multiple=True,
     type=click.Path(exists=True),
-    help="Workspace directories to include in validation"
+    help="Workspace directories to include in validation",
 )
 @click.option(
     "--level3-mode",
     type=click.Choice(["strict", "relaxed", "permissive"]),
     default="relaxed",
-    help="Level 3 validation mode"
+    help="Level 3 validation mode",
 )
 @click.option(
     "--output-dir",
@@ -509,6 +511,7 @@ def validate(
         click.echo(f"❌ Error validating {script_name}: {e}", err=True)
         if verbose:
             import traceback
+
             traceback.print_exc()
         ctx.exit(1)
 
@@ -518,13 +521,13 @@ def validate(
     "--workspace-dirs",
     multiple=True,
     type=click.Path(exists=True),
-    help="Workspace directories to include in validation"
+    help="Workspace directories to include in validation",
 )
 @click.option(
     "--level3-mode",
     type=click.Choice(["strict", "relaxed", "permissive"]),
     default="relaxed",
-    help="Level 3 validation mode"
+    help="Level 3 validation mode",
 )
 @click.option(
     "--output-dir",
@@ -557,7 +560,7 @@ def validate_all(
     """
     Validate alignment for all scripts discovered by the step catalog.
 
-    Discovers all Python scripts using the step catalog (workspace-aware) and runs 
+    Discovers all Python scripts using the step catalog (workspace-aware) and runs
     comprehensive alignment validation for each one, generating detailed reports.
 
     Example:
@@ -579,22 +582,28 @@ def validate_all(
         # Discover ALL steps for comprehensive validation (not just scripts)
         # The validation system will intelligently skip levels based on step type
         all_steps = tester.step_catalog.list_available_steps()
-        
+
         # Get breakdown for user information by checking which steps have script files
         scripts_with_files = []
         steps_without_scripts = []
-        
+
         for step_name in all_steps:
             if tester._has_script_file(step_name):
                 scripts_with_files.append(step_name)
             else:
                 steps_without_scripts.append(step_name)
-        
-        click.echo(f"\n📋 Discovered {len(all_steps)} total steps for comprehensive validation:")
-        click.echo(f"  • {len(scripts_with_files)} steps with scripts (full 4-level validation)")
-        click.echo(f"  • {len(steps_without_scripts)} steps without scripts (intelligent level skipping)")
+
+        click.echo(
+            f"\n📋 Discovered {len(all_steps)} total steps for comprehensive validation:"
+        )
+        click.echo(
+            f"  • {len(scripts_with_files)} steps with scripts (full 4-level validation)"
+        )
+        click.echo(
+            f"  • {len(steps_without_scripts)} steps without scripts (intelligent level skipping)"
+        )
         click.echo(f"\nAll steps: {', '.join(all_steps)}")
-        
+
         # Use all steps for validation, not just scripts
         scripts = all_steps
 
@@ -610,9 +619,9 @@ def validate_all(
 
         # Validate each script
         for script_name in scripts:
-            click.echo(f"\n{'='*60}")
+            click.echo(f"\n{'=' * 60}")
             click.echo(f"🔍 VALIDATING SCRIPT: {script_name}")
-            click.echo(f"{'='*60}")
+            click.echo(f"{'=' * 60}")
 
             try:
                 results = tester.validate_specific_script(script_name)
@@ -627,7 +636,9 @@ def validate_all(
                 }
 
                 # Print results
-                print_validation_summary(results, verbose, False)  # show_scoring not defined in this scope
+                print_validation_summary(
+                    results, verbose, False
+                )  # show_scoring not defined in this scope
 
                 # Save reports if output directory specified
                 if output_dir:
@@ -640,7 +651,9 @@ def validate_all(
                 status = results.get("overall_status", "UNKNOWN")
                 validation_summary["step_results"][script_name] = {
                     "status": status,
-                    "timestamp": results.get("metadata", {}).get("validation_timestamp"),
+                    "timestamp": results.get("metadata", {}).get(
+                        "validation_timestamp"
+                    ),
                 }
 
                 if status == "PASSED":
@@ -663,7 +676,9 @@ def validate_all(
                 }
 
                 if not continue_on_error:
-                    click.echo("Stopping validation due to error. Use --continue-on-error to continue.")
+                    click.echo(
+                        "Stopping validation due to error. Use --continue-on-error to continue."
+                    )
                     ctx.exit(1)
 
         # Save overall summary
@@ -679,9 +694,9 @@ def validate_all(
                 click.echo(f"⚠️  Warning: Could not save validation summary: {e}")
 
         # Print final summary
-        click.echo(f"\n{'='*80}")
+        click.echo(f"\n{'=' * 80}")
         click.echo("🎯 FINAL VALIDATION SUMMARY")
-        click.echo(f"{'='*80}")
+        click.echo(f"{'=' * 80}")
 
         total = validation_summary["total_steps"]
         passed = validation_summary["passed_steps"]
@@ -690,9 +705,13 @@ def validate_all(
 
         click.echo(f"📊 Total Steps: {total}")
         if total > 0:
-            click.secho(f"✅ Passed: {passed} ({passed/total*100:.1f}%)", fg="green")
-            click.secho(f"❌ Failed: {failed} ({failed/total*100:.1f}%)", fg="red")
-            click.secho(f"⚠️  Errors: {errors} ({errors/total*100:.1f}%)", fg="yellow")
+            click.secho(
+                f"✅ Passed: {passed} ({passed / total * 100:.1f}%)", fg="green"
+            )
+            click.secho(f"❌ Failed: {failed} ({failed / total * 100:.1f}%)", fg="red")
+            click.secho(
+                f"⚠️  Errors: {errors} ({errors / total * 100:.1f}%)", fg="yellow"
+            )
         else:
             click.secho(f"✅ Passed: {passed} (0.0%)", fg="green")
             click.secho(f"❌ Failed: {failed} (0.0%)", fg="red")
@@ -717,6 +736,7 @@ def validate_all(
         click.echo(f"❌ Fatal error during validation: {e}", err=True)
         if verbose:
             import traceback
+
             traceback.print_exc()
         ctx.exit(1)
 
@@ -728,13 +748,13 @@ def validate_all(
     "--workspace-dirs",
     multiple=True,
     type=click.Path(exists=True),
-    help="Workspace directories to include in validation"
+    help="Workspace directories to include in validation",
 )
 @click.option(
     "--level3-mode",
     type=click.Choice(["strict", "relaxed", "permissive"]),
     default="relaxed",
-    help="Level 3 validation mode"
+    help="Level 3 validation mode",
 )
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
 @click.pass_context
@@ -764,7 +784,9 @@ def validate_level(
     }
 
     try:
-        click.echo(f"🔍 Validating {script_name} at Level {level} ({level_names[level]})")
+        click.echo(
+            f"🔍 Validating {script_name} at Level {level} ({level_names[level]})"
+        )
 
         if verbose:
             if workspace_dirs:
@@ -782,24 +804,26 @@ def validate_level(
         validation_results = results.get("validation_results", {})
         level_key = f"level_{level}"  # Implementation uses level_1, level_2, etc.
         level_result = validation_results.get(level_key, {})
-        
+
         # Check level status from implementation structure
         level_status = level_result.get("status", "UNKNOWN")
         level_passed = level_status not in ["ERROR", "FAILED"]
-        
+
         # Get issues from level result
         level_issues = []
         if level_result.get("error"):
-            level_issues.append({
-                "severity": "ERROR",
-                "message": level_result.get("error"),
-                "recommendation": "Check the validation logs for more details"
-            })
+            level_issues.append(
+                {
+                    "severity": "ERROR",
+                    "message": level_result.get("error"),
+                    "recommendation": "Check the validation logs for more details",
+                }
+            )
 
         # Print level-specific results
-        click.echo(f"\n{'='*60}")
+        click.echo(f"\n{'=' * 60}")
         click.echo(f"Level {level} ({level_names[level]}) Results")
-        click.echo(f"{'='*60}")
+        click.echo(f"{'=' * 60}")
 
         status_emoji = "✅" if level_passed else "❌"
         status_text = "PASSED" if level_passed else "FAILED"
@@ -845,6 +869,7 @@ def validate_level(
         click.echo(f"❌ Error validating {script_name} at Level {level}: {e}", err=True)
         if verbose:
             import traceback
+
             traceback.print_exc()
         ctx.exit(1)
 
@@ -854,13 +879,13 @@ def validate_level(
     "--workspace-dirs",
     multiple=True,
     type=click.Path(exists=True),
-    help="Workspace directories to include in validation"
+    help="Workspace directories to include in validation",
 )
 @click.option(
     "--level3-mode",
     type=click.Choice(["strict", "relaxed", "permissive"]),
     default="relaxed",
-    help="Level 3 validation mode"
+    help="Level 3 validation mode",
 )
 @click.pass_context
 def list_scripts(ctx, workspace_dirs, level3_mode):
@@ -891,15 +916,19 @@ def list_scripts(ctx, workspace_dirs, level3_mode):
             click.echo(f"\nTotal: {len(scripts)} scripts found")
             if workspace_dirs:
                 click.echo(f"Workspace directories: {list(workspace_dirs)}")
-            
+
             click.echo(f"\nUsage examples:")
-            click.echo(f"  cursus alignment validate {scripts[0]} --verbose --show-scoring")
+            click.echo(
+                f"  cursus alignment validate {scripts[0]} --verbose --show-scoring"
+            )
             click.echo(f"  cursus alignment validate-all --output-dir ./reports")
             click.echo(f"  cursus alignment validate-level {scripts[0]} 1")
         else:
             click.echo("  No scripts found.")
             if workspace_dirs:
-                click.echo(f"  Searched in workspace directories: {list(workspace_dirs)}")
+                click.echo(
+                    f"  Searched in workspace directories: {list(workspace_dirs)}"
+                )
             else:
                 click.echo("  Searched in package-only mode.")
 

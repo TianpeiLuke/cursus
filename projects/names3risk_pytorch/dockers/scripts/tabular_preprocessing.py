@@ -821,6 +821,8 @@ def assign_splits_with_global_boundaries(
     """
     Assign splits using global temporal boundaries.
 
+    Vectorized implementation for performance and reliability.
+
     Args:
         df: Input DataFrame
         train_cutoff: Train/val boundary date
@@ -830,17 +832,11 @@ def assign_splits_with_global_boundaries(
     Returns:
         DataFrame with '_split' column added
     """
+    # Vectorized approach - much faster and avoids apply() issues
+    df["_split"] = "test"  # Default to test (newest)
+    df.loc[df[temporal_col] < test_cutoff, "_split"] = "val"  # Middle
+    df.loc[df[temporal_col] < train_cutoff, "_split"] = "train"  # Oldest
 
-    def assign_split(row):
-        order_date = row[temporal_col]
-        if order_date < train_cutoff:
-            return "train"
-        elif order_date < test_cutoff:
-            return "val"
-        else:
-            return "test"
-
-    df["_split"] = df.apply(assign_split, axis=1)
     return df
 
 

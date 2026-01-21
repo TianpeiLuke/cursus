@@ -5,12 +5,10 @@ import argparse
 
 # Import all CLI modules
 from .alignment_cli import main as alignment_main
-from .builder_test_cli import main as builder_test_main
 from .catalog_cli import main as catalog_main
-from .pipeline_cli import main as pipeline_main
+from .compile_cli import main as compile_main
+from .exec_doc_cli import main as exec_doc_main
 from .registry_cli import main as registry_main
-from .script_testing_cli import main as script_testing_main
-from .workspace_cli import main as workspace_main
 
 __all__ = ["main"]
 
@@ -24,19 +22,26 @@ def main():
         epilog="""
 Available commands:
   alignment       - Alignment validation tools
-  builder-test    - Step builder testing tools  
   catalog         - Step catalog management
-  pipeline        - Pipeline catalog management
+  compile         - Compile DAG and config to SageMaker pipeline
+  exec-doc        - Generate execution documents from DAG and config
   registry        - Registry management tools
-  script-testing  - Script testing for pipeline validation
-  workspace       - Workspace management tools
 
 Examples:
 
-  # Script Testing - Test pipeline scripts
-  python -m cursus.cli script-testing test-script scripts/training.py
-  python -m cursus.cli script-testing test-dag configs/dag.json configs/pipeline.json
-  python -m cursus.cli script-testing quick-test configs/dag.json configs/pipeline.json
+  # Pipeline Compilation - Compile DAG + config to SageMaker pipeline
+  python -m cursus.cli compile -d dag.json -c config.json
+  python -m cursus.cli compile -d dag.json -c config.json --upsert
+  python -m cursus.cli compile -d dag.json -c config.json --upsert --start
+  python -m cursus.cli compile -d dag.json -c config.json -o pipeline_def.json
+  python -m cursus.cli compile -d dag.json -c config.json --validate-only
+
+  # Execution Document Generation - Generate execution docs from DAG and config
+  python -m cursus.cli exec-doc generate -d dag.json -c config.json
+  python -m cursus.cli exec-doc generate -d dag.json -c config.json -o my_exec_doc.json
+  python -m cursus.cli exec-doc generate -d dag.json -c config.json --template base_template.json
+  python -m cursus.cli exec-doc generate -d dag.json -c config.json --format yaml
+  python -m cursus.cli exec-doc generate -d dag.json -c config.json --role arn:aws:iam::123:role/MyRole
 
   # Step Catalog - Discover and manage steps
   python -m cursus.cli catalog list --framework xgboost --limit 10
@@ -45,27 +50,12 @@ Examples:
   python -m cursus.cli catalog frameworks --format json
   python -m cursus.cli catalog discover --workspace-dir /path/to/workspace
 
-  # Pipeline Catalog - Manage pipeline templates
-  python -m cursus.cli pipeline discover --framework pytorch --use-case "model training"
-  python -m cursus.cli pipeline list --complexity advanced --format json
-  python -m cursus.cli pipeline recommend --use-case "end-to-end ML pipeline"
-  python -m cursus.cli pipeline show xgb_e2e_comprehensive --show-connections
-  python -m cursus.cli pipeline validate --format json
-
   # Registry Management - Workspace and step validation
   python -m cursus.cli registry init-workspace my_developer --template advanced
   python -m cursus.cli registry list-steps --workspace my_developer --conflicts-only
   python -m cursus.cli registry validate-registry --check-conflicts
   python -m cursus.cli registry resolve-step XGBoostTraining --workspace my_developer
   python -m cursus.cli registry validate-step-definition --name MyStep --auto-correct
-
-  # Workspace Management - Project setup and configuration
-  python -m cursus.cli workspace setup --project my_project --template standard
-  python -m cursus.cli workspace validate --project my_project --check-dependencies
-
-  # Builder Testing - Test step builders and configurations
-  python -m cursus.cli builder-test validate --step XGBoostTraining --config-file config.json
-  python -m cursus.cli builder-test run-tests --workspace my_workspace --framework pytorch
 
   # Alignment Validation - Ensure component consistency
   python -m cursus.cli alignment validate --step XGBoostTraining --check-all-components
@@ -85,12 +75,10 @@ For detailed command options:
         "command",
         choices=[
             "alignment",
-            "builder-test",
             "catalog",
-            "pipeline",
+            "compile",
+            "exec-doc",
             "registry",
-            "script-testing",
-            "workspace",
         ],
         help="CLI command to run",
     )
@@ -116,18 +104,14 @@ For detailed command options:
         # Route to appropriate CLI module
         if args.command == "alignment":
             return alignment_main()
-        elif args.command == "builder-test":
-            return builder_test_main()
         elif args.command == "catalog":
             return catalog_main()
-        elif args.command == "pipeline":
-            return pipeline_main()
+        elif args.command == "compile":
+            return compile_main()
+        elif args.command == "exec-doc":
+            return exec_doc_main()
         elif args.command == "registry":
             return registry_main()
-        elif args.command == "script-testing":
-            return script_testing_main()
-        elif args.command == "workspace":
-            return workspace_main()
         else:
             parser.print_help()
             return 1

@@ -635,6 +635,7 @@ def assign_random_splits(
     """
     Randomly assign rows to train/test/val splits.
 
+    Vectorized implementation for performance and reliability.
     For large datasets, random assignment approximates stratified splits well.
 
     Args:
@@ -645,17 +646,18 @@ def assign_random_splits(
     Returns:
         DataFrame with added '_split' column
     """
-
-    def random_split(_):
-        r = random.random()
-        if r < train_ratio:
-            return "train"
-        elif r < train_ratio + (1 - train_ratio) * test_val_ratio:
-            return "test"
-        else:
-            return "val"
-
-    df["_split"] = df.apply(random_split, axis=1)
+    # Vectorized approach - generate random values for all rows at once
+    random_values = np.random.random(len(df))
+    
+    # Calculate split thresholds
+    train_threshold = train_ratio
+    val_threshold = train_ratio + (1 - train_ratio) * test_val_ratio
+    
+    # Assign splits using vectorized comparisons
+    df["_split"] = "test"  # Default to test
+    df.loc[random_values < val_threshold, "_split"] = "val"  # Middle range
+    df.loc[random_values < train_threshold, "_split"] = "train"  # Lowest range
+    
     return df
 
 
@@ -1501,6 +1503,7 @@ def assign_stratified_splits_approximate(
     """
     Approximate stratified split using per-label deterministic random assignment.
 
+    Vectorized implementation for performance and reliability.
     Each class gets the same split ratios independently, providing approximate
     stratification without requiring global coordination.
 
@@ -1513,21 +1516,30 @@ def assign_stratified_splits_approximate(
     Returns:
         DataFrame with '_split' column added
     """
-
-    def split_by_label(row):
-        # Use label value + fixed seed for deterministic per-class splitting
-        random.seed(hash(str(row[label_field])) + 42)
-        r = random.random()
-        random.seed()  # Reset seed
-
-        if r < train_ratio:
-            return "train"
-        elif r < train_ratio + (1 - train_ratio) * test_val_ratio:
-            return "val"
-        else:
-            return "test"
-
-    df["_split"] = df.apply(split_by_label, axis=1)
+    # Vectorized approach using grouped random assignment per label
+    # This maintains approximate stratification while being much faster
+    
+    def assign_splits_for_group(group):
+        """Generate random values deterministically per label"""
+        # Use label value for seed to ensure consistency
+        np.random.seed(hash(str(group.name)) % (2**32 - 1) + 42)
+        random_values = np.random.random(len(group))
+        
+        # Calculate split thresholds
+        train_threshold = train_ratio
+        val_threshold = train_ratio + (1 - train_ratio) * test_val_ratio
+        
+        # Assign splits
+        splits = np.where(
+            random_values < train_threshold, "train",
+            np.where(random_values < val_threshold, "val", "test")
+        )
+        
+        return pd.Series(splits, index=group.index)
+    
+    # Apply groupby operation to maintain per-label stratification
+    df["_split"] = df.groupby(label_field, group_keys=False).apply(assign_splits_for_group)
+    
     return df
 
 

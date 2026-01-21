@@ -280,124 +280,1435 @@ Suggestions:
 ### 3. `cursus compile` - Pipeline Compilation
 
 #### Purpose
-Compile DAG files to SageMaker pipeline JSON, providing the core pipeline generation functionality.
+Compile serialized DAG JSON files and configuration JSON files to SageMaker Pipeline objects, providing the core pipeline generation functionality with optional deployment and execution capabilities.
 
 #### Command Signature
 ```bash
-cursus compile <dag_file> [options]
+cursus compile --dag-file <dag.json> --config-file <config.json> [options]
 ```
 
 #### Arguments
-- `dag_file`: Path to Python file containing DAG definition (required)
-- `--config, -c`: Configuration file path (required)
-- `--name, -n`: Pipeline name override (optional)
-- `--output, -o`: Output file path (default: stdout)
-- `--format`: Output format (`json`, `yaml`, default: `json`)
-- `--validate`: Run validation before compilation (default: true)
-- `--skip-validation`: Skip validation step
-- `--report`: Generate compilation report
-- `--execution-doc`: Generate execution document
+
+**Required:**
+- `--dag-file, -d`: Path to serialized DAG JSON file (required)
+- `--config-file, -c`: Path to configuration JSON file (required)
+
+**Pipeline Configuration:**
+- `--pipeline-name, -n`: Override pipeline name (optional)
+- `--role`: IAM role ARN for pipeline execution (optional, can use default from config)
+
+**SageMaker Operations:**
+- `--upsert`: Create/update pipeline in SageMaker service (flag)
+- `--start`: Start pipeline execution after upserting (flag, requires --upsert)
+
+**Output Options:**
+- `--output, -o`: Save pipeline definition to JSON file (optional)
+- `--format`: Output format for console display (`text`, `json`, default: `text`)
+- `--show-report`: Display detailed compilation report (flag)
+
+**Validation:**
+- `--validate-only`: Only validate compatibility, don't compile (flag)
 
 #### Implementation Strategy
 
 **Compilation Pipeline:**
-1. **DAG Loading**: Load and validate DAG file
-2. **Configuration Loading**: Load and validate configuration file
-3. **Validation** (unless skipped): Run full validation pipeline
-4. **Compilation**: Use `PipelineDAGCompiler.compile()` to generate pipeline
-5. **Output Generation**: Serialize pipeline to requested format
-6. **Report Generation**: Optional detailed compilation report
-7. **Execution Document**: Optional execution document generation
+1. **DAG Loading**: Load DAG from JSON using `import_dag_from_json()`
+2. **Configuration Loading**: Load and validate configuration JSON file
+3. **Validation** (if --validate-only): Run compatibility validation and exit
+4. **Compilation**: Use `compile_dag_to_pipeline()` to generate SageMaker Pipeline object
+5. **Pipeline Definition Export**: Save pipeline definition using `pipeline.definition()` if --output specified
+6. **SageMaker Upsert**: Call `pipeline.upsert()` if --upsert flag provided
+7. **Execution Start**: Call `pipeline.start()` if --start flag provided
+8. **Report Generation**: Optional detailed compilation report if --show-report
 
 **Core Components:**
-- **DAG Compiler**: `cursus.core.compiler.dag_compiler.PipelineDAGCompiler`
-- **Configuration System**: Existing configuration loading and validation
-- **Output Serialization**: JSON/YAML serialization of SageMaker pipeline
-- **Report Generation**: Use `PipelineDAGCompiler.compile_with_report()`
+- **DAG Serialization**: `cursus.api.dag.pipeline_dag_serializer.import_dag_from_json()`
+- **DAG Compiler**: `cursus.core.compiler.dag_compiler.compile_dag_to_pipeline()`
+- **Pipeline Object**: SageMaker `Pipeline` with `.definition()`, `.upsert()`, `.start()` methods
+- **Validation**: `PipelineDAGCompiler.validate_dag_compatibility()`
+- **Report Generation**: `PipelineDAGCompiler.compile_with_report()`
 
 #### Example Usage
+
+**Basic Compilation (Console Output Only):**
 ```bash
-# Basic compilation
-cursus compile my_dag.py --config config.json
+# Compile and display summary
+cursus compile -d dag.json -c config.json
+```
 
-# Compile with custom name and output
-cursus compile my_dag.py --config config.json --name my-pipeline --output pipeline.json
+**Save Pipeline Definition:**
+```bash
+# Compile and save pipeline definition to file
+cursus compile -d dag.json -c config.json -o pipeline_definition.json
+```
 
-# Generate with report
-cursus compile my_dag.py --config config.json --report
+**Deploy to SageMaker:**
+```bash
+# Compile and upsert to SageMaker (create/update pipeline)
+cursus compile -d dag.json -c config.json --upsert
+```
 
-# Generate execution document
-cursus compile my_dag.py --config config.json --execution-doc
+**Complete Workflow (Deploy + Execute):**
+```bash
+# Compile, upsert, and start execution in one command
+cursus compile -d dag.json -c config.json --upsert --start
+```
+
+**Advanced Options:**
+```bash
+# Custom pipeline name with execution
+cursus compile -d dag.json -c config.json -n "FraudDetection-v2" --upsert --start
+
+# Save definition + upsert + start + detailed report
+cursus compile -d dag.json -c config.json -o pipeline_def.json --upsert --start --show-report
+
+# Validation only (no compilation)
+cursus compile -d dag.json -c config.json --validate-only
+
+# JSON output format for CI/CD integration
+cursus compile -d dag.json -c config.json --format json
 ```
 
 #### Output Examples
-```bash
-# Success case
-🏗️ Compiling pipeline...
-✅ Pipeline 'fraud-detection-v1' compiled successfully!
-📊 Steps: 10 SageMaker steps created
-💾 Pipeline saved to: pipeline.json
-🔧 Execution document saved to: execution_doc.json
 
-# With report
-📋 Compilation Report:
-   Pipeline: fraud-detection-v1
-   Steps: 10
-   Average confidence: 0.92
-   Warnings: 1
-     - Low confidence resolution for 'CustomStep': 0.75
-   
-   Resolution Details:
-     CradleDataLoading_training → CradleDataLoadConfig (ProcessingStepBuilder)
-     TabularPreprocessing_training → TabularPreprocessingConfig (ProcessingStepBuilder)
-     XGBoostTraining → XGBoostTrainingConfig (TrainingStepBuilder)
-     ...
+**Basic Compilation:**
+```bash
+$ cursus compile -d dag.json -c config.json
+
+✓ DAG loaded: 4 nodes, 3 edges
+✓ Config loaded: 4 step configurations
+✓ Pipeline compiled successfully
+
+Pipeline: FraudDetection-v1-20260120-225516
+Steps: 4 SageMaker steps created
+Validation: All configurations resolved successfully
 ```
 
-### 4. `cursus exec-doc` - Execution Document Generation
+**With Upsert:**
+```bash
+$ cursus compile -d dag.json -c config.json --upsert
+
+✓ DAG loaded: 4 nodes, 3 edges
+✓ Config loaded: 4 step configurations
+✓ Pipeline compiled successfully
+
+Upserting to SageMaker...
+✓ Pipeline created/updated
+  Pipeline Name: FraudDetection-v1-20260120-225516
+  Pipeline ARN: arn:aws:sagemaker:us-east-1:123456789012:pipeline/frauddetection-v1-20260120-225516
+```
+
+**With Execution:**
+```bash
+$ cursus compile -d dag.json -c config.json --upsert --start
+
+✓ DAG loaded: 4 nodes, 3 edges
+✓ Config loaded: 4 step configurations
+✓ Pipeline compiled successfully
+
+Upserting to SageMaker...
+✓ Pipeline created/updated
+  Pipeline ARN: arn:aws:sagemaker:us-east-1:123456789012:pipeline/frauddetection-v1-20260120-225516
+
+Starting execution...
+✓ Execution started
+  Execution ARN: arn:aws:sagemaker:us-east-1:123456789012:pipeline/frauddetection-v1-20260120-225516/execution/abc123
+  Execution ID: abc123
+  Status: Executing
+
+Monitor execution at:
+  https://console.aws.amazon.com/sagemaker/home?region=us-east-1#/pipelines/frauddetection-v1-20260120-225516/executions/abc123
+```
+
+**With Report:**
+```bash
+$ cursus compile -d dag.json -c config.json --show-report
+
+✓ DAG loaded: 4 nodes, 3 edges
+✓ Config loaded: 4 step configurations
+✓ Pipeline compiled successfully
+
+📋 Compilation Report:
+   Pipeline: FraudDetection-v1-20260120-225516
+   Steps: 4
+   Average confidence: 0.95
+   Warnings: 0
+   
+   Resolution Details:
+     data_load → CradleDataLoadConfig (ProcessingStepBuilder, confidence: 0.98)
+     preprocess → TabularPreprocessingConfig (ProcessingStepBuilder, confidence: 0.95)
+     train → XGBoostTrainingConfig (TrainingStepBuilder, confidence: 0.92)
+     evaluate → XGBoostModelEvalConfig (ProcessingStepBuilder, confidence: 0.95)
+```
+
+**Validation Only:**
+```bash
+$ cursus compile -d dag.json -c config.json --validate-only
+
+✓ DAG loaded: 4 nodes, 3 edges
+✓ Config loaded: 4 step configurations
+
+Validation Results:
+✓ All DAG nodes have matching configurations
+✓ All step builders resolved successfully
+✓ No dependency issues found
+✓ Average confidence: 0.95
+
+Validation passed! Ready for compilation.
+```
+
+**JSON Output:**
+```bash
+$ cursus compile -d dag.json -c config.json --format json
+
+{
+  "status": "success",
+  "pipeline_name": "FraudDetection-v1-20260120-225516",
+  "dag_nodes": 4,
+  "dag_edges": 3,
+  "steps_created": 4,
+  "validation": {
+    "passed": true,
+    "confidence": 0.95,
+    "warnings": []
+  }
+}
+```
+
+#### DAG JSON Format
+
+The DAG JSON file should be created using the `export_dag_to_json()` function or have the following structure:
+
+```json
+{
+  "created_at": "2026-01-20T22:55:16Z",
+  "metadata": {
+    "description": "Fraud detection training pipeline",
+    "author": "data-science-team",
+    "version": "1.0.0"
+  },
+  "dag": {
+    "nodes": ["data_load", "preprocess", "train", "evaluate"],
+    "edges": [
+      ["data_load", "preprocess"],
+      ["preprocess", "train"],
+      ["train", "evaluate"]
+    ]
+  },
+  "statistics": {
+    "node_count": 4,
+    "edge_count": 3,
+    "has_cycles": false,
+    "entry_nodes": ["data_load"],
+    "exit_nodes": ["evaluate"],
+    "max_depth": 3
+  }
+}
+```
+
+#### Python API Alternative
+
+For notebook/script usage, the Python API provides direct access to Pipeline objects:
+
+```python
+from cursus.core.compiler import compile_dag_to_pipeline
+
+# Compile from JSON files
+pipeline = compile_dag_to_pipeline(
+    dag_path="dag.json",
+    config_path="config.json",
+    sagemaker_session=session,
+    role="arn:aws:iam::123456789012:role/SageMakerRole"
+)
+
+# Use the pipeline object directly
+pipeline.upsert()
+execution = pipeline.start()
+```
+
+### 4. `cursus catalog` - Step Catalog Management
 
 #### Purpose
-Generate execution documents for compiled pipelines, providing parameter extraction and MODS integration.
+Discover, search, and inspect pipeline steps and their components (configs, builders, contracts, specs, scripts) using the unified StepCatalog system.
+
+#### Overview
+The catalog CLI provides comprehensive access to the StepCatalog system, enabling:
+- Step discovery across packages and workspaces
+- Component-specific search (configs, builders, contracts, specs)
+- Field-level inspection for configuration classes
+- Type-based filtering (Processing, Training, Transform, etc.)
+- Cross-workspace component discovery
+
+#### StepCatalog Integration
+All catalog commands use the `StepCatalog` class from `cursus.step_catalog`, which provides:
+- O(1) step lookups via dictionary indexing
+- Lazy-loaded component discovery
+- Multi-workspace support
+- Intelligent framework detection
+- Registry-based validation
+
+---
+
+#### Core Discovery Commands
+
+##### `catalog list`
+List available pipeline steps with optional filtering.
+
+**Command Signature:**
+```bash
+cursus catalog list [options]
+```
+
+**Parameters:**
+- `--workspace`: Filter by workspace ID
+- `--job-type`: Filter by job type (training, validation, etc.)
+- `--framework`: Filter by detected framework (xgboost, pytorch)
+- `--format`: Output format (table, json)
+- `--limit`: Maximum number of results
+
+**StepCatalog API:**
+- `list_available_steps(workspace_id, job_type)`
+- `detect_framework(step_name)`
+
+**Example Usage:**
+```bash
+# List all steps
+cursus catalog list
+
+# Filter by framework
+cursus catalog list --framework xgboost --limit 10
+
+# Filter by job type
+cursus catalog list --job-type training
+
+# JSON output for CI/CD
+cursus catalog list --framework pytorch --format json
+```
+
+**Output Example:**
+```
+📂 Available Steps (12 found):
+  1. XGBoostTraining (xgboost)
+  2. XGBoostModelEval (xgboost)
+  3. PyTorchTraining (pytorch)
+  4. TabularPreprocessing
+  5. CradleDataLoad
+  ...
+
+Filters applied: framework: xgboost
+```
+
+---
+
+##### `catalog search`
+Search steps by name with fuzzy matching.
+
+**Command Signature:**
+```bash
+cursus catalog search <query> [options]
+```
+
+**Parameters:**
+- `query`: Search query string (required)
+- `--job-type`: Filter by job type
+- `--format`: Output format (table, json)
+- `--limit`: Maximum number of results (default: 10)
+
+**StepCatalog API:**
+- `search_steps(query, job_type)`
+
+**Example Usage:**
+```bash
+# Search for training steps
+cursus catalog search "training"
+
+# Search with job type filter
+cursus catalog search "xgboost" --job-type validation
+
+# Limit results
+cursus catalog search "preprocess" --limit 5
+```
+
+**Output Example:**
+```
+🔍 Search Results for 'training' (3 found):
+  1. XGBoostTraining (score: 1.00) (3 components)
+     Reason: name_match
+  2. PyTorchTraining (score: 1.00) (4 components)
+     Reason: name_match
+  3. TabularPreprocessing_training (score: 0.80) (2 components)
+     Reason: fuzzy_match
+```
+
+---
+
+##### `catalog show`
+Show detailed information about a specific step.
+
+**Command Signature:**
+```bash
+cursus catalog show <step_name> [options]
+```
+
+**Parameters:**
+- `step_name`: Name of the step (required)
+- `--format`: Output format (text, json)
+- `--show-components`: Show detailed component information
+
+**StepCatalog API:**
+- `get_step_info(step_name)`
+- `detect_framework(step_name)`
+- `get_job_type_variants(step_name)`
+
+**Example Usage:**
+```bash
+# Show step details
+cursus catalog show XGBoostTraining
+
+# Show with components
+cursus catalog show XGBoostTraining --show-components
+
+# JSON output
+cursus catalog show PyTorchTraining --format json
+```
+
+**Output Example:**
+```
+📋 Step: XGBoostTraining
+Workspace: core
+Framework: xgboost
+
+📝 Registry Information:
+  builder_step_name: XGBoostTraining
+  sagemaker_step_type: Training
+  framework: xgboost
+
+🔧 Available Components:
+  config: cursus/steps/configs/config_xgboost_training_step.py
+  builder: cursus/steps/builders/builder_xgboost_training_step.py
+  contract: cursus/steps/contracts/xgboost_training_contract.py
+  spec: cursus/steps/specs/xgboost_training_spec.py
+
+🔄 Job Type Variants:
+  XGBoostTraining_calibration
+  XGBoostTraining_validation
+```
+
+---
+
+##### `catalog components`
+Show components available for a specific step.
+
+**Command Signature:**
+```bash
+cursus catalog components <step_name> [options]
+```
+
+**Parameters:**
+- `step_name`: Name of the step (required)
+- `--type`: Filter by component type (script, contract, spec, builder, config)
+- `--format`: Output format (text, json)
+
+**StepCatalog API:**
+- `get_step_info(step_name)`
+
+**Example Usage:**
+```bash
+# Show all components
+cursus catalog components XGBoostTraining
+
+# Filter by type
+cursus catalog components XGBoostTraining --type contract
+
+# JSON output
+cursus catalog components PyTorchTraining --format json
+```
+
+**Output Example:**
+```
+🔧 Components for XGBoostTraining:
+
+CONFIG:
+  Path: src/cursus/steps/configs/config_xgboost_training_step.py
+  Type: config
+  Modified: 2026-01-15 10:30:45
+
+BUILDER:
+  Path: src/cursus/steps/builders/builder_xgboost_training_step.py
+  Type: builder
+  Modified: 2026-01-14 09:15:22
+
+CONTRACT:
+  Path: src/cursus/steps/contracts/xgboost_training_contract.py
+  Type: contract
+  Modified: 2026-01-13 14:20:10
+```
+
+---
+
+#### Enhanced Discovery Commands (NEW)
+
+##### `catalog list-configs`
+List all configuration classes discovered across packages and workspaces.
+
+**Command Signature:**
+```bash
+cursus catalog list-configs [options]
+```
+
+**Parameters:**
+- `--project-id`: Filter by project/workspace
+- `--framework`: Filter by framework
+- `--format`: Output format (table, json)
+- `--show-fields`: Show field count for each config
+
+**StepCatalog API:**
+- `discover_config_classes(project_id)`
+
+**Example Usage:**
+```bash
+# List all config classes
+cursus catalog list-configs
+
+# Filter by framework
+cursus catalog list-configs --framework xgboost
+
+# Show with field counts
+cursus catalog list-configs --show-fields
+```
+
+**Output Example:**
+```
+📋 Configuration Classes (15 found):
+  1. BasePipelineConfig (12 fields)
+  2. ProcessingStepConfigBase (18 fields)
+  3. XGBoostTrainingConfig (25 fields)
+  4. PyTorchTrainingConfig (28 fields)
+  5. TabularPreprocessingConfig (20 fields)
+  ...
+```
+
+---
+
+##### `catalog list-builders`
+List all builder classes with optional filtering.
+
+**Command Signature:**
+```bash
+cursus catalog list-builders [options]
+```
+
+**Parameters:**
+- `--step-type`: Filter by SageMaker step type (Processing, Training, etc.)
+- `--framework`: Filter by framework
+- `--format`: Output format (table, json)
+- `--show-path`: Show file path for each builder
+
+**StepCatalog API:**
+- `get_all_builders()`
+- `get_builders_by_step_type(step_type)`
+
+**Example Usage:**
+```bash
+# List all builders
+cursus catalog list-builders
+
+# Filter by step type
+cursus catalog list-builders --step-type Training
+
+# Show with paths
+cursus catalog list-builders --show-path
+```
+
+**Output Example:**
+```
+🔧 Builder Classes (20 found):
+  1. XGBoostTrainingStepBuilder
+     Type: Training | Framework: xgboost
+  2. PyTorchTrainingStepBuilder
+     Type: Training | Framework: pytorch
+  3. TabularPreprocessingStepBuilder
+     Type: Processing
+  ...
+```
+
+---
+
+##### `catalog list-contracts`
+List all contract classes.
+
+**Command Signature:**
+```bash
+cursus catalog list-contracts [options]
+```
+
+**Parameters:**
+- `--with-scripts-only`: Only show contracts that have corresponding scripts
+- `--format`: Output format (table, json)
+- `--show-entry-points`: Show script entry points
+
+**StepCatalog API:**
+- `discover_contracts_with_scripts()`
+- `get_contract_entry_points()`
+
+**Example Usage:**
+```bash
+# List all contracts
+cursus catalog list-contracts
+
+# Only contracts with scripts
+cursus catalog list-contracts --with-scripts-only
+
+# Show entry points
+cursus catalog list-contracts --show-entry-points
+```
+
+**Output Example:**
+```
+📜 Contract Classes (18 found):
+  1. XGBoostTrainingContract
+     Entry Point: xgboost_training.py
+  2. PyTorchTrainingContract
+     Entry Point: pytorch_training.py
+  3. TabularPreprocessingContract
+     Entry Point: tabular_preprocessing.py
+  ...
+```
+
+---
+
+##### `catalog list-specs`
+List all specification classes.
+
+**Command Signature:**
+```bash
+cursus catalog list-specs [options]
+```
+
+**Parameters:**
+- `--job-type`: Filter by job type
+- `--framework`: Filter by framework
+- `--format`: Output format (table, json)
+- `--show-dependencies`: Show dependency count
+
+**StepCatalog API:**
+- `list_steps_with_specs(job_type)`
+- `load_all_specifications()`
+
+**Example Usage:**
+```bash
+# List all specs
+cursus catalog list-specs
+
+# Filter by job type
+cursus catalog list-specs --job-type training
+
+# Show with dependencies
+cursus catalog list-specs --show-dependencies
+```
+
+**Output Example:**
+```
+📐 Specification Classes (16 found):
+  1. XGBoostTrainingSpec (5 dependencies)
+  2. PyTorchTrainingSpec (7 dependencies)
+  3. TabularPreprocessingSpec (3 dependencies)
+  ...
+```
+
+---
+
+##### `catalog list-scripts`
+List all script files discovered.
+
+**Command Signature:**
+```bash
+cursus catalog list-scripts [options]
+```
+
+**Parameters:**
+- `--project-id`: Filter by project/workspace
+- `--format`: Output format (table, json)
+- `--show-path`: Show full file path
+
+**StepCatalog API:**
+- `list_available_scripts()`
+- `discover_script_files(project_id)`
+
+**Example Usage:**
+```bash
+# List all scripts
+cursus catalog list-scripts
+
+# Filter by project
+cursus catalog list-scripts --project-id my_workspace
+
+# Show with paths
+cursus catalog list-scripts --show-path
+```
+
+**Output Example:**
+```
+📜 Script Files (22 found):
+  1. xgboost_training.py
+  2. pytorch_training.py
+  3. tabular_preprocessing.py
+  4. model_evaluation_xgb.py
+  ...
+```
+
+---
+
+#### Advanced Search Commands (NEW)
+
+##### `catalog search-field`
+Find steps with configs containing a specific field.
+
+**Command Signature:**
+```bash
+cursus catalog search-field <field_name> [options]
+```
+
+**Parameters:**
+- `field_name`: Name of the field to search for (required)
+- `--field-type`: Filter by field type (str, int, bool, dict, list)
+- `--format`: Output format (table, json)
+- `--show-default`: Show default values
+
+**StepCatalog API:**
+- `discover_config_classes()`
+- Uses Pydantic `model_fields` inspection
+
+**Example Usage:**
+```bash
+# Find all steps with 'instance_type' field
+cursus catalog search-field instance_type
+
+# Find with type filter
+cursus catalog search-field bucket --field-type str
+
+# Show defaults
+cursus catalog search-field instance_count --show-default
+```
+
+**Output Example:**
+```
+🔍 Steps with field 'instance_type':
+  1. XGBoostTraining
+     Config: XGBoostTrainingConfig
+     Field Type: str
+     Default: ml.m5.xlarge
+  
+  2. PyTorchTraining
+     Config: PyTorchTrainingConfig
+     Field Type: str
+     Default: ml.p3.2xlarge
+  
+  3. TabularPreprocessing
+     Config: TabularPreprocessingConfig
+     Field Type: str
+     Default: ml.m5.2xlarge
+```
+
+---
+
+##### `catalog list-by-type`
+Filter steps by SageMaker step type.
+
+**Command Signature:**
+```bash
+cursus catalog list-by-type <type> [options]
+```
+
+**Parameters:**
+- `type`: SageMaker step type (required)
+  - Valid: Processing, Training, Transform, CreateModel, Model, Tuning, etc.
+- `--framework`: Filter by framework
+- `--format`: Output format (table, json)
+
+**StepCatalog API:**
+- `get_step_info(step_name)` with `registry_data['sagemaker_step_type']`
+
+**Example Usage:**
+```bash
+# List all Processing steps
+cursus catalog list-by-type Processing
+
+# List Training steps for PyTorch
+cursus catalog list-by-type Training --framework pytorch
+
+# JSON output
+cursus catalog list-by-type Transform --format json
+```
+
+**Output Example:**
+```
+📦 Steps with type 'Processing' (8 found):
+  1. TabularPreprocessing
+     Framework: N/A
+  2. CradleDataLoad
+     Framework: N/A
+  3. ModelCalibration
+     Framework: xgboost
+  ...
+```
+
+---
+
+##### `catalog fields`
+Show all configuration fields for a step with inheritance.
+
+**Command Signature:**
+```bash
+cursus catalog fields <step_name> [options]
+```
+
+**Parameters:**
+- `step_name`: Name of the step (required)
+- `--inherited`: Show inherited fields from parent classes
+- `--format`: Output format (table, json)
+- `--show-types`: Show field types
+- `--show-defaults`: Show default values
+
+**StepCatalog API:**
+- `discover_config_classes()`
+- `get_immediate_parent_config_class()`
+- Uses Pydantic `model_fields` inspection
+
+**Example Usage:**
+```bash
+# Show all fields
+cursus catalog fields XGBoostTraining
+
+# Show with inheritance
+cursus catalog fields XGBoostTraining --inherited
+
+# Show with types and defaults
+cursus catalog fields PyTorchTraining --show-types --show-defaults
+```
+
+**Output Example:**
+```
+🔧 Configuration Fields for XGBoostTraining:
+Config Class: XGBoostTrainingConfig
+Parent Class: TrainingStepConfigBase
+
+Direct Fields (10):
+  - hyperparameters (dict, optional)
+    Default: {}
+  - max_depth (int, optional)
+    Default: 6
+  - num_round (int, optional)
+    Default: 100
+  ...
+
+Inherited from TrainingStepConfigBase (8):
+  - instance_type (str, required)
+    Default: ml.m5.xlarge
+  - instance_count (int, optional)
+    Default: 1
+  - volume_size (int, optional)
+    Default: 30
+  ...
+
+Inherited from BasePipelineConfig (12):
+  - author (str, required)
+  - bucket (str, required)
+  - role (str, optional)
+  ...
+
+Total: 30 fields (10 direct + 20 inherited)
+```
+
+---
+
+##### `catalog component-info`
+Get detailed information about a specific component type for a step.
+
+**Command Signature:**
+```bash
+cursus catalog component-info <step_name> <component_type> [options]
+```
+
+**Parameters:**
+- `step_name`: Name of the step (required)
+- `component_type`: Type of component (required)
+  - Valid: config, builder, contract, spec, script
+- `--format`: Output format (text, json)
+- `--load`: Load and inspect the actual class/instance
+
+**StepCatalog API:**
+- `load_config_class()`, `load_builder_class()`, `load_contract_class()`, `load_spec_class()`
+- `get_script_info()`
+
+**Example Usage:**
+```bash
+# Get config info
+cursus catalog component-info XGBoostTraining config
+
+# Get builder info with loading
+cursus catalog component-info PyTorchTraining builder --load
+
+# Get contract info
+cursus catalog component-info TabularPreprocessing contract --load
+```
+
+**Output Example:**
+```
+📋 Component Info: XGBoostTraining (config)
+Component Type: Configuration
+File Path: src/cursus/steps/configs/config_xgboost_training_step.py
+Class Name: XGBoostTrainingConfig
+Modified: 2026-01-15 10:30:45
+
+Class Details:
+  Parent: TrainingStepConfigBase
+  Fields: 30 total (10 direct, 20 inherited)
+  Framework: xgboost
+  
+Key Fields:
+  - hyperparameters (dict)
+  - max_depth (int)
+  - instance_type (str)
+  - instance_count (int)
+```
+
+---
+
+#### Workspace & Framework Commands
+
+##### `catalog frameworks`
+List detected frameworks across all steps.
+
+**Command Signature:**
+```bash
+cursus catalog frameworks [options]
+```
+
+**Parameters:**
+- `--format`: Output format (table, json)
+
+**StepCatalog API:**
+- `detect_framework(step_name)` for all steps
+
+**Example Usage:**
+```bash
+# List frameworks
+cursus catalog frameworks
+
+# JSON output
+cursus catalog frameworks --format json
+```
+
+**Output Example:**
+```
+🔧 Detected Frameworks (3 total):
+xgboost: 8 steps
+  - XGBoostTraining
+  - XGBoostModelEval
+  - XGBoostPackaging
+  ... and 5 more
+
+pytorch: 6 steps
+  - PyTorchTraining
+  - PyTorchModelEval
+  - PyTorchPackaging
+  ... and 3 more
+
+generic: 4 steps
+  - TabularPreprocessing
+  - CradleDataLoad
+  ... and 2 more
+```
+
+---
+
+##### `catalog workspaces`
+List available workspaces and their step counts.
+
+**Command Signature:**
+```bash
+cursus catalog workspaces [options]
+```
+
+**Parameters:**
+- `--format`: Output format (table, json)
+
+**StepCatalog API:**
+- `discover_cross_workspace_components()`
+
+**Example Usage:**
+```bash
+# List workspaces
+cursus catalog workspaces
+
+# JSON output
+cursus catalog workspaces --format json
+```
+
+**Output Example:**
+```
+🏢 Available Workspaces (3 total):
+
+core:
+  Steps: 45
+  Components: 180
+  Example steps:
+    - XGBoostTraining
+    - PyTorchTraining
+    - TabularPreprocessing
+    ... and 42 more
+
+my_project:
+  Steps: 8
+  Components: 32
+  Example steps:
+    - CustomPreprocessing
+    - CustomTraining
+    - CustomEvaluation
+    ... and 5 more
+```
+
+---
+
+##### `catalog metrics`
+Show step catalog performance metrics.
+
+**Command Signature:**
+```bash
+cursus catalog metrics [options]
+```
+
+**Parameters:**
+- `--format`: Output format (text, json)
+
+**StepCatalog API:**
+- `get_metrics_report()`
+
+**Example Usage:**
+```bash
+# Show metrics
+cursus catalog metrics
+
+# JSON output
+cursus catalog metrics --format json
+```
+
+**Output Example:**
+```
+📊 Step Catalog Metrics:
+Total Queries: 1,247
+Success Rate: 99.2%
+Average Response Time: 2.34ms
+Index Build Time: 0.145s
+Total Steps Indexed: 53
+Total Workspaces: 3
+Last Index Build: 2026-01-20 22:30:15
+```
+
+---
+
+##### `catalog discover`
+Discover steps in a specific workspace directory.
+
+**Command Signature:**
+```bash
+cursus catalog discover --workspace-dir <path> [options]
+```
+
+**Parameters:**
+- `--workspace-dir`: Workspace directory to discover (required)
+- `--format`: Output format (text, json)
+
+**StepCatalog API:**
+- `StepCatalog(workspace_dirs=[path])`
+- `list_available_steps(workspace_id)`
+
+**Example Usage:**
+```bash
+# Discover workspace
+cursus catalog discover --workspace-dir /path/to/my_workspace
+
+# JSON output
+cursus catalog discover --workspace-dir /path/to/my_workspace --format json
+```
+
+**Output Example:**
+```
+🔍 Discovery Results for /path/to/my_workspace:
+Workspace ID: my_workspace
+Steps Found: 8
+
+Discovered Steps:
+  1. CustomPreprocessing (config, script, contract)
+  2. CustomTraining (config, builder, contract, spec)
+  3. CustomEvaluation (config, script)
+  ...
+```
+
+---
+
+### 5. `cursus exec-doc` - Execution Document Generation
+
+#### Purpose
+Generate execution documents from serialized DAG and configuration JSON files, providing parameter extraction and MODS integration. The execution document contains step-specific configurations enriched with runtime parameters, enabling MODS-compliant pipeline execution.
+
+#### Implementation Status
+✅ **IMPLEMENTED** - Available in `src/cursus/cli/exec_doc_cli.py`
 
 #### Command Signature
 ```bash
-cursus exec-doc <dag_file> [options]
+cursus exec-doc generate -d <dag.json> -c <config.json> [options]
 ```
 
 #### Arguments
-- `dag_file`: Path to Python file containing DAG definition (required)
-- `--config, -c`: Configuration file path (required)
-- `--pipeline, -p`: Compiled pipeline JSON file (optional)
+
+**Required:**
+- `--dag-file, -d`: Path to serialized DAG JSON file (required)
+- `--config-file, -c`: Path to configuration JSON file (required)
+
+**Output Options:**
 - `--output, -o`: Output file path (default: `execution_doc.json`)
-- `--template`: Base execution document template (optional)
-- `--format`: Output format (`json`, `yaml`, default: `json`)
+- `--format`: Output format (`json` or `yaml`, default: `json`)
+
+**Template Options:**
+- `--template`: Base execution document template file (optional)
+  - If provided, loads and fills existing template structure
+  - If not provided, auto-generates base template from DAG
+
+**Runtime Configuration:**
+- `--role`: IAM role ARN for AWS operations (optional)
+- `--verbose, -v`: Verbose output with detailed processing logs (flag)
 
 #### Implementation Strategy
 
-**Execution Document Pipeline:**
-1. **DAG and Configuration Loading**: Load DAG and configuration files
-2. **Pipeline Loading**: Load compiled pipeline if provided
-3. **Template Generation**: Create base execution document template
-4. **Parameter Extraction**: Use `ExecutionDocumentGenerator` to fill parameters
-5. **Helper Integration**: Apply specialized helpers for different step types
-6. **Output Generation**: Serialize execution document
+**Execution Document Generation Pipeline:**
+
+1. **Load DAG from JSON**
+```python
+from cursus.api.dag.pipeline_dag_serializer import import_dag_from_json
+dag = import_dag_from_json(dag_file_path)
+```
+
+2. **Create Base Execution Document Template**
+```python
+# Option A: User provides template file
+if template:
+    with open(template) as f:
+        execution_document = json.load(f)
+
+# Option B: Auto-generate base template from DAG
+else:
+    execution_document = {
+        "PIPELINE_STEP_CONFIGS": {
+            node: {
+                "STEP_CONFIG": {},
+                "STEP_TYPE": []
+            }
+            for node in dag.nodes
+        }
+    }
+```
+
+3. **Initialize ExecutionDocumentGenerator**
+```python
+from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+
+generator = ExecutionDocumentGenerator(
+    config_path=config_file,
+    role=role,  # optional
+)
+```
+
+4. **Fill Execution Document**
+```python
+filled_doc = generator.fill_execution_document(dag, execution_document)
+```
+
+5. **Save Output**
+```python
+# JSON format (default)
+with open(output_file, 'w') as f:
+    json.dump(filled_doc, f, indent=2)
+
+# YAML format (if specified)
+if format == 'yaml':
+    with open(output_file, 'w') as f:
+        yaml.dump(filled_doc, f, default_flow_style=False)
+```
 
 **Core Components:**
-- **Execution Document Generator**: `cursus.mods.exe_doc.generator.ExecutionDocumentGenerator`
-- **Helper System**: Specialized helpers for different step types
-- **MODS Integration**: Full compatibility with MODS execution patterns
-- **Parameter Resolution**: Automatic parameter extraction from configurations
+- **ExecutionDocumentGenerator**: `cursus.mods.exe_doc.generator.ExecutionDocumentGenerator`
+  - Main method: `fill_execution_document(dag, execution_document)`
+  - Loads configurations from config file
+  - Identifies relevant steps in DAG (Cradle, Registration, etc.)
+  - Applies specialized helpers for different step types
+- **Helper System**: 
+  - `CradleDataLoadingHelper`: Handles Cradle data loading configurations
+  - `RegistrationHelper`: Handles model registration configurations
+  - Extensible for additional step types
+- **DAG Serialization**: `cursus.api.dag.pipeline_dag_serializer`
+  - Imports DAG structure from JSON format
+  - Preserves node relationships and metadata
 
 #### Example Usage
+
+**Basic Usage:**
 ```bash
-# Generate execution document
-cursus exec-doc my_dag.py --config config.json
+# Generate execution document with default output
+cursus exec-doc generate -d dag.json -c config.json
+```
 
-# Use compiled pipeline
-cursus exec-doc my_dag.py --config config.json --pipeline pipeline.json
+**Custom Output Location:**
+```bash
+# Specify custom output file
+cursus exec-doc generate -d dag.json -c config.json -o my_exec_doc.json
+```
 
-# Custom output location
-cursus exec-doc my_dag.py --config config.json --output custom_exec_doc.json
+**With Template:**
+```bash
+# Use existing template as base
+cursus exec-doc generate -d dag.json -c config.json --template base_template.json
+```
+
+**YAML Output:**
+```bash
+# Generate YAML format
+cursus exec-doc generate -d dag.json -c config.json --format yaml -o exec_doc.yaml
+```
+
+**With IAM Role:**
+```bash
+# Specify IAM role for AWS operations
+cursus exec-doc generate -d dag.json -c config.json --role arn:aws:iam::123456789012:role/MyRole
+```
+
+**Verbose Mode:**
+```bash
+# Show detailed processing logs
+cursus exec-doc generate -d dag.json -c config.json --verbose
+```
+
+**Complete Workflow:**
+```bash
+# Full pipeline: compile DAG, then generate execution document
+cursus compile -d dag.json -c config.json -o pipeline_def.json
+cursus exec-doc generate -d dag.json -c config.json -o execution_doc.json
+```
+
+#### Output Structure
+
+The generated execution document has the following structure:
+
+```json
+{
+  "PIPELINE_STEP_CONFIGS": {
+    "step_name_1": {
+      "STEP_CONFIG": {
+        // Step-specific configuration filled by helpers
+        "param1": "value1",
+        "param2": "value2"
+      },
+      "STEP_TYPE": ["PROCESSING_STEP", "CustomType"]
+    },
+    "step_name_2": {
+      "STEP_CONFIG": {
+        // Another step's configuration
+      },
+      "STEP_TYPE": ["TRAINING_STEP"]
+    }
+  }
+}
+```
+
+#### Helper-Specific Configuration
+
+**Cradle Data Loading Steps:**
+- Automatically filled by `CradleDataLoadingHelper`
+- Extracts Cradle-specific parameters from configuration
+- Populates execution document with data loading settings
+
+**Registration Steps:**
+- Automatically filled by `RegistrationHelper`
+- Handles model registration configurations
+- Integrates with payload and package configurations if present
+
+#### Output Examples
+
+**Success Case:**
+```bash
+$ cursus exec-doc generate -d dag.json -c config.json
+
+🔧 Execution Document Generation
+
+📂 Loading DAG from: dag.json
+✓ DAG loaded: 4 nodes, 3 edges
+
+📋 Preparing execution document template
+  Auto-generating base template from DAG
+✓ Base template generated with 4 steps
+
+⚙️  Initializing generator
+  Config file: config.json
+✓ Generator initialized with 4 configurations
+
+🔄 Filling execution document
+✓ Execution document generated successfully
+
+📊 Processing Summary:
+  Total steps: 4
+  Steps with configuration: 2
+
+💾 Saving execution document
+  Output file: execution_doc.json
+  Format: json
+✓ Execution document saved to: execution_doc.json
+  File size: 2,456 bytes
+
+✅ Execution document generation complete!
+
+Next steps:
+  1. Review the generated execution document: execution_doc.json
+  2. Use with MODS for pipeline execution
+```
+
+**With Template:**
+```bash
+$ cursus exec-doc generate -d dag.json -c config.json --template base_template.json
+
+🔧 Execution Document Generation
+
+📂 Loading DAG from: dag.json
+✓ DAG loaded: 4 nodes, 3 edges
+
+📋 Preparing execution document template
+  Loading template from: base_template.json
+✓ Template loaded
+
+⚙️  Initializing generator
+  Config file: config.json
+✓ Generator initialized with 4 configurations
+
+🔄 Filling execution document
+✓ Execution document generated successfully
+
+📊 Processing Summary:
+  Total steps: 4
+  Steps with configuration: 2
+
+💾 Saving execution document
+  Output file: execution_doc.json
+  Format: json
+✓ Execution document saved to: execution_doc.json
+  File size: 2,789 bytes
+
+✅ Execution document generation complete!
+```
+
+**Verbose Output:**
+```bash
+$ cursus exec-doc generate -d dag.json -c config.json --verbose
+
+🔧 Execution Document Generation
+
+📂 Loading DAG from: dag.json
+✓ DAG loaded: 4 nodes, 3 edges
+  Nodes: ['data_load', 'preprocess', 'train', 'evaluate']
+
+📋 Preparing execution document template
+  Auto-generating base template from DAG
+✓ Base template generated with 4 steps
+
+⚙️  Initializing generator
+  Config file: config.json
+✓ Generator initialized with 4 configurations
+  Loaded configs: ['CradleDataLoadConfig', 'TabularPreprocessingConfig', 'XGBoostTrainingConfig', 'XGBoostModelEvalConfig']
+
+🔄 Filling execution document
+✓ Execution document generated successfully
+
+📊 Processing Summary:
+  Total steps: 4
+  Steps with configuration: 2
+
+  Configured steps:
+    - data_load: 8 parameters
+    - train: 15 parameters
+
+💾 Saving execution document
+  Output file: execution_doc.json
+  Format: json
+✓ Execution document saved to: execution_doc.json
+  File size: 3,142 bytes
+
+✅ Execution document generation complete!
+```
+
+#### Integration with MODS
+
+The generated execution document is fully compatible with MODS execution patterns:
+
+1. **Step Configuration Structure**: Matches MODS expected format
+2. **Helper System**: Ensures proper configuration extraction for MODS steps
+3. **Execution Document Template**: Compatible with existing MODS templates
+4. **Parameter Resolution**: Automatic parameter extraction from configurations
+
+#### Error Handling
+
+**Missing Configuration:**
+```bash
+❌ Failed to initialize generator: Configuration file not found: config.json
+
+Suggestion: Check the file path and ensure the configuration file exists
+```
+
+**Invalid DAG Structure:**
+```bash
+❌ Failed to load DAG: Invalid JSON format in dag.json
+
+Suggestion: Validate JSON syntax using: jq . dag.json
+```
+
+**Helper Processing Warning:**
+```bash
+⚠ Warning: Step 'model_registration' configuration could not be fully processed
+  Continuing with partial execution document...
+```
+
+#### CLI Integration
+
+The command is fully integrated into the Cursus CLI dispatcher:
+- **File**: `src/cursus/cli/exec_doc_cli.py`
+- **Registration**: `src/cursus/cli/__init__.py`
+- **Help**: `python -m cursus.cli exec-doc --help`
+
+#### Python API Alternative
+
+For notebook/script usage, direct API access is available:
+
+```python
+from cursus.api.dag.pipeline_dag_serializer import import_dag_from_json
+from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
+import json
+
+# Load DAG
+dag = import_dag_from_json("dag.json")
+
+# Create base template
+execution_document = {
+    "PIPELINE_STEP_CONFIGS": {
+        node: {"STEP_CONFIG": {}, "STEP_TYPE": []}
+        for node in dag.nodes
+    }
+}
+
+# Initialize generator and fill document
+generator = ExecutionDocumentGenerator(config_path="config.json")
+filled_doc = generator.fill_execution_document(dag, execution_document)
+
+# Save output
+with open("execution_doc.json", 'w') as f:
+    json.dump(filled_doc, f, indent=2)
 ```
 
 ## Implementation Plan
