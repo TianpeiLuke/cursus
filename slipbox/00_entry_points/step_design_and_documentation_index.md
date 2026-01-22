@@ -120,6 +120,9 @@ This index is organized to mirror the **actual pipeline execution order**, group
 - [Temporal Sequence Normalization Script](../scripts/temporal_sequence_normalization_script.md) - Script documentation for fixed-length sequence normalization with attention masks
 - [Temporal Self Attention Scripts Analysis](../4_analysis/temporal_self_attention_scripts_analysis.md) - Detailed analysis of TSA scripts and preprocessing requirements
 - [Multi-Worker Streaming Preprocessing Design](../1_design/multi_worker_streaming_preprocessing_design.md) - **NEW** - Parallel shard loading in streaming mode for 5-10× throughput improvements with memory-safe two-level control
+- [Fully Parallel Streaming Preprocessing Design](../1_design/fully_parallel_streaming_preprocessing_design.md) - **NEW** - 1:1 shard mapping architecture for 8-10× speedup with 100% parallel efficiency and maximum parallelism across all preprocessing phases
+- [Streaming Preprocessing Additional Scripts Design](../1_design/streaming_preprocessing_additional_scripts_design.md) - **NEW** - Streaming mode implementation for risk_table_mapping, missing_value_imputation, and stratified_sampling with identical artifacts in batch/streaming modes
+- [Temporal Split Preprocessing Streaming Mode Upgrade](../1_design/temporal_split_preprocessing_streaming_upgrade.md) - **NEW** - Dual-mode architecture upgrade (batch: single files, streaming: 1:1 shard mapping) for temporal_split_preprocessing with customer-level deduplication and 20% performance improvement
 
 **Implementation Documentation**
 - [Tabular Preprocessing Step Builder](../steps/tabular_preprocessing_step.md) - Step builder implementation

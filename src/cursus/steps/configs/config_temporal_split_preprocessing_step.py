@@ -105,22 +105,6 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
         "Provides exact semantic equivalence with batch mode. Default: False",
     )
 
-    streaming_batch_size: int = Field(
-        default=0,
-        ge=0,
-        description="Number of shards to process per batch in streaming mode. "
-        "0 means auto (defaults to 10 when streaming enabled). "
-        "Only used when enable_true_streaming=True.",
-    )
-
-    shard_size: int = Field(
-        default=100000,
-        ge=1,
-        description="Rows per output shard in streaming mode. "
-        "Controls output granularity during incremental writing. "
-        "Default: 100000. Only used when enable_true_streaming=True.",
-    )
-
     # Task configuration - single task vs multitask
     label_field: Optional[str] = Field(
         default=None,
@@ -223,8 +207,6 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
             # Streaming mode configuration
             env_vars["ENABLE_TRUE_STREAMING"] = str(self.enable_true_streaming).lower()
-            env_vars["STREAMING_BATCH_SIZE"] = str(self.streaming_batch_size)
-            env_vars["SHARD_SIZE"] = str(self.shard_size)
 
             self._temporal_split_environment_variables = env_vars
 
@@ -444,8 +426,6 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
         # Add streaming mode fields
         temporal_fields["enable_true_streaming"] = self.enable_true_streaming
-        temporal_fields["streaming_batch_size"] = self.streaming_batch_size
-        temporal_fields["shard_size"] = self.shard_size
 
         # Combine fields (temporal fields take precedence if overlap)
         init_fields = {**base_fields, **temporal_fields}

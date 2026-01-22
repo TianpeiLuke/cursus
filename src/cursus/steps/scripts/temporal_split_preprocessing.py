@@ -698,6 +698,50 @@ def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
     return all_shards
 
 
+def extract_shard_number(shard_path: Path) -> int:
+    """
+    Extract shard number from filename like part-00042.csv.
+
+    Handles various formats:
+    - part-00042.csv → 42
+    - part-00042.csv.gz → 42
+    - part-00042.parquet → 42
+    - part-00042.snappy.parquet → 42
+
+    Args:
+        shard_path: Path to shard file
+
+    Returns:
+        Integer shard number
+
+    Raises:
+        ValueError: If shard number cannot be extracted
+
+    Example:
+        >>> extract_shard_number(Path("part-00042.csv"))
+        42
+        >>> extract_shard_number(Path("part-00001.csv.gz"))
+        1
+    """
+    stem = shard_path.stem
+
+    # Handle .gz compression
+    if stem.endswith(".gz"):
+        stem = Path(stem).stem
+
+    # Extract number from part-XXXXX pattern
+    import re
+
+    match = re.search(r"part-(\d+)", stem)
+    if match:
+        return int(match.group(1))
+    else:
+        raise ValueError(
+            f"Cannot extract shard number from {shard_path.name}. "
+            f"Expected format: part-XXXXX.ext"
+        )
+
+
 def collect_customer_allocation(
     all_shards: List[Path],
     signature_columns: Optional[list],
@@ -707,11 +751,11 @@ def collect_customer_allocation(
     train_ratio: float,
     random_seed: int,
     log_func: Callable,
-) -> tuple:
+) -> Dict[str, str]:
     """
-    Pass 1: Scan pre-split data to collect and allocate customers.
+    Pass 1: Scan pre-split data and build complete customer allocation map.
 
-    Memory: O(unique_customers) - typically ~8MB for 1M customers
+    Memory: O(unique_customers) - typically ~50MB for 1M customers
     Scans all shards to collect unique customer IDs from pre-split period,
     then randomly allocates them to train vs validation sets.
 
@@ -726,9 +770,10 @@ def collect_customer_allocation(
         log_func: Logging function
 
     Returns:
-        Tuple of (train_customers_set, val_customers_set)
+        Dictionary mapping customer_id to split assignment ("train" or "val")
+        Example: {"customer_1": "train", "customer_2": "val", ...}
     """
-    log_func("[PASS 1 - CUSTOMER ALLOCATION] Scanning pre-split data...")
+    log_func("[PASS 1] Building customer→split mapping...")
 
     split_date_dt = pd.to_datetime(split_date)
     all_customers = set()
@@ -778,18 +823,19 @@ def collect_customer_allocation(
     random.shuffle(customer_list)
 
     train_size = int(len(customer_list) * train_ratio)
-    train_customers = set(customer_list[:train_size])
-    val_customers = set(customer_list[train_size:])
 
-    log_func(
-        f"[PASS 1] Allocated {len(train_customers)} train customers ({train_ratio * 100:.1f}%)"
-    )
-    log_func(
-        f"[PASS 1] Allocated {len(val_customers)} val customers ({(1 - train_ratio) * 100:.1f}%)"
-    )
-    log_func(f"[PASS 1] Memory usage: ~{len(all_customers) * 8 / 1024 / 1024:.2f} MB")
+    # Build dictionary mapping
+    customer_split_map = {}
+    for i, customer in enumerate(customer_list):
+        customer_split_map[customer] = "train" if i < train_size else "val"
 
-    return train_customers, val_customers
+    # Memory usage estimate
+    memory_mb = len(customer_split_map) * 50 / 1024 / 1024
+    log_func(f"[PASS 1] Map size: ~{memory_mb:.2f} MB")
+    log_func(f"[PASS 1] Allocated: {train_size} train ({train_ratio * 100:.1f}%)")
+    log_func(f"[PASS 1] Allocated: {len(customer_list) - train_size} val")
+
+    return customer_split_map
 
 
 def write_single_shard(
@@ -798,7 +844,11 @@ def write_single_shard(
     shard_number: int,
     output_format: str = "csv",
 ) -> Path:
-    """Write a single data shard in the specified format."""
+    """
+    Write a single data shard in the specified format.
+
+    Note: Kept for potential future use, but not currently used by streaming mode.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if output_format == "csv":
@@ -816,199 +866,169 @@ def write_single_shard(
     return shard_path
 
 
-def write_splits_to_shards(
-    df: pd.DataFrame,
-    output_base: Path,
-    split_counters: Dict[str, int],
-    shard_size: int,
-    output_format: str,
-    log_func: Callable,
-) -> None:
-    """Write DataFrame to separate split directories based on '_split' column."""
-    for split_name in ["train", "val", "oot"]:
-        split_data = df[df["_split"] == split_name].drop("_split", axis=1)
+def process_shard_temporal_split(args: tuple) -> Dict[str, int]:
+    """
+    Process single shard with global customer allocation map.
+    Uses VECTORIZED operations for performance (not df.apply).
 
-        if len(split_data) == 0:
-            continue
+    This function runs in parallel across multiple workers.
 
-        split_dir = output_base / split_name
-        split_dir.mkdir(parents=True, exist_ok=True)
+    Args:
+        args: Tuple of (shard_path, shard_num, customer_split_map, config)
 
-        # Write in shards
-        for i in range(0, len(split_data), shard_size):
-            shard_df = split_data.iloc[i : i + shard_size]
-            write_single_shard(
-                shard_df, split_dir, split_counters[split_name], output_format
-            )
-            split_counters[split_name] += 1
+    Returns:
+        Statistics dict with row counts per split
+    """
+    shard_path, shard_num, customer_split_map, config = args
 
+    # Extract config
+    date_column = config["date_column"]
+    group_id_column = config["group_id_column"]
+    split_date = config["split_date"]
+    output_base = config["output_base"]
+    output_format = config["output_format"]
+    signature_columns = config.get("signature_columns")
+    targets = config.get("targets")
+    main_task_index = config.get("main_task_index")
+    label_field = config.get("label_field")
 
-def process_single_batch(
-    shard_files: List[Path],
-    signature_columns: Optional[list],
-    batch_size: int,
-    label_field: Optional[str],
-    log_func: Callable,
-) -> pd.DataFrame:
-    """Process a single batch of shards."""
-    # Read batch
-    batch_dfs = []
-    for shard in shard_files:
-        df = _read_file_to_df(shard, signature_columns)
-        batch_dfs.append(df)
+    # Read shard
+    df = _read_file_to_df(shard_path, signature_columns)
+    df.columns = [col.replace("__DOT__", ".") for col in df.columns]
 
-    batch_df = _batch_concat_dataframes(batch_dfs, batch_size)
-    del batch_dfs
-    gc.collect()
+    # Apply preprocessing (multi-task labels, label processing, etc.)
+    if targets and main_task_index is not None:
+        df = generate_main_task_label(df, targets, main_task_index, lambda x: None)
 
-    # Process columns
-    batch_df.columns = [col.replace("__DOT__", ".") for col in batch_df.columns]
-
-    # Optional label processing
-    if label_field and label_field in batch_df.columns:
-        if not pd.api.types.is_numeric_dtype(batch_df[label_field]):
-            unique_labels = sorted(batch_df[label_field].dropna().unique())
+    if label_field and label_field in df.columns:
+        if not pd.api.types.is_numeric_dtype(df[label_field]):
+            unique_labels = sorted(df[label_field].dropna().unique())
             label_map = {val: idx for idx, val in enumerate(unique_labels)}
-            batch_df[label_field] = batch_df[label_field].map(label_map)
+            df[label_field] = df[label_field].map(label_map)
 
-        batch_df[label_field] = pd.to_numeric(
-            batch_df[label_field], errors="coerce"
-        ).astype("Int64")
-        batch_df.dropna(subset=[label_field], inplace=True)
-        batch_df[label_field] = batch_df[label_field].astype(int)
+        df[label_field] = pd.to_numeric(df[label_field], errors="coerce").astype(
+            "Int64"
+        )
+        df.dropna(subset=[label_field], inplace=True)
+        df[label_field] = df[label_field].astype(int)
 
-    return batch_df
+    # Convert date column
+    df[date_column] = pd.to_datetime(df[date_column])
+    split_date_dt = pd.to_datetime(split_date)
+
+    # ============================================
+    # VECTORIZED TEMPORAL SPLIT ASSIGNMENT
+    # ============================================
+
+    # Step 1: Determine pre-split vs post-split (vectorized boolean)
+    is_pre_split = df[date_column] < split_date_dt
+
+    # Step 2: Map customer IDs to split assignments (vectorized)
+    # customer_split_map.get() returns "train" or "val" or None
+    customer_splits = df[group_id_column].map(customer_split_map)
+
+    # Step 3: Assign final splits using vectorized conditions
+    df["_split"] = None  # Default: will be filtered out
+
+    # Pre-split data: use customer assignment ("train" or "val")
+    df.loc[is_pre_split, "_split"] = customer_splits[is_pre_split]
+
+    # Post-split data: assign "oot" only if customer is NOT in train set
+    # (i.e., customer is in val set or unknown)
+    is_post_split = ~is_pre_split
+    is_not_train = customer_splits != "train"  # Val or None
+    df.loc[is_post_split & is_not_train, "_split"] = "oot"
+
+    # Step 4: Filter out None assignments (train customers in post-split period)
+    initial_rows = len(df)
+    df = df[df["_split"].notna()]
+    filtered_rows = initial_rows - len(df)
+
+    # Log filtering stats (will be captured by parent process)
+    if filtered_rows > 0:
+        print(
+            f"[Shard {shard_num}] Filtered {filtered_rows} rows "
+            f"({filtered_rows / initial_rows * 100:.1f}%)"
+        )
+
+    # Step 5: Write to split folders with preserved shard number
+    stats = {}
+    for split_name in ["train", "val", "oot"]:
+        split_df = df[df["_split"] == split_name].drop("_split", axis=1)
+
+        if len(split_df) > 0:
+            split_dir = output_base / split_name
+            split_dir.mkdir(parents=True, exist_ok=True)
+
+            output_path = split_dir / f"part-{shard_num:05d}.{output_format}"
+
+            if output_format == "csv":
+                split_df.to_csv(output_path, index=False)
+            elif output_format == "tsv":
+                split_df.to_csv(output_path, sep="\t", index=False)
+            elif output_format == "parquet":
+                split_df.to_parquet(output_path, index=False)
+
+            stats[split_name] = len(split_df)
+            print(
+                f"[Shard {shard_num}] Wrote {output_path.name} ({len(split_df)} rows)"
+            )
+        else:
+            stats[split_name] = 0
+
+    return stats
 
 
-def process_streaming_temporal_split(
+def process_streaming_temporal_split_parallel(
     all_shards: List[Path],
     training_output_path: Path,
-    signature_columns: Optional[list],
-    date_column: str,
-    group_id_column: str,
-    split_date: str,
-    train_customers: set,
-    val_customers: set,
-    targets: Optional[list],
-    main_task_index: Optional[int],
-    label_field: Optional[str],
-    output_format: str,
-    streaming_batch_size: int,
-    shard_size: int,
-    batch_size: int,
+    customer_split_map: Dict[str, str],
+    config: Dict,
+    max_workers: int,
     log_func: Callable,
 ) -> None:
     """
-    Pass 2: Process batches with customer allocation knowledge (TWO-PASS STRATEGY).
-
-    For each batch:
-    1. Determine if pre-split or post-split based on date_column
-    2. Pre-split: Assign to train/val based on customer membership
-    3. Post-split: Assign to OOT only if NOT in train_customers
-    4. Apply multi-task label generation if needed
-    5. Write to appropriate split directories
+    Pass 2: Process all shards in parallel using customer map.
 
     Args:
         all_shards: List of all input shard paths
-        training_output_path: Base output directory for training data
-        signature_columns: Optional column names
-        date_column: Name of date column
-        group_id_column: Name of customer/group ID column
-        split_date: Date string for temporal cutoff
-        train_customers: Set of customer IDs allocated to training
-        val_customers: Set of customer IDs allocated to validation
-        targets: Optional list of target columns for multi-task
-        main_task_index: Optional index of main task in targets list
-        label_field: Optional label field name
-        output_format: Output format ("csv", "tsv", "parquet")
-        streaming_batch_size: Number of shards per batch
-        shard_size: Rows per output shard
-        batch_size: Batch size for concatenation
+        training_output_path: Base output directory
+        customer_split_map: Customer→split mapping from Pass 1
+        config: Configuration dictionary
+        max_workers: Number of parallel workers
         log_func: Logging function
     """
+    log_func(f"[PASS 2] Processing {len(all_shards)} shards with {max_workers} workers")
+    log_func("[PASS 2] Using PARALLEL processing with vectorized operations")
+
+    # Prepare arguments for each shard
+    shard_args = [
+        (shard, extract_shard_number(shard), customer_split_map, config)
+        for shard in all_shards
+    ]
+
+    # ✅ Process ALL shards in parallel
+    with Pool(processes=max_workers) as pool:
+        results = pool.map(process_shard_temporal_split, shard_args)
+
+    # Aggregate statistics
+    total_stats = {
+        "train": sum(r.get("train", 0) for r in results),
+        "val": sum(r.get("val", 0) for r in results),
+        "oot": sum(r.get("oot", 0) for r in results),
+    }
+
+    # Count non-empty shards per split
+    shard_counts = {
+        "train": sum(1 for r in results if r.get("train", 0) > 0),
+        "val": sum(1 for r in results if r.get("val", 0) > 0),
+        "oot": sum(1 for r in results if r.get("oot", 0) > 0),
+    }
+
+    log_func(f"[PASS 2] Complete! Row distribution: {total_stats}")
     log_func(
-        "[STREAMING] ===== STARTING PASS 2: Processing batches with customer allocation ====="
-    )
-
-    split_date_dt = pd.to_datetime(split_date)
-    split_counters = {"train": 0, "val": 0, "oot": 0}
-
-    for batch_start in range(0, len(all_shards), streaming_batch_size):
-        batch_end = min(batch_start + streaming_batch_size, len(all_shards))
-        batch_shards = all_shards[batch_start:batch_end]
-        batch_num = (batch_start // streaming_batch_size) + 1
-
-        log_func(f"[PASS 2] Processing batch {batch_num} ({len(batch_shards)} shards)")
-
-        # Process batch
-        batch_df = process_single_batch(
-            batch_shards,
-            signature_columns,
-            batch_size,
-            label_field,
-            log_func,
-        )
-
-        # Apply multi-task label generation if needed
-        if targets and main_task_index is not None:
-            batch_df = generate_main_task_label(
-                batch_df, targets, main_task_index, log_func
-            )
-
-        # Convert date column
-        batch_df[date_column] = pd.to_datetime(batch_df[date_column])
-
-        # Assign splits using GLOBAL customer allocation
-        def assign_split_global(row):
-            customer = row[group_id_column]
-            is_pre_split = row[date_column] < split_date_dt
-
-            if is_pre_split:
-                # Pre-split: assign based on customer allocation
-                if customer in train_customers:
-                    return "train"
-                elif customer in val_customers:
-                    return "val"
-                else:
-                    # Customer not in allocation (shouldn't happen, but handle gracefully)
-                    return None
-            else:
-                # Post-split: assign to OOT only if NOT in train
-                if customer not in train_customers:
-                    return "oot"
-                else:
-                    return None  # Filter out train customers from OOT
-
-        batch_df["_split"] = batch_df.apply(assign_split_global, axis=1)
-
-        # Filter out None assignments (customers not in allocation or train customers in OOT)
-        initial_rows = len(batch_df)
-        batch_df = batch_df[batch_df["_split"].notna()]
-        filtered_rows = initial_rows - len(batch_df)
-
-        if filtered_rows > 0:
-            log_func(
-                f"[PASS 2] Filtered {filtered_rows} rows in batch "
-                f"({filtered_rows / initial_rows * 100:.2f}%)"
-            )
-
-        # Write to split directories
-        write_splits_to_shards(
-            batch_df,
-            training_output_path,
-            split_counters,
-            shard_size,
-            output_format,
-            log_func,
-        )
-
-        del batch_df
-        gc.collect()
-
-    log_func("[STREAMING] ===== PASS 2 COMPLETE =====")
-    log_func(
-        f"[STREAMING] Final results: train={split_counters['train']}, "
-        f"val={split_counters['val']}, oot={split_counters['oot']} shards"
+        f"[PASS 2] Output shards - train={shard_counts['train']}, "
+        f"val={shard_counts['val']}, oot={shard_counts['oot']}"
     )
 
 
@@ -1132,8 +1152,6 @@ def main(
     batch_size = int(environ_vars.get("BATCH_SIZE", 10))
 
     # Streaming mode parameters
-    streaming_batch_size = int(environ_vars.get("STREAMING_BATCH_SIZE", 0)) or None
-    shard_size = int(environ_vars.get("SHARD_SIZE", 100000))
     enable_true_streaming = (
         environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
     )
@@ -1215,8 +1233,6 @@ def main(
         # STREAMING MODE
         # ==================================================================
         log("[INFO] Using TRUE STREAMING MODE for temporal split")
-        log(f"[STREAMING] Streaming batch size: {streaming_batch_size or 10} shards")
-        log(f"[STREAMING] Shard size: {shard_size} rows")
 
         # Find input shards
         all_shards = find_input_shards(input_data_dir, log)
@@ -1232,9 +1248,9 @@ def main(
                 targets = [t.strip().strip("'\"") for t in targets_str.split(",")]
             log(f"[STREAMING] Multi-task targets: {targets}")
 
-        # PASS 1: Collect customer allocation
+        # PASS 1: Collect customer allocation (now returns dictionary)
         log("[STREAMING] ===== STARTING PASS 1: Customer allocation =====")
-        train_customers, val_customers = collect_customer_allocation(
+        customer_split_map = collect_customer_allocation(
             all_shards,
             signature_columns,
             date_column,
@@ -1247,7 +1263,7 @@ def main(
         log("[STREAMING] ===== PASS 1 COMPLETE =====")
         log("")
 
-        # PASS 2: Process batches
+        # PASS 2: Process shards in parallel
         training_output_dir = output_paths.get(
             "training_data",
             output_paths.get(
@@ -1257,29 +1273,44 @@ def main(
         training_output_path = Path(training_output_dir)
         training_output_path.mkdir(parents=True, exist_ok=True)
 
-        process_streaming_temporal_split(
+        # Build config dictionary for parallel processing
+        config = {
+            "date_column": date_column,
+            "group_id_column": group_id_column,
+            "split_date": split_date,
+            "output_base": training_output_path,
+            "output_format": output_format,
+            "signature_columns": signature_columns,
+            "targets": targets,
+            "main_task_index": main_task_index,
+            "label_field": label_field,
+        }
+
+        # Determine optimal number of workers
+        if max_workers is None or max_workers == 0:
+            max_workers = min(cpu_count(), len(all_shards))
+
+        log(f"[STREAMING] Using {max_workers} parallel workers for Pass 2")
+
+        # Use parallel processing
+        log("[STREAMING] ===== STARTING PASS 2: Parallel processing =====")
+        process_streaming_temporal_split_parallel(
             all_shards,
             training_output_path,
-            signature_columns,
-            date_column,
-            group_id_column,
-            split_date,
-            train_customers,
-            val_customers,
-            targets,
-            main_task_index,
-            label_field,
-            output_format,
-            streaming_batch_size or 10,
-            shard_size,
-            batch_size,
+            customer_split_map,
+            config,
+            max_workers,
             log,
         )
+        log("[STREAMING] ===== PASS 2 COMPLETE =====")
 
-        # Consolidate shards
-        splits = consolidate_shards_to_single_files(
-            training_output_path, output_format, log
-        )
+        # TRUE STREAMING MODE: Keep sharded output
+        log("[STREAMING] Preserving sharded output (1:1 shard mapping)")
+        log("[STREAMING] Output uses 1:1 shard mapping for PyTorch compatibility")
+
+        # Don't consolidate - data stays in shards
+        training_data = pd.DataFrame()
+        oot_data = pd.DataFrame()
 
         # Save OOT data separately
         oot_output_dir = output_paths.get(
@@ -1289,25 +1320,20 @@ def main(
         oot_output_path = Path(oot_output_dir)
         oot_output_path.mkdir(parents=True, exist_ok=True)
 
-        oot_data = splits.get("oot", pd.DataFrame())
-        if output_format == "csv":
-            oot_proc_path = oot_output_path / "oot_data.csv"
-            oot_data.to_csv(oot_proc_path, index=False)
-        elif output_format == "tsv":
-            oot_proc_path = oot_output_path / "oot_data.tsv"
-            oot_data.to_csv(oot_proc_path, sep="\t", index=False)
-        elif output_format == "parquet":
-            oot_proc_path = oot_output_path / "oot_data.parquet"
-            oot_data.to_parquet(oot_proc_path, index=False)
+        # True streaming mode: Copy OOT shards
+        oot_source_dir = training_output_path / "oot"
+        if oot_source_dir.exists():
+            log(
+                f"[STREAMING] Copying OOT shards from {oot_source_dir} to {oot_output_path}"
+            )
+            for shard_file in sorted(oot_source_dir.glob(f"part-*.{output_format}")):
+                dest_file = oot_output_path / shard_file.name
+                shutil.copy2(shard_file, dest_file)
+                log(f"[STREAMING] Copied {shard_file.name}")
+        else:
+            log("[STREAMING WARNING] No OOT shards found to copy")
 
-        log(f"[STREAMING] Saved OOT {oot_proc_path} (shape={oot_data.shape})")
-
-        training_data = pd.concat(
-            [splits.get("train", pd.DataFrame()), splits.get("val", pd.DataFrame())],
-            ignore_index=True,
-        )
         log("[STREAMING] Temporal split preprocessing complete in streaming mode")
-
         return {"training_data": training_data, "oot_data": oot_data}
 
     # ========================================================================
@@ -1593,22 +1619,6 @@ if __name__ == "__main__":
             )
 
         # Streaming mode parameters
-        try:
-            STREAMING_BATCH_SIZE = (
-                int(os.environ.get("STREAMING_BATCH_SIZE", 0)) or None
-            )
-        except ValueError as e:
-            raise RuntimeError(
-                f"Invalid STREAMING_BATCH_SIZE value: {os.environ.get('STREAMING_BATCH_SIZE')}. Error: {e}"
-            )
-
-        try:
-            SHARD_SIZE = int(os.environ.get("SHARD_SIZE", 100000))
-        except ValueError as e:
-            raise RuntimeError(
-                f"Invalid SHARD_SIZE value: {os.environ.get('SHARD_SIZE')}. Error: {e}"
-            )
-
         ENABLE_TRUE_STREAMING = (
             os.environ.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
         )
@@ -1720,10 +1730,6 @@ if __name__ == "__main__":
             "OUTPUT_FORMAT": OUTPUT_FORMAT,
             "MAX_WORKERS": str(MAX_WORKERS),
             "BATCH_SIZE": str(BATCH_SIZE),
-            "STREAMING_BATCH_SIZE": str(STREAMING_BATCH_SIZE)
-            if STREAMING_BATCH_SIZE
-            else "0",
-            "SHARD_SIZE": str(SHARD_SIZE),
             "ENABLE_TRUE_STREAMING": str(ENABLE_TRUE_STREAMING).lower(),
             "LABEL_FIELD": LABEL_FIELD,
             "TARGETS": TARGETS,

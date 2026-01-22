@@ -32,8 +32,6 @@ TEMPORAL_SPLIT_PREPROCESSING_CONTRACT = ScriptContract(
         "MAIN_TASK_INDEX": "",
         # Streaming mode parameters
         "ENABLE_TRUE_STREAMING": "false",
-        "STREAMING_BATCH_SIZE": "0",
-        "SHARD_SIZE": "100000",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
