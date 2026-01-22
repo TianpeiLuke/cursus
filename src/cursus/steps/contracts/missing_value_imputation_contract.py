@@ -36,6 +36,9 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
         "CATEGORICAL_UNIQUE_RATIO_THRESHOLD": "0.1",
         "VALIDATE_FILL_VALUES": "true",
         "EXCLUDE_COLUMNS": "",
+        # Streaming mode configuration
+        "ENABLE_TRUE_STREAMING": "false",
+        "MAX_WORKERS": "0",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
@@ -50,6 +53,7 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     4. Supports both training mode (fit and transform) and inference mode (transform only)
     5. Saves fitted imputation parameters for reuse in inference jobs
     6. Generates comprehensive reports and quality metrics
+    7. Supports dual-mode execution: batch mode (default) and streaming mode (memory-efficient)
     
     Input Structure:
     - /opt/ml/processing/input/data: Preprocessed data from tabular_preprocessing
@@ -109,6 +113,26 @@ MISSING_VALUE_IMPUTATION_CONTRACT = ScriptContract(
     - VALIDATE_FILL_VALUES: Enable pandas NA value validation
     - EXCLUDE_COLUMNS: Comma-separated list of columns to exclude from imputation
     - COLUMN_STRATEGY_<column_name>: Column-specific imputation strategies
+    - ENABLE_TRUE_STREAMING: Enable memory-efficient streaming mode (default: false)
+    - MAX_WORKERS: Number of parallel workers for streaming mode (default: auto-detect)
+    
+    Streaming Mode (ENABLE_TRUE_STREAMING=true):
+    - Memory-efficient two-pass architecture for large datasets
+    - Pass 1: Collect imputation statistics from training shards (training mode only)
+    - Pass 2: Apply imputations per split in parallel
+    - Input: Expects sharded data in train/, val/, test/ subdirectories
+      - Example: train/part-00000.csv, train/part-00001.csv, ...
+    - Output: Preserves 1:1 shard mapping and format (part-00042.csv → part-00042.csv)
+    - Format Preservation: Auto-detects input format (csv/tsv/parquet) and uses same for output
+    - Parallelization: Configurable workers for simultaneous shard processing
+    - No global DataFrame loading - processes shards independently
+    - Suitable for datasets that don't fit in memory
+    
+    Batch Mode (ENABLE_TRUE_STREAMING=false, default):
+    - Traditional in-memory processing
+    - Loads entire splits into memory for processing
+    - Generates comprehensive reports and quality metrics
+    - Suitable for datasets that fit comfortably in memory
     
     Pandas-Safe Features:
     - Validates fill values against pandas NA interpretation list

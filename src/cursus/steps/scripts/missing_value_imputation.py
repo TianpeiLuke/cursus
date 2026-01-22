@@ -16,7 +16,10 @@ import json
 import pickle as pkl
 import traceback
 import shutil
+import gc
 from pathlib import Path
+from collections import Counter
+from multiprocessing import Pool, cpu_count
 from sklearn.impute import SimpleImputer
 import logging
 from typing import Dict, List, Tuple, Any, Optional, Callable
@@ -39,6 +42,664 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# STREAMING MODE UTILITIES (Reused from temporal_split_preprocessing)
+# ============================================================================
+
+
+def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
+    """
+    Find all input shards in directory.
+
+    Searches for various shard formats (CSV, JSON, Parquet with/without compression).
+
+    Args:
+        input_dir: Directory containing input shards
+        log_func: Logging function
+
+    Returns:
+        Sorted list of shard paths
+
+    Raises:
+        RuntimeError: If no shards found in input directory
+    """
+    input_path = Path(input_dir)
+    patterns = [
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
+    ]
+    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
+
+    if not all_shards:
+        raise RuntimeError(f"No shards found in {input_dir}")
+
+    log_func(f"[STREAMING] Found {len(all_shards)} input shards")
+    return all_shards
+
+
+def find_split_shards(
+    input_dir: str, split_name: str, log_func: Callable
+) -> List[Path]:
+    """
+    Find all input shards in a specific split subdirectory.
+
+    Used when input data is organized as:
+    input_dir/
+      train/part-00000.csv, part-00001.csv, ...
+      val/part-00000.csv, part-00001.csv, ...
+      test/part-00000.csv, part-00001.csv, ...
+
+    Args:
+        input_dir: Base input directory
+        split_name: Split subdirectory name ("train", "val", "test", etc.)
+        log_func: Logging function
+
+    Returns:
+        Sorted list of shard paths from the split subdirectory
+
+    Raises:
+        RuntimeError: If split subdirectory or shards not found
+    """
+    split_dir = Path(input_dir) / split_name
+
+    if not split_dir.exists():
+        raise RuntimeError(f"Split subdirectory not found: {split_dir}")
+
+    patterns = [
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
+    ]
+    all_shards = sorted([p for pat in patterns for p in split_dir.glob(pat)])
+
+    if not all_shards:
+        raise RuntimeError(f"No shards found in {split_dir}")
+
+    log_func(f"[STREAMING] Found {len(all_shards)} shards in {split_name} split")
+    return all_shards
+
+
+def extract_shard_number(shard_path: Path) -> int:
+    """
+    Extract shard number from filename like part-00042.csv.
+
+    Handles various formats:
+    - part-00042.csv → 42
+    - part-00042.csv.gz → 42
+    - part-00042.parquet → 42
+    - part-00042.snappy.parquet → 42
+
+    Args:
+        shard_path: Path to shard file
+
+    Returns:
+        Integer shard number
+
+    Raises:
+        ValueError: If shard number cannot be extracted
+
+    Example:
+        >>> extract_shard_number(Path("part-00042.csv"))
+        42
+        >>> extract_shard_number(Path("part-00001.csv.gz"))
+        1
+    """
+    import re
+
+    stem = shard_path.stem
+
+    # Handle .gz compression
+    if stem.endswith(".gz"):
+        stem = Path(stem).stem
+
+    # Extract number from part-XXXXX pattern
+    match = re.search(r"part-(\d+)", stem)
+    if match:
+        return int(match.group(1))
+    else:
+        raise ValueError(
+            f"Cannot extract shard number from {shard_path.name}. "
+            f"Expected format: part-XXXXX.ext"
+        )
+
+
+def write_shard_file(df: pd.DataFrame, output_path: Path, output_format: str) -> None:
+    """
+    Write a DataFrame to a shard file in the specified format.
+
+    Creates parent directories if needed.
+
+    Args:
+        df: DataFrame to write
+        output_path: Full path for output file (including filename)
+        output_format: Format to write ('csv', 'tsv', or 'parquet')
+
+    Raises:
+        ValueError: If output_format is not supported
+    """
+    # Create parent directory if needed
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if output_format == "csv":
+        df.to_csv(output_path, index=False)
+    elif output_format == "tsv":
+        df.to_csv(output_path, sep="\t", index=False)
+    elif output_format == "parquet":
+        df.to_parquet(output_path, index=False)
+    else:
+        raise ValueError(f"Unsupported output format: {output_format}")
+
+
+def aggregate_shard_results(
+    results: List[Dict[str, int]], job_type: str
+) -> Dict[str, int]:
+    """
+    Aggregate statistics from parallel shard processing.
+
+    Args:
+        results: List of statistics dictionaries from each shard
+        job_type: Type of job ('training', 'validation', etc.')
+
+    Returns:
+        Dictionary with total row counts per split
+    """
+    if job_type == "training":
+        # Training mode: aggregate train/val/test splits
+        total_stats = {
+            "train": sum(r.get("train", 0) for r in results),
+            "val": sum(r.get("val", 0) for r in results),
+            "test": sum(r.get("test", 0) for r in results),
+        }
+    else:
+        # Single split mode
+        total_stats = {job_type: sum(r.get(job_type, 0) for r in results)}
+
+    return total_stats
+
+
+def detect_shard_format(shard_path: Path) -> str:
+    """
+    Auto-detect output format from input shard filename.
+
+    Mirrors batch mode's format preservation behavior.
+
+    Args:
+        shard_path: Path to a shard file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+
+    Example:
+        >>> detect_shard_format(Path("part-00001.csv"))
+        'csv'
+        >>> detect_shard_format(Path("part-00001.parquet"))
+        'parquet'
+    """
+    suffix = shard_path.suffix.lower()
+
+    # Handle compressed files
+    if suffix == ".gz":
+        # Get the extension before .gz
+        stem = shard_path.stem
+        suffix = Path(stem).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet" or "parquet" in suffix:
+        return "parquet"
+    else:
+        # Default to CSV for unknown formats
+        return "csv"
+
+
+# ============================================================================
+# STREAMING MODE - PASS 1: COLLECT IMPUTATION STATISTICS
+# ============================================================================
+
+
+def _read_file_to_df(
+    file_path: Path, column_names: Optional[List[str]] = None
+) -> pd.DataFrame:
+    """
+    Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.
+
+    Simplified version for streaming mode - handles common formats.
+
+    Args:
+        file_path: Path to file
+        column_names: Optional column names (for CSV/TSV files)
+
+    Returns:
+        DataFrame from file
+    """
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".csv" or (suffix == ".gz" and file_path.stem.endswith(".csv")):
+        if column_names:
+            return pd.read_csv(file_path, names=column_names, header=0)
+        return pd.read_csv(file_path)
+    elif suffix == ".tsv" or (suffix == ".gz" and file_path.stem.endswith(".tsv")):
+        if column_names:
+            return pd.read_csv(file_path, sep="\t", names=column_names, header=0)
+        return pd.read_csv(file_path, sep="\t")
+    elif suffix == ".parquet" or suffix.endswith(".parquet"):
+        return pd.read_parquet(file_path)
+    else:
+        # Default to CSV
+        return pd.read_csv(file_path)
+
+
+def collect_imputation_statistics_pass1(
+    all_shards: List[Path],
+    signature_columns: Optional[List[str]],
+    label_field: str,
+    imputation_config: Dict[str, Any],
+    log_func: Callable,
+) -> Dict[str, Any]:
+    """
+    Pass 1: Collect imputation statistics from training shards.
+
+    Memory-efficient incremental aggregation:
+    - Numeric columns: Accumulate sum + count → compute mean
+    - Categorical/Text columns: Collect all non-null values → compute mode
+
+    Args:
+        all_shards: List of all input shard paths
+        signature_columns: Optional column names for CSV/TSV files
+        label_field: Name of label column to exclude from imputation
+        imputation_config: Imputation configuration dictionary
+        log_func: Logging function
+
+    Returns:
+        Dictionary mapping column names to imputation values
+        Format: {column_name: imputation_value} (XGBoost compatible)
+    """
+    log_func("[PASS1] Collecting imputation statistics from training shards...")
+
+    # Step 1: Identify imputable columns from first shard
+    first_shard = all_shards[0]
+    df_first = _read_file_to_df(first_shard, signature_columns)
+    df_first.columns = [col.replace("__DOT__", ".") for col in df_first.columns]
+
+    # Get columns to impute (exclude label and configured exclusions)
+    exclude_cols = [label_field] + imputation_config.get("exclude_columns", [])
+    imputable_columns = [
+        col
+        for col in df_first.columns
+        if col not in exclude_cols and df_first[col].isnull().any()
+    ]
+
+    log_func(f"[PASS1] Found {len(imputable_columns)} columns with missing values")
+
+    if not imputable_columns:
+        log_func("[PASS1] No columns with missing values found")
+        return {}
+
+    # Step 2: Initialize aggregators for each column
+    column_aggregators = {}
+    for col in imputable_columns:
+        # Detect column type
+        col_type = detect_column_type(df_first, col, imputation_config)
+
+        if col_type == "numerical":
+            column_aggregators[col] = {
+                "type": "numerical",
+                "sum": 0.0,
+                "count": 0,
+                "dtype": str(df_first[col].dtype),
+            }
+        else:  # categorical or text
+            column_aggregators[col] = {
+                "type": "categorical",
+                "values": [],
+                "dtype": str(df_first[col].dtype),
+            }
+
+    del df_first
+    gc.collect()
+
+    # Step 3: Process each shard and aggregate statistics
+    log_func(f"[PASS1] Processing {len(all_shards)} shards...")
+
+    for i, shard_path in enumerate(all_shards):
+        try:
+            df = _read_file_to_df(shard_path, signature_columns)
+            df.columns = [col.replace("__DOT__", ".") for col in df.columns]
+
+            # Aggregate statistics for each column
+            for col in imputable_columns:
+                if col not in df.columns:
+                    continue
+
+                # Get non-null values
+                non_null_values = df[col].dropna()
+
+                if len(non_null_values) == 0:
+                    continue
+
+                aggregator = column_aggregators[col]
+
+                if aggregator["type"] == "numerical":
+                    # Accumulate sum and count for mean calculation
+                    aggregator["sum"] += non_null_values.sum()
+                    aggregator["count"] += len(non_null_values)
+                else:
+                    # Collect values for mode calculation
+                    # Memory optimization: sample if too many unique values
+                    if len(aggregator["values"]) < 100000:
+                        aggregator["values"].extend(non_null_values.tolist())
+                    else:
+                        # Already have enough samples, just add unique values
+                        unique_new = non_null_values.unique()
+                        if len(unique_new) < 1000:
+                            aggregator["values"].extend(unique_new.tolist())
+
+            del df
+            gc.collect()
+
+            if (i + 1) % 100 == 0:
+                log_func(f"[PASS1] Processed {i + 1}/{len(all_shards)} shards")
+
+        except Exception as e:
+            log_func(f"[PASS1 WARNING] Failed to read {shard_path.name}: {e}")
+            continue
+
+    # Step 4: Compute final imputation values
+    log_func("[PASS1] Computing final imputation values...")
+
+    impute_dict = {}
+    for col, aggregator in column_aggregators.items():
+        try:
+            if aggregator["type"] == "numerical":
+                # Compute mean
+                if aggregator["count"] > 0:
+                    impute_value = aggregator["sum"] / aggregator["count"]
+                    impute_dict[col] = float(impute_value)
+                    log_func(f"[PASS1]   {col}: mean = {impute_value:.4f}")
+                else:
+                    log_func(f"[PASS1]   {col}: No non-null values, using 0")
+                    impute_dict[col] = 0.0
+            else:
+                # Compute mode (most frequent value)
+                if aggregator["values"]:
+                    # Use Counter to find most common value
+                    mode_value = Counter(aggregator["values"]).most_common(1)[0][0]
+                    impute_dict[col] = mode_value
+                    log_func(f"[PASS1]   {col}: mode = '{mode_value}'")
+                else:
+                    log_func(f"[PASS1]   {col}: No non-null values, using 'Unknown'")
+                    impute_dict[col] = "Unknown"
+
+        except Exception as e:
+            log_func(f"[PASS1 WARNING] Failed to compute imputation for {col}: {e}")
+            # Use safe defaults
+            if aggregator["type"] == "numerical":
+                impute_dict[col] = 0.0
+            else:
+                impute_dict[col] = "Unknown"
+
+    log_func(
+        f"[PASS1] Complete! Collected imputation values for {len(impute_dict)} columns"
+    )
+
+    # Estimate memory usage
+    memory_mb = len(impute_dict) * 50 / 1024 / 1024  # Rough estimate
+    log_func(f"[PASS1] Map size: ~{memory_mb:.2f} MB")
+
+    return impute_dict
+
+
+# ============================================================================
+# STREAMING MODE - PASS 2: PARALLEL PER-SHARD IMPUTATION
+# ============================================================================
+
+
+def process_shard_end_to_end_imputation(args: tuple) -> Dict[str, int]:
+    """
+    Process single shard: read → apply imputation → write.
+
+    Stateless per-shard processing using global impute_dict from Pass 1.
+    Preserves 1:1 shard mapping (input shard number → output shard number).
+
+    Args:
+        args: Tuple of (shard_path, shard_num, global_context,
+                       output_base, signature_columns, output_format)
+
+        global_context must contain:
+        - "impute_dict": Dictionary of imputation values
+        - "split_name": Which split this shard belongs to ("train", "val", "test", etc.)
+
+    Returns:
+        Statistics dict with row count for this split
+        Format: {"train": 1000} or {"val": 200} or {"validation": 500}
+
+    Example:
+        Input: train/part-00042.csv
+        Output: train/part-00042.csv (imputed)
+    """
+    (
+        shard_path,
+        shard_num,
+        global_context,
+        output_base,
+        signature_columns,
+        output_format,
+    ) = args
+
+    try:
+        # ====================================================================
+        # STEP 1: Read Single Shard
+        # ====================================================================
+        df = _read_file_to_df(shard_path, signature_columns)
+        df.columns = [col.replace("__DOT__", ".") for col in df.columns]
+
+        # ====================================================================
+        # STEP 2: Apply Imputation (Using Global Context)
+        # ====================================================================
+        impute_dict = global_context["impute_dict"]
+
+        # Simple fillna operation for each column
+        for column, impute_value in impute_dict.items():
+            if column in df.columns:
+                # Only fill NaN values (preserve existing non-null values)
+                df[column] = df[column].fillna(impute_value)
+
+        # ====================================================================
+        # STEP 3: Write to Correct Split Folder (Preserving Shard Number)
+        # ====================================================================
+        split_name = global_context["split_name"]
+        stats = {}
+
+        if len(df) > 0:
+            output_path = (
+                output_base / split_name / f"part-{shard_num:05d}.{output_format}"
+            )
+            write_shard_file(df, output_path, output_format)
+            stats[split_name] = len(df)
+        else:
+            stats[split_name] = 0
+
+        return stats
+
+    except Exception as e:
+        # Log error but don't crash the entire pool
+        print(f"[ERROR] Failed to process shard {shard_num} ({shard_path.name}): {e}")
+        # Return zero stats for this shard
+        split_name = global_context.get("split_name", "unknown")
+        return {split_name: 0}
+
+
+# ============================================================================
+# STREAMING MODE - MAIN ORCHESTRATION
+# ============================================================================
+
+
+def process_streaming_mode_imputation(
+    input_dir: str,
+    output_dir: str,
+    signature_columns: Optional[List[str]],
+    job_type: str,
+    label_field: str,
+    imputation_config: Dict[str, Any],
+    max_workers: Optional[int],
+    model_artifacts_input_dir: Optional[str] = None,
+    model_artifacts_output_dir: Optional[str] = None,
+    logger: Optional[Callable] = None,
+) -> Dict[str, int]:
+    """
+    Streaming mode for missing value imputation with train/val/test subdirectories.
+
+    Two-pass architecture:
+    - Pass 1: Collect imputation statistics from training shards only
+    - Pass 2: Apply imputations per split in parallel
+
+    Auto-detects output format from input shards (mirrors batch mode behavior).
+
+    Input structure (training mode):
+      input_dir/
+        train/part-00000.csv, part-00001.csv, ...
+        val/part-00000.csv, part-00001.csv, ...
+        test/part-00000.csv, part-00001.csv, ...
+
+    Output structure (training mode):
+      output_dir/
+        train/part-00000.csv, part-00001.csv, ... (imputed, same format)
+        val/part-00000.csv, part-00001.csv, ... (imputed, same format)
+        test/part-00000.csv, part-00001.csv, ... (imputed, same format)
+
+    Args:
+        input_dir: Base input directory
+        output_dir: Base output directory
+        signature_columns: Optional column names for CSV/TSV
+        job_type: 'training', 'validation', 'testing', 'calibration'
+        label_field: Label column to exclude
+        imputation_config: Imputation configuration
+        max_workers: Number of parallel workers
+        model_artifacts_input_dir: Input model artifacts directory
+        model_artifacts_output_dir: Output model artifacts directory
+        logger: Logging function
+
+    Returns:
+        Dictionary with total row counts per split
+    """
+    log = logger or print
+    output_path = Path(output_dir)
+
+    # Determine optimal workers
+    if max_workers is None:
+        max_workers = min(cpu_count(), 8)  # Default to 8 workers
+
+    log(f"[STREAMING] Starting streaming mode imputation")
+    log(f"[STREAMING] Job type: {job_type}")
+    log(f"[STREAMING] Max workers: {max_workers}")
+
+    # ========================================================================
+    # PASS 1: Collect Imputation Statistics (Training Only)
+    # ========================================================================
+    if job_type == "training":
+        log("[STREAMING] PASS 1: Collecting imputation statistics from train split...")
+        train_shards = find_split_shards(input_dir, "train", log)
+        impute_dict = collect_imputation_statistics_pass1(
+            train_shards, signature_columns, label_field, imputation_config, log
+        )
+
+        # Save imputation artifacts
+        if model_artifacts_output_dir:
+            artifacts_path = Path(model_artifacts_output_dir)
+            artifacts_path.mkdir(parents=True, exist_ok=True)
+
+            # Save impute_dict
+            impute_dict_path = artifacts_path / IMPUTATION_PARAMS_FILENAME
+            with open(impute_dict_path, "wb") as f:
+                pkl.dump(impute_dict, f)
+            log(f"[STREAMING] Saved imputation dictionary to {impute_dict_path}")
+    else:
+        # Non-training: Load imputation parameters
+        if not model_artifacts_input_dir:
+            raise ValueError(f"model_artifacts_input_dir required for {job_type} mode")
+
+        impute_dict_path = Path(model_artifacts_input_dir) / IMPUTATION_PARAMS_FILENAME
+        if not impute_dict_path.exists():
+            raise FileNotFoundError(
+                f"Imputation parameters not found: {impute_dict_path}"
+            )
+
+        log(f"[STREAMING] Loading imputation parameters from {impute_dict_path}")
+        with open(impute_dict_path, "rb") as f:
+            impute_dict = pkl.load(f)
+        log(f"[STREAMING] Loaded {len(impute_dict)} imputation values")
+
+    # ========================================================================
+    # PASS 2: Process Each Split Independently
+    # ========================================================================
+    log("[STREAMING] PASS 2: Processing splits in parallel...")
+
+    # Determine which splits to process
+    if job_type == "training":
+        splits_to_process = ["train", "val", "test"]
+    else:
+        splits_to_process = [
+            job_type
+        ]  # Single split (validation, testing, calibration)
+
+    total_stats = {}
+
+    for split_name in splits_to_process:
+        log(f"[STREAMING] Processing {split_name} split...")
+
+        # Find shards for this split
+        split_shards = find_split_shards(input_dir, split_name, log)
+
+        # Auto-detect format from first shard (mirrors batch mode behavior)
+        output_format = detect_shard_format(split_shards[0])
+        log(f"[STREAMING] Detected format: {output_format}")
+
+        # Build global context for this split
+        global_context = {
+            "split_name": split_name,
+            "impute_dict": impute_dict,
+        }
+
+        # Prepare arguments for parallel processing
+        shard_args = [
+            (
+                shard,
+                extract_shard_number(shard),
+                global_context,
+                output_path,
+                signature_columns,
+                output_format,
+            )
+            for shard in split_shards
+        ]
+
+        # Process shards in parallel
+        log(
+            f"[STREAMING] Processing {len(shard_args)} shards from {split_name} with {max_workers} workers"
+        )
+        with Pool(processes=max_workers) as pool:
+            results = pool.map(process_shard_end_to_end_imputation, shard_args)
+
+        # Aggregate results for this split
+        split_total = sum(r.get(split_name, 0) for r in results)
+        total_stats[split_name] = split_total
+        log(f"[STREAMING] Completed {split_name} split: {split_total:,} rows")
+
+    log(f"[STREAMING] Complete! Row distribution: {total_stats}")
+    return total_stats
 
 
 # --- File I/O Helper Functions with Format Preservation ---
@@ -989,11 +1650,17 @@ def internal_main(
     label_field: str,
     model_artifacts_input_dir: Optional[str] = None,
     model_artifacts_output_dir: Optional[str] = None,
+    enable_true_streaming: bool = False,
+    max_workers: Optional[int] = None,
     load_data_func: Callable = load_split_data,
     save_data_func: Callable = save_output_data,
 ) -> Tuple[Dict[str, pd.DataFrame], SimpleImputationEngine]:
     """
     Main logic for missing value imputation, handling both training and inference modes.
+
+    Supports two modes:
+    - Batch mode (default): Loads entire splits into memory
+    - Streaming mode: Processes shards in parallel (memory-efficient)
 
     Args:
         job_type: Type of job (training, validation, testing, calibration)
@@ -1003,19 +1670,24 @@ def internal_main(
         label_field: Target column name
         model_artifacts_input_dir: Directory containing model artifacts from previous steps
         model_artifacts_output_dir: Directory to save model artifacts for next steps
+        enable_true_streaming: Enable streaming mode (default: False)
+        signature_columns: Optional column names for streaming mode CSV/TSV
+        output_format: Output format for streaming mode (csv, tsv, parquet)
+        max_workers: Number of parallel workers for streaming mode
         load_data_func: Function to load data (for dependency injection in tests)
         save_data_func: Function to save data (for dependency injection in tests)
 
     Returns:
         Tuple containing:
-        - Dictionary of imputed dataframes
-        - SimpleImputationEngine instance with fitted parameters
+        - Dictionary of imputed dataframes (empty in streaming mode)
+        - SimpleImputationEngine instance with fitted parameters (or None in streaming)
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Using imputation configuration: {imputation_config}")
     logger.info(f"Label field: {label_field}")
+    logger.info(f"Streaming mode: {'ENABLED' if enable_true_streaming else 'DISABLED'}")
 
     # Determine model artifacts output directory
     artifacts_output_dir = (
@@ -1028,6 +1700,39 @@ def internal_main(
     # Copy existing artifacts from previous steps (parameter accumulator pattern)
     if model_artifacts_input_dir:
         copy_existing_artifacts(model_artifacts_input_dir, str(artifacts_output_dir))
+
+    # ========================================================================
+    # STREAMING MODE
+    # ========================================================================
+    if enable_true_streaming:
+        logger.info("=" * 60)
+        logger.info("STREAMING MODE ENABLED")
+        logger.info("=" * 60)
+
+        # Call streaming mode orchestration (signature_columns=None, files have headers)
+        # Format is auto-detected from input shards (mirrors batch mode behavior)
+        stats = process_streaming_mode_imputation(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            signature_columns=None,  # Files from tabular_preprocessing have headers
+            job_type=job_type,
+            label_field=label_field,
+            imputation_config=imputation_config,
+            max_workers=max_workers,
+            model_artifacts_input_dir=model_artifacts_input_dir,
+            model_artifacts_output_dir=str(artifacts_output_dir),
+            logger=logger.info,
+        )
+
+        logger.info(f"Streaming mode complete! Final statistics: {stats}")
+
+        # Return empty data dict and None engine (data written to disk)
+        return {}, None
+
+    # ========================================================================
+    # BATCH MODE (DEFAULT)
+    # ========================================================================
+    logger.info("Running in BATCH MODE")
 
     # Load data according to job type
     data_dict = load_data_func(job_type, input_dir)
@@ -1141,6 +1846,13 @@ def main(
         imputation_config = load_imputation_config(environ_vars)
         label_field = environ_vars.get("LABEL_FIELD", "target")
 
+        # Extract streaming mode configuration
+        enable_true_streaming = (
+            environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+        )
+        max_workers_str = environ_vars.get("MAX_WORKERS", "0")
+        max_workers = int(max_workers_str) if max_workers_str else 0
+
         # Execute the internal main logic
         return internal_main(
             job_type=job_type,
@@ -1150,6 +1862,8 @@ def main(
             label_field=label_field,
             model_artifacts_input_dir=model_artifacts_input_dir,
             model_artifacts_output_dir=model_artifacts_output_dir,
+            enable_true_streaming=enable_true_streaming,
+            max_workers=max_workers,
         )
 
     except Exception as e:
@@ -1211,6 +1925,9 @@ if __name__ == "__main__":
             ),
             "VALIDATE_FILL_VALUES": os.environ.get("VALIDATE_FILL_VALUES", "true"),
             "EXCLUDE_COLUMNS": os.environ.get("EXCLUDE_COLUMNS", ""),
+            # Streaming mode configuration
+            "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
+            "MAX_WORKERS": os.environ.get("MAX_WORKERS", "0"),
         }
 
         # Add column-specific strategies from environment variables

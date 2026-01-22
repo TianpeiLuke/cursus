@@ -124,6 +124,17 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         description="Column-specific imputation strategies (column_name -> strategy)",
     )
 
+    # Streaming mode configuration
+    enable_true_streaming: bool = Field(
+        default=False,
+        description="Enable memory-efficient streaming mode for large datasets",
+    )
+
+    max_workers: int = Field(
+        default=0,
+        description="Number of parallel workers for streaming mode (0 = auto-detect, >0 = specific count)",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
     # They are private with public read-only property access
@@ -174,6 +185,10 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
                 for column, strategy in self.column_strategies.items():
                     env_var_name = f"COLUMN_STRATEGY_{column.upper()}"
                     env_vars[env_var_name] = strategy
+
+            # Add streaming mode configuration
+            env_vars["ENABLE_TRUE_STREAMING"] = str(self.enable_true_streaming).lower()
+            env_vars["MAX_WORKERS"] = str(self.max_workers)
 
             self._environment_variables = env_vars
 
@@ -376,6 +391,18 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
 
         return v
 
+    @field_validator("max_workers")
+    @classmethod
+    def validate_max_workers(cls, v: int) -> int:
+        """
+        Ensure max_workers is 0 (auto-detect) or a positive integer.
+        """
+        if not isinstance(v, int) or v < 0:
+            raise ValueError(
+                "max_workers must be 0 (auto-detect) or a positive integer"
+            )
+        return v
+
     # Initialize derived fields at creation time
     @model_validator(mode="after")
     def initialize_derived_fields(self) -> "MissingValueImputationConfig":
@@ -429,6 +456,8 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
             "auto_detect_categorical": self.auto_detect_categorical,
             "categorical_unique_ratio_threshold": self.categorical_unique_ratio_threshold,
             "validate_fill_values": self.validate_fill_values,
+            "enable_true_streaming": self.enable_true_streaming,
+            "max_workers": self.max_workers,
         }
 
         # Only include optional fields if they're set
