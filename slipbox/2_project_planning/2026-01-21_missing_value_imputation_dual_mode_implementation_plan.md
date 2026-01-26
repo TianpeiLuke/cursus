@@ -5,6 +5,11 @@ tags:
   - streaming
   - preprocessing
   - missing_value_imputation
+keywords:
+  - missing_value_imputation
+topics:
+  - streaming upgrade
+language: python
 date: 2026-01-21
 status: planning
 ---

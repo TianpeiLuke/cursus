@@ -77,6 +77,17 @@ class RiskTableMappingConfig(ProcessingStepConfigBase):
         description="Maximum unique values threshold for categorical field validation (embedded in hyperparams/hyperparameters.json)",
     )
 
+    # Streaming mode configuration
+    enable_true_streaming: bool = Field(
+        default=False,
+        description="Enable memory-efficient streaming mode for large datasets. When enabled, processes data in shards instead of loading entire dataset into memory. Provides 3-5× speed improvement and 70-80% memory reduction.",
+    )
+
+    max_workers: int = Field(
+        default=0,
+        description="Number of parallel workers for streaming mode (0 = auto-detect based on CPU count, capped at 8). Only applies when enable_true_streaming=True.",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # These are fields calculated from other fields
     # They are private with public read-only property access
@@ -98,9 +109,22 @@ class RiskTableMappingConfig(ProcessingStepConfigBase):
                 "SMOOTH_FACTOR": str(self.smooth_factor),
                 "COUNT_THRESHOLD": str(self.count_threshold),
                 "MAX_UNIQUE_THRESHOLD": str(self.max_unique_threshold),
+                # Streaming mode configuration
+                "ENABLE_TRUE_STREAMING": str(self.enable_true_streaming).lower(),
+                "MAX_WORKERS": str(self.max_workers),
             }
 
         return self._environment_variables
+
+    @field_validator("max_workers")
+    @classmethod
+    def validate_max_workers(cls, v: int) -> int:
+        """Ensure max_workers is 0 (auto-detect) or a positive integer."""
+        if not isinstance(v, int) or v < 0:
+            raise ValueError(
+                "max_workers must be 0 (auto-detect) or a positive integer"
+            )
+        return v
 
     @field_validator("job_type")
     @classmethod

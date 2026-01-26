@@ -16,7 +16,10 @@ import json
 import pickle as pkl
 import traceback
 import shutil
+import gc
 from pathlib import Path
+from collections import Counter
+from multiprocessing import Pool, cpu_count
 from sklearn.impute import SimpleImputer
 import logging
 from typing import Dict, List, Tuple, Any, Optional, Callable
@@ -41,6 +44,744 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# STREAMING MODE UTILITIES (Reused from missing_value_imputation)
+# ============================================================================
+
+
+def collect_risk_table_statistics_pass1(
+    all_shards: List[Path],
+    signature_columns: Optional[List[str]],
+    cat_field_list: List[str],
+    label_name: str,
+    smooth_factor: float,
+    count_threshold: int,
+    max_unique_threshold: int,
+    log_func: Callable,
+) -> Dict[str, Any]:
+    """
+    Pass 1: Collect risk table statistics from training shards.
+
+    Memory-efficient incremental crosstab aggregation:
+    - For each categorical field:
+      - Accumulate counts per (category, label) combination
+      - Compute risk scores after all shards processed
+
+    This function processes shards sequentially to build risk tables incrementally,
+    avoiding loading the entire dataset into memory.
+
+    Args:
+        all_shards: List of training shard paths
+        signature_columns: Optional column names for CSV/TSV
+        cat_field_list: List of categorical field names
+        label_name: Target variable name
+        smooth_factor: Smoothing factor for risk calculation
+        count_threshold: Minimum count threshold
+        max_unique_threshold: Max unique values for validation
+        log_func: Logging function
+
+    Returns:
+        Dictionary of risk tables (same format as OfflineBinning.risk_tables)
+        Format: {field: {varName, type, mode, default_bin, bins: {category: risk}}}
+    """
+    log_func("[PASS1] Collecting risk table statistics from training shards...")
+
+    # ========================================================================
+    # STEP 1: Identify valid categorical fields from first shard
+    # ========================================================================
+    first_shard = all_shards[0]
+    df_first = _read_file_to_df(first_shard, signature_columns)
+    df_first.columns = [col.replace("__DOT__", ".") for col in df_first.columns]
+
+    # Validate categorical fields
+    valid_cat_fields = []
+    for field in cat_field_list:
+        if field in df_first.columns:
+            unique_count = df_first[field].nunique()
+            if unique_count < max_unique_threshold:
+                valid_cat_fields.append(field)
+                log_func(f"[PASS1]   {field}: {unique_count} unique values")
+            else:
+                log_func(
+                    f"[PASS1]   {field}: SKIP ({unique_count} > {max_unique_threshold})"
+                )
+
+    if not valid_cat_fields:
+        log_func("[PASS1] No valid categorical fields found")
+        return {}
+
+    # ========================================================================
+    # STEP 2: Initialize crosstab accumulators
+    # ========================================================================
+    # For each field, accumulate: {(category, label): count}
+    crosstab_accumulators = {}
+    for field in valid_cat_fields:
+        crosstab_accumulators[field] = {
+            "counts": {},  # {(category, label): count}
+            "data_mode": None,
+        }
+
+    # Compute default risk from first shard (rough approximation)
+    df_fit = df_first.loc[
+        (df_first[label_name] != -1) & (~df_first[label_name].isnull())
+    ].copy()
+    default_risk = float(df_fit[label_name].mean()) if len(df_fit) > 0 else 0.0
+
+    del df_first, df_fit
+    gc.collect()
+
+    # ========================================================================
+    # STEP 3: Process each shard and accumulate crosstabs
+    # ========================================================================
+    log_func(f"[PASS1] Processing {len(all_shards)} training shards...")
+
+    for i, shard_path in enumerate(all_shards):
+        try:
+            df = _read_file_to_df(shard_path, signature_columns)
+            df.columns = [col.replace("__DOT__", ".") for col in df.columns]
+
+            # Filter valid rows for fitting (exclude -1 and NaN labels)
+            df_fit = df.loc[(df[label_name] != -1) & (~df[label_name].isnull())].copy()
+
+            if len(df_fit) == 0:
+                continue
+
+            # Accumulate crosstabs for each field
+            for field in valid_cat_fields:
+                if field not in df_fit.columns:
+                    continue
+
+                accumulator = crosstab_accumulators[field]
+
+                # Detect data mode from first shard with valid data
+                if accumulator["data_mode"] is None:
+                    if pd.api.types.is_numeric_dtype(df_fit[field]):
+                        accumulator["data_mode"] = "numeric"
+                    else:
+                        accumulator["data_mode"] = "categorical"
+
+                # Accumulate counts per (category, label) pair
+                for category, label in zip(df_fit[field], df_fit[label_name]):
+                    if pd.isna(category):
+                        continue
+                    key = (category, label)
+                    accumulator["counts"][key] = accumulator["counts"].get(key, 0) + 1
+
+            del df, df_fit
+            gc.collect()
+
+            # Progress logging every 100 shards
+            if (i + 1) % 100 == 0:
+                log_func(f"[PASS1] Processed {i + 1}/{len(all_shards)} shards")
+
+        except Exception as e:
+            log_func(f"[PASS1 WARNING] Failed to read {shard_path.name}: {e}")
+            continue
+
+    # ========================================================================
+    # STEP 4: Compute risk tables from accumulated crosstabs
+    # ========================================================================
+    log_func("[PASS1] Computing final risk tables...")
+
+    # Estimate smooth_samples based on dataset size
+    smooth_samples = int(len(all_shards) * 100 * smooth_factor)  # Rough estimate
+
+    risk_tables = {}
+    for field, accumulator in crosstab_accumulators.items():
+        try:
+            counts = accumulator["counts"]
+
+            if not counts:
+                log_func(f"[PASS1]   {field}: No valid data, using default")
+                risk_tables[field] = {
+                    "varName": field,
+                    "type": "categorical",
+                    "mode": accumulator["data_mode"] or "categorical",
+                    "default_bin": default_risk,
+                    "bins": {},
+                }
+                continue
+
+            # Build risk table from accumulated counts
+            # Group by category, compute risk = count(label=1) / count(total)
+            category_stats = {}
+            for (category, label), count in counts.items():
+                if category not in category_stats:
+                    category_stats[category] = {"total": 0, "positive": 0}
+                category_stats[category]["total"] += count
+                if label == 1:
+                    category_stats[category]["positive"] += count
+
+            # Compute smoothed risk scores
+            bins = {}
+            for category, stats in category_stats.items():
+                total = stats["total"]
+                positive = stats["positive"]
+
+                # Base risk
+                risk = positive / total if total > 0 else 0.0
+
+                # Apply smoothing and threshold
+                if total >= count_threshold:
+                    smooth_risk = (total * risk + smooth_samples * default_risk) / (
+                        total + smooth_samples
+                    )
+                else:
+                    smooth_risk = default_risk
+
+                bins[category] = float(smooth_risk)
+
+            risk_tables[field] = {
+                "varName": field,
+                "type": "categorical",
+                "mode": accumulator["data_mode"],
+                "default_bin": default_risk,
+                "bins": bins,
+            }
+
+            log_func(f"[PASS1]   {field}: {len(bins)} categories mapped")
+
+        except Exception as e:
+            log_func(f"[PASS1 WARNING] Failed to compute risk table for {field}: {e}")
+            risk_tables[field] = {
+                "varName": field,
+                "type": "categorical",
+                "mode": accumulator["data_mode"] or "categorical",
+                "default_bin": default_risk,
+                "bins": {},
+            }
+
+    log_func(f"[PASS1] Complete! Created risk tables for {len(risk_tables)} fields")
+
+    return risk_tables
+
+
+def process_shard_end_to_end_risk_mapping(args: tuple) -> Dict[str, int]:
+    """
+    Process single shard: read → apply risk tables → write.
+
+    Stateless per-shard processing using global risk_tables from Pass 1.
+    Preserves 1:1 shard mapping (input shard number → output shard number).
+
+    This function is designed to be called in parallel via multiprocessing.Pool.
+    Each worker processes one shard completely independently.
+
+    Args:
+        args: Tuple of (shard_path, shard_num, global_context,
+                       output_base, signature_columns, output_format)
+
+        global_context must contain:
+        - "risk_tables": Dictionary of risk tables from Pass 1
+        - "split_name": Which split this shard belongs to ("train", "val", "test", etc.)
+
+    Returns:
+        Statistics dict with row count for this split
+        Format: {"train": 1000} or {"val": 200} or {"validation": 500}
+
+    Example:
+        Input:  train/part-00042.csv (1000 rows)
+        Output: train/part-00042.csv (1000 rows, risk-mapped)
+        Return: {"train": 1000}
+    """
+    (
+        shard_path,
+        shard_num,
+        global_context,
+        output_base,
+        signature_columns,
+        output_format,
+    ) = args
+
+    try:
+        # ====================================================================
+        # STEP 1: Read Single Shard
+        # ====================================================================
+        df = _read_file_to_df(shard_path, signature_columns)
+        df.columns = [col.replace("__DOT__", ".") for col in df.columns]
+
+        # ====================================================================
+        # STEP 2: Apply Risk Table Mapping (Using Global Context)
+        # ====================================================================
+        risk_tables = global_context["risk_tables"]
+
+        # Simple map operation for each categorical field
+        # This is fast because risk_tables are already computed
+        for field, risk_table_info in risk_tables.items():
+            if field in df.columns:
+                bins = risk_table_info["bins"]
+                default_bin = risk_table_info["default_bin"]
+                # Map categorical values to risk scores
+                df[field] = df[field].map(bins).fillna(default_bin)
+
+        # ====================================================================
+        # STEP 3: Write to Correct Split Folder (Preserving Shard Number)
+        # ====================================================================
+        split_name = global_context["split_name"]
+        stats = {}
+
+        if len(df) > 0:
+            # Preserve exact shard numbering: part-00042 → part-00042
+            output_path = (
+                output_base / split_name / f"part-{shard_num:05d}.{output_format}"
+            )
+            write_shard_file(df, output_path, output_format)
+            stats[split_name] = len(df)
+        else:
+            # Empty shard - skip writing (sparse numbering is OK)
+            stats[split_name] = 0
+
+        return stats
+
+    except Exception as e:
+        # Log error but don't crash the entire pool
+        # This allows other shards to continue processing
+        print(f"[ERROR] Failed to process shard {shard_num} ({shard_path.name}): {e}")
+        import traceback
+
+        print(traceback.format_exc())
+
+        # Return zero stats for this shard
+        split_name = global_context.get("split_name", "unknown")
+        return {split_name: 0}
+
+
+def process_streaming_mode_risk_mapping(
+    input_dir: str,
+    output_dir: str,
+    signature_columns: Optional[List[str]],
+    job_type: str,
+    hyperparams: Dict[str, Any],
+    environ_vars: Dict[str, str],
+    max_workers: Optional[int],
+    model_artifacts_input_dir: Optional[str] = None,
+    model_artifacts_output_dir: Optional[str] = None,
+    log_func: Optional[Callable] = None,
+) -> Dict[str, int]:
+    """
+    Streaming mode for risk table mapping with train/val/test subdirectories.
+
+    Two-pass architecture:
+    - Pass 1 (Sequential): Collect risk table statistics from training shards only
+    - Pass 2 (Parallel): Apply risk tables per split in parallel
+
+    Auto-detects output format from input shards (mirrors batch mode behavior).
+
+    Input structure (training mode):
+      input_dir/
+        train/part-00000.csv, part-00001.csv, ...
+        val/part-00000.csv, part-00001.csv, ...
+        test/part-00000.csv, part-00001.csv, ...
+
+    Output structure (training mode):
+      output_dir/
+        train/part-00000.csv, part-00001.csv, ... (risk-mapped, same format)
+        val/part-00000.csv, part-00001.csv, ... (risk-mapped, same format)
+        test/part-00000.csv, part-00001.csv, ... (risk-mapped, same format)
+
+    Args:
+        input_dir: Base input directory
+        output_dir: Base output directory
+        signature_columns: Optional column names for CSV/TSV
+        job_type: 'training', 'validation', 'testing', 'calibration'
+        hyperparams: Hyperparameters dict (contains cat_field_list, etc.)
+        environ_vars: Environment variables dict
+        max_workers: Number of parallel workers
+        model_artifacts_input_dir: Input model artifacts directory
+        model_artifacts_output_dir: Output model artifacts directory
+        log_func: Logging function (defaults to print)
+
+    Returns:
+        Dictionary with total row counts per split
+        Format: {"train": 100000, "val": 20000, "test": 30000}
+    """
+    log = log_func or print
+    output_path = Path(output_dir)
+
+    # Extract parameters from hyperparameters
+    cat_field_list = hyperparams.get("cat_field_list", [])
+    label_name = hyperparams.get("label_name", "target")
+    smooth_factor = float(
+        environ_vars.get("SMOOTH_FACTOR", hyperparams.get("smooth_factor", 0.01))
+    )
+    count_threshold = int(
+        environ_vars.get("COUNT_THRESHOLD", hyperparams.get("count_threshold", 5))
+    )
+    max_unique_threshold = int(
+        environ_vars.get(
+            "MAX_UNIQUE_THRESHOLD", hyperparams.get("max_unique_threshold", 100)
+        )
+    )
+
+    # Determine optimal workers (0 or None = auto-detect)
+    if max_workers is None or max_workers == 0:
+        max_workers = min(cpu_count(), 8)  # Default to 8 workers
+
+    log("[STREAMING] " + "=" * 60)
+    log(f"[STREAMING] Starting streaming mode risk table mapping")
+    log(f"[STREAMING] Job type: {job_type}")
+    log(f"[STREAMING] Max workers: {max_workers}")
+    log(f"[STREAMING] Categorical fields: {cat_field_list}")
+    log("[STREAMING] " + "=" * 60)
+
+    # ========================================================================
+    # PASS 1: Collect Risk Table Statistics (Training Only)
+    # ========================================================================
+    if job_type == "training":
+        log("[STREAMING] PASS 1: Collecting risk table statistics from train split...")
+        train_shards = find_split_shards(input_dir, "train", log)
+
+        risk_tables = collect_risk_table_statistics_pass1(
+            train_shards,
+            signature_columns,
+            cat_field_list,
+            label_name,
+            smooth_factor,
+            count_threshold,
+            max_unique_threshold,
+            log,
+        )
+
+        # Save risk table artifacts
+        if model_artifacts_output_dir:
+            artifacts_path = Path(model_artifacts_output_dir)
+            artifacts_path.mkdir(parents=True, exist_ok=True)
+
+            # Save risk_table_map.pkl
+            risk_table_path = artifacts_path / RISK_TABLE_FILENAME
+            with open(risk_table_path, "wb") as f:
+                pkl.dump(risk_tables, f)
+            log(f"[STREAMING] Saved risk table to {risk_table_path}")
+
+            # Save hyperparameters
+            hyperparams_path = artifacts_path / HYPERPARAMS_FILENAME
+            with open(hyperparams_path, "w") as f:
+                json.dump(hyperparams, f, indent=2)
+            log(f"[STREAMING] Saved hyperparameters to {hyperparams_path}")
+    else:
+        # Non-training: Load risk tables
+        if not model_artifacts_input_dir:
+            raise ValueError(f"model_artifacts_input_dir required for {job_type} mode")
+
+        risk_table_path = Path(model_artifacts_input_dir) / RISK_TABLE_FILENAME
+        if not risk_table_path.exists():
+            raise FileNotFoundError(f"Risk table not found: {risk_table_path}")
+
+        log(f"[STREAMING] Loading risk tables from {risk_table_path}")
+        with open(risk_table_path, "rb") as f:
+            risk_tables = pkl.load(f)
+        log(f"[STREAMING] Loaded {len(risk_tables)} risk tables")
+
+    # ========================================================================
+    # PASS 2: Process Each Split Independently in Parallel
+    # ========================================================================
+    log("[STREAMING] PASS 2: Processing splits in parallel...")
+
+    # Determine which splits to process
+    if job_type == "training":
+        splits_to_process = ["train", "val", "test"]
+    else:
+        # Single split mode (validation, testing, calibration)
+        splits_to_process = [job_type]
+
+    total_stats = {}
+
+    for split_name in splits_to_process:
+        log(f"[STREAMING] Processing {split_name} split...")
+
+        # Find shards for this split
+        split_shards = find_split_shards(input_dir, split_name, log)
+
+        # Auto-detect format from first shard (mirrors batch mode behavior)
+        output_format = detect_shard_format(split_shards[0])
+        log(f"[STREAMING] Detected format: {output_format}")
+
+        # Build global context for this split
+        global_context = {
+            "split_name": split_name,
+            "risk_tables": risk_tables,
+        }
+
+        # Prepare arguments for parallel processing
+        shard_args = [
+            (
+                shard,
+                extract_shard_number(shard),
+                global_context,
+                output_path,
+                signature_columns,
+                output_format,
+            )
+            for shard in split_shards
+        ]
+
+        # Process shards in parallel using multiprocessing Pool
+        log(
+            f"[STREAMING] Processing {len(shard_args)} shards from {split_name} "
+            f"with {max_workers} workers"
+        )
+        with Pool(processes=max_workers) as pool:
+            results = pool.map(process_shard_end_to_end_risk_mapping, shard_args)
+
+        # Aggregate results for this split
+        split_total = sum(r.get(split_name, 0) for r in results)
+        total_stats[split_name] = split_total
+        log(f"[STREAMING] Completed {split_name} split: {split_total:,} rows")
+
+    log("[STREAMING] " + "=" * 60)
+    log(f"[STREAMING] Complete! Row distribution: {total_stats}")
+    log("[STREAMING] " + "=" * 60)
+
+    return total_stats
+
+
+def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
+    """
+    Find all input shards in directory.
+
+    Searches for various shard formats (CSV, JSON, Parquet with/without compression).
+
+    Args:
+        input_dir: Directory containing input shards
+        log_func: Logging function
+
+    Returns:
+        Sorted list of shard paths
+
+    Raises:
+        RuntimeError: If no shards found in input directory
+    """
+    input_path = Path(input_dir)
+    patterns = [
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
+    ]
+    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
+
+    if not all_shards:
+        raise RuntimeError(f"No shards found in {input_dir}")
+
+    log_func(f"[STREAMING] Found {len(all_shards)} input shards")
+    return all_shards
+
+
+def find_split_shards(
+    input_dir: str, split_name: str, log_func: Callable
+) -> List[Path]:
+    """
+    Find all input shards in a specific split subdirectory.
+
+    Used when input data is organized as:
+    input_dir/
+      train/part-00000.csv, part-00001.csv, ...
+      val/part-00000.csv, part-00001.csv, ...
+      test/part-00000.csv, part-00001.csv, ...
+
+    Args:
+        input_dir: Base input directory
+        split_name: Split subdirectory name ("train", "val", "test", etc.)
+        log_func: Logging function
+
+    Returns:
+        Sorted list of shard paths from the split subdirectory
+
+    Raises:
+        RuntimeError: If split subdirectory or shards not found
+    """
+    split_dir = Path(input_dir) / split_name
+
+    if not split_dir.exists():
+        raise RuntimeError(f"Split subdirectory not found: {split_dir}")
+
+    patterns = [
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
+    ]
+    all_shards = sorted([p for pat in patterns for p in split_dir.glob(pat)])
+
+    if not all_shards:
+        raise RuntimeError(f"No shards found in {split_dir}")
+
+    log_func(f"[STREAMING] Found {len(all_shards)} shards in {split_name} split")
+    return all_shards
+
+
+def extract_shard_number(shard_path: Path) -> int:
+    """
+    Extract shard number from filename like part-00042.csv.
+
+    Handles various formats:
+    - part-00042.csv → 42
+    - part-00042.csv.gz → 42
+    - part-00042.parquet → 42
+    - part-00042.snappy.parquet → 42
+
+    Args:
+        shard_path: Path to shard file
+
+    Returns:
+        Integer shard number
+
+    Raises:
+        ValueError: If shard number cannot be extracted
+
+    Example:
+        >>> extract_shard_number(Path("part-00042.csv"))
+        42
+        >>> extract_shard_number(Path("part-00001.csv.gz"))
+        1
+    """
+    import re
+
+    stem = shard_path.stem
+
+    # Handle .gz compression
+    if stem.endswith(".gz"):
+        stem = Path(stem).stem
+
+    # Extract number from part-XXXXX pattern
+    match = re.search(r"part-(\d+)", stem)
+    if match:
+        return int(match.group(1))
+    else:
+        raise ValueError(
+            f"Cannot extract shard number from {shard_path.name}. "
+            f"Expected format: part-XXXXX.ext"
+        )
+
+
+def write_shard_file(df: pd.DataFrame, output_path: Path, output_format: str) -> None:
+    """
+    Write a DataFrame to a shard file in the specified format.
+
+    Creates parent directories if needed.
+
+    Args:
+        df: DataFrame to write
+        output_path: Full path for output file (including filename)
+        output_format: Format to write ('csv', 'tsv', or 'parquet')
+
+    Raises:
+        ValueError: If output_format is not supported
+    """
+    # Create parent directory if needed
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if output_format == "csv":
+        df.to_csv(output_path, index=False)
+    elif output_format == "tsv":
+        df.to_csv(output_path, sep="\t", index=False)
+    elif output_format == "parquet":
+        df.to_parquet(output_path, index=False)
+    else:
+        raise ValueError(f"Unsupported output format: {output_format}")
+
+
+def detect_shard_format(shard_path: Path) -> str:
+    """
+    Auto-detect output format from input shard filename.
+
+    Mirrors batch mode's format preservation behavior.
+
+    Args:
+        shard_path: Path to a shard file
+
+    Returns:
+        Format string: 'csv', 'tsv', or 'parquet'
+
+    Example:
+        >>> detect_shard_format(Path("part-00001.csv"))
+        'csv'
+        >>> detect_shard_format(Path("part-00001.parquet"))
+        'parquet'
+    """
+    suffix = shard_path.suffix.lower()
+
+    # Handle compressed files
+    if suffix == ".gz":
+        # Get the extension before .gz
+        stem = shard_path.stem
+        suffix = Path(stem).suffix.lower()
+
+    if suffix == ".csv":
+        return "csv"
+    elif suffix == ".tsv":
+        return "tsv"
+    elif suffix == ".parquet" or "parquet" in suffix:
+        return "parquet"
+    else:
+        # Default to CSV for unknown formats
+        return "csv"
+
+
+def _read_file_to_df(
+    file_path: Path, column_names: Optional[List[str]] = None
+) -> pd.DataFrame:
+    """
+    Read a single file (CSV, TSV, JSON, Parquet) into a DataFrame.
+
+    Simplified version for streaming mode - handles common formats.
+
+    Args:
+        file_path: Path to file
+        column_names: Optional column names (for CSV/TSV files)
+
+    Returns:
+        DataFrame from file
+    """
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".csv" or (suffix == ".gz" and file_path.stem.endswith(".csv")):
+        if column_names:
+            return pd.read_csv(file_path, names=column_names, header=0)
+        return pd.read_csv(file_path)
+    elif suffix == ".tsv" or (suffix == ".gz" and file_path.stem.endswith(".tsv")):
+        if column_names:
+            return pd.read_csv(file_path, sep="\t", names=column_names, header=0)
+        return pd.read_csv(file_path, sep="\t")
+    elif suffix == ".parquet" or suffix.endswith(".parquet"):
+        return pd.read_parquet(file_path)
+    else:
+        # Default to CSV
+        return pd.read_csv(file_path)
+
+
+def aggregate_shard_results(
+    results: List[Dict[str, int]], job_type: str
+) -> Dict[str, int]:
+    """
+    Aggregate statistics from parallel shard processing.
+
+    Args:
+        results: List of statistics dictionaries from each shard
+        job_type: Type of job ('training', 'validation', etc.)
+
+    Returns:
+        Dictionary with total row counts per split
+    """
+    if job_type == "training":
+        # Training mode: aggregate train/val/test splits
+        total_stats = {
+            "train": sum(r.get("train", 0) for r in results),
+            "val": sum(r.get("val", 0) for r in results),
+            "test": sum(r.get("test", 0) for r in results),
+        }
+    else:
+        # Single split mode
+        total_stats = {job_type: sum(r.get(job_type, 0) for r in results)}
+
+    return total_stats
 
 
 # --- File I/O Helper Functions with Format Preservation ---
@@ -555,7 +1296,7 @@ def internal_main(
     save_data_func: Callable = save_output_data,
 ) -> Tuple[Dict[str, pd.DataFrame], OfflineBinning]:
     """
-    Main logic for risk table mapping, modified to handle both training and inference modes.
+    Main logic for risk table mapping with dual-mode support (batch/streaming).
 
     Args:
         job_type: Type of job (training, validation, testing, calibration)
@@ -593,12 +1334,20 @@ def internal_main(
         )
     )
 
+    # Extract streaming mode configuration
+    enable_true_streaming = (
+        environ_vars.get("ENABLE_TRUE_STREAMING", "false").lower() == "true"
+    )
+    max_workers_str = environ_vars.get("MAX_WORKERS", "0")
+    max_workers = int(max_workers_str) if max_workers_str else 0
+
     logger.info(
         f"Using parameters: label_name={label_name}, "
         + f"smooth_factor={smooth_factor}, count_threshold={count_threshold}, "
         + f"max_unique_threshold={max_unique_threshold}"
     )
     logger.info(f"Categorical fields from hyperparameters: {cat_field_list}")
+    logger.info(f"Streaming mode: {enable_true_streaming}, max_workers: {max_workers}")
 
     # Determine model artifacts output directory
     artifacts_output_dir = (
@@ -611,6 +1360,40 @@ def internal_main(
     # Copy existing artifacts from previous steps (parameter accumulator pattern)
     if model_artifacts_input_dir:
         copy_existing_artifacts(model_artifacts_input_dir, str(artifacts_output_dir))
+
+    # ========================================================================
+    # STREAMING MODE
+    # ========================================================================
+    if enable_true_streaming:
+        logger.info("=" * 60)
+        logger.info("STREAMING MODE ENABLED")
+        logger.info("=" * 60)
+
+        # Call streaming mode orchestration
+        stats = process_streaming_mode_risk_mapping(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            signature_columns=None,  # Files have headers
+            job_type=job_type,
+            hyperparams=hyperparams,
+            environ_vars=environ_vars,
+            max_workers=max_workers,
+            model_artifacts_input_dir=model_artifacts_input_dir,
+            model_artifacts_output_dir=str(artifacts_output_dir),
+            log_func=logger.info,
+        )
+
+        logger.info(f"Streaming mode complete! Final statistics: {stats}")
+
+        # Return empty data dict and None binner (data written to disk)
+        return {}, None
+
+    # ========================================================================
+    # BATCH MODE (DEFAULT) - Existing code unchanged
+    # ========================================================================
+    logger.info("=" * 60)
+    logger.info("BATCH MODE ENABLED")
+    logger.info("=" * 60)
 
     # Load data according to job type
     data_dict = load_data_func(job_type, input_dir)
@@ -777,6 +1560,9 @@ if __name__ == "__main__":
             "SMOOTH_FACTOR": os.environ.get("SMOOTH_FACTOR", "0.01"),
             "COUNT_THRESHOLD": os.environ.get("COUNT_THRESHOLD", "5"),
             "MAX_UNIQUE_THRESHOLD": os.environ.get("MAX_UNIQUE_THRESHOLD", "100"),
+            # Streaming mode configuration
+            "ENABLE_TRUE_STREAMING": os.environ.get("ENABLE_TRUE_STREAMING", "false"),
+            "MAX_WORKERS": os.environ.get("MAX_WORKERS", "0"),
         }
 
         # Execute the main function with standardized inputs
