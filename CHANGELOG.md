@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-05-14
+
+### Changed
+
+- **Defensive upper bound on Pydantic** — `pydantic>=2.11.0` → `pydantic>=2.11.0,<3`. Pydantic v1→v2 broke public validator APIs; pre-emptively capping prevents a future Pydantic 3 release from auto-upgrading users into breakage. The codebase uses Pydantic v2-only APIs (`field_validator`, `model_validator`, `ConfigDict`, `PrivateAttr`) across `cursus/steps/configs/` and `cursus/core/`.
+
+### Removed
+
+Dependency-tree pruning: 6 declared deps that have **zero imports in `src/cursus/`** (the only path shipped in the wheel). All removals are either pulled transitively by other declared deps (so install behavior is unchanged) or genuine orphans.
+
+- **Core**:
+  - `requests>=2.32.0` — pulled transitively by `sagemaker` (declared) and `transformers` (declared in `[nlp]`).
+  - `packaging>=24.2.0` — pulled transitively by `sagemaker` (`packaging<25,>=23.0`), `transformers` (`>=20.0`), and `pytorch-lightning` (`>=20.0`).
+  - `typing_extensions>=4.14.0` — pulled transitively by `pydantic` v2.x.
+- **`[pytorch]` extra**:
+  - `torchmetrics>=1.0.0` — pulled transitively by `pytorch-lightning>=2.0.0` (`torchmetrics>=0.7.0`).
+- **`[nlp]` extra**:
+  - `spacy>=3.7.0` — genuine orphan, no imports anywhere in the shipped package.
+  - `huggingface-hub>=0.20.0` — pulled transitively by `transformers>=4.30.0` (`>=0.30.0`) and `tokenizers>=0.15.0` (`>=0.16.4`).
+
+### Notes
+
+- Net effect: 10 → 7 core deps, 4 → 3 in `[pytorch]`, 4 → 2 in `[nlp]`. Smaller user-visible dep tree on `pip install cursus`; runtime install graph unchanged because each removed dep is pulled via another declared dep (except `spacy`, which was unused entirely).
+- `[viz]` and `[jupyter]` extras retain `seaborn`, `plotly`, `ipython`, etc. even though they don't appear in the shipped `src/cursus/` tree — they support the demo notebooks at the repo root which users cloning the repo may run.
+- Audit method: AST-walked every `.py` under `src/cursus/`, collected top-level imports, cross-referenced against the distribution-name → import-name mapping for each declared dep. Only deps with zero direct imports AND covered by a transitive path (or proven orphan) were removed.
+
 ## [1.5.1] - 2026-05-14
 
 ### Changed

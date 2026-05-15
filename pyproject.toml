@@ -54,13 +54,10 @@ dependencies = [
     "boto3>=1.39.0",
     "botocore>=1.39.0",
     "sagemaker>=2.248.0",
-    "pydantic>=2.11.0",
+    "pydantic>=2.11.0,<3",
     "PyYAML>=6.0.0",
     "networkx>=2.8.0",
     "click>=8.1.0",
-    "requests>=2.32.0",
-    "packaging>=24.2.0",
-    "typing_extensions>=4.14.0",
 ]
 
 [project.optional-dependencies]
@@ -75,7 +72,6 @@ processing = [
 pytorch = [
     "torch>=2.0.0",
     "pytorch-lightning>=2.0.0",
-    "torchmetrics>=1.0.0",
     "lightning>=2.0.0",
 ]
 gbm = [
@@ -87,9 +83,7 @@ gbm = [
 ]
 nlp = [
     "transformers>=4.30.0",
-    "spacy>=3.7.0",
     "tokenizers>=0.15.0",
-    "huggingface-hub>=0.20.0",
 ]
 # Jupyter notebook integration dependencies
 jupyter = [
