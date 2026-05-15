@@ -30,13 +30,43 @@ Advanced Usage:
     >>> pipeline = compile_dag_to_pipeline(dag, config_path="config.yaml")
 """
 
-# Package metadata
-__title__ = "AmazonCursus"
-__version__ = "1.3.3"
-__description__ = (
-    "Transform pipeline graphs into production-ready SageMaker pipelines automatically"
-)
-__author__ = "Amazon"
+# Package metadata — pyproject.toml is the single source of truth.
+# - Version: VERSION file at repo root is checked first (live source of truth,
+#   declared in pyproject as `version = {file = "VERSION"}`), so an updated
+#   VERSION wins over stale installed metadata. Falls back to importlib.metadata
+#   when running an installed wheel without the source tree.
+# - Title / description / author: read from importlib.metadata, which picks
+#   them up from pyproject.toml at install time. No values are hardcoded here.
+def _resolve_metadata():
+    from pathlib import Path
+
+    title = version = description = author = None
+
+    try:
+        from importlib.metadata import metadata as _meta_lookup
+
+        _m = _meta_lookup("cursus")
+        title = _m.get("Name")
+        version = _m.get("Version")
+        description = _m.get("Summary")
+        author = _m.get("Author") or _m.get("Author-email")
+    except Exception:
+        pass
+
+    # VERSION file takes priority for version (source-of-truth in dev mode).
+    _v_file = Path(__file__).resolve().parent.parent.parent / "VERSION"
+    if _v_file.exists():
+        try:
+            text = _v_file.read_text().strip()
+            if text:
+                version = text
+        except (OSError, IOError):
+            pass
+
+    return title, version, description, author
+
+
+__title__, __version__, __description__, __author__ = _resolve_metadata()
 
 # Core API exports - main user interface
 try:

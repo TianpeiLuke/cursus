@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-14
+
+### Added
+
+- **Streaming-Mode Support Across Training & Preprocessing** — broad rollout of streaming-mode data handling for memory-efficient large-corpus training and preprocessing.
+  - **Streaming-mode PyTorch training** — added streaming-mode datasets to PyTorch training; multi-GPU + multi-worker streaming support including FSDP.
+  - **Iterable datasets for distributed training** — new pipeline iterable datasets that work with FSDP; larger inference batch sizes enabled.
+  - **Streaming-mode tabular preprocessing** — full-parallel streaming-mode tabular preprocessing; combines shards on the fly; avoids intermediate shard files; memory-efficient implementation.
+  - **Streaming-mode missing-value imputation** — full-parallel streaming-mode imputation with on-the-fly `fit_stream` adjustments.
+  - **Streaming-mode risk-table mapping** — streaming variant for risk-table mapping in tabular pipelines.
+  - **Streaming-mode temporal-split preprocessing** — parallel streaming-mode temporal split with cid-dedup handling.
+  - **Streaming-mode dummy data loading** — streaming dummy-data loader for end-to-end pipeline development.
+- **Custom BPE Tokenizer Pipeline** — first-class custom BPE tokenizer processor with installation, training, processor registry integration, and collation alignment across pytorch train/eval/inference.
+- **SingleNodeCompiler** — new compiler that compiles a single DAG node for testing; documentation and `pytorch training/eval` fixes shipped alongside.
+- **PipelineDAG Save/Load** — `PipelineDAG` instances can now be serialized to and loaded from file.
+- **Pipeline Connection Analyzer** — new analyzer for inspecting pipeline connections.
+- **CLI Refactor & Subcommands** — `cli compile`, `cli exe-doc`, `cli catalog` added; CLI tooling cleanup.
+- **Hyperparameters Surface** — new hyperparameters configuration plus alignment fixes across pytorch + tokenizer pathways.
+
+### Changed
+
+- **PyTorch Training Realignment** — multi-pass PyTorch training updates aligning model-eval, inference handler, and tokenizer-aware preprocessing; multiple bug-fix iterations for stability.
+- **Pytorch Model Eval & Inference Handler** — repeated updates to model-eval and inference-handler paths, including streaming-mode integration and tokenizer alignment.
+- **Tabular Preprocessing Memory Efficiency** — streaming-mode roll-in plus targeted memory-efficiency improvements for tabular preprocessing.
+- **DAG Config Factory Performance** — caching introduced; performance improvements for repeated factory calls.
+- **Multitask Percentile Calibration** — calibration logic updates.
+- **Tokenizer Folder Layout** — `tokenizer/` renamed to avoid module/import conflicts.
+- **Names3Risk Text Field Conversion** — text-field handling reworked.
+- **Package Metadata Refactor** — `src/cursus/__init__.py` now derives `__title__` / `__version__` / `__description__` / `__author__` from `pyproject.toml` (via `importlib.metadata`) + `VERSION` file as the single source of truth — no hardcoded values; removed the obsolete `src/cursus/__version__.py`.
+- **`AmazonCursus` → `Cursus`** — package-name reference cleanup; `pyproject.toml` already declared `name = "cursus"` so no PyPI distribution-name change.
+
+### Fixed
+
+- **PyTorch Model Eval Bugs** — multiple eval-path bugs squashed.
+- **Tokenizer / Processor Alignment** — fixed errors at the pytorch-training × tabular-preprocessing × tokenizer × processor boundary.
+- **Sensitive Info Removal** — removed sensitive content from a tracked path.
+
+### Removed
+
+- **Redundant CLI Tests** — `test/cli/test_builder_test_cli.py`, `test/cli/test_pipeline_cli.py`, `test/cli/test_workspace_cli.py` and adjacent stale tests deleted as part of CLI refactor.
+- **Config-UI Surface** — `src/cursus/api/config_ui/` removed (enhanced widget, README/docs, sub-modules) — superseded by other configuration paths.
+- **Legacy `__version__.py` Module** — superseded by the metadata refactor (pyproject + VERSION single source of truth).
+- **Claude Workspace Artifacts** — `add claude` commit `f2fc4472` added Claude Code workspace artifacts (not user-facing).
+- **Presentation Slides** — `add slides` commit `ca9c8ed9` (assets in `docs/`).
+
+### Technical Notes
+
+- ~50 commits across 253 changed files (+55,475 / −31,594) since `v1.4.7`.
+- Streaming-mode rollout is the headline feature: PyTorch training, tabular preprocessing, missing-value imputation, risk-table mapping, temporal-split, and dummy-data loading all gain streaming variants in this release.
+- Package metadata is now declarative: bumping `VERSION` is the only file you must edit to ship a new release; everything else flows from `pyproject.toml`.
+
 ## [1.4.7] - 2026-01-07
 
 ### Added
