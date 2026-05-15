@@ -17,7 +17,7 @@ Cursus is an intelligent pipeline generation system that automatically creates c
 pip install cursus
 
 # With ML frameworks
-pip install cursus[pytorch,xgboost]
+pip install cursus[pytorch,gbm]
 
 # Full installation with all features
 pip install cursus[all]
@@ -263,7 +263,7 @@ Includes basic DAG compilation and SageMaker integration.
 ### Framework-Specific
 ```bash
 pip install cursus[pytorch]    # PyTorch Lightning models
-pip install cursus[xgboost]    # XGBoost training pipelines  
+pip install cursus[gbm]        # GBM training pipelines (XGBoost + LightGBM)
 pip install cursus[nlp]        # NLP models and processing
 pip install cursus[processing] # Advanced data processing
 ```
