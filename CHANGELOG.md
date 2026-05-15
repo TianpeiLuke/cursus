@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-05-14
+
+### Changed
+
+- **Lower Python floor to 3.9** — `requires-python` widened from `>=3.11` to `>=3.9`. Codebase audit confirms no use of Python 3.10/3.11-only syntax (no `match`/`case` pattern matching, no PEP-604 runtime unions without `__future__`, no `typing.Self` / `Required` / `LiteralString`, no `tomllib`, no `except*`).
+- **`click>=8.1.0`** (was `>=8.2.0`) — click 8.2 dropped Python 3.7–3.9 support; relaxing to 8.1+ lets pip's resolver pick click 8.1.x on Python 3.9 and click 8.2+ on Python 3.10+. Only dependency adjustment required to lower the Python floor.
+- **PyPI classifiers** — added `Python :: 3.9` and `Python :: 3.10` to advertise the broader support range.
+
+### Notes
+
+- All other pinned dependency floors (`pandas>=2.1.0`, `numpy>=1.26.0`, `sagemaker>=2.248.0`, `pydantic>=2.11.0`, `torch>=2.0.0`, etc.) already supported Python 3.9. No other dependency edits were needed.
+- The `>=3.9` floor is unverified by CI in this release; if you exercise it in production on Python 3.9 / 3.10, please report any issues so a verification matrix can be added.
+
 ## [1.5.0] - 2026-05-14
 
 ### Added

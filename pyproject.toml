@@ -23,6 +23,8 @@ classifiers = [
     "Environment :: Console",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -45,7 +47,7 @@ keywords = [
     "workflow",
     "orchestration"
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 
 # Core dependencies (minimal for basic functionality)
 dependencies = [
@@ -55,7 +57,7 @@ dependencies = [
     "pydantic>=2.11.0",
     "PyYAML>=6.0.0",
     "networkx>=2.8.0",
-    "click>=8.2.0",
+    "click>=8.1.0",
     "requests>=2.32.0",
     "packaging>=24.2.0",
     "typing_extensions>=4.14.0",
