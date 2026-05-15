@@ -1218,7 +1218,7 @@ def data_preprocess_pipeline(
     """
     Build text preprocessing pipelines based on config.
 
-    For Names3Risk models (lstm2risk, transformer2risk), loads custom BPE tokenizer.
+    For Names2Risk models (lstm2risk, transformer2risk), loads custom BPE tokenizer.
     For other models (bimodal_bert, etc.), uses pretrained BERT tokenizer.
 
     For bimodal: Uses text_name with default or configured steps
@@ -1298,7 +1298,7 @@ def data_preprocess_pipeline(
     # BIMODAL: Single text pipeline
     if not config.primary_text_name:
         # Use configured steps or fallback to default based on tokenizer type
-        # For Names3Risk models with custom BPE tokenizer: use custom_bpe_tokenizer
+        # For Names2Risk models with custom BPE tokenizer: use custom_bpe_tokenizer
         # For BERT models: use standard tokenizer
         if needs_custom_tokenizer:
             default_steps = [
@@ -1416,7 +1416,7 @@ def model_select(
         "bimodal_moe": lambda: BimodalBertMoE(config_dict),
         "bimodal_gate_fusion": lambda: BimodalBertGateFusion(config_dict),
         "bimodal_cross_attn": lambda: BimodalBertCrossAttn(config_dict),
-        # Names3Risk models (custom BPE tokenizer + specific architectures)
+        # Names2Risk models (custom BPE tokenizer + specific architectures)
         "lstm2risk": lambda: LSTM2Risk(config_dict),
         "transformer2risk": lambda: Transformer2Risk(config_dict),
         # Specific trimodal models
@@ -1766,7 +1766,7 @@ def build_model_and_optimizer(
     log_once(logger, "EMBEDDING CONFIGURATION")
     log_once(logger, "=" * 70)
 
-    # === BRANCH 1: Custom Tokenizer Models (Names3Risk) ===
+    # === BRANCH 1: Custom Tokenizer Models (Names2Risk) ===
     if model_class in ["lstm2risk", "transformer2risk"]:
         log_once(logger, f"Using custom tokenizer configuration for {model_class}")
 

@@ -7,7 +7,6 @@ the generation of execution documents from PipelineDAG and configuration data.
 
 import logging
 from typing import Dict, List, Any, Optional
-from pathlib import Path
 
 from sagemaker.workflow.pipeline_context import PipelineSession
 
@@ -19,10 +18,7 @@ from ...step_catalog.adapters.config_resolver import (
 from .base import (
     ExecutionDocumentHelper,
     ExecutionDocumentGenerationError,
-    ConfigurationNotFoundError,
-    UnsupportedStepTypeError,
 )
-from .utils import determine_step_type, validate_execution_document_structure
 
 
 logger = logging.getLogger(__name__)
@@ -62,9 +58,11 @@ class ExecutionDocumentGenerator:
         # Initialize helpers directly - no loose coupling
         from .cradle_helper import CradleDataLoadingHelper
         from .registration_helper import RegistrationHelper
+        from .data_uploading_helper import DataUploadingHelper
 
         self.cradle_helper = CradleDataLoadingHelper()
         self.registration_helper = RegistrationHelper()
+        self.data_uploading_helper = DataUploadingHelper()
 
         # Load configurations using simplified approach
         self.configs = self._load_configs()
@@ -73,6 +71,7 @@ class ExecutionDocumentGenerator:
         self.helpers: List[ExecutionDocumentHelper] = [
             self.cradle_helper,
             self.registration_helper,
+            self.data_uploading_helper,
         ]
 
         self.logger.info(
@@ -144,6 +143,16 @@ class ExecutionDocumentGenerator:
                     f"Processing {len(registration_steps)} registration steps: {registration_steps}"
                 )
                 self._fill_registration_configurations(dag, pipeline_configs)
+
+            # Step 4: Process data uploading steps if any
+            data_uploading_steps = self._filter_steps_by_helper(
+                relevant_steps, self.data_uploading_helper
+            )
+            if data_uploading_steps:
+                self.logger.info(
+                    f"Processing {len(data_uploading_steps)} data uploading steps: {data_uploading_steps}"
+                )
+                self._fill_data_uploading_configurations(dag, pipeline_configs)
 
             self.logger.info("Successfully generated execution document")
             return execution_document
@@ -400,7 +409,7 @@ class ExecutionDocumentGenerator:
         # Find registration configuration (and related configs)
         for _, cfg in self.configs.items():
             cfg_type_name = type(cfg).__name__.lower()
-            if "registration" in cfg_type_name and not "payload" in cfg_type_name:
+            if "registration" in cfg_type_name and "payload" not in cfg_type_name:
                 registration_cfg = cfg
                 self.logger.info(
                     f"Found registration configuration: {type(cfg).__name__}"
@@ -522,7 +531,7 @@ class ExecutionDocumentGenerator:
                     # Check config type name
                     if (
                         "registration" in config_type_name
-                        and not "payload" in config_type_name
+                        and "payload" not in config_type_name
                     ):
                         registration_nodes.append(node_name)
                         self.logger.info(
@@ -553,3 +562,49 @@ class ExecutionDocumentGenerator:
                     self.logger.info(f"Found registration step from DAG nodes: {node}")
 
         return registration_nodes
+
+    def _fill_data_uploading_configurations(
+        self, dag: PipelineDAG, pipeline_configs: Dict[str, Any]
+    ) -> None:
+        """
+        Fill DataUploading configurations in the execution document.
+
+        Args:
+            dag: PipelineDAG instance
+            pipeline_configs: Dictionary of pipeline step configurations
+        """
+        helper = self.data_uploading_helper
+
+        # Find data uploading steps in the DAG
+        upload_steps = []
+        for step_name in dag.nodes:
+            config = self._get_config_for_step(step_name)
+            if config and helper.can_handle_step(step_name, config):
+                upload_steps.append(step_name)
+
+        if not upload_steps:
+            self.logger.debug("No DataUploading steps found in DAG")
+            return
+
+        # Extract configurations for each data uploading step
+        for step_name in upload_steps:
+            config = self._get_config_for_step(step_name)
+            if config:
+                exec_step_name = helper.get_execution_step_name(step_name, config)
+
+                if exec_step_name not in pipeline_configs:
+                    self.logger.warning(
+                        f"DataUploading step '{exec_step_name}' not found in execution document"
+                    )
+                    continue
+
+                try:
+                    step_config = helper.extract_step_config(step_name, config)
+                    pipeline_configs[exec_step_name]["STEP_CONFIG"] = step_config
+                    self.logger.info(
+                        f"Updated execution config for DataUploading step: {exec_step_name}"
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to extract DataUploading config for step {step_name}: {e}"
+                    )

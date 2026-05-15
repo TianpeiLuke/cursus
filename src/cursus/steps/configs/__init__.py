@@ -16,6 +16,7 @@ from .config_bedrock_prompt_template_generation_step import (
     BedrockPromptTemplateGenerationConfig,
 )
 from .config_currency_conversion_step import CurrencyConversionConfig
+from .config_data_uploading_step import DataUploadingConfig
 from .config_cradle_data_loading_step import (
     CradleDataLoadingConfig,
     BaseCradleComponentConfig,
@@ -87,6 +88,7 @@ __all__ = [
     "BedrockProcessingConfig",
     "BedrockPromptTemplateGenerationConfig",
     "CurrencyConversionConfig",
+    "DataUploadingConfig",
     "CradleDataLoadingConfig",
     "DummyDataLoadingConfig",
     "DummyTrainingConfig",

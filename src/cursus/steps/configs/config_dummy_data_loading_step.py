@@ -135,9 +135,10 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
         """
         Ensure job_type is one of the allowed values.
         """
-        allowed = {"training", "validation", "testing", "calibration"}
-        if v not in allowed:
-            raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
+        if not v.replace("_", "").isalnum() or v != v.lower():
+            raise ValueError(
+                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+            )
         return v
 
     @field_validator("output_format")

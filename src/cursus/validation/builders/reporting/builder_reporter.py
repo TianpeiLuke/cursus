@@ -16,7 +16,7 @@ from ....core.base.builder_base import StepBuilderBase
 class StreamlinedBuilderTestReport:
     """
     Simplified builder test report that leverages alignment system infrastructure.
-    
+
     Eliminates redundancy by using alignment system's proven reporting patterns
     while preserving unique builder testing capabilities.
     """
@@ -26,7 +26,7 @@ class StreamlinedBuilderTestReport:
         self.builder_class = builder_class
         self.sagemaker_step_type = sagemaker_step_type
         self.validation_timestamp = datetime.now()
-        
+
         # Simplified structure - let alignment system handle complexity
         self.test_results: Dict[str, Any] = {}
         self.alignment_results: Optional[Dict[str, Any]] = None
@@ -54,7 +54,9 @@ class StreamlinedBuilderTestReport:
             if alignment_status in ["PASSED", "COMPLETED"]:
                 # Check integration results for final status
                 if self.integration_results:
-                    integration_status = self.integration_results.get("status", "UNKNOWN")
+                    integration_status = self.integration_results.get(
+                        "status", "UNKNOWN"
+                    )
                     if integration_status == "COMPLETED":
                         return "PASSING"
                     elif integration_status == "ISSUES_FOUND":
@@ -64,12 +66,12 @@ class StreamlinedBuilderTestReport:
                 return "PASSING"
             else:
                 return "FAILING"
-        
+
         # Fallback to basic status determination
         if self.integration_results:
             integration_status = self.integration_results.get("status", "UNKNOWN")
             return "PASSING" if integration_status == "COMPLETED" else "FAILING"
-        
+
         return "UNKNOWN"
 
     def get_quality_score(self) -> float:
@@ -92,17 +94,17 @@ class StreamlinedBuilderTestReport:
     def get_critical_issues(self) -> List[str]:
         """Get critical issues from alignment system."""
         issues = []
-        
+
         # Extract issues from alignment results
         if self.alignment_results and "failed_tests" in self.alignment_results:
             for test in self.alignment_results["failed_tests"]:
                 if isinstance(test, dict) and "error" in test:
                     issues.append(test["error"])
-        
+
         # Extract issues from integration results
         if self.integration_results and "error" in self.integration_results:
             issues.append(self.integration_results["error"])
-        
+
         return issues
 
     def export_to_json(self) -> str:
@@ -116,16 +118,12 @@ class StreamlinedBuilderTestReport:
             "quality_score": self.get_quality_score(),
             "quality_rating": self.get_quality_rating(),
             "is_passing": self.is_passing(),
-            
             # Include alignment system results (leverages proven infrastructure)
             "alignment_validation": self.alignment_results or {},
-            
             # Include unique integration testing results
             "integration_testing": self.integration_results or {},
-            
             # Include scoring data
             "scoring": self.scoring_data or {},
-            
             # Metadata
             "metadata": {
                 "builder_name": self.builder_name,
@@ -135,8 +133,8 @@ class StreamlinedBuilderTestReport:
                 "validator_version": "2.0.0",  # Updated version for streamlined approach
                 "test_framework": "UniversalStepBuilderTest",
                 "reporting_approach": "streamlined_with_alignment_integration",
-                **self.metadata
-            }
+                **self.metadata,
+            },
         }
 
         return json.dumps(report_data, indent=2, default=str)
@@ -155,11 +153,11 @@ class StreamlinedBuilderTestReport:
 
         print(f"\nBuilder: {self.builder_class}")
         print(f"SageMaker Step Type: {self.sagemaker_step_type}")
-        
+
         status = self.get_overall_status()
         status_icon = "✅" if self.is_passing() else "❌"
         print(f"Overall Status: {status_icon} {status}")
-        
+
         # Print quality score
         quality_score = self.get_quality_score()
         quality_rating = self.get_quality_rating()
@@ -171,7 +169,7 @@ class StreamlinedBuilderTestReport:
             print(f"\n🔍 Alignment Validation:")
             alignment_status = self.alignment_results.get("overall_status", "UNKNOWN")
             print(f"  Status: {alignment_status}")
-            
+
             # Show failed tests if any
             failed_tests = self.alignment_results.get("failed_tests", [])
             if failed_tests:
@@ -188,7 +186,7 @@ class StreamlinedBuilderTestReport:
             print(f"\n🔧 Integration Testing:")
             integration_status = self.integration_results.get("status", "UNKNOWN")
             print(f"  Status: {integration_status}")
-            
+
             # Show integration checks if available
             checks = self.integration_results.get("checks", {})
             if checks:
@@ -222,7 +220,7 @@ class StreamlinedBuilderTestReport:
 class StreamlinedBuilderTestReporter:
     """
     Streamlined reporter that leverages alignment system infrastructure.
-    
+
     Eliminates redundancy by using proven alignment system patterns
     while preserving unique builder testing capabilities.
     """
@@ -239,7 +237,7 @@ class StreamlinedBuilderTestReporter:
     ) -> StreamlinedBuilderTestReport:
         """
         Test a step builder using the unified validation approach.
-        
+
         Leverages the refactored UniversalStepBuilderTest that integrates
         with the alignment system to eliminate redundancy.
         """
@@ -249,6 +247,7 @@ class StreamlinedBuilderTestReporter:
 
         # Get step information
         from ....registry.step_names import STEP_NAMES
+
         step_info = STEP_NAMES.get(step_name, {})
         sagemaker_step_type = step_info.get("sagemaker_step_type", "Unknown")
 
@@ -265,23 +264,23 @@ class StreamlinedBuilderTestReporter:
 
             # Create tester using the new unified approach
             tester = UniversalStepBuilderTest(workspace_dirs=["."], verbose=False)
-            
+
             # Run validation for this specific step (leverages alignment system)
             validation_results = tester.run_validation_for_step(step_name)
-            
+
             # Extract components from unified validation results
             components = validation_results.get("components", {})
-            
+
             # Add alignment validation results (eliminates redundancy)
             if "alignment_validation" in components:
                 report.add_alignment_results(components["alignment_validation"])
-            
+
             # Add integration testing results (unique value preserved)
             if "integration_testing" in components:
                 report.add_integration_results(components["integration_testing"])
-            
+
             # Add scoring data if available (leverages existing scoring system)
-            if hasattr(tester, 'enable_scoring') and tester.enable_scoring:
+            if hasattr(tester, "enable_scoring") and tester.enable_scoring:
                 # Scoring data is now included in validation_results
                 if "scoring" in validation_results:
                     report.add_scoring_data(validation_results["scoring"])
@@ -318,6 +317,7 @@ class StreamlinedBuilderTestReporter:
         try:
             # Get all steps of this type
             from ....registry.step_names import get_steps_by_sagemaker_type
+
             step_names = get_steps_by_sagemaker_type(sagemaker_step_type)
 
             if not step_names:
@@ -362,6 +362,7 @@ class StreamlinedBuilderTestReporter:
 
         # Look for matching step name in registry
         from ....registry.step_names import STEP_NAMES
+
         for name, info in STEP_NAMES.items():
             if (
                 info.get("builder_step_name", "").replace("StepBuilder", "")
@@ -375,17 +376,18 @@ class StreamlinedBuilderTestReporter:
         """Load a builder class by step name using StepCatalog discovery."""
         try:
             # Use StepCatalog's built-in builder discovery mechanism
-            if not hasattr(self, '_step_catalog'):
+            if not hasattr(self, "_step_catalog"):
                 from ....step_catalog.step_catalog import StepCatalog
+
                 self._step_catalog = StepCatalog()
-            
+
             builder_class = self._step_catalog.load_builder_class(step_name)
             if builder_class:
                 return builder_class
             else:
                 print(f"No builder class found for step: {step_name}")
                 return None
-                
+
         except Exception as e:
             print(f"Failed to load {step_name} builder using StepCatalog: {e}")
             return None
@@ -399,10 +401,13 @@ class StreamlinedBuilderTestReporter:
             "summary": {
                 "total_builders": len(reports),
                 "passing_builders": sum(1 for r in reports.values() if r.is_passing()),
-                "failing_builders": sum(1 for r in reports.values() if not r.is_passing()),
+                "failing_builders": sum(
+                    1 for r in reports.values() if not r.is_passing()
+                ),
                 "average_quality_score": (
                     sum(r.get_quality_score() for r in reports.values()) / len(reports)
-                    if reports else 0.0
+                    if reports
+                    else 0.0
                 ),
             },
             "builder_reports": {
@@ -425,7 +430,9 @@ class StreamlinedBuilderTestReporter:
         }
 
         # Save streamlined step type summary
-        summary_file = self.output_dir / f"{step_type.lower()}_builder_test_summary.json"
+        summary_file = (
+            self.output_dir / f"{step_type.lower()}_builder_test_summary.json"
+        )
         with open(summary_file, "w") as f:
             json.dump(summary_data, f, indent=2, default=str)
 

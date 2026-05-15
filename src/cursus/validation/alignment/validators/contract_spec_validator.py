@@ -13,7 +13,7 @@ from typing import Dict, Any, List
 class ConsolidatedContractSpecValidator:
     """
     Restored contract-specification validation logic.
-    
+
     Provides methods for:
     - Logical name validation (restored from original)
     - Input/output alignment validation (restored from original)

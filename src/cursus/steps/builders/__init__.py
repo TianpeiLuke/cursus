@@ -35,6 +35,21 @@ except ImportError as e:
     CradleDataLoadingStepBuilder = None
     CRADLE_DATA_LOADING_AVAILABLE = False
 
+# Import DataUploadingStepBuilder with exception handling
+# This builder depends on secure_ai_sandbox_workflow_python_sdk which may not be available
+try:
+    from .builder_data_uploading_step import DataUploadingStepBuilder
+
+    DATA_UPLOADING_AVAILABLE = True
+except ImportError as e:
+    logger.warning(
+        "DataUploadingStepBuilder not available. "
+        "This requires secure_ai_sandbox_workflow_python_sdk package. "
+        f"Import error: {e}"
+    )
+    DataUploadingStepBuilder = None
+    DATA_UPLOADING_AVAILABLE = False
+
 from .builder_currency_conversion_step import CurrencyConversionStepBuilder
 from .builder_dummy_data_loading_step import DummyDataLoadingStepBuilder
 from .builder_dummy_training_step import DummyTrainingStepBuilder
@@ -137,3 +152,6 @@ if CRADLE_DATA_LOADING_AVAILABLE:
 
 if REGISTRATION_AVAILABLE:
     __all__.append("RegistrationStepBuilder")
+
+if DATA_UPLOADING_AVAILABLE:
+    __all__.append("DataUploadingStepBuilder")

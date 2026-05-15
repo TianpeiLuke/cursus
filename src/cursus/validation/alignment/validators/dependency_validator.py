@@ -443,7 +443,16 @@ class DependencyValidator:
         parts = spec_file_name.split("_")
 
         # Handle job type variants
-        job_type_suffixes = ["training", "validation", "testing", "calibration"]
+        job_type_suffixes = [
+            "training",
+            "validation",
+            "testing",
+            "calibration",
+            "inference",
+            "batch",
+            "export",
+            "scoring",
+        ]
         job_type = None
         base_parts = parts
 
@@ -496,10 +505,12 @@ class DependencyValidator:
             except Exception as e:
                 logger.warning(f"Failed to register {spec_name} with resolver: {e}")
 
-    def _dict_to_step_specification(self, spec_dict: Dict[str, Any]) -> StepSpecification:
+    def _dict_to_step_specification(
+        self, spec_dict: Dict[str, Any]
+    ) -> StepSpecification:
         """Convert specification dictionary back to StepSpecification object."""
         from ....core.base.specification_base import DependencySpec, OutputSpec
-        
+
         # Convert dependencies
         dependencies = {}
         for dep in spec_dict.get("dependencies", []):

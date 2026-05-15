@@ -160,7 +160,7 @@ class CustomBPETokenizeProcessor(Processor):
                 - text_length_key: sequence length (scalar) - count before padding
 
             List format is required for pipeline_dataloader compatibility,
-            even though names3risk only uses single-sequence (not multi-chunk).
+            even though names2risk only uses single-sequence (not multi-chunk).
 
         Note:
             - Returns list with empty tensors for empty/whitespace-only/missing input

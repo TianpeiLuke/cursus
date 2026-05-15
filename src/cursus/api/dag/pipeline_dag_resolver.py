@@ -12,7 +12,9 @@ from . import PipelineDAG
 from ...core.base.config_base import BasePipelineConfig
 from ...core.base.contract_base import ScriptContract
 from ...core.base.specification_base import StepSpecification
-from ...step_catalog.adapters.config_resolver import StepConfigResolverAdapter as StepConfigResolver
+from ...step_catalog.adapters.config_resolver import (
+    StepConfigResolverAdapter as StepConfigResolver,
+)
 from ...core.compiler.exceptions import ConfigurationError
 from ...registry.step_names import (
     get_canonical_name_from_file_name,
@@ -48,7 +50,7 @@ class PipelineDAGResolver:
     ):
         """
         Initialize with enhanced StepCatalog integration.
-        
+
         Args:
             dag: PipelineDAG instance defining pipeline structure
             workspace_dirs: Optional workspace directories for workspace-aware discovery
@@ -59,10 +61,10 @@ class PipelineDAGResolver:
         """
         self.dag = dag
         self.graph = self._build_networkx_graph()
-        
+
         # NEW: Initialize StepCatalog with workspace support
         self.step_catalog = self._initialize_step_catalog(workspace_dirs)
-        
+
         # Configuration resolution (enhanced with catalog integration)
         self.config_path = config_path
         self.available_configs = available_configs or {}
@@ -79,7 +81,7 @@ class PipelineDAGResolver:
             except Exception as e:
                 logger.warning(f"Failed to load configs from {config_path}: {e}")
                 self.available_configs = {}
-        
+
         # Enhanced validation during initialization
         if validate_on_init:
             self._validate_dag_with_catalog()
@@ -88,6 +90,7 @@ class PipelineDAGResolver:
         """Initialize StepCatalog with workspace support."""
         try:
             from ...step_catalog import StepCatalog
+
             return StepCatalog(workspace_dirs=workspace_dirs)
         except ImportError as e:
             logger.warning(f"StepCatalog not available: {e}")
@@ -99,7 +102,9 @@ class PipelineDAGResolver:
     def _initialize_config_resolver(self):
         """Initialize configuration resolver with enhanced StepCatalog integration."""
         return (
-            StepConfigResolver() if (self.config_path or self.available_configs) else None
+            StepConfigResolver()
+            if (self.config_path or self.available_configs)
+            else None
         )
 
     def _validate_dag_with_catalog(self):
@@ -107,7 +112,7 @@ class PipelineDAGResolver:
         if not self.step_catalog:
             logger.debug("StepCatalog not available, skipping enhanced validation")
             return
-        
+
         validation_issues = self.validate_dag_integrity()
         if validation_issues:
             logger.warning(f"DAG validation issues detected: {validation_issues}")
@@ -222,7 +227,7 @@ class PipelineDAGResolver:
     def _discover_step_contract(self, step_name: str) -> Optional[ScriptContract]:
         """
         REFACTORED: Simplified contract discovery using StepCatalog.
-        
+
         IMPROVEMENTS:
         - Single discovery path through StepCatalog
         - Eliminates manual importlib usage
@@ -233,24 +238,30 @@ class PipelineDAGResolver:
             # Use StepCatalog's unified contract discovery
             if self.step_catalog:
                 contract = self.step_catalog.load_contract_class(step_name)
-                
+
                 if contract:
-                    logger.debug(f"Successfully loaded contract for {step_name} via StepCatalog")
+                    logger.debug(
+                        f"Successfully loaded contract for {step_name} via StepCatalog"
+                    )
                     return contract
                 else:
                     logger.debug(f"No contract found for step: {step_name}")
                     return None
             else:
                 # Fallback to legacy discovery if StepCatalog not available
-                logger.debug("StepCatalog not available, using legacy contract discovery")
+                logger.debug(
+                    "StepCatalog not available, using legacy contract discovery"
+                )
                 return self._discover_step_contract_legacy(step_name)
-                
+
         except Exception as e:
             logger.warning(f"Error loading contract for {step_name}: {e}")
             # Fallback to legacy discovery on any error
             return self._discover_step_contract_legacy(step_name)
 
-    def _discover_step_contract_legacy(self, step_name: str) -> Optional[ScriptContract]:
+    def _discover_step_contract_legacy(
+        self, step_name: str
+    ) -> Optional[ScriptContract]:
         """Legacy step contract discovery method (fallback only)."""
         try:
             # Convert step name to canonical name
@@ -298,16 +309,20 @@ class PipelineDAGResolver:
         try:
             # Use StepCatalog for unified specification discovery
             from ...step_catalog import StepCatalog
-            
+
             # Use package-only discovery for deployment portability
             catalog = StepCatalog(workspace_dirs=None)
             spec_instance = catalog.load_spec_class(canonical_name)
-            
+
             if spec_instance:
-                logger.debug(f"Successfully loaded specification for {canonical_name} via StepCatalog")
+                logger.debug(
+                    f"Successfully loaded specification for {canonical_name} via StepCatalog"
+                )
                 return spec_instance
             else:
-                logger.debug(f"No specification found for canonical name: {canonical_name}")
+                logger.debug(
+                    f"No specification found for canonical name: {canonical_name}"
+                )
                 return None
 
         except ImportError as e:
@@ -419,7 +434,7 @@ class PipelineDAGResolver:
     def validate_dag_integrity(self) -> Dict[str, List[str]]:
         """
         REFACTORED: Comprehensive DAG validation using StepCatalog.
-        
+
         IMPROVEMENTS:
         - Step existence validation using catalog
         - Component availability checking (builders, contracts, specs, configs)
@@ -427,28 +442,28 @@ class PipelineDAGResolver:
         - Enhanced error messages with suggestions
         """
         issues = {}
-        
+
         # Traditional validation (cycles, dangling dependencies, isolated nodes)
         issues.update(self._validate_graph_structure())
-        
+
         # NEW: StepCatalog-based validation
         if self.step_catalog:
             step_validation_issues = self._validate_steps_with_catalog()
             if step_validation_issues:
                 issues.update(step_validation_issues)
-            
+
             # NEW: Component availability validation
             component_issues = self._validate_component_availability()
             if component_issues:
                 issues.update(component_issues)
-            
+
             # NEW: Workspace compatibility validation
             workspace_issues = self._validate_workspace_compatibility()
             if workspace_issues:
                 issues.update(workspace_issues)
         else:
             logger.debug("StepCatalog not available, using basic validation only")
-        
+
         return issues
 
     def _validate_graph_structure(self) -> Dict[str, List[str]]:
@@ -496,65 +511,65 @@ class PipelineDAGResolver:
         """Validate all DAG nodes exist in StepCatalog."""
         issues = {}
         missing_steps = []
-        
+
         for step_name in self.dag.nodes:
             step_info = self.step_catalog.get_step_info(step_name)
             if not step_info:
                 missing_steps.append(step_name)
-        
+
         if missing_steps:
             available_steps = self.step_catalog.list_available_steps()
             issues["missing_steps"] = [
                 f"Step '{step}' not found in catalog. Available steps: {available_steps[:10]}..."
                 for step in missing_steps
             ]
-        
+
         return issues
 
     def _validate_component_availability(self) -> Dict[str, List[str]]:
         """Validate component availability for each step."""
         issues = {}
         component_issues = []
-        
+
         for step_name in self.dag.nodes:
             step_info = self.step_catalog.get_step_info(step_name)
             if step_info:
                 # Check component availability
                 missing_components = []
-                
+
                 # Check builder availability
-                if not step_info.file_components.get('builder'):
+                if not step_info.file_components.get("builder"):
                     builder_class = self.step_catalog.load_builder_class(step_name)
                     if not builder_class:
-                        missing_components.append('builder')
-                
+                        missing_components.append("builder")
+
                 # Check contract availability
-                if not step_info.file_components.get('contract'):
+                if not step_info.file_components.get("contract"):
                     contract = self.step_catalog.load_contract_class(step_name)
                     if not contract:
-                        missing_components.append('contract')
-                
+                        missing_components.append("contract")
+
                 # Check spec availability
-                if not step_info.file_components.get('spec'):
+                if not step_info.file_components.get("spec"):
                     spec = self.step_catalog.load_spec_class(step_name)
                     if not spec:
-                        missing_components.append('spec')
-                
+                        missing_components.append("spec")
+
                 if missing_components:
                     component_issues.append(
                         f"Step '{step_name}' missing components: {missing_components}"
                     )
-        
+
         if component_issues:
             issues["missing_components"] = component_issues
-        
+
         return issues
 
     def _validate_workspace_compatibility(self) -> Dict[str, List[str]]:
         """Validate workspace compatibility for steps."""
         issues = {}
         workspace_issues = []
-        
+
         # Check if steps come from different workspaces and might have conflicts
         step_workspaces = {}
         for step_name in self.dag.nodes:
@@ -564,7 +579,7 @@ class PipelineDAGResolver:
                 if workspace_id not in step_workspaces:
                     step_workspaces[workspace_id] = []
                 step_workspaces[workspace_id].append(step_name)
-        
+
         # Report multi-workspace usage (informational)
         if len(step_workspaces) > 1:
             workspace_summary = {
@@ -574,10 +589,10 @@ class PipelineDAGResolver:
                 f"DAG uses steps from multiple workspaces: {workspace_summary}. "
                 f"Ensure workspace compatibility."
             )
-        
+
         if workspace_issues:
             issues["workspace_compatibility"] = workspace_issues
-        
+
         return issues
 
     def _load_configs_from_file(
@@ -620,24 +635,26 @@ class PipelineDAGResolver:
 
             # Use StepCatalog to discover and instantiate configuration classes
             configs = {}
-            
+
             # Process each configuration section
             for config_key, config_values in config_data.items():
                 if config_key == "metadata":
                     continue  # Skip metadata section
-                
+
                 try:
                     # Try to find the corresponding step and config class using StepCatalog
                     config_instance = self._instantiate_config_from_catalog(
                         config_key, config_values
                     )
-                    
+
                     if config_instance:
                         configs[config_key] = config_instance
                         logger.debug(f"Successfully loaded config for: {config_key}")
                     else:
-                        logger.warning(f"Could not instantiate config for: {config_key}")
-                        
+                        logger.warning(
+                            f"Could not instantiate config for: {config_key}"
+                        )
+
                 except Exception as e:
                     logger.warning(f"Error loading config for {config_key}: {e}")
                     continue
@@ -648,10 +665,15 @@ class PipelineDAGResolver:
         except Exception as e:
             try:
                 from ...core.compiler.exceptions import ConfigurationError
-                raise ConfigurationError(f"Failed to load configurations from {config_path}: {e}")
+
+                raise ConfigurationError(
+                    f"Failed to load configurations from {config_path}: {e}"
+                )
             except ImportError:
                 # Fallback if ConfigurationError is not available
-                raise ValueError(f"Failed to load configurations from {config_path}: {e}")
+                raise ValueError(
+                    f"Failed to load configurations from {config_path}: {e}"
+                )
 
     def _instantiate_config_from_catalog(
         self, config_key: str, config_values: dict
@@ -682,10 +704,10 @@ class PipelineDAGResolver:
             # Try variations of the config key
             config_class_candidates = [
                 f"{config_key}Config",
-                f"{config_key}StepConfig", 
+                f"{config_key}StepConfig",
                 config_key,
             ]
-            
+
             for candidate in config_class_candidates:
                 config_class = self._get_config_class_by_name(candidate)
                 if config_class:
@@ -698,9 +720,13 @@ class PipelineDAGResolver:
                 if step_info and step_info.config_class:
                     # Check if config class name matches any of our candidates
                     if step_info.config_class in config_class_candidates:
-                        config_class = self._get_config_class_by_name(step_info.config_class)
+                        config_class = self._get_config_class_by_name(
+                            step_info.config_class
+                        )
                         if config_class:
-                            return self._create_config_instance(config_class, config_values)
+                            return self._create_config_instance(
+                                config_class, config_values
+                            )
 
             logger.debug(f"No matching config class found for: {config_key}")
             return None
@@ -756,13 +782,14 @@ class PipelineDAGResolver:
         # Remove "Config" suffix
         if class_name.endswith("Config"):
             class_name = class_name[:-6]
-        
+
         # Remove "Step" suffix if present
         if class_name.endswith("Step"):
             class_name = class_name[:-4]
 
         # Convert CamelCase to snake_case
         import re
+
         module_name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", class_name).lower()
         return module_name
 
@@ -789,7 +816,9 @@ class PipelineDAGResolver:
                 return config_class(**config_values)
 
         except Exception as e:
-            logger.warning(f"Error creating config instance for {config_class.__name__}: {e}")
+            logger.warning(
+                f"Error creating config instance for {config_class.__name__}: {e}"
+            )
             try:
                 # Fallback: try with empty initialization and set attributes
                 instance = config_class()
@@ -798,7 +827,9 @@ class PipelineDAGResolver:
                         setattr(instance, key, value)
                 return instance
             except Exception as fallback_error:
-                logger.warning(f"Fallback config creation also failed: {fallback_error}")
+                logger.warning(
+                    f"Fallback config creation also failed: {fallback_error}"
+                )
                 return None
 
     def get_config_resolution_preview(self) -> Optional[Dict[str, Any]]:

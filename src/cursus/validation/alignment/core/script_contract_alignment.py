@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Note: These imports reference removed modules - functionality needs to be replaced
 # from ..analyzer.script_analyzer import ScriptAnalyzer
-# from ..analyzer.builder_argument_extractor import extract_builder_arguments  
+# from ..analyzer.builder_argument_extractor import extract_builder_arguments
 # from ..validators.testability_validator import TestabilityPatternValidator
 from ....registry.step_names import (
     get_sagemaker_step_type,
@@ -44,15 +44,16 @@ class ScriptContractAlignmentTester:
         """
         # Store workspace directories
         self.workspace_dirs = workspace_dirs
-        
+
         # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
+
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
         # Note: These validators were removed during consolidation
         # self.testability_validator = TestabilityPatternValidator()
         # self.script_validator = ScriptContractValidator()
-        
+
         # TODO: Replace with consolidated validation logic
         self.testability_validator = None
         self.script_validator = None
@@ -109,7 +110,7 @@ class ScriptContractAlignmentTester:
         # Use StepCatalog to get script information
         try:
             step_info = self.step_catalog.get_step_info(script_name)
-            if not step_info or not step_info.file_components.get('script'):
+            if not step_info or not step_info.file_components.get("script"):
                 return {
                     "passed": False,
                     "issues": [
@@ -121,8 +122,8 @@ class ScriptContractAlignmentTester:
                         }
                     ],
                 }
-            
-            script_path = step_info.file_components['script'].path
+
+            script_path = step_info.file_components["script"].path
         except Exception as e:
             return {
                 "passed": False,
@@ -159,7 +160,7 @@ class ScriptContractAlignmentTester:
 
         # RESTORED: Use consolidated validation logic with restored ScriptAnalyzer
         from ..analyzer.script_analyzer import ScriptAnalyzer
-        
+
         # Use restored ScriptAnalyzer for contract alignment validation
         try:
             analyzer = ScriptAnalyzer(str(script_path))
@@ -180,52 +181,62 @@ class ScriptContractAlignmentTester:
                     }
                 ],
             }
-        
+
         # Validate main function signature
         main_function_result = analyzer.validate_main_function_signature()
         if not main_function_result.get("has_main"):
-            issues = [{
-                "severity": "CRITICAL",
-                "category": "missing_main_function",
-                "message": "Script must define main function with standard signature",
-                "details": {
-                    "script": script_name,
-                    "expected_signature": "def main(input_paths, output_paths, environ_vars, job_args)"
-                },
-                "recommendation": "Add main function with standard signature"
-            }]
+            issues = [
+                {
+                    "severity": "CRITICAL",
+                    "category": "missing_main_function",
+                    "message": "Script must define main function with standard signature",
+                    "details": {
+                        "script": script_name,
+                        "expected_signature": "def main(input_paths, output_paths, environ_vars, job_args)",
+                    },
+                    "recommendation": "Add main function with standard signature",
+                }
+            ]
         elif not main_function_result.get("signature_valid"):
-            issues = [{
-                "severity": "ERROR",
-                "category": "invalid_main_signature",
-                "message": "Main function signature does not match expected format",
-                "details": {
-                    "script": script_name,
-                    "actual_params": main_function_result.get("actual_params", []),
-                    "expected_params": main_function_result.get("expected_params", []),
-                    "issues": main_function_result.get("issues", [])
-                },
-                "recommendation": "Fix main function signature to match: def main(input_paths, output_paths, environ_vars, job_args)"
-            }]
+            issues = [
+                {
+                    "severity": "ERROR",
+                    "category": "invalid_main_signature",
+                    "message": "Main function signature does not match expected format",
+                    "details": {
+                        "script": script_name,
+                        "actual_params": main_function_result.get("actual_params", []),
+                        "expected_params": main_function_result.get(
+                            "expected_params", []
+                        ),
+                        "issues": main_function_result.get("issues", []),
+                    },
+                    "recommendation": "Fix main function signature to match: def main(input_paths, output_paths, environ_vars, job_args)",
+                }
+            ]
         else:
             issues = []
-        
+
         # Extract parameter usage
         parameter_usage = analyzer.extract_parameter_usage()
-        
+
         # Validate contract alignment
         alignment_issues = analyzer.validate_contract_alignment(contract)
         issues.extend(alignment_issues)
-        
+
         # Create analysis results
         analysis = {
             "main_function": main_function_result,
             "parameter_usage": parameter_usage,
             "contract_alignment": {
                 "total_issues": len(alignment_issues),
-                "error_count": len([i for i in alignment_issues if i["severity"] == "ERROR"]),
-                "warning_count": len([i for i in alignment_issues if i["severity"] == "WARNING"])
-            }
+                "error_count": len(
+                    [i for i in alignment_issues if i["severity"] == "ERROR"]
+                ),
+                "warning_count": len(
+                    [i for i in alignment_issues if i["severity"] == "WARNING"]
+                ),
+            },
         }
 
         # Phase 2 Enhancement: Add step type-specific validation
@@ -270,10 +281,9 @@ class ScriptContractAlignmentTester:
                 return self.step_catalog.serialize_contract(contract_obj)
             else:
                 raise AttributeError(f"No contract found for script: {script_name}")
-                
+
         except Exception as e:
             raise Exception(f"Failed to load contract for {script_name}: {str(e)}")
-
 
     def _resolve_logical_name_from_contract(
         self, path: str, contract: Dict[str, Any]
@@ -401,8 +411,8 @@ class ScriptContractAlignmentTester:
         # Get script content for pattern analysis using StepCatalog
         try:
             step_info = self.step_catalog.get_step_info(script_name)
-            if step_info and step_info.file_components.get('script'):
-                script_path = step_info.file_components['script'].path
+            if step_info and step_info.file_components.get("script"):
+                script_path = step_info.file_components["script"].path
                 with open(script_path, "r", encoding="utf-8") as f:
                     script_content = f.read()
             else:

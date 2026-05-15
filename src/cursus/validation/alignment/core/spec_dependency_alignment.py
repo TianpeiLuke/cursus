@@ -37,7 +37,9 @@ class SpecificationDependencyAlignmentTester:
     """
 
     def __init__(
-        self, validation_config: Level3ValidationConfig = None, workspace_dirs: Optional[List[Path]] = None
+        self,
+        validation_config: Level3ValidationConfig = None,
+        workspace_dirs: Optional[List[Path]] = None,
     ):
         """
         Initialize the specification-dependency alignment tester.
@@ -52,12 +54,12 @@ class SpecificationDependencyAlignmentTester:
 
         # Store workspace directories
         self.workspace_dirs = workspace_dirs
-        
+
         # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
+
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
         self.dependency_validator = DependencyValidator(self.config)
-
 
         # Initialize dependency resolver components
         self.pipeline_components = create_pipeline_components("level3_validation")
@@ -76,7 +78,7 @@ class SpecificationDependencyAlignmentTester:
     ) -> Dict[str, Dict[str, Any]]:
         """
         Validate alignment for all specifications or specified target scripts.
-        
+
         This method uses StepCatalog's bulk loading for efficiency.
 
         Args:
@@ -97,8 +99,9 @@ class SpecificationDependencyAlignmentTester:
 
         # Filter to target scripts if specified
         if target_scripts:
-            specs_to_validate = {name: spec for name, spec in all_specs.items() 
-                               if name in target_scripts}
+            specs_to_validate = {
+                name: spec for name, spec in all_specs.items() if name in target_scripts
+            }
         else:
             specs_to_validate = all_specs
 
@@ -121,13 +124,13 @@ class SpecificationDependencyAlignmentTester:
                 }
 
         return results
-    
+
     def _validate_all_specifications_fallback(
         self, target_scripts: Optional[List[str]] = None
     ) -> Dict[str, Dict[str, Any]]:
         """Fallback method using individual specification loading."""
         results = {}
-        
+
         # Discover specifications to validate
         if target_scripts:
             specs_to_validate = target_scripts
@@ -182,65 +185,67 @@ class SpecificationDependencyAlignmentTester:
                     }
                 ],
             }
-        
+
         if not spec_obj:
             return self._create_missing_spec_error(spec_name)
-        
+
         # Serialize specification
         try:
             specification = self.step_catalog.serialize_spec(spec_obj)
         except Exception as e:
             return self._create_serialization_error(spec_name, str(e))
-        
+
         # Perform validation using the simplified validation method
         return self.validate_specification_object(specification, spec_name)
-    
-    def validate_specification_object(self, specification: Dict[str, Any], spec_name: str = None) -> Dict[str, Any]:
+
+    def validate_specification_object(
+        self, specification: Dict[str, Any], spec_name: str = None
+    ) -> Dict[str, Any]:
         """
         Validate a pre-loaded specification object.
-        
+
         Args:
             specification: Serialized specification dictionary
             spec_name: Optional specification name for context
-            
+
         Returns:
             Validation result dictionary
         """
         # Load all specifications for dependency resolution (cached by StepCatalog)
         all_specs = self._load_all_specifications()
-        
+
         # Perform alignment validation
         issues = []
-        
+
         # Validate dependency resolution
         resolution_issues = self._validate_dependency_resolution(
             specification, all_specs, spec_name or "unknown"
         )
         issues.extend(resolution_issues)
-        
+
         # Validate circular dependencies
         circular_issues = self._validate_circular_dependencies(
             specification, all_specs, spec_name or "unknown"
         )
         issues.extend(circular_issues)
-        
+
         # Validate data type consistency
         type_issues = self._validate_dependency_data_types(
             specification, all_specs, spec_name or "unknown"
         )
         issues.extend(type_issues)
-        
+
         # Determine overall pass/fail status
         has_critical_or_error = any(
             issue["severity"] in ["CRITICAL", "ERROR"] for issue in issues
         )
-        
+
         return {
             "passed": not has_critical_or_error,
             "issues": issues,
             "specification": specification,
         }
-    
+
     def _create_missing_spec_error(self, spec_name: str) -> Dict[str, Any]:
         """Create standardized error response for missing specifications."""
         return {
@@ -258,8 +263,10 @@ class SpecificationDependencyAlignmentTester:
                 }
             ],
         }
-    
-    def _create_serialization_error(self, spec_name: str, error_msg: str) -> Dict[str, Any]:
+
+    def _create_serialization_error(
+        self, spec_name: str, error_msg: str
+    ) -> Dict[str, Any]:
         """Create standardized error response for serialization failures."""
         return {
             "passed": False,
@@ -347,7 +354,6 @@ class SpecificationDependencyAlignmentTester:
 
         logger.debug(f"Available canonical step names from registry: {canonical_names}")
         return canonical_names
-
 
     def _populate_resolver_registry(self, all_specs: Dict[str, Dict[str, Any]]):
         """Populate the dependency resolver registry with all specifications using canonical names."""
@@ -532,31 +538,35 @@ class SpecificationDependencyAlignmentTester:
             specification, all_specs, spec_name
         )
 
-
-
     def _load_all_specifications(self) -> Dict[str, Dict[str, Any]]:
         """Load all specification files using StepCatalog's load_all_specifications method."""
         try:
             # Use StepCatalog's dedicated load_all_specifications method
             all_specs = self.step_catalog.load_all_specifications()
-            
+
             if all_specs:
-                logger.info(f"Loaded {len(all_specs)} specifications using StepCatalog.load_all_specifications()")
+                logger.info(
+                    f"Loaded {len(all_specs)} specifications using StepCatalog.load_all_specifications()"
+                )
                 return all_specs
             else:
-                logger.warning("StepCatalog.load_all_specifications() returned empty results")
+                logger.warning(
+                    "StepCatalog.load_all_specifications() returned empty results"
+                )
                 # Fallback to legacy file system scanning
                 logger.warning("Falling back to legacy file system scanning")
                 return self._load_all_specifications_legacy()
-            
+
         except Exception as e:
             logger.error(f"StepCatalog.load_all_specifications() failed: {e}")
-            
+
             # Fallback to legacy file system scanning if StepCatalog fails
             logger.warning("Falling back to legacy file system scanning")
             return self._load_all_specifications_legacy()
-    
+
     def _load_all_specifications_legacy(self) -> Dict[str, Dict[str, Any]]:
         """Legacy fallback method - returns empty dict since we rely on StepCatalog."""
-        logger.warning("Legacy fallback called - StepCatalog should handle all specification loading")
+        logger.warning(
+            "Legacy fallback called - StepCatalog should handle all specification loading"
+        )
         return {}

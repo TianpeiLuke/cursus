@@ -9,9 +9,12 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..validators.property_path_validator import SageMakerPropertyPathValidator
+
 # PHASE 2 ENHANCEMENT: Use StepCatalog instead of SmartSpecificationSelector
 # SmartSpecificationSelector functionality has been integrated into SpecAutoDiscovery
-from ....step_catalog.adapters.contract_adapter import ContractDiscoveryEngineAdapter as ContractDiscoveryEngine
+from ....step_catalog.adapters.contract_adapter import (
+    ContractDiscoveryEngineAdapter as ContractDiscoveryEngine,
+)
 
 
 class ContractSpecificationAlignmentTester:
@@ -34,12 +37,13 @@ class ContractSpecificationAlignmentTester:
         """
         # Store workspace directories
         self.workspace_dirs = workspace_dirs
-        
+
         # Initialize property path validator
         self.property_path_validator = SageMakerPropertyPathValidator()
 
         # Initialize StepCatalog with workspace-aware discovery
         from ....step_catalog import StepCatalog
+
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
         # PHASE 2 ENHANCEMENT: SmartSpecificationSelector functionality now integrated into StepCatalog
@@ -101,8 +105,10 @@ class ContractSpecificationAlignmentTester:
         """
         # Load contract using StepCatalog
         try:
-            contract_obj = self.step_catalog.load_contract_class(script_or_contract_name)
-            
+            contract_obj = self.step_catalog.load_contract_class(
+                script_or_contract_name
+            )
+
             if contract_obj is None:
                 return {
                     "passed": False,
@@ -119,10 +125,10 @@ class ContractSpecificationAlignmentTester:
                         }
                     ],
                 }
-            
+
             # Convert contract object to dictionary format
             contract = self._contract_to_dict(contract_obj, script_or_contract_name)
-            
+
         except Exception as e:
             return {
                 "passed": False,
@@ -170,12 +176,14 @@ class ContractSpecificationAlignmentTester:
                         }
                     ],
                 }
-        
+
         specifications = spec_dicts
 
         # PHASE 2 ENHANCEMENT: Use StepCatalog smart specification methods
         # Create unified specification model using StepCatalog
-        unified_spec = self.step_catalog.create_unified_specification(script_or_contract_name)
+        unified_spec = self.step_catalog.create_unified_specification(
+            script_or_contract_name
+        )
 
         # Perform alignment validation against unified specification
         all_issues = []
@@ -187,15 +195,18 @@ class ContractSpecificationAlignmentTester:
         all_issues.extend(logical_issues)
 
         # RESTORED: Use consolidated validation logic with restored ContractSpecValidator
-        from ..validators.contract_spec_validator import ConsolidatedContractSpecValidator
+        from ..validators.contract_spec_validator import (
+            ConsolidatedContractSpecValidator,
+        )
+
         validator = ConsolidatedContractSpecValidator()
-        
+
         # Restore logical name validation
         logical_name_issues = validator.validate_logical_names(
             contract, unified_spec["primary_spec"], script_or_contract_name
         )
         all_issues.extend(logical_name_issues)
-        
+
         # Restore I/O alignment validation
         io_alignment_issues = validator.validate_input_output_alignment(
             contract, unified_spec["primary_spec"], script_or_contract_name
@@ -264,7 +275,9 @@ class ContractSpecificationAlignmentTester:
                 "optional": getattr(contract_obj, "optional_env_vars", {}),
             },
             "description": getattr(contract_obj, "description", ""),
-            "framework_requirements": getattr(contract_obj, "framework_requirements", {}),
+            "framework_requirements": getattr(
+                contract_obj, "framework_requirements", {}
+            ),
         }
 
         # Convert expected_input_paths to inputs format
@@ -291,7 +304,6 @@ class ContractSpecificationAlignmentTester:
         """Find specification files that reference a specific contract using StepCatalog."""
         # Use enhanced StepCatalog method for contract-specification discovery
         return self.step_catalog.find_specs_by_contract(contract_name)
-
 
     # REMOVED: Manual specification loading methods replaced by StepCatalog integration
     # - _load_specification_from_step_catalog() -> now uses step_catalog.find_specs_by_contract() + step_catalog.serialize_spec()

@@ -383,7 +383,16 @@ def get_canonical_name_from_file_name(file_name: str, workspace_id: str = None) 
     step_names = get_step_names(workspace_id)
 
     parts = file_name.split("_")
-    job_type_suffixes = ["training", "validation", "testing", "calibration"]
+    job_type_suffixes = [
+        "training",
+        "validation",
+        "testing",
+        "calibration",
+        "inference",
+        "batch",
+        "export",
+        "scoring",
+    ]
 
     # Strategy 1: Try full name as PascalCase
     full_pascal = "".join(word.capitalize() for word in parts)

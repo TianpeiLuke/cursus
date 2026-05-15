@@ -145,8 +145,8 @@ class PseudoLabelMergeStepBuilder(StepBuilderBase):
         if not hasattr(self.config, "job_type"):
             raise ValueError("Missing required attribute: job_type")
 
-        valid_job_types = {"training", "validation", "testing", "calibration"}
-        if self.config.job_type not in valid_job_types:
+        # job_type: any lowercase alphanumeric string
+        if not self.config.job_type.replace("_", "").isalnum():
             raise ValueError(
                 f"Invalid job_type: {self.config.job_type}. "
                 f"Must be one of {valid_job_types}"

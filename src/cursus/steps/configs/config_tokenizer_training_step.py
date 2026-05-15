@@ -108,9 +108,10 @@ class TokenizerTrainingConfig(ProcessingStepConfigBase):
     @classmethod
     def validate_job_type(cls, v: str) -> str:
         """Validate job type is one of the allowed values."""
-        allowed_types = ["training", "validation", "testing", "calibration"]
-        if v.lower() not in allowed_types:
-            raise ValueError(f"job_type must be one of {allowed_types}, got {v}")
+        if not v.replace("_", "").isalnum() or v != v.lower():
+            raise ValueError(
+                f"job_type must be lowercase alphanumeric (with underscores), got {v}"
+            )
         return v.lower()
 
     @field_validator("text_field")

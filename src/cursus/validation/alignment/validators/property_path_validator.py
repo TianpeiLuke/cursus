@@ -184,7 +184,7 @@ class SageMakerPropertyPathValidator:
                                 "valid_paths": validation_result["suggestions"],
                                 "documentation_reference": self.documentation_url,
                             },
-                            "recommendation": f'Use a valid property path for {resolved_step_type}. Valid paths include: {", ".join(validation_result["suggestions"][:5])}',
+                            "recommendation": f"Use a valid property path for {resolved_step_type}. Valid paths include: {', '.join(validation_result['suggestions'][:5])}",
                         }
                     )
                 else:

@@ -404,7 +404,9 @@ def combine_shards(
         "part-*.snappy.parquet",
         "part-*.parquet.gz",
     ]
-    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
+    # Use set() to deduplicate: "part-*.parquet" and "part-*.snappy.parquet"
+    # overlap because glob's * matches dots, so .snappy.parquet files match both.
+    all_shards = sorted(set(p for pat in patterns for p in input_path.glob(pat)))
 
     if not all_shards:
         raise RuntimeError(f"No CSV/JSON/Parquet shards found under {input_dir}")
@@ -1017,7 +1019,9 @@ def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
         "part-*.snappy.parquet",
         "part-*.parquet.gz",
     ]
-    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
+    # Use set() to deduplicate: "part-*.parquet" and "part-*.snappy.parquet"
+    # overlap because glob's * matches dots, so .snappy.parquet files match both.
+    all_shards = sorted(set(p for pat in patterns for p in input_path.glob(pat)))
 
     if not all_shards:
         raise RuntimeError(f"No shards found in {input_dir}")

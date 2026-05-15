@@ -1,7 +1,7 @@
 """
 Streamlined Reporting and Scoring Package for Builder Testing.
 
-This package contains only the essential streamlined modules for generating 
+This package contains only the essential streamlined modules for generating
 reports and scoring for builder test results. Optimized to leverage the
 alignment system infrastructure while eliminating over-engineering.
 
@@ -22,27 +22,26 @@ Architectural Changes:
 from .builder_reporter import (
     StreamlinedBuilderTestReporter,
     StreamlinedBuilderTestReport,
-    BuilderTestReporter,    # Legacy compatibility alias
-    BuilderTestReport,      # Legacy compatibility alias
+    BuilderTestReporter,  # Legacy compatibility alias
+    BuilderTestReport,  # Legacy compatibility alias
 )
 
 from .scoring import (
     StreamlinedStepBuilderScorer,
     score_builder_validation_results,
     score_builder_results,  # Legacy compatibility
-    StepBuilderScorer,      # Legacy compatibility alias
+    StepBuilderScorer,  # Legacy compatibility alias
 )
 
 __all__ = [
     # New streamlined components
-    'StreamlinedBuilderTestReporter',
-    'StreamlinedBuilderTestReport',
-    'StreamlinedStepBuilderScorer',
-    'score_builder_validation_results',
-    
+    "StreamlinedBuilderTestReporter",
+    "StreamlinedBuilderTestReport",
+    "StreamlinedStepBuilderScorer",
+    "score_builder_validation_results",
     # Legacy compatibility
-    'BuilderTestReporter',
-    'BuilderTestReport',
-    'StepBuilderScorer',
-    'score_builder_results',
+    "BuilderTestReporter",
+    "BuilderTestReport",
+    "StepBuilderScorer",
+    "score_builder_results",
 ]

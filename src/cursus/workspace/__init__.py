@@ -24,8 +24,8 @@ from .validator import WorkspaceValidator
 from .integrator import WorkspaceIntegrator
 
 __all__ = [
-    'WorkspaceAPI',
-    'WorkspaceManager', 
-    'WorkspaceValidator',
-    'WorkspaceIntegrator'
+    "WorkspaceAPI",
+    "WorkspaceManager",
+    "WorkspaceValidator",
+    "WorkspaceIntegrator",
 ]

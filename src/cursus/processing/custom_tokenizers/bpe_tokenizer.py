@@ -34,8 +34,8 @@ rate on validation set (e.g., 2.5 chars per token).
 - unicodedata → Text normalization
 
 **Used By:**
-- names3risk_pytorch.dockers.processing.datasets → Tokenize names/emails during preprocessing
-- names3risk_pytorch.dockers.lightning_models → Text preprocessing for training/inference
+- names2risk_pytorch.dockers.processing.datasets → Tokenize names/emails during preprocessing
+- names2risk_pytorch.dockers.lightning_models → Text preprocessing for training/inference
 
 **Alternative Approaches:**
 - Character-level tokenization → Simple but loses subword patterns

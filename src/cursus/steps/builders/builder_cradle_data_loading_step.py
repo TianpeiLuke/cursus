@@ -164,13 +164,15 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
         self.log_info("Validating CradleDataLoadingConfig…")
 
         # (1) job_type is already validated by Pydantic, but double-check presence:
-        valid_job_types = {"training", "validation", "testing", "calibration"}
+        # job_type: any lowercase alphanumeric string
         if not self.config.job_type:
             raise ValueError(
                 "job_type must be provided (e.g. 'training','validation','testing','calibration')."
             )
-        if self.config.job_type.lower() not in valid_job_types:
-            raise ValueError(f"job_type must be one of: {valid_job_types}")
+        if not self.config.job_type.replace("_", "").isalnum():
+            raise ValueError(
+                f"job_type must be lowercase alphanumeric, got: {self.config.job_type}"
+            )
 
         # (2) data_sources_spec must have at least one entry
         ds_list = self.config.data_sources_spec.data_sources

@@ -31,9 +31,8 @@ __all__ = [
     # Consolidated reporting
     "ValidationReporter",
     "ReportingConfig",
-    
     # Convenience functions
     "generate_quick_report",
-    "print_validation_summary", 
+    "print_validation_summary",
     "calculate_validation_scores",
 ]

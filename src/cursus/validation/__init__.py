@@ -20,7 +20,7 @@ from .script_testing import (
     execute_single_script,
     install_script_dependencies,
     quick_test_dag,
-    get_script_testing_info
+    get_script_testing_info,
 )
 
 # Export available functions and classes
@@ -44,18 +44,18 @@ __all__ = [
 def get_validation_info() -> dict:
     """
     Get information about available validation components.
-    
+
     Returns:
         Dictionary with validation framework information
     """
     return {
         "runtime_testing": "Available - RuntimeTester and related components",
-        "alignment_testing": "Available - unified_alignment_tester module", 
+        "alignment_testing": "Available - unified_alignment_tester module",
         "builder_testing": "Available - universal_test module",
         "available_classes": [
             "RuntimeTester",
             "ScriptTestResult",
-            "DataCompatibilityResult", 
+            "DataCompatibilityResult",
             "PipelineTestingSpecBuilder",
             "WorkspaceAwarePipelineTestingSpecBuilder",
         ],

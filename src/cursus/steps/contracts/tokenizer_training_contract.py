@@ -71,7 +71,7 @@ TOKENIZER_TRAINING_CONTRACT = ScriptContract(
     - tokenizer_metadata.json: Configuration metadata including vocab_size, special_tokens, etc.
     
     References:
-    - Legacy implementation: projects/names3risk_legacy/tokenizer.py
+    - Legacy implementation: projects/names2risk_legacy/tokenizer.py
     - HuggingFace Tokenizers: https://github.com/huggingface/tokenizers
     - Processing module: src/cursus/processing/tokenizers.py
     """,

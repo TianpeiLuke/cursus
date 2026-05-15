@@ -46,7 +46,9 @@ from .validation_models import (
 # )
 
 # File resolution
-from ....step_catalog.adapters.file_resolver import FlexibleFileResolverAdapter as FlexibleFileResolver
+from ....step_catalog.adapters.file_resolver import (
+    FlexibleFileResolverAdapter as FlexibleFileResolver,
+)
 
 # Step type detection - using registry functions instead of redundant factories
 from ....registry.step_names import (
@@ -90,20 +92,15 @@ __all__ = [
     "filter_issues_by_level",
     "group_issues_by_method",
     "format_validation_summary",
-    
-    
     # File resolution
     "FlexibleFileResolver",
-    
     # Step type detection - registry functions
     "get_sagemaker_step_type",
     "get_canonical_name_from_file_name",
     "StepCatalog",
-    
     # Level 3 configuration
     "Level3ValidationConfig",
     "ValidationMode",
-    
     # General utilities
     "normalize_path",
     "extract_logical_name_from_path",

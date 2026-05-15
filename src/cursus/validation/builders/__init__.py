@@ -33,11 +33,11 @@ Usage:
     from cursus.validation.builders import UniversalStepBuilderTest
     tester = UniversalStepBuilderTest(workspace_dirs=['.'])
     results = tester.run_full_validation()
-    
+
     # Legacy compatibility (still supported)
     tester = UniversalStepBuilderTest.from_builder_class(MyStepBuilder)
     results = tester.run_all_tests_legacy()
-    
+
     # Streamlined reporting
     from cursus.validation.builders import StreamlinedBuilderTestReporter
     reporter = StreamlinedBuilderTestReporter()
@@ -53,14 +53,15 @@ try:
         StreamlinedStepBuilderScorer,
         score_builder_validation_results,
         score_builder_results,  # Legacy compatibility
-        StepBuilderScorer,      # Legacy compatibility alias
+        StepBuilderScorer,  # Legacy compatibility alias
     )
     from .reporting.builder_reporter import (
         StreamlinedBuilderTestReporter,
         StreamlinedBuilderTestReport,
-        BuilderTestReporter,    # Legacy compatibility alias
-        BuilderTestReport,      # Legacy compatibility alias
+        BuilderTestReporter,  # Legacy compatibility alias
+        BuilderTestReport,  # Legacy compatibility alias
     )
+
     _has_reporting = True
 except ImportError:
     _has_reporting = False
@@ -70,16 +71,17 @@ except ImportError:
 __all__ = ["UniversalStepBuilderTest"]
 
 if _has_reporting:
-    __all__.extend([
-        # New streamlined components
-        "StreamlinedStepBuilderScorer",
-        "StreamlinedBuilderTestReporter", 
-        "StreamlinedBuilderTestReport",
-        "score_builder_validation_results",
-        
-        # Legacy compatibility
-        "StepBuilderScorer",
-        "BuilderTestReporter",
-        "BuilderTestReport",
-        "score_builder_results",
-    ])
+    __all__.extend(
+        [
+            # New streamlined components
+            "StreamlinedStepBuilderScorer",
+            "StreamlinedBuilderTestReporter",
+            "StreamlinedBuilderTestReport",
+            "score_builder_validation_results",
+            # Legacy compatibility
+            "StepBuilderScorer",
+            "BuilderTestReporter",
+            "BuilderTestReport",
+            "score_builder_results",
+        ]
+    )

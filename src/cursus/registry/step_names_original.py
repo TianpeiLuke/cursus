@@ -37,6 +37,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Dummy data loading step that processes user-provided data instead of calling Cradle services",
     },
+    "DataUploading": {
+        "config_class": "DataUploadingConfig",
+        "builder_step_name": "DataUploadingStepBuilder",
+        "spec_type": "DataUploading",
+        "sagemaker_step_type": "Processing",
+        "description": "Upload processed data to BDT (EDX/Andes) via SAIS SDK delegation",
+    },
     # Processing Steps
     "TabularPreprocessing": {
         "config_class": "TabularPreprocessingConfig",

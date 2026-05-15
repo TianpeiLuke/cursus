@@ -6,7 +6,7 @@ Each tester focuses on a specific alignment relationship in the pipeline archite
 
 Alignment Levels:
 1. Script ↔ Contract Alignment (Level 1)
-2. Contract ↔ Specification Alignment (Level 2)  
+2. Contract ↔ Specification Alignment (Level 2)
 3. Specification ↔ Dependencies Alignment (Level 3)
 4. Builder ↔ Configuration Alignment (Level 4)
 
@@ -31,10 +31,8 @@ from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
 __all__ = [
     # Level 1
     "ScriptContractAlignmentTester",
-    
     # Level 2
     "ContractSpecificationAlignmentTester",
-    
     # Level 3
     "SpecificationDependencyAlignmentTester",
 ]

@@ -100,7 +100,7 @@ def format_alignment_issue(issue: ValidationIssue) -> str:
 
     result = f"{emoji} {level_name}: {issue.message}"
 
-    if hasattr(issue, 'recommendation') and issue.recommendation:
+    if hasattr(issue, "recommendation") and issue.recommendation:
         result += f"\n  💡 Recommendation: {issue.recommendation}"
 
     if issue.details:

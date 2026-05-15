@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-Train custom BPE tokenizer for Names3Risk fraud detection.
+Train custom BPE tokenizer for Names2Risk fraud detection.
 
 This script trains a Byte Pair Encoding (BPE) tokenizer optimized for
 customer name data, matching the legacy OrderTextTokenizer implementation
 with automatic vocabulary size tuning to achieve target compression ratio.
 
 References:
-    - Legacy: projects/names3risk_legacy/tokenizer.py
+    - Legacy: projects/names2risk_legacy/tokenizer.py
     - HuggingFace Tokenizers: https://github.com/huggingface/tokenizers
 """
 
@@ -474,7 +474,7 @@ def main(
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser(
-            description="Train BPE tokenizer for Names3Risk"
+            description="Train BPE tokenizer for Names2Risk"
         )
         parser.add_argument(
             "--job_type",

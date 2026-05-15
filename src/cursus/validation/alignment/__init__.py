@@ -6,7 +6,7 @@ scripts, contracts, specifications, and builders in the pipeline architecture.
 
 The alignment validation covers four levels:
 1. Script ↔ Contract Alignment
-2. Contract ↔ Specification Alignment  
+2. Contract ↔ Specification Alignment
 3. Specification ↔ Dependencies Alignment
 4. Builder ↔ Configuration Alignment
 
@@ -63,23 +63,19 @@ from .utils import (
 __all__ = [
     # Main orchestrator
     "UnifiedAlignmentTester",
-    
     # Core alignment testers
     "ScriptContractAlignmentTester",
-    "ContractSpecificationAlignmentTester", 
+    "ContractSpecificationAlignmentTester",
     "SpecificationDependencyAlignmentTester",
-    
     # Consolidated reporting
     "ValidationReporter",
     "ReportingConfig",
     "generate_quick_report",
     "print_validation_summary",
     "calculate_validation_scores",
-    
     # Remaining validators
     "DependencyValidator",
     "SageMakerPropertyPathValidator",
-    
     # Consolidated utilities and models
     "ValidationLevel",
     "ValidationStatus",
