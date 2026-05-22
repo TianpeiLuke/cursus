@@ -18,6 +18,8 @@ from .generic_path_discovery import (
     get_generic_discovery_metrics,
 )
 
+from .nvme_security import install_nvme_aware_security_patch
+
 __all__ = [
     "HybridPathResolver",
     "resolve_hybrid_path",
@@ -25,4 +27,5 @@ __all__ = [
     "HybridResolutionConfig",
     "find_project_folder_generic",
     "get_generic_discovery_metrics",
+    "install_nvme_aware_security_patch",
 ]

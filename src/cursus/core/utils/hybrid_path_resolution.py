@@ -25,6 +25,7 @@ class HybridResolutionMetrics:
     """Track hybrid resolution performance metrics."""
 
     def __init__(self):
+        self.strategy_0_success_count = 0
         self.strategy_1_success_count = 0
         self.strategy_2_success_count = 0
         self.strategy_3_success_count = 0
@@ -32,6 +33,12 @@ class HybridResolutionMetrics:
         self.total_resolution_attempts = 0
         self.resolution_times = []
         self.failure_count = 0
+
+    def record_strategy_0_success(self, resolution_time: float):
+        """Record successful Explicit Project Base Discovery."""
+        self.strategy_0_success_count += 1
+        self.total_resolution_attempts += 1
+        self.resolution_times.append(resolution_time)
 
     def record_strategy_1_success(self, resolution_time: float):
         """Record successful Package Location Discovery."""
@@ -69,6 +76,8 @@ class HybridResolutionMetrics:
             return {"status": "no_data"}
 
         return {
+            "strategy_0_success_rate": self.strategy_0_success_count
+            / self.total_resolution_attempts,
             "strategy_1_success_rate": self.strategy_1_success_count
             / self.total_resolution_attempts,
             "strategy_2_fallback_rate": self.strategy_2_success_count
@@ -146,6 +155,18 @@ class HybridPathResolver:
         start_time = time.time()
 
         try:
+            # Strategy 0: Explicit project base (set by consumer package at import time)
+            resolved = self._explicit_project_base_discovery(
+                project_root_folder, relative_path
+            )
+            if resolved:
+                resolution_time = time.time() - start_time
+                _hybrid_resolution_metrics.record_strategy_0_success(resolution_time)
+                logger.info(
+                    f"Hybrid resolution completed successfully via Explicit Project Base: {resolved}"
+                )
+                return resolved
+
             # Strategy 1: Package Location Discovery (works for all scenarios)
             resolved = self._package_location_discovery(
                 project_root_folder, relative_path
@@ -203,6 +224,51 @@ class HybridPathResolver:
             resolution_time = time.time() - start_time
             _hybrid_resolution_metrics.record_failure(resolution_time)
             logger.error(f"Hybrid resolution error: {e}")
+            return None
+
+    def _explicit_project_base_discovery(
+        self, project_root_folder: Optional[str], relative_path: str
+    ) -> Optional[str]:
+        """
+        Discover paths using an explicitly declared project base path.
+
+        This strategy reads the CURSUS_PROJECT_BASE environment variable, which
+        is set by the consumer package's __init__.py at import time. It resolves
+        the project directory as a child of that base.
+
+        Args:
+            project_root_folder: Root folder name for the user's project
+            relative_path: Relative path from project root to target
+
+        Returns:
+            Resolved absolute path if found, None otherwise
+        """
+        project_base = os.environ.get("CURSUS_PROJECT_BASE")
+        if not project_base:
+            return None
+
+        try:
+            base_path = Path(project_base)
+            if not base_path.exists():
+                logger.debug(f"CURSUS_PROJECT_BASE does not exist: {base_path}")
+                return None
+
+            if project_root_folder:
+                target = base_path / project_root_folder / relative_path
+            else:
+                target = base_path / relative_path
+
+            logger.debug(f"Explicit project base checking: {target}")
+
+            if target.exists():
+                logger.info(f"Explicit project base discovery succeeded: {target}")
+                return str(target)
+
+            logger.debug(f"Explicit project base target not found: {target}")
+            return None
+
+        except Exception as e:
+            logger.warning(f"Explicit project base discovery failed with error: {e}")
             return None
 
     def _default_scripts_discovery(self, relative_path: str) -> Optional[str]:
