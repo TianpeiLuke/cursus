@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2026-05-21
+
+### Added
+
+- **NVMe-aware MODSWorkflowHelper security patch** (`cursus/core/utils/nvme_security.py`) — auto-installed at `import cursus` time. Patches `SagemakerPipelineHelper._patch_training_step` to skip `VolumeKmsKeyId` injection on NVMe-backed GPU instances (`ml.p4d`, `ml.g5`, `ml.g4dn`, `ml.p3dn`, `ml.trn`, `ml.inf`, any `*d` / `*dn` family) which reject `VolumeKmsKeyId` because they use hardware encryption. All other security settings (subnets, security groups, `encrypt_inter_container_traffic`, `output_kms_key`) are preserved. Idempotent and a no-op when `mods_workflow_helper` / `sagemaker` aren't importable. Ref: OfficeHour-1553, CMLS-Model-1049 — temporary shim until MODSWorkflowHelper ships its own NVMe gate.
+- **Hybrid path resolution** (`cursus/core/utils/hybrid_path_resolution.py`) — five-strategy resolver (`HybridPathResolver`) that locates project files across Lambda/MODS bundled, monorepo `src/cursus`, and pip-installed-separated deployment scenarios. Strategies tried in order: explicit `CURSUS_PROJECT_BASE` env var → package-location discovery → working-directory walk → generic recursive search → default `cursus/steps/scripts` fallback. Per-strategy metrics surfaced via `get_hybrid_resolution_metrics()`. Behavior gated by `CURSUS_HYBRID_RESOLUTION_ENABLED` (default on) and `CURSUS_HYBRID_RESOLUTION_MODE` (`full` / `fallback_only` / `disabled`).
+
+### Fixed
+
+- **`cursus.__version__` regression** — the metadata block in `src/cursus/__init__.py` had been temporarily switched to look up `importlib.metadata.version("amzn-cursus")` with a hardcoded `"1.4.1"` fallback. On the public PyPI distribution (`name = "cursus"`) the lookup always raised, so `cursus.__version__` reported `"1.4.1"` for every installed user. Restored the prior `VERSION`-file + `importlib.metadata.metadata("cursus")` resolution so `__version__` tracks the actual installed/working-tree version.
+- **README install commands** — two `pip install cursus[xgboost]` references corrected to `cursus[gbm]` (the actual declared extra; `xgboost` is not an extra group). Users copy-pasting from the README got `WARNING: cursus does not provide the extra xgboost` and silently ended up without xgboost installed.
+
 ## [1.5.2] - 2026-05-14
 
 ### Changed
